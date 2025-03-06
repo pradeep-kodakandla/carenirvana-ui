@@ -1,0 +1,225 @@
+{
+  "data": [
+    {
+      "id": "1",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "role": "Admin",
+      "createdBy": "system",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "system_user",
+      "updatedOn": "2025-01-05T04:12:03.815Z"
+    },
+    {
+      "id": "7871",
+      "name": "test id1",
+      "email": "without id1",
+      "role": "admin",
+      "createdBy": "system",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "deletedBy": "system_user",
+      "deletedOn": "2025-01-05T04:13:56.854Z",
+      "updatedBy": "system_user",
+      "updatedOn": "2025-01-05T04:14:31.444Z"
+    },
+    {
+      "id": "2387",
+      "name": "Hanuma Pradeep Kumar",
+      "email": "p.k@gmail.com",
+      "role": "Test",
+      "createdBy": "system_user",
+      "createdOn": "2025-01-03T05:13:38.006Z",
+      "updatedBy": "system_user",
+      "updatedOn": "2025-01-05T05:01:25.597Z"
+    },
+    {
+      "id": "f90a",
+      "name": "Test2",
+      "email": "test@abc.com",
+      "role": "Admin",
+      "createdBy": "system_user",
+      "createdOn": "2025-01-03T15:31:03.420Z",
+      "deletedBy": "system_user",
+      "deletedOn": "2025-01-05T04:15:57.843Z"
+    }
+  ],
+  "role": [
+    {
+      "id": "1",
+      "name": "Care Manager",
+      "managerAccess": "Yes",
+      "qocAccess": "Yes",
+      "sensitive": "Yes",
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "system_user",
+      "updatedOn": "2025-01-05T04:12:03.815Z"
+    },
+    {
+      "id": "2",
+      "name": "Medical Director",
+      "managerAccess": "Yes",
+      "qocAccess": "Yes",
+      "sensitive": "Yes",
+      "createdBy": "system_user",
+      "createdOn": "2025-01-05T05:16:36.859Z"
+    },
+    {
+      "id": "3",
+      "name": "Supervisor",
+      "managerAccess": "Yes",
+      "qocAccess": "No",
+      "sensitive": "No",
+      "createdBy": "system_user",
+      "createdOn": "2025-01-05T05:23:10.652Z"
+    },
+    {
+      "id": "4",
+      "name": "IntakeStaff",
+      "managerAccess": "No",
+      "qocAccess": "No",
+      "sensitive": "No",
+      "createdBy": "system_user",
+      "createdOn": "2025-01-05T05:23:26.521Z"
+    }
+  ],
+  "timezone": [
+    {
+      "id": "1",
+      "timezone": "EST",
+      "timezonedesc": "Eastern",
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    },
+    {
+      "id": "2",
+      "timezone": "PST",
+      "timezonedesc": "Pacific",
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    },
+    {
+      "id": "3",
+      "timezone": "CST",
+      "timezonedesc": "Central",
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "usertype": [
+    {
+      "id": "1",
+      "usertypename": "Internal",
+      "activeflag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    },
+    {
+      "id": "2",
+      "usertypename": "External/Provider",
+      "activeflag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    },
+    {
+      "id": "3",
+      "usertypename": "Member",
+      "activeflag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "ratetype": [
+    {
+      "id": "1",
+      "ratetypename": "USD",
+      "activeflag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    },
+    {
+      "id": "2",
+      "ratetypename": "INR",
+      "activeflag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    },
+    {
+      "id": "3",
+      "ratetypename": "GBP",
+      "activeflag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "documenttype": [
+    {
+      "id": "1",
+      "documentType": "Document Type Update",
+      "activeFlag": true,
+      "documentTemplate": "Pradeep is a good boy, Sridhar is a goooooood boy.\nnext line1\nnext line2 #$$^^$$##%%^^ ",
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-09T04:04:05.667Z"
+    },
+    {
+      "id": "2",
+      "documentType": "Test 2",
+      "activeFlag": true,
+      "documentTemplate": "test 2",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-07T05:37:04.483Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-09T00:35:17.213Z"
+    },
+    {
+      "id": "3",
+      "documentType": "Test 21",
+      "activeFlag": true,
+      "documentTemplate": "A\nB\nC\nD\nE\nF\nG\nH\nI\nJ\nK\nL\n",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-07T05:55:10.776Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-09T03:43:57.505Z"
+    },
+    {
+      "id": "4",
+      "documentType": "Test21",
+      "activeFlag": true,
+      "documentTemplate": "Age",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-08T04:45:26.166Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-09T00:55:33.487Z"
+    },
+    {
+      "id": "5",
+      "documentType": "Electronic Document",
+      "activeFlag": true,
+      "documentTemplate": "",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-09T00:52:33.619Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-09T04:30:45.082Z",
+      "deletedBy": "current_user",
+      "deletedOn": "2025-01-09T04:30:52.162Z"
+    },
+    {
+      "id": "5",
+      "documentType": "Electronic Document",
+      "activeFlag": true,
+      "documentTemplate": "Electronic Document",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-09T00:52:33.619Z"
+    },
+    {
+      "id": "6",
+      "documentType": "Document Type6",
+      "activeFlag": true,
+      "documentTemplate": "1\n2\n3\n4\n5",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-09T01:01:59.802Z"
+    }
+  ]
+}

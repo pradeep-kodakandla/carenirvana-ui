@@ -1,0 +1,255 @@
+{
+  "documenttype": [
+    {
+      "id": "1",
+      "documentType": "Document Type",
+      "activeFlag": true,
+      "documentTemplate": "Pradeep is a good boy, Sridhar is a goooooood boy.\nnext line1\nnext line2 #$$^^$$##%%^^ ",
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-11T16:07:21.686Z"
+    },
+    {
+      "id": "2",
+      "documentType": "Test 2",
+      "activeFlag": true,
+      "documentTemplate": "test 2",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-07T05:37:04.483Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-09T00:35:17.213Z"
+    },
+    {
+      "id": "3",
+      "documentType": "Test 21",
+      "activeFlag": true,
+      "documentTemplate": "A\nB\nC\nD\nE\nF\nG\nH\nI\nJ\nK\nL\n",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-07T05:55:10.776Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-09T03:43:57.505Z"
+    },
+    {
+      "id": "4",
+      "documentType": "Test21",
+      "activeFlag": true,
+      "documentTemplate": "Age",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-08T04:45:26.166Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-09T00:55:33.487Z"
+    },
+    {
+      "id": "5",
+      "documentType": "Electronic Document",
+      "activeFlag": true,
+      "documentTemplate": "",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-09T00:52:33.619Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-09T04:30:45.082Z",
+      "deletedBy": "current_user",
+      "deletedOn": "2025-01-09T04:30:52.162Z"
+    },
+    {
+      "id": "5",
+      "documentType": "Electronic Document",
+      "activeFlag": true,
+      "documentTemplate": "Electronic Document",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-09T00:52:33.619Z"
+    },
+    {
+      "id": "6",
+      "documentType": "Document Type6",
+      "activeFlag": true,
+      "documentTemplate": "1\n2\n3\n4\n5",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-09T01:01:59.802Z"
+    },
+    {
+      "id": "7",
+      "documentType": "AG Document Type",
+      "activeFlag": true,
+      "documentTemplate": "",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-10T02:09:30.319Z"
+    },
+    {
+      "id": "8",
+      "documentType": "Beautiful Coding",
+      "activeFlag": true,
+      "documentTemplate": "Fantastic Mindblowing\nVarmaa",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-10T03:25:02.538Z"
+    }
+  ],
+  "notetype": [
+    {
+      "id": "1",
+      "noteType": "Medical Note",
+      "activeFlag": true,
+      "noteTemplate": "First note type",
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-09T22:36:36.010Z"
+    },
+    {
+      "id": "2",
+      "noteType": "General Note",
+      "activeFlag": true,
+      "noteTemplate": "First Name:\nLast Name:\nMiddle:",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-09T22:36:56.068Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-09T22:37:41.141Z"
+    },
+    {
+      "id": "3",
+      "noteType": "BH Note",
+      "activeFlag": true,
+      "noteTemplate": "",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-09T22:37:27.773Z",
+      "deletedBy": "current_user",
+      "deletedOn": "2025-01-09T22:37:33.507Z"
+    },
+    {
+      "id": "3",
+      "noteType": "AG Note Type",
+      "activeFlag": true,
+      "noteTemplate": "",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-10T02:09:49.271Z"
+    },
+    {
+      "id": "4",
+      "noteType": "AG Note Type1",
+      "activeFlag": true,
+      "noteTemplate": "AG Note Type",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-10T05:00:09.050Z"
+    }
+  ],
+  "complaintcategory": [
+    {
+      "id": "1",
+      "complaintCategory": "Category",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-30T04:08:59.194Z"
+    }
+  ],
+  "complaintclass": [
+    {
+      "id": "1",
+      "complaintClass": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "complaintcredentials": [
+    {
+      "id": "1",
+      "complaintCredentials": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "complaintstatusreason": [
+    {
+      "id": "1",
+      "complaintStatusReason": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "complaintsubcategory": [
+    {
+      "id": "1",
+      "complaintSubCategory": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "coordinatortype": [
+    {
+      "id": "1",
+      "coordinatorType": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "participantrole": [
+    {
+      "id": "1",
+      "participantRole": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "participanttype": [
+    {
+      "id": "1",
+      "participantType": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "qocinvestigationoutcome": [
+    {
+      "id": "1",
+      "qocInvestigationOutcome": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "qocinvestigationreason": [
+    {
+      "id": "1",
+      "qocInvestigationReason": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "qocscore": [
+    {
+      "id": "1",
+      "qocScore": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "resolutioncategory": [
+    {
+      "id": "1",
+      "resolutionCategory": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "resolutionsubcategory": [
+    {
+      "id": "1",
+      "resolutionSubCategory": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ]
+}

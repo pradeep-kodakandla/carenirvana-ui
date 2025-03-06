@@ -1,0 +1,744 @@
+{
+  "documenttype": [
+    {
+      "id": "1",
+      "documentType": "Document Type Update",
+      "activeFlag": true,
+      "documentTemplate": "Pradeep is a good boy, Sridhar is a goooooood boy.\nnext line1\nnext line2 #$$^^$$##%%^^ ",
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-11T16:06:07.222Z"
+    },
+    {
+      "id": "2",
+      "authClass": "",
+      "activeFlag": true,
+      "authType": "Out Patient Type",
+      "treatmentTypeId": "1",
+      "placeOfServiceId": "2",
+      "unitTypeId": "1",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-23T04:18:38.861Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-23T04:22:25.645Z"
+    },
+    {
+      "id": "3",
+      "documentType": "Test 21",
+      "activeFlag": true,
+      "documentTemplate": "A\nB\nC\nD\nE\nF\nG\nH\nI\nJ\nK\nL\n",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-07T05:55:10.776Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-09T03:43:57.505Z"
+    },
+    {
+      "id": "4",
+      "documentType": "Test21",
+      "activeFlag": true,
+      "documentTemplate": "Age",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-08T04:45:26.166Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-09T00:55:33.487Z"
+    },
+    {
+      "id": "5",
+      "documentType": "Electronic Document",
+      "activeFlag": true,
+      "documentTemplate": "",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-09T00:52:33.619Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-09T04:30:45.082Z",
+      "deletedBy": "current_user",
+      "deletedOn": "2025-01-09T04:30:52.162Z"
+    },
+    {
+      "id": "5",
+      "documentType": "Electronic Document",
+      "activeFlag": true,
+      "documentTemplate": "Electronic Document",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-09T00:52:33.619Z"
+    },
+    {
+      "id": "6",
+      "documentType": "Document Type6",
+      "activeFlag": true,
+      "documentTemplate": "1\n2\n3\n4\n5",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-09T01:01:59.802Z"
+    },
+    {
+      "id": "7",
+      "documentType": "Member Merge",
+      "activeFlag": true,
+      "documentTemplate": "Member Name:\nMember Spouse:\nGender:",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-09T21:43:10.800Z",
+      "deletedBy": "current_user",
+      "deletedOn": "2025-01-10T06:36:42.588Z"
+    }
+  ],
+  "notetype": [
+    {
+      "id": "1",
+      "noteType": "Medical Note",
+      "activeFlag": true,
+      "noteTemplate": "First note type",
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-09T22:36:36.010Z"
+    },
+    {
+      "id": "2",
+      "noteType": "General Note",
+      "activeFlag": true,
+      "noteTemplate": "First Name:\nLast Name:\nMiddle:",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-09T22:36:56.068Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-09T22:37:41.141Z"
+    },
+    {
+      "id": "3",
+      "noteType": "BH Note",
+      "activeFlag": true,
+      "noteTemplate": "",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-09T22:37:27.773Z",
+      "deletedBy": "current_user",
+      "deletedOn": "2025-01-09T22:37:33.507Z"
+    },
+    {
+      "id": "3",
+      "noteType": "UM Note Type",
+      "activeFlag": true,
+      "noteTemplate": "UM Note Type",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-10T04:59:33.968Z"
+    }
+  ],
+  "activitytype": [
+    {
+      "id": "1",
+      "activityType": "Activity Type",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-11T16:25:17.936Z"
+    },
+    {
+      "id": "2",
+      "activityType": "Test2",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-10T06:27:10.134Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-11T04:47:50.600Z"
+    },
+    {
+      "id": "3",
+      "activityType": "New Record1",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-11T04:47:35.993Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-11T04:48:23.929Z",
+      "deletedBy": "current_user",
+      "deletedOn": "2025-01-11T15:49:03.983Z"
+    },
+    {
+      "id": "4",
+      "activityType": "New Activity Type",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-11T15:47:00.658Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-11T16:14:52.729Z"
+    }
+  ],
+  "externallinks": [
+    {
+      "id": "1",
+      "name": "External Link",
+      "URL": "https://www.cms.gov/test",
+      "isProviderPortal": true,
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-16T17:41:28.808Z"
+    },
+    {
+      "id": "2",
+      "name": "External Link 2",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-13T05:02:10.254Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-13T05:29:33.159Z",
+      "isProviderPortal": true,
+      "URL": "https://google.com"
+    }
+  ],
+  "claimtype": [
+    {
+      "id": "1",
+      "claimType": "Medical",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "activitypriority": [
+    {
+      "id": "1",
+      "activityPriority": "Medical",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "admissionlevel": [
+    {
+      "id": "1",
+      "admissionLevel": "Medical",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "admissiontype": [
+    {
+      "id": "1",
+      "admissionType": "Medical",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "admitreason": [
+    {
+      "id": "1",
+      "admitReason": "Medical",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "certificationtype": [
+    {
+      "id": "1",
+      "certificationType": "Medical",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "denialtype": [
+    {
+      "id": "1",
+      "denialType": "Medical",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    },
+    {
+      "id": "2",
+      "denialType": "Denial",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-19T15:06:43.263Z"
+    }
+  ],
+  "determinationtype": [
+    {
+      "id": "1",
+      "determinationType": "Medical",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "dischargeto": [
+    {
+      "id": "1",
+      "dischargeTo": "Medical",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "dischargetype": [
+    {
+      "id": "1",
+      "dischargeType": "Medical",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "medicationfrequency": [
+    {
+      "id": "1",
+      "medicationFrequency": "Medical",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "notificationtype": [
+    {
+      "id": "1",
+      "notificationType": "Medical",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "outofareaindicator": [
+    {
+      "id": "1",
+      "outOfAreaIndicator": "Medical",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "placeofservice": [
+    {
+      "id": "1",
+      "placeOfServiceCode": "0105",
+      "placeOfServiceName": "Medical Notes",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-17T01:30:10.543Z"
+    },
+    {
+      "id": "2",
+      "placeOfServiceCode": "22",
+      "placeOfServiceName": "Outpatient",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-17T01:31:34.911Z"
+    }
+  ],
+  "prescriptionquantity": [
+    {
+      "id": "1",
+      "prescriptionQuantity": "Medical",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-16T21:19:12.197Z"
+    }
+  ],
+  "qualityindicator": [
+    {
+      "id": "1",
+      "qualityIndicator": "Medical",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "transportationtriptype": [
+    {
+      "id": "1",
+      "transportationTripType": "Rideshare",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-16T21:18:52.827Z"
+    },
+    {
+      "id": "2",
+      "transportationTripType": "Road",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-16T21:18:56.747Z"
+    },
+    {
+      "id": "3",
+      "transportationTripType": "Air",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-16T21:18:59.780Z"
+    },
+    {
+      "id": "4",
+      "transportationTripType": "Water",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-16T21:19:03.051Z"
+    }
+  ],
+  "treatmenttype": [
+    {
+      "id": "1",
+      "treatmentType": "Surgery",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-16T21:18:35.437Z"
+    },
+    {
+      "id": "2",
+      "treatmentType": "Inpatient Rehab",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-16T21:18:44.587Z"
+    }
+  ],
+  "unittype": [
+    {
+      "id": "1",
+      "unitType": "Days",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-16T21:18:14.583Z"
+    },
+    {
+      "id": "2",
+      "unitType": "Weeks",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-16T21:18:18.059Z"
+    },
+    {
+      "id": "3",
+      "unitType": "Months",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-16T21:18:23.291Z"
+    }
+  ],
+  "decisionstatus": [
+    {
+      "id": "1",
+      "decisionStatus": "Approved",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    },
+    {
+      "id": "2",
+      "decisionStatus": "Pended",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    },
+    {
+      "id": "3",
+      "decisionStatus": "Denied",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    },
+    {
+      "id": "4",
+      "decisionStatus": "Void",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "decisionstatuscode": [
+    {
+      "id": "1",
+      "decisionStatusId": "1",
+      "decisionStatusCode": "101",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-19T15:35:03.040Z",
+      "decisionStatus": "Approved"
+    },
+    {
+      "id": "2",
+      "decisionStatusCode": "102",
+      "decisionStatusId": "2",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-18T04:36:00.446Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-18T04:48:35.820Z",
+      "decisionStatus": "Pended"
+    },
+    {
+      "id": "3",
+      "decisionStatusCode": "103",
+      "decisionStatusId": "3",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-18T04:39:49.022Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-19T20:51:49.595Z",
+      "decisionStatusName": "Pended"
+    },
+    {
+      "id": "4",
+      "decisionStatusCode": "104",
+      "decisionStatusId": "4",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-18T04:40:10.438Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-18T04:48:44.540Z"
+    }
+  ],
+  "denialreason": [
+    {
+      "id": "1",
+      "denialTypeId": "1",
+      "denialReason": "Reason 1",
+      "memberNote": "Note 1",
+      "providerNote": "Provider Note1",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "denialType": "Medical",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-19T04:27:12.961Z"
+    },
+    {
+      "id": "2",
+      "denialTypeId": "2",
+      "denialReason": "Denial Reason",
+      "activeFlag": true,
+      "memberNote": "Member Note",
+      "providerNote": "Provider Note",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-19T04:12:30.722Z",
+      "denialType": "Medical",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-19T15:06:58.554Z"
+    },
+    {
+      "id": "3",
+      "denialTypeId": "2",
+      "denialReason": "Denial 2",
+      "activeFlag": true,
+      "memberNote": "Member 2",
+      "providerNote": "Provider 2",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-19T04:31:04.519Z",
+      "denialType": "Medical",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-19T04:31:18.879Z"
+    }
+  ],
+  "authclass": [
+    {
+      "id": "1",
+      "authClass": "Inpatient",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    },
+    {
+      "id": "2",
+      "authClass": "Outpatient",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    },
+    {
+      "id": "3",
+      "authClass": "Pharmacy",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "authtemplate": [
+    {
+      "id": "1",
+      "authType": "Auth Type",
+      "authClassId": "1",
+      "treatmentTypeId": "1",
+      "placeOfServiceId": "1",
+      "unitTypeId": "1",
+      "maxUnits": "1",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-23T04:29:53.392Z"
+    },
+    {
+      "id": "2",
+      "authClassId": "3",
+      "activeFlag": true,
+      "authType": "Pharmacy Type",
+      "treatmentTypeId": "1",
+      "placeOfServiceId": "2",
+      "maxUnits": "1",
+      "unitTypeId": "1",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-23T04:18:38.861Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-23T04:40:49.200Z",
+      "authClass": "Pharmacy"
+    },
+    {
+      "id": "3",
+      "activeFlag": true,
+      "authType": "Outpatient Type",
+      "authClassId": "2",
+      "treatmentTypeId": "1",
+      "placeOfServiceId": "2",
+      "unitTypeId": "2",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-23T04:41:11.045Z",
+      "authClass": "Outpatient",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-23T04:42:49.462Z"
+    }
+  ],
+  "authstatus": [
+    {
+      "id": "1",
+      "authStatus": "Open",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    },
+    {
+      "id": "2",
+      "authStatus": "Close",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    },
+    {
+      "id": "3",
+      "authStatus": "Cancelled",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    },
+    {
+      "id": "4",
+      "authStatus": "Close and Adjusted",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    },
+    {
+      "id": "4",
+      "authStatus": "Reopen",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    },
+    {
+      "id": "4",
+      "authStatus": "Withdrawn",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "authstatusreason": [
+    {
+      "id": "1",
+      "authStatusId": "1",
+      "authStatusReason": "Awaiting Approval",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-21T01:31:58.793Z",
+      "authStatusName": "Open"
+    },
+    {
+      "id": "2",
+      "authStatusId": "3",
+      "authStatusReason": "Rejected",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-02-01T02:32:16.862Z",
+      "authStatusName": "Open"
+    },
+    {
+      "id": "3",
+      "authStatusId": "1",
+      "authStatusReason": "Nurse Review",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-19T23:07:53.763Z"
+    },
+    {
+      "id": "4",
+      "authStatusId": "2",
+      "authStatusReason": "Decisioned",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-19T23:07:53.763Z"
+    },
+    {
+      "id": "5",
+      "authStatusId": "2",
+      "authStatusReason": "Awaiting Approval",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-19T23:07:53.763Z"
+    },
+    {
+      "id": "6",
+      "authStatusId": "1",
+      "authStatusReason": "Under Appeal",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-19T23:07:53.763Z"
+    },
+    {
+      "id": "7",
+      "authStatusReason": "Withdrawn",
+      "authStatusId": "4",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-21T01:30:33.004Z"
+    },
+    {
+      "id": "8",
+      "authStatusReason": "Cancelled",
+      "authStatusId": "3",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-21T01:38:46.220Z"
+    },
+    {
+      "id": "9",
+      "authStatusReason": "Close and Adjusted",
+      "authStatusId": "4",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-21T01:51:30.203Z"
+    }
+  ]
+}

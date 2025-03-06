@@ -1,0 +1,547 @@
+{
+  "documenttype": [
+    {
+      "id": "1",
+      "documentType": "Document Type Update",
+      "activeFlag": true,
+      "documentTemplate": "Pradeep is a good boy, Sridhar is a goooooood boy.\nnext line1\nnext line2 #$$^^$$##%%^^ ",
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-10T01:32:01.300Z"
+    },
+    {
+      "id": "2",
+      "documentType": "Test 2",
+      "activeFlag": true,
+      "documentTemplate": "test 2",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-07T05:37:04.483Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-09T00:35:17.213Z"
+    },
+    {
+      "id": "3",
+      "documentType": "Test 21",
+      "activeFlag": true,
+      "documentTemplate": "A\nB\nC\nD\nE\nF\nG\nH\nI\nJ\nK\nL\n",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-07T05:55:10.776Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-09T03:43:57.505Z"
+    },
+    {
+      "id": "4",
+      "documentType": "Test21",
+      "activeFlag": true,
+      "documentTemplate": "Age",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-08T04:45:26.166Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-09T00:55:33.487Z"
+    },
+    {
+      "id": "5",
+      "documentType": "Electronic Document",
+      "activeFlag": true,
+      "documentTemplate": "",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-09T00:52:33.619Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-09T04:30:45.082Z",
+      "deletedBy": "current_user",
+      "deletedOn": "2025-01-09T04:30:52.162Z"
+    },
+    {
+      "id": "5",
+      "documentType": "Electronic Document",
+      "activeFlag": true,
+      "documentTemplate": "Electronic Document",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-09T00:52:33.619Z"
+    },
+    {
+      "id": "6",
+      "documentType": "Document Type6",
+      "activeFlag": true,
+      "documentTemplate": "1\n2\n3\n4\n5",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-09T01:01:59.802Z"
+    },
+    {
+      "id": "7",
+      "documentType": "Vijay Kumar",
+      "activeFlag": true,
+      "documentTemplate": "",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-10T01:38:20.558Z"
+    }
+  ],
+  "notetype": [
+    {
+      "id": "1",
+      "noteType": "Medical Note",
+      "activeFlag": true,
+      "noteTemplate": "First note type",
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-09T22:36:36.010Z"
+    },
+    {
+      "id": "2",
+      "noteType": "General Note",
+      "activeFlag": true,
+      "noteTemplate": "First Name:\nLast Name:\nMiddle:",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-09T22:36:56.068Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-09T22:37:41.141Z"
+    },
+    {
+      "id": "3",
+      "noteType": "BH Note",
+      "activeFlag": true,
+      "noteTemplate": "",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-09T22:37:27.773Z",
+      "deletedBy": "current_user",
+      "deletedOn": "2025-01-09T22:37:33.507Z"
+    },
+    {
+      "id": "3",
+      "noteType": "CM Note Type",
+      "activeFlag": true,
+      "noteTemplate": "CM Note Type",
+      "createdBy": "current_user",
+      "createdOn": "2025-01-10T04:59:50.209Z"
+    }
+  ],
+  "addresstype": [
+    {
+      "id": "1",
+      "entityTypeId": "1",
+      "addressType": "Home",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-23T22:15:51.488Z",
+      "entityTypeName": "Member"
+    },
+    {
+      "id": "2",
+      "addressType": "Office",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-23T03:33:54.116Z",
+      "entityTypeId": "1"
+    },
+    {
+      "id": "3",
+      "addressType": "Service Location",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-23T03:34:12.540Z",
+      "entityTypeId": "2"
+    },
+    {
+      "id": "4",
+      "addressType": "Home",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-23T22:14:24.985Z",
+      "entityTypeId": "2"
+    },
+    {
+      "id": "5",
+      "entityTypeId": "1",
+      "addressType": "Neighbor",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-24T01:51:52.086Z",
+      "entityTypeName": "Member",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-24T01:52:06.327Z"
+    }
+  ],
+  "entitytype": [
+    {
+      "id": "1",
+      "entityType": "Member",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    },
+    {
+      "id": "2",
+      "entityType": "Provider",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    },
+    {
+      "id": "3",
+      "entityType": "User",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "advancedirectives": [
+    {
+      "id": "1",
+      "advanceDirectives": "Home Address",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "deletedBy": "current_user",
+      "deletedOn": "2025-01-18T02:28:39.261Z"
+    }
+  ],
+  "appointmenttype": [
+    {
+      "id": "1",
+      "appointmentType": "Home Address",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "causeofdeath": [
+    {
+      "id": "1",
+      "causeOfDeath": "Unknown",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-18T02:37:46.005Z"
+    },
+    {
+      "id": "2",
+      "causeOfDeath": "Colon Cancer",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-18T02:38:02.525Z"
+    },
+    {
+      "id": "3",
+      "causeOfDeath": "Breast Cancer",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-18T02:38:08.692Z"
+    }
+  ],
+  "evacuationzone": [
+    {
+      "id": "1",
+      "evacuationZone": "Zone 1",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-18T02:38:28.060Z"
+    },
+    {
+      "id": "3",
+      "evacuationZone": "Zone 3",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-18T02:38:22.782Z"
+    },
+    {
+      "id": "4",
+      "evacuationZone": "Zone 2",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-18T02:38:44.068Z"
+    }
+  ],
+  "placeofdeath": [
+    {
+      "id": "1",
+      "placeOfDeath": "Hospital",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-18T02:37:16.269Z"
+    },
+    {
+      "id": "2",
+      "placeOfDeath": "Other",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-18T02:37:20.021Z"
+    },
+    {
+      "id": "4",
+      "placeOfDeath": "Hospice",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-18T02:37:30.309Z"
+    },
+    {
+      "id": "5",
+      "placeOfDeath": "Home",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-18T02:37:35.364Z"
+    }
+  ],
+  "sexualorientation": [
+    {
+      "id": "1",
+      "sexualOrientation": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-18T02:36:46.981Z"
+    },
+    {
+      "id": "2",
+      "sexualOrientation": "Asexual",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-18T02:36:50.797Z"
+    },
+    {
+      "id": "3",
+      "sexualOrientation": "Gay",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-18T02:36:55.629Z"
+    }
+  ],
+  "condition": [
+    {
+      "id": "1",
+      "condition": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "problem": [
+    {
+      "id": "1",
+      "problem": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "goalclass": [
+    {
+      "id": "1",
+      "goalClass": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "goal": [
+    {
+      "id": "1",
+      "goal": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "intervention": [
+    {
+      "id": "1",
+      "intervention": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "careplanmatrix": [
+    {
+      "id": "1",
+      "carePlanMatrix": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "careplanstatus": [
+    {
+      "id": "1",
+      "carePlanStatus": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "careplanduration": [
+    {
+      "id": "1",
+      "carePlanDuration": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "barriertype": [
+    {
+      "id": "1",
+      "barrierType": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "strengthtype": [
+    {
+      "id": "1",
+      "strengthType": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "holidays": [
+    {
+      "id": "1",
+      "holidays": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "medicationfrequency": [
+    {
+      "id": "1",
+      "medicationFrequency": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "medicationroute": [
+    {
+      "id": "1",
+      "medicationRoute": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "medicationdosageunits": [
+    {
+      "id": "1",
+      "medicationDosageUnits": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "medicationtype": [
+    {
+      "id": "1",
+      "medicationType": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "medicationreconciliation": [
+    {
+      "id": "1",
+      "medicationReconciliation": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "medicationbarriertype": [
+    {
+      "id": "1",
+      "medicationBarrierType": "Bisexual",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "indicatorcategory": [
+    {
+      "id": "1",
+      "indicatorCategoryName": "Lab",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    },
+    {
+      "id": "2",
+      "indicatorCategoryName": "Vital Signs",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    },
+    {
+      "id": "3",
+      "indicatorCategoryName": "Social Health",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "indicatorvaluetype": [
+    {
+      "id": "1",
+      "indicatorValueTypeName": "Numeric",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    },
+    {
+      "id": "2",
+      "indicatorValueTypeName": "Boolean",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    },
+    {
+      "id": "3",
+      "indicatorValueTypeName": "Generic",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z"
+    }
+  ],
+  "clinicalindicators": [
+    {
+      "id": "1",
+      "clinicalIndicatorName": "Height",
+      "indicatorCategoryId": "2",
+      "indicatorValueTypeId": "1",
+      "units": "inches",
+      "min": "100",
+      "max": "185",
+      "activeFlag": true,
+      "createdBy": "system_user",
+      "createdOn": "2025-01-01T10:00:00Z",
+      "indicatoryCategoryName": "",
+      "updatedBy": "current_user",
+      "updatedOn": "2025-01-29T02:13:53.318Z"
+    },
+    {
+      "id": "2",
+      "indicatorCategoryId": "2",
+      "clinicalIndicatorName": "Weight",
+      "indicatorValueTypeName": null,
+      "units": "lbs",
+      "min": "60",
+      "max": "200",
+      "activeFlag": true,
+      "createdBy": "current_user",
+      "createdOn": "2025-01-29T02:26:13.154Z",
+      "indicatorValueTypeId": "1"
+    }
+  ]
+}
