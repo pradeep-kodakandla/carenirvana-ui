@@ -1,0 +1,25 @@
+.container {
+  display: flex;
+  justify-content: space-around;
+  padding: 20px;
+}
+
+.block {
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 20px;
+  width: 40%;
+}
+
+.if-block {
+  background-color: #f8f9fa;
+}
+
+.then-block {
+  background-color: #e9ecef;
+}
+
+mat-form-field {
+  display: block;
+  margin-bottom: 10px;
+}

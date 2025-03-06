@@ -1,0 +1,61 @@
+<!-- Dynamic Sections -->
+<mat-card *ngFor="let section of ['authDetails', 'providerDetails', 'diagnosisDetails']">
+  <div class="card-header" (click)="toggleSection(section)"
+       style="display: flex; align-items: center; justify-content: space-between;">
+    <mat-icon>{{ formData[section]?.expanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+    <h6 style="color: #007BFF; font-weight: bold; margin: 0;">{{ section | titlecase }}</h6>
+  </div>
+
+  <!-- Accordion Content (only visible if expanded) -->
+  <div class="accordion-content" *ngIf="formData[section]?.expanded">
+
+    <!-- Dynamic Rows (4 fields per row + Button Group) -->
+    <div *ngFor="let entry of formData[section].entries; let i = index" class="row align-items-center mb-3">
+
+      <!-- Each row contains exactly 4 fields -->
+      <div class="col-md-3 mb-3" *ngFor="let field of config[section]; let j = index">
+        <div class="form-outline">
+          <label [for]="field.id + '_' + i" class="form-label">{{ field.label }}</label>
+
+          <!-- Input Fields -->
+          <input *ngIf="field.type !== 'select' && field.type !== 'radio'"
+                 class="form-control" [type]="field.type"
+                 [id]="field.id + '_' + i" [(ngModel)]="entry[field.id]"
+                 placeholder="{{ field.label }}" />
+
+          <!-- Dropdown -->
+          <select *ngIf="field.type === 'select'" class="form-control"
+                  [id]="field.id + '_' + i" [(ngModel)]="entry[field.id]">
+            <option *ngFor="let option of field.options" [value]="option">{{ option }}</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Primary Radio Button (Only in Diagnosis Section) -->
+      <div class="col-md-3 mb-3" *ngIf="section === 'diagnosisDetails'">
+        <label class="form-label">Primary</label>
+        <input type="radio" name="primary_{{ section }}"
+               [value]="i" [(ngModel)]="formData[section].primaryIndex"
+               (change)="setPrimary(section, i)">
+      </div>
+
+      <!-- Add & Remove Buttons (In the Same Row) -->
+      <div class="col-md-3 mb-3 button-group text-end" *ngIf="section === 'diagnosisDetails' || section === 'providerDetails'">
+        <button mat-icon-button color="warn" *ngIf="formData[section].entries.length > 1"
+                (click)="removeEntry(section, i)">
+          <mat-icon>remove_circle</mat-icon>
+        </button>
+        <button mat-icon-button color="primary" *ngIf="i === formData[section].entries.length - 1"
+                (click)="addEntry(section, i)">
+          <mat-icon>add_circle</mat-icon>
+        </button>
+      </div>
+
+    </div>
+  </div>
+</mat-card>
+
+<!-- Save Button -->
+<div class="text-center">
+  <button mat-raised-button color="primary" (click)="saveData()">Save</button>
+</div>

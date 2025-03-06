@@ -1,0 +1,37 @@
+<div class="container">
+  <div class="block if-block">
+    <h3>IF</h3>
+    <div *ngFor="let condition of conditions; let i = index">
+      <mat-form-field>
+        <mat-label>Property</mat-label>
+        <input matInput [(ngModel)]="condition.property" />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Operator</mat-label>
+        <input matInput [(ngModel)]="condition.operator" />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Value</mat-label>
+        <input matInput [(ngModel)]="condition.value" />
+      </mat-form-field>
+      <button mat-button color="warn" (click)="removeCondition(i)">Remove</button>
+    </div>
+    <button mat-raised-button (click)="addCondition()">Add Condition</button>
+  </div>
+
+  <div class="block then-block">
+    <h3>THEN</h3>
+    <div *ngFor="let result of results; let i = index">
+      <mat-form-field>
+        <mat-label>Property</mat-label>
+        <input matInput [(ngModel)]="result.property" />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Value</mat-label>
+        <input matInput [(ngModel)]="result.value" />
+      </mat-form-field>
+      <button mat-button color="warn" (click)="removeResult(i)">Remove</button>
+    </div>
+    <button mat-raised-button (click)="addResult()">Add Result</button>
+  </div>
+</div>

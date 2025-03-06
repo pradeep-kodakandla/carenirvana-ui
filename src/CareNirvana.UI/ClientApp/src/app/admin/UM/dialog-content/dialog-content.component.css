@@ -1,0 +1,7 @@
+.mat-dialog-container {
+  border-radius: 0 !important; /* Remove the rounded corners for all dialogs */
+}
+
+.no-rounded-border .mat-dialog-container {
+  border-radius: 0 !important; /* Remove the rounded corners */
+}

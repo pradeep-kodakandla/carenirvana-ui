@@ -1,0 +1,118 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  font-family: Arial, sans-serif;
+  overflow: auto;
+  height: 90%;
+}
+
+.search-bar {
+  padding: 10px;
+  background-color: #f1f1f1;
+  border-bottom: 1px solid #ccc;
+}
+
+  .search-bar input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    outline: none;
+  }
+
+.main-content {
+  display: flex;
+  height: calc(100vh - 60px);
+  transition: width 0.3s ease;
+}
+
+  .main-content.collapsed {
+    width: 0;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+.main-menu {
+  min-width: 200px;
+  border-right: 1px solid #ccc;
+  overflow-y: auto;
+  padding: 0;
+}
+
+  .main-menu ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .main-menu li {
+    padding: 5px 7px;
+    cursor: pointer;
+    border-left: 4px solid transparent;
+    color: #333;
+  }
+
+    .main-menu li.selected {
+      background-color: #e5f2ff;
+      border-left: 4px solid #007BFF;
+      font-weight: bold;
+      color: #007BFF;
+    }
+
+.sub-menu {
+  min-width: 200px;
+  height: 98%;
+  background-color: #ffffff;
+  border-right: 1px solid #ccc;
+  overflow-y: auto;
+  overflow-x: auto;
+  padding-bottom: 25px;
+}
+
+  .sub-menu ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .sub-menu li {
+    padding: 5px 7px;
+    cursor: pointer;
+    border-left: 4px solid transparent;
+    color: #333;
+  }
+
+    .sub-menu li.selected {
+      background-color: #e5f2ff;
+      border-left: 4px solid #007BFF;
+      font-weight: bold;
+      color: #007BFF;
+    }
+
+.details-section {
+  flex: 1;
+  position: relative;
+}
+
+.button-container {
+  position: absolute;
+  top: 10px;
+  left: calc(400px + 10px); /* 400px = main-menu (200px) + sub-menu (200px), 10px = padding-left */
+  z-index: 1000; /* Ensure it stays above content */
+}
+
+.collapse-btn {
+  width: 30px;
+  height: 30px;
+  background-color: #007BFF;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  text-align: center;
+}
+
+  .collapse-btn:hover {
+    background-color: #15618b;
+  }

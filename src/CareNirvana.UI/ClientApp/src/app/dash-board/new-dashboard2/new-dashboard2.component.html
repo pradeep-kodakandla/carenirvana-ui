@@ -1,0 +1,73 @@
+<div class="dashboard">
+  <!-- Card 1: Full-width in row 1 -->
+  <mat-card class="card full-width" [class.expanded]="expandedCard === 'card1'">
+    <mat-card-title>
+      Card 1
+      <div class="card-actions">
+        <button mat-icon-button (click)="toggleExpand('card1')">
+          <mat-icon>{{ expandedCard === 'card1' ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
+        </button>
+        <button mat-icon-button (click)="removeCard('card1')">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    </mat-card-title>
+    <mat-card-content *ngIf="!collapsedCards.includes('card1')">
+      Content for Card 1
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Card 2: Row 2, Column 1 -->
+  <mat-card class="card column1" [class.expanded]="expandedCard === 'card2'">
+    <mat-card-title>
+      Card 2
+      <div class="card-actions">
+        <button mat-icon-button (click)="toggleExpand('card2')">
+          <mat-icon>{{ expandedCard === 'card2' ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
+        </button>
+        <button mat-icon-button (click)="removeCard('card2')">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    </mat-card-title>
+    <mat-card-content *ngIf="!collapsedCards.includes('card2')">
+      Content for Card 2
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Card 3: Row 3, Column 1 -->
+  <mat-card class="card column1" [class.expanded]="expandedCard === 'card3'">
+    <mat-card-title>
+      Card 3
+      <div class="card-actions">
+        <button mat-icon-button (click)="toggleExpand('card3')">
+          <mat-icon>{{ expandedCard === 'card3' ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
+        </button>
+        <button mat-icon-button (click)="removeCard('card3')">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    </mat-card-title>
+    <mat-card-content *ngIf="!collapsedCards.includes('card3')">
+      Content for Card 3
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Card 4: Rows 2 and 3, Columns 2 to 4 -->
+  <mat-card class="card span-rows-and-columns" [class.expanded]="expandedCard === 'card4'">
+    <mat-card-title>
+      Card 4
+      <div class="card-actions">
+        <button mat-icon-button (click)="toggleExpand('card4')">
+          <mat-icon>{{ expandedCard === 'card4' ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
+        </button>
+        <button mat-icon-button (click)="removeCard('card4')">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    </mat-card-title>
+    <mat-card-content *ngIf="!collapsedCards.includes('card4')">
+      Content for Card 4
+    </mat-card-content>
+  </mat-card>
+</div>

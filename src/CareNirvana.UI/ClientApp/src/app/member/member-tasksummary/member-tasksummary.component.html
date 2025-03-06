@@ -1,0 +1,151 @@
+
+
+
+<mat-menu #menu="matMenu">
+  <button mat-menu-item>
+    <span>Add Activity</span>
+  </button>
+  <button mat-menu-item disabled>
+    <span>Run Assessment</span>
+  </button>
+  <button mat-menu-item>
+    <!--<mat-icon>notifications_off</mat-icon>-->
+    <span>Messages</span>
+  </button>
+  <button mat-menu-item>
+    <span>Add Notes</span>
+  </button>
+  <button mat-menu-item disabled>
+    <span>Send Letter</span>
+  </button>
+  <button mat-menu-item>
+    <!--<mat-icon>notifications_off</mat-icon>-->
+    <span>Unassign</span>
+  </button>
+  <button mat-menu-item>
+    <!--<mat-icon>notifications_off</mat-icon>-->
+    <span>Summary</span>
+  </button>
+</mat-menu>
+
+<mat-drawer-container class="sidenav-container" autosize>
+  <mat-drawer-content mode="side" opened>
+
+    <div class="d-flex justify-content-between align-items-center " style="background: whitesmoke; width: 100%;  ">
+      <div class="d-flex justify-content-between align-items-center" style="width:70%;">
+        <div class="search-bar-container-table">
+          <button mat-icon-button>
+            <mat-icon>search</mat-icon>
+          </button>
+          <input class="input" matInput (keyup)="applyFilter($event)" placeholder="Start typing to search Task Summary " #input>
+        </div>
+      </div>
+      <div>
+        <div class="d-flex justify-content-between align-items-center" style="padding: 5px;">
+          <div class="search-bar-button-table">
+            <button mat-icon-button>
+              <mat-icon>add</mat-icon>
+            </button>
+            <a style="padding-right:10px;">Add</a>
+          </div>
+          <a style="padding-right:10px;"><mat-icon>settings</mat-icon></a>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table class="responsive-table" mat-table [dataSource]="dataSource" multiTemplateDataRows matSort>
+
+        <ng-container matColumnDef="menu">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header> </th>
+          <td mat-cell *matCellDef="let row">
+            <button mat-icon-button [matMenuTriggerFor]="menu">
+              <mat-icon>list</mat-icon>
+            </button>
+
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="enrollmentStatus">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header> Enrollment Status </th>
+          <td mat-cell *matCellDef="let row">
+            <a mat-button>{{row.enrollmentStatus}}</a>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="memberId">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header> Member ID </th>
+          <td mat-cell *matCellDef="let row">
+            <div class="element-weight">
+              <a mat-button (click)="goToPage(row.memberId)">{{row.memberId}}</a>
+            </div>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="firstName">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header> First Name </th>
+          <td mat-cell *matCellDef="let row"> {{row.firstName}} </td>
+        </ng-container>
+
+        <ng-container matColumnDef="lastName">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header> Last Name </th>
+          <td mat-cell *matCellDef="let row"> {{row.lastName}} </td>
+        </ng-container>
+
+        <ng-container matColumnDef="DOB">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header> DOB </th>
+          <td mat-cell *matCellDef="let row"> {{row.DOB}} </td>
+        </ng-container>
+
+        <ng-container matColumnDef="risk">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header> Risk </th>
+          <td mat-cell *matCellDef="let row"> {{row.risk}} </td>
+        </ng-container>
+
+        <ng-container matColumnDef="nextContact">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header> Next Contact </th>
+          <td mat-cell *matCellDef="let row"> {{row.nextContact}} </td>
+        </ng-container>
+
+        <ng-container matColumnDef="assignedDate">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header> Assigned Date </th>
+          <td mat-cell *matCellDef="let row"> {{row.assignedDate}} </td>
+        </ng-container>
+
+        <ng-container matColumnDef="programName">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header> Programe Name </th>
+          <td mat-cell *matCellDef="let row"> {{row.programName}} </td>
+        </ng-container>
+
+        <ng-container matColumnDef="description">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header> Status </th>
+          <td mat-cell *matCellDef="let row"> {{row.description}} </td>
+        </ng-container>
+
+
+        <!-- Expanded Content Column - The detail row is made up of this one column that spans across all columns -->
+
+        <ng-container matColumnDef="expandedDetail">
+          <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns.length">
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+            class="element-row"
+            [class.expanded-row]="expandedElement === row"
+            (click)="expandedElement = expandedElement === row ? null : row">
+        </tr>
+        <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="detail-row"></tr>
+
+        <!--<tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;" (click)="expandedElement = expandedElement === row ? null : row"></tr>-->
+        <!-- Row shown when there is no matching data. -->
+        <tr class="mat-row" *matNoDataRow>
+          <td class="mat-cell" colspan="9">No data matching the filter "{{input.value}}"</td>
+        </tr>
+      </table>
+      <mat-paginator [pageSizeOptions]="[10, 25, 100]" aria-label="Select page of users"></mat-paginator>
+    </div>
+
+  </mat-drawer-content>
+</mat-drawer-container>

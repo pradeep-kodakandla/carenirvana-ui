@@ -1,0 +1,203 @@
+<h1 mat-dialog-title>Provider Search</h1>
+
+<div mat-dialog-content>
+  <!-- Tabs for PCP, Provider, Add New -->
+  <mat-tab-group [(selectedIndex)]="selectedTabIndex">
+    <!-- PCP Tab -->
+    <mat-tab label="PCP">
+      <form [formGroup]="pcpSearchForm" (ngSubmit)="onSearchPCP()" style="display: flex; flex-wrap: wrap; gap: 10px;">
+
+        <div class="row mb-3" style="padding:10px;">
+          <div class="col-md-3 mb-3">
+            <div class="form-outline">
+              <label for="numberOfDays" class="form-label">Provider Role</label>
+              <input type="text" class="form-control" formControlName="providerRole" />
+            </div>
+          </div>
+          <div class="col-md-3 mb-3">
+            <div class="form-outline">
+              <label for="numberOfDays" class="form-label">Provider Id</label>
+              <input type="number" class="form-control" formControlName="providerId" />
+            </div>
+          </div>
+
+          <div class="col-md-3 mb-3">
+            <div class="form-outline">
+              <label class="form-label">Provider Name</label>
+              <input type="number" class="form-control" formControlName="providerName" />
+            </div>
+          </div>
+
+          <div class="col-md-3 mb-3">
+            <div class="form-outline">
+              <label for="numberOfDays" class="form-label">Location</label>
+              <input type="number" class="form-control" placeholder="Days Left" formControlName="providerLocation" />
+            </div>
+          </div>
+          <div class="col-md-3 mb-3">
+            <div class="form-outline">
+              <label for="numberOfDays" class="form-label">Speciality</label>
+              <input type="number" class="form-control" placeholder="Days Left" formControlName="providerSpeciality" />
+            </div>
+          </div>
+          <div style="width: 100%; text-align: right;">
+            <button mat-raised-button color="primary" type="submit">Search</button>
+          </div>
+        </div>
+
+
+      </form>
+
+      <!-- PCP Table -->
+      <table mat-table [dataSource]="pcpDataSource" class="mat-elevation-z8" style="margin-top: 2px;">
+        <!-- Select Checkbox Column -->
+        <ng-container matColumnDef="select">
+          <th mat-header-cell *matHeaderCellDef>Select</th>
+          <td mat-cell *matCellDef="let row">
+            <mat-checkbox (change)="onSelectProvider(row, $event.checked)"></mat-checkbox>
+          </td>
+        </ng-container>
+
+        <!-- Name Column -->
+        <ng-container matColumnDef="providerName">
+          <th mat-header-cell *matHeaderCellDef>Name</th>
+          <td mat-cell *matCellDef="let row">{{ row.providerName }}</td>
+        </ng-container>
+
+        <!-- Location Column -->
+        <ng-container matColumnDef="providerLocation">
+          <th mat-header-cell *matHeaderCellDef>Location</th>
+          <td mat-cell *matCellDef="let row">{{ row.providerLocation }}</td>
+        </ng-container>
+
+        <!-- Specialty Column -->
+        <ng-container matColumnDef="providerSpeciality">
+          <th mat-header-cell *matHeaderCellDef>Specialty</th>
+          <td mat-cell *matCellDef="let row">{{ row.providerSpeciality }}</td>
+        </ng-container>
+
+        <!-- ID Column -->
+        <ng-container matColumnDef="providerId">
+          <th mat-header-cell *matHeaderCellDef>ID</th>
+          <td mat-cell *matCellDef="let row">{{ row.providerId }}</td>
+        </ng-container>
+
+        <!-- Phone Column -->
+        <ng-container matColumnDef="providerPhone">
+          <th mat-header-cell *matHeaderCellDef>Phone</th>
+          <td mat-cell *matCellDef="let row">{{ row.providerPhone }}</td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+    </mat-tab>
+
+    <!-- Provider Tab -->
+    <mat-tab label="Provider">
+      <form [formGroup]="providerSearchForm" (ngSubmit)="onSearchProvider()" style="display: flex; flex-wrap: wrap; gap: 10px;">
+        <div class="row mb-3" style="padding:10px;">
+          <div class="col-md-3 mb-3">
+            <div class="form-outline">
+              <label for="numberOfDays" class="form-label">Provider Role</label>
+              <input type="text" class="form-control" formControlName="providerRole" />
+            </div>
+          </div>
+          <div class="col-md-3 mb-3">
+            <div class="form-outline">
+              <label for="numberOfDays" class="form-label">Provider Id</label>
+              <input type="number" class="form-control" formControlName="providerId" />
+            </div>
+          </div>
+
+          <div class="col-md-3 mb-3">
+            <div class="form-outline">
+              <label class="form-label">Provider Name</label>
+              <input type="number" class="form-control" formControlName="providerName" />
+            </div>
+          </div>
+
+          <div class="col-md-3 mb-3">
+            <div class="form-outline">
+              <label for="numberOfDays" class="form-label">Location</label>
+              <input type="number" class="form-control" placeholder="Days Left" formControlName="providerLocation" />
+            </div>
+          </div>
+          <div class="col-md-3 mb-3">
+            <div class="form-outline">
+              <label for="numberOfDays" class="form-label">Speciality</label>
+              <input type="number" class="form-control" placeholder="Days Left" formControlName="providerSpeciality" />
+            </div>
+          </div>
+        </div>
+
+        <div style="width: 100%; text-align: right;">
+          <button mat-raised-button color="primary" type="submit">Search</button>
+        </div>
+      </form>
+
+      <!-- Provider Table -->
+      <table mat-table [dataSource]="providerDataSource" class="mat-elevation-z8" style="width: 100%; margin-top: 10px;">
+        <!-- Same columns as PCP table -->
+        <ng-container matColumnDef="select">
+          <th mat-header-cell *matHeaderCellDef>Select</th>
+          <td mat-cell *matCellDef="let row">
+            <mat-checkbox (change)="onSelectProvider(row, $event.checked)"></mat-checkbox>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="providerName">
+          <th mat-header-cell *matHeaderCellDef>Name</th>
+          <td mat-cell *matCellDef="let row">{{ row.providerName }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="providerLocation">
+          <th mat-header-cell *matHeaderCellDef>Location</th>
+          <td mat-cell *matCellDef="let row">{{ row.providerLocation }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="providerSpeciality">
+          <th mat-header-cell *matHeaderCellDef>Specialty</th>
+          <td mat-cell *matCellDef="let row">{{ row.providerSpeciality }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="providerId">
+          <th mat-header-cell *matHeaderCellDef>ID</th>
+          <td mat-cell *matCellDef="let row">{{ row.providerId }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="providerPhone">
+          <th mat-header-cell *matHeaderCellDef>Phone</th>
+          <td mat-cell *matCellDef="let row">{{ row.providerPhone }}</td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+    </mat-tab>
+
+    <!-- Add New Tab -->
+    <mat-tab label="Add New">
+      <!-- You can add form fields here to create a new provider -->
+      <div style="margin-top: 20px;">
+        <p>Form for adding a new provider goes here...</p>
+        <button mat-raised-button color="accent" (click)="onAddNewProvider()">Add New Provider</button>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+
+  <!-- Bottom section: display selected providers -->
+  <div style="margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px;">
+    <h3>Selected Providers</h3>
+    <ul>
+      <li *ngFor="let provider of selectedProviders">
+        {{ provider.providerName }} - {{ provider.providerSpeciality }} (ID: {{ provider.providerId }})
+      </li>
+    </ul>
+  </div>
+</div>
+
+<div mat-dialog-actions align="end">
+  <button mat-raised-button color="primary" (click)="onLoad()">Load</button>
+  <button mat-button (click)="onCancel()">Cancel</button>
+</div>

@@ -1,0 +1,189 @@
+<div style="display:flex;">
+  <div class="sidebar" [class.collapsed]="isCollapse">
+    <!-- Expand/Collapse Button -->
+    <div style="display: flex; align-items: center; width: 100%; background: #007BFF; margin-left:5px;">
+      <!-- Left-aligned button -->
+      <button class="toggle-button" *ngIf="!isCollapse">
+        <mat-icon>menu</mat-icon>
+      </button>
+
+      <button mat-icon-button class="toggle-button" *ngIf="!isCollapse">
+        <mat-icon style="color:white;" aria-hidden="false" matBadge="20">notifications</mat-icon>
+      </button>
+      <!-- Spacer to push the next buttons to the right -->
+      <div style="flex-grow: 1;"></div>
+
+      <!-- Right-aligned buttons -->
+      <button class="toggle-button" (click)="toggleSidebar()">
+        <mat-icon>{{ isCollapse ? 'people' : 'push_pin' }}</mat-icon>
+      </button>
+
+    </div>
+
+    <div class="sidebar-content" *ngIf="!isCollapse">
+      <mat-card class="patient-card">
+        <mat-card-header class="patient-header">
+          <mat-icon class="warning-icon">warning</mat-icon>
+          <div>
+            <mat-card-title class="patient-title">John Smith</mat-card-title>
+            <mat-card-subtitle class="patient-subtitle">
+              11/19/1983 (42 Yrs) - Male
+            </mat-card-subtitle>
+          </div>
+        </mat-card-header>
+      </mat-card>
+      <mat-divider style="border-top-color: #007BFF; "></mat-divider>
+      <div>
+        <table>
+          <tr>
+            <td>
+              <mat-label class="mat-label-header">MemberID</mat-label>
+            </td>
+            <td>
+              <mat-label class="mat-label-header">Phone</mat-label>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <mat-label>123456789</mat-label>
+            </td>
+            <td>
+              <mat-label>123-456-7890</mat-label>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <mat-label class="mat-label-header">Enrollment</mat-label>
+            </td>
+            <td>
+              <mat-label class="mat-label-header">Risk</mat-label>
+            </td>
+          </tr>
+
+
+          <tr>
+            <td>
+              <mat-label>Medicaid</mat-label>
+            </td>
+            <td>
+              <mat-label>High</mat-label>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <mat-label>(Active)</mat-label>
+            </td>
+            <td>
+              <mat-label></mat-label>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <mat-label class="mat-label-header">Program</mat-label>
+            </td>
+            <td>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <mat-label>Diabetes Management</mat-label>
+            </td>
+            <td>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <mat-label>Disease Management</mat-label>
+            </td>
+            <td>
+            </td>
+          </tr>
+
+          <tr>
+            <td>
+              <mat-label class="mat-label-header">Address</mat-label>
+            </td>
+            <td>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <mat-label>12345 Example Way</mat-label>
+            </td>
+            <td>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <mat-label>Sanfrancisco, CA 17050</mat-label>
+            </td>
+          </tr>
+
+          <tr>
+            <td>
+              <mat-label class="mat-label-header">Care Manager</mat-label>
+            </td>
+            <td>
+              <mat-label></mat-label>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <mat-label>John Smith</mat-label>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <mat-label class="mat-label-header">PCP</mat-label>
+            </td>
+            <td>
+              <mat-label class="mat-label-header">PBP</mat-label>
+
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <mat-label>John Smith</mat-label>
+            </td>
+            <td>
+              <mat-label>N/A</mat-label>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <mat-label class="mat-label-header">Communication </mat-label>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <mat-label>Phone and Email</mat-label>
+            </td>
+
+          </tr>
+          <tr>
+            <td>
+              <mat-label class="mat-label-header">Preferred Language</mat-label>
+            </td>
+
+          </tr>
+          <tr>
+            <td>
+              <mat-label>English</mat-label>
+            </td>
+
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Show 'People' Icon when Collapsed -->
+    <div class="collapsed-icon" *ngIf="isCollapse">
+      <mat-icon>menu</mat-icon>
+    </div>
+  </div>
+  <div class="main-content">
+    <div class="sidenav-content" style="padding-right:5px;">
+      <app-member [memberId]=""></app-member>
+    </div>
+  </div>
+</div>

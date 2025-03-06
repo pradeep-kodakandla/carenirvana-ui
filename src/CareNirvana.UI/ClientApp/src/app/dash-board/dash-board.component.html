@@ -1,0 +1,171 @@
+<mat-drawer-container class="sidenav-container" autosize>
+  <mat-drawer-content mode="side" opened>
+
+    <div class="dashboard-container">
+
+      <div class="rounded-box" [ngClass]="{ 'selected': selectedDiv === 1 }" (click)="selectDiv(1)" (click)="onSelect('A')">
+        <!--(click)="mainDrawer.toggle()"-->
+        <div class="d-flex justify-content-between align-items-center div-secondary">
+          <div style="padding-left:10px;">
+            <h1>65</h1>
+          </div>
+          <div style="text-align:center;">
+            My Case Load
+          </div>
+          <div style="padding-right:10px;">
+            <mat-icon>people</mat-icon>
+          </div>
+        </div>
+        <!--<label class="form-check-label label-primary" style="padding-left:20px;">
+        My Case Load
+      </label>-->
+        <mat-divider style="border-top-color:white" [ngClass]="{ 'selected': selectedDiv === 1 }" class="selectedBox"></mat-divider>
+
+      </div>
+
+      <div class="rounded-box" (click)="selectDiv(2)" (click)="onSelect('B')">
+        <div class="d-flex justify-content-between align-items-center div-secondary">
+          <div style="padding-left:10px;">
+            <h1>15</h1>
+          </div>
+          <div style="text-align:center;">
+            Assigned Authorizations
+          </div>
+          <div style="padding-right:10px;">
+            <mat-icon>assignment_turned_in</mat-icon>
+          </div>
+        </div>
+        <!--<label class="form-check-label label-primary" style="padding-left:20px;">
+        Assigned Authorizations
+
+      </label>-->
+
+        <mat-divider style="border-top-color:white" [ngClass]="{ 'selected': selectedDiv === 2 }" class="selectedBox"></mat-divider>
+
+      </div>
+
+      <div class="rounded-box" [ngClass]="{ 'selected': selectedDiv === 3 }" (click)="selectDiv(3)" (click)="onSelect('C')">
+        <div class="d-flex justify-content-between align-items-center div-secondary">
+          <!--<div class="form-check mb-0">-->
+          <div style="padding-left:10px;">
+            <h1>150</h1>
+          </div>
+          <div style="text-align:center;">
+            Requests
+          </div>
+          <div style="padding-right:10px;">
+            <mat-icon>assignment_add</mat-icon>
+          </div>
+        </div>
+        <!--<label class="form-check-label label-primary" style="padding-left:20px;">
+        Requests
+      </label>-->
+        <mat-divider style="border-top-color:white" [ngClass]="{ 'selected': selectedDiv === 3 }" class="selectedBox"></mat-divider>
+
+      </div>
+      <div class="rounded-box" [ngClass]="{ 'selected': selectedDiv === 4 }" (click)="selectDiv(4)" (click)="onSelect('D')">
+        <div class="d-flex justify-content-between align-items-center div-secondary">
+          <div style="padding-left:10px;">
+            <h1>70</h1>
+          </div>
+          <div style="text-align:center;">
+            My Activities
+          </div>
+          <div style="padding-right:10px;">
+            <mat-icon>event</mat-icon>
+          </div>
+        </div>
+        <!--<label class="form-check-label label-primary" style="padding-left:20px;">
+      </label>-->
+        <mat-divider style="border-top-color:white" [ngClass]="{ 'selected': selectedDiv === 4 }" class="selectedBox"></mat-divider>
+
+      </div>
+      <div class="rounded-box" [ngClass]="{ 'selected': selectedDiv === 5 }" (click)="selectDiv(5)" (click)="onSelect('E')">
+        <div class="d-flex justify-content-between align-items-center div-secondary">
+          <div style="padding-left:10px;">
+            <h1>0</h1>
+          </div>
+          <div style="text-align:center;">
+            Assigned Complaints
+          </div>
+          <div style="padding-right:10px;">
+            <mat-icon>assignment</mat-icon>
+          </div>
+        </div>
+        <!--<label class="form-check-label label-primary" style="padding-left:20px;">
+        Assigned Complaints
+      </label>-->
+        <mat-divider style="border-top-color:white" [ngClass]="{ 'selected': selectedDiv === 5 }" class="selectedBox"></mat-divider>
+
+      </div>
+      <div class="rounded-box" [ngClass]="{ 'selected': selectedDiv === 6 }" (click)="selectDiv(6)" (click)="onSelect('F')">
+        <div class="d-flex justify-content-between align-items-center div-secondary">
+          <div style="padding-left:10px;">
+            <h1>10</h1>
+          </div>
+          <div style="text-align:center;">
+            Faxes
+          </div>
+          <div style="padding-right:10px;">
+            <mat-icon>fax</mat-icon>
+          </div>
+        </div>
+        <!--<label class="form-check-label label-primary" style="padding-left:20px;">
+        Faxes
+      </label>-->
+        <mat-divider style="border-top-color:white" [ngClass]="{ 'selected': selectedDiv === 6}" class="selectedBox"></mat-divider>
+
+      </div>
+      <!--<div class="rounded-box" [ngClass]="{ 'selected': selectedDiv === 6 }" (click)="selectDiv(6)" (click)="onSelect('F')">
+      <div class="d-flex justify-content-between align-items-center div-secondary">
+        <div class="form-check mb-0">
+          <h1>10</h1>
+        </div>
+        <div style="padding-right:10px;">
+          <mat-icon>people</mat-icon>
+        </div>
+      </div>
+      <label class="form-check-label label-primary" style="padding-left:20px;">
+        My Dashboard
+      </label>
+
+    </div>
+    <div class="rounded-box" [ngClass]="{ 'selected': selectedDiv === 6 }" (click)="selectDiv(6)" (click)="onSelect('F')">
+      <div class="d-flex justify-content-between align-items-center div-secondary">
+        <div class="form-check mb-0">
+          <h1>10</h1>
+        </div>
+        <div style="padding-right:10px;">
+          <mat-icon>people</mat-icon>
+        </div>
+      </div>
+      <label class="form-check-label label-primary" style="padding-left:20px;">
+        Past Due
+      </label>
+
+    </div>-->
+
+    </div>
+
+    <div #dynamicContainer></div>
+
+  </mat-drawer-content>
+  <mat-drawer #mainDrawer class="sidenav" style="width:15%;" mode="side" opened="false">
+    <div>
+      <mat-card>
+        <mat-card-header style="background-color: #007BFF;">
+          <mat-card-title style="color: white;">PATIENTS LIST</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <mat-list>
+            <mat-list-item *ngFor="let item of items">
+              <!--<img mat-card-image [src]="item.photo" alt="{{ item.header }}">-->
+              <mat-card-title>{{ item.header }}</mat-card-title>
+              <p>{{ item.content }}</p>
+            </mat-list-item>
+          </mat-list>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </mat-drawer>
+</mat-drawer-container>

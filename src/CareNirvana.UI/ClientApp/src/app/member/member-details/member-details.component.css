@@ -1,0 +1,250 @@
+.mat-mdc-card {
+  box-shadow: none;
+}
+
+.mat-mdc-card-header {
+  padding: 16px 10px 0;
+}
+
+.mat-label-header {
+  color: #007BFF;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.mat-tab-group .mat-tab-label-container {
+  background-color: #007BFF !important;
+}
+
+.mat-tab-group {
+  flex-grow: 0 !important;
+  width: 1200px;
+}
+
+.nav-tabs .nav-item.show .nav-link, .nav-tabs .nav-link.active {
+  color: white;
+  background-color: #007BFF;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  border-color: var(--bs-nav-tabs-link-active-border-color);
+  /*  width: 250px;
+*/
+}
+
+.custom-tab-group .mat-tab-label {
+  flex: 0 0 150px; /* Fixed width for each tab */
+  max-width: 150px;
+  min-width: 150px;
+}
+
+.custom-tab-group .mat-tab-labels {
+  justify-content: flex-start; /* Align tabs to the start */
+  overflow-x: auto; /* Enable horizontal scrolling if needed */
+}
+
+mat-tab-group {
+  flex-grow: 0;
+  flex-shrink: 0;
+  width: auto; /* You can specify a fixed or automatic width */
+}
+
+
+
+
+/* Main Content Styling */
+.main-content {
+  margin-left: 280px; /* Matches expanded width */
+  padding-left: 5px;
+  transition: margin-left 0.3s ease;
+  width: 100%;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.sidebar.collapsed + .main-content {
+  margin-left: 40px;  /*Matches collapsed width*/ 
+}
+
+/* Container for tabs */
+.tabs-container {
+  display: flex;
+  flex-direction: column;
+  background-color: #e0f2f1;
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Tabs Header */
+.tabs-header {
+  display: flex;
+  gap: 5px;
+}
+
+/* Individual Tab */
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /*  padding: 4px 4px;
+*/ background-color: transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  font-size: 16px;
+  justify-content: space-between;
+  position: relative;
+  font-weight: bold;
+}
+
+  /*  .tab:hover {
+    background-color: #c8e6c9;
+  }*/
+
+  .tab.active {
+    background-color: #b2dfdb;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  }
+
+/* Tab Icon */
+.tab-icon {
+  font-size: 16px;
+  color: #616161;
+}
+
+/* Tab Close Button */
+.tab-close {
+  font-size: 16px;
+  color: #ff5252;
+  cursor: pointer;
+}
+
+  .tab-close:hover {
+    color: #d32f2f;
+  }
+
+/* Tabs Content */
+.tabs-content {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Individual Tab Content */
+.tab-content h3 {
+  font-size: 18px;
+  margin-bottom: 5px;
+}
+
+.tab-content p {
+  font-size: 14px;
+  color: #424242;
+}
+
+
+.tab-title {
+  position: absolute;
+  top: -10px;
+  /*  left: -1px;
+*/ color: lightgrey; /* Match tab background */
+  padding: 2px 0px;
+  font-size: 10px;
+  border-radius: 3px;
+}
+
+.close-btn {
+  color: red;
+  cursor: pointer;
+  font-size: 14px;
+  margin-left: 10px;
+}
+
+/* Sidebar Styling */
+.sidebar {
+  width: 280px;
+  height: 100vh;
+  background: #f5f5f5;
+  transition: width 0.3s ease-in-out;
+  overflow: hidden;
+  position: fixed;
+  left: 0;
+  top: 48px;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+  border-right: 2px solid #007BFF;
+}
+
+  .sidebar.collapsed {
+    width: 50px;
+  }
+
+/* Toggle Button */
+.toggle-button {
+  background: #007BFF;
+  color: white;
+  border: none;
+  padding: 8px;
+/*  width: 100%;
+*/  text-align: center;
+  cursor: pointer;
+  transition: background 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+  .toggle-button mat-icon {
+    font-size: 24px;
+  }
+
+  .toggle-button:hover {
+    background: #145A8D;
+  }
+
+/* Sidebar Content */
+.sidebar-content {
+  padding-left: 5px;
+}
+
+/* Patient Card */
+.patient-card {
+  background: white;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.patient-header {
+  display: flex;
+  align-items: center;
+}
+
+.warning-icon {
+  color: red;
+  font-size: 25px;
+  margin-right: 12px;
+}
+
+.patient-title {
+  color: #007BFF;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.patient-subtitle {
+  color: #007BFF;
+  font-size: 14px;
+}
+
+/* Collapsed People Icon */
+.collapsed-icon {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+}
+
+  .collapsed-icon mat-icon {
+    font-size: 30px;
+    color: #007BFF;
+  }

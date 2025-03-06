@@ -1,0 +1,129 @@
+<mat-menu #menu="matMenu">
+  <button mat-menu-item>
+    <span>Add Activity</span>
+  </button>
+  <button mat-menu-item disabled>
+    <span>Run Assessment</span>
+  </button>
+  <button mat-menu-item>
+    <!--<mat-icon>notifications_off</mat-icon>-->
+    <span>Messages</span>
+  </button>
+  <button mat-menu-item>
+    <span>Add Notes</span>
+  </button>
+  <button mat-menu-item disabled>
+    <span>Send Letter</span>
+  </button>
+  <button mat-menu-item>
+    <!--<mat-icon>notifications_off</mat-icon>-->
+    <span>Unassign</span>
+  </button>
+  <button mat-menu-item>
+    <!--<mat-icon>notifications_off</mat-icon>-->
+    <span>Summary</span>
+  </button>
+</mat-menu>
+
+
+
+<div class="d-flex justify-content-between align-items-center " style="width: 100%; padding-bottom:5px;  ">
+
+  <div class="search-box" [class.active]="isFocused">
+    <button mat-icon-button>
+      <mat-icon>search</mat-icon>
+    </button>
+    <input type="text"
+           (keyup)="applyFilter($event)" placeholder="Start typing to search Assinged Authorizations"
+           class="search-input"
+           (focus)="onFocus()"
+           (blur)="onBlur()" #input />
+
+  </div>
+  <div>
+    <button mat-icon-button color="primary" (click)="onAddClick()" matTooltip="Add Auth">
+      <mat-icon>add</mat-icon>
+    </button>
+  </div>
+</div>
+
+<table class="responsive-table" mat-table [dataSource]="dataSource" multiTemplateDataRows matSort>
+
+  <ng-container matColumnDef="enrollmentStatus">
+    <th mat-header-cell *matHeaderCellDef mat-sort-header>  </th>
+    <td mat-cell *matCellDef="let row">
+      <div class="example-element-weight">
+        <button mat-icon-button [matMenuTriggerFor]="menu">
+          <mat-icon>list</mat-icon>
+        </button>
+      </div>
+    </td>
+  </ng-container>
+
+  <ng-container matColumnDef="memberId">
+    <th mat-header-cell *matHeaderCellDef mat-sort-header> Member ID </th>
+    <td mat-cell *matCellDef="let row">
+      <div class="example-element-weight">
+        <a mat-button (click)="onAddClick()">{{row.memberId}}</a>
+      </div>
+    </td>
+  </ng-container>
+
+  <ng-container matColumnDef="firstName">
+    <th mat-header-cell *matHeaderCellDef mat-sort-header> First Name </th>
+    <td mat-cell *matCellDef="let row"> {{row.firstName}} </td>
+  </ng-container>
+
+  <ng-container matColumnDef="lastName">
+    <th mat-header-cell *matHeaderCellDef mat-sort-header> Last Name </th>
+    <td mat-cell *matCellDef="let row"> {{row.lastName}} </td>
+  </ng-container>
+
+  <ng-container matColumnDef="DOB">
+    <th mat-header-cell *matHeaderCellDef mat-sort-header> Enrollment </th>
+    <td mat-cell *matCellDef="let row"> {{row.DOB}} </td>
+  </ng-container>
+
+  <ng-container matColumnDef="risk">
+    <th mat-header-cell *matHeaderCellDef mat-sort-header> Auth Number </th>
+    <td mat-cell *matCellDef="let row"> {{row.risk}} </td>
+  </ng-container>
+
+  <ng-container matColumnDef="nextContact">
+    <th mat-header-cell *matHeaderCellDef mat-sort-header> Auth Type </th>
+    <td mat-cell *matCellDef="let row"> {{row.nextContact}} </td>
+  </ng-container>
+
+  <ng-container matColumnDef="assignedDate">
+    <th mat-header-cell *matHeaderCellDef mat-sort-header> Auth Due Date </th>
+    <td mat-cell *matCellDef="let row"> {{row.assignedDate}} </td>
+  </ng-container>
+
+  <ng-container matColumnDef="programName">
+    <th mat-header-cell *matHeaderCellDef mat-sort-header> Next Review Date </th>
+    <td mat-cell *matCellDef="let row"> {{row.programName}} </td>
+  </ng-container>
+
+  <ng-container matColumnDef="description">
+    <th mat-header-cell *matHeaderCellDef mat-sort-header> Treatment Type </th>
+    <td mat-cell *matCellDef="let row"> {{row.programName}} </td>
+
+  </ng-container>
+
+  <!-- Expanded Content Column - The detail row is made up of this one column that spans across all columns -->
+
+  <ng-container matColumnDef="expandedDetail">
+    <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns.length">
+    </td>
+  </ng-container>
+
+  <!-- Header and Rows -->
+  <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+  <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+</table>
+
+
+<!-- Paginator -->
+<mat-paginator [pageSizeOptions]="[10, 15, 20]" showFirstLastButtons></mat-paginator>
+
+

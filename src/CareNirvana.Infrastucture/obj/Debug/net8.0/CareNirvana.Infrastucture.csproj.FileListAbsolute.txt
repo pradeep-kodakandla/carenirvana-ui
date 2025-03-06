@@ -1,0 +1,12 @@
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.Infrastucture\bin\Debug\net8.0\CareNirvana.Infrastucture.deps.json
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.Infrastucture\bin\Debug\net8.0\CareNirvana.Infrastucture.dll
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.Infrastucture\bin\Debug\net8.0\CareNirvana.Infrastucture.pdb
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.Infrastucture\obj\Debug\net8.0\CareNirvana.Infrastucture.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.Infrastucture\obj\Debug\net8.0\CareNirvana.Infrastucture.AssemblyInfoInputs.cache
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.Infrastucture\obj\Debug\net8.0\CareNirvana.Infrastucture.AssemblyInfo.cs
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.Infrastucture\obj\Debug\net8.0\CareNirvana.Infrastucture.csproj.CoreCompileInputs.cache
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.Infrastucture\obj\Debug\net8.0\CareNirvana.Infrastucture.sourcelink.json
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.Infrastucture\obj\Debug\net8.0\CareNirvana.Infrastucture.dll
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.Infrastucture\obj\Debug\net8.0\refint\CareNirvana.Infrastucture.dll
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.Infrastucture\obj\Debug\net8.0\CareNirvana.Infrastucture.pdb
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.Infrastucture\obj\Debug\net8.0\ref\CareNirvana.Infrastucture.dll

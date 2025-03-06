@@ -1,0 +1,171 @@
+<mat-menu #menu="matMenu" class="my-class">
+  <div class="container">
+    <div class="column" *ngFor="let column of columns">
+      <div class="section" *ngFor="let section of column.sections">
+        <h5 style="color: #007BFF;">{{ section.header }}</h5>
+        <div class="body-item" *ngFor="let item of section.bodyItems">
+          <button mat-menu-item>
+            {{ item }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</mat-menu>
+<div class="navbar div-primary">
+  <!-- Left Side: Home Icon -->
+  <div class="left">
+    <button mat-icon-button (click)="goToPage('dash-board')">
+      <mat-icon style="color:white;">home</mat-icon>
+    </button>
+    <button mat-icon-button (click)="goToPage('dash-board')">
+      <img src="assets/icons/CareNirvanaLogo.png" class="home-icon" alt="Care Nirvana Logo" />
+    </button>
+    <h4 style="margin-top: 8px !important; padding-right:10px">Care Nirvana</h4>
+
+    <!-- Tabs Container -->
+    <ul class="nav nav-tabs">
+      <ng-container *ngFor="let tab of headerService.getTabs()">
+        <li class="nav-item">
+          <button class="nav-link"
+                  data-bs-toggle="tab"
+                  type="button"
+                  role="tab"
+                  [class.active]="tab.route === headerService.getSelectedTab()"
+                  (click)="onTabClick(tab.route)"
+                  [attr.aria-controls]="'tab' + tab.label">
+            <div class="tab">
+              <span class="tab-title">Member</span>
+              <span style="padding-top:5px;">{{ tab.label }}</span>
+              <span class="close-btn" (click)="removeTab(tab)"><mat-icon style="vertical-align:bottom;">close</mat-icon></span>
+            </div>
+          </button>
+        </li>
+      </ng-container>
+
+      <!-- ✅ "+" button appears at the end of the dynamic tabs -->
+      <li *ngIf="headerService.getTabs().length > 0" class="nav-item">
+        <button class="nav-link add-tab-btn" (click)="onAddNewTab()"> <mat-icon style="vertical-align:bottom;">add</mat-icon></button>
+      </li>
+    </ul>
+  </div>
+
+
+
+
+
+
+
+  <!-- Middle: Search Bar -->
+  <!--<div class="middle">
+
+    <div class="ai-search-container">
+      <button class="ai-button" (click)="toggleHighlight()">AI</button>
+      <div class="search-bar-container1">
+        <input *ngIf="isHighlighted; else searchIcon"
+               type="text"
+               class="search-bar"
+               [class.highlight]="isHighlighted"
+               placeholder="AI powered - search iCare..."
+               (blur)="removeHighlight()" />
+        <ng-template #searchIcon>
+          <div class="search-bar-container">
+            <button mat-icon-button>
+              <mat-icon>search</mat-icon>
+            </button>
+            <input class="input" placeholder="Search iCare" />
+          </div>-->
+  <!--<span class="search-icon">search</span>-->
+  <!--</ng-template>
+    </div>
+  </div>-->
+  <!--<div class="search-bar-container">
+    <button mat-icon-button>
+      <mat-icon>search</mat-icon>
+    </button>
+    <input class="input" placeholder="Search my iCare" />
+  </div>-->
+  <!--</div>-->
+  <!-- Right Side: Action Icons -->
+  <div class="right">
+    <div class="notification-bar">
+
+      <!--<div class="ai-search-container">
+            <button class="ai-button" (click)="toggleHighlight()">AI</button>
+            <div class="search-bar-container1">
+            <input *ngIf="isHighlighted; else searchIcon"
+                   type="text"
+                   class="search-bar"
+                   [class.highlight]="isHighlighted"
+                   placeholder="AI powered - search iCare..."
+                   (blur)="removeHighlight()" />
+            <ng-template #searchIcon>
+              <!--<div class="search-bar-container">
+            <button mat-icon-button>
+              <mat-icon>search</mat-icon>
+            </button>
+            <input class="input" placeholder="Search iCare" />
+          </div>
+          </ng-template>
+        </div>
+      </div>-->
+      <div class="search-bar" *ngIf="isExpanded">
+        <input type="text"
+               class="form-control"
+               placeholder="Search iCare"
+               [(ngModel)]="searchQuery"
+               [class.expanded]="isExpanded"
+               (blur)="collapseSearch()" />
+
+      </div>
+      <button mat-icon-button (click)="toggleSearch()">
+        <mat-icon style="color:white;">search</mat-icon>
+      </button>
+
+      <button mat-icon-button (click)="goToPage('admin-config')">
+        <mat-icon style="color:white;">settings</mat-icon>
+      </button>
+
+      <button hidden mat-icon-button [matMenuTriggerFor]="menu">
+        <mat-icon style="color:white;">apps</mat-icon>
+      </button>
+      <!--<div class="separator"></div>-->
+      <!--<label style="padding-left:10px;" class="form-check-label" for="form2Example3">-->
+
+      <button mat-icon-button>
+        <mat-icon style="color:white;">star</mat-icon>
+      </button>
+
+      <button mat-icon-button>
+        <mat-icon class="mat-badge" aria-hidden="false" style="color:white;" matBadge="15">mail</mat-icon>
+      </button>
+
+      <button mat-icon-button>
+        <mat-icon style="color:white;" aria-hidden="false" matBadge="20">notifications</mat-icon>
+      </button>
+
+      <button mat-icon-button [matMenuTriggerFor]="menuperson">
+        <mat-icon style="color:white;">person</mat-icon>
+      </button>
+
+      <mat-menu class="mat-mdc-menu-panel" #menuperson="matMenu">
+        <div class="body-item">
+
+          <button mat-menu-item>
+            <mat-icon>manage account</mat-icon>
+            <span>Profile</span>
+          </button>
+          <button mat-menu-item>
+            <mat-icon>password</mat-icon>
+            <span>Change Password</span>
+          </button>
+          <button mat-menu-item (click)="goToPage('')">
+            <mat-icon>logout</mat-icon>
+            <span>Log Out</span>
+          </button>
+        </div>
+      </mat-menu>
+
+    </div>
+  </div>
+</div>

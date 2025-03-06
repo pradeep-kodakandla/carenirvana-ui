@@ -1,0 +1,138 @@
+<div class="container" *ngIf="!isFormVisible">
+  <!--<button mat-raised-button color="primary" (click)="openForm('add')">Add New</button>-->
+  <!-- Search Input -->
+  <!--<div class="d-flex justify-content-between align-items-center" style="width:70%;">
+    <div class="search-bar-container-table">
+      <mat-form-field appearance="fill" class="search-bar">
+        <mat-label>Search</mat-label>
+        <input matInput (keyup)="applyFilter($event)" placeholder="Search..." />
+      </mat-form-field>
+    </div>
+  </div>-->
+  <div class="card-header">
+    <h4 style="color: #007BFF; font-weight: bold;">Role Management</h4>
+  </div>
+  <div style="padding-top:10px;" class="table-container">
+    <div class="d-flex justify-content-between align-items-center " style="background: whitesmoke; width: 100%;  ">
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="search-bar-container-table">
+          <button mat-icon-button>
+            <mat-icon>search</mat-icon>
+          </button>
+          <!--<input class="input" matInput [readonly]="mode === 'view'" (keyup)="applyFilter($event)" placeholder="Start typing to search User " #input>-->
+          <input class="input" matInput (keyup)="applyFilter($event)" placeholder="Search..." />
+        </div>
+      </div>
+      <button mat-icon-button color="primary" (click)="openForm('add')" matTooltip="Add User">
+        <mat-icon>add</mat-icon>
+      </button>
+    </div>
+    <table class="responsive-table" mat-table [dataSource]="dataSource" multiTemplateDataRows matSort>
+      <!-- Table -->
+      <!--<table mat-table [dataSource]="dataSource" matSort class="mat-elevation-z8">-->
+      <!-- ID Column -->
+      <ng-container matColumnDef="id">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header> ID </th>
+        <td mat-cell *matCellDef="let element"> {{ element.id }} </td>
+      </ng-container>
+
+      <!-- Name Column -->
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header> Name </th>
+        <td mat-cell *matCellDef="let element"> {{ element.name }} </td>
+      </ng-container>
+
+      <!-- Email Column -->
+      <ng-container matColumnDef="managerAccess">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header> Mangager Access </th>
+        <td mat-cell *matCellDef="let element"> {{ element.managerAccess }} </td>
+      </ng-container>
+
+      <!-- Role Column -->
+      <ng-container matColumnDef="qocAccess">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header> QOC Access </th>
+        <td mat-cell *matCellDef="let element"> {{ element.qocAccess }} </td>
+      </ng-container>
+
+      <!-- Role Column -->
+      <ng-container matColumnDef="sensitive">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header> Sensitive Diagnosis Member Access? </th>
+        <td mat-cell *matCellDef="let element"> {{ element.sensitive }} </td>
+      </ng-container>
+
+      <ng-container matColumnDef="createdBy">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header> Created By </th>
+        <td mat-cell *matCellDef="let element"> {{ element.createdBy }} </td>
+      </ng-container>
+
+      <ng-container matColumnDef="createdOn">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header> Created On </th>
+        <td mat-cell *matCellDef="let element"> {{ element.createdOn }} </td>
+      </ng-container>
+
+      <!-- Actions Column -->
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef> Actions </th>
+        <td mat-cell *matCellDef="let element">
+          <button mat-icon-button (click)="openForm('view', element)">
+            <mat-icon>visibility</mat-icon>
+          </button>
+          <button mat-icon-button (click)="openForm('edit', element)">
+            <mat-icon style="color: #007BFF">edit</mat-icon>
+          </button>
+          <button mat-icon-button (click)="deleteRow(element.id)">
+            <mat-icon style="color: #007BFF">delete</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <!-- Header and Rows -->
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+
+    <!-- Paginator -->
+    <mat-paginator [pageSizeOptions]="[10, 15, 20]" showFirstLastButtons></mat-paginator>
+  </div>
+</div>
+
+<!-- Form Section -->
+<div *ngIf="isFormVisible" class="form-container">
+  <h4 style="color: #007BFF !important; font-weight: bold;">{{ formMode | titlecase }} Role</h4>
+  <form>
+    <div>
+      <!-- Login Details Section -->
+      <div class="card mb-4" style="margin:2px !important;">
+        <div class="card-header">
+          <h6 style="color: #007BFF; font-weight: bold;">Role Details</h6>
+        </div>
+        <div class="form-row">
+          <mat-form-field appearance="outline" [class.read-only]="formMode === 'view'">
+            <mat-label>Name</mat-label>
+            <input matInput [(ngModel)]="selectedEntry.name" name="name" [disabled]="formMode === 'view'" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" [class.read-only]="formMode === 'view'">
+            <mat-label>Manager Access</mat-label>
+            <input matInput [(ngModel)]="selectedEntry.managerAccess" name="managerAccess" [disabled]="formMode === 'view'" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" [class.read-only]="formMode === 'view'">
+            <mat-label>QOC Access</mat-label>
+            <input matInput [(ngModel)]="selectedEntry.qocAccess" name="qocAccess" [disabled]="formMode === 'view'" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" [class.read-only]="formMode === 'view'">
+            <mat-label>Sensitive Diagnosis Member Access?</mat-label>
+            <input matInput [(ngModel)]="selectedEntry.sensitive" name="sensitive" [disabled]="formMode === 'view'" />
+          </mat-form-field>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:right;">
+      <button mat-button class="login-button" *ngIf="formMode !== 'view'" (click)="saveEntry()">Save</button>
+      <button mat-button class="login-button" (click)="cancelForm()">Cancel</button>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,33 @@
+/* Outlined Form Fields */
+.form-outline {
+  position: relative;
+  margin-bottom: 0 !important;
+  width: 100%;
+}
+
+  .form-outline .form-label {
+    position: absolute;
+    top: -10px;
+    left: 12px;
+    background: white;
+    padding: 0 5px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #555;
+  }
+
+  .form-outline .form-control {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.3s ease-in-out;
+    background-color: white;
+  }
+
+    .form-outline .form-control:focus {
+      border-color: lightgray;
+      box-shadow: 0 0 5px rgba(30, 120, 171, 0.3);
+    }

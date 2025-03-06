@@ -1,0 +1,135 @@
+
+table {
+  width: 100%;
+}
+
+.mat-mdc-header-cell {
+  justify-content: left;
+  color: white;
+  font-weight: bold !important;
+  padding: 0px 0px 0px 15px;
+  background-color: #007BFF !important;
+  font-family: 'Open Sans', sans-serif;
+  border-right-color: white;
+  border-right-width: thin;
+}
+
+.mat-mdc-header-row {
+  font-family: 'Open Sans', sans-serif;
+  height: 40px;
+}
+
+.mat-mdc-row {
+  font-family: 'Open Sans', sans-serif;
+  height: auto;
+}
+
+tr.detail-row {
+  height: 0;
+}
+
+tr.element-row:not(.expanded-row):hover {
+  background: whitesmoke;
+}
+
+tr.element-row:not(.expanded-row):active {
+  background: #efefef;
+}
+
+.element-row td {
+  border-bottom-width: 0;
+}
+
+.element-detail {
+  overflow: hidden;
+  display: flex;
+}
+
+.search-bar-container-table {
+  padding: 0px 56px 0px 8px;
+  background: #eaf1fb;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+}
+
+.search-bar-button-table {
+  padding: 0px 0px 0px 8px;
+/*  background: #eaf1fb;
+*/  border-radius: 5px;
+  display: flex;
+  align-items: center;
+}
+
+.input {
+  font-size: 1.1rem;
+  outline: none;
+  border: none;
+  background: inherit;
+  min-width: 500px;
+}
+
+
+
+
+
+
+
+
+/* Container for the table */
+.table-container {
+  /*  margin: 20px;
+*/ overflow-x: auto;
+}
+
+/* Responsive Table */
+.responsive-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Open Sans', sans-serif;
+}
+
+  /* Table Header */
+  .responsive-table th {
+    background-color: #4caf50;
+    color: white;
+    padding: 10px;
+    text-align: left;
+  }
+
+  /* Table Body */
+  .responsive-table td {
+    padding: 3px;
+    border: 1px solid #ddd;
+  }
+
+  /* Row Hover Effect */
+  .responsive-table tr:hover {
+    background-color: #f1f1f1;
+  }
+
+
+/* Mobile Responsive Adjustments */
+@media (max-width: 768px) {
+  .responsive-table {
+    font-size: 14px;
+  }
+
+  button {
+    padding: 1px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .responsive-table th,
+  .responsive-table td {
+    padding: 8px;
+    font-size: 12px;
+  }
+
+  button {
+    font-size: 10px;
+    padding: 4px;
+  }
+}

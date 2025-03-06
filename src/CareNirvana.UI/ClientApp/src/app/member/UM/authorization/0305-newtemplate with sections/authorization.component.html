@@ -1,0 +1,469 @@
+<div class="container" style="padding: 0px !important; font-family: 'Open Sans', sans-serif !important; font-size: 14px !important; position: relative;">
+  <!-- Close Button -->
+  <div class="close-container">
+    <span>
+      <mat-icon>menu</mat-icon>
+    </span>
+    <span class="close-btn" (click)="onCancelClick()">
+      <mat-icon>close</mat-icon>
+    </span>
+  </div>
+
+  <div class="content-section">
+    <!-- Static Info Section -->
+    <div *ngFor="let info of additionalInfo; let i = index" class="row mb-3" style="padding:10px;">
+      <!-- (Static fields remain unchanged) -->
+      <div class="col-md-3 mb-3">
+        <div class="form-outline">
+          <label for="numberOfDays" class="form-label">Auth No.</label>
+          <input type="text" class="form-control" placeholder="Auth No." [(ngModel)]="authNumber" name="authNumber{{i}}" id="authNumber{{i}}" disabled />
+        </div>
+      </div>
+
+      <div class="col-md-3 mb-3">
+        <div class="form-outline">
+          <label for="numberOfDays" class="form-label">Auth Type</label>
+          <input type="number" class="form-control" placeholder="Auth Type" [(ngModel)]="info.memberName" name="memberName{{i}}" id="memberName{{i}}" disabled />
+        </div>
+      </div>
+
+      <div class="col-md-3 mb-3">
+        <div class="form-outline">
+          <label for="dateIndicator{{i}}" class="form-label">Due Date</label>
+          <input type="number" class="form-control" placeholder="Due Date" [(ngModel)]="info.memberName" name="memberName{{i}}" id="memberName{{i}}" disabled />
+        </div>
+      </div>
+
+      <div class="col-md-3 mb-3">
+        <div class="form-outline">
+          <label for="numberOfDays" class="form-label">Days Left</label>
+          <input type="number" class="form-control" placeholder="Days Left" [(ngModel)]="info.memberName" name="memberName{{i}}" id="memberName{{i}}" disabled />
+        </div>
+      </div>
+      <div class="col-md-3 mb-3">
+        <div class="form-outline">
+          <label for="numberOfDays" class="form-label">Request Priority</label>
+          <input type="number" class="form-control" placeholder="Request Priority" [(ngModel)]="info.memberName" name="memberName{{i}}" id="memberName{{i}}" disabled />
+        </div>
+      </div>
+      <div class="col-md-3 mb-3">
+        <div class="form-outline">
+          <label for="numberOfDays" class="form-label">Auth Owner</label>
+          <input type="number" class="form-control" placeholder="Auth Owner" [(ngModel)]="info.memberName" name="memberName{{i}}" id="memberName{{i}}" disabled />
+        </div>
+      </div>
+
+      <div class="col-md-3 mb-3">
+        <div class="form-outline">
+          <label for="numberOfDays" class="form-label">Auth Status</label>
+          <input type="number" class="form-control" placeholder="Auth Status" [(ngModel)]="info.memberName" name="memberName{{i}}" id="memberName{{i}}" disabled />
+        </div>
+      </div>
+
+
+      <div class="col-md-3 mb-3">
+        <div class="form-outline">
+          <label for="numberOfDays" class="form-label">Overall Status</label>
+          <input type="number" class="form-control" placeholder="Overall Status" [(ngModel)]="info.memberName" name="memberName{{i}}" id="memberName{{i}}" disabled />
+        </div>
+      </div>
+    </div>
+
+    <!-- Horizontal Stepper -->
+    <mat-horizontal-stepper style="padding: 0; margin-top:-40px; background-color:transparent;" [selectedIndex]="stepperSelectedIndex" #stepper>
+      <mat-step label="Request Details" style="padding: 0;">
+        <div class="content" style="padding: 0;">
+          <div class="main-form" style="padding: 0;">
+            <!-- Wrap dynamic form in an NgForm -->
+            <form #authForm="ngForm">
+              <!-- Enrollment Details Card -->
+              <mat-card style="width: 100%;">
+                <div class="card-header" (click)="isExpanded = !isExpanded" style="display: flex; align-items: center; justify-content: space-between;">
+                  <div style="display: flex; align-items: center;">
+                    <mat-icon>{{ isExpanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+                    <h6 style="color: #007BFF; font-weight: bold; margin: 0; padding-right: 30px;">Enrollment Details</h6>
+                    <div style="display: flex; align-items: center; gap: 10px;" (click)="$event.stopPropagation();">
+                      <mat-button-toggle-group class="status-group" appearance="legacy" value="active">
+                        <mat-button-toggle value="active">Active</mat-button-toggle>
+                        <mat-button-toggle value="inactive">Inactive</mat-button-toggle>
+                      </mat-button-toggle-group>
+                    </div>
+                  </div>
+                </div>
+                <div class="selection-container" *ngIf="isExpanded">
+                  <!-- Rounded selection boxes -->
+                  <div class="rounded-box" (click)="selectDiv(1)" [ngClass]="{ 'selected': selectedDiv === 1 }">
+                    <div class="d-flex justify-content-between div-secondary">
+                      <div>
+                        <label class="label">LOB</label>
+                        <label class="label">Account</label>
+                        <label class="label">Start Date</label>
+                        <label class="label">End Date</label>
+                      </div>
+                      <div>
+                        <label class="label">Medicare</label>
+                        <label class="label">Microsoft</label>
+                        <label class="label">01/01/2024</label>
+                        <label class="label">12/31/2024</label>
+                      </div>
+                    </div>
+                    <div class="selectedBox"></div>
+                  </div>
+                  <div class="rounded-box" (click)="selectDiv(2)" [ngClass]="{ 'selected': selectedDiv === 2 }">
+                    <div class="d-flex justify-content-between div-secondary">
+                      <div>
+                        <label class="label">LOB</label>
+                        <label class="label">Account</label>
+                        <label class="label">Start Date</label>
+                        <label class="label">End Date</label>
+                      </div>
+                      <div>
+                        <label class="label">Medicare</label>
+                        <label class="label">Microsoft</label>
+                        <label class="label">01/01/2024</label>
+                        <label class="label">12/31/2024</label>
+                      </div>
+                    </div>
+                    <div class="selectedBox"></div>
+                  </div>
+                  <div class="rounded-box" (click)="selectDiv(3)" [ngClass]="{ 'selected': selectedDiv === 3 }">
+                    <div class="d-flex justify-content-between div-secondary">
+                      <div>
+                        <label class="label">LOB</label>
+                        <label class="label">Account</label>
+                        <label class="label">Start Date</label>
+                        <label class="label">End Date</label>
+                      </div>
+                      <div>
+                        <label class="label">Medicare</label>
+                        <label class="label">Microsoft</label>
+                        <label class="label">01/01/2024</label>
+                        <label class="label">12/31/2024</label>
+                      </div>
+                    </div>
+                    <div class="selectedBox"></div>
+                  </div>
+                </div>
+              </mat-card>
+
+              <!-- Dynamic Sections -->
+              <div *ngIf="enrollmentSelect">
+                <mat-card *ngFor="let section of sectionOrder">
+                  <div class="card-header" (click)="toggleSection(section)" style="display: flex; align-items: center;">
+                    <mat-icon>{{ formData[section]?.expanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+                    <h6 style="color: #007BFF; font-weight: bold; margin: 0; padding-right: 50px;">{{ section | titlecase }}</h6>
+                    <!-- Show Auth Type dropdown only for Auth Details -->
+                    <div style="width:350px; padding-left:10px;" class="position-relative" *ngIf="section === 'Auth Details'">
+                      <select class="form-select" id="authType" name="authType" [(ngModel)]="selectedTemplateId"
+                              (change)="onAuthTypeChange(); $event.stopPropagation();" appShowLabel>
+                        <option *ngFor="let template of authTemplates" [value]="template.Id">
+                          {{ template.TemplateName }}
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Accordion Content -->
+                  <div class="accordion-content" *ngIf="formData[section]?.expanded && selectedTemplateId !== 0">
+                    <!-- For sections without subsections (normal sections) -->
+                    <div *ngIf="section !== 'Additional Details'">
+                      <div *ngFor="let entry of formData[section].entries; let i = index" class="row align-items-center mb-3">
+                        <!-- Single loop over fields in sorted order -->
+                        <ng-container *ngFor="let field of getSectionConfig(section).fields">
+                          <!-- If the field is a normal field -->
+                          <ng-container *ngIf="!field.layout">
+                            <div class="col-md-3 mb-3">
+                              <div class="form-outline">
+                                <label [for]="field.id + '_' + i" class="form-label">
+                                  {{ field.label }}<span *ngIf="field.required" class="text-danger">*</span>
+                                </label>
+                                <div class="form-group">
+                                  <ng-container [ngSwitch]="field.type">
+                                    <ng-container *ngSwitchDefault>
+                                      <input class="form-control" [type]="field.type"
+                                             [id]="field.id + '_' + i" name="{{ field.id + '_' + i }}"
+                                             [(ngModel)]="entry[field.id]" placeholder="{{ field.label }}"
+                                             [required]="field.required" #fieldModel="ngModel" />
+                                    </ng-container>
+                                    <ng-container *ngSwitchCase="'select'">
+                                      <select class="form-control" [id]="field.id + '_' + i"
+                                              name="{{ field.id + '_' + i }}" [(ngModel)]="entry[field.id]"
+                                              [required]="field.required" #fieldModel="ngModel">
+                                        <option *ngFor="let option of field.options" [value]="option.value">
+                                          {{ option.label }}
+                                        </option>
+                                      </select>
+                                    </ng-container>
+                                    <ng-container *ngSwitchCase="'textarea'">
+                                      <textarea class="form-control" [id]="field.id + '_' + i"
+                                                name="{{ field.id + '_' + i }}" [(ngModel)]="entry[field.id]"
+                                                rows="3" placeholder="{{ field.label }}"
+                                                [required]="field.required" #fieldModel="ngModel">
+                                      </textarea>
+                                    </ng-container>
+                                    <ng-container *ngSwitchCase="'checkbox'">
+                                      <div class="form-outline">
+                                        <label [for]="field.id + '_' + i" class="form-label">
+                                          {{ field.label }}<span *ngIf="field.required" class="text-danger">*</span>
+                                        </label>
+                                        <div class="form-group d-flex align-items-center">
+                                          <input type="checkbox" class="form-check-input"
+                                                 [id]="field.id + '_' + i"
+                                                 name="{{ field.id + '_' + i }}" [(ngModel)]="entry[field.id]" />
+                                        </div>
+                                      </div>
+                                    </ng-container>
+                                  </ng-container>
+                                </div>
+                              </div>
+                            </div>
+                          </ng-container>
+
+                          <!-- If the field has a row layout, render its sub-fields inline -->
+                          <ng-container *ngIf="field.layout === 'row'">
+                            <div class="col-md-3 mb-3">
+                              <div class="d-flex align-items-center flex-wrap">
+                                <ng-container *ngFor="let subField of field.fields">
+                                  <div class="col-auto me-2 mb-2">
+                                    <div class="form-outline">
+                                      <!-- For non-checkbox types, display label in outline style -->
+                                      <ng-container *ngIf="subField.type !== 'checkbox'">
+                                        <label [for]="subField.id + '_' + i" class="form-label">
+                                          {{ subField.label }}<span *ngIf="subField.required" class="text-danger">*</span>
+                                        </label>
+                                      </ng-container>
+                                      <div class="form-group">
+                                        <ng-container [ngSwitch]="subField.type">
+                                          <ng-container *ngSwitchDefault>
+                                            <input class="form-control" [type]="subField.type"
+                                                   [id]="subField.id + '_' + i" name="{{ subField.id + '_' + i }}"
+                                                   [(ngModel)]="entry[subField.id]" placeholder="{{ subField.label }}"
+                                                   [required]="subField.required" #subFieldModel="ngModel" />
+                                          </ng-container>
+                                          <ng-container *ngSwitchCase="'select'">
+                                            <select class="form-control" style="width:290px;" [id]="subField.id + '_' + i"
+                                                    name="{{ subField.id + '_' + i }}" [(ngModel)]="entry[subField.id]"
+                                                    [required]="subField.required" #subFieldModel="ngModel">
+                                              <option *ngFor="let option of subField.options" [value]="option.value">
+                                                {{ option.label }}
+                                              </option>
+                                            </select>
+                                          </ng-container>
+                                          <ng-container *ngSwitchCase="'textarea'">
+                                            <textarea class="form-control" [id]="subField.id + '_' + i"
+                                                      name="{{ subField.id + '_' + i }}" [(ngModel)]="entry[subField.id]"
+                                                      rows="3" placeholder="{{ subField.label }}"
+                                                      [required]="subField.required" #subFieldModel="ngModel">
+                                            </textarea>
+                                          </ng-container>
+                                          <ng-container *ngSwitchCase="'checkbox'">
+                                            <div class="form-outline">
+                                              <label [for]="subField.id + '_' + i" class="form-label">
+                                                <!--{{ subField.label }}--><span *ngIf="subField.required" class="text-danger">*</span>
+                                              </label>
+                                              <div class="form-group d-flex align-items-center">
+                                                <input type="checkbox" class="form-check-input"
+                                                       [id]="subField.id + '_' + i" name="{{ subField.id + '_' + i }}"
+                                                       [(ngModel)]="entry[subField.id]" />
+                                              </div>
+                                            </div>
+                                          </ng-container>
+                                        </ng-container>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </ng-container>
+                              </div>
+                            </div>
+                          </ng-container>
+                        </ng-container>
+                      </div>
+                    </div>
+
+                    <!-- If section is Additional Details, render with its subsections -->
+                    <div *ngIf="section === 'Additional Details'">
+                      <div *ngFor="let subSection of getAdditionalDetailsKeys()">
+                        <div *ngFor="let entry of formData['Additional Details']?.[subSection]?.entries; let i = index" class="row align-items-center mb-3">
+                          <ng-container *ngFor="let field of getSectionConfig('Additional Details').subsections[subSection].fields">
+                            <div class="col-md-3 mb-3">
+                              <div class="form-outline">
+                                <label [for]="field.id + '_' + i" class="form-label">
+                                  {{ field.label }}<span *ngIf="field.required" class="text-danger">*</span>
+                                </label>
+                                <div class="form-group">
+                                  <ng-container [ngSwitch]="field.type">
+                                    <ng-container *ngSwitchDefault>
+                                      <input class="form-control"
+                                             [type]="field.type"
+                                             [id]="field.id + '_' + i"
+                                             name="{{ field.id + '_' + i }}"
+                                             [(ngModel)]="entry[field.id]"
+                                             placeholder="{{ field.label }}"
+                                             [required]="field.required" #fieldModel="ngModel" />
+                                    </ng-container>
+                                    <ng-container *ngSwitchCase="'select'">
+                                      <select class="form-control"
+                                              [id]="field.id + '_' + i"
+                                              name="{{ field.id + '_' + i }}" [(ngModel)]="entry[field.id]"
+                                              [required]="field.required" #fieldModel="ngModel">
+                                        <option *ngFor="let option of field.options" [value]="option.value">
+                                          {{ option.label }}
+                                        </option>
+                                      </select>
+                                    </ng-container>
+                                    <ng-container *ngSwitchCase="'textarea'">
+                                      <textarea class="form-control"
+                                                [id]="field.id + '_' + i"
+                                                name="{{ field.id + '_' + i }}" [(ngModel)]="entry[field.id]"
+                                                rows="3" placeholder="{{ field.label }}"
+                                                [required]="field.required" #fieldModel="ngModel">
+                                      </textarea>
+                                    </ng-container>
+                                    <ng-container *ngSwitchCase="'checkbox'">
+                                      <div class="form-outline">
+                                        <label [for]="field.id + '_' + i" class="form-label">
+                                          {{ field.label }}<span *ngIf="field.required" class="text-danger">*</span>
+                                        </label>
+                                        <div class="form-group d-flex align-items-center">
+                                          <input type="checkbox" class="form-check-input"
+                                                 [id]="field.id + '_' + i"
+                                                 name="{{ field.id + '_' + i }}" [(ngModel)]="entry[field.id]" />
+                                        </div>
+                                      </div>
+                                    </ng-container>
+                                  </ng-container>
+                                </div>
+                              </div>
+                            </div>
+                          </ng-container>
+                          <!-- Add/Remove Buttons for Additional Details subsection -->
+                          <div class="col-md-3 mb-3 text-end">
+                            <button mat-icon-button color="primary"
+                                    *ngIf="i === formData['Additional Details']?.[subSection]?.entries?.length - 1"
+                                    (click)="addEntry('Additional Details.' + subSection, i)">
+                              <mat-icon>add_circle</mat-icon>
+                            </button>
+                            <button mat-icon-button color="warn"
+                                    *ngIf="formData['Additional Details']?.[subSection]?.entries?.length > 1"
+                                    (click)="removeEntry('Additional Details.' + subSection, i)">
+                              <mat-icon>remove_circle</mat-icon>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </mat-card>
+
+                <!-- Status Details Card -->
+                <mat-card id="status" [ngClass]="{ 'highlight': highlightedSection === 'status' }" *ngIf="authTypeSelect">
+                  <div class="card-header" style="display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center;">
+                      <mat-icon>{{ isStatusExpanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+                      <h6 style="color: #007BFF; font-weight: bold; padding-right: 30px; margin: 0;">Status Details</h6>
+                    </div>
+                  </div>
+                  <div class="accordion-content" *ngIf="isStatusExpanded">
+                    <div *ngFor="let entry of formData['Status Details']?.entries; let i = index" class="row align-items-center mb-3">
+                      <ng-container *ngFor="let field of getSectionConfig('Status Details').fields">
+                        <div class="col-md-3 mb-3">
+                          <div class="form-outline">
+                            <label [for]="field.id + '_' + i" class="form-label">
+                              {{ field.label }}<span *ngIf="field.required" class="text-danger">*</span>
+                            </label>
+                            <div class="form-group">
+                              <ng-container [ngSwitch]="field.type">
+                                <ng-container *ngSwitchDefault>
+                                  <input class="form-control"
+                                         [type]="field.type"
+                                         [id]="field.id + '_' + i"
+                                         name="{{ field.id + '_' + i }}"
+                                         [(ngModel)]="entry[field.id]"
+                                         placeholder="{{ field.label }}"
+                                         [required]="field.required" #fieldModel="ngModel" />
+                                </ng-container>
+                                <ng-container *ngSwitchCase="'select'">
+                                  <select class="form-control"
+                                          [id]="field.id + '_' + i"
+                                          name="{{ field.id + '_' + i }}"
+                                          [(ngModel)]="entry[field.id]"
+                                          [required]="field.required" #fieldModel="ngModel">
+                                    <option *ngFor="let option of field.options" [value]="option.value">
+                                      {{ option.label }}
+                                    </option>
+                                  </select>
+                                </ng-container>
+                                <ng-container *ngSwitchCase="'textarea'">
+                                  <textarea class="form-control"
+                                            [id]="field.id + '_' + i"
+                                            name="{{ field.id + '_' + i }}"
+                                            [(ngModel)]="entry[field.id]"
+                                            rows="3"
+                                            placeholder="{{ field.label }}"
+                                            [required]="field.required" #fieldModel="ngModel">
+                                  </textarea>
+                                </ng-container>
+                                <ng-container *ngSwitchCase="'checkbox'">
+                                  <div class="form-outline">
+                                    <label [for]="field.id + '_' + i" class="form-label">
+                                      {{ field.label }}<span *ngIf="field.required" class="text-danger">*</span>
+                                    </label>
+                                    <div class="form-group d-flex align-items-center">
+                                      <input type="checkbox" class="form-check-input"
+                                             [id]="field.id + '_' + i"
+                                             name="{{ field.id + '_' + i }}"
+                                             [(ngModel)]="entry[field.id]" />
+                                    </div>
+                                  </div>
+                                </ng-container>
+                              </ng-container>
+                            </div>
+                          </div>
+                        </div>
+                      </ng-container>
+                    </div>
+                  </div>
+                </mat-card>
+              </div>
+
+              <!-- Save Button -->
+              <div class="text-center">
+                <button mat-raised-button color="primary" (click)="saveData(authForm)">Save</button>
+              </div>
+
+              <!-- Additional Status Card (optional) -->
+              <mat-card id="status" *ngIf="authTypeSelect">
+                <div class="card-header" (click)="isStatusExpanded = !isStatusExpanded" style="display: flex; align-items: center; justify-content: space-between;">
+                  <div style="display: flex; align-items: center;">
+                    <mat-icon>{{ isStatusExpanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+                    <h6 style="color: #007BFF; font-weight: bold; padding-right:30px; margin:0;">Status</h6>
+                  </div>
+                </div>
+              </mat-card>
+            </form>
+          </div>
+        </div>
+      </mat-step>
+
+      <!-- Decision Details Step -->
+      <mat-step label="Decision Details" style="padding: 0;">
+        <div style="padding: 0; display: -webkit-inline-box;">
+          <div class="tabs" style="padding: 0;">
+            <div *ngFor="let tab of tabs"
+                 (click)="selectTab(tab.id)"
+                 [class.active]="selectedTabId === tab.id"
+                 class="tab">
+              {{ tab.name }}
+            </div>
+          </div>
+          <div class="content">
+            <app-decisiondetails [id]="selectedTabId"></app-decisiondetails>
+          </div>
+        </div>
+      </mat-step>
+
+      <mat-step label="MD Review"></mat-step>
+      <mat-step label="Close"></mat-step>
+    </mat-horizontal-stepper>
+  </div>
+</div>

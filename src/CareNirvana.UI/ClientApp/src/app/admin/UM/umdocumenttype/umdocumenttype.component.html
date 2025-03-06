@@ -1,0 +1,169 @@
+<!-- Form Section -->
+<div *ngIf="isFormVisible"  style="padding-top:18px;">
+  <h4 style="color: #007BFF !important; font-weight: bold;">{{ formMode | titlecase }} UM Document Type</h4>
+
+  <form [formGroup]="documentForm">
+    <div class="card mb-4" style="margin:2px !important;">
+      <!-- Document Type Details Card -->
+      <mat-card class="details-card">
+
+        <mat-card-content>
+          <div class="form-row">
+            <!-- Document Type -->
+            <mat-form-field class="form-field" appearance="outline" floatLabel="always">
+              <mat-label>Document Type</mat-label>
+              <input matInput
+                     formControlName="documentType"
+                     placeholder="Enter Document Type" [(ngModel)]="selectedEntry.documentType" [disabled]="formMode === 'view'" required #documentTypeInput/>
+              <mat-error *ngIf="documentForm.get('documentType')?.hasError('required')">
+                Document Type is required
+              </mat-error>
+            </mat-form-field>
+
+            <!-- Active Checkbox -->
+            <!--<mat-checkbox class="checkbox" formControlName="activeFlag" [(ngModel)]="selectedEntry.activeFlag" [disabled]="formMode === 'view'">
+              Active Flag
+            </mat-checkbox>-->
+          </div>
+
+          <div class="form-row">
+            <!-- Comment Section -->
+            <mat-form-field class="form-field full-width" appearance="outline" floatLabel="always">
+              <mat-label>Document Template</mat-label>
+              <textarea matInput
+                        formControlName="comment"
+                        placeholder="Enter Document Template" [(ngModel)]="selectedEntry.documentTemplate" [disabled]="formMode === 'view'" style="height:150px;"></textarea>
+            </mat-form-field>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Action Buttons -->
+      <div style="text-align:right;padding-bottom:8px;padding-right:16px;">
+        <button mat-raised-button class="cancel-button" *ngIf="formMode !== 'view'" (click)="saveEntry()">Save</button>
+        <!--[disabled]="documentForm.invalid"-->
+        <button mat-button class="cancel-button" (click)="cancelForm()">Cancel</button>
+      </div>
+    </div>
+  </form>
+
+</div>
+
+<div class="container">
+  <!--*ngIf="!isFormVisible"-->
+  <div class="card-header">
+    <h4 style="color: #007BFF; font-weight: bold;">UM Document Type</h4>
+  </div>
+  <div style="padding-top:10px;" class="table-container">
+    <div class="d-flex justify-content-between align-items-center " style="background: whitesmoke; width: 100%;  ">
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="search-bar-container-table">
+          <button mat-icon-button>
+            <mat-icon>search</mat-icon>
+          </button>
+          <!--<input class="input" matInput [readonly]="mode === 'view'" (keyup)="applyFilter($event)" placeholder="Start typing to search User " #input>-->
+          <input class="input" matInput (keyup)="applyFilter($event)" placeholder="Search Document Type" />
+        </div>
+      </div>
+      <div>
+        <button mat-icon-button color="primary" (click)="openForm('add')" matTooltip="Add Document Type">
+          <mat-icon>add</mat-icon>
+        </button>
+        <button mat-icon-button color="primary" (click)="openSettingsDialog()" matTooltip="Page Settings">
+          <mat-icon>settings</mat-icon>
+        </button>
+      </div>
+    </div>
+    <table class="responsive-table" mat-table [dataSource]="dataSource" multiTemplateDataRows matSort>
+      <!-- Table -->
+      <!-- Document Id Column -->
+      <ng-container matColumnDef="id">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header >Document ID</th>
+        <td mat-cell *matCellDef="let element" class="center-column">{{ element.id }}</td>
+      </ng-container>-->
+      <!-- ID Column -->
+      <ng-container matColumnDef="documentType">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Document Type</th>
+        <td mat-cell *matCellDef="let element">
+          <span>{{ element.documentType }}</span>
+      </ng-container>
+
+      <ng-container matColumnDef="documentTemplate">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Document Template</th>
+        <td mat-cell *matCellDef="let element">
+          <ng-container *ngIf="element.documentTemplate?.includes('\n'); else noMultiline">
+            <a href="javascript:void(0)" (click)="openTemplateDialog(element.documentTemplate)">View Template</a>
+          </ng-container>
+          <ng-template #noMultiline>
+            <span>{{ element.documentTemplate }}</span>
+          </ng-template>
+        </td>
+      </ng-container>
+
+      <!-- Active Flag Column -->
+      <ng-container matColumnDef="activeFlag">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Active Flag</th>
+        <td mat-cell *matCellDef="let element" class="center-column">
+          <!-- editable mode -->
+          <mat-checkbox [checked]="element.activeFlag" (change)="saveRow($event,element)" class="custom-checkbox" matTooltip="Activate / Inactivate"></mat-checkbox>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="createdBy">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header> Created By </th>
+        <td mat-cell *matCellDef="let element"> {{ element.createdBy }} </td>
+      </ng-container>
+
+      <ng-container matColumnDef="createdOn">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header> Created On </th>
+        <td mat-cell *matCellDef="let element"> {{ element.createdOn | date: 'MM/dd/yyyy HH:mm' }} </td>
+      </ng-container>
+
+      <!-- Optional Columns -->
+      <ng-container matColumnDef="updatedBy" *ngIf="visibleColumns.includes('updatedBy')">
+        <th mat-header-cell *matHeaderCellDef>Updated By</th>
+        <td mat-cell *matCellDef="let element">{{ element.updatedBy }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="updatedOn" *ngIf="visibleColumns.includes('updatedOn')">
+        <th mat-header-cell *matHeaderCellDef>Updated On</th>
+        <td mat-cell *matCellDef="let element">{{ element.updatedOn | date: 'MM/dd/yyyy HH:mm' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="deletedBy" *ngIf="visibleColumns.includes('deletedBy')">
+        <th mat-header-cell *matHeaderCellDef>Deleted By</th>
+        <td mat-cell *matCellDef="let element">{{ element.deletedBy }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="deletedOn" *ngIf="visibleColumns.includes('deletedOn')">
+        <th mat-header-cell *matHeaderCellDef>Deleted On</th>
+        <td mat-cell *matCellDef="let element">{{ element.deletedOn | date: 'MM/dd/yyyy HH:mm' }}</td>
+      </ng-container>
+
+      <!-- Actions Column -->
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef> Actions </th>
+        <td mat-cell *matCellDef="let element">
+          <!--<button mat-icon-button (click)="openForm('view', element)">
+            <mat-icon>visibility</mat-icon>
+          </button>-->
+          <button mat-icon-button (click)="openForm('edit', element)" [disabled]="editingRowId === element.id" matTooltip="Edit">
+            <mat-icon style="color: #007BFF">edit</mat-icon>
+          </button>
+          <button mat-icon-button (click)="confirmDelete(element)" [disabled]="editingRowId === element.id" matTooltip="Delete">
+            <mat-icon style="color: #007BFF">delete</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <!-- Header and Rows -->
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+
+
+    <!-- Paginator -->
+    <mat-paginator [pageSizeOptions]="[10, 15, 20]" showFirstLastButtons></mat-paginator>
+  </div>
+</div>
+

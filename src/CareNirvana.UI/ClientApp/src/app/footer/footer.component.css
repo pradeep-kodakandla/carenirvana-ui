@@ -1,0 +1,51 @@
+/* Main footer styling */
+.footer {
+  position: fixed; /* Fixed position makes the footer stay in one place */
+  left: 0;
+  bottom: 0;
+  width: 100%; /* Ensure the footer spans the entire width */
+  background-color: #007BFF;
+  color: white;
+  text-align: center;
+  padding: 5px 0;
+  z-index: 1000; /* Keep it on top of other content if necessary */
+}
+
+/* Footer content styling */
+.footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+  .footer-content p {
+    margin: 0;
+    font-size: 14px;
+  }
+
+  .footer-content a {
+    color: #ffffff;
+    text-decoration: none;
+    margin: 0 10px;
+  }
+
+    .footer-content a:hover {
+      text-decoration: underline;
+    }
+
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap; /* This makes sure the footer content wraps on smaller screens */
+}
+
+@media (max-width: 600px) {
+  .footer-content {
+    flex-direction: column;
+    text-align: center;
+  }
+}

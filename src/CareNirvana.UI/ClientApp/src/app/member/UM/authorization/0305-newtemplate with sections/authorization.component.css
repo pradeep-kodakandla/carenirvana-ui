@@ -1,0 +1,277 @@
+/* Global Container & Layout */
+.container {
+  display: flex;
+  flex-direction: column;
+  margin: 5px;
+  max-width: 100% !important;
+}
+
+.content {
+  display: flex;
+  width: 100%;
+}
+
+body {
+  font-family: 'Arial', sans-serif;
+  background-color: #f8f9fa;
+  padding: 20px;
+}
+
+/* Horizontal Stepper */
+.mat-horizontal-stepper .mat-horizontal-content-container,
+.mat-horizontal-content-container {
+  display: none;
+  padding: 0 !important;
+}
+
+/* Main Form & Row */
+.main-form {
+  border-radius: 4px;
+  margin-left: -20px;
+  width: 100%;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  padding-left: 10px;
+  margin-bottom: 0 !important;
+  align-items: center;
+}
+
+/* Selection & Rounded Boxes */
+.selection-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 5px;
+  padding-left: 10px;
+}
+
+.rounded-box {
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 10px;
+  min-width: 250px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+  border: 2px solid transparent;
+}
+
+  .rounded-box:hover {
+    transform: scale(1.05);
+    border: 2px solid #007BFF;
+  }
+
+  .rounded-box.selected {
+    border: 2px solid #007BFF;
+    background-color: #007BFF;
+    color: white;
+    box-shadow: 0 4px 10px rgba(0, 123, 255, 0.2);
+  }
+
+label {
+  display: table !important;
+}
+.div-secondary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.selectedBox {
+  height: 2px;
+  background: #ddd;
+  margin-top: 2px;
+}
+
+.rounded-box.selected .selectedBox {
+  background: orange;
+}
+
+/* Media Query */
+@media (max-width: 768px) {
+  .rounded-box {
+    width: 100%;
+  }
+}
+
+/* Dynamic Label for Outlined Fields */
+.dynamic-label {
+  position: absolute;
+  top: 10px;
+  left: 15px;
+  font-size: 14px;
+  color: #6c757d;
+  opacity: 0;
+  transition: 0.2s ease-in-out;
+  pointer-events: none;
+}
+
+  input:focus ~ .dynamic-label,
+  select:focus ~ .dynamic-label,
+  .dynamic-label.active {
+    opacity: 1;
+    top: -10px;
+    font-size: 12px;
+    background: white;
+    padding: 0 5px;
+  }
+
+/* Close Button */
+.close-container {
+  align-self: end;
+  padding-right: 35px;
+}
+
+.close-btn {
+  cursor: pointer;
+  color: red;
+  font-size: 24px;
+  padding: 5px;
+  border-radius: 4px;
+  transition: background 0.3s, color 0.3s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+  .close-btn:hover {
+    background: red;
+    color: white;
+    border-radius: 0;
+  }
+
+/* Decision View (Tabs) */
+.tabs {
+  display: flex;
+  flex-direction: column;
+  width: 200px;
+  border-right: 1px solid #ccc;
+  background-color: #f9f9f9;
+}
+
+.tab {
+  padding: 15px;
+  cursor: pointer;
+  border-bottom: 1px solid #ccc;
+  transition: background-color 0.3s;
+}
+
+  .tab:hover {
+    background-color: #e0e0e0;
+  }
+
+  .tab.active {
+    background-color: #d0d0d0;
+    font-weight: bold;
+  }
+
+.details {
+  max-width: 600px;
+}
+
+/* Outlined Form Fields */
+.form-outline {
+  position: relative;
+  margin-bottom: 0 !important;
+  width: 100%;
+}
+
+  .form-outline .form-label {
+    position: absolute;
+    top: -10px;
+    left: 12px;
+    background: white;
+    padding: 0 5px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #555;
+  }
+
+  .form-outline .form-control {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.3s ease-in-out;
+    background-color: white;
+  }
+
+    .form-outline .form-control:focus {
+      border-color: lightgray;
+      box-shadow: 0 0 5px rgba(30, 120, 171, 0.3);
+    }
+
+/* Accordion Content */
+.accordion-content {
+  padding: 10px 0;
+  border-radius: 5px;
+  margin-top: 5px;
+}
+
+/* Radio Group */
+.radio-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Button Icons */
+mat-icon {
+  cursor: pointer;
+  font-size: 24px;
+}
+
+  mat-icon:hover {
+    opacity: 0.8;
+  }
+
+.button-group {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  align-items: center;
+}
+
+.text-end {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.text-center {
+  text-align: center;
+  margin-top: 20px;
+}
+
+/* Mat-card Styling */
+mat-card {
+  border: 2px solid lightgray;
+  border-radius: 5px;
+  padding: 10px;
+  box-shadow: none;
+  margin-bottom: 5px;
+  background-color: transparent !important;
+}
+
+  mat-card:hover {
+    border-color: #135E96;
+  }
+
+/* Invalid Field Styling */
+input.ng-invalid.ng-touched,
+select.ng-invalid.ng-touched,
+textarea.ng-invalid.ng-touched {
+  border: 1px solid red !important;
+}
+
+.provider-button {
+  margin-bottom: 5px;
+  background-color: #007BFF !important;
+  color: white !important;
+  border-radius: 5px;
+}

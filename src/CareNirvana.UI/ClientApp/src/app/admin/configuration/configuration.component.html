@@ -1,0 +1,52 @@
+<div class="d-flex" style="padding-left:5px;">
+  <!-- Main Content (Menu Section) -->
+  <div class="main-content" [ngClass]="{'collapsed': isMenuCollapsed}">
+    <!-- Main Menu -->
+    <div class="main-menu" *ngIf="!isMenuCollapsed">
+      <div class="search-bar">
+        <input type="text"
+               placeholder="Search settings"
+               [(ngModel)]="searchQuery"
+               (input)="filterMenus()" />
+      </div>
+      <ul>
+        <li *ngFor="let item of filteredMainMenu"
+            (click)="selectMainMenu(item)"
+            [class.selected]="selectedMenu === item">
+          {{ item.name }}
+        </li>
+      </ul>
+    </div>
+
+    <!-- Sub-Menu -->
+    <div class="sub-menu" *ngIf="selectedMenu && !isMenuCollapsed">
+      <div class="search-bar" style="display: flex; align-items: center;">
+        <input type="text"
+               placeholder="Search settings"
+               [(ngModel)]="searchQuery"
+               (input)="filterMenus()"
+               style="flex: 1;" />
+        <button class="collapse-btn" (click)="toggleMenu()">
+          {{ isMenuCollapsed ? '>' : '<' }}
+        </button>
+      </div>
+      <ul>
+        <li *ngFor="let subItem of filteredSubMenu"
+            (click)="selectSubMenu(subItem)"
+            [class.selected]="selectedSubMenu === subItem">
+          {{ subItem }}
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Details Section -->
+  <div class="details-section" style="padding-top:10px; flex: 1; position: relative;">
+    <button class="collapse-btn" (click)="toggleMenu()" *ngIf="isMenuCollapsed">
+      {{ isMenuCollapsed ? '>' : '<' }}
+    </button>
+    <ng-container *ngIf="selectedSubMenu">
+      <div #dynamicContainer></div>
+    </ng-container>
+  </div>
+</div>

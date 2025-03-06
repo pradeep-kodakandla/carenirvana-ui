@@ -1,0 +1,35 @@
+D:\iCare4H\iCare4H\src\iCare4H.Application\bin\Debug\net8.0\iCare4H.Application.deps.json
+D:\iCare4H\iCare4H\src\iCare4H.Application\bin\Debug\net8.0\iCare4H.Application.dll
+D:\iCare4H\iCare4H\src\iCare4H.Application\bin\Debug\net8.0\iCare4H.Application.pdb
+D:\iCare4H\iCare4H\src\iCare4H.Application\obj\Debug\net8.0\iCare4H.Application.GeneratedMSBuildEditorConfig.editorconfig
+D:\iCare4H\iCare4H\src\iCare4H.Application\obj\Debug\net8.0\iCare4H.Application.AssemblyInfoInputs.cache
+D:\iCare4H\iCare4H\src\iCare4H.Application\obj\Debug\net8.0\iCare4H.Application.AssemblyInfo.cs
+D:\iCare4H\iCare4H\src\iCare4H.Application\obj\Debug\net8.0\iCare4H.Application.csproj.CoreCompileInputs.cache
+D:\iCare4H\iCare4H\src\iCare4H.Application\obj\Debug\net8.0\iCare4H.Application.dll
+D:\iCare4H\iCare4H\src\iCare4H.Application\obj\Debug\net8.0\refint\iCare4H.Application.dll
+D:\iCare4H\iCare4H\src\iCare4H.Application\obj\Debug\net8.0\iCare4H.Application.pdb
+D:\iCare4H\iCare4H\src\iCare4H.Application\obj\Debug\net8.0\ref\iCare4H.Application.dll
+C:\Users\Hanuma Pradeep Kumar\Documents\icare4hui\src\iCare4H.Application\bin\Debug\net8.0\iCare4H.Application.deps.json
+C:\Users\Hanuma Pradeep Kumar\Documents\icare4hui\src\iCare4H.Application\bin\Debug\net8.0\iCare4H.Application.dll
+C:\Users\Hanuma Pradeep Kumar\Documents\icare4hui\src\iCare4H.Application\bin\Debug\net8.0\iCare4H.Application.pdb
+C:\Users\Hanuma Pradeep Kumar\Documents\icare4hui\src\iCare4H.Application\obj\Debug\net8.0\iCare4H.Application.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Hanuma Pradeep Kumar\Documents\icare4hui\src\iCare4H.Application\obj\Debug\net8.0\iCare4H.Application.AssemblyInfoInputs.cache
+C:\Users\Hanuma Pradeep Kumar\Documents\icare4hui\src\iCare4H.Application\obj\Debug\net8.0\iCare4H.Application.AssemblyInfo.cs
+C:\Users\Hanuma Pradeep Kumar\Documents\icare4hui\src\iCare4H.Application\obj\Debug\net8.0\iCare4H.Application.csproj.CoreCompileInputs.cache
+C:\Users\Hanuma Pradeep Kumar\Documents\icare4hui\src\iCare4H.Application\obj\Debug\net8.0\iCare4H.Application.sourcelink.json
+C:\Users\Hanuma Pradeep Kumar\Documents\icare4hui\src\iCare4H.Application\obj\Debug\net8.0\iCare4H.Application.dll
+C:\Users\Hanuma Pradeep Kumar\Documents\icare4hui\src\iCare4H.Application\obj\Debug\net8.0\refint\iCare4H.Application.dll
+C:\Users\Hanuma Pradeep Kumar\Documents\icare4hui\src\iCare4H.Application\obj\Debug\net8.0\iCare4H.Application.pdb
+C:\Users\Hanuma Pradeep Kumar\Documents\icare4hui\src\iCare4H.Application\obj\Debug\net8.0\ref\iCare4H.Application.dll
+C:\Users\PradeepKodakandla\Documents\icareui\src\iCare4H.Application\bin\Debug\net8.0\iCare4H.Application.deps.json
+C:\Users\PradeepKodakandla\Documents\icareui\src\iCare4H.Application\bin\Debug\net8.0\iCare4H.Application.dll
+C:\Users\PradeepKodakandla\Documents\icareui\src\iCare4H.Application\bin\Debug\net8.0\iCare4H.Application.pdb
+C:\Users\PradeepKodakandla\Documents\icareui\src\iCare4H.Application\obj\Debug\net8.0\iCare4H.Application.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\PradeepKodakandla\Documents\icareui\src\iCare4H.Application\obj\Debug\net8.0\iCare4H.Application.AssemblyInfoInputs.cache
+C:\Users\PradeepKodakandla\Documents\icareui\src\iCare4H.Application\obj\Debug\net8.0\iCare4H.Application.AssemblyInfo.cs
+C:\Users\PradeepKodakandla\Documents\icareui\src\iCare4H.Application\obj\Debug\net8.0\iCare4H.Application.csproj.CoreCompileInputs.cache
+C:\Users\PradeepKodakandla\Documents\icareui\src\iCare4H.Application\obj\Debug\net8.0\iCare4H.Application.sourcelink.json
+C:\Users\PradeepKodakandla\Documents\icareui\src\iCare4H.Application\obj\Debug\net8.0\iCare4H.Application.dll
+C:\Users\PradeepKodakandla\Documents\icareui\src\iCare4H.Application\obj\Debug\net8.0\refint\iCare4H.Application.dll
+C:\Users\PradeepKodakandla\Documents\icareui\src\iCare4H.Application\obj\Debug\net8.0\iCare4H.Application.pdb
+C:\Users\PradeepKodakandla\Documents\icareui\src\iCare4H.Application\obj\Debug\net8.0\ref\iCare4H.Application.dll

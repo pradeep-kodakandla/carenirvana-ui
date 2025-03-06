@@ -1,0 +1,57 @@
+<div class="container">
+  <button (click)="addEntry()">Add New</button>
+
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Created By</th>
+        <th>Created On</th>
+        <th>Updated By</th>
+        <th>Updated On</th>
+
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let item of data">
+        <td>{{ item.id }}</td>
+        <td>{{ item.name }}</td>
+        <td>{{ item.email }}</td>
+        <td>{{ item.role }}</td>
+        <td>{{ item.createdBy }}</td>
+        <td>{{ item.createdOn }}</td>
+        <td>{{ item.updatedBy }}</td>
+        <td>{{ item.updatedOn }}</td>
+
+        <td>
+          <button (click)="viewEntry(item)">View</button>
+          <button (click)="editEntry(item)" [disabled]="item.deletedBy">Edit</button>
+          <button (click)="deleteEntry(item.id)" [disabled]="item.deletedBy">Delete</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div *ngIf="isFormVisible" class="form-container">
+    <h3>{{ formMode | titlecase }} Entry</h3>
+    <form>
+      <label for="name">Name</label>
+      <input type="text" [(ngModel)]="selectedEntry.name" name="name" [disabled]="formMode === 'view'" />
+
+      <label for="email">Email</label>
+      <input type="email" [(ngModel)]="selectedEntry.email" name="email" [disabled]="formMode === 'view'" />
+
+      <label for="role">Role</label>
+      <input type="text" [(ngModel)]="selectedEntry.role" name="role" [disabled]="formMode === 'view'" />
+
+      <div *ngIf="formMode !== 'view'">
+        <button type="button" (click)="saveEntry()">Save</button>
+        <button type="button" (click)="cancelForm()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>

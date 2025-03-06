@@ -1,0 +1,119 @@
+/* Container for outlined form fields */
+.form-outline {
+  position: relative;
+  margin-bottom: 0; /* Remove extra spacing */
+  width: 100%;
+}
+
+  /* Label Style */
+  .form-outline .form-label {
+    position: absolute;
+    top: -10px;
+    left: 12px;
+    background: white;
+    padding: 0 5px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #555;
+  }
+
+  /* Input Field */
+  .form-outline .form-control {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.3s ease-in-out;
+    background-color: white;
+  }
+
+    /* Input Focus Effect */
+    .form-outline .form-control:focus {
+      border-color: #007BFF;
+      box-shadow: 0px 0px 5px rgba(30, 120, 171, 0.3);
+    }
+
+/* Accordion Content */
+.accordion-content {
+  padding: 10px 15px;
+  background: #f9f9f9;
+  border-radius: 5px;
+  margin-top: 5px;
+}
+
+
+/* Radio Button */
+.radio-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Button Icons */
+mat-icon {
+  cursor: pointer;
+  font-size: 24px;
+}
+
+  mat-icon:hover {
+    opacity: 0.8;
+  }
+
+/* Ensure "+" and "-" buttons are always in the same row */
+.button-group {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Ensures buttons don't float below the row */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+
+/* Moves buttons to the right */
+.text-end {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Center Save Button */
+.text-center {
+  text-align: center;
+  margin-top: 20px;
+}
+
+
+
+
+
+
+
+/* Remove margin-bottom for each row */
+.row {
+  margin-bottom: 0 !important;
+}
+
+/* Optional: Remove extra spacing for the form fields */
+.form-outline {
+  margin-bottom: 0 !important;
+}
+
+/* Add a solid border to mat-card */
+mat-card {
+  border: 2px solid #007BFF; /* Change color as needed */
+  border-radius: 8px; /* Optional: rounded corners */
+  padding: 15px;
+  box-shadow: none; /* Remove shadow if you want only a border */
+}
+
+  /* Optional: Change border color on hover */
+  mat-card:hover {
+    border-color: #135E96;
+  }

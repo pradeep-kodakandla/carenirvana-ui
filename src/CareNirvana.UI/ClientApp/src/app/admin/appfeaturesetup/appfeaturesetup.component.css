@@ -1,0 +1,26 @@
+.form-container {
+  border: 1px solid #ccc;
+  padding: 20px;
+  margin-top: 20px;
+  width: 50%;
+  background: #f9f9f9;
+}
+
+label {
+  display: block;
+  margin-top: 10px;
+}
+
+input {
+  width: 100%;
+  padding: 8px;
+  margin-top: 5px;
+}
+
+.form-buttons {
+  margin-top: 20px;
+}
+
+button {
+  margin-right: 10px;
+}

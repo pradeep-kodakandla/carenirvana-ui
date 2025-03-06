@@ -1,0 +1,49 @@
+<div class="login-container">
+  <div class="login-card">
+
+    <div class="login-header">
+      <mat-icon class="login-icon">person</mat-icon>
+    </div>
+    <h2>Login</h2>
+    <form [formGroup]="login" (ngSubmit)="submit()" autocomplete="off">
+
+      <mat-form-field appearance="outline" class="input-field">
+        <mat-label>Username</mat-label>
+        <mat-icon matPrefix>person</mat-icon>
+        <input matInput type="text" formControlName="username" />
+        <mat-error *ngIf="login.get('username')?.errors"> Invalid Username</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="input-field">
+        <mat-label>Password</mat-label>
+        <mat-icon matPrefix>lock</mat-icon>
+        <input matInput type="password" formControlName="password" [type]="hide ? 'password' : 'text'" />
+        <mat-icon matSuffix (click)="hide = !hide">{{hide ? 'visibility_off' : 'visibility'}}</mat-icon>
+        <mat-error *ngIf="login.get('password')?.errors">
+          Min length should  be 6.
+        </mat-error>
+      </mat-form-field>
+      <div class="d-flex justify-content-between align-items-center">
+
+        <!-- Checkbox -->
+        <div class="form-check mb-0">
+          <input class="form-check-input me-2" type="checkbox" value="" id="form2Example3" />
+          <label class="form-check-label" for="form2Example3">
+            Remember me
+          </label>
+        </div>
+        <a class="forgot-password" href="#">Forgot Password?</a>
+      </div>
+      <!--<mat-checkbox class="remember-me">Remember me</mat-checkbox>
+  <a class="forgot-password" href="#">Forgot Password?</a>-->
+      <!--<button mat-raised-button class="login-button" (click)="goToPage('dash-board')">Login</button>-->
+      <button mat-raised-button class="login-button" type="submit">Login</button>
+      <!-- Show error message -->
+      <div *ngIf="errorMessage" class="error-message">{{ errorMessage }}</div>
+    </form>
+  </div>
+</div>
+
+
+
+

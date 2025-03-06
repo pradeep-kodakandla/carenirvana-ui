@@ -1,0 +1,346 @@
+:host {
+  display: block;
+}
+
+/* ==================== SEARCH BAR ==================== */
+.search-bar-container {
+  background: #eaf1fb;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 350px;
+  border: none;
+}
+
+.input {
+  font-size: 1.1rem;
+  outline: none;
+  border: none;
+  background: inherit;
+  min-width: 350px;
+}
+
+mat-form-field {
+  width: 100%;
+}
+
+.mat-badge {
+  --mat-badge-background-color: red;
+}
+
+::ng-deep .my-class {
+  max-width: 800px !important;
+  overflow: hidden;
+  height: auto;
+  min-height: 2px;
+  background-color: white !important;
+}
+
+.mat-mdc-menu-item {
+  min-height: 30px;
+  width: auto;
+}
+
+.mat-mdc-menu-panel {
+  background-color: white !important;
+}
+
+/* ==================== LAYOUT ==================== */
+.container {
+  display: flex;
+  justify-content: space-between;
+  height: auto;
+}
+
+.column {
+  flex: 1 1 30%;
+  padding: 5px;
+  border-radius: 8px;
+}
+
+.section {
+  margin-bottom: 20px;
+}
+
+.column h3 {
+  text-align: left;
+  padding: 5px;
+  margin: 0 0 5px;
+}
+
+.body-item {
+  padding: 2px;
+  text-align: left;
+}
+
+  .body-item button:hover {
+    text-decoration: underline;
+    font-weight: bold;
+    background: none;
+  }
+
+.navbar {
+  display: flex;
+  align-items: center;
+  padding: 1px 0px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.left {
+  display: flex;
+  justify-content: flex-start;
+  gap:-2px;
+}
+
+.middle {
+  flex: 2;
+  display: flex;
+  justify-content: center;
+}
+
+.right {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  align-items: center;
+}
+
+/* ==================== BUTTONS ==================== */
+button {
+  cursor: pointer;
+}
+
+/* ❌ Close button in red */
+.close-btn {
+  color: red !important;
+  font-size: 16px !important;
+  cursor: pointer;
+  margin-left: 8px;
+  font-weight: bold;
+  border: none;
+  background: none;
+}
+
+  .close-btn:hover {
+    color: darkred !important;
+  }
+
+/* ➕ Add Tab button in white */
+.add-tab-btn {
+  background: none !important;
+  border: none !important;
+  font-size: 20px !important;
+  color: white !important;
+  cursor: pointer !important;
+  padding: 5px 10px !important;
+}
+
+  .add-tab-btn:hover {
+    color: lightgray !important;
+  }
+
+/* ==================== TABS ==================== */
+.tabs-container {
+  display: flex;
+  flex-direction: column;
+  background-color: #e0f2f1;
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.tabs-header {
+  display: flex;
+  gap: 5px;
+}
+
+/* Individual Tab */
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  font-size: 14px;
+  justify-content: space-between;
+  position: relative;
+  font-weight: bold;
+}
+
+  .tab.active {
+    background-color: #b2dfdb;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  }
+
+/* Tab Close Button */
+.tab-close {
+  font-size: 16px;
+  color: red !important;
+  cursor: pointer;
+  margin-left: 10px;
+  background: none;
+  border: none;
+}
+
+  .tab-close:hover {
+    color: darkred !important;
+  }
+
+/* Tab Title */
+.tab-title {
+  position: absolute;
+  top: -10px;
+  color: lightgrey;
+  padding: 2px 0px;
+  font-size: 10px;
+  border-radius: 3px;
+}
+
+/* ==================== SIDEBAR ==================== */
+.sidebar {
+  position: fixed;
+  left: 0;
+  height: 100vh;
+  background-color: white;
+  color: black;
+  transition: width 0.3s ease;
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  overflow-y: auto;
+}
+
+  .sidebar.collapsed {
+    width: 35px;
+  }
+
+.sidebar-content {
+  flex: 1;
+  width: 100%;
+  visibility: visible;
+}
+
+  .sidebar-content.collapsed {
+    visibility: hidden;
+  }
+
+/* Sidebar List */
+.sidebar ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+  .sidebar ul li {
+    padding: 5px 10px;
+  }
+
+    .sidebar ul li a {
+      color: black;
+      text-decoration: none;
+      display: block;
+    }
+
+/* Sidebar Toggle Button */
+.toggle-button {
+  position: absolute;
+  right: -5px;
+  width: 30px;
+  height: 30px;
+  background-color: transparent;
+  color: #007BFF;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 35px;
+  z-index: 1;
+}
+
+  .toggle-button:hover {
+    color: #007BFF;
+  }
+
+/* ==================== MAIN CONTENT ==================== */
+.main-content {
+  margin-left: 280px;
+  padding-left: 5px;
+  transition: margin-left 0.3s ease;
+  width: 100%;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.sidebar.collapsed + .main-content {
+  margin-left: 40px;
+}
+
+/* ==================== MATERIAL DESIGN FIXES ==================== */
+.mat-mdc-card {
+  box-shadow: none;
+}
+
+.mat-mdc-card-header {
+  padding: 16px 10px 0;
+}
+
+.mat-label-header {
+  color: #007BFF;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.mat-tab-group .mat-tab-label-container {
+  background-color: #007BFF !important;
+}
+
+.mat-tab-group {
+  flex-grow: 0 !important;
+  width: 1200px;
+}
+
+.nav-tabs .nav-item.show,
+.nav-tabs .nav-link.active {
+  color: white;
+  background-color: darkorange;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.nav-tabs .nav-link:hover {
+  color: white;
+}
+.nav-tabs .nav-link.inactive {
+  color: white;
+}
+
+.nav-link {
+  color: white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  border-color: white;
+}
+
+.custom-tab-group .mat-tab-label {
+  flex: 0 0 150px;
+  max-width: 150px;
+  min-width: 150px;
+}
+
+.custom-tab-group .mat-tab-labels {
+  justify-content: flex-start;
+  overflow-x: auto;
+}
+
+mat-tab-group {
+  flex-grow: 0;
+  flex-shrink: 0;
+  width: auto;
+}
+
+.home-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain; /* Ensures the image scales properly */
+}

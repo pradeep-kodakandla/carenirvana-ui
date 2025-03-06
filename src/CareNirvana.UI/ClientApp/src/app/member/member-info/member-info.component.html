@@ -1,0 +1,438 @@
+<div class="details-container">
+  <!-- Header Section -->
+  <div class="details-header">
+    <h6 style="color: #007BFF; font-weight: bold;">Personal Details</h6>
+    <button mat-icon-button color="primary" (click)="toggleEditMode()">
+      <mat-icon>{{ editMode ? 'save' : 'edit' }}</mat-icon>
+    </button>
+  </div>
+
+  <!-- Read-Only Section -->
+  <div *ngIf="!editMode" class="read-only-section">
+    <div class="details-row">
+      <div class="details-column">Prefix:</div>
+      <div class="details-column-bold">Mr.</div>
+      <div class="details-column">Date of Birth:</div>
+      <div class="details-column-bold">12/05/1981</div>
+      <div class="details-column">Marital Status:</div>
+      <div class="details-column-bold">Married</div>
+    </div>
+    <div class="details-row">
+      <div class="details-column">First Name:</div>
+      <div class="details-column-bold">John</div>
+      <div class="details-column">Preferred Contact Format:</div>
+      <div class="details-column-bold">Mail</div>
+      <div class="details-column">Veteran Status:</div>
+      <div class="details-column-bold">Yes</div>
+    </div>
+    <div class="details-row">
+      <div class="details-column">Middle Initial:</div>
+      <div class="details-column-bold">I</div>
+      <div class="details-column">Race:</div>
+      <div class="details-column-bold">American</div>
+      <div class="details-column">Primary Language</div>
+      <div class="details-column-bold">English</div>
+    </div>
+
+    <div class="details-row">
+      <div class="details-column">Last Name:</div>
+      <div class="details-column-bold">Smith</div>
+      <div class="details-column">Preferred Race:</div>
+      <div class="details-column-bold">Not Available</div>
+      <div class="details-column">Preferred Written Language(s)</div>
+      <div class="details-column-bold">English, Spanish</div>
+    </div>
+    <div class="details-row">
+      <div class="details-column">Preferred Name:</div>
+      <div class="details-column-bold">Not Available</div>
+      <div class="details-column">Ethincity:</div>
+      <div class="details-column-bold">American</div>
+      <div class="details-column">Preferred Spoke Language(s)</div>
+      <div class="details-column-bold">English</div>
+    </div>
+    <div class="details-row">
+      <div class="details-column">Gender:</div>
+      <div class="details-column-bold">Male</div>
+      <div class="details-column">Preferred Ethincity:</div>
+      <div class="details-column-bold">American</div>
+      <div class="details-column">Communication Impairment</div>
+      <div class="details-column-bold">English</div>
+    </div>
+    <div class="details-row">
+      <div class="details-column">Gender Identity:</div>
+      <div class="details-column-bold">Male</div>
+      <div class="details-column">Residence Status:</div>
+      <div class="details-column-bold">Adult Foster Home</div>
+      <div class="details-column">Evacuation Zone:</div>
+      <div class="details-column-bold">Zone1</div>
+    </div>
+    <div class="details-row">
+      <div class="details-column">Sexual Orientation:</div>
+      <div class="details-column-bold">Bisexual</div>
+      <div class="details-column">Income Status:</div>
+      <div class="details-column-bold">$60,000</div>
+      <div class="details-column">Service Interruption:</div>
+      <div class="details-column-bold">Not Available</div>
+    </div>
+    <div class="details-row">
+      <div class="details-column">Date of Death:</div>
+      <div class="details-column-bold">Not Available</div>
+      <div class="details-column">Cause of Death:</div>
+      <div class="details-column-bold">Not Available</div>
+      <div class="details-column">Actual Place of Death:</div>
+      <div class="details-column-bold">Not Available</div>
+    </div>
+    <div class="details-row">
+      <div class="details-column">Alterate Phone:</div>
+      <div class="details-column-bold">Not Available</div>
+      <div class="details-column">Fax:</div>
+      <div class="details-column-bold">Not Available</div>
+      <div class="details-column">Preferred Time of Call:</div>
+      <div class="details-column-bold">Not Available</div>
+    </div>
+    <div class="details-row">
+      <div class="details-column">Primary Email:</div>
+      <div class="details-column-bold">test&#64;yahoo.com</div>
+      <div class="details-column">Preferred Email:</div>
+      <div class="details-column-bold">Not Available</div>
+      <div class="details-column">Alternate Email:</div>
+      <div class="details-column-bold">Not Available</div>
+    </div>
+
+  </div>
+
+  <!-- Editable Section -->
+  <form *ngIf="editMode" [formGroup]="detailsForm" class="editable-section">
+    <div class="details-row">
+      <div class="details-column-bold">Prefix:</div>
+      <div class="details-column">
+        <input matInput formControlName="prefix" />
+      </div>
+      <div class="details-column-bold">Date of Birth:</div>
+      <div class="details-column">
+        <input matInput type="date" formControlName="dateOfBirth" />
+      </div>
+      <div class="details-column-bold">Marital Status:</div>
+      <div class="details-column">
+        <input matInput formControlName="maritalStatus" />
+      </div>
+    </div>
+
+    <div class="details-row">
+      <div class="details-column-bold">First Name:</div>
+      <div class="details-column">
+        <input matInput formControlName="firstName" />
+      </div>
+      <div class="details-column-bold">Preferred Contact Format:</div>
+      <div class="details-column">
+        <input matInput formControlName="preferredcontactformat" />
+      </div>
+      <div class="details-column-bold">Veteran Status:</div>
+      <div class="details-column">
+        <input matInput formControlName="veteranstatus" />
+      </div>
+    </div>
+
+    <div class="details-row">
+      <div class="details-column-bold">Middle Initial:</div>
+      <div class="details-column">
+        <input matInput formControlName="middleInitial" />
+      </div>
+      <div class="details-column-bold">Race:</div>
+      <div class="details-column">
+        <input matInput formControlName="race" />
+      </div>
+      <div class="details-column-bold">Primary Language:</div>
+      <div class="details-column">
+        <input matInput formControlName="primaryLanguage" />
+      </div>
+    </div>
+
+    <div class="details-row">
+      <div class="details-column-bold">Last Name:</div>
+      <div class="details-column">
+        <input matInput formControlName="lastName" />
+      </div>
+      <div class="details-column-bold">Preferred Race:</div>
+      <div class="details-column">
+        <input matInput formControlName="preferredRace" />
+      </div>
+      <div class="details-column-bold">Preferred Written Language(s):</div>
+      <div class="details-column">
+        <input matInput formControlName="prefferedWrittenLanguages" />
+      </div>
+    </div>
+
+    <div class="details-row">
+      <div class="details-column-bold">Preferred Name:</div>
+      <div class="details-column">
+        <input matInput formControlName="preferredName" />
+      </div>
+      <div class="details-column-bold">Ethincity:</div>
+      <div class="details-column">
+        <input matInput formControlName="ethincity" />
+      </div>
+      <div class="details-column-bold">Preferred Spoke Language(s):</div>
+      <div class="details-column">
+        <input matInput formControlName="prefferedSpokeLanguages" />
+      </div>
+    </div>
+
+    <div class="details-row">
+      <div class="details-column-bold">Gender:</div>
+      <div class="details-column">
+        <input matInput formControlName="gender" />
+      </div>
+      <div class="details-column-bold">Preferred Ethincity:</div>
+      <div class="details-column">
+        <input matInput formControlName="preferredEthincity" />
+      </div>
+      <div class="details-column-bold">Communication Impairment:</div>
+      <div class="details-column">
+        <input matInput formControlName="communicationImpairment" />
+      </div>
+    </div>
+
+    <div class="details-row">
+      <div class="details-column-bold">Gender Identity:</div>
+      <div class="details-column">
+        <input matInput formControlName="genderIdentity" />
+      </div>
+      <div class="details-column-bold">Residence Status</div>
+      <div class="details-column">
+        <input matInput formControlName="residenceStatus" />
+      </div>
+      <div class="details-column-bold">Evacuation Zone:</div>
+      <div class="details-column">
+        <input matInput formControlName="evacuationZone" />
+      </div>
+    </div>
+
+    <div class="details-row">
+      <div class="details-column-bold">Sexual Orientation:</div>
+      <div class="details-column">
+        <input matInput formControlName="sexualOrientation" />
+      </div>
+      <div class="details-column-bold">Income Status:</div>
+      <div class="details-column">
+        <input matInput formControlName="incomeStatus" />
+      </div>
+      <div class="details-column-bold">Service Interruption:</div>
+      <div class="details-column">
+        <input matInput formControlName="serviceInterruption" />
+      </div>
+    </div>
+
+    <div class="details-row">
+      <div class="details-column-bold">Date of Death:</div>
+      <div class="details-column">
+        <input matInput formControlName="dateOfDeath" />
+      </div>
+      <div class="details-column-bold">Cause of Death</div>
+      <div class="details-column">
+        <input matInput formControlName="causeOfDeath" />
+      </div>
+      <div class="details-column-bold">Actual Place of Death:</div>
+      <div class="details-column">
+        <input matInput formControlName="actualPlaceOfDeath" />
+      </div>
+    </div>
+
+    <div class="details-row">
+      <div class="details-column-bold">Alternate Phone:</div>
+      <div class="details-column">
+        <input matInput formControlName="alternatePhone" />
+      </div>
+      <div class="details-column-bold">Fax</div>
+      <div class="details-column">
+        <input matInput formControlName="fax" />
+      </div>
+      <div class="details-column-bold">Preferred Time of Call:</div>
+      <div class="details-column">
+        <input matInput formControlName="preferredTimeOfCall" />
+      </div>
+    </div>
+
+    <div class="details-row">
+      <div class="details-column-bold">Primary Email:</div>
+      <div class="details-column">
+        <input matInput formControlName="primaryEmail" />
+      </div>
+      <div class="details-column-bold">Preferred Email:</div>
+      <div class="details-column">
+        <input matInput formControlName="preferredEmail" />
+      </div>
+      <div class="details-column-bold">Alternate Email:</div>
+      <div class="details-column">
+        <input matInput formControlName="alternateEmail" />
+      </div>
+    </div>
+  </form>
+</div>
+
+
+
+
+
+<div class="communication-details-container">
+  <div class="details-header">
+    <h6 style="color: #007BFF; font-weight: bold;">Communication Details</h6>
+
+  </div>
+  <!--<h6 style="color: #007BFF; font-weight: bold;">Personal Details</h6>-->
+  <div class="communication-sections">
+    <!-- Phone Numbers -->
+    <div class="communication-section">
+      <div class="section-header">
+        Phone Numbers
+        <button mat-icon-button (click)="onEdit('phone')">
+          <mat-icon style="color:white;">edit</mat-icon>
+        </button>
+      </div>
+      <table mat-table [dataSource]="phoneNumbers" class="mat-elevation-z1">
+        <ng-container matColumnDef="type">
+          <th mat-header-cell *matHeaderCellDef> Phone Type </th>
+          <td mat-cell *matCellDef="let element"> {{ element.type }} </td>
+        </ng-container>
+        <ng-container matColumnDef="number">
+          <th mat-header-cell *matHeaderCellDef> Phone Number </th>
+          <td mat-cell *matCellDef="let element"> {{ element.number }} </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="phoneColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: phoneColumns;"></tr>
+      </table>
+    </div>
+
+    <!-- Address -->
+    <div class="communication-section">
+      <div class="section-header">
+        Address
+        <button mat-icon-button (click)="onEdit('address')">
+          <mat-icon style="color:white;">edit</mat-icon>
+        </button>
+      </div>
+      <table mat-table [dataSource]="addresses" class="mat-elevation-z1">
+        <ng-container matColumnDef="type">
+          <th mat-header-cell *matHeaderCellDef> Address Type </th>
+          <td mat-cell *matCellDef="let element"> {{ element.type }} </td>
+        </ng-container>
+        <ng-container matColumnDef="number">
+          <th mat-header-cell *matHeaderCellDef> Address Number </th>
+          <td mat-cell *matCellDef="let element"> {{ element.number }} </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="addressColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: addressColumns;"></tr>
+      </table>
+    </div>
+
+    <!-- Emails -->
+    <div class="communication-section">
+      <div class="section-header">
+        Emails
+        <button mat-icon-button (click)="onEdit('email')">
+          <mat-icon style="color:white;">edit</mat-icon>
+        </button>
+      </div>
+      <table mat-table [dataSource]="emails" class="mat-elevation-z1">
+        <ng-container matColumnDef="type">
+          <th mat-header-cell *matHeaderCellDef> Email Type </th>
+          <td mat-cell *matCellDef="let element"> {{ element.type }} </td>
+        </ng-container>
+        <ng-container matColumnDef="email">
+          <th mat-header-cell *matHeaderCellDef> Email </th>
+          <td mat-cell *matCellDef="let element"> {{ element.email }} </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="emailColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: emailColumns;"></tr>
+      </table>
+    </div>
+
+    <!-- Languages -->
+    <div class="communication-section">
+      <div class="section-header">
+        Languages
+        <button mat-icon-button (click)="onEdit('language')">
+          <mat-icon style="color:white;">edit</mat-icon>
+        </button>
+      </div>
+      <table mat-table [dataSource]="languages" class="mat-elevation-z1">
+        <ng-container matColumnDef="type">
+          <th mat-header-cell *matHeaderCellDef> Language Type </th>
+          <td mat-cell *matCellDef="let element"> {{ element.type }} </td>
+        </ng-container>
+        <ng-container matColumnDef="language">
+          <th mat-header-cell *matHeaderCellDef> Language </th>
+          <td mat-cell *matCellDef="let element"> {{ element.language }} </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="languageColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: languageColumns;"></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+
+<div class="details-container">
+  <!-- Header Section -->
+  <div class="details-header">
+    <h6 style="color: #007BFF; font-weight: bold;">Member Identifiers</h6>
+    <button mat-icon-button color="primary" (click)="toggleEditModeMemberIdentifier()">
+      <mat-icon>{{ editMode ? 'save' : 'edit' }}</mat-icon>
+    </button>
+  </div>
+
+  <!-- Read-Only Section -->
+  <div *ngIf="!editModeMI" class="read-only-section">
+    <div class="details-row">
+      <div class="details-column">Member ID:</div>
+      <div class="details-column-bold">A12344354</div>
+      <div class="details-column">Subscriber ID:</div>
+      <div class="details-column-bold">ER23344453</div>
+      <div class="details-column">Medicaid ID:</div>
+      <div class="details-column-bold">3423723299</div>
+    </div>
+    <div class="details-row">
+      <div class="details-column">MRN:</div>
+      <div class="details-column-bold">123456789</div>
+      <div class="details-column">Medicare ID:</div>
+      <div class="details-column-bold">123876590876</div>
+      <div class="details-column">Family ID:</div>
+      <div class="details-column-bold">9876543210</div>
+    </div>
+
+  </div>
+
+  <!-- Editable Section -->
+  <form *ngIf="editModeMI" [formGroup]="detailsForm" class="editable-section">
+    <div class="details-row">
+      <div class="details-column-bold">Member ID:</div>
+      <div class="details-column">
+        <input matInput formControlName="memberid" />
+      </div>
+      <div class="details-column-bold">Subscriber ID:</div>
+      <div class="details-column">
+        <input matInput type="date" formControlName="subscriberid" />
+      </div>
+      <div class="details-column-bold">Medicaid ID:</div>
+      <div class="details-column">
+        <input matInput formControlName="medicaidid" />
+      </div>
+    </div>
+
+    <div class="details-row">
+      <div class="details-column-bold">MRN:</div>
+      <div class="details-column">
+        <input matInput formControlName="mrn" />
+      </div>
+      <div class="details-column-bold">Medicare ID:</div>
+      <div class="details-column">
+        <input matInput formControlName="medicareid" />
+      </div>
+      <div class="details-column-bold">Family ID:</div>
+      <div class="details-column">
+        <input matInput formControlName="familyid" />
+      </div>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,12 @@
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.Application\bin\Debug\net8.0\CareNirvana.Application.deps.json
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.Application\bin\Debug\net8.0\CareNirvana.Application.dll
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.Application\bin\Debug\net8.0\CareNirvana.Application.pdb
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.Application\obj\Debug\net8.0\CareNirvana.Application.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.Application\obj\Debug\net8.0\CareNirvana.Application.AssemblyInfoInputs.cache
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.Application\obj\Debug\net8.0\CareNirvana.Application.AssemblyInfo.cs
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.Application\obj\Debug\net8.0\CareNirvana.Application.csproj.CoreCompileInputs.cache
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.Application\obj\Debug\net8.0\CareNirvana.Application.sourcelink.json
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.Application\obj\Debug\net8.0\CareNirvana.Application.dll
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.Application\obj\Debug\net8.0\refint\CareNirvana.Application.dll
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.Application\obj\Debug\net8.0\CareNirvana.Application.pdb
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.Application\obj\Debug\net8.0\ref\CareNirvana.Application.dll

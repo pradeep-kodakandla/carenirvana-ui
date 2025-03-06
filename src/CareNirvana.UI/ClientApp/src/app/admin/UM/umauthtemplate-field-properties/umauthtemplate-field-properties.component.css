@@ -1,0 +1,70 @@
+.card {
+  border: 1px solid #dee2e6;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.form-label {
+  font-weight: 500;
+}
+
+.form-check-label {
+  cursor: pointer;
+}
+
+.btn-sm {
+  font-size: 0.8rem;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  border: none;
+}
+
+.btn-success {
+  background-color: #198754;
+  border: none;
+}
+.p-3 {
+   padding: 0px !important; 
+}
+
+
+/* Outlined Form Fields */
+.form-outline {
+  position: relative;
+  margin-bottom: 0 !important;
+  width: 100%;
+}
+
+  .form-outline .form-label {
+    position: absolute;
+    top: -10px;
+    left: 12px;
+    background: white;
+    padding: 0 5px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #555;
+  }
+
+  .form-outline .form-control {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.3s ease-in-out;
+    background-color: white;
+  }
+
+    .form-outline .form-control:focus {
+      border-color: lightgray;
+      box-shadow: 0 0 5px rgba(30, 120, 171, 0.3);
+    }

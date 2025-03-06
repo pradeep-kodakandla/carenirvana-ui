@@ -1,0 +1,12 @@
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.PortalDomain\bin\Debug\net8.0\CareNirvana.PortalDomain.deps.json
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.PortalDomain\bin\Debug\net8.0\CareNirvana.PortalDomain.dll
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.PortalDomain\bin\Debug\net8.0\CareNirvana.PortalDomain.pdb
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.PortalDomain\obj\Debug\net8.0\CareNirvana.PortalDomain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.PortalDomain\obj\Debug\net8.0\CareNirvana.PortalDomain.AssemblyInfoInputs.cache
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.PortalDomain\obj\Debug\net8.0\CareNirvana.PortalDomain.AssemblyInfo.cs
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.PortalDomain\obj\Debug\net8.0\CareNirvana.PortalDomain.csproj.CoreCompileInputs.cache
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.PortalDomain\obj\Debug\net8.0\CareNirvana.PortalDomain.sourcelink.json
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.PortalDomain\obj\Debug\net8.0\CareNirvana.PortalDomain.dll
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.PortalDomain\obj\Debug\net8.0\refint\CareNirvana.PortalDomain.dll
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.PortalDomain\obj\Debug\net8.0\CareNirvana.PortalDomain.pdb
+C:\Users\PradeepKodakandla\Documents\icareui\src\CareNirvana.PortalDomain\obj\Debug\net8.0\ref\CareNirvana.PortalDomain.dll
