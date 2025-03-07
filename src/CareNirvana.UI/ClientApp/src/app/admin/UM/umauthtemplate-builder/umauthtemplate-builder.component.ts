@@ -220,7 +220,13 @@ export class UmauthtemplateBuilderComponent implements OnInit {
                   section.fields.sort((a, b) => (a.order || 0) - (b.order || 0));
                 }
                 // Add the section's identifier to the drop lists.
-                this.allDropLists.push(section.sectionName);
+                //this.allDropLists.push(section.sectionName);
+                if (typeof section.subsections === 'object' && !Array.isArray(section.subsections)) {
+                  this.allDropLists.push(...Object.keys(section.subsections).map(sub => section.sectionName + '.' + sub));
+                }
+                else
+                  this.allDropLists.push(section.sectionName);
+
               });
             }
             // Initialize available fields.
@@ -518,21 +524,68 @@ export class UmauthtemplateBuilderComponent implements OnInit {
     }
   }
 
+  //moveFieldToAvailable(field: TemplateField, sectionName: string, event: Event): void {
+  //  event.stopPropagation();
+
+  //  // Find the section and remove the field from it
+  //  const section = this.masterTemplate.sections?.find(sec => sec.sectionName === sectionName);
+  //  if (section) {
+  //    const index = section.fields.findIndex(f => f.id === field.id);
+  //    if (index > -1) {
+  //      section.fields.splice(index, 1);
+  //    }
+  //  }
+
+  //  // Move the field to available fields
+  //  this.availableFields.push(field);
+  //}
+
   moveFieldToAvailable(field: TemplateField, sectionName: string, event: Event): void {
     event.stopPropagation();
 
-    // Find the section and remove the field from it
-    const section = this.masterTemplate.sections?.find(sec => sec.sectionName === sectionName);
-    if (section) {
-      const index = section.fields.findIndex(f => f.id === field.id);
-      if (index > -1) {
-        section.fields.splice(index, 1);
+    // Check if the sectionName refers to a subsection
+    if (sectionName.includes('.')) {
+      const [mainSectionName, subSectionName] = sectionName.split('.');
+
+      // Find the main section
+      const mainSection = this.masterTemplate.sections?.find(sec => sec.sectionName === mainSectionName);
+
+      if (mainSection && mainSection.subsections) {
+        // Find the subsection
+        const subSection = mainSection.subsections[subSectionName];
+
+        if (subSection && subSection.fields) {
+          // Find and remove the field from the subsection
+          const index = subSection.fields.findIndex(f => f.id === field.id);
+          if (index > -1) {
+            subSection.fields.splice(index, 1);
+          }
+        }
+      }
+    } else {
+      // Handling for normal sections (not subsections)
+      const section = this.masterTemplate.sections?.find(sec => sec.sectionName === sectionName);
+      if (section && section.fields) {
+        const index = section.fields.findIndex(f => f.id === field.id);
+        if (index > -1) {
+          section.fields.splice(index, 1);
+        }
       }
     }
 
     // Move the field to available fields
     this.availableFields.push(field);
+
+    // 🔥 Force UI to update
+    this.forceAngularChangeDetection();
   }
+
+  forceAngularChangeDetection(): void {
+    setTimeout(() => {
+      this.masterTemplate = { ...this.masterTemplate }; // Trigger change detection
+    }, 0);
+  }
+
 
 
 }
