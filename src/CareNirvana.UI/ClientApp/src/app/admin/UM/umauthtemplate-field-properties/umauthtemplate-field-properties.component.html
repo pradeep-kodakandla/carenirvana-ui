@@ -2,10 +2,23 @@
   <div class="card-header bg-primary text-white">
     <h5 class="mb-0">Field Properties</h5>
   </div>
+
+  <!-- Section Name Update (only if a section is selected) -->
+  <!--<div *ngIf="selectedSection" class="mb-3 form-outline">
+    <label class="form-label">Section Name</label>
+    <input type="text" class="form-control" [(ngModel)]="selectedSection.sectionName" (change)="emitSectionUpdate()">
+  </div>-->
+
   <div class="card-body" style="padding:10px;">
     <div class="content-section">
+      <!-- Section Name Update (only if a section is selected) -->
+      <div *ngIf="selectedSection" class="mb-3 form-outline" style="padding-bottom:15px;">
+        <label class="form-label">Section Name</label>
+        <input type="text" class="form-control" [(ngModel)]="selectedSection.sectionName" (change)="emitSectionUpdate()">
+      </div>
+
       <!-- Label Input -->
-      <div *ngIf="selectedField.type !== 'button'" class="mb-3 form-outline" style="padding-bottom:15px;" >
+      <div *ngIf="selectedField.type !== 'button'" class="mb-3 form-outline" style="padding-bottom:15px;">
         <label class="form-label">Label</label>
         <input type="text" class="form-control" [(ngModel)]="selectedField.label" (change)="emitUpdate()" disabled>
       </div>

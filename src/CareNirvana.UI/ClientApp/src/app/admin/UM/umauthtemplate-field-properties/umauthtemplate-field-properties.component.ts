@@ -23,6 +23,12 @@ interface DropdownOption {
   value?: string; // Default field to hold dynamic data
 }
 
+interface TemplateSectionModel {
+  sectionName: string;
+  order: number;
+  fields: TemplateField[];
+  subsections?: { [key: string]: TemplateSectionModel };
+}
 
 @Component({
   selector: 'app-umauthtemplate-field-properties',
@@ -32,7 +38,9 @@ interface DropdownOption {
 export class UmauthtemplateFieldPropertiesComponent implements OnChanges {
 
   @Input() selectedField: TemplateField | null = null;
+  @Input() selectedSection: TemplateSectionModel | null = null;
   @Output() fieldUpdated = new EventEmitter<TemplateField>();
+  @Output() sectionUpdated = new EventEmitter<TemplateSectionModel>();
 
   dropdownOptions: DropdownOption[] = [];
   private previousDatasource: string | null = null; // Prevents continuous API calls
@@ -92,6 +100,13 @@ export class UmauthtemplateFieldPropertiesComponent implements OnChanges {
       }
     );
   }
+
+  emitSectionUpdate() {
+    if (this.selectedSection) {
+      this.sectionUpdated.emit(this.selectedSection);
+    }
+  }
+
 
 
 

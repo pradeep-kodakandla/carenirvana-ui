@@ -132,7 +132,7 @@
     <!-- Render dynamic sections from masterTemplate.sections -->
     <div class="accordion master-template-content" *ngIf="masterTemplate.sections && masterTemplate.sections.length">
       <div class="accordion-item" *ngFor="let section of masterTemplate.sections" [class.active]="activeSections[section.sectionName]">
-        <div class="accordion-header" (click)="toggleSection(section.sectionName)">
+        <div class="accordion-header" (click)="toggleSection(section.sectionName); selectSection(section)">
           <span class="section-title">{{ section.sectionName }}</span>
           <button class="delete-section" (click)="deleteAccordionSection(section.sectionName, $event)" matTooltip="Delete Section">
             <mat-icon>close</mat-icon>
@@ -163,17 +163,15 @@
                       <ng-container *ngIf="field.type !== 'checkbox'; else checkboxSubField">
                         <ng-container *ngIf="field.layout === 'row'; else normalSubField">
                           <div class="field-item row-container" style="display: flex; gap: 10px; align-items: center;">
-                            <div *ngFor="let subField of (field.fields || [])">
+                            <div *ngFor="let subField of (field.fields || [])" style="display: flex; gap: 10px; align-items: center;">
                               <ng-container *ngIf="subField.type !== 'checkbox'; else checkboxRowSubField">
                                 <div class="form-outline">
-                                  <div class="label-container">
-                                    <label class="form-label">{{ subField.displayName }}</label>
-                                    <button mat-icon-button class="delete-icon" (click)="deleteField(subField, section.sectionName + '.' + subSection.sectionName, $event)">
-                                      <span>x</span>
-                                    </button>
-                                  </div>
+                                  <label class="form-label">{{ subField.displayName }}</label>
                                   <input [type]="getInputType(subField.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="subField.displayName" />
                                 </div>
+                                <button mat-icon-button style="padding:0px;width:auto;" class="delete-icon" (click)="moveFieldToAvailable(field, section.sectionName, $event)">
+                                  <span>x</span>
+                                </button>
                               </ng-container>
                               <ng-template #checkboxRowSubField>
                                 <div class="form-outline">
@@ -186,14 +184,12 @@
                         <ng-template #normalSubField>
                           <div class="field-item">
                             <div class="form-outline">
-                              <div class="label-container">
-                                <label class="form-label">{{ field.displayName }}</label>
-                                <button mat-icon-button class="delete-icon" (click)="deleteField(field, section.sectionName + '.' + subSection.sectionName, $event)">
-                                  <span>x</span>
-                                </button>
-                              </div>
+                              <label class="form-label">{{ field.displayName }}</label>
                               <input [type]="getInputType(field.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="field.displayName" />
                             </div>
+                            <button mat-icon-button style="padding:0px;width:auto;" class="delete-icon" (click)="moveFieldToAvailable(field, section.sectionName, $event)">
+                              <span>x</span>
+                            </button>
                           </div>
                         </ng-template>
                       </ng-container>
@@ -238,14 +234,12 @@
                         <div *ngFor="let subField of (field.fields || [])">
                           <ng-container *ngIf="subField.type !== 'checkbox'; else checkboxRowSubField">
                             <div class="form-outline">
-                              <div class="label-container">
-                                <label class="form-label">{{ subField.displayName }}</label>
-                                <button mat-icon-button class="delete-icon" (click)="deleteField(subField, section.sectionName, $event)">
-                                  <span>x</span>
-                                </button>
-                              </div>
+                              <label class="form-label">{{ subField.displayName }}</label>
                               <input [type]="getInputType(subField.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="subField.displayName" />
                             </div>
+                            <button mat-icon-button style="padding:0px;width:auto;" class="delete-icon" (click)="moveFieldToAvailable(field, section.sectionName, $event)">
+                              <span>x</span>
+                            </button>
                           </ng-container>
                           <ng-template #checkboxRowSubField>
                             <div class="form-outline">
@@ -258,14 +252,13 @@
                     <ng-template #normalField>
                       <div class="field-item">
                         <div class="form-outline">
-                          <div class="label-container">
-                            <label class="form-label">{{ field.displayName }}</label>
-                            <button mat-icon-button class="delete-icon" (click)="deleteField(field, section.sectionName, $event)">
-                              <span>x</span>
-                            </button>
-                          </div>
+                          <label class="form-label">{{ field.displayName }}</label>
+
                           <input [type]="getInputType(field.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="field.displayName" />
                         </div>
+                        <button mat-icon-button style="padding:0px;width:auto;" class="delete-icon" (click)="moveFieldToAvailable(field, section.sectionName, $event)">
+                          <span>x</span>
+                        </button>
                       </div>
                     </ng-template>
                   </ng-container>
@@ -292,17 +285,17 @@
                 <ng-container *ngIf="field.type !== 'checkbox'; else checkboxField2">
                   <ng-container *ngIf="field.layout === 'row'; else normalField2">
                     <div class="field-item row-container" style="display: flex; gap: 10px; align-items: center;">
-                      <div *ngFor="let subField of (field.fields || [])">
+                      <div *ngFor="let subField of (field.fields || [])" style="display: flex; gap: 10px; align-items: center;">
                         <ng-container *ngIf="subField.type !== 'checkbox'; else checkboxRowSubField2">
                           <div class="form-outline">
-                            <div class="label-container">
-                              <label class="form-label">{{ subField.displayName }}</label>
-                              <button mat-icon-button class="delete-icon" (click)="deleteField(subField, section.sectionName, $event)">
-                                <span>x</span>
-                              </button>
-                            </div>
+
+                            <label class="form-label">{{ subField.displayName }}</label>
+
                             <input [type]="getInputType(subField.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="subField.displayName" />
                           </div>
+                          <button mat-icon-button style="padding:0px;width:auto;" class="delete-icon" (click)="moveFieldToAvailable(field, section.sectionName, $event)">
+                            <span>x</span>
+                          </button>
                         </ng-container>
                         <ng-template #checkboxRowSubField2>
                           <div class="form-outline">
@@ -315,14 +308,14 @@
                   <ng-template #normalField2>
                     <div class="field-item">
                       <div class="form-outline">
-                        <div class="label-container">
-                          <label class="form-label">{{ field.displayName }}</label>
-                          <button mat-icon-button class="delete-icon" (click)="deleteField(field, section.sectionName, $event)">
-                            <span>x</span>
-                          </button>
-                        </div>
+
+                        <label class="form-label">{{ field.displayName }}</label>
+
                         <input [type]="getInputType(field.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="field.displayName" />
                       </div>
+                      <button mat-icon-button class="delete-icon" style="padding: 0px; width: auto;" (click)="moveFieldToAvailable(field, section.sectionName, $event)">
+                        <span>x</span>
+                      </button>
                     </div>
                   </ng-template>
                 </ng-container>
@@ -341,18 +334,25 @@
       </div>
     </div>
     <!-- Save Template Button with Fixed Position -->
-    <div class="save-button-container">
-      <button mat-raised-button color="primary" (click)="saveTemplate()">Save</button>
-      <button mat-raised-button color="primary" (click)="cancel()">Cancel</button>
+    <div class="save-button-container" *ngIf="masterTemplate.sections && masterTemplate.sections.length">
+      <button mat-raised-button class="provider-button" (click)="saveTemplate()">Save</button>
+      <button mat-raised-button class="provider-button" (click)="cancel()">Cancel</button>
     </div>
 
   </div>
   <!-- Right Column: Field Properties -->
   <div class="right-column">
     <ng-container *ngIf="selectedField">
-      <app-umauthtemplate-field-properties [selectedField]="selectedField"
+      <!--<app-umauthtemplate-field-properties [selectedField]="selectedField"
                                            (fieldUpdated)="updateField($event)">
+      </app-umauthtemplate-field-properties>-->
+      <app-umauthtemplate-field-properties [selectedField]="selectedField"
+                                           [selectedSection]="selectedSectionObject"
+                                           (fieldUpdated)="updateField($event)"
+                                           (sectionUpdated)="updateSection($event)">
       </app-umauthtemplate-field-properties>
+
+
     </ng-container>
   </div>
 </div>

@@ -10,6 +10,7 @@
   backdrop-filter: blur(10px); /* Blur effect for glassiness */
   border: 1px solid rgba(255, 255, 255, 0.2); /* Subtle border */
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1); /* Soft shadow */
+  max-width: 100%;
 }
 
 .card {
@@ -28,7 +29,6 @@
 /* Left Column – merged & enhanced */
 .left-column {
   flex: 2;
-  
   background: rgba(255, 255, 255, 0.2); /* Light glassy effect */
   backdrop-filter: blur(12px);
   border-radius: 5px;
@@ -247,6 +247,13 @@
   }
 }
 
+@media (min-width: 1400px) {
+  .container {
+    max-width: 1980px; /* Increase the width */
+  }
+}
+
+
 /* ==========================================================================
    Outlined Form Fields
    ========================================================================== */
@@ -359,7 +366,7 @@ select[disabled] {
 
 .save-button-container {
   position: sticky;
-  bottom: 0;
+  bottom: 18px;
   text-align: right;
   padding: 10px;
   background-color: #fff;
@@ -452,3 +459,24 @@ select[disabled] {
   .delete-section:hover {
     background-color: #d0d0d0;
   }
+
+
+
+
+/*
+.field-content {
+  flex-grow: 1;
+}
+
+.field-input {
+  width: 100%;
+  height: 35px;
+  border-radius: 4px;
+}*/
+
+.delete-icon {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: red;
+}

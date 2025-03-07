@@ -1,4 +1,4 @@
-import { Component, ViewChild, OnInit } from '@angular/core';
+import { Component, ViewChild, OnInit, EventEmitter, Output } from '@angular/core';
 import { CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { TemplateService } from 'src/app/service/template.service';
 import { KeyValue } from '@angular/common';
@@ -62,9 +62,11 @@ export class UmauthtemplateBuilderComponent implements OnInit {
   visibleColumns: string[] = [];
   editingRowId: string | null = null;
   dataSource = new MatTableDataSource<any>();
+  selectedSectionObject: TemplateSectionModel | null = null;
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
+  @Output() menuCollapse: EventEmitter<void> = new EventEmitter<void>();
 
   isFocused = false;
   isVisible = false;
@@ -130,6 +132,12 @@ export class UmauthtemplateBuilderComponent implements OnInit {
     }
   }
 
+  selectSection(section: TemplateSectionModel) {
+    this.selectedSectionObject = section; // Directly reference the selected section
+  }
+
+
+
   onFocus() {
     this.isFocused = true;
   }
@@ -141,6 +149,10 @@ export class UmauthtemplateBuilderComponent implements OnInit {
   openForm(mode: 'add' | 'edit' | 'view', element: any = null) {
     this.formMode = mode;
     this.isVisible = true;
+
+    // Emit event to collapse menu
+    this.menuCollapse.emit();
+
     if (mode === 'edit' && element) {
       this.newTemplateName = element.TemplateName;
       this.selectedTemplateId = element.Id;
@@ -296,27 +308,56 @@ export class UmauthtemplateBuilderComponent implements OnInit {
     }, 10);
   }
 
-  updateField(updatedField: TemplateField) {
-    // Ensure displayName exists in the updated field.
-    if (!updatedField.displayName) {
-      updatedField.displayName = updatedField.label;
-    }
-    if (this.selectedSection === 'available') {
-      const index = this.availableFields.findIndex((f: TemplateField) => f.id === updatedField.id);
-      if (index > -1) {
-        this.availableFields[index] = updatedField;
+  //updateField(updatedField: TemplateField) {
+  //  // Ensure displayName exists in the updated field.
+  //  if (!updatedField.displayName) {
+  //    updatedField.displayName = updatedField.label;
+  //  }
+  //  if (this.selectedSection === 'available') {
+  //    const index = this.availableFields.findIndex((f: TemplateField) => f.id === updatedField.id);
+  //    if (index > -1) {
+  //      this.availableFields[index] = updatedField;
+  //    }
+  //  } else if (this.masterTemplate.sections && Array.isArray(this.masterTemplate.sections)) {
+  //    const section = this.masterTemplate.sections.find(sec => sec.sectionName === this.selectedSection);
+  //    if (section && section.fields) {
+  //      const index = section.fields.findIndex((f: TemplateField) => f.id === updatedField.id);
+  //      if (index > -1) {
+  //        section.fields[index] = updatedField;
+  //      }
+  //    }
+  //  }
+  //  this.selectedField = updatedField;
+  //}
+
+  updateField(updatedField: TemplateField | TemplateSectionModel) {
+    if ('sectionName' in updatedField && this.selectedSectionObject) {
+      // Update section name
+      const sectionIndex = this.masterTemplate.sections?.findIndex(sec => sec.sectionName === this.selectedSectionObject!.sectionName);
+      if (sectionIndex !== undefined && sectionIndex > -1) {
+        this.masterTemplate.sections![sectionIndex].sectionName = updatedField.sectionName;
       }
-    } else if (this.masterTemplate.sections && Array.isArray(this.masterTemplate.sections)) {
-      const section = this.masterTemplate.sections.find(sec => sec.sectionName === this.selectedSection);
-      if (section && section.fields) {
-        const index = section.fields.findIndex((f: TemplateField) => f.id === updatedField.id);
+      this.selectedSectionObject = { ...updatedField }; // Ensure UI updates
+    } else if ('id' in updatedField) {
+      // It's a field update
+      if (this.selectedSection === 'available') {
+        const index = this.availableFields.findIndex((f: TemplateField) => f.id === updatedField.id);
         if (index > -1) {
-          section.fields[index] = updatedField;
+          this.availableFields[index] = updatedField;
+        }
+      } else if (this.masterTemplate.sections && Array.isArray(this.masterTemplate.sections)) {
+        const section = this.masterTemplate.sections.find(sec => sec.sectionName === this.selectedSection);
+        if (section && section.fields) {
+          const index = section.fields.findIndex((f: TemplateField) => f.id === updatedField.id);
+          if (index > -1) {
+            section.fields[index] = updatedField;
+          }
         }
       }
+      this.selectedField = updatedField;
     }
-    this.selectedField = updatedField;
   }
+
 
   deleteField(field: TemplateField, sectionName: string, event: Event): void {
     event.stopPropagation();
@@ -468,6 +509,30 @@ export class UmauthtemplateBuilderComponent implements OnInit {
     return Object.values(subsections).sort((a, b) => (a.order || 0) - (b.order || 0));
   }
 
+  updateSection(updatedSection: TemplateSectionModel) {
+    if (this.masterTemplate.sections) {
+      const index = this.masterTemplate.sections.findIndex(sec => sec.sectionName === this.selectedSectionObject?.sectionName);
+      if (index !== -1) {
+        this.masterTemplate.sections[index].sectionName = updatedSection.sectionName;
+      }
+    }
+  }
+
+  moveFieldToAvailable(field: TemplateField, sectionName: string, event: Event): void {
+    event.stopPropagation();
+
+    // Find the section and remove the field from it
+    const section = this.masterTemplate.sections?.find(sec => sec.sectionName === sectionName);
+    if (section) {
+      const index = section.fields.findIndex(f => f.id === field.id);
+      if (index > -1) {
+        section.fields.splice(index, 1);
+      }
+    }
+
+    // Move the field to available fields
+    this.availableFields.push(field);
+  }
 
 
 }

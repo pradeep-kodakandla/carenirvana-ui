@@ -301,10 +301,22 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
 
       const componentFactory = this.componentFactoryResolver.resolveComponentFactory(component);
       this.dynamicContainer.clear();
-      this.dynamicContainer.createComponent(componentFactory);
+      const componentRef =this.dynamicContainer.createComponent(componentFactory);
+      // Check if the loaded component is UmauthtemplateBuilderComponent
+      if (componentKey === 'Auth Template') {
+       // Subscribe to the menuCollapse event to keep collapsing if needed
+        (componentRef.instance as UmauthtemplateBuilderComponent).menuCollapse.subscribe(() => {
+          this.isMenuCollapsed = true; // Collapse menu when "Edit" or "Add" is clicked
+        });
+      }
     } catch (error) {
       console.error(`Error loading component ${componentKey}:`, error);
     }
+  }
+
+  toggleMenu(): void {
+    //console.log('toggleMenu', !this.isMenuCollapsed);
+    this.isMenuCollapsed = !this.isMenuCollapsed; // Collapses the menu
   }
 
   private loadInitialComponent(): void {
@@ -324,8 +336,8 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
     }
   }
 
-  // New method to toggle menu visibility manually if needed
-  toggleMenu(): void {
-    this.isMenuCollapsed = !this.isMenuCollapsed;
-  }
+  //// New method to toggle menu visibility manually if needed
+  //toggleMenu(): void {
+  //  this.isMenuCollapsed = !this.isMenuCollapsed;
+  //}
 }
