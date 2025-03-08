@@ -494,8 +494,8 @@
               </div>
               <!-- Save Button -->
               <div class="text-center">
-                <button mat-raised-button color="primary" (click)="saveData(authForm)">Save</button>
-                <button mat-raised-button color="accent" (click)="loadData()">Load</button>
+                <button mat-raised-button class="auth-button " (click)="saveData(authForm)">Save</button>
+                <button mat-raised-button class="auth-button " (click)="loadData()">Load</button>
               </div>
 
               <!-- Status Details -->
@@ -512,30 +512,12 @@
         </div>
       </mat-step>
       <mat-step label="Decision Details">
-        <div class="decision-details-layout">
-
-          <!-- Left Side: Tabs -->
-          <div class="tabs-container">
-            <div class="tabs">
-              <div *ngFor="let tab of tabs"
-                   (click)="selectTab(tab.id)"
-                   [class.active]="selectedTabId === tab.id"
-                   class="tab">
-                {{ tab.name }}
-              </div>
-            </div>
-          </div>
-
-          <!-- Right Side: Decision Details -->
-          <div class="tab-content">
-            <app-decisiondetails [decisionData]="decisionData"></app-decisiondetails>
-          </div>
-
-        </div>
+        <app-decisiondetails [decisionData]="decisionData"
+                             (decisionSaved)="handleDecisionDataSaved($event)">></app-decisiondetails>
       </mat-step>
-
-
       <mat-step label="MD Review"></mat-step>
+      <mat-step label="Notes"></mat-step>
+      <mat-step label="Documents"></mat-step>
       <mat-step label="Close"></mat-step>
     </mat-horizontal-stepper>
   </div>

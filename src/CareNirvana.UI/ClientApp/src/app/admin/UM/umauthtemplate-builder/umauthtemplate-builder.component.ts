@@ -430,7 +430,7 @@ export class UmauthtemplateBuilderComponent implements OnInit {
         this.snackBar.open('Auth Template saved successfully!', 'Close', {
           horizontalPosition: 'center',
           verticalPosition: 'top',
-          duration: 500,
+          duration: 5000,
           panelClass: ['success-snackbar']
         });
       },

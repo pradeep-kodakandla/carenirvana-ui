@@ -3,22 +3,11 @@ import { NgForm } from '@angular/forms';
 import { MemberService } from 'src/app/service/shared-member.service';
 import { AuthService } from 'src/app/service/auth.service';
 import { AuthNumberService } from 'src/app/service/auth-number-gen.service';
-
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { CrudService } from 'src/app/service/crud.service';
 import { MatDialog } from '@angular/material/dialog';
 import { ProviderSearchComponent } from 'src/app/Provider/provider-search/provider-search.component';
 
-type DecisionKeys = '33501' | '23310';
-
-interface Tab {
-  id: string;
-  name: string;
-}
-
-interface Decision {
-  icd10Code: string;
-  description: string;
-}
 
 @Component({
   selector: 'app-authorization',
@@ -35,6 +24,7 @@ export class AuthorizationComponent {
     private authNumberService: AuthNumberService,
     private dialog: MatDialog,
     private crudService: CrudService,
+    private snackBar: MatSnackBar
   ) { }
 
   highlightedSection: string | null = null;
@@ -63,35 +53,6 @@ export class AuthorizationComponent {
   additionalInfo = [
     { dateIndicator: '', providerName: '', memberName: '', authNo: '' }
   ];
-  tabs: Tab[] = [
-    { id: '33501', name: '33501 (CPT) 01/01/2024 - 12/31/2024 - Pending' },
-    { id: '23310', name: '23310 (ICD) 01/01/2024 - 12/31/2024 - Completed' }
-  ];
-  selectedTabId: string = this.tabs[0].id;
-
-  selectTab(tabId: string): void {
-    this.selectedTabId = tabId;
-
-    // Fetch the JSON dynamically based on tab selection
-    this.loadDecisionData(tabId);
-  }
-
-  loadDecisionData(tabId: string): void {
-    // Simulate API call to fetch JSON based on tabId
-    this.crudService.getData('decisions', tabId).subscribe(
-      (data: any) => {
-        if (data && Object.keys(data).length > 0) {
-          this.decisionData = data;
-        } else {
-          this.decisionData = {}; // Load empty form when no data is found
-        }
-      },
-      (error) => {
-        console.error('Error fetching decision data:', error);
-        this.decisionData = {}; // Load empty form in case of an error
-      }
-    );
-  }
 
   @Output() cancel = new EventEmitter<void>();
 
@@ -153,6 +114,13 @@ export class AuthorizationComponent {
             this.sectionOrder = Object.keys(this.config).filter(section => !section.toLowerCase().includes('decision')).sort(
               (a, b) => (this.config[a].order || 0) - (this.config[b].order || 0)
             );
+
+            //this.decisionData = {
+            //  serviceDetails: this.config['Service Details'] || {},
+            //  decisionDetails: this.config['Decision Details'] || {},
+            //  decisionNotes: this.config['Decision Notes'] || {},
+            //  decisionMemberInfo: this.config['Member Provider Decision Info'] || {}
+            //};
             console.log('Parsed config:', this.config);
           } catch (error) {
             console.error('Error parsing JSON content:', error);
@@ -266,6 +234,7 @@ export class AuthorizationComponent {
           });
           // Enable dynamic sections to load
           this.enrollmentSelect = true;
+          //this.prepareDecisionData();
         },
         error: (err) => {
           console.error('Error fetching template:', err);
@@ -278,6 +247,7 @@ export class AuthorizationComponent {
     }
   }
 
+
   createEmptyEntry(fields: any[]): any {
     let entry: any = {};
     fields.forEach(field => {
@@ -287,6 +257,10 @@ export class AuthorizationComponent {
   }
 
   toggleSection(section: string): void {
+    if (!section) {
+      console.error("toggleSection received an undefined section.");
+      return;
+    }
     this.formData[section].expanded = !this.formData[section].expanded;
   }
 
@@ -338,9 +312,22 @@ export class AuthorizationComponent {
 
   saveData(form: NgForm): void {
     if (form.invalid) {
+      // Mark all fields as touched to trigger validation messages
       Object.keys(form.controls).forEach(field => {
         form.controls[field].markAsTouched({ onlySelf: true });
       });
+
+      // Delay execution to allow Angular to render validation messages
+      setTimeout(() => {
+        // Get all visible validation messages
+        const errorElements = Array.from(document.querySelectorAll('.text-danger'))
+          .filter(el => el.clientHeight > 0); // Ensure only visible elements are considered
+
+        if (errorElements.length > 0) {
+          errorElements[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 200); // Slight delay to allow validation messages to be displayed
+
       return;
     }
     this.authNumber = this.authNumberService.generateAuthNumber(9, true, true, false, false);
@@ -354,13 +341,31 @@ export class AuthorizationComponent {
     this.authService.saveAuthDetail(jsonData).subscribe(
       response => {
         console.log('Data saved successfully:', response);
+        this.snackBar.open('Auth saved successfully!', 'Close', {
+          horizontalPosition: 'center',
+          verticalPosition: 'top',
+          duration: 5000,
+          panelClass: ['success-snackbar']
+        });
+        // ✅ Step 1: Extract decision-related data from `config`
+        this.decisionData = {
+          serviceDetails: this.formData['Service Details'] || {}, // This comes from formData
+          decisionDetails: this.config['Decision Details'] || {}, // These come from config
+          decisionNotes: this.config['Decision Notes'] || {},
+          decisionMemberInfo: this.config['Member Provider Decision Info'] || {}
+        };
+
+        console.log("Updated decisionData:", this.decisionData);
+
+        // ✅ Step 2: Move to "Decision Details" stepper
+        this.stepperSelectedIndex = 1; // Navigate to Decision Details step
       },
       error => {
         console.error('Error saving data:', error);
       }
     );
 
-    localStorage.setItem('savedAuthData', JSON.stringify(jsonData));
+    //localStorage.setItem('savedAuthData', JSON.stringify(jsonData));
     console.log("Data saved locally:", jsonData);
   }
 
@@ -381,7 +386,7 @@ export class AuthorizationComponent {
   //    authNumber: this.authNumber
   //  };
 
-   
+
 
   //  this.authService.saveAuthDetail(jsonData).subscribe(
   //    response => {
@@ -480,5 +485,25 @@ export class AuthorizationComponent {
     return this.config[section].fields.filter((field: any) => field.layout === 'row');
   }
 
+  /*Decision Logic*/
+  prepareDecisionData(): void {
+    console.log("Decision Data to component:", this.formData);
+    this.decisionData = {
+      serviceDetails: this.formData['Service Details'] || {},
+      decisionDetails: this.formData['Decision Details'] || {},
+      decisionNotes: this.formData['Decision Notes'] || {},
+      decisionMemberInfo: this.formData['Member Provider Decision Info'] || {}
+    };
+  }
+
+  // Receive saved decision data from DecisionDetailsComponent
+  handleDecisionDataSaved(updatedData: any): void {
+    this.formData['Service Details'] = updatedData.serviceDetails || {};
+    this.formData['Decision Details'] = updatedData.decisionDetails || {};
+    this.formData['Decision Notes'] = updatedData.decisionNotes || {};
+    this.formData['Member Provider Decision Info'] = updatedData.decisionMemberInfo || {};
+
+    console.log('Updated decision data received:', updatedData);
+  }
 
 }
