@@ -81,7 +81,7 @@
 .col-md-3 {
   flex: 0 0 25%;
   max-width: 25%;
-  padding: 10px;
+  /*padding: 10px;*/
 }
 
 /* Form Controls */
@@ -92,7 +92,7 @@
 
 .form-control {
   width: 100%;
-  padding: 8px;
+  /*padding: 8px;*/
   border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 14px;
@@ -120,13 +120,16 @@
   }
 }
 
-
+.mb-3{
+    margin-bottom:5px !important;
+}
 
 /* Outlined Form Fields */
 .form-outline {
   position: relative;
   margin-bottom: 0 !important;
   width: 100%;
+  padding-bottom:12px;
 }
 
   .form-outline .form-label {
@@ -135,14 +138,14 @@
     left: 12px;
     background: white;
     padding: 0 5px;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: bold;
     color: #555;
   }
 
   .form-outline .form-control {
     width: 100%;
-    padding: 10px;
+    /*padding: 10px;*/
     border: 2px solid #ccc;
     border-radius: 5px;
     font-size: 14px;
@@ -155,8 +158,6 @@
       border-color: lightgray;
       box-shadow: 0 0 5px rgba(30, 120, 171, 0.3);
     }
-
-
 
 /* Section Styling */
 .section-card {

@@ -51,8 +51,16 @@ export class AuthorizationComponent {
 
   selectedDiv: number | null = null;
   additionalInfo = [
-    { dateIndicator: '', providerName: '', memberName: '', authNo: '' }
+    { label: "Auth No.", value: "5N7CBIHL3" },
+    { label: "Auth Type", value: "Standard" },
+    { label: "Due Date", value: "2024-03-15" },
+    { label: "Days Left", value: "3" },
+    { label: "Request Priority", value: "High" },
+    { label: "Auth Owner", value: "John Doe" },
+    { label: "Auth Status", value: "Pending" },
+    { label: "Overall Status", value: "Approved" }
   ];
+
 
   @Output() cancel = new EventEmitter<void>();
 
@@ -347,17 +355,31 @@ export class AuthorizationComponent {
           duration: 5000,
           panelClass: ['success-snackbar']
         });
-        // ✅ Step 1: Extract decision-related data from `config`
-        this.decisionData = {
-          serviceDetails: this.formData['Service Details'] || {}, // This comes from formData
-          decisionDetails: this.config['Decision Details'] || {}, // These come from config
-          decisionNotes: this.config['Decision Notes'] || {},
-          decisionMemberInfo: this.config['Member Provider Decision Info'] || {}
-        };
 
+        // Initialize decisionData with entries arrays
+        this.decisionData = {
+          serviceDetails: { ...this.formData['Service Details'] || {} },
+          decisionDetails: {
+            ...this.config['Decision Details'] || {},
+            entries: this.formData['Service Details']?.entries.map((service: any, index: number) => ({
+              decisionNumber: (index + 1).toString(),
+              serviceCode: service.serviceCode || 'N/A',
+              fromDate: service.fromDate || '',
+              toDate: service.toDate || ''
+            })) || []
+          },
+          decisionNotes: {
+            ...this.config['Decision Notes'] || {},
+            entries: this.formData['Service Details']?.entries.map(() => ({})) || []
+          },
+          decisionMemberInfo: {
+            ...this.config['Member Provider Decision Info'] || {},
+            entries: this.formData['Service Details']?.entries.map(() => ({})) || []
+          }
+        };
         console.log("Updated decisionData:", this.decisionData);
 
-        // ✅ Step 2: Move to "Decision Details" stepper
+        // Move to "Decision Details" stepper
         this.stepperSelectedIndex = 1; // Navigate to Decision Details step
       },
       error => {
@@ -368,35 +390,6 @@ export class AuthorizationComponent {
     //localStorage.setItem('savedAuthData', JSON.stringify(jsonData));
     console.log("Data saved locally:", jsonData);
   }
-
-  //saveData(form: NgForm): void {
-  //  if (form.invalid) {
-  //    Object.keys(form.controls).forEach(field => {
-  //      form.controls[field].markAsTouched({ onlySelf: true });
-  //    });
-  //    return;
-  //  }
-
-  //  this.authNumber = this.authNumberService.generateAuthNumber(9, true, true, false, false);
-  //  console.log("Auth Number:", this.authNumber);
-
-  //  const jsonData = {
-  //    Data: this.formData, // Save only the form data, not an array
-  //    CreatedOn: new Date().toISOString(),
-  //    authNumber: this.authNumber
-  //  };
-
-
-
-  //  this.authService.saveAuthDetail(jsonData).subscribe(
-  //    response => {
-  //      console.log('Data saved successfully:', response);
-  //    },
-  //    error => {
-  //      console.error('Error saving data:', error);
-  //    }
-  //  );
-  //}
 
   loadData(): void {
     const savedData = localStorage.getItem('savedAuthData');
@@ -485,25 +478,32 @@ export class AuthorizationComponent {
     return this.config[section].fields.filter((field: any) => field.layout === 'row');
   }
 
-  /*Decision Logic*/
-  prepareDecisionData(): void {
-    console.log("Decision Data to component:", this.formData);
-    this.decisionData = {
-      serviceDetails: this.formData['Service Details'] || {},
-      decisionDetails: this.formData['Decision Details'] || {},
-      decisionNotes: this.formData['Decision Notes'] || {},
-      decisionMemberInfo: this.formData['Member Provider Decision Info'] || {}
-    };
-  }
-
   // Receive saved decision data from DecisionDetailsComponent
-  handleDecisionDataSaved(updatedData: any): void {
-    this.formData['Service Details'] = updatedData.serviceDetails || {};
-    this.formData['Decision Details'] = updatedData.decisionDetails || {};
-    this.formData['Decision Notes'] = updatedData.decisionNotes || {};
-    this.formData['Member Provider Decision Info'] = updatedData.decisionMemberInfo || {};
+  handleDecisionDataSaved(updatedDecisionData: any): void {
+    // Update only the entries for Decision Details
+    if (this.formData['Decision Details']) {
+      this.formData['Decision Details'].entries = updatedDecisionData.decisionDetails.entries;
+    } else {
+      this.formData['Decision Details'] = { entries: updatedDecisionData.decisionDetails.entries };
+    }
 
-    console.log('Updated decision data received:', updatedData);
+    // Update only the entries for Decision Notes
+    if (this.formData['Decision Notes']) {
+      this.formData['Decision Notes'].entries = updatedDecisionData.decisionNotes.entries;
+    } else {
+      this.formData['Decision Notes'] = { entries: updatedDecisionData.decisionNotes.entries };
+    }
+
+    // Update only the entries for Member Provider Decision Info
+    if (this.formData['Member Provider Decision Info']) {
+      this.formData['Member Provider Decision Info'].entries = updatedDecisionData.decisionMemberInfo.entries;
+    } else {
+      this.formData['Member Provider Decision Info'] = { entries: updatedDecisionData.decisionMemberInfo.entries };
+    }
+
+    console.log('Updated decision data received:', updatedDecisionData);
+    console.log('Updated formData:', this.formData);
+    this.saveData(this.formData);
   }
 
 }

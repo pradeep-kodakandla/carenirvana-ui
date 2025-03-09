@@ -13,16 +13,14 @@
 
   <!-- Right Side: Decision Details -->
   <div class="tab-content">
-    <!-- Dynamic Form Fields -->
     <div class="decision-details-container">
-
       <mat-card *ngFor="let section of sections" class="section-card">
-        <div class="card-header" (click)="toggleSection(section)">
-          <mat-icon>{{ section.expanded ? 'expand_less' : 'expand_more' }}</mat-icon>
-          <h6 class="section-title">{{ section.sectionName | titlecase }}</h6>
+
+        <div class="form-outline">
+          <label class="form-label">{{ section.sectionName }}</label>
         </div>
 
-        <div *ngIf="section.expanded" class="section-content">
+        <div class="section-content">
           <div class="row">
             <div class="col-md-3 mb-3" *ngFor="let field of section.fields; let i = index">
               <div class="form-outline">
@@ -31,76 +29,21 @@
                 </label>
 
                 <ng-container [ngSwitch]="field.type">
+                  <input *ngSwitchCase="'text'" type="text" class="form-control"
+                         [(ngModel)]="field.value">
+                  <input *ngSwitchCase="'datetime-local'" type="datetime-local" class="form-control"
+                         [(ngModel)]="field.value">
+                  <select *ngSwitchCase="'select'" class="form-control"
+                          [(ngModel)]="field.value">
+                    <option *ngFor="let option of field.options" [value]="option.value">
+                      {{ option.label }}
+                    </option>
 
-                  <!-- Text Input -->
-                  <div *ngSwitchCase="'text'">
-                    <input type="text" class="form-control"
-                           [id]="field.id + '_' + i" name="{{ field.id + '_' + i }}"
-                           [(ngModel)]="formData[field.id].value"
-                           (input)="formData[field.id].error = ''"
-                           [required]="field.required">
-                    <!-- ✅ Validation Message -->
-                    <div *ngIf="formData[field.id]?.error" class="text-danger">
-                      {{ formData[field.id]?.error }}
-                    </div>
-                  </div>
-
-                  <!-- Select Dropdown -->
-                  <div *ngSwitchCase="'select'">
-                    <select class="form-control"
-                            [id]="field.id + '_' + i" name="{{ field.id + '_' + i }}"
-                            [(ngModel)]="formData[field.id].value"
-                            (change)="formData[field.id].error = ''"
-                            [required]="field.required">
-                      <option *ngFor="let option of field.options" [value]="option.value">
-                        {{ option.label }}
-                      </option>
-                    </select>
-                    <!-- ✅ Validation Message -->
-                    <div *ngIf="formData[field.id]?.error" class="text-danger">
-                      {{ formData[field.id]?.error }}
-                    </div>
-                  </div>
-
-                  <!-- Date/Time Picker -->
-                  <div *ngSwitchCase="'datetime-local'">
-                    <input type="datetime-local" class="form-control"
-                           [id]="field.id + '_' + i" name="{{ field.id + '_' + i }}"
-                           [(ngModel)]="formData[field.id].value"
-                           (change)="formData[field.id].error = ''"
-                           [required]="field.required">
-                    <!-- ✅ Validation Message -->
-                    <div *ngIf="formData[field.id]?.error" class="text-danger">
-                      {{ formData[field.id]?.error }}
-                    </div>
-                  </div>
-
-                  <!-- Textarea -->
-                  <div *ngSwitchCase="'textarea'">
-                    <textarea class="form-control"
-                              [id]="field.id + '_' + i" name="{{ field.id + '_' + i }}"
-                              [(ngModel)]="formData[field.id].value"
-                              (input)="formData[field.id].error = ''"
-                              [required]="field.required" rows="3"></textarea>
-                    <!-- ✅ Validation Message -->
-                    <div *ngIf="formData[field.id]?.error" class="text-danger">
-                      {{ formData[field.id]?.error }}
-                    </div>
-                  </div>
-
-                  <!-- Checkbox -->
-                  <div *ngSwitchCase="'checkbox'">
-                    <input type="checkbox" class="form-check-input"
-                           [id]="field.id + '_' + i" name="{{ field.id + '_' + i }}"
-                           [(ngModel)]="formData[field.id].value"
-                           (change)="formData[field.id].error = ''"
-                           [required]="field.required">
-                    <!-- ✅ Validation Message -->
-                    <div *ngIf="formData[field.id]?.error" class="text-danger">
-                      {{ formData[field.id]?.error }}
-                    </div>
-                  </div>
-
+                  </select>
+                  <textarea *ngSwitchCase="'textarea'" class="form-control"
+                            [(ngModel)]="field.value" rows="3"></textarea>
+                  <input *ngSwitchCase="'checkbox'" type="checkbox" class="form-check-input"
+                         [(ngModel)]="field.value">
                 </ng-container>
               </div>
             </div>
@@ -108,14 +51,10 @@
         </div>
       </mat-card>
 
-
-
-      <!-- Save Button -->
       <div class="text-center mt-3">
         <button class="btn btn-primary" (click)="saveDecisionData()">Save</button>
       </div>
 
-      <!-- Guidelines Section -->
       <h5>Guidelines</h5>
       <div class="row">
         <div class="col-md-3 mb-3">
@@ -131,7 +70,6 @@
           <button class="btn btn-primary">+ Others</button>
         </div>
       </div>
-
-    </div> <!-- Closing div for decision-details-container -->
-  </div> <!-- Closing div for tab-content -->
-</div> <!-- Closing div for decision-details-layout -->
+    </div>
+  </div>
+</div>
