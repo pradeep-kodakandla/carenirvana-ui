@@ -185,7 +185,19 @@
                           <div class="field-item">
                             <div class="form-outline">
                               <label class="form-label">{{ field.displayName }}</label>
-                              <input [type]="getInputType(field.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="field.displayName" />
+                              <!-- Check field type -->
+                              <ng-container *ngIf="field.type === 'select'; else normalField">
+                                <select class="custom-dropdown" [(ngModel)]="field.defaultValue">
+                                  <option *ngFor="let option of field.options" [value]="option">
+                                    {{ option }}
+                                  </option>
+                                </select>
+                                <span class="custom-dropdown-arrow">▼</span>
+                              </ng-container>
+
+                              <ng-template #normalField>
+                                <input [type]="getInputType(field.type)" class="custom-input" [placeholder]="field.displayName" />
+                              </ng-template>
                             </div>
                             <button mat-icon-button style="padding:0px;width:auto;" class="delete-icon" (click)="moveFieldToAvailable(field, section.sectionName, $event)">
                               <span>x</span>
@@ -254,7 +266,19 @@
                         <div class="form-outline">
                           <label class="form-label">{{ field.displayName }}</label>
 
-                          <input [type]="getInputType(field.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="field.displayName" />
+                          <!-- Check field type -->
+                          <ng-container *ngIf="field.type === 'select'; else normalField">
+                            <select class="custom-dropdown" [(ngModel)]="field.defaultValue">
+                              <option *ngFor="let option of field.options" [value]="option">
+                                {{ option }}
+                              </option>
+                            </select>
+                            <span class="custom-dropdown-arrow">▼</span>
+                          </ng-container>
+
+                          <ng-template #normalField>
+                            <input [type]="getInputType(field.type)" class="custom-input" [placeholder]="field.displayName" />
+                          </ng-template>
                         </div>
                         <button mat-icon-button style="padding:0px;width:auto;" class="delete-icon" (click)="moveFieldToAvailable(field, section.sectionName, $event)">
                           <span>x</span>
@@ -311,7 +335,19 @@
 
                         <label class="form-label">{{ field.displayName }}</label>
 
-                        <input [type]="getInputType(field.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="field.displayName" />
+                        <!-- Check field type -->
+                        <ng-container *ngIf="field.type === 'select'; else normalField">
+                          <select class="custom-dropdown" [(ngModel)]="field.defaultValue">
+                            <option *ngFor="let option of field.options" [value]="option">
+                              {{ option }}
+                            </option>
+                          </select>
+                          <span class="custom-dropdown-arrow">▼</span>
+                        </ng-container>
+
+                        <ng-template #normalField>
+                          <input [type]="getInputType(field.type)" class="custom-input" [placeholder]="field.displayName" />
+                        </ng-template>
                       </div>
                       <button mat-icon-button class="delete-icon" style="padding: 0px; width: auto;" (click)="moveFieldToAvailable(field, section.sectionName, $event)">
                         <span>x</span>

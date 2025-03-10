@@ -26,8 +26,9 @@ interface TemplateField {
   defaultValue?: string;
   order?: number;
   // For layout containers:
-  layout?: string;                 // e.g. 'row'
+  layout?: string;
   fields?: TemplateField[];        // sub-fields if this is a row container
+  authStatus?: string[];
 }
 
 // Define an interface for a section.
@@ -153,6 +154,11 @@ export class UmauthtemplateBuilderComponent implements OnInit {
     // Emit event to collapse menu
     this.menuCollapse.emit();
 
+    // Clear previous selection in the right column
+    this.selectedField = null;
+    this.selectedSectionObject = null;
+    this.selectedSection = '';
+
     if (mode === 'edit' && element) {
       this.newTemplateName = element.TemplateName;
       this.selectedTemplateId = element.Id;
@@ -253,53 +259,77 @@ export class UmauthtemplateBuilderComponent implements OnInit {
     }
   }
 
+  //drop(event: CdkDragDrop<TemplateField[]>, sectionName: string) {
+  //  if (event.previousContainer === event.container) {
+  //    moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
+  //    console.log(`Moved item within ${sectionName} from index ${event.previousIndex} to ${event.currentIndex}`);
+  //  } else {
+  //    const draggedField = event.previousContainer.data[event.previousIndex];
+  //    const isDefaultField = this.defaultFieldIds.includes(draggedField.id);
+  //    if (event.previousContainer.id === 'available') {
+  //      let fieldToSelect: TemplateField;
+  //      if (isDefaultField) {
+  //        const fieldToCopy = { ...draggedField };
+  //        fieldToCopy.id = `${fieldToCopy.id}_${Date.now()}`;
+  //        event.container.data.splice(event.currentIndex, 0, fieldToCopy);
+  //        fieldToSelect = fieldToCopy;
+  //        console.log(`Duplicated default field from availableFields to ${sectionName} at index ${event.currentIndex}`);
+  //      } else {
+  //        transferArrayItem(
+  //          event.previousContainer.data,
+  //          event.container.data,
+  //          event.previousIndex,
+  //          event.currentIndex
+  //        );
+  //        fieldToSelect = event.container.data[event.currentIndex];
+  //        console.log(`Moved non-default field from availableFields to ${sectionName} at index ${event.currentIndex}`);
+  //      }
+  //      this.selectedField = fieldToSelect;
+  //    } else if (event.container.id === 'available') {
+  //      transferArrayItem(
+  //        event.previousContainer.data,
+  //        event.container.data,
+  //        event.previousIndex,
+  //        event.currentIndex
+  //      );
+  //      this.selectedField = event.container.data[event.currentIndex];
+  //      console.log(`Moved field from ${sectionName} to availableFields at index ${event.currentIndex}`);
+  //    } else {
+  //      transferArrayItem(
+  //        event.previousContainer.data,
+  //        event.container.data,
+  //        event.previousIndex,
+  //        event.currentIndex
+  //      );
+  //      this.selectedField = event.container.data[event.currentIndex];
+  //      console.log(`Moved field from ${event.previousContainer.id} to ${sectionName} at index ${event.currentIndex}`);
+  //    }
+  //  }
+  //}
+
   drop(event: CdkDragDrop<TemplateField[]>, sectionName: string) {
     if (event.previousContainer === event.container) {
       moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
-      console.log(`Moved item within ${sectionName} from index ${event.previousIndex} to ${event.currentIndex}`);
     } else {
       const draggedField = event.previousContainer.data[event.previousIndex];
-      const isDefaultField = this.defaultFieldIds.includes(draggedField.id);
-      if (event.previousContainer.id === 'available') {
-        let fieldToSelect: TemplateField;
-        if (isDefaultField) {
-          const fieldToCopy = { ...draggedField };
-          fieldToCopy.id = `${fieldToCopy.id}_${Date.now()}`;
-          event.container.data.splice(event.currentIndex, 0, fieldToCopy);
-          fieldToSelect = fieldToCopy;
-          console.log(`Duplicated default field from availableFields to ${sectionName} at index ${event.currentIndex}`);
-        } else {
-          transferArrayItem(
-            event.previousContainer.data,
-            event.container.data,
-            event.previousIndex,
-            event.currentIndex
-          );
-          fieldToSelect = event.container.data[event.currentIndex];
-          console.log(`Moved non-default field from availableFields to ${sectionName} at index ${event.currentIndex}`);
+
+      if (sectionName.includes('.')) {
+        // Handle subsections
+        const [mainSection, subSection] = sectionName.split('.');
+        const section = this.masterTemplate.sections?.find(sec => sec.sectionName === mainSection);
+        if (section?.subsections && section.subsections[subSection]) {
+          transferArrayItem(event.previousContainer.data, section.subsections[subSection].fields, event.previousIndex, event.currentIndex);
         }
-        this.selectedField = fieldToSelect;
-      } else if (event.container.id === 'available') {
-        transferArrayItem(
-          event.previousContainer.data,
-          event.container.data,
-          event.previousIndex,
-          event.currentIndex
-        );
-        this.selectedField = event.container.data[event.currentIndex];
-        console.log(`Moved field from ${sectionName} to availableFields at index ${event.currentIndex}`);
       } else {
-        transferArrayItem(
-          event.previousContainer.data,
-          event.container.data,
-          event.previousIndex,
-          event.currentIndex
-        );
-        this.selectedField = event.container.data[event.currentIndex];
-        console.log(`Moved field from ${event.previousContainer.id} to ${sectionName} at index ${event.currentIndex}`);
+        // Normal sections
+        const section = this.masterTemplate.sections?.find(sec => sec.sectionName === sectionName);
+        if (section) {
+          transferArrayItem(event.previousContainer.data, section.fields, event.previousIndex, event.currentIndex);
+        }
       }
     }
   }
+
 
   selectField(field: TemplateField, section: string) {
     this.selectedField = null;
@@ -336,6 +366,34 @@ export class UmauthtemplateBuilderComponent implements OnInit {
   //  this.selectedField = updatedField;
   //}
 
+  //updateField(updatedField: TemplateField | TemplateSectionModel) {
+  //  if ('sectionName' in updatedField && this.selectedSectionObject) {
+  //    // Update section name
+  //    const sectionIndex = this.masterTemplate.sections?.findIndex(sec => sec.sectionName === this.selectedSectionObject!.sectionName);
+  //    if (sectionIndex !== undefined && sectionIndex > -1) {
+  //      this.masterTemplate.sections![sectionIndex].sectionName = updatedField.sectionName;
+  //    }
+  //    this.selectedSectionObject = { ...updatedField }; // Ensure UI updates
+  //  } else if ('id' in updatedField) {
+  //    // It's a field update
+  //    if (this.selectedSection === 'available') {
+  //      const index = this.availableFields.findIndex((f: TemplateField) => f.id === updatedField.id);
+  //      if (index > -1) {
+  //        this.availableFields[index] = updatedField;
+  //      }
+  //    } else if (this.masterTemplate.sections && Array.isArray(this.masterTemplate.sections)) {
+  //      const section = this.masterTemplate.sections.find(sec => sec.sectionName === this.selectedSection);
+  //      if (section && section.fields) {
+  //        const index = section.fields.findIndex((f: TemplateField) => f.id === updatedField.id);
+  //        if (index > -1) {
+  //          section.fields[index] = updatedField;
+  //        }
+  //      }
+  //    }
+  //    this.selectedField = updatedField;
+  //  }
+  //}
+
   updateField(updatedField: TemplateField | TemplateSectionModel) {
     if ('sectionName' in updatedField && this.selectedSectionObject) {
       // Update section name
@@ -343,18 +401,23 @@ export class UmauthtemplateBuilderComponent implements OnInit {
       if (sectionIndex !== undefined && sectionIndex > -1) {
         this.masterTemplate.sections![sectionIndex].sectionName = updatedField.sectionName;
       }
-      this.selectedSectionObject = { ...updatedField }; // Ensure UI updates
+      this.selectedSectionObject = { ...updatedField };
     } else if ('id' in updatedField) {
-      // It's a field update
-      if (this.selectedSection === 'available') {
-        const index = this.availableFields.findIndex((f: TemplateField) => f.id === updatedField.id);
-        if (index > -1) {
-          this.availableFields[index] = updatedField;
+      // Handle subsections
+      if (this.selectedSection.includes('.')) {
+        const [mainSection, subSection] = this.selectedSection.split('.');
+        const section = this.masterTemplate.sections?.find(sec => sec.sectionName === mainSection);
+        if (section?.subsections && section.subsections[subSection]) {
+          const fieldIndex = section.subsections[subSection].fields.findIndex(f => f.id === updatedField.id);
+          if (fieldIndex > -1) {
+            section.subsections[subSection].fields[fieldIndex] = updatedField;
+          }
         }
-      } else if (this.masterTemplate.sections && Array.isArray(this.masterTemplate.sections)) {
-        const section = this.masterTemplate.sections.find(sec => sec.sectionName === this.selectedSection);
+      } else {
+        // Normal section field update
+        const section = this.masterTemplate.sections?.find(sec => sec.sectionName === this.selectedSection);
         if (section && section.fields) {
-          const index = section.fields.findIndex((f: TemplateField) => f.id === updatedField.id);
+          const index = section.fields.findIndex(f => f.id === updatedField.id);
           if (index > -1) {
             section.fields[index] = updatedField;
           }
@@ -363,6 +426,7 @@ export class UmauthtemplateBuilderComponent implements OnInit {
       this.selectedField = updatedField;
     }
   }
+
 
 
   deleteField(field: TemplateField, sectionName: string, event: Event): void {
@@ -383,6 +447,63 @@ export class UmauthtemplateBuilderComponent implements OnInit {
     }
   }
 
+  //saveTemplate(): void {
+  //  if (!this.newTemplateName || this.newTemplateName.trim() === '') {
+  //    this.showTemplateNameError = true;
+  //    console.error('Template Name is required');
+  //    return;
+  //  }
+  //  this.showTemplateNameError = false;
+  //  // Update field orders within each section.
+  //  if (this.masterTemplate.sections && Array.isArray(this.masterTemplate.sections)) {
+  //    this.masterTemplate.sections.forEach(section => {
+  //      if (section.fields && Array.isArray(section.fields)) {
+  //        section.fields.forEach((field, index) => {
+  //          field.order = index;
+  //        });
+  //      }
+  //    });
+  //  }
+  //  console.log('Saving template:', {
+  //    name: this.newTemplateName,
+  //    masterTemplate: this.masterTemplate
+  //  });
+  //  let jsonData: any;
+  //  if (this.formMode === 'add') {
+  //    jsonData = {
+  //      TemplateName: this.newTemplateName,
+  //      JsonContent: JSON.stringify(this.masterTemplate),
+  //      CreatedOn: new Date().toISOString(),
+  //      CreatedBy: 1,
+  //      Id: 0
+  //    };
+  //  } else if (this.formMode === 'edit') {
+  //    jsonData = {
+  //      TemplateName: this.newTemplateName,
+  //      JsonContent: JSON.stringify(this.masterTemplate),
+  //      CreatedOn: new Date().toISOString(),
+  //      CreatedBy: 1,
+  //      Id: this.selectedEntry.Id
+  //    };
+  //  }
+  //  console.log("jsondata: ", jsonData);
+  //  this.authService.saveAuthTemplate(jsonData).subscribe({
+  //    next: (response) => {
+  //      this.isVisible = true;
+  //      this.loadData();
+  //      this.snackBar.open('Auth Template saved successfully!', 'Close', {
+  //        horizontalPosition: 'center',
+  //        verticalPosition: 'top',
+  //        duration: 5000,
+  //        panelClass: ['success-snackbar']
+  //      });
+  //    },
+  //    error: (error) => {
+  //      console.error('Error saving data:', error);
+  //    }
+  //  });
+  //}
+
   saveTemplate(): void {
     if (!this.newTemplateName || this.newTemplateName.trim() === '') {
       this.showTemplateNameError = true;
@@ -390,55 +511,44 @@ export class UmauthtemplateBuilderComponent implements OnInit {
       return;
     }
     this.showTemplateNameError = false;
-    // Update field orders within each section.
-    if (this.masterTemplate.sections && Array.isArray(this.masterTemplate.sections)) {
+
+    if (this.masterTemplate.sections) {
       this.masterTemplate.sections.forEach(section => {
-        if (section.fields && Array.isArray(section.fields)) {
-          section.fields.forEach((field, index) => {
-            field.order = index;
+        if (section.fields) {
+          section.fields.forEach((field, index) => field.order = index);
+        }
+
+        if (section.subsections) {
+          Object.values(section.subsections).forEach(subSection => {
+            if (subSection.fields) {
+              subSection.fields.forEach((field, index) => field.order = index);
+            }
           });
         }
       });
     }
-    console.log('Saving template:', {
-      name: this.newTemplateName,
-      masterTemplate: this.masterTemplate
-    });
-    let jsonData: any;
-    if (this.formMode === 'add') {
-      jsonData = {
-        TemplateName: this.newTemplateName,
-        JsonContent: JSON.stringify(this.masterTemplate),
-        CreatedOn: new Date().toISOString(),
-        CreatedBy: 1,
-        Id: 0
-      };
-    } else if (this.formMode === 'edit') {
-      jsonData = {
-        TemplateName: this.newTemplateName,
-        JsonContent: JSON.stringify(this.masterTemplate),
-        CreatedOn: new Date().toISOString(),
-        CreatedBy: 1,
-        Id: this.selectedEntry.Id
-      };
-    }
-    console.log("jsondata: ", jsonData);
+
+    const jsonData = {
+      TemplateName: this.newTemplateName,
+      JsonContent: JSON.stringify(this.masterTemplate), // Ensuring subsections are included
+      CreatedOn: new Date().toISOString(),
+      CreatedBy: 1,
+      Id: this.formMode === 'edit' ? this.selectedEntry.Id : 0
+    };
+
     this.authService.saveAuthTemplate(jsonData).subscribe({
-      next: (response) => {
-        this.isVisible = true;
+      next: () => {
+        this.isVisible = false;
         this.loadData();
         this.snackBar.open('Auth Template saved successfully!', 'Close', {
-          horizontalPosition: 'center',
-          verticalPosition: 'top',
           duration: 5000,
           panelClass: ['success-snackbar']
         });
       },
-      error: (error) => {
-        console.error('Error saving data:', error);
-      }
+      error: err => console.error('Error saving data:', err)
     });
   }
+
 
   onTemplateNameInput(): void {
     if (this.newTemplateName && this.newTemplateName.trim() !== '') {

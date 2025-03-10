@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges } from '@angular/core';
 import { CrudService } from 'src/app/service/crud.service';
-
+import { debounceTime, Subject } from 'rxjs';
 interface TemplateField {
   label: string;
   displayName?: string;
@@ -17,6 +17,7 @@ interface TemplateField {
   // For layout containers:
   layout?: string;                 // e.g. 'row'
   fields?: TemplateField[];        // sub-fields if this is a row container
+  authStatus?: string[];
 }
 interface DropdownOption {
   id: string;
@@ -44,13 +45,27 @@ export class UmauthtemplateFieldPropertiesComponent implements OnChanges {
 
   dropdownOptions: DropdownOption[] = [];
   private previousDatasource: string | null = null; // Prevents continuous API calls
+  authStatusOptions: string[] = ['Open', 'Close', 'Approved', 'Rejected'];
+  private optionUpdateSubject = new Subject<void>();
 
-  constructor(private crudService: CrudService) { }
+  constructor(private crudService: CrudService) {
+    this.optionUpdateSubject.pipe(debounceTime(500)).subscribe(() => {
+      this.emitUpdate();
+    });
+  }
+
+
+  // Use this function instead of emitUpdate() directly in the options input field
+  debouncedEmitUpdate() {
+    this.optionUpdateSubject.next();
+  }
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['selectedField']?.currentValue) {
       console.log("Field changed:", this.selectedField);
-
+      if (!this.selectedField?.authStatus) {
+        this.selectedField!.authStatus = []; // Ensure it's an array
+      }
       // Only call API if the datasource has changed
       const currentDatasource = this.selectedField?.datasource ?? ''; // Ensure a valid string
       if (currentDatasource !== '' && currentDatasource !== this.previousDatasource) {
@@ -61,10 +76,27 @@ export class UmauthtemplateFieldPropertiesComponent implements OnChanges {
     }
   }
 
+
   emitUpdate() {
     if (this.selectedField) {
       this.fieldUpdated.emit({ ...this.selectedField });
     }
+  }
+
+  toggleAuthStatus(status: string, event: any) {
+    if (!this.selectedField) return;
+
+    if (!this.selectedField.authStatus) {
+      this.selectedField.authStatus = [];
+    }
+
+    if (event.target.checked) {
+      this.selectedField.authStatus.push(status);
+    } else {
+      this.selectedField.authStatus = this.selectedField.authStatus.filter(s => s !== status);
+    }
+
+    this.emitUpdate();
   }
 
   onDatasourceChange() {
@@ -90,9 +122,11 @@ export class UmauthtemplateFieldPropertiesComponent implements OnChanges {
 
         console.log("Dropdown options loaded:", this.dropdownOptions);
 
-        if (this.dropdownOptions.length > 0 && !this.selectedField!.defaultValue) {
-          this.selectedField!.defaultValue = this.dropdownOptions[0].id;
+        //  Remove Auto-Selection of Default Value
+        if (this.selectedField!.defaultValue && !this.dropdownOptions.some(opt => opt.id === this.selectedField!.defaultValue)) {
+          this.selectedField!.defaultValue = undefined; // ✅ Corrected
         }
+
         this.emitUpdate();
       },
       (error) => {
@@ -212,4 +246,12 @@ export class UmauthtemplateFieldPropertiesComponent implements OnChanges {
       this.onDatasourceChange();
     }
   }
+
+  clearDefaultSelection() {
+    if (this.selectedField) {
+      this.selectedField.defaultValue = undefined; // Reset the default selection
+      this.emitUpdate();
+    }
+  }
+
 }

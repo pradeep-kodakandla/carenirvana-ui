@@ -3,12 +3,6 @@
     <h5 class="mb-0">Field Properties</h5>
   </div>
 
-  <!-- Section Name Update (only if a section is selected) -->
-  <!--<div *ngIf="selectedSection" class="mb-3 form-outline">
-    <label class="form-label">Section Name</label>
-    <input type="text" class="form-control" [(ngModel)]="selectedSection.sectionName" (change)="emitSectionUpdate()">
-  </div>-->
-
   <div class="card-body" style="padding:10px;">
     <div class="content-section">
       <!-- Section Name Update (only if a section is selected) -->
@@ -44,7 +38,19 @@
         <input type="checkbox" class="form-check-input" [(ngModel)]="selectedField.required" (change)="emitUpdate()">
         <label class="form-check-label">Required</label>
       </div>
-
+      <!-- Auth Status Dropdown (Multi-select) -->
+      <div class="mb-3 form-outline" *ngIf="selectedField.required" style="padding-bottom:15px;">
+        <label class="form-label">Auth Status</label>
+        <div class="border rounded p-2">
+          <div *ngFor="let status of authStatusOptions" class="form-check">
+            <input type="checkbox" class="form-check-input"
+                   [value]="status"
+                   [checked]="selectedField.authStatus && selectedField.authStatus.includes(status)"
+                   (change)="toggleAuthStatus(status, $event)">
+            <label class="form-check-label">{{ status }}</label>
+          </div>
+        </div>
+      </div>
       <!-- Required Message Input (if required is checked) -->
       <div *ngIf="selectedField.required" class="mb-3 form-outline" style="padding-bottom:15px;">
         <label class="form-label">Required Message</label>
@@ -58,6 +64,7 @@
         <input type="text" class="form-control"
                [(ngModel)]="selectedField.datasource"
                (blur)="checkAndTriggerDatasourceChange()"
+               (keydown.enter)="checkAndTriggerDatasourceChange()"
                placeholder="Enter datasource name">
       </div>
 
@@ -66,7 +73,9 @@
         <label class="form-label">Select Options (with default selection)</label>
 
         <!-- Custom Multi-Select with Checkboxes -->
+        <!-- Dynamic Options with Radio Buttons for Default Selection -->
         <div class="border rounded p-2" style="max-height: 250px; overflow-y: auto;">
+
           <!-- Select All Option -->
           <div class="form-check">
             <input type="checkbox" class="form-check-input"
@@ -75,7 +84,7 @@
             <label class="form-check-label fw-bold">Select All</label>
           </div>
 
-          <!-- Dynamic Options with Radio Buttons for Default Selection -->
+          <!-- Dynamic Options List -->
           <div *ngFor="let option of dropdownOptions" class="form-check d-flex justify-content-between align-items-center">
             <!-- Checkbox for Selection -->
             <div>
@@ -91,14 +100,21 @@
                    [checked]="selectedField.defaultValue === option.id"
                    (click)="setDefault(option.id)">
           </div>
+
+          <!-- Clear Default Selection Button -->
+          <button class="btn btn-secondary btn-sm mt-2" (click)="clearDefaultSelection()">
+            Clear Default Selection
+          </button>
+
         </div>
+
       </div>
 
       <!-- Options for "select" field type -->
       <div *ngIf="selectedField.type === 'select'">
         <h5 class="mb-2">Options</h5>
         <div *ngFor="let option of selectedField.options; let i = index" class="d-flex align-items-center mb-2">
-          <input class="form-control me-2" [(ngModel)]="selectedField.options![i]" (change)="emitUpdate()">
+          <input class="form-control me-2" [(ngModel)]="selectedField.options![i]" (input)="debouncedEmitUpdate()">
           <button class="btn btn-danger btn-sm" (click)="removeOption(i)">
             <i class="bi bi-trash"></i>
           </button>
