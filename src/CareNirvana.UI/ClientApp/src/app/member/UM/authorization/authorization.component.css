@@ -312,3 +312,32 @@ textarea.ng-invalid.ng-touched {
   color: #333;
 }
 
+
+
+
+
+/* Select field styling */
+.custom-dropdown {
+  appearance: none; /* Remove default browser styling */
+  /*  background-color: #f8f9fa;*/
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  width: 100%;
+  height: 32px;
+}
+
+/* Custom arrow for the select field */
+
+.custom-dropdown-arrow {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 24px;
+  color: #666;
+}
+

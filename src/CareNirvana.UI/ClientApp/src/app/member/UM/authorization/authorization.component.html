@@ -19,10 +19,6 @@
         </div>
       </div>
     </div>
-
-
-
-
     <!-- Horizontal Stepper -->
     <mat-horizontal-stepper style="padding: 0; margin-top:-10px; background-color:transparent;" [selectedIndex]="stepperSelectedIndex" #stepper>
       <mat-step label="Request Details" style="padding: 0;">
@@ -127,7 +123,7 @@
                           <div class="col-md-3 mb-3" *ngFor="let field of config['Additional Details'].subsections[subSection].fields">
                             <div class="form-outline">
                               <label [for]="field.id + '_' + i" class="form-label">
-                                {{ field.displayName }}<span *ngIf="field.required" class="text-danger">*</span>
+                                {{ field.displayName }}<span *ngIf="field.required" class="text-danger"> * </span>
                               </label>
                               <div class="form-group">
                                 <ng-container [ngSwitch]="field.type">
@@ -151,8 +147,10 @@
                                             [(ngModel)]="entry[field.id]"
                                             [required]="field.required"
                                             #fieldModel="ngModel">
+
                                       <option *ngFor="let option of field.options" [value]="option.value">{{ option.label }}</option>
                                     </select>
+                                    <mat-icon class="custom-dropdown-arrow">arrow_drop_down</mat-icon>
                                     <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
                                       {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
                                     </div>
@@ -214,7 +212,7 @@
                           <div class="col-md-3 mb-3" *ngFor="let field of getNonButtonFields(config[section].fields); let j = index">
                             <div class="form-outline">
                               <label [for]="field.id + '_' + i" class="form-label">
-                                {{ field.displayName }}<span *ngIf="field.required" class="text-danger">*</span>
+                                {{ field.displayName }}<span *ngIf="field.required" class="text-danger"> * </span>
                               </label>
                               <div class="form-group">
                                 <ng-container [ngSwitch]="field.type">
@@ -238,8 +236,10 @@
                                             [(ngModel)]="entry[field.id]"
                                             [required]="field.required"
                                             #fieldModel="ngModel">
+
                                       <option *ngFor="let option of field.options" [value]="option.value">{{ option.label }}</option>
                                     </select>
+                                    <mat-icon class="custom-dropdown-arrow">arrow_drop_down</mat-icon>
                                     <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
                                       {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
                                     </div>
@@ -260,7 +260,7 @@
                                   <ng-container *ngSwitchCase="'checkbox'">
                                     <div class="form-outline">
                                       <label [for]="field.id + '_' + i" class="form-label">
-                                        {{ field.displayName }}<span *ngIf="field.required" class="text-danger">*</span>
+                                        {{ field.displayName }}<span *ngIf="field.required" class="text-danger"> * </span>
                                       </label>
                                       <div class="form-group d-flex align-items-center">
                                         <input type="checkbox" class="form-check-input"
@@ -301,7 +301,7 @@
                           <div class="col-md-3 mb-3" *ngFor="let field of config[section].fields; let j = index">
                             <div class="form-outline">
                               <label [for]="field.id + '_' + i" class="form-label">
-                                {{ field.displayName }}<span *ngIf="field.required" class="text-danger">*</span>
+                                {{ field.displayName }}<span *ngIf="field.required" class="text-danger"> * </span>
                               </label>
                               <div class="form-group">
                                 <ng-container *ngIf="!field.layout">
@@ -326,8 +326,10 @@
                                               [(ngModel)]="entry[field.id]"
                                               [required]="field.required"
                                               #fieldModel="ngModel">
+
                                         <option *ngFor="let option of field.options" [value]="option.value">{{ option.label }}</option>
                                       </select>
+                                      <mat-icon class="custom-dropdown-arrow">arrow_drop_down</mat-icon>
                                       <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
                                         {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
                                       </div>
@@ -348,7 +350,7 @@
                                     <ng-container *ngSwitchCase="'checkbox'">
                                       <div class="form-outline">
                                         <label [for]="field.id + '_' + i" class="form-label">
-                                          {{ field.displayName }}<span *ngIf="field.required" class="text-danger">*</span>
+                                          {{ field.displayName }}<span *ngIf="field.required" class="text-danger"> * </span>
                                         </label>
                                         <div class="form-group d-flex align-items-center">
                                           <input type="checkbox" class="form-check-input"
@@ -370,7 +372,7 @@
                                             <!-- For non-checkbox types, display label in outline style -->
                                             <ng-container *ngIf="subField.type !== 'checkbox'">
                                               <label [for]="subField.id + '_' + i" class="form-label">
-                                                {{ subField.displayName }}<span *ngIf="subField.required" class="text-danger">*</span>
+                                                {{ subField.displayName }}<span *ngIf="subField.required" class="text-danger"> * </span>
                                               </label>
                                             </ng-container>
                                             <div class="form-group">
@@ -385,10 +387,12 @@
                                                   <select class="form-control" style="width:290px;" [id]="subField.id + '_' + i"
                                                           name="{{ subField.id + '_' + i }}" [(ngModel)]="entry[subField.id]"
                                                           [required]="subField.required" #subFieldModel="ngModel">
+
                                                     <option *ngFor="let option of subField.options" [value]="option.value">
                                                       {{ option.label }}
                                                     </option>
                                                   </select>
+                                                  <mat-icon class="custom-dropdown-arrow">arrow_drop_down</mat-icon>
                                                 </ng-container>
                                                 <ng-container *ngSwitchCase="'textarea'">
                                                   <textarea class="form-control" [id]="subField.id + '_' + i"
@@ -400,7 +404,7 @@
                                                 <ng-container *ngSwitchCase="'checkbox'">
                                                   <div class="form-outline">
                                                     <label [for]="subField.id + '_' + i" class="form-label">
-                                                      <!--{{ subField.displayName }}--><span *ngIf="subField.required" class="text-danger">*</span>
+                                                      <!--{{ subField.displayName }}--><span *ngIf="subField.required" class="text-danger"> * </span>
 
                                                     </label>
                                                     <div class="form-group d-flex align-items-center">

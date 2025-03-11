@@ -479,6 +479,7 @@ select[disabled] {
   border: none;
   cursor: pointer;
   color: red;
+  font-size:large;
 }
 
 
@@ -533,3 +534,38 @@ select[disabled] {
 .custom-dropdown {
   /*background-color: #f0f8ff; *//* Light blue to differentiate */
 }
+
+
+
+/* Highlight dragged item in middle column */
+.middle-column .field-item.active {
+  /*background: #007BFF !important;*/
+  color: white !important;
+/*  border: 2px solid #0056b3 !important;
+*/  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Ensure left column does not get highlighted */
+.left-column .field-item.active {
+  background: transparent !important;
+  color: inherit !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+
+/* When dragging, keep it highlighted */
+.cdk-drag-placeholder {
+  opacity: 0.8;
+  border: 2px dashed #0056b3 !important;
+  background: rgba(0, 123, 255, 0.2) !important;
+}
+
+
+/* Highlight when dragging over drop list */
+.cdk-drop-list.dragging-over {
+  background: rgba(0, 123, 255, 0.1);
+  border: 2px dashed #007BFF;
+}
+
+

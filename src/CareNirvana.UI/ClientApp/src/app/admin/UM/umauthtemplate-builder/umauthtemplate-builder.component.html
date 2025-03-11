@@ -184,7 +184,8 @@
                         <ng-template #normalSubField>
                           <div class="field-item">
                             <div class="form-outline">
-                              <label class="form-label">{{ field.displayName }}</label>
+                              <label class="form-label">{{ field.displayName }} <span *ngIf="field.required" style="color: red;"> * </span></label>
+                              
                               <!-- Check field type -->
                               <ng-container *ngIf="field.type === 'select'; else normalField">
                                 <select class="custom-dropdown" [(ngModel)]="field.defaultValue">
@@ -264,8 +265,10 @@
                     <ng-template #normalField>
                       <div class="field-item">
                         <div class="form-outline">
-                          <label class="form-label">{{ field.displayName }}</label>
-
+                          <label class="form-label">
+                            {{ field.displayName }}
+                            <span *ngIf="field.required" style="color: red;"> * </span>
+                          </label>
                           <!-- Check field type -->
                           <ng-container *ngIf="field.type === 'select'; else normalField">
                             <select class="custom-dropdown" [(ngModel)]="field.defaultValue">
@@ -305,7 +308,9 @@
                  (cdkDropListDropped)="drop($event, section.sectionName)"
                  class="drop-list horizontal-layout">
               <div *ngFor="let field of section.fields" cdkDrag [cdkDragData]="field"
-                   (click)="selectField(field, section.sectionName)">
+                    (click)="selectField(field, section.sectionName)" class="field-item"
+                    [class.selected]="field === selectedField"
+                    [class.active]="field.isActive" >
                 <ng-container *ngIf="field.type !== 'checkbox'; else checkboxField2">
                   <ng-container *ngIf="field.layout === 'row'; else normalField2">
                     <div class="field-item row-container" style="display: flex; gap: 10px; align-items: center;">
@@ -313,8 +318,10 @@
                         <ng-container *ngIf="subField.type !== 'checkbox'; else checkboxRowSubField2">
                           <div class="form-outline">
 
-                            <label class="form-label">{{ subField.displayName }}</label>
-
+                            <label class="form-label">
+                              {{ subField.displayName }}
+                              <span *ngIf="subField.required" style="color: red;">*</span>
+                            </label>
                             <input [type]="getInputType(subField.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="subField.displayName" />
                           </div>
                           <button mat-icon-button style="padding:0px;width:auto;" class="delete-icon" (click)="moveFieldToAvailable(field, section.sectionName, $event)">
@@ -333,8 +340,10 @@
                     <div class="field-item">
                       <div class="form-outline">
 
-                        <label class="form-label">{{ field.displayName }}</label>
-
+                        <label class="form-label">
+                          {{ field.displayName }}
+                          <span *ngIf="field.required" style="color: red;">*</span>
+                        </label>
                         <!-- Check field type -->
                         <ng-container *ngIf="field.type === 'select'; else normalField">
                           <select class="custom-dropdown" [(ngModel)]="field.defaultValue">

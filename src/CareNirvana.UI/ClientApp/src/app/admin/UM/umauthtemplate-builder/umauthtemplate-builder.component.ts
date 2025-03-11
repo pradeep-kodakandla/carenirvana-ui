@@ -29,6 +29,7 @@ interface TemplateField {
   layout?: string;
   fields?: TemplateField[];        // sub-fields if this is a row container
   authStatus?: string[];
+  isActive?: boolean;
 }
 
 // Define an interface for a section.
@@ -237,10 +238,10 @@ export class UmauthtemplateBuilderComponent implements OnInit {
             }
             // Initialize available fields.
             this.availableFields = [
-              { label: 'New Text', displayName: 'New Text', type: 'text', id: 'newText' },
-              { label: 'New Number', displayName: 'New Number', type: 'number', id: 'newNumber' },
-              { label: 'New Date', displayName: 'New Date', type: 'datetime-local', id: 'newDate' },
-              { label: 'New Select', displayName: 'New Select', type: 'select', id: 'newSelect', options: [] }
+              { label: 'Text Field', displayName: 'Text Field', type: 'text', id: 'newText' },
+              { label: 'Number Field', displayName: 'Number Field', type: 'number', id: 'newNumber' },
+              { label: 'Date Field', displayName: 'Date Field', type: 'datetime-local', id: 'newDate' },
+              { label: 'Drop Down', displayName: 'Drop Down', type: 'select', id: 'newSelect', options: [] }
             ];
             this.defaultFieldIds = this.availableFields.map(field => field.id);
           } catch (error) {
@@ -259,90 +260,137 @@ export class UmauthtemplateBuilderComponent implements OnInit {
     }
   }
 
-  //drop(event: CdkDragDrop<TemplateField[]>, sectionName: string) {
-  //  if (event.previousContainer === event.container) {
-  //    moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
-  //    console.log(`Moved item within ${sectionName} from index ${event.previousIndex} to ${event.currentIndex}`);
-  //  } else {
-  //    const draggedField = event.previousContainer.data[event.previousIndex];
-  //    const isDefaultField = this.defaultFieldIds.includes(draggedField.id);
-  //    if (event.previousContainer.id === 'available') {
-  //      let fieldToSelect: TemplateField;
-  //      if (isDefaultField) {
-  //        const fieldToCopy = { ...draggedField };
-  //        fieldToCopy.id = `${fieldToCopy.id}_${Date.now()}`;
-  //        event.container.data.splice(event.currentIndex, 0, fieldToCopy);
-  //        fieldToSelect = fieldToCopy;
-  //        console.log(`Duplicated default field from availableFields to ${sectionName} at index ${event.currentIndex}`);
-  //      } else {
-  //        transferArrayItem(
-  //          event.previousContainer.data,
-  //          event.container.data,
-  //          event.previousIndex,
-  //          event.currentIndex
-  //        );
-  //        fieldToSelect = event.container.data[event.currentIndex];
-  //        console.log(`Moved non-default field from availableFields to ${sectionName} at index ${event.currentIndex}`);
-  //      }
-  //      this.selectedField = fieldToSelect;
-  //    } else if (event.container.id === 'available') {
-  //      transferArrayItem(
-  //        event.previousContainer.data,
-  //        event.container.data,
-  //        event.previousIndex,
-  //        event.currentIndex
-  //      );
-  //      this.selectedField = event.container.data[event.currentIndex];
-  //      console.log(`Moved field from ${sectionName} to availableFields at index ${event.currentIndex}`);
-  //    } else {
-  //      transferArrayItem(
-  //        event.previousContainer.data,
-  //        event.container.data,
-  //        event.previousIndex,
-  //        event.currentIndex
-  //      );
-  //      this.selectedField = event.container.data[event.currentIndex];
-  //      console.log(`Moved field from ${event.previousContainer.id} to ${sectionName} at index ${event.currentIndex}`);
-  //    }
-  //  }
-  //}
-
   drop(event: CdkDragDrop<TemplateField[]>, sectionName: string) {
     if (event.previousContainer === event.container) {
       moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
+      console.log(`Moved item within ${sectionName} from index ${event.previousIndex} to ${event.currentIndex}`);
     } else {
       const draggedField = event.previousContainer.data[event.previousIndex];
+      const isDefaultField = this.defaultFieldIds.includes(draggedField.id);
 
-      if (sectionName.includes('.')) {
-        // Handle subsections
-        const [mainSection, subSection] = sectionName.split('.');
-        const section = this.masterTemplate.sections?.find(sec => sec.sectionName === mainSection);
-        if (section?.subsections && section.subsections[subSection]) {
-          transferArrayItem(event.previousContainer.data, section.subsections[subSection].fields, event.previousIndex, event.currentIndex);
+      if (event.previousContainer.id === 'available') {
+        let fieldToSelect: TemplateField;
+
+        if (isDefaultField) {
+          const fieldToCopy = { ...draggedField };
+          fieldToCopy.id = `${fieldToCopy.id}_copy_${Math.random().toString(36).substr(2, 9)}`;
+          event.container.data.splice(event.currentIndex, 0, fieldToCopy);
+          fieldToSelect = fieldToCopy;
+          console.log(`Duplicated default field from availableFields to ${sectionName} at index ${event.currentIndex}`);
+        } else {
+          transferArrayItem(event.previousContainer.data, event.container.data, event.previousIndex, event.currentIndex);
+          fieldToSelect = event.container.data[event.currentIndex];
+          console.log(`Moved non-default field from availableFields to ${sectionName} at index ${event.currentIndex}`);
         }
+
+        this.selectedField = fieldToSelect;
+      } else if (event.container.id === 'available' && !this.defaultFieldIds.includes(draggedField.id)) {
+        transferArrayItem(event.previousContainer.data, event.container.data, event.previousIndex, event.currentIndex);
+        this.selectedField = event.container.data[event.currentIndex];
+        console.log(`Moved field from ${sectionName} to availableFields at index ${event.currentIndex}`);
       } else {
-        // Normal sections
-        const section = this.masterTemplate.sections?.find(sec => sec.sectionName === sectionName);
-        if (section) {
-          transferArrayItem(event.previousContainer.data, section.fields, event.previousIndex, event.currentIndex);
-        }
+        transferArrayItem(event.previousContainer.data, event.container.data, event.previousIndex, event.currentIndex);
+        this.selectedField = event.container.data[event.currentIndex];
+        console.log(`Moved field from ${event.previousContainer.id} to ${sectionName} at index ${event.currentIndex}`);
       }
     }
+
+    // Ensure UI updates
+    this.forceAngularChangeDetection();
   }
+
+
+  //drop(event: CdkDragDrop<TemplateField[]>, sectionName: string) {
+  //  if (event.previousContainer === event.container) {
+  //    moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
+  //  } else {
+  //    const draggedField = event.previousContainer.data[event.previousIndex];
+
+  //    if (sectionName.includes('.')) {
+  //      // Handle subsections
+  //      const [mainSection, subSection] = sectionName.split('.');
+  //      const section = this.masterTemplate.sections?.find(sec => sec.sectionName === mainSection);
+  //      if (section?.subsections && section.subsections[subSection]) {
+  //        transferArrayItem(event.previousContainer.data, section.subsections[subSection].fields, event.previousIndex, event.currentIndex);
+  //      }
+  //    } else {
+  //      // Normal sections
+  //      const section = this.masterTemplate.sections?.find(sec => sec.sectionName === sectionName);
+  //      if (section) {
+  //        transferArrayItem(event.previousContainer.data, section.fields, event.previousIndex, event.currentIndex);
+  //      }
+  //    }
+  //  }
+  //  // Apply Angular Change Detection
+  //  this.forceAngularChangeDetection();
+  //}
+
+  //drop(event: CdkDragDrop<TemplateField[]>, sectionName: string) {
+  //  if (event.previousContainer === event.container) {
+  //    moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
+  //  } else {
+  //    const draggedField = event.previousContainer.data[event.previousIndex];
+
+  //    // If dragged from "availableFields", create a copy instead of moving
+  //    if (event.previousContainer.id === 'available') {
+  //      const fieldCopy: TemplateField = { ...draggedField, id: `${draggedField.id}_${Date.now()}` };
+
+  //      // Handle subsections separately
+  //      if (sectionName.includes('.')) {
+  //        const [mainSection, subSection] = sectionName.split('.');
+  //        const section = this.masterTemplate.sections?.find(sec => sec.sectionName === mainSection);
+  //        if (section?.subsections && section.subsections[subSection]) {
+  //          section.subsections[subSection].fields.splice(event.currentIndex, 0, fieldCopy);
+  //        }
+  //      } else {
+  //        // Normal section
+  //        const section = this.masterTemplate.sections?.find(sec => sec.sectionName === sectionName);
+  //        if (section) {
+  //          section.fields.splice(event.currentIndex, 0, fieldCopy);
+  //        }
+  //      }
+  //    } else {
+  //      // Move field normally (delete from source)
+  //      transferArrayItem(event.previousContainer.data, event.container.data, event.previousIndex, event.currentIndex);
+  //    }
+  //  }
+
+  //  // Ensure UI updates
+  //  this.forceAngularChangeDetection();
+  //}
+
+
 
 
   selectField(field: TemplateField, section: string) {
-    this.selectedField = null;
-    this.selectedSection = '';
-    setTimeout(() => {
-      // Ensure displayName exists; if not, default to label.
-      if (!field.displayName) {
-        field.displayName = field.label;
+    // Ensure selection only applies to middle column, not available fields
+    if (section !== 'available') {
+      // Remove highlight from previously selected field
+      if (this.selectedField && this.selectedField.id !== field.id) {
+        this.selectedField.isActive = false;
       }
-      this.selectedField = { ...field };
-      this.selectedSection = section;
-    }, 10);
+
+      // Temporarily reset selection for smooth UI updates
+      this.selectedField = null;
+      this.selectedSection = '';
+
+      setTimeout(() => {
+        // Ensure displayName exists; if not, default to label
+        if (!field.displayName) {
+          field.displayName = field.label;
+        }
+
+        // Keep the new selection and highlight it
+        this.selectedField = field;
+        this.selectedSection = section;
+        field.isActive = true;
+
+        // Ensure UI updates correctly
+        this.forceAngularChangeDetection();
+      }, 10);
+    }
   }
+
 
   //updateField(updatedField: TemplateField) {
   //  // Ensure displayName exists in the updated field.
@@ -696,6 +744,19 @@ export class UmauthtemplateBuilderComponent implements OnInit {
     }, 0);
   }
 
+  onDragStarted(field: TemplateField, section: string) {
+    if (section !== 'available') {
+      field.isActive = true;
+      this.forceAngularChangeDetection();
+    }
+  }
+
+  onDragEnded(field: TemplateField, section: string) {
+    if (section !== 'available') {
+      field.isActive = false;
+      this.forceAngularChangeDetection();
+    }
+  }
 
 
 }

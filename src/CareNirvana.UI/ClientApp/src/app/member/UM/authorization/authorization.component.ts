@@ -123,12 +123,6 @@ export class AuthorizationComponent {
               (a, b) => (this.config[a].order || 0) - (this.config[b].order || 0)
             );
 
-            //this.decisionData = {
-            //  serviceDetails: this.config['Service Details'] || {},
-            //  decisionDetails: this.config['Decision Details'] || {},
-            //  decisionNotes: this.config['Decision Notes'] || {},
-            //  decisionMemberInfo: this.config['Member Provider Decision Info'] || {}
-            //};
             console.log('Parsed config:', this.config);
           } catch (error) {
             console.error('Error parsing JSON content:', error);
@@ -194,18 +188,26 @@ export class AuthorizationComponent {
                           if (field.type === 'select' && field.datasource === datasource) {
                             const expectedKey = field.datasource.toLowerCase();
                             console.log("datasource:", expectedKey);
-                            const options = serviceData.map((item: any) => {
-                              const actualKey = Object.keys(item).find(key => key.toLowerCase() === expectedKey);
-                              console.log("datasource:", actualKey);
-                              return {
-                                value: item.id,
-                                label: actualKey ? item[actualKey] : 'Unknown'
-                              };
-                            });
+                            const options = [
+                              { value: '', label: 'Select' },
+                              ...serviceData.map((item: any) => {
+                                const actualKey = Object.keys(item).find(key => key.toLowerCase() === expectedKey);
+                                console.log("datasource:", actualKey);
+                                return {
+                                  value: item.id,
+                                  label: actualKey ? item[actualKey] : 'Unknown'
+                                };
+                              })
+                            ];
                             field.options = options;
                             if (field.defaultValue) {
                               this.formData[section]['subSection'].entries.forEach((entry: any) => {
                                 entry[field.id] = field.defaultValue;
+                              });
+                            }
+                            if (!field.defaultValue) {
+                              this.formData[section].entries.forEach((entry: any) => {
+                                entry[field.id] = ''; // Set default to empty so "Select" is chosen
                               });
                             }
                           }
@@ -216,17 +218,26 @@ export class AuthorizationComponent {
                         if (field.type === 'select' && field.datasource === datasource) {
                           const expectedKey = field.datasource.toLowerCase();
                           console.log("datasource:", expectedKey);
-                          field.options = serviceData.map((item: any) => {
-                            const actualKey = Object.keys(item).find(key => key.toLowerCase() === expectedKey);
-                            console.log("Actual matching key:", actualKey);
-                            return {
-                              value: item.id,
-                              label: actualKey ? item[actualKey] : 'Unknown'
-                            };
-                          });
+                          field.options = [
+                            { value: '', label: 'Select' }, // Add 'Select' as the first option
+                            ...serviceData.map((item: any) => {
+
+                              const actualKey = Object.keys(item).find(key => key.toLowerCase() === expectedKey);
+                              console.log("Actual matching key:", actualKey);
+                              return {
+                                value: item.id,
+                                label: actualKey ? item[actualKey] : 'Unknown'
+                              };
+                            })
+                          ];
                           if (field.defaultValue) {
                             this.formData[section].entries.forEach((entry: any) => {
                               entry[field.id] = field.defaultValue;
+                            });
+                          }
+                          if (!field.defaultValue) {
+                            this.formData[section].entries.forEach((entry: any) => {
+                              entry[field.id] = ''; // Set default to empty so "Select" is chosen
                             });
                           }
                         }
