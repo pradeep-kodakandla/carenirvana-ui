@@ -45,7 +45,7 @@ export class UmauthtemplateFieldPropertiesComponent implements OnChanges {
 
   dropdownOptions: DropdownOption[] = [];
   private previousDatasource: string | null = null; // Prevents continuous API calls
-  authStatusOptions: string[] = ['Open', 'Close', 'Approved', 'Rejected'];
+  authStatusOptions: string[] = ['Open', 'Close', 'Cancelled', 'Close and Adjusted', 'Reopen','Withdrawn'];
   private optionUpdateSubject = new Subject<void>();
 
   constructor(private crudService: CrudService) {
