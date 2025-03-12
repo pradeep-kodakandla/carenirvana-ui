@@ -476,8 +476,12 @@
                              (decisionSaved)="handleDecisionDataSaved($event)">></app-decisiondetails>
       </mat-step>
       <mat-step label="MD Review"></mat-step>
-      <mat-step label="Notes"></mat-step>
-      <mat-step label="Documents"></mat-step>
+      <mat-step label="Notes">
+        <app-umauthnotes></app-umauthnotes>
+      </mat-step>
+      <mat-step label="Documents">
+        <app-umauthdocuments></app-umauthdocuments>
+      </mat-step>
       <mat-step label="Close"></mat-step>
     </mat-horizontal-stepper>
   </div>

@@ -7,6 +7,8 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { CrudService } from 'src/app/service/crud.service';
 import { MatDialog } from '@angular/material/dialog';
 import { ProviderSearchComponent } from 'src/app/Provider/provider-search/provider-search.component';
+import { UmauthnotesComponent } from 'src/app/member/UM/umauthnotes/umauthnotes.component';
+import { UmauthdocumentsComponent } from 'src/app/member/UM/umauthdocuments/umauthdocuments.component';
 
 
 @Component({

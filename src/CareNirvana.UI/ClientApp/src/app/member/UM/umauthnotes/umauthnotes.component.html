@@ -1,0 +1,57 @@
+<div class="form-container">
+  <form>
+    <div class="form-grid">
+      <div *ngFor="let field of formFields" class="form-group"
+           [ngClass]="{'textarea-field': field.type === 'textarea', 'hidden': field.hidden}">
+        <ng-container [ngSwitch]="field.type">
+          <select *ngSwitchCase="'select'" [(ngModel)]="field.value" [name]="field.id">
+            <option value="" disabled selected></option>
+            <option *ngFor="let option of field.selectedOptions" [value]="option">{{ option }}</option>
+          </select>
+
+          <textarea *ngSwitchCase="'textarea'" [(ngModel)]="field.value" [name]="field.id" placeholder=" "></textarea>
+
+          <input *ngSwitchCase="'checkbox'" type="checkbox" [(ngModel)]="field.value" [name]="field.id"
+                 (change)="onAlertNoteChange($event)">
+
+          <input *ngSwitchDefault type="text" [(ngModel)]="field.value" [name]="field.id" placeholder=" ">
+        </ng-container>
+        <label>{{ field.label }}</label>
+      </div>
+      <button type="button" (click)="saveNote()">Save</button>
+    </div>
+
+  </form>
+</div>
+
+
+
+
+
+<table>
+  <thead>
+    <tr>
+      <th>Note Type</th>
+      <th>Notes</th>
+      <th>Created On</th>
+      <th>Created By</th>
+      <th>Updated On</th>
+      <th>Updated By</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let note of notes">
+      <td>{{ note.authorizationNoteType }}</td>
+      <td>{{ note.authorizationNotes }}</td>
+      <td>{{ note.createdOn }}</td>
+      <td>{{ note.createdBy }}</td>
+      <td>{{ note.updatedOn }}</td>
+      <td>{{ note.updatedBy }}</td>
+      <td>
+        <button class="edit-btn" (click)="editNote(note)">Edit</button>
+        <button class="delete-btn" (click)="deleteNote(note.id)">Delete</button>
+      </td>
+    </tr>
+  </tbody>
+</table>

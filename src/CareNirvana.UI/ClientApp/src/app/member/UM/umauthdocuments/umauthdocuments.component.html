@@ -1,0 +1,58 @@
+<div class="form-container">
+  <form>
+    <div class="form-grid">
+      <div *ngFor="let field of formFields" class="form-group" [ngClass]="{'textarea-field': field.type === 'textarea'}">
+        <ng-container [ngSwitch]="field.type">
+          <select *ngSwitchCase="'select'" [(ngModel)]="field.value" [name]="field.id">
+            <option value="" disabled selected></option>
+            <option *ngFor="let option of field.selectedOptions" [value]="option">{{ option }}</option>
+          </select>
+
+          <textarea *ngSwitchCase="'textarea'" [(ngModel)]="field.value" [name]="field.id" placeholder=" "></textarea>
+
+          <input *ngSwitchCase="'file'" type="file" multiple (change)="handleFileUpload($event)">
+
+          <input *ngSwitchDefault type="text" [(ngModel)]="field.value" [name]="field.id" placeholder=" ">
+        </ng-container>
+        <label>{{ field.label }}</label>
+      </div>
+      <button type="button" (click)="saveDocument()">Save</button>
+    </div>
+
+  </form>
+</div>
+
+
+<table>
+  <thead>
+    <tr>
+      <th>Document Type</th>
+      <th>Document Description</th>
+      <th>Files</th>
+      <th>Created On</th>
+      <th>Created By</th>
+      <th>Updated On</th>
+      <th>Updated By</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let doc of documents">
+      <td>{{ doc.authorizationDocumentType }}</td>
+      <td>{{ doc.authorizationDocumentDesc }}</td>
+      <td>
+        <span *ngFor="let file of doc.authorizationSelectFiles">
+          <a href="#" (click)="viewDocument(file)" class="file-link">{{ file }}</a>
+        </span>
+      </td>
+      <td>{{ doc.createdOn }}</td>
+      <td>{{ doc.createdBy }}</td>
+      <td>{{ doc.updatedOn }}</td>
+      <td>{{ doc.updatedBy }}</td>
+      <td>
+        <button class="edit-btn" (click)="editDocument(doc)">Edit</button>
+        <button class="delete-btn" (click)="deleteDocument(doc.id)">Delete</button>
+      </td>
+    </tr>
+  </tbody>
+</table>

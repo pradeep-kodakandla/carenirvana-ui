@@ -1,0 +1,154 @@
+.form-container {
+  max-width: 2000px;
+  margin: 20px auto;
+ 
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+  width: 100%;
+}
+
+.form-group {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+  .form-group.textarea-field {
+    grid-column: span 2; /* Textarea spans 2 columns */
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+    background: transparent;
+    outline: none;
+    transition: border 0.3s, box-shadow 0.3s;
+  }
+
+  .form-group label {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: white;
+    padding: 0 5px;
+    font-size: 14px;
+    color: #666;
+    transition: 0.3s;
+    pointer-events: none;
+  }
+
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+  }
+
+    .form-group input:focus + label,
+    .form-group input:not(:placeholder-shown) + label,
+    .form-group select:valid + label,
+    .form-group textarea:focus + label,
+    .form-group textarea:not(:placeholder-shown) + label {
+      top: -10px;
+      font-size: 12px;
+      color: #007bff;
+    }
+
+.hidden {
+  display: none;
+}
+
+
+    .form-container input[type="checkbox"] {
+      width: auto;
+      margin-left: 10px;
+    }
+
+  .form-container button {
+    background-color: #007bff;
+    color: white;
+    padding: 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s ease-in-out;
+  }
+
+    .form-container button:hover {
+      background-color: #0056b3;
+    }
+
+table {
+  width: 100%;
+  margin-top: 20px;
+  border-collapse: collapse;
+  background: white;
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+  table thead {
+    background-color: #007bff;
+    color: white;
+  }
+
+    table thead th {
+      padding: 12px;
+      text-align: left;
+      font-weight: bold;
+    }
+
+  table tbody tr {
+    border-bottom: 1px solid #ddd;
+  }
+
+    table tbody tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+
+    table tbody tr:hover {
+      background-color: #e9ecef;
+    }
+
+  table tbody td {
+    padding: 10px;
+  }
+
+  table tbody button {
+    padding: 6px 10px;
+    border: none;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: background 0.3s ease-in-out;
+  }
+
+.edit-btn {
+  background-color: #28a745;
+  color: white;
+}
+
+  .edit-btn:hover {
+    background-color: #218838;
+  }
+
+.delete-btn {
+  background-color: #dc3545;
+  color: white;
+  margin-left: 5px;
+}
+
+  .delete-btn:hover {
+    background-color: #c82333;
+  }
