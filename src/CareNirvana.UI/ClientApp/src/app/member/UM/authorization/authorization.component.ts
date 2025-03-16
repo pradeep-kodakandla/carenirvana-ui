@@ -53,7 +53,7 @@ export class AuthorizationComponent {
 
   selectedDiv: number | null = null;
   additionalInfo = [
-    { label: "Auth No.", value: "5N7CBIHL3" },
+    { label: "Auth No", value: "5N7CBIHL3" },
     { label: "Auth Type", value: "Standard" },
     { label: "Due Date", value: "2024-03-15" },
     { label: "Days Left", value: "3" },
@@ -121,9 +121,13 @@ export class AuthorizationComponent {
                 });
             }
             this.config = configObj;
-            this.sectionOrder = Object.keys(this.config).filter(section => !section.toLowerCase().includes('decision')).sort(
-              (a, b) => (this.config[a].order || 0) - (this.config[b].order || 0)
-            );
+            //this.sectionOrder = Object.keys(this.config).filter(section => !section.toLowerCase().includes('decision')).sort(
+            //  (a, b) => (this.config[a].order || 0) - (this.config[b].order || 0)
+            //);
+            this.sectionOrder = Object.keys(this.config)
+              .filter(section => !section.toLowerCase().includes('decision'))
+              .sort((a, b) => (this.config[a].order || 0) - (this.config[b].order || 0));
+
 
             console.log('Parsed config:', this.config);
           } catch (error) {
@@ -331,7 +335,7 @@ export class AuthorizationComponent {
     this.formData[section].primaryIndex = index;
   }
 
-  saveData(form: NgForm): void {
+  saveData(form: NgForm, type: string): void {
     if (form.invalid) {
       // Mark all fields as touched to trigger validation messages
       Object.keys(form.controls).forEach(field => {
@@ -351,17 +355,44 @@ export class AuthorizationComponent {
 
       return;
     }
-    this.authNumber = this.authNumberService.generateAuthNumber(9, true, true, false, false);
-    console.log("Auth Number:", this.authNumber);
-    const jsonData = {
-      Data: [this.formData],
-      CreatedOn: new Date().toISOString(),
-      authNumber: this.authNumber
-    };
+
+    let jsonData: any = {}; // Use let to reassign
+    if (type === 'Add') {
+      this.authNumber = this.authNumberService.generateAuthNumber(9, true, true, false, false);
+      console.log("Auth Number:", this.authNumber);
+      jsonData = {
+        Data: [this.formData],
+        AuthNumber: this.authNumber,
+        AuthTypeId: 37,
+        MemberId: 10000,
+        AuthDueDate: new Date().toISOString(),
+        NextReviewDate: new Date().toISOString(),
+        TreatmentType: 'Standard',
+        SaveType: type,
+        CreatedOn: new Date().toISOString(),
+        CreatedBy: 1,
+      };
+    }
+
+    if (type === 'Update') {
+      console.log("Auth Number:", this.authNumber);
+      jsonData = {
+        Data: [this.formData],
+        AuthNumber: this.authNumber,
+        AuthTypeId: 37,
+        MemberId: 10000,
+        AuthDueDate: new Date().toISOString(),
+        NextReviewDate: new Date().toISOString(),
+        TreatmentType: 'Standard',
+        SaveType: type,
+        UpdatedOn: new Date().toISOString(),
+        UpdatedBy: 1,
+      };
+    }
+
     console.log("jsondata: ", jsonData);
     this.authService.saveAuthDetail(jsonData).subscribe(
       response => {
-        console.log('Data saved successfully:', response);
         this.snackBar.open('Auth saved successfully!', 'Close', {
           horizontalPosition: 'center',
           verticalPosition: 'top',
@@ -390,8 +421,6 @@ export class AuthorizationComponent {
             entries: this.formData['Service Details']?.entries.map(() => ({})) || []
           }
         };
-        console.log("Updated decisionData:", this.decisionData);
-
         // Move to "Decision Details" stepper
         this.stepperSelectedIndex = 1; // Navigate to Decision Details step
       },
@@ -399,9 +428,6 @@ export class AuthorizationComponent {
         console.error('Error saving data:', error);
       }
     );
-
-    //localStorage.setItem('savedAuthData', JSON.stringify(jsonData));
-    console.log("Data saved locally:", jsonData);
   }
 
   loadData(): void {
@@ -411,7 +437,6 @@ export class AuthorizationComponent {
       const parsedData = JSON.parse(savedData);
       this.formData = parsedData.Data;
       this.authNumber = parsedData.authNumber;
-      console.log("Data loaded successfully:", parsedData);
     } else {
       console.warn("No saved data found.");
     }
@@ -514,9 +539,7 @@ export class AuthorizationComponent {
       this.formData['Member Provider Decision Info'] = { entries: updatedDecisionData.decisionMemberInfo.entries };
     }
 
-    console.log('Updated decision data received:', updatedDecisionData);
-    console.log('Updated formData:', this.formData);
-    this.saveData(this.formData);
+    this.saveData(this.formData, 'Update');
   }
 
 }
