@@ -439,13 +439,14 @@ export class AuthorizationComponent {
 
     let jsonData: any = {}; // Use let to reassign
     console.log('Member ID:', this.memberId);
+    console.log('Selected TemplatedId:', this.selectedTemplateId);
     if (this.saveType === 'Add') {
       this.authNumber = this.authNumberService.generateAuthNumber(9, true, true, false, false);
       console.log("Auth Number:", this.authNumber);
       jsonData = {
         Data: [this.formData],
         AuthNumber: this.authNumber,
-        AuthTypeId: 37,
+        AuthTypeId: this.selectedTemplateId,
         MemberId: this.memberId,
         AuthDueDate: new Date().toISOString(),
         NextReviewDate: new Date().toISOString(),
@@ -462,7 +463,7 @@ export class AuthorizationComponent {
       jsonData = {
         Data: [this.formData],
         AuthNumber: this.authNumber,
-        AuthTypeId: 37,
+        AuthTypeId: this.selectedTemplateId,
         MemberId: this.memberId,
         AuthDueDate: new Date().toISOString(),
         NextReviewDate: new Date().toISOString(),
