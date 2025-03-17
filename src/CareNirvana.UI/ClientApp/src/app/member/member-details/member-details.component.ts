@@ -22,10 +22,12 @@ interface Page {
 
 export class MemberDetailsComponent implements OnInit {
 
+  memberId!: number;
+
   isCollapse: boolean = false;
 
   constructor(private route: ActivatedRoute, private router: Router, private tabService: TabService, private memberService: MemberService) { }
-  
+
   toggleSidebar() {
     this.isCollapse = !this.isCollapse;
   }
@@ -36,13 +38,17 @@ export class MemberDetailsComponent implements OnInit {
   tabs1: { id: number; name: string; content: string }[] = [];
   selectedTabId: number | null = null;
 
-  
+
 
   ngOnInit(): void {
     // Subscribe to route params to handle new member selection
     this.route.params.subscribe(params => {
-      const memberId = params['id'];
-      this.addTabForMember(memberId);
+      const id = params['id'];
+      if (id) {
+        this.memberId = parseInt(id, 10);
+
+      }
+      this.addTabForMember(id);
       this.selectedTabId = this.tabService.getSelectedTab();
 
     });

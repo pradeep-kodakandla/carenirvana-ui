@@ -7,8 +7,9 @@ import { Component, Input, ViewEncapsulation } from '@angular/core';
   encapsulation: ViewEncapsulation.None,
 })
 export class MemberComponent {
-  @Input() memberId: string | undefined;
-
+  /*@Input() memberId: string | undefined;*/
+  @Input() memberId!: number;
+  authNumber: string = '';
   currentStep = 1;
 
   setStep(step: number): void {
@@ -17,7 +18,12 @@ export class MemberComponent {
 
   showAuthorizationComponent = false;
 
-  onAddClick() {
+  onAddClick(authNumber: string) {
+    console.log('Parent Received Auth Number:', authNumber); // ✅ Debugging log
+    // If authNumber is received, pass it properly
+    if (authNumber) {
+      this.authNumber = authNumber;  // Store it
+    }
     this.showAuthorizationComponent = true;
   }
 

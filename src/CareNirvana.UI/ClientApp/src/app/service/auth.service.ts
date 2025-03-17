@@ -34,5 +34,14 @@ export class AuthService {
     });
   }
 
-  
+  // Get all auth details for a given memberId
+  getAllAuthDetailsByMemberId(memberId: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/member/${memberId}`);
+  }
+
+  // Get auth details by authNumber
+  getAuthDataByAuthNumber(authNumber: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/auth/${authNumber}`);
+  }
+
 }

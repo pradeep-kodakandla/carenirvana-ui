@@ -134,11 +134,11 @@
       <div class="tab-pane fade show active" id="authorizations">
         <!--<app-authorization></app-authorization>-->
         <div *ngIf="!showAuthorizationComponent">
-          <app-authdetails (addClicked)="onAddClick()"></app-authdetails>
+          <app-authdetails [memberId]="memberId" (addClicked)="onAddClick($event)"></app-authdetails>
         </div>
 
         <div *ngIf="showAuthorizationComponent">
-          <app-authorization (cancel)="onCancel()"></app-authorization>
+          <app-authorization [authNumber]="authNumber" (cancel)="onCancel()"></app-authorization>
           <!--<app-authdynamic (cancel)="onCancel()"></app-authdynamic>-->
         </div>
       </div>

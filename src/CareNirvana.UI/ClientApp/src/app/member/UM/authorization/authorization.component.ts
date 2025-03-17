@@ -1,4 +1,5 @@
-import { Component, EventEmitter, Output } from '@angular/core';
+import { Component, EventEmitter, Output, Input } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { NgForm } from '@angular/forms';
 import { MemberService } from 'src/app/service/shared-member.service';
 import { AuthService } from 'src/app/service/auth.service';
@@ -18,15 +19,15 @@ import { UmauthdocumentsComponent } from 'src/app/member/UM/umauthdocuments/umau
 })
 export class AuthorizationComponent {
   stepperSelectedIndex = 0;
-  authNumber: string = '';
-
+  @Input() authNumber: string = '';
   constructor(
     private memberService: MemberService,
     private authService: AuthService,
     private authNumberService: AuthNumberService,
     private dialog: MatDialog,
     private crudService: CrudService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private route: ActivatedRoute,
   ) { }
 
   highlightedSection: string | null = null;
@@ -41,6 +42,7 @@ export class AuthorizationComponent {
   newTemplateName: string = '';
   showTemplateNameError: boolean = false;
   decisionData: any = {};
+  saveType: string = '';
 
   // Method to set selected div (if needed elsewhere)
   selectDiv(index: number): void {
@@ -75,7 +77,65 @@ export class AuthorizationComponent {
   config: any; // JSON configuration loaded dynamically
 
   ngOnInit(): void {
+    console.log('Received Auth Number via Input:', this.authNumber);
+
+    if (this.authNumber) {
+      this.getAuthDataByAuthNumber(this.authNumber);
+    }
     this.loadAuthTemplates();
+
+  }
+
+  getAuthDataByAuthNumber(authNumber: string): void {
+    this.authService.getAuthDataByAuthNumber(authNumber).subscribe(
+      (data) => {
+        console.log('Fetched Auth Data:', data);
+        this.formData = data; // Assuming this is the structure required
+        if (data) {
+          this.selectDiv(1);
+
+          let savedData = data[0]?.responseData;
+          const authTemplateId = data[0]?.AuthTypeId || 0; // Extract authTemplateId
+          if (authTemplateId) {
+            console.log('Setting Auth Template ID:', authTemplateId);
+            this.selectedTemplateId = authTemplateId;
+            this.onAuthTypeChange();
+            // Trigger onAuthTypeChange() and ensure it completes before loading data
+            setTimeout(() => {
+              console.log('onAuthTypeChange completed, now loading data...');
+
+              if (savedData) {
+                try {
+                  if (typeof savedData === 'string') {
+                    savedData = JSON.parse(savedData); // ✅ Parse only if it's a string
+                  }
+
+                  if (Array.isArray(savedData)) {
+                    savedData = savedData[0]; // ✅ Extract first object if wrapped in an array
+                  }
+
+                  this.formData = savedData; // ✅ Assign the correctly parsed object
+                  this.authNumber = data[0]?.AuthNumber;
+                  this.saveType = 'Update';
+                  console.log('Final Loaded Data:', this.formData);
+                } catch (error) {
+                  console.error('Error parsing Data:', error);
+                }
+              } else {
+                console.warn('No Data found in response.');
+              }
+            }, 500);
+          } else {
+            console.warn("No authTemplateId found, skipping onAuthTypeChange.");
+          }
+        } else {
+          console.warn("No authorization data returned for:", authNumber);
+        }
+      },
+      (error) => {
+        console.error('Error fetching authorization data:', error);
+      }
+    );
   }
 
   loadAuthTemplates(): void {
@@ -281,13 +341,29 @@ export class AuthorizationComponent {
     return entry;
   }
 
+  //toggleSection(section: string): void {
+  //  if (!section) {
+  //    console.error("toggleSection received an undefined section.");
+  //    return;
+  //  }
+  //  this.formData[section].expanded = !this.formData[section].expanded;
+  //}
+
   toggleSection(section: string): void {
     if (!section) {
       console.error("toggleSection received an undefined section.");
       return;
     }
+
+    // Ensure formData[section] exists before accessing its properties
+    if (!this.formData[section]) {
+      console.warn(`Section "${section}" is undefined, initializing...`);
+      this.formData[section] = { expanded: false, entries: [] }; // ✅ Initialize it
+    }
+
     this.formData[section].expanded = !this.formData[section].expanded;
   }
+
 
   addEntry(section: string, index: number): void {
     if (section === 'Additional Details') {
@@ -335,7 +411,7 @@ export class AuthorizationComponent {
     this.formData[section].primaryIndex = index;
   }
 
-  saveData(form: NgForm, type: string): void {
+  saveData(form: NgForm): void {
     if (form.invalid) {
       // Mark all fields as touched to trigger validation messages
       Object.keys(form.controls).forEach(field => {
@@ -356,8 +432,12 @@ export class AuthorizationComponent {
       return;
     }
 
+    if (this.saveType === '') {
+      this.saveType = 'Add';
+    }
+
     let jsonData: any = {}; // Use let to reassign
-    if (type === 'Add') {
+    if (this.saveType === 'Add') {
       this.authNumber = this.authNumberService.generateAuthNumber(9, true, true, false, false);
       console.log("Auth Number:", this.authNumber);
       jsonData = {
@@ -368,13 +448,13 @@ export class AuthorizationComponent {
         AuthDueDate: new Date().toISOString(),
         NextReviewDate: new Date().toISOString(),
         TreatmentType: 'Standard',
-        SaveType: type,
+        SaveType: this.saveType,
         CreatedOn: new Date().toISOString(),
         CreatedBy: 1,
       };
     }
 
-    if (type === 'Update') {
+    if (this.saveType === 'Update') {
       console.log("Auth Number:", this.authNumber);
       jsonData = {
         Data: [this.formData],
@@ -384,7 +464,7 @@ export class AuthorizationComponent {
         AuthDueDate: new Date().toISOString(),
         NextReviewDate: new Date().toISOString(),
         TreatmentType: 'Standard',
-        SaveType: type,
+        SaveType: this.saveType,
         UpdatedOn: new Date().toISOString(),
         UpdatedBy: 1,
       };
@@ -429,19 +509,6 @@ export class AuthorizationComponent {
       }
     );
   }
-
-  loadData(): void {
-    const savedData = localStorage.getItem('savedAuthData');
-
-    if (savedData) {
-      const parsedData = JSON.parse(savedData);
-      this.formData = parsedData.Data;
-      this.authNumber = parsedData.authNumber;
-    } else {
-      console.warn("No saved data found.");
-    }
-  }
-
 
   getFieldsByType(fields: any[], type: string): any[] {
     return fields.filter(field => field.type === type);
@@ -538,8 +605,8 @@ export class AuthorizationComponent {
     } else {
       this.formData['Member Provider Decision Info'] = { entries: updatedDecisionData.decisionMemberInfo.entries };
     }
-
-    this.saveData(this.formData, 'Update');
+    this.saveType = 'Update';
+    this.saveData(this.formData);
   }
 
 }

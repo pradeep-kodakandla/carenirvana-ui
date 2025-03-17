@@ -21,7 +21,6 @@
 
 
   <div class="content-section">
-    <!-- Static Info Section -->
     <!-- Horizontal Stepper -->
     <mat-horizontal-stepper style="padding: 0; margin-top:-10px; background-color:transparent;" [selectedIndex]="stepperSelectedIndex" #stepper>
       <mat-step label="Request Details" style="padding: 0;">
@@ -417,15 +416,13 @@
                                                                 name="{{ subField.id + '_' + i }}" [(ngModel)]="entry[subField.id]"
                                                                 rows="3" placeholder="{{ subField.displayName }}"
                                                                 [required]="subField.required" #subFieldModel="ngModel">
-                                                  </textarea>
+                                                      </textarea>
                                                     </ng-container>
                                                     <ng-container *ngSwitchCase="'checkbox'">
                                                       <div class="form-outline">
                                                         <label [for]="subField.id + '_' + i" class="form-label">
                                                           <!--{{ subField.displayName }}--><span *ngIf="subField.required" class="text-danger"> * </span>
-
                                                         </label>
-                                                        /l
                                                         <div class="form-group d-flex align-items-center">
                                                           <input type="checkbox" class="form-check-input"
                                                                  [id]="subField.id + '_' + i" name="{{ subField.id + '_' + i }}"
@@ -474,8 +471,8 @@
               </div>
               <!-- Save Button -->
               <div class="text-center">
-                <button mat-raised-button class="auth-button " (click)="saveData(authForm,'Add')">Save</button>
-                <button mat-raised-button class="auth-button " (click)="loadData()">Load</button>
+                <button mat-raised-button class="auth-button " (click)="saveData(authForm)">Save</button>
+                <!--<button mat-raised-button class="auth-button " (click)="loadData()">Load</button>-->
               </div>
 
               <!-- Status Details -->

@@ -10,7 +10,6 @@ import { MatMenuTrigger } from '@angular/material/menu';
 import { ChartOptions } from 'chart.js';
 import { TabService } from '../../service/tab.service';
 import { FormControl } from '@angular/forms';
-import { HeaderComponent } from 'src/app/header/header.component';
 import { HeaderService } from 'src/app/service/header.service';
 
 

@@ -1,10 +1,12 @@
-import { Component, EventEmitter, Output, ViewChild, ViewEncapsulation } from '@angular/core';
+import { Component, EventEmitter, Output, ViewChild, ViewEncapsulation, OnInit, Input } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatMenuTrigger } from '@angular/material/menu';
 import { MemberService } from 'src/app/service/shared-member.service';
+import { AuthService } from 'src/app/service/auth.service';
+
 
 @Component({
   selector: 'app-authdetails',
@@ -12,21 +14,24 @@ import { MemberService } from 'src/app/service/shared-member.service';
   styleUrl: './authdetails.component.css',
   encapsulation: ViewEncapsulation.None,
 })
-export class AuthdetailsComponent {
+export class AuthdetailsComponent implements OnInit {
 
-  selectedDiv: number | null = 1; // Track the selected div
-
-  // Method to select a div and clear others
-  selectDiv(index: number) {
-    this.selectedDiv = index; // Set the selected div index
-  }
+  authDetails: any[] = [];
+  @Input() memberId!: number;
+  isLoading = true;
+  isEmpty = false;
+  showAddHighlight = false; 
   /*Div Selection Style change logic*/
-  displayedColumns: string[] = ['enrollmentStatus', 'memberId', 'firstName', 'lastName', 'DOB', 'risk', 'nextContact', 'assignedDate', 'programName', 'description'];
+  //displayedColumns: string[] = ['enrollmentStatus', 'memberId', 'firstName', 'lastName', 'DOB', 'risk', 'nextContact', 'assignedDate', 'programName', 'description'];
+
+
+
+  displayedColumns: string[] = [
+    'authDetailId', 'authNumber', 'authTypeId', 'memberId',
+    'authDueDate', 'nextReviewDate', 'treatmentType'
+  ];
   columnsToDisplayWithExpand = [...this.displayedColumns, 'expand'];
-
-
-  dataSource: MatTableDataSource<UserData>;
-  expandedElement!: UserData | null;
+  dataSource = new MatTableDataSource<any>();
 
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -38,12 +43,52 @@ export class AuthdetailsComponent {
     this.router.navigate([page]);
   }
 
-  constructor(private router: Router, private memberService: MemberService) {
-    // Create 100 users
-    const users = Array.from({ length: 100 }, (_, k) => createNewUser(k + 1));
+  ngOnInit(): void {
+    this.getAuthDetails();
+  }
 
-    // Assign the data to the data source for the table to render
-    this.dataSource = new MatTableDataSource(users);
+  getAuthDetails(): void {
+    console.log('Fetching Auth Details for Member ID:', this.memberId);
+    this.isLoading = true;  // ✅ Show spinner while fetching data
+
+    this.authService.getAllAuthDetailsByMemberId(this.memberId).subscribe(
+      (data) => {
+        this.isLoading = false;  // ✅ Stop spinner
+        if (!data || data.length === 0) {
+          console.warn('No Auth Details found for Member ID:', this.memberId);
+          this.isEmpty = true; // ✅ Show "No data available"
+          this.showAddHighlight = true;
+          this.authDetails = [];
+          this.dataSource.data = [];
+          return;
+        }
+
+        this.isEmpty = false;
+        this.showAddHighlight = false;
+        this.authDetails = data.map((item: any) => ({
+          authDetailId: item.Id || '',
+          authNumber: item.AuthNumber || '',
+          authTypeId: item.AuthTypeId || '',
+          memberId: item.MemberId || '',
+          authDueDate: item.AuthDueDate || '',
+          nextReviewDate: item.NextReviewDate || '',
+          treatmentType: item.TreatmentType || ''
+        }));
+
+        this.dataSource.data = this.authDetails;
+        console.log('Auth Details:', this.authDetails);
+      },
+      (error) => {
+        console.error('Error fetching auth details:', error);
+        this.isLoading = false;
+        this.isEmpty = true;
+        this.showAddHighlight = true;
+        this.authDetails = [];
+        this.dataSource.data = [];
+      }
+    );
+  }
+  constructor(private router: Router, private memberService: MemberService, private authService: AuthService) {
   }
 
   ngAfterViewInit() {
@@ -60,32 +105,11 @@ export class AuthdetailsComponent {
     }
   }
 
-  goToPage(memberId: string) {
-    this.router.navigate(['/member-info', memberId]);
-  }
-
   /*Table Context Menu*/
   @ViewChild(MatMenuTrigger)
   contextMenu!: MatMenuTrigger;
 
   contextMenuPosition = { x: '0px', y: '0px' };
-
-  onContextMenu(event: MouseEvent, item: UserData) {
-    event.preventDefault();
-    this.contextMenuPosition.x = event.clientX + 'px';
-    this.contextMenuPosition.y = event.clientY + 'px';
-    this.contextMenu.menuData = { 'item': item };
-    this.contextMenu.menu!.focusFirstItem('mouse');
-    this.contextMenu.openMenu();
-  }
-
-  onContextMenuAction1(item: UserData) {
-    alert(`Click on Action 1 for ${item.enrollmentStatus}`);
-  }
-
-  onContextMenuAction2(item: UserData) {
-    alert(`Click on Action 2 for ${item.enrollmentStatus}`);
-  }
 
   /*auth Search*/
   isFocused = false;
@@ -100,131 +124,11 @@ export class AuthdetailsComponent {
   /*auth Search*/
 
   /*to display add auth component*/
-  @Output() addClicked = new EventEmitter<void>();
+  @Output() addClicked = new EventEmitter<string>();
 
-  onAddClick() {
-    this.addClicked.emit();
+  onAddClick(authNumber: string = '') {
+    console.log('Add Auth Clicked:', authNumber);
+    this.addClicked.emit(authNumber);
     this.memberService.setIsCollapse(true);
   }
-
-
-  items = [
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    }
-  ];
-
 }
-/** Builds and returns a new User. */
-export function createNewUser(id: number): UserData {
-  const name =
-    NAMES[Math.round(Math.random() * (NAMES.length - 1))];
-
-  return {
-    enrollmentStatus: 'Active',
-    firstName: name,
-    memberId: NUMS[Math.round(Math.random() * (NUMS.length - 1))], /*(100 * 100).toString(),*/
-    lastName: FRUITS[Math.round(Math.random() * (FRUITS.length - 1))],
-    DOB: '09/14/2024',
-    risk: 'Low',
-    nextContact: '09/14/2024',
-    assignedDate: '09/14/2024',
-    programName: 'Care Management',
-    description: 'I am a good boy - I dont have any health issues'
-  };
-}
-export interface UserData {
-  enrollmentStatus: string;
-  memberId: string;
-  firstName: string;
-  lastName: string;
-  DOB: string;
-  risk: string;
-  nextContact: string;
-  assignedDate: string;
-  programName: string;
-  description: string;
-}
-
-/** Constants used to fill up our data base. */
-const FRUITS: string[] = [
-  'blueberry',
-  'lychee',
-  'kiwi',
-  'mango',
-  'peach',
-  'lime',
-  'pomegranate',
-  'pineapple',
-];
-const NUMS: string[] = [
-  '10000',
-  '10001',
-  '10003',
-  '10004',
-  '10005',
-  '10006',
-  '10007',
-  '10008',
-  '10009',
-  '10010',
-];
-
-const NAMES: string[] = [
-  'Pradeep',
-  'Pawan',
-  'Sridhar',
-  'Rohitha',
-  'Paavana',
-  'Jack',
-  'Charlotte',
-  'Theodore',
-  'Isla',
-  'Oliver',
-  'Isabella',
-  'Jasper',
-  'Cora',
-  'Levi',
-  'Violet',
-  'Arthur',
-  'Mia',
-  'Thomas',
-  'Elizabeth',
-];
