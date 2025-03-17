@@ -20,6 +20,7 @@ import { UmauthdocumentsComponent } from 'src/app/member/UM/umauthdocuments/umau
 export class AuthorizationComponent {
   stepperSelectedIndex = 0;
   @Input() authNumber: string = '';
+  @Input() memberId!: number;
   constructor(
     private memberService: MemberService,
     private authService: AuthService,
@@ -437,6 +438,7 @@ export class AuthorizationComponent {
     }
 
     let jsonData: any = {}; // Use let to reassign
+    console.log('Member ID:', this.memberId);
     if (this.saveType === 'Add') {
       this.authNumber = this.authNumberService.generateAuthNumber(9, true, true, false, false);
       console.log("Auth Number:", this.authNumber);
@@ -444,13 +446,14 @@ export class AuthorizationComponent {
         Data: [this.formData],
         AuthNumber: this.authNumber,
         AuthTypeId: 37,
-        MemberId: 10000,
+        MemberId: this.memberId,
         AuthDueDate: new Date().toISOString(),
         NextReviewDate: new Date().toISOString(),
         TreatmentType: 'Standard',
         SaveType: this.saveType,
         CreatedOn: new Date().toISOString(),
         CreatedBy: 1,
+        responseData: JSON.stringify(this.formData) // Ensure it's a valid JSON string
       };
     }
 
@@ -460,17 +463,17 @@ export class AuthorizationComponent {
         Data: [this.formData],
         AuthNumber: this.authNumber,
         AuthTypeId: 37,
-        MemberId: 10000,
+        MemberId: this.memberId,
         AuthDueDate: new Date().toISOString(),
         NextReviewDate: new Date().toISOString(),
         TreatmentType: 'Standard',
         SaveType: this.saveType,
         UpdatedOn: new Date().toISOString(),
         UpdatedBy: 1,
+        responseData: JSON.stringify(this.formData) // Ensure it's a valid JSON string
       };
     }
 
-    console.log("jsondata: ", jsonData);
     this.authService.saveAuthDetail(jsonData).subscribe(
       response => {
         this.snackBar.open('Auth saved successfully!', 'Close', {
@@ -506,6 +509,7 @@ export class AuthorizationComponent {
       },
       error => {
         console.error('Error saving data:', error);
+        console.error('Error Details:', error.error);
       }
     );
   }

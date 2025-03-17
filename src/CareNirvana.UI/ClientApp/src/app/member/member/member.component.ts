@@ -24,6 +24,7 @@ export class MemberComponent {
     if (authNumber) {
       this.authNumber = authNumber;  // Store it
     }
+
     this.showAuthorizationComponent = true;
   }
 

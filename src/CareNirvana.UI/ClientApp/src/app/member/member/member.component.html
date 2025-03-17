@@ -138,7 +138,7 @@
         </div>
 
         <div *ngIf="showAuthorizationComponent">
-          <app-authorization [authNumber]="authNumber" (cancel)="onCancel()"></app-authorization>
+          <app-authorization [authNumber]="authNumber" [memberId]="memberId" (cancel)="onCancel()"></app-authorization>
           <!--<app-authdynamic (cancel)="onCancel()"></app-authdynamic>-->
         </div>
       </div>
