@@ -35,7 +35,8 @@
                   (click)="onTabClick(tab.route)"
                   [attr.aria-controls]="'tab' + tab.label">
             <div class="tab">
-              <span class="tab-title">Member</span>
+              <span class="tab-title">Member ID: ({{ tab.memberId }})</span>
+              <!--{{ tab.label.includes('Auth') ? 'Auth' : 'Member' }} - ID: {{ tab.memberId }}-->
               <span style="padding-top:5px;">{{ tab.label }}</span>
               <span class="close-btn" (click)="removeTab(tab)"><mat-icon style="vertical-align:bottom;">close</mat-icon></span>
             </div>

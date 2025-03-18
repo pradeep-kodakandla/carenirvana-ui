@@ -6,7 +6,7 @@ import { MatTableDataSource } from '@angular/material/table';
 import { MatMenuTrigger } from '@angular/material/menu';
 import { MemberService } from 'src/app/service/shared-member.service';
 import { AuthService } from 'src/app/service/auth.service';
-
+import { HeaderService } from 'src/app/service/header.service';
 
 @Component({
   selector: 'app-authdetails',
@@ -20,11 +20,12 @@ export class AuthdetailsComponent implements OnInit {
   @Input() memberId!: number;
   isLoading = true;
   isEmpty = false;
-  showAddHighlight = false; 
+  showAddHighlight = false;
   /*Div Selection Style change logic*/
   //displayedColumns: string[] = ['enrollmentStatus', 'memberId', 'firstName', 'lastName', 'DOB', 'risk', 'nextContact', 'assignedDate', 'programName', 'description'];
 
-
+  constructor(private router: Router, private memberService: MemberService, private authService: AuthService, private headerService: HeaderService) {
+  }
 
   displayedColumns: string[] = [
     'authDetailId', 'authNumber', 'authTypeId', 'memberId',
@@ -88,8 +89,7 @@ export class AuthdetailsComponent implements OnInit {
       }
     );
   }
-  constructor(private router: Router, private memberService: MemberService, private authService: AuthService) {
-  }
+
 
   ngAfterViewInit() {
     this.dataSource.paginator = this.paginator;
@@ -127,8 +127,32 @@ export class AuthdetailsComponent implements OnInit {
   @Output() addClicked = new EventEmitter<string>();
 
   onAddClick(authNumber: string = '') {
-    console.log('Add Auth Clicked:', authNumber);
-    this.addClicked.emit(authNumber);
-    this.memberService.setIsCollapse(true);
+    //console.log('Add Auth Clicked:', authNumber);
+    //this.addClicked.emit(authNumber);
+    //this.memberService.setIsCollapse(true);
+    if (!authNumber) {
+      authNumber = 'DRAFT';
+    }
+
+
+    const tabLabel = `Auth No (${authNumber})`;
+    const tabRoute = `/member-auth/${authNumber}/${this.memberId}`;
+
+    // Check if tab already exists
+    const existingTab = this.headerService.getTabs().find(tab => tab.route === tabRoute);
+
+    if (existingTab) {
+      // Select the existing tab instead of creating a new one
+      this.headerService.selectTab(tabRoute);
+      this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+        this.router.navigate([tabRoute]);
+      });
+    } else {
+      // reate and select the new tab
+      this.headerService.addTab(tabLabel, tabRoute, String(this.memberId));
+      this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+        this.router.navigate([tabRoute]);
+      });
+    }
   }
 }

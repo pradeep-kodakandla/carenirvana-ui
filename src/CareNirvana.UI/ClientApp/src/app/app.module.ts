@@ -203,6 +203,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
       { path: 'member-tasksummary', component: MemberTasksummaryComponent },
       { path: 'member-info', component: MemberInfoComponent },
       { path: 'member-auth', component: AuthorizationComponent },
+      { path: 'member-auth/:authNo/:memberId', component: AuthorizationComponent },
       { path: 'member-decision/:id', component: DecisiondetailsComponent },
       { path: 'member-authdetails', component: AuthdetailsComponent },
       { path: 'dash-newdash', component: NewDashBoardComponent },

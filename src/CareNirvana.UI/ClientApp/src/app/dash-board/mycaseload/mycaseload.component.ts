@@ -110,7 +110,7 @@ export class MycaseloadComponent {
       });
     } else {
       // reate and select the new tab
-      this.headerService.addTab(tabLabel, tabRoute);
+      this.headerService.addTab(tabLabel, tabRoute, memberId);
       this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
         this.router.navigate([tabRoute]);
       });

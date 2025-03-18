@@ -44,6 +44,7 @@ export class AuthorizationComponent {
   showTemplateNameError: boolean = false;
   decisionData: any = {};
   saveType: string = '';
+  newAuthNumber: string | null = null;
 
   // Method to set selected div (if needed elsewhere)
   selectDiv(index: number): void {
@@ -80,11 +81,20 @@ export class AuthorizationComponent {
   ngOnInit(): void {
     console.log('Received Auth Number via Input:', this.authNumber);
 
-    if (this.authNumber) {
-      this.getAuthDataByAuthNumber(this.authNumber);
-    }
-    this.loadAuthTemplates();
+    this.route.paramMap.subscribe(params => {
+      this.newAuthNumber = params.get('authNo'); // Extract authNumber
+      this.memberId = Number(params.get('memberId'));
+      console.log('Member ID:', this.memberId); // Debugging log
+      console.log('Auth Number:', this.newAuthNumber); // Debugging log
+    });
 
+    if (this.newAuthNumber && this.newAuthNumber != 'DRAFT') {
+      this.getAuthDataByAuthNumber(this.newAuthNumber);
+    }
+
+    console.log('Member ID:', this.memberId);
+
+    this.loadAuthTemplates();
   }
 
   getAuthDataByAuthNumber(authNumber: string): void {

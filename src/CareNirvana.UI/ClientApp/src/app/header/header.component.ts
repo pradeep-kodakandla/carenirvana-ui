@@ -49,7 +49,7 @@ export class HeaderComponent {
     const newTabLabel = `Member Info ${newTabIndex}`;
     const newTabRoute = `/member-info/${newTabIndex}`;
 
-    this.headerService.addTab(newTabLabel, newTabRoute);
+    this.headerService.addTab(newTabLabel, newTabRoute, '0');
     this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
       this.router.navigate([newTabRoute]);
     });
@@ -57,8 +57,9 @@ export class HeaderComponent {
 
   onTabClick(route: string): void {
     this.headerService.selectTab(route);
+    const memberId = this.headerService.getMemberId(route) || '';
     this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
-      this.router.navigate([route]);
+      this.router.navigate([route], { queryParams: { memberId } });
     });
   }
 

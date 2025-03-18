@@ -5,12 +5,12 @@ import { Router } from '@angular/router';
   providedIn: 'root'
 })
 export class HeaderService {
-  dynamicTabs: { label: string; route: string }[] = [];
+  dynamicTabs: { label: string; route: string; memberId?: string }[] = [];
   selectedTabRoute: string | null = null; // Track selected tab
 
-  addTab(label: string, route: string): void {
+  addTab(label: string, route: string, memberId: string): void {
     if (!this.dynamicTabs.some(tab => tab.route === route)) {
-      this.dynamicTabs.push({ label, route });
+      this.dynamicTabs.push({ label, route, memberId });
     }
     this.selectTab(route); // Select tab when added
   }
@@ -31,7 +31,7 @@ export class HeaderService {
     }
   }
 
-  getTabs(): { label: string; route: string }[] {
+  getTabs(): { label: string; route: string; memberId?: string }[] {
     return this.dynamicTabs;
   }
 
@@ -41,6 +41,10 @@ export class HeaderService {
 
   getSelectedTab(): string | null {
     return this.selectedTabRoute;
+  }
+
+  getMemberId(route: string): string | undefined {
+    return this.dynamicTabs.find(tab => tab.route === route)?.memberId;
   }
 }
 
