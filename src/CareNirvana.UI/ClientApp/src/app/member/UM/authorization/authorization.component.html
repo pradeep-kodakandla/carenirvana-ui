@@ -1,4 +1,4 @@
-<div class="container" style="padding: 0px !important; font-family: 'Open Sans', sans-serif !important; font-size: 14px !important; position: relative;">
+<div class="container" style="padding: 0px !important; font-family: 'Open Sans', sans-serif !important; font-size: 14px !important; position: relative;" *ngIf="!showAuthorizationComponent">
   <!-- Close Button -->
   <div class="close-container d-flex justify-content-between align-items-center">
     <div class="card p-2 shadow-sm rounded flex-grow-1">
@@ -502,4 +502,7 @@
       <mat-step label="Close"></mat-step>
     </mat-horizontal-stepper>
   </div>
+</div>
+<div *ngIf="showAuthorizationComponent">
+  <app-authdetails [memberId]="memberId"></app-authdetails>
 </div>

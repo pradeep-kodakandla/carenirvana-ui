@@ -45,6 +45,7 @@ export class AuthorizationComponent {
   decisionData: any = {};
   saveType: string = '';
   newAuthNumber: string | null = null;
+  showAuthorizationComponent = false;
 
   // Method to set selected div (if needed elsewhere)
   selectDiv(index: number): void {
@@ -73,6 +74,7 @@ export class AuthorizationComponent {
   onCancelClick(): void {
     this.cancel.emit();
     this.memberService.setIsCollapse(false);
+    this.showAuthorizationComponent = true;
   }
 
   formData: any = {};
