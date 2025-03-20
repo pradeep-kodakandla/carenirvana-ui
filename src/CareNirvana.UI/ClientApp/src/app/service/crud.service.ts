@@ -120,7 +120,7 @@ export class CrudService {
 
     return this.http.get<any>(`${this.baseUrl}/${module}/${section}`, httpOptions).pipe(
       map(response => {
-        console.log('API Response:', response);
+       // console.log('API Response:', response);
         const items = Array.isArray(response) ? response : response.data || [];
         return items.filter((item: any) => item?.deletedOn == null);
       })

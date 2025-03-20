@@ -1,27 +1,40 @@
 <div class="form-container">
   <form>
     <div class="form-grid">
-      <div *ngFor="let field of formFields" class="form-group" [ngClass]="{'textarea-field': field.type === 'textarea'}">
-        <ng-container [ngSwitch]="field.type">
-          <select *ngSwitchCase="'select'" [(ngModel)]="field.value" [name]="field.id">
-            <option value="" disabled selected></option>
-            <option *ngFor="let option of field.selectedOptions" [value]="option">{{ option }}</option>
-          </select>
+      <ng-container *ngFor="let field of documentFields">
+        <ng-container *ngIf="field.id !== 'authorizationDocumentsGrid'">
+          <!-- Ignore unwanted fields -->
+          <div class="form-group">
+            <ng-container [ngSwitch]="field.type">
 
-          <textarea *ngSwitchCase="'textarea'" [(ngModel)]="field.value" [name]="field.id" placeholder=" "></textarea>
+              <!-- Dropdown (Select) -->
+              <select *ngSwitchCase="'select'" [(ngModel)]="field.value" [name]="field.id" [ngModelOptions]="{standalone: true}">
+                <option *ngFor="let option of field.options" [value]="option.value">
+                  {{ option.label }}
+                </option>
+              </select>
 
-          <input *ngSwitchCase="'file'" type="file" multiple (change)="handleFileUpload($event)">
+              <!-- Textarea -->
+              <textarea *ngSwitchCase="'textarea'" [(ngModel)]="field.value" [name]="field.id" [ngModelOptions]="{standalone: true}"></textarea>
 
-          <input *ngSwitchDefault type="text" [(ngModel)]="field.value" [name]="field.id" placeholder=" ">
+              <!-- File Upload -->
+              <input *ngSwitchCase="'file'" type="file" multiple (change)="handleFileUpload($event)">
+
+              <!-- Readonly Label (for information note) -->
+              <label *ngSwitchCase="'label'">{{ field.info }}</label>
+
+              <!-- Default Input (Text) -->
+              <input *ngSwitchDefault type="text" [(ngModel)]="field.value" [name]="field.id" [ngModelOptions]="{standalone: true}">
+            </ng-container>
+            <label>{{ field.label }}</label>
+          </div>
         </ng-container>
-        <label>{{ field.label }}</label>
-      </div>
+      </ng-container>
+
       <button type="button" (click)="saveDocument()">Save</button>
     </div>
-
   </form>
 </div>
-
 
 <table>
   <thead>
@@ -42,7 +55,7 @@
       <td>{{ doc.authorizationDocumentDesc }}</td>
       <td>
         <span *ngFor="let file of doc.authorizationSelectFiles">
-          <a href="#" (click)="viewDocument(file)" class="file-link">{{ file }}</a>
+          <a href="#" (click)="viewDocument(file)">{{ file }}</a>
         </span>
       </td>
       <td>{{ doc.createdOn }}</td>
@@ -50,8 +63,8 @@
       <td>{{ doc.updatedOn }}</td>
       <td>{{ doc.updatedBy }}</td>
       <td>
-        <button class="edit-btn" (click)="editDocument(doc)">Edit</button>
-        <button class="delete-btn" (click)="deleteDocument(doc.id)">Delete</button>
+        <button (click)="editDocument(doc)">Edit</button>
+        <button (click)="deleteDocument(doc.id)">Delete</button>
       </td>
     </tr>
   </tbody>

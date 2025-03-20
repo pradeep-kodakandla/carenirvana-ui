@@ -1,26 +1,39 @@
 <div class="form-container">
   <form>
     <div class="form-grid">
-      <div *ngFor="let field of formFields" class="form-group"
-           [ngClass]="{'textarea-field': field.type === 'textarea', 'hidden': field.hidden}">
-        <ng-container [ngSwitch]="field.type">
-          <select *ngSwitchCase="'select'" [(ngModel)]="field.value" [name]="field.id">
-            <option value="" disabled selected></option>
-            <option *ngFor="let option of field.selectedOptions" [value]="option">{{ option }}</option>
-          </select>
+      <ng-container *ngFor="let field of notesFields">
+        <div *ngIf="field.id !== 'authorizationNotesGrid'" class="form-group"
+             [ngClass]="{'textarea-field': field.type === 'textarea', 'hidden': field.hidden}">
 
-          <textarea *ngSwitchCase="'textarea'" [(ngModel)]="field.value" [name]="field.id" placeholder=" "></textarea>
+          <ng-container [ngSwitch]="field.type">
+            <select *ngSwitchCase="'select'" [(ngModel)]="field.value" [name]="field.id">
+              <option *ngFor="let option of field.options" [value]="option.value"
+                      [selected]="field.selectedOptions?.includes(option.value)">
+                {{ option.label }}
+              </option>
+            </select>
 
-          <input *ngSwitchCase="'checkbox'" type="checkbox" [(ngModel)]="field.value" [name]="field.id"
-                 (change)="onAlertNoteChange($event)">
+            <input *ngSwitchCase="'datetime-local'" type="datetime-local" [(ngModel)]="field.value" [name]="field.id">
 
-          <input *ngSwitchDefault type="text" [(ngModel)]="field.value" [name]="field.id" placeholder=" ">
-        </ng-container>
-        <label>{{ field.label }}</label>
+            <input *ngSwitchCase="'checkbox'" type="checkbox" [(ngModel)]="field.value" [name]="field.id"
+                   (change)="onAlertNoteChange($event)">
+
+            <textarea *ngSwitchCase="'textarea'" [(ngModel)]="field.value" [name]="field.id"></textarea>
+
+            <input *ngSwitchDefault type="text" [(ngModel)]="field.value" [name]="field.id">
+          </ng-container>
+
+          <label>{{ field.label }}</label>
+        </div>
+      </ng-container>
+
+      <div *ngIf="showEndDatetimeField">
+        <label>End Datetime</label>
+        <input type="datetime-local" [(ngModel)]="endDatetimeValue">
       </div>
+
       <button type="button" (click)="saveNote()">Save</button>
     </div>
-
   </form>
 </div>
 
@@ -51,3 +64,5 @@
     </tr>
   </tbody>
 </table>
+
+

@@ -8,8 +8,6 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { CrudService } from 'src/app/service/crud.service';
 import { MatDialog } from '@angular/material/dialog';
 import { ProviderSearchComponent } from 'src/app/Provider/provider-search/provider-search.component';
-import { UmauthnotesComponent } from 'src/app/member/UM/umauthnotes/umauthnotes.component';
-import { UmauthdocumentsComponent } from 'src/app/member/UM/umauthdocuments/umauthdocuments.component';
 
 
 @Component({
@@ -42,10 +40,19 @@ export class AuthorizationComponent {
   selectedTemplateId: number = 0;
   newTemplateName: string = '';
   showTemplateNameError: boolean = false;
-  decisionData: any = {};
   saveType: string = '';
   newAuthNumber: string | null = null;
   showAuthorizationComponent = false;
+
+  DecisionFields: any = {};
+
+  decisionData: any = {};
+
+  authorizationNotesFields: any = []; // Fields JSON
+  authorizationNotesData: any = []; // Data JSON
+
+  authorizationDocumentFields: any = []; // Fields JSON
+  authorizationDocumentData: any = []; // Data JSON
 
   // Method to set selected div (if needed elsewhere)
   selectDiv(index: number): void {
@@ -54,18 +61,22 @@ export class AuthorizationComponent {
     this.sectionOrder = this.config
       ? Object.keys(this.config).filter(section => !section.toLowerCase().includes('decision')).sort((a, b) => (this.config[a].order || 0) - (this.config[b].order || 0))
       : ['Auth Details'];
+
+    this.sectionOrderAll = this.config
+      ? Object.keys(this.config).sort((a, b) => (this.config[a].order || 0) - (this.config[b].order || 0))
+      : ['Auth Details'];
   }
 
   selectedDiv: number | null = null;
   additionalInfo = [
-    { label: "Auth No", value: "5N7CBIHL3" },
-    { label: "Auth Type", value: "Standard" },
-    { label: "Due Date", value: "2024-03-15" },
-    { label: "Days Left", value: "3" },
-    { label: "Request Priority", value: "High" },
-    { label: "Auth Owner", value: "John Doe" },
-    { label: "Auth Status", value: "Pending" },
-    { label: "Overall Status", value: "Approved" }
+    { label: "Auth No", value: "" },
+    { label: "Auth Type", value: "" },
+    { label: "Due Date", value: "" },
+    { label: "Days Left", value: "" },
+    { label: "Request Priority", value: "" },
+    { label: "Auth Owner", value: "" },
+    { label: "Auth Status", value: "" },
+    { label: "Overall Status", value: "" }
   ];
 
 
@@ -81,20 +92,20 @@ export class AuthorizationComponent {
   config: any; // JSON configuration loaded dynamically
 
   ngOnInit(): void {
-    console.log('Received Auth Number via Input:', this.authNumber);
+    // console.log('Received Auth Number via Input:', this.authNumber);
 
     this.route.paramMap.subscribe(params => {
       this.newAuthNumber = params.get('authNo'); // Extract authNumber
       this.memberId = Number(params.get('memberId'));
-      console.log('Member ID:', this.memberId); // Debugging log
-      console.log('Auth Number:', this.newAuthNumber); // Debugging log
+      //console.log('Member ID:', this.memberId); // Debugging log
+      //console.log('Auth Number:', this.newAuthNumber); // Debugging log
     });
 
     if (this.newAuthNumber && this.newAuthNumber != 'DRAFT') {
       this.getAuthDataByAuthNumber(this.newAuthNumber);
     }
 
-    console.log('Member ID:', this.memberId);
+    //console.log('Member ID:', this.memberId);
 
     this.loadAuthTemplates();
   }
@@ -102,7 +113,6 @@ export class AuthorizationComponent {
   getAuthDataByAuthNumber(authNumber: string): void {
     this.authService.getAuthDataByAuthNumber(authNumber).subscribe(
       (data) => {
-        console.log('Fetched Auth Data:', data);
         this.formData = data; // Assuming this is the structure required
         if (data) {
           this.selectDiv(1);
@@ -110,7 +120,7 @@ export class AuthorizationComponent {
           let savedData = data[0]?.responseData;
           const authTemplateId = data[0]?.AuthTypeId || 0; // Extract authTemplateId
           if (authTemplateId) {
-            console.log('Setting Auth Template ID:', authTemplateId);
+            
             this.selectedTemplateId = authTemplateId;
             this.onAuthTypeChange();
             // Trigger onAuthTypeChange() and ensure it completes before loading data
@@ -130,7 +140,29 @@ export class AuthorizationComponent {
                   this.formData = savedData; // ✅ Assign the correctly parsed object
                   this.authNumber = data[0]?.AuthNumber;
                   this.saveType = 'Update';
-                  console.log('Final Loaded Data:', this.formData);
+
+                  if (savedData && savedData['Authorization Notes']) {
+                    this.authorizationNotesData = savedData['Authorization Notes'].entries || [];
+                  }
+
+                  if (savedData && savedData['Authorization Documents']) {
+                    this.authorizationDocumentData = savedData['Authorization Documents'].entries || [];
+                  }
+
+                  this.loadDecisionData();
+
+                  // ✅ Update additionalInfo dynamically
+                  this.additionalInfo = [
+                    { label: "Auth No", value: data[0]?.AuthNumber || "N/A" },
+                    { label: "Auth Type", value: data[0]?.AuthTypeId || "N/A" },
+                    { label: "Due Date", value: this.formatDate(data[0]?.AuthDueDate) || "N/A" },
+                    { label: "Days Left", value: this.calculateDaysLeft(data[0]?.AuthDueDate) || "N/A" },
+                    { label: "Request Priority", value: savedData?.RequestPriority || "N/A" },
+                    { label: "Auth Owner", value: savedData?.AuthOwner || "N/A" },
+                    { label: "Auth Status", value: savedData?.AuthStatus || "N/A" },
+                    { label: "Overall Status", value: savedData?.OverallStatus || "N/A" }
+                  ];
+
                 } catch (error) {
                   console.error('Error parsing Data:', error);
                 }
@@ -151,6 +183,21 @@ export class AuthorizationComponent {
     );
   }
 
+  private calculateDaysLeft(dueDate: string): number {
+    if (!dueDate) return 0;
+    const today = new Date();
+    const due = new Date(dueDate);
+    const diffTime = due.getTime() - today.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)); // Convert ms to days
+  }
+
+  private formatDate(dateString: string): string {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return date.toISOString().split('T')[0]; // Extracts only YYYY-MM-DD
+  }
+
+
   loadAuthTemplates(): void {
     this.authService.getAuthTemplates().subscribe({
       next: (data: any[]) => {
@@ -167,86 +214,89 @@ export class AuthorizationComponent {
   }
 
   sectionOrder: string[] = []; // Capture the order of keys from the JSON
+  sectionOrderAll: string[] = []; // Capture the order of keys from the JSON
 
   onAuthTypeChange(): void {
-    console.log('Selected Template ID:', this.selectedTemplateId);
     if (this.selectedTemplateId !== null && this.selectedTemplateId !== 0) {
-      // Mark auth type as selected so we show status details, etc.
       this.authTypeSelect = this.selectedAuthType !== 'sel';
+
       this.authService.getTemplate(this.selectedTemplateId).subscribe({
         next: (data: any) => {
-          if (!data || !data[0].JsonContent) {
+          if (!data || !data[0]?.JsonContent) {
             console.error('API returned invalid data:', data);
             return;
           }
           try {
-            // Parse the JSON configuration
             const parsedJson = JSON.parse(data[0].JsonContent);
-            // Transform the new JSON structure into an object keyed by the original section name
             const configObj: any = {};
+
             if (parsedJson.sections && Array.isArray(parsedJson.sections)) {
               parsedJson.sections
                 .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
                 .forEach((section: any) => {
-                  // Use the sectionName as the key (e.g., "Auth Details", "Additional Details", etc.)
-                  const key = section.sectionName;
-                  configObj[key] = section;
+                  if (section.sectionName) {
+                    configObj[section.sectionName] = section;
+                  }
                 });
             }
+
             this.config = configObj;
-            //this.sectionOrder = Object.keys(this.config).filter(section => !section.toLowerCase().includes('decision')).sort(
-            //  (a, b) => (this.config[a].order || 0) - (this.config[b].order || 0)
-            //);
+
             this.sectionOrder = Object.keys(this.config)
               .filter(section => !section.toLowerCase().includes('decision'))
-              .sort((a, b) => (this.config[a].order || 0) - (this.config[b].order || 0));
+              .sort((a, b) => (this.config[a]?.order || 0) - (this.config[b]?.order || 0));
 
+            this.sectionOrderAll = Object.keys(this.config)
+              .sort((a, b) => (this.config[a]?.order || 0) - (this.config[b]?.order || 0));
 
-            console.log('Parsed config:', this.config);
           } catch (error) {
             console.error('Error parsing JSON content:', error);
             this.config = {};
           }
-          // Build the formData from the configuration using the preserved section names
+
+          // Initialize formData
           this.formData = {};
           for (let section of this.sectionOrder) {
             if (section === 'Additional Details' && this.config[section]) {
               this.formData[section] = { expanded: true };
-              // Iterate over each sub-section inside Additional Details (assumed to be under .subsections)
-              for (let subSection in this.config['Additional Details'].subsections) {
-                // Ensure fields is an array; if not, convert it.
-                let fieldsArray = this.config['Additional Details'].subsections[subSection].fields;
-                if (!Array.isArray(fieldsArray)) {
-                  fieldsArray = Object.values(fieldsArray);
-                  this.config['Additional Details'].subsections[subSection].fields = fieldsArray;
+
+              if (this.config[section].subsections) {
+                for (let subSection in this.config[section].subsections) {
+                  let fieldsArray = this.config[section].subsections[subSection]?.fields || [];
+                  if (!Array.isArray(fieldsArray)) {
+                    fieldsArray = Object.values(fieldsArray);
+                    this.config[section].subsections[subSection].fields = fieldsArray;
+                  }
+                  this.formData[section][subSection] = {
+                    expanded: true,
+                    entries: [this.createEmptyEntry(fieldsArray)]
+                  };
                 }
-                this.formData[section][subSection] = {
-                  expanded: true,
-                  entries: [this.createEmptyEntry(fieldsArray)]
-                };
               }
             } else if (this.config[section]) {
               this.formData[section] = {
                 expanded: true,
-                entries: [this.createEmptyEntry(this.config[section].fields)],
+                entries: [this.createEmptyEntry(this.config[section]?.fields || [])],
                 primaryIndex: null
               };
             }
           }
-          // Loop over the configuration to process select fields with a datasource
+
+          // Process select fields with a datasource
           const datasourceMap = new Map<string, any[]>();
-          this.sectionOrder.forEach((section: string) => {
+
+          this.sectionOrderAll.forEach((section: string) => {
             if (this.config[section]) {
-              if (section === 'Additional Details') {
-                Object.keys(this.config['Additional Details'].subsections).forEach(subSection => {
-                  this.config['Additional Details'].subsections[subSection].fields.forEach((field: any) => {
+              if (section === 'Additional Details' && this.config[section].subsections) {
+                Object.keys(this.config[section].subsections).forEach(subSection => {
+                  this.config[section].subsections[subSection]?.fields?.forEach((field: any) => {
                     if (field.type === 'select' && field.datasource) {
                       datasourceMap.set(field.datasource, []);
                     }
                   });
                 });
               } else {
-                this.config[section].fields.forEach((field: any) => {
+                this.config[section]?.fields?.forEach((field: any) => {
                   if (field.type === 'select' && field.datasource) {
                     datasourceMap.set(field.datasource, []);
                   }
@@ -255,23 +305,22 @@ export class AuthorizationComponent {
             }
           });
 
+          console.log('Datasource Map:', datasourceMap);
           datasourceMap.forEach((_, datasource) => {
             this.crudService.getData('um', datasource).subscribe(
               (serviceData: any[]) => {
                 datasourceMap.set(datasource, serviceData);
-                this.sectionOrder.forEach((section: string) => {
+                this.sectionOrderAll.forEach((section: string) => {
                   if (this.config[section]) {
-                    if (section === 'Additional Details') {
-                      Object.keys(this.config['Additional Details'].subsections).forEach(subSection => {
-                        this.config['Additional Details'].subsections[subSection].fields.forEach((field: any) => {
+                    if (section === 'Additional Details' && this.config[section].subsections) {
+                      Object.keys(this.config[section].subsections).forEach(subSection => {
+                        this.config[section].subsections[subSection]?.fields?.forEach((field: any) => {
                           if (field.type === 'select' && field.datasource === datasource) {
                             const expectedKey = field.datasource.toLowerCase();
-                            console.log("datasource:", expectedKey);
                             const options = [
                               { value: '', label: 'Select' },
                               ...serviceData.map((item: any) => {
                                 const actualKey = Object.keys(item).find(key => key.toLowerCase() === expectedKey);
-                                console.log("datasource:", actualKey);
                                 return {
                                   value: item.id,
                                   label: actualKey ? item[actualKey] : 'Unknown'
@@ -279,44 +328,41 @@ export class AuthorizationComponent {
                               })
                             ];
                             field.options = options;
-                            if (field.defaultValue) {
-                              this.formData[section]['subSection'].entries.forEach((entry: any) => {
+
+                            if (field.defaultValue && this.formData[section][subSection]?.entries) {
+                              this.formData[section][subSection].entries.forEach((entry: any) => {
                                 entry[field.id] = field.defaultValue;
                               });
-                            }
-                            if (!field.defaultValue) {
+                            } else if (this.formData[section]?.entries) {
                               this.formData[section].entries.forEach((entry: any) => {
-                                entry[field.id] = ''; // Set default to empty so "Select" is chosen
+                                entry[field.id] = '';
                               });
                             }
                           }
                         });
                       });
                     } else {
-                      this.config[section].fields.forEach((field: any) => {
+                      this.config[section]?.fields?.forEach((field: any) => {
                         if (field.type === 'select' && field.datasource === datasource) {
                           const expectedKey = field.datasource.toLowerCase();
-                          console.log("datasource:", expectedKey);
                           field.options = [
-                            { value: '', label: 'Select' }, // Add 'Select' as the first option
+                            { value: '', label: 'Select' },
                             ...serviceData.map((item: any) => {
-
                               const actualKey = Object.keys(item).find(key => key.toLowerCase() === expectedKey);
-                              console.log("Actual matching key:", actualKey);
                               return {
                                 value: item.id,
                                 label: actualKey ? item[actualKey] : 'Unknown'
                               };
                             })
                           ];
-                          if (field.defaultValue) {
+
+                          if (field.defaultValue && this.formData[section]?.entries) {
                             this.formData[section].entries.forEach((entry: any) => {
                               entry[field.id] = field.defaultValue;
                             });
-                          }
-                          if (!field.defaultValue) {
+                          } else if (this.formData[section]?.entries) {
                             this.formData[section].entries.forEach((entry: any) => {
-                              entry[field.id] = ''; // Set default to empty so "Select" is chosen
+                              entry[field.id] = '';
                             });
                           }
                         }
@@ -330,9 +376,25 @@ export class AuthorizationComponent {
               }
             );
           });
-          // Enable dynamic sections to load
+
+          this.DecisionFields = {
+            decisionDetails: { ...this.config['Decision Details'].fields || [] },
+            decisionNotes: { ...this.config['Decision Notes'].fields || [] },
+            decisionMemberInfo: { ...this.config['Member Provider Decision Info'].fields || [] }
+
+          };
+          console.log("Passing Decision Fields:", this.DecisionFields);
+          console.log("COnfig Data:", this.config);
+          if (this.config['Authorization Notes']) {
+            this.authorizationNotesFields = this.config['Authorization Notes'].fields || [];
+          }
+
+          if (this.config['Authorization Documents']) {
+            this.authorizationDocumentFields = this.config['Authorization Documents'].fields || [];
+            
+          }
+
           this.enrollmentSelect = true;
-          //this.prepareDecisionData();
         },
         error: (err) => {
           console.error('Error fetching template:', err);
@@ -344,6 +406,7 @@ export class AuthorizationComponent {
       console.log('No valid template selected');
     }
   }
+
 
 
   createEmptyEntry(fields: any[]): any {
@@ -450,11 +513,11 @@ export class AuthorizationComponent {
     }
 
     let jsonData: any = {}; // Use let to reassign
-    console.log('Member ID:', this.memberId);
-    console.log('Selected TemplatedId:', this.selectedTemplateId);
+    //console.log('Member ID:', this.memberId);
+    //console.log('Selected TemplatedId:', this.selectedTemplateId);
     if (this.saveType === 'Add') {
       this.authNumber = this.authNumberService.generateAuthNumber(9, true, true, false, false);
-      console.log("Auth Number:", this.authNumber);
+      //console.log("Auth Number:", this.authNumber);
       jsonData = {
         Data: [this.formData],
         AuthNumber: this.authNumber,
@@ -471,7 +534,7 @@ export class AuthorizationComponent {
     }
 
     if (this.saveType === 'Update') {
-      console.log("Auth Number:", this.authNumber);
+      // console.log("Auth Number:", this.authNumber);
       jsonData = {
         Data: [this.formData],
         AuthNumber: this.authNumber,
@@ -496,27 +559,7 @@ export class AuthorizationComponent {
           panelClass: ['success-snackbar']
         });
 
-        // Initialize decisionData with entries arrays
-        this.decisionData = {
-          serviceDetails: { ...this.formData['Service Details'] || {} },
-          decisionDetails: {
-            ...this.config['Decision Details'] || {},
-            entries: this.formData['Service Details']?.entries.map((service: any, index: number) => ({
-              decisionNumber: (index + 1).toString(),
-              serviceCode: service.serviceCode || 'N/A',
-              fromDate: service.fromDate || '',
-              toDate: service.toDate || ''
-            })) || []
-          },
-          decisionNotes: {
-            ...this.config['Decision Notes'] || {},
-            entries: this.formData['Service Details']?.entries.map(() => ({})) || []
-          },
-          decisionMemberInfo: {
-            ...this.config['Member Provider Decision Info'] || {},
-            entries: this.formData['Service Details']?.entries.map(() => ({})) || []
-          }
-        };
+        this.loadDecisionData();
         // Move to "Decision Details" stepper
         this.stepperSelectedIndex = 1; // Navigate to Decision Details step
       },
@@ -600,6 +643,38 @@ export class AuthorizationComponent {
     return this.config[section].fields.filter((field: any) => field.layout === 'row');
   }
 
+  /*************Decision Data***************/
+
+  loadDecisionData(): void {
+    // Initialize decisionData with entries arrays
+    this.decisionData = {
+      serviceDetails: { ...this.formData['Service Details'] || {} },
+      decisionDetails: {
+        ...this.config['Decision Details'] || {},
+        entries: this.formData['Service Details']?.entries.map((service: any, index: number) => ({
+          decisionNumber: (index + 1).toString(),
+          serviceCode: service.serviceCode || 'N/A',
+          fromDate: service.fromDate || '',
+          toDate: service.toDate || '',
+          serviceDescription: service.serviceDesc || '',
+          reviewType: service.reviewType || '',
+          unitType: service.unitType || '',
+          denied: service.serviceDenied || '',
+          modifier: service.modifier || ''
+        })) || []
+      },
+      decisionNotes: {
+        ...this.config['Decision Notes'] || {},
+        entries: this.formData['Service Details']?.entries.map(() => ({})) || []
+      },
+      decisionMemberInfo: {
+        ...this.config['Member Provider Decision Info'] || {},
+        entries: this.formData['Service Details']?.entries.map(() => ({})) || []
+      }
+    };
+    console.log('Decision Data:', this.decisionData);
+  }
+
   // Receive saved decision data from DecisionDetailsComponent
   handleDecisionDataSaved(updatedDecisionData: any): void {
     // Update only the entries for Decision Details
@@ -625,5 +700,31 @@ export class AuthorizationComponent {
     this.saveType = 'Update';
     this.saveData(this.formData);
   }
+
+  /*************Decision Data***************/
+
+  /*************Notes Data***************/
+  handleAuthNotesSaved(updatedNotes: any) {
+    if (!this.formData['Authorization Notes']) {
+      this.formData['Authorization Notes'] = { entries: [] };
+    }
+    this.formData['Authorization Notes'].entries = updatedNotes;
+
+    this.saveType = 'Update';
+    this.saveData(this.formData);
+  }
+  /*************Notes Data***************/
+
+  /*************Notes Data***************/
+  handleAuthDocumentSaved(updatedDocument: any) {
+    if (!this.formData['Authorization Documents']) {
+      this.formData['Authorization Documents'] = { entries: [] };
+    }
+    this.formData['Authorization Documents'].entries = updatedDocument;
+
+    this.saveType = 'Update';
+    this.saveData(this.formData);
+  }
+  /*************Notes Data***************/
 
 }

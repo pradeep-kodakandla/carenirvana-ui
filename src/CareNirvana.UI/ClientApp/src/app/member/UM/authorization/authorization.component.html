@@ -123,11 +123,15 @@
                     <div class="accordion-content" *ngIf="formData[section]?.expanded && selectedTemplateId !== 0">
                       <!-- Load specific components for Notes and Documents -->
                       <ng-container *ngIf="section === 'Authorization Notes'">
-                        <app-umauthnotes></app-umauthnotes>
+                        <app-umauthnotes [notesFields]="authorizationNotesFields"
+                                         [notesData]="authorizationNotesData"
+                                         (NotesSaved)="handleAuthNotesSaved($event)">></app-umauthnotes>
                       </ng-container>
 
                       <ng-container *ngIf="section === 'Authorization Documents'">
-                        <app-umauthdocuments></app-umauthdocuments>
+                        <app-umauthdocuments [documentFields]="authorizationDocumentFields"
+                                             [documentData]="authorizationDocumentData"
+                                             (DocumentSaved)="handleAuthDocumentSaved($event)"></app-umauthdocuments>
                       </ng-container>
 
                       <!-- Additional Details Section rendering remains unchanged -->
@@ -421,7 +425,7 @@
                                                     <ng-container *ngSwitchCase="'checkbox'">
                                                       <div class="form-outline">
                                                         <label [for]="subField.id + '_' + i" class="form-label">
-                                                          <!--{{ subField.displayName }}--><span *ngIf="subField.required" class="text-danger"> * </span>
+                                                          <span *ngIf="subField.required" class="text-danger"> * </span>
                                                         </label>
                                                         <div class="form-group d-flex align-items-center">
                                                           <input type="checkbox" class="form-check-input"
@@ -489,15 +493,20 @@
         </div>
       </mat-step>
       <mat-step label="Decision Details">
-        <app-decisiondetails [decisionData]="decisionData"
+        <app-decisiondetails [decisionFields]="DecisionFields"
+                             [decisionData]="decisionData"
                              (decisionSaved)="handleDecisionDataSaved($event)">></app-decisiondetails>
       </mat-step>
       <mat-step label="MD Review"></mat-step>
       <mat-step label="Notes">
-        <app-umauthnotes></app-umauthnotes>
+        <app-umauthnotes [notesFields]="authorizationNotesFields"
+                         [notesData]="authorizationNotesData"
+                         (NotesSaved)="handleAuthNotesSaved($event)"></app-umauthnotes>
       </mat-step>
       <mat-step label="Documents">
-        <app-umauthdocuments></app-umauthdocuments>
+        <app-umauthdocuments [documentFields]="authorizationDocumentFields"
+                             [documentData]="authorizationDocumentData"
+                             (DocumentSaved)="handleAuthDocumentSaved($event)"></app-umauthdocuments>
       </mat-step>
       <mat-step label="Close"></mat-step>
     </mat-horizontal-stepper>

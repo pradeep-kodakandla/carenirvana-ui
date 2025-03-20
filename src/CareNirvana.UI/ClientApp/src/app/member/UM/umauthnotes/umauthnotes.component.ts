@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Input, Output, EventEmitter, OnChanges, SimpleChanges, ChangeDetectorRef } from '@angular/core';
 
 interface AuthorizationNote {
   id: string;
@@ -21,103 +21,95 @@ interface AuthorizationNote {
   styleUrl: './umauthnotes.component.css'
 })
 export class UmauthnotesComponent implements OnInit {
-  formFields = [
-    {
-      id: "authorizationNoteType",
-      type: "select",
-      label: "Note Type",
-      displayName: "Note Type",
-      value: "",
-      selectedOptions: [
-        "General",
-        "Urgent",
-        "Follow-up",
-        "Clinical",
-        "Administrative",
-        "Billing",
-        "Insurance",
-        "Other"
-      ]
-    },
-    {
-      id: "noteEncounteredDatetime",
-      type: "datetime-local",
-      label: "Note Encountered Datetime",
-      displayName: "Note Encountered Datetime",
-      value: "",
-      required: true  // ✅ Added required field
-    },
-    {
-      id: "authorizationNotes",
-      type: "textarea",
-      label: "Note Text",
-      displayName: "Note Text",
-      value: "",
-      required: true  // ✅ Added required field
-    },
-    {
-      id: "authorizationAlertNote",
-      type: "checkbox",
-      label: "Alert Note",
-      displayName: "Alert Note",
-      value: false
-    },
-    {
-      id: "authorizationNoteEndDate",
-      type: "datetime-local",
-      label: "End Date",
-      displayName: "End Date",
-      value: "",
-      hidden: true
-    }
-  ];
+
+  @Input() notesFields: {
+    id: string;
+    type: string;
+    label: string;
+    value?: any;
+    options?: any[];
+    hidden?: boolean;
+    selectedOptions?: string[]
+  }[] = [];
+
+  @Input() notesData: AuthorizationNote[] = [];
+  @Output() NotesSaved = new EventEmitter<AuthorizationNote[]>();
+
+  constructor(private cdRef: ChangeDetectorRef) { }
 
   notes: AuthorizationNote[] = [];
   currentNote: AuthorizationNote | null = null;
+  showEndDatetimeField: boolean = false;
+  endDatetimeValue: string = '';
 
   ngOnInit(): void {
-    this.loadNotes();
+    this.notes = this.notesData || [];
+    this.removeEmptyRecords(); // Remove empty records on initialization
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes.notesData) {
+      this.notes = this.notesData || [];
+      this.removeEmptyRecords();
+    }
   }
 
   onAlertNoteChange(event: any) {
-    let endDateField = this.formFields.find(field => field.id === "authorizationNoteEndDate");
-    if (endDateField) {
-      endDateField.hidden = !event.target.checked;
+    if (!event || !event.target) {
+      console.error("Invalid event object in onAlertNoteChange:", event);
+      return;
+    }
+
+    const isChecked = event.target.checked;
+    this.showEndDatetimeField = isChecked;
+
+    if (!isChecked) {
+      this.endDatetimeValue = '';
     }
   }
 
   saveNote() {
-    let newNote: AuthorizationNote = {
-      id: this.currentNote ? this.currentNote.id : new Date().getTime().toString(),
-      authorizationNoteType: this.getFieldValue("authorizationNoteType") as string,
-      noteEncounteredDatetime: this.getFieldValue("noteEncounteredDatetime") as string,
-      authorizationNotes: this.getFieldValue("authorizationNotes") as string,
-      authorizationAlertNote: this.getFieldValue("authorizationAlertNote") as boolean,
-      authorizationNoteEndDate: this.getFieldValue("authorizationNoteEndDate") as string,
-      createdOn: this.currentNote ? this.currentNote.createdOn : new Date().toISOString(),
-      createdBy: this.currentNote ? this.currentNote.createdBy : "Admin",
-      updatedOn: new Date().toISOString(),
-      updatedBy: "Admin"
-    };
+    let newNote: any = {};
+
+    // Capture form field values dynamically
+    this.notesFields.forEach(field => {
+      newNote[field.id] = field.value;
+    });
+
+    // Ensure `authorizationNoteType` is correctly captured
+    if (!newNote.authorizationNoteType || newNote.authorizationNoteType === "") {
+      console.warn("⚠️ Warning: authorizationNoteType is missing or empty!");
+    }
 
     if (this.currentNote) {
+      // Editing an existing note
+      newNote.id = this.currentNote.id;
+      newNote.createdOn = this.currentNote.createdOn;
+      newNote.createdBy = this.currentNote.createdBy;
+      newNote.updatedOn = new Date().toISOString();
+      newNote.updatedBy = "Admin";
+
       this.notes = this.notes.map(note => note.id === this.currentNote!.id ? newNote : note);
     } else {
+      // Adding a new note
+      newNote.id = new Date().getTime().toString();
+      newNote.createdOn = new Date().toISOString();
+      newNote.createdBy = "Admin";
+
       this.notes.push(newNote);
     }
 
-    this.saveToLocalStorage();
+    this.removeEmptyRecords(); // Remove empty records before emitting
+    this.NotesSaved.emit(this.notes);
     this.currentNote = null;
     this.resetForm();
   }
 
-  editNote(note: AuthorizationNote) {
-    this.currentNote = note;
-    this.setFieldValue("authorizationNoteType", note.authorizationNoteType);
-    this.setFieldValue("noteEncounteredDatetime", note.noteEncounteredDatetime);
-    this.setFieldValue("authorizationNotes", note.authorizationNotes);
-    this.setFieldValue("authorizationAlertNote", note.authorizationAlertNote);
-    this.setFieldValue("authorizationNoteEndDate", note.authorizationNoteEndDate);
+  editNote(note: any) {
+    this.currentNote = { ...note };
+    this.notesFields.forEach(field => {
+      field.value = note[field.id] || "";
+    });
   }
 
   deleteNote(noteId: string) {
@@ -125,9 +117,30 @@ export class UmauthnotesComponent implements OnInit {
     if (note) {
       note.deletedBy = "Admin";
       note.deletedOn = new Date().toISOString();
-      this.notes = this.notes.filter(n => !n.deletedOn);
     }
-    this.saveToLocalStorage();
+
+    this.notes = this.notes.filter(n => !n.deletedOn);
+    this.removeEmptyRecords(); // Remove empty records after delete
+    this.NotesSaved.emit(this.notes);
+  }
+
+  /**
+   * Removes empty records from the notes array.
+   */
+  private removeEmptyRecords() {
+    this.notes = this.notes.filter(note => {
+      return Object.keys(note).some(key => {
+        const typedKey = key as keyof typeof note; // Explicitly cast key
+        return note[typedKey] !== null && note[typedKey] !== "" && note[typedKey] !== undefined;
+      });
+    });
+  }
+
+
+  resetForm() {
+    this.notesFields.forEach(field => {
+      field.value = field.type === "checkbox" ? false : "";
+    });
   }
 
   loadNotes() {
@@ -137,28 +150,24 @@ export class UmauthnotesComponent implements OnInit {
     }
   }
 
-  saveToLocalStorage() {
-    localStorage.setItem('authorizationNotes', JSON.stringify(this.notes));
-  }
-
   getFieldValue(id: string): string | boolean | undefined {
-    const field = this.formFields.find(f => f.id === id);
+    const field = this.notesFields.find(f => f.id === id);
     if (!field) return undefined;
 
     if (field.type === "checkbox") {
       return field.value === true;
     }
-
     return typeof field.value === "string" ? field.value : "";
   }
 
   setFieldValue(id: string, value: any) {
-    let field = this.formFields.find(f => f.id === id);
+    let field = this.notesFields.find((f) => f.id === id);
     if (field) field.value = value;
   }
 
-  resetForm() {
-    this.formFields.forEach(field => field.value = field.type === "checkbox" ? false : "");
-  }
+  //resetForm() {
+  //  this.notesFields.forEach((field) => {
+  //    field.value = field.type === "checkbox" ? false : "";
+  //  });
+  //}
 }
-

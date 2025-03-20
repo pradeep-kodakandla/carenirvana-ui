@@ -7,32 +7,32 @@ interface Tab {
   name: string;
 }
 
-interface DecisionEntry {
-  decisionNumber: string;
-  reviewType: string;
-  decisionStatus: string;
-  decisionStatusCode: string;
-  serviceCode: string;
-  serviceDescription: string;
-  modifier: string;
-  unitType: string;
-  fromDate: string;
-  toDate: string;
-  requested: string;
-  approved: string;
-  denied: string;
-  used: string;
-  decisionDateTime: string;
-  createdDateTime: string;
-  updatedDateTime: string;
-  dueDate: string;
-  requestDatetime: string;
-  requestReceivedVia: string;
-  requestPriority: string;
-  treatmentType: string;
-  alternateServiceId: string;
-  [key: string]: any; // Allow additional fields if needed
-}
+//interface DecisionEntry {
+//  decisionNumber: string;
+//  reviewType: string;
+//  decisionStatus: string;
+//  decisionStatusCode: string;
+//  serviceCode: string;
+//  serviceDescription: string;
+//  modifier: string;
+//  unitType: string;
+//  fromDate: string;
+//  toDate: string;
+//  requested: string;
+//  approved: string;
+//  denied: string;
+//  used: string;
+//  decisionDateTime: string;
+//  createdDateTime: string;
+//  updatedDateTime: string;
+//  dueDate: string;
+//  requestDatetime: string;
+//  requestReceivedVia: string;
+//  requestPriority: string;
+//  treatmentType: string;
+//  alternateServiceId: string;
+//  [key: string]: any; // Allow additional fields if needed
+//}
 
 interface Field {
   id: string;
@@ -68,6 +68,7 @@ interface Section {
 })
 export class DecisiondetailsComponent implements OnChanges {
   @Input() decisionData: any;
+  @Input() decisionFields: any;
   @Output() decisionSaved = new EventEmitter<any>();
 
   formFields: { key: string; value: any }[] = [];
@@ -97,9 +98,9 @@ export class DecisiondetailsComponent implements OnChanges {
     }
   }
 
- ensureDecisionDetailsEntries(): void {
+  ensureDecisionDetailsEntries(): void {
     if (!this.decisionData?.serviceDetails || !Array.isArray(this.decisionData.serviceDetails.entries)) {
-      
+
       this.decisionData = {
         ...this.decisionData,
         decisionDetails: { ...this.decisionData.decisionDetails, entries: [] },

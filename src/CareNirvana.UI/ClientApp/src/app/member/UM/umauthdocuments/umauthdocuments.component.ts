@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Input, Output, EventEmitter, OnChanges, SimpleChanges } from '@angular/core';
 
 interface AuthorizationDocument {
   id: string;
@@ -18,47 +18,35 @@ interface AuthorizationDocument {
   templateUrl: './umauthdocuments.component.html',
   styleUrl: './umauthdocuments.component.css'
 })
-export class UmauthdocumentsComponent implements OnInit {
-  formFields = [
-    {
-      id: "authorizationDocumentType",
-      type: "select",
-      label: "Document Type",
-      displayName: "Document Type",
-      value: "",
-      selectedOptions: [
-        "Medical Report",
-        "Insurance Claim",
-        "Lab Test",
-        "Prescription",
-        "Billing",
-        "Other"
-      ]
-    },
-    {
-      id: "authorizationDocumentDesc",
-      type: "textarea",
-      label: "Document Description",
-      displayName: "Document Description",
-      value: ""
-    },
-    {
-      id: "authorizationSelectFiles",
-      type: "file",
-      label: "Select File(s)",
-      displayName: "Select File(s)",
-      value: []
-    }
-  ];
+export class UmauthdocumentsComponent implements OnInit, OnChanges {
 
-  documents: AuthorizationDocument[] = [];
-  currentDocument: AuthorizationDocument | null = null;
+  @Input() documentFields: any[] = []; // Dynamic Form Fields
+  @Input() documentData: any[] = []; // Table Data
+  @Output() DocumentSaved = new EventEmitter<any[]>();
+
+  documents: any[] = [];
+  currentDocument: any | null = null;
   allowedFileTypes = ["jpeg", "png", "jpg", "bmp", "gif", "docx", "doc", "txt", "xlsx", "xls", "pdf"];
 
+
   ngOnInit(): void {
-    this.loadDocuments();
+    if (!this.documentFields || this.documentFields.length === 0) {
+      console.warn("⚠️ Warning: No document fields provided.");
+    }
+    this.documents = this.documentData || [];
+    this.removeEmptyRecords();
   }
 
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes.documentData) {
+      this.documents = this.documentData || [];
+      this.removeEmptyRecords();
+    }
+  }
+
+  /**
+   * Handles file upload validation and storage
+   */
   handleFileUpload(event: Event) {
     const inputElement = event.target as HTMLInputElement;
     if (!inputElement.files) return;
@@ -80,77 +68,84 @@ export class UmauthdocumentsComponent implements OnInit {
       }
     }
 
-    this.setFieldValue("authorizationSelectFiles", validFiles);
+    let field = this.documentFields.find(f => f.id === "authorizationSelectFiles");
+    if (field) {
+      field.value = validFiles;
+    }
   }
 
+  /**
+   * Saves or updates document entries
+   */
   saveDocument() {
-    let newDoc: AuthorizationDocument = {
-      id: this.currentDocument ? this.currentDocument.id : new Date().getTime().toString(),
-      authorizationDocumentType: this.getFieldValue("authorizationDocumentType") as string,
-      authorizationDocumentDesc: this.getFieldValue("authorizationDocumentDesc") as string,
-      authorizationSelectFiles: this.getFieldValue("authorizationSelectFiles") as string[],
-      createdOn: this.currentDocument ? this.currentDocument.createdOn : new Date().toISOString(),
-      createdBy: this.currentDocument ? this.currentDocument.createdBy : "Admin",
-      updatedOn: new Date().toISOString(),
-      updatedBy: "Admin"
-    };
+    let newDoc: any = {};
+
+    // Capture field values dynamically
+    this.documentFields.forEach(field => {
+      newDoc[field.id] = field.value;
+    });
+
+    if (!newDoc.authorizationDocumentType || newDoc.authorizationDocumentType.trim() === "") {
+      console.warn("⚠️ Warning: authorizationDocumentType is missing or empty!");
+    }
 
     if (this.currentDocument) {
+      newDoc.id = this.currentDocument.id;
+      newDoc.createdOn = this.currentDocument.createdOn;
+      newDoc.createdBy = this.currentDocument.createdBy;
+      newDoc.updatedOn = new Date().toISOString();
+      newDoc.updatedBy = "Admin";
+
       this.documents = this.documents.map(doc => doc.id === this.currentDocument!.id ? newDoc : doc);
     } else {
+      newDoc.id = new Date().getTime().toString();
+      newDoc.createdOn = new Date().toISOString();
+      newDoc.createdBy = "Admin";
+
       this.documents.push(newDoc);
     }
 
-    this.saveToLocalStorage();
+    this.removeEmptyRecords();
+    this.DocumentSaved.emit(this.documents);
     this.currentDocument = null;
     this.resetForm();
   }
 
-  editDocument(doc: AuthorizationDocument) {
-    this.currentDocument = doc;
-    this.setFieldValue("authorizationDocumentType", doc.authorizationDocumentType);
-    this.setFieldValue("authorizationDocumentDesc", doc.authorizationDocumentDesc);
-    this.setFieldValue("authorizationSelectFiles", doc.authorizationSelectFiles);
+  editDocument(document: any) {
+    this.currentDocument = { ...document };
+    this.documentFields.forEach(field => {
+      field.value = document[field.id] || "";
+    });
   }
 
-  deleteDocument(docId: string) {
-    let doc = this.documents.find(d => d.id === docId);
-    if (doc) {
-      doc.deletedBy = "Admin";
-      doc.deletedOn = new Date().toISOString();
-      this.documents = this.documents.filter(d => !d.deletedOn);
+  deleteDocument(documentId: string) {
+    let document = this.documents.find(doc => doc.id === documentId);
+    if (document) {
+      document.deletedBy = "Admin";
+      document.deletedOn = new Date().toISOString();
     }
-    this.saveToLocalStorage();
+
+    this.documents = this.documents.filter(doc => !doc.deletedOn);
+    this.removeEmptyRecords();
+    this.DocumentSaved.emit(this.documents);
   }
 
-  loadDocuments() {
-    const storedDocs = localStorage.getItem('authorizationDocuments');
-    if (storedDocs) {
-      this.documents = JSON.parse(storedDocs).filter((doc: AuthorizationDocument) => !doc.deletedOn);
-    }
-  }
-
-  saveToLocalStorage() {
-    localStorage.setItem('authorizationDocuments', JSON.stringify(this.documents));
-  }
-
-  getFieldValue(id: string): string | string[] | undefined {
-    const field = this.formFields.find(f => f.id === id);
-    if (!field) return undefined;
-
-    return field.value;
-  }
-
-  setFieldValue(id: string, value: any) {
-    let field = this.formFields.find(f => f.id === id);
-    if (field) field.value = value;
+  private removeEmptyRecords() {
+    this.documents = this.documents.filter(doc => {
+      return Object.keys(doc).some(key => {
+        const typedKey = key as keyof typeof doc;
+        return doc[typedKey] !== null && doc[typedKey] !== "" && doc[typedKey] !== undefined;
+      });
+    });
   }
 
   resetForm() {
-    this.formFields.forEach(field => field.value = field.type === "file" ? [] : "");
+    this.documentFields.forEach(field => {
+      field.value = field.type === "checkbox" ? false : "";
+    });
   }
 
   viewDocument(fileName: string) {
-    alert(`Opening document: ${fileName}`); // Placeholder for actual file viewing logic
+    alert(`Opening document: ${fileName}`);
   }
 }
