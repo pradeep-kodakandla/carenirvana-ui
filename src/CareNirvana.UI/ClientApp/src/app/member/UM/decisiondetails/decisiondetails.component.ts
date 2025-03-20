@@ -275,7 +275,7 @@ export class DecisiondetailsComponent implements OnChanges {
     this.decisionSaved.emit(this.decisionData);
 
     // Reload the sections to reflect the saved changes in the UI
-    this.loadSectionsForTab(this.selectedTabId);
+   // this.loadSectionsForTab(this.selectedTabId);
   }
 
   toggleSection(section: Section): void {

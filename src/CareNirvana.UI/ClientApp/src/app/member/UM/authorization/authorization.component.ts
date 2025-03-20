@@ -120,7 +120,7 @@ export class AuthorizationComponent {
           let savedData = data[0]?.responseData;
           const authTemplateId = data[0]?.AuthTypeId || 0; // Extract authTemplateId
           if (authTemplateId) {
-            
+
             this.selectedTemplateId = authTemplateId;
             this.onAuthTypeChange();
             // Trigger onAuthTypeChange() and ensure it completes before loading data
@@ -149,6 +149,8 @@ export class AuthorizationComponent {
                     this.authorizationDocumentData = savedData['Authorization Documents'].entries || [];
                   }
 
+                  console.log('Saved Data:', savedData);
+                  console.log('Saved Form Data:', this.formData);
                   this.loadDecisionData();
 
                   // ✅ Update additionalInfo dynamically
@@ -391,7 +393,7 @@ export class AuthorizationComponent {
 
           if (this.config['Authorization Documents']) {
             this.authorizationDocumentFields = this.config['Authorization Documents'].fields || [];
-            
+
           }
 
           this.enrollmentSelect = true;
@@ -649,31 +651,78 @@ export class AuthorizationComponent {
     // Initialize decisionData with entries arrays
     this.decisionData = {
       serviceDetails: { ...this.formData['Service Details'] || {} },
+
       decisionDetails: {
         ...this.config['Decision Details'] || {},
-        entries: this.formData['Service Details']?.entries.map((service: any, index: number) => ({
-          decisionNumber: (index + 1).toString(),
-          serviceCode: service.serviceCode || 'N/A',
-          fromDate: service.fromDate || '',
-          toDate: service.toDate || '',
-          serviceDescription: service.serviceDesc || '',
-          reviewType: service.reviewType || '',
-          unitType: service.unitType || '',
-          denied: service.serviceDenied || '',
-          modifier: service.modifier || ''
-        })) || []
+        entries: this.formData['Service Details']?.entries.map((service: any, index: number) => {
+          // Find existing entry in decisionDetails to retain previous values
+          const existingEntry = this.formData['Decision Details']?.entries?.find(
+            (entry: any) => entry.serviceCode === service.serviceCode
+          ) || {};
+
+          return {
+            // Ensure new values from Service Details are properly assigned while retaining previous ones
+            decisionNumber: (index + 1).toString(),
+            serviceCode: service.serviceCode || existingEntry.serviceCode || 'N/A',
+            fromDate: service.fromDate || existingEntry.fromDate || '',
+            toDate: service.toDate || existingEntry.toDate || '',
+            serviceDescription: service.serviceDesc || existingEntry.serviceDescription || '',
+            reviewType: service.reviewType || existingEntry.reviewType || '',
+            unitType: service.unitType || existingEntry.unitType || '',
+            denied: service.serviceDenied || existingEntry.denied || '',
+            modifier: service.modifier || existingEntry.modifier || '',
+
+            // Ensure ALL additional fields from Decision Details are retained
+            decisionStatus: service.decisionStatus || existingEntry.decisionStatus || '',
+            decisionStatusCode: service.decisionStatusCode || existingEntry.decisionStatusCode || '',
+            requested: service.requested || existingEntry.requested || '',
+            approved: service.approved || existingEntry.approved || '',
+            used: service.used || existingEntry.used || '',
+            decisionDateTime: service.decisionDateTime || existingEntry.decisionDateTime || '',
+            createdDateTime: service.createdDateTime || existingEntry.createdDateTime || '',
+            updatedDateTime: service.updatedDateTime || existingEntry.updatedDateTime || '',
+            dueDate: service.dueDate || existingEntry.dueDate || '',
+            decisionRequestDatetime: service.decisionRequestDatetime || existingEntry.decisionRequestDatetime || '',
+            requestReceivedVia: service.requestReceivedVia || existingEntry.requestReceivedVia || '',
+            requestPriority: service.requestPriority || existingEntry.requestPriority || '',
+            treatmentType: service.treatmentType || existingEntry.treatmentType || '',
+            alternateServiceId: service.alternateServiceId || existingEntry.alternateServiceId || '',
+            denialType: service.denialType || existingEntry.denialType || '',
+            denialReason: service.denialReason || existingEntry.denialReason || '',
+            newSelect_copy_25gqf4w2s: service.newSelect_copy_25gqf4w2s || existingEntry.newSelect_copy_25gqf4w2s || '',
+            newSelect_copy_bszkkn8o1: service.newSelect_copy_bszkkn8o1 || existingEntry.newSelect_copy_bszkkn8o1 || '',
+            newSelect_copy_3uon6b5w0: service.newSelect_copy_3uon6b5w0 || existingEntry.newSelect_copy_3uon6b5w0 || '',
+
+            // Preserve all remaining fields
+            ...existingEntry
+          };
+        }) || this.config['Decision Details']?.entries || [] // If no new data, keep old entries
       },
+
       decisionNotes: {
         ...this.config['Decision Notes'] || {},
-        entries: this.formData['Service Details']?.entries.map(() => ({})) || []
+        entries: this.formData['Decision Notes']?.entries.map((note: any) => ({
+          authorizationNotes: note.authorizationNotes || '',
+          authorizationNoteType: note.authorizationNoteType || '',
+          authorizationAlertNote: note.authorizationAlertNote || '',
+          noteEncounteredDatetime: note.noteEncounteredDatetime || ''
+        })) || []
       },
+
       decisionMemberInfo: {
         ...this.config['Member Provider Decision Info'] || {},
-        entries: this.formData['Service Details']?.entries.map(() => ({})) || []
+        entries: this.formData['Member Provider Decision Info']?.entries.map((info: any) => ({
+          notificationDateDecision: info.notificationDateDecision || '',
+          notificationTypeDecision: info.notificationTypeDecision || '',
+          memberProviderTypeDecision: info.memberProviderTypeDecision || '',
+          notificationAttemptDecision: info.notificationAttemptDecision || ''
+        })) || []
       }
     };
-    console.log('Decision Data:', this.decisionData);
+
+    console.log('✅ Updated Decision Data:', this.decisionData);
   }
+
 
   // Receive saved decision data from DecisionDetailsComponent
   handleDecisionDataSaved(updatedDecisionData: any): void {
@@ -697,6 +746,7 @@ export class AuthorizationComponent {
     } else {
       this.formData['Member Provider Decision Info'] = { entries: updatedDecisionData.decisionMemberInfo.entries };
     }
+    console.log('Updated Decision Data:', this.decisionData);
     this.saveType = 'Update';
     this.saveData(this.formData);
   }
