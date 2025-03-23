@@ -1,4 +1,7 @@
-import { Component, OnInit, Input, Output, EventEmitter, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, OnInit, Input, Output, EventEmitter, OnChanges, SimpleChanges, ViewChild } from '@angular/core';
+import { MatTableDataSource } from '@angular/material/table';
+import { MatPaginator } from '@angular/material/paginator';
+import { MatSort } from '@angular/material/sort';
 
 interface AuthorizationDocument {
   id: string;
@@ -19,34 +22,59 @@ interface AuthorizationDocument {
   styleUrl: './umauthdocuments.component.css'
 })
 export class UmauthdocumentsComponent implements OnInit, OnChanges {
+  @Input() documentFields: any[] = [];
+  @Input() documentData: AuthorizationDocument[] = [];
+  @Output() DocumentSaved = new EventEmitter<AuthorizationDocument[]>();
 
-  @Input() documentFields: any[] = []; // Dynamic Form Fields
-  @Input() documentData: any[] = []; // Table Data
-  @Output() DocumentSaved = new EventEmitter<any[]>();
+  @ViewChild(MatPaginator) paginator!: MatPaginator;
+  @ViewChild(MatSort) sort!: MatSort;
 
-  documents: any[] = [];
-  currentDocument: any | null = null;
+  documents: AuthorizationDocument[] = [];
+  dataSource = new MatTableDataSource<AuthorizationDocument>();
+  displayedColumns: string[] = ['authorizationDocumentType', 'authorizationDocumentDesc', 'authorizationSelectFiles', 'createdOn', 'createdBy', 'actions'];
+
+  isFormVisible: boolean = false;
+  currentDocument: AuthorizationDocument | null = null;
   allowedFileTypes = ["jpeg", "png", "jpg", "bmp", "gif", "docx", "doc", "txt", "xlsx", "xls", "pdf"];
 
-
   ngOnInit(): void {
-    if (!this.documentFields || this.documentFields.length === 0) {
-      console.warn("⚠️ Warning: No document fields provided.");
-    }
     this.documents = this.documentData || [];
     this.removeEmptyRecords();
+    this.dataSource.data = [...this.documents];
+    this.dataSource.paginator = this.paginator;
+    this.dataSource.sort = this.sort;
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes.documentData) {
       this.documents = this.documentData || [];
       this.removeEmptyRecords();
+      this.dataSource.data = [...this.documents];
     }
   }
 
-  /**
-   * Handles file upload validation and storage
-   */
+  applyFilter(event: Event) {
+    const filterValue = (event.target as HTMLInputElement).value;
+    this.dataSource.filter = filterValue.trim().toLowerCase();
+    if (this.dataSource.paginator) {
+      this.dataSource.paginator.firstPage();
+    }
+  }
+
+  openForm(mode: 'add' | 'edit') {
+    this.isFormVisible = true;
+    if (mode === 'add') {
+      this.resetForm();
+      this.currentDocument = null;
+    }
+  }
+
+  cancelForm() {
+    this.resetForm();
+    this.currentDocument = null;
+    this.isFormVisible = false;
+  }
+
   handleFileUpload(event: Event) {
     const inputElement = event.target as HTMLInputElement;
     if (!inputElement.files) return;
@@ -74,19 +102,14 @@ export class UmauthdocumentsComponent implements OnInit, OnChanges {
     }
   }
 
-  /**
-   * Saves or updates document entries
-   */
   saveDocument() {
     let newDoc: any = {};
-
-    // Capture field values dynamically
     this.documentFields.forEach(field => {
       newDoc[field.id] = field.value;
     });
 
     if (!newDoc.authorizationDocumentType || newDoc.authorizationDocumentType.trim() === "") {
-      console.warn("⚠️ Warning: authorizationDocumentType is missing or empty!");
+      console.warn("⚠️ Missing document type.");
     }
 
     if (this.currentDocument) {
@@ -106,37 +129,37 @@ export class UmauthdocumentsComponent implements OnInit, OnChanges {
     }
 
     this.removeEmptyRecords();
+    this.dataSource.data = [...this.documents];
     this.DocumentSaved.emit(this.documents);
+
     this.currentDocument = null;
     this.resetForm();
+    this.isFormVisible = false;
   }
 
-  editDocument(document: any) {
-    this.currentDocument = { ...document };
+  editDocument(doc: AuthorizationDocument) {
+    this.openForm('edit');
+    this.currentDocument = { ...doc };
     this.documentFields.forEach(field => {
-      field.value = document[field.id] || "";
+      field.value = doc[field.id as keyof AuthorizationDocument] || "";
     });
   }
 
   deleteDocument(documentId: string) {
-    let document = this.documents.find(doc => doc.id === documentId);
+    const document = this.documents.find(doc => doc.id === documentId);
     if (document) {
-      document.deletedBy = "Admin";
       document.deletedOn = new Date().toISOString();
+      document.deletedBy = "Admin";
     }
 
     this.documents = this.documents.filter(doc => !doc.deletedOn);
     this.removeEmptyRecords();
+    this.dataSource.data = [...this.documents];
     this.DocumentSaved.emit(this.documents);
   }
 
-  private removeEmptyRecords() {
-    this.documents = this.documents.filter(doc => {
-      return Object.keys(doc).some(key => {
-        const typedKey = key as keyof typeof doc;
-        return doc[typedKey] !== null && doc[typedKey] !== "" && doc[typedKey] !== undefined;
-      });
-    });
+  viewDocument(fileName: string) {
+    alert(`Opening document: ${fileName}`);
   }
 
   resetForm() {
@@ -145,7 +168,12 @@ export class UmauthdocumentsComponent implements OnInit, OnChanges {
     });
   }
 
-  viewDocument(fileName: string) {
-    alert(`Opening document: ${fileName}`);
+  private removeEmptyRecords() {
+    this.documents = this.documents.filter(doc => {
+      return Object.keys(doc).some(key => {
+        const value = doc[key as keyof AuthorizationDocument];
+        return value !== null && value !== "" && value !== undefined;
+      });
+    });
   }
 }

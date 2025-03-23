@@ -28,7 +28,7 @@
     padding: 10px;
     border: 2px solid #ccc;
     border-radius: 4px;
-    font-size: 14px;
+    font-size: 12px;
     background: transparent;
     outline: none;
     transition: border 0.3s, box-shadow 0.3s;
@@ -53,14 +53,18 @@
     box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
   }
 
+    .form-group input:not([type="checkbox"]):focus + label,
+    .form-group input:not([type="checkbox"]):not(:placeholder-shown) + label,
     .form-group input:focus + label,
     .form-group input:not(:placeholder-shown) + label,
     .form-group select:valid + label,
+    .form-group select:focus + label
     .form-group textarea:focus + label,
     .form-group textarea:not(:placeholder-shown) + label {
       top: -10px;
       font-size: 12px;
-      color: #007bff;
+      color: #555;
+      font-weight: bold;
     }
 
 .hidden {
@@ -88,67 +92,150 @@
       background-color: #0056b3;
     }
 
-table {
-  width: 100%;
-  margin-top: 20px;
-  border-collapse: collapse;
-  background: white;
-  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  overflow: hidden;
+
+
+/* Layout fix for checkbox + end datetime inline */
+.checkbox-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-  table thead {
-    background-color: #007bff;
-    color: white;
+/* Make textarea span full row */
+.textarea-field {
+  grid-column: 1 / -1 !important;
+}
+
+/* Button right aligned on last row */
+.button-right {
+  grid-column: 4 / 5;
+  display: block;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+
+/* Fix for datetime-local and textarea placeholder trick */
+.form-group input[type="datetime-local"],
+.form-group textarea {
+  placeholder-shown: initial; /* ensures detection */
+}
+
+  .form-group input[type="datetime-local"]::placeholder,
+  .form-group textarea::placeholder {
+    opacity: 0; /* hidden but triggers :not(:placeholder-shown) */
   }
 
-    table thead th {
-      padding: 12px;
-      text-align: left;
-      font-weight: bold;
-    }
+/* Existing floating label support already works with this */
 
-  table tbody tr {
-    border-bottom: 1px solid #ddd;
-  }
+.checkbox-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative; /* prevent label from floating like other fields */
+}
 
-    table tbody tr:nth-child(even) {
-      background-color: #f2f2f2;
-    }
-
-    table tbody tr:hover {
-      background-color: #e9ecef;
-    }
-
-  table tbody td {
-    padding: 10px;
-  }
-
-  table tbody button {
-    padding: 6px 10px;
-    border: none;
-    cursor: pointer;
-    border-radius: 4px;
+  .checkbox-inline label {
+    position: static; /* stop the floating label behavior */
     font-size: 14px;
-    transition: background 0.3s ease-in-out;
+    color: #333;
+    margin: 0;
+    cursor: pointer;
   }
 
-.edit-btn {
-  background-color: #28a745;
-  color: white;
+  .checkbox-inline input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.search-bar-container-table {
+  padding: 0px 56px 0px 8px;
+  background: #eaf1fb;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
 }
 
-  .edit-btn:hover {
-    background-color: #218838;
-  }
 
-.delete-btn {
-  background-color: #dc3545;
-  color: white;
-  margin-left: 5px;
+
+
+/* Container for the table */
+.table-container {
+  /*  margin: 20px;
+*/ overflow-x: auto;
 }
 
-  .delete-btn:hover {
-    background-color: #c82333;
+/* Responsive Table */
+.responsive-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: Arial, sans-serif;
+}
+
+  /* Table Header */
+  .responsive-table th {
+    background-color: #4caf50;
+    color: white;
+    padding: 10px;
+    text-align: left;
   }
+
+  /* Table Body */
+  .responsive-table td {
+    padding: 5px;
+    border: 1px solid #ddd;
+  }
+
+  /* Row Hover Effect */
+  .responsive-table tr:hover {
+    background-color: #f1f1f1;
+  }
+
+
+h2 {
+  text-align: left;
+  margin-bottom: 5px;
+}
+
+.form-section {
+  border: 1px solid #ccc;
+  padding: 5px;
+  margin-bottom: 5px;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+  align-content: start;
+  align-items: start;
+  align-self: start;
+}
+
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 10px 10px 0px 10px;
+}
+
+mat-form-field {
+  flex: 1 1 calc(33.333% - 15px);
+  min-width: 150px;
+}

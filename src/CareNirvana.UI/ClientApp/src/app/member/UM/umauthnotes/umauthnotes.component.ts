@@ -1,4 +1,13 @@
-import { Component, OnInit, Input, Output, EventEmitter, OnChanges, SimpleChanges, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, Input, Output, EventEmitter, OnChanges, SimpleChanges, ChangeDetectorRef, ViewChild  } from '@angular/core';
+import { NgForm } from '@angular/forms';
+import { MatTableDataSource, MatTableModule } from '@angular/material/table';
+import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
+import { MatSort, MatSortModule } from '@angular/material/sort';
+import { MatInputModule } from '@angular/material/input';
+import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatButtonModule } from '@angular/material/button';
+
 
 interface AuthorizationNote {
   id: string;
@@ -22,15 +31,10 @@ interface AuthorizationNote {
 })
 export class UmauthnotesComponent implements OnInit {
 
-  @Input() notesFields: {
-    id: string;
-    type: string;
-    label: string;
-    value?: any;
-    options?: any[];
-    hidden?: boolean;
-    selectedOptions?: string[]
-  }[] = [];
+  @ViewChild(MatPaginator) paginator!: MatPaginator;
+  @ViewChild(MatSort) sort!: MatSort;
+
+  @Input() notesFields: any[] = [];
 
   @Input() notesData: AuthorizationNote[] = [];
   @Output() NotesSaved = new EventEmitter<AuthorizationNote[]>();
@@ -41,16 +45,45 @@ export class UmauthnotesComponent implements OnInit {
   currentNote: AuthorizationNote | null = null;
   showEndDatetimeField: boolean = false;
   endDatetimeValue: string = '';
+  showValidationErrors = false;
+  dataSource = new MatTableDataSource<AuthorizationNote>();
+  displayedColumns: string[] = ['authorizationNoteType', 'authorizationNotes', 'createdOn', 'createdBy', 'actions'];
+  isFormVisible: boolean = false;
 
   ngOnInit(): void {
     this.notes = this.notesData || [];
     this.removeEmptyRecords(); // Remove empty records on initialization
+    this.notesFields.forEach(field => {
+      if (field.type === 'select' && (field.value === undefined || field.value === null)) {
+        field.value = ""; // Default to "Select"
+      }
+    });
+
+    this.dataSource.data = this.notes;
+    this.dataSource.paginator = this.paginator;
+    this.dataSource.sort = this.sort;
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes.notesData) {
       this.notes = this.notesData || [];
       this.removeEmptyRecords();
+    }
+    this.notesFields.forEach(field => {
+      if (field.type === 'select' && (field.value === undefined || field.value === null)) {
+        field.value = ""; // Default to "Select"
+      }
+    });
+    this.dataSource.data = [...this.notes];
+
+  }
+
+  applyFilter(event: Event) {
+    const filterValue = (event.target as HTMLInputElement).value;
+    this.dataSource.filter = filterValue.trim().toLowerCase();
+
+    if (this.dataSource.paginator) {
+      this.dataSource.paginator.firstPage();
     }
   }
 
@@ -68,9 +101,16 @@ export class UmauthnotesComponent implements OnInit {
     }
   }
 
-  saveNote() {
+  saveNote(form: NgForm): void {
+    this.showValidationErrors = true;
     let newNote: any = {};
+    this.dataSource.data = this.notes;
 
+    if (form.invalid) {
+      // Form is invalid – stop submission
+      console.warn('Validation failed');
+      return;
+    }
     // Capture form field values dynamically
     this.notesFields.forEach(field => {
       newNote[field.id] = field.value;
@@ -102,17 +142,23 @@ export class UmauthnotesComponent implements OnInit {
     this.removeEmptyRecords(); // Remove empty records before emitting
     this.NotesSaved.emit(this.notes);
     this.currentNote = null;
+    this.dataSource.data = [...this.notes];
     this.resetForm();
   }
 
   editNote(note: any) {
+    this.openForm('edit');
+    this.isFormVisible = true;
     this.currentNote = { ...note };
     this.notesFields.forEach(field => {
       field.value = note[field.id] || "";
     });
+    this.dataSource.data = [...this.notes];
   }
 
   deleteNote(noteId: string) {
+    this.dataSource.data = this.notes;
+
     let note = this.notes.find(n => n.id === noteId);
     if (note) {
       note.deletedBy = "Admin";
@@ -120,7 +166,9 @@ export class UmauthnotesComponent implements OnInit {
     }
 
     this.notes = this.notes.filter(n => !n.deletedOn);
+    
     this.removeEmptyRecords(); // Remove empty records after delete
+    this.dataSource.data = [...this.notes];
     this.NotesSaved.emit(this.notes);
   }
 
@@ -141,7 +189,11 @@ export class UmauthnotesComponent implements OnInit {
     this.notesFields.forEach(field => {
       field.value = field.type === "checkbox" ? false : "";
     });
+    this.showEndDatetimeField = false;
+    this.showValidationErrors = false;
+    this.isFormVisible = false;
   }
+
 
   loadNotes() {
     const storedNotes = localStorage.getItem('authorizationNotes');
@@ -165,9 +217,20 @@ export class UmauthnotesComponent implements OnInit {
     if (field) field.value = value;
   }
 
-  //resetForm() {
-  //  this.notesFields.forEach((field) => {
-  //    field.value = field.type === "checkbox" ? false : "";
-  //  });
-  //}
+  openForm(mode: 'add' | 'edit') {
+    
+    this.showValidationErrors = false;
+    if (mode === 'add') {
+      this.resetForm();
+      this.currentNote = null;
+      this.isFormVisible = true;
+    }
+  }
+
+  cancelForm() {
+    this.resetForm();
+    this.currentNote = null;
+    this.isFormVisible = false;
+  }
+
 }

@@ -36,7 +36,7 @@ body {
   flex-wrap: wrap;
   width: 100%;
   padding-left: 10px;
-  margin-bottom: 0 !important;
+  margin-bottom: -10px !important;
   align-items: center;
 }
 
@@ -75,6 +75,7 @@ body {
 label {
   display: table !important;
 }
+
 .div-secondary {
   display: flex;
   justify-content: space-between;
@@ -128,7 +129,7 @@ label {
 
 .close-btn {
   cursor: pointer;
- /* color: red;*/
+  /* color: red;*/
   font-size: 24px;
   padding: 5px;
   border-radius: 4px;
@@ -188,14 +189,14 @@ label {
     left: 12px;
     background: white;
     padding: 0 5px;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: bold;
     color: #555;
   }
 
   .form-outline .form-control {
     width: 100%;
-    padding: 10px;
+    padding: 5px;
     border: 2px solid #ccc;
     border-radius: 5px;
     font-size: 14px;
@@ -205,9 +206,10 @@ label {
   }
 
     .form-outline .form-control:focus {
-      border-color: lightgray;
-      box-shadow: 0 0 5px rgba(30, 120, 171, 0.3);
+      border-color: #007bff;
+      box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
     }
+
 
 /* Accordion Content */
 .accordion-content {
@@ -272,10 +274,11 @@ textarea.ng-invalid.ng-touched {
 }
 
 .provider-button {
-  margin-bottom: 5px;
+  margin-bottom: 15px;
   background-color: #007BFF !important;
   color: white !important;
   border-radius: 5px;
+  height: 30px;
 }
 
 .auth-button {
@@ -342,4 +345,3 @@ textarea.ng-invalid.ng-touched {
   font-size: 24px;
   color: #666;
 }
-

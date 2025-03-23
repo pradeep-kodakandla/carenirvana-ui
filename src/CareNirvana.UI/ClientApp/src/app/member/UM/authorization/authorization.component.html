@@ -102,230 +102,145 @@
               <div *ngIf="enrollmentSelect">
                 <!--<mat-card *ngFor="let section of sectionOrder">-->
                 <ng-container *ngFor="let section of sectionOrder">
-                  <mat-card>
+                  <ng-container *ngIf="shouldDisplaySection(section)">
+                    <mat-card>
 
 
-                    <div class="card-header" (click)="toggleSection(section)" style="display: flex; align-items: center;">
-                      <mat-icon>{{ formData[section]?.expanded ? 'expand_less' : 'expand_more' }}</mat-icon>
-                      <h6 style="color: #007BFF; font-weight: bold; margin: 0; padding-right: 50px;">{{ section | titlecase }}</h6>
-                      <!-- Show Auth Type dropdown only for Auth Details -->
-                      <div style="width:350px; padding-left:10px;" class="position-relative" *ngIf="section === 'Auth Details'">
-                        <select class="form-select" id="authType" name="authType" [(ngModel)]="selectedTemplateId"
-                                (change)="onAuthTypeChange(); $event.stopPropagation();" appShowLabel>
-                          <option *ngFor="let template of authTemplates" [value]="template.Id">
-                            {{ template.TemplateName }}
-                          </option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <!-- Accordion Content -->
-                    <div class="accordion-content" *ngIf="formData[section]?.expanded && selectedTemplateId !== 0">
-                      <!-- Load specific components for Notes and Documents -->
-                      <ng-container *ngIf="section === 'Authorization Notes'">
-                        <app-umauthnotes [notesFields]="authorizationNotesFields"
-                                         [notesData]="authorizationNotesData"
-                                         (NotesSaved)="handleAuthNotesSaved($event)">></app-umauthnotes>
-                      </ng-container>
-
-                      <ng-container *ngIf="section === 'Authorization Documents'">
-                        <app-umauthdocuments [documentFields]="authorizationDocumentFields"
-                                             [documentData]="authorizationDocumentData"
-                                             (DocumentSaved)="handleAuthDocumentSaved($event)"></app-umauthdocuments>
-                      </ng-container>
-
-                      <!-- Additional Details Section rendering remains unchanged -->
-                      <div *ngIf="section === 'Additional Details'">
-                        <div *ngFor="let subSection of getAdditionalDetailsKeys()">
-                          <div *ngFor="let entry of formData['Additional Details']?.[subSection]?.entries; let i = index" class="row align-items-center mb-3">
-                            <div class="col-md-3 mb-3" *ngFor="let field of config['Additional Details'].subsections[subSection].fields">
-                              <div class="form-outline">
-                                <label [for]="field.id + '_' + i" class="form-label">
-                                  {{ field.displayName }}<span *ngIf="field.required" class="text-danger"> * </span>
-                                </label>
-                                <div class="form-group">
-                                  <ng-container [ngSwitch]="field.type">
-                                    <ng-container *ngSwitchDefault>
-                                      <input class="form-control"
-                                             [type]="field.type"
-                                             [id]="field.id + '_' + i"
-                                             name="{{ field.id + '_' + i }}"
-                                             [(ngModel)]="entry[field.id]"
-                                             placeholder="{{ field.displayName }}"
-                                             [required]="field.required"
-                                             #fieldModel="ngModel" />
-                                      <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
-                                        {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
-                                      </div>
-                                    </ng-container>
-                                    <ng-container *ngSwitchCase="'select'">
-                                      <select class="form-control"
-                                              [id]="field.id + '_' + i"
-                                              name="{{ field.id + '_' + i }}"
-                                              [(ngModel)]="entry[field.id]"
-                                              [required]="field.required"
-                                              #fieldModel="ngModel">
-
-                                        <option *ngFor="let option of field.options" [value]="option.value">{{ option.label }}</option>
-                                      </select>
-                                      <mat-icon class="custom-dropdown-arrow">arrow_drop_down</mat-icon>
-                                      <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
-                                        {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
-                                      </div>
-                                    </ng-container>
-                                    <ng-container *ngSwitchCase="'textarea'">
-                                      <textarea class="form-control"
-                                                [id]="field.id + '_' + i"
-                                                name="{{ field.id + '_' + i }}"
-                                                [(ngModel)]="entry[field.id]"
-                                                rows="3"
-                                                placeholder="{{ field.displayName }}"
-                                                [required]="field.required"
-                                                #fieldModel="ngModel"></textarea>
-                                      <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
-                                        {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
-                                      </div>
-                                    </ng-container>
-                                  </ng-container>
-                                </div>
-                              </div>
-                            </div>
-                            <!-- Add & Remove Buttons for Additional Details -->
-                            <div class="col-md-3 mb-3 text-end">
-                              <button mat-icon-button color="primary"
-                                      *ngIf="i === formData['Additional Details']?.[subSection]?.entries?.length - 1"
-                                      (click)="addEntry('Additional Details.' + subSection, i)">
-                                <mat-icon>add_circle</mat-icon>
-                              </button>
-                              <button mat-icon-button color="warn"
-                                      *ngIf="formData['Additional Details']?.[subSection]?.entries?.length > 1"
-                                      (click)="removeEntry('Additional Details.' + subSection, i)">
-                                <mat-icon>remove_circle</mat-icon>
-                              </button>
-                            </div>
-                          </div>
+                      <div class="card-header" (click)="toggleSection(section)" style="display: flex; align-items: center;">
+                        <mat-icon>{{ formData[section]?.expanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+                        <h6 style="color: #007BFF; font-weight: bold; margin: 0; padding-right: 50px;">{{ section | titlecase }}</h6>
+                        <!-- Show Auth Type dropdown only for Auth Details -->
+                        <div style="width:350px; padding-left:10px;" class="position-relative" *ngIf="section === 'Auth Details'">
+                          <select class="form-select" id="authType" name="authType" [(ngModel)]="selectedTemplateId"
+                                  (change)="onAuthTypeChange(); $event.stopPropagation();" appShowLabel>
+                            <option *ngFor="let template of authTemplates" [value]="template.Id">
+                              {{ template.TemplateName }}
+                            </option>
+                          </select>
                         </div>
                       </div>
 
-                      <!-- Other Sections (Auth, Provider, Diagnosis, Services) -->
-                      <div *ngIf="section !== 'Additional Details' && section !== 'Authorization Notes' && section !== 'Authorization Documents'">
-                        <!-- Special rendering for providerDetails -->
-                        <ng-container *ngIf="isProviderSection(section); else normalSection">
-                          <!-- Buttons Container: Display button-type fields -->
-                          <div class="row">
-                            <div class="col-12">
-                              <div class="provider-buttons-container" style="margin-bottom: 10px;">
-                                <div *ngFor="let field of getFieldsByType(config[section].fields, 'button')"
-                                     class="button-field-wrapper"
-                                     style="display: inline-block; margin-right: 10px; position: relative;">
-                                  <button mat-raised-button class="provider-button" (click)="openButtonDialog(field, section, selectedProviderRowIndex); $event.stopPropagation()">
-                                    {{ field.buttonText }}
+                      <!-- Accordion Content -->
+                      <div class="accordion-content" *ngIf="formData[section]?.expanded && selectedTemplateId !== 0">
+                        <!-- Load specific components for Notes and Documents -->
+                        <ng-container *ngIf="shouldDisplaySection(section)">
+                          <ng-container *ngIf="section === 'Authorization Notes'">
+
+                            <app-umauthnotes [notesFields]="authorizationNotesFields"
+                                             [notesData]="authorizationNotesData"
+                                             (NotesSaved)="handleAuthNotesSaved($event)">></app-umauthnotes>
+                          </ng-container>
+                        </ng-container>
+                        <ng-container *ngIf="shouldDisplaySection(section)">
+                          <ng-container *ngIf="section === 'Authorization Documents'">
+
+                            <app-umauthdocuments [documentFields]="authorizationDocumentFields"
+                                                 [documentData]="authorizationDocumentData"
+                                                 (DocumentSaved)="handleAuthDocumentSaved($event)"></app-umauthdocuments>
+                          </ng-container>
+                        </ng-container>
+
+                        <!-- Additional Details Section rendering remains unchanged -->
+                        <ng-container *ngIf="shouldDisplaySection(section)">
+                          <div *ngIf="section === 'Additional Details'">
+                            <div *ngFor="let subSection of getAdditionalDetailsKeys()">
+                              <div *ngFor="let entry of formData['Additional Details']?.[subSection]?.entries; let i = index" class="row align-items-center mb-3">
+                                <div class="col-md-3 mb-3" *ngFor="let field of config['Additional Details'].subsections[subSection].fields">
+                                  <div class="form-outline">
+                                    <label [for]="field.id + '_' + i" class="form-label">
+                                      {{ field.displayName }}<span *ngIf="field.required" class="text-danger"> * </span>
+                                    </label>
+                                    <div class="form-group">
+                                      <ng-container [ngSwitch]="field.type">
+                                        <ng-container *ngSwitchDefault>
+                                          <input class="form-control"
+                                                 [type]="field.type"
+                                                 [id]="field.id + '_' + i"
+                                                 name="{{ field.id + '_' + i }}"
+                                                 [(ngModel)]="entry[field.id]"
+                                                 placeholder="{{ field.displayName }}"
+                                                 [required]="field.required"
+                                                 #fieldModel="ngModel" />
+                                          <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
+                                            {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
+                                          </div>
+                                        </ng-container>
+                                        <ng-container *ngSwitchCase="'select'">
+                                          <select class="form-control"
+                                                  [id]="field.id + '_' + i"
+                                                  name="{{ field.id + '_' + i }}"
+                                                  [(ngModel)]="entry[field.id]"
+                                                  [required]="field.required"
+                                                  #fieldModel="ngModel">
+
+                                            <option *ngFor="let option of field.options" [value]="option.value">{{ option.label }}</option>
+                                          </select>
+                                          <mat-icon class="custom-dropdown-arrow">arrow_drop_down</mat-icon>
+                                          <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
+                                            {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
+                                          </div>
+                                        </ng-container>
+                                        <ng-container *ngSwitchCase="'textarea'">
+                                          <textarea class="form-control"
+                                                    [id]="field.id + '_' + i"
+                                                    name="{{ field.id + '_' + i }}"
+                                                    [(ngModel)]="entry[field.id]"
+                                                    rows="3"
+                                                    placeholder="{{ field.displayName }}"
+                                                    [required]="field.required"
+                                                    #fieldModel="ngModel"></textarea>
+                                          <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
+                                            {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
+                                          </div>
+                                        </ng-container>
+                                      </ng-container>
+                                    </div>
+                                  </div>
+                                </div>
+                                <!-- Add & Remove Buttons for Additional Details -->
+                                <div class="col-md-3 mb-3 text-end">
+                                  <button mat-icon-button color="primary"
+                                          *ngIf="i === formData['Additional Details']?.[subSection]?.entries?.length - 1"
+                                          (click)="addEntry('Additional Details.' + subSection, i)">
+                                    <mat-icon>add_circle</mat-icon>
+                                  </button>
+                                  <button mat-icon-button color="warn"
+                                          *ngIf="formData['Additional Details']?.[subSection]?.entries?.length > 1"
+                                          (click)="removeEntry('Additional Details.' + subSection, i)">
+                                    <mat-icon>remove_circle</mat-icon>
                                   </button>
                                 </div>
                               </div>
                             </div>
                           </div>
-                          <!-- Render remaining non-button fields -->
-                          <div *ngIf="section !== 'Authorization Notes' && section !== 'Authorization Documents'">
-                            <div *ngFor="let entry of formData[section].entries; let i = index" class="row align-items-center mb-3" (click)="selectedProviderRowIndex = i" [ngClass]="{'selected-row': i === selectedProviderRowIndex}">
-                              <div class="col-md-3 mb-3" *ngFor="let field of getNonButtonFields(config[section].fields); let j = index">
-                                <div class="form-outline">
-                                  <label [for]="field.id + '_' + i" class="form-label">
-                                    {{ field.displayName }}<span *ngIf="field.required" class="text-danger"> * </span>
-                                  </label>
-                                  <div class="form-group">
-                                    <ng-container [ngSwitch]="field.type">
-                                      <ng-container *ngSwitchDefault>
-                                        <input class="form-control"
-                                               [type]="field.type"
-                                               [id]="field.id + '_' + i"
-                                               name="{{ field.id + '_' + i }}"
-                                               [(ngModel)]="entry[field.id]"
-                                               placeholder="{{ field.displayName }}"
-                                               [required]="field.required"
-                                               #fieldModel="ngModel" />
-                                        <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
-                                          {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
-                                        </div>
-                                      </ng-container>
-                                      <ng-container *ngSwitchCase="'select'">
-                                        <select class="form-control"
-                                                [id]="field.id + '_' + i"
-                                                name="{{ field.id + '_' + i }}"
-                                                [(ngModel)]="entry[field.id]"
-                                                [required]="field.required"
-                                                #fieldModel="ngModel">
-
-                                          <option *ngFor="let option of field.options" [value]="option.value">{{ option.label }}</option>
-                                        </select>
-                                        <mat-icon class="custom-dropdown-arrow">arrow_drop_down</mat-icon>
-                                        <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
-                                          {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
-                                        </div>
-                                      </ng-container>
-                                      <ng-container *ngSwitchCase="'textarea'">
-                                        <textarea class="form-control"
-                                                  [id]="field.id + '_' + i"
-                                                  name="{{ field.id + '_' + i }}"
-                                                  [(ngModel)]="entry[field.id]"
-                                                  rows="3"
-                                                  placeholder="{{ field.displayName }}"
-                                                  [required]="field.required"
-                                                  #fieldModel="ngModel"></textarea>
-                                        <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
-                                          {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
-                                        </div>
-                                      </ng-container>
-                                      <ng-container *ngSwitchCase="'checkbox'">
-                                        <div class="form-outline">
-                                          <label [for]="field.id + '_' + i" class="form-label">
-                                            {{ field.displayName }}<span *ngIf="field.required" class="text-danger"> * </span>
-                                          </label>
-                                          <div class="form-group d-flex align-items-center">
-                                            <input type="checkbox" class="form-check-input"
-                                                   [id]="field.id + '_' + i"
-                                                   name="{{ field.id + '_' + i }}" [(ngModel)]="entry[field.id]" />
-                                          </div>
-                                        </div>
-                                      </ng-container>
-                                    </ng-container>
+                        </ng-container>
+                        <!-- Other Sections (Auth, Provider, Diagnosis, Services) -->
+                        <div *ngIf="section !== 'Additional Details' && section !== 'Authorization Notes' && section !== 'Authorization Documents'">
+                          <!-- Special rendering for providerDetails -->
+                          <ng-container *ngIf="isProviderSection(section); else normalSection">
+                            <!-- Buttons Container: Display button-type fields -->
+                            <div class="row">
+                              <div class="col-12">
+                                <div class="provider-buttons-container" style="margin-bottom: 10px;">
+                                  <div *ngFor="let field of getFieldsByType(config[section].fields, 'button')"
+                                       class="button-field-wrapper"
+                                       style="display: inline-block; margin-right: 10px; position: relative;">
+                                    <button mat-raised-button class="provider-button" (click)="openButtonDialog(field, section, selectedProviderRowIndex); $event.stopPropagation()">
+                                      {{ field.buttonText }}
+                                    </button>
                                   </div>
                                 </div>
                               </div>
-                              <!-- Primary Radio Button for Diagnosis Section -->
-                              <div class="col-md-3 mb-3" *ngIf="isDiagnosisSection(section)">
-                                <label class="form-label">Primary</label>
-                                <input type="radio" name="primary_{{section}}"
-                                       [value]="i" [(ngModel)]="formData[section].primaryIndex"
-                                       (change)="setPrimary(section, i)">
-                              </div>
-                              <!-- Add & Remove Buttons for Diagnosis, Provider, Services -->
-                              <div class="col-md-3 mb-3 text-end" *ngIf="isSpecialSection(section)">
-                                <button mat-icon-button color="warn"
-                                        *ngIf="formData[section].entries.length > 1"
-                                        (click)="removeEntry(section, i)">
-                                  <mat-icon>remove_circle</mat-icon>
-                                </button>
-                                <button mat-icon-button color="primary"
-                                        *ngIf="i === formData[section].entries.length - 1"
-                                        (click)="addEntry(section, i)">
-                                  <mat-icon>add_circle</mat-icon>
-                                </button>
-                              </div>
                             </div>
-                          </div>
-                        </ng-container>
-                        <ng-template #normalSection>
-                          <!-- Normal rendering for sections other than providerDetails -->
-                          <div *ngIf="section !== 'Authorization Notes' && section !== 'Authorization Documents'">
-                            <div *ngFor="let entry of formData[section].entries; let i = index" class="row align-items-center mb-3">
-                              <div class="col-md-3 mb-3" *ngFor="let field of config[section].fields; let j = index">
-                                <div class="form-outline">
-                                  <label [for]="field.id + '_' + i" class="form-label">
-                                    {{ field.displayName }}<span *ngIf="field.required" class="text-danger"> * </span>
-                                  </label>
-                                  <div class="form-group">
-                                    <ng-container *ngIf="!field.layout">
+                            <!-- Render remaining non-button fields -->
+                            <div *ngIf="section !== 'Authorization Notes' && section !== 'Authorization Documents'">
+                              <div *ngFor="let entry of formData[section].entries; let i = index" class="row align-items-center mb-3" (click)="selectedProviderRowIndex = i" [ngClass]="{'selected-row': i === selectedProviderRowIndex}">
+                                <div class="col-md-3 mb-3" *ngFor="let field of getNonButtonFields(config[section].fields); let j = index">
+                                  <div class="form-outline">
+                                    <label [for]="field.id + '_' + i" class="form-label">
+                                      {{ field.displayName }}<span *ngIf="field.required" class="text-danger"> * </span>
+                                    </label>
+                                    <div class="form-group">
                                       <ng-container [ngSwitch]="field.type">
                                         <ng-container *ngSwitchDefault>
                                           <input class="form-control"
@@ -381,96 +296,189 @@
                                           </div>
                                         </ng-container>
                                       </ng-container>
+                                    </div>
+                                  </div>
+                                </div>
+                                <!-- Primary Radio Button for Diagnosis Section -->
+                                <div class="col-md-3 mb-3" *ngIf="isDiagnosisSection(section)">
+                                  <label class="form-label">Primary</label>
+                                  <input type="radio" name="primary_{{section}}"
+                                         [value]="i" [(ngModel)]="formData[section].primaryIndex"
+                                         (change)="setPrimary(section, i)">
+                                </div>
+                                <!-- Add & Remove Buttons for Diagnosis, Provider, Services -->
+                                <div class="col-md-3 mb-3 text-end" *ngIf="isSpecialSection(section)">
+                                  <button mat-icon-button color="warn"
+                                          *ngIf="formData[section].entries.length > 1"
+                                          (click)="removeEntry(section, i)">
+                                    <mat-icon>remove_circle</mat-icon>
+                                  </button>
+                                  <button mat-icon-button color="primary"
+                                          *ngIf="i === formData[section].entries.length - 1"
+                                          (click)="addEntry(section, i)">
+                                    <mat-icon>add_circle</mat-icon>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </ng-container>
+                          <ng-template #normalSection>
+                            <!-- Normal rendering for sections other than providerDetails -->
+                            <div *ngIf="section !== 'Authorization Notes' && section !== 'Authorization Documents'">
+                              <div *ngFor="let entry of formData[section].entries; let i = index" class="row align-items-center mb-3">
+                                <div class="col-md-3 mb-3" *ngFor="let field of config[section].fields; let j = index">
+                                  <div class="form-outline">
+                                    <label [for]="field.id + '_' + i" class="form-label">
+                                      {{ field.displayName }}<span *ngIf="field.required" class="text-danger"> * </span>
+                                    </label>
+                                    <div class="form-group">
+                                      <ng-container *ngIf="!field.layout">
+                                        <ng-container [ngSwitch]="field.type">
+                                          <ng-container *ngSwitchDefault>
+                                            <input class="form-control"
+                                                   [type]="field.type"
+                                                   [id]="field.id + '_' + i"
+                                                   name="{{ field.id + '_' + i }}"
+                                                   [(ngModel)]="entry[field.id]"
+                                                   placeholder="{{ field.displayName }}"
+                                                   [required]="field.required"
+                                                   #fieldModel="ngModel" />
+                                            <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
+                                              {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
+                                            </div>
+                                          </ng-container>
+                                          <ng-container *ngSwitchCase="'select'">
+                                            <select class="form-control"
+                                                    [id]="field.id + '_' + i"
+                                                    name="{{ field.id + '_' + i }}"
+                                                    [(ngModel)]="entry[field.id]"
+                                                    [required]="field.required"
+                                                    #fieldModel="ngModel">
 
-                                    </ng-container>
-                                    <!-- If the field has a row layout, render its sub-fields inline -->
-                                    <ng-container *ngIf="field.layout === 'row'">
-                                      <div class="col-md-3 mb-3">
-                                        <div class="d-flex align-items-center">
-                                          <ng-container *ngFor="let subField of field.fields">
-                                            <div class="col-auto me-2 mb-2">
-                                              <div class="form-outline">
-                                                <!-- For non-checkbox types, display label in outline style -->
-                                                <ng-container *ngIf="subField.type !== 'checkbox'">
-                                                  <label [for]="subField.id + '_' + i" class="form-label">
-                                                    {{ subField.displayName }}<span *ngIf="subField.required" class="text-danger"> * </span>
-                                                  </label>
-                                                </ng-container>
-                                                <div class="form-group">
-                                                  <ng-container [ngSwitch]="subField.type">
-                                                    <ng-container *ngSwitchDefault>
-                                                      <input class="form-control" [type]="subField.type"
-                                                             [id]="subField.id + '_' + i" name="{{ subField.id + '_' + i }}"
-                                                             [(ngModel)]="entry[subField.id]" placeholder="{{ subField.displayName }}"
-                                                             [required]="subField.required" #subFieldModel="ngModel" />
-                                                    </ng-container>
-                                                    <ng-container *ngSwitchCase="'select'">
-                                                      <select class="form-control" style="width:290px;" [id]="subField.id + '_' + i"
-                                                              name="{{ subField.id + '_' + i }}" [(ngModel)]="entry[subField.id]"
-                                                              [required]="subField.required" #subFieldModel="ngModel">
-
-                                                        <option *ngFor="let option of subField.options" [value]="option.value">
-                                                          {{ option.label }}
-                                                        </option>
-                                                      </select>
-                                                      <mat-icon class="custom-dropdown-arrow">arrow_drop_down</mat-icon>
-                                                    </ng-container>
-                                                    <ng-container *ngSwitchCase="'textarea'">
-                                                      <textarea class="form-control" [id]="subField.id + '_' + i"
-                                                                name="{{ subField.id + '_' + i }}" [(ngModel)]="entry[subField.id]"
-                                                                rows="3" placeholder="{{ subField.displayName }}"
-                                                                [required]="subField.required" #subFieldModel="ngModel">
-                                                      </textarea>
-                                                    </ng-container>
-                                                    <ng-container *ngSwitchCase="'checkbox'">
-                                                      <div class="form-outline">
-                                                        <label [for]="subField.id + '_' + i" class="form-label">
-                                                          <span *ngIf="subField.required" class="text-danger"> * </span>
-                                                        </label>
-                                                        <div class="form-group d-flex align-items-center">
-                                                          <input type="checkbox" class="form-check-input"
-                                                                 [id]="subField.id + '_' + i" name="{{ subField.id + '_' + i }}"
-                                                                 [(ngModel)]="entry[subField.id]" />
-                                                        </div>
-                                                      </div>
-                                                    </ng-container>
-                                                  </ng-container>
-                                                </div>
+                                              <option *ngFor="let option of field.options" [value]="option.value">{{ option.label }}</option>
+                                            </select>
+                                            <mat-icon class="custom-dropdown-arrow">arrow_drop_down</mat-icon>
+                                            <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
+                                              {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
+                                            </div>
+                                          </ng-container>
+                                          <ng-container *ngSwitchCase="'textarea'">
+                                            <textarea class="form-control"
+                                                      [id]="field.id + '_' + i"
+                                                      name="{{ field.id + '_' + i }}"
+                                                      [(ngModel)]="entry[field.id]"
+                                                      rows="3"
+                                                      placeholder="{{ field.displayName }}"
+                                                      [required]="field.required"
+                                                      #fieldModel="ngModel"></textarea>
+                                            <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
+                                              {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
+                                            </div>
+                                          </ng-container>
+                                          <ng-container *ngSwitchCase="'checkbox'">
+                                            <div class="form-outline">
+                                              <label [for]="field.id + '_' + i" class="form-label">
+                                                {{ field.displayName }}<span *ngIf="field.required" class="text-danger"> * </span>
+                                              </label>
+                                              <div class="form-group d-flex align-items-center">
+                                                <input type="checkbox" class="form-check-input"
+                                                       [id]="field.id + '_' + i"
+                                                       name="{{ field.id + '_' + i }}" [(ngModel)]="entry[field.id]" />
                                               </div>
                                             </div>
                                           </ng-container>
+                                        </ng-container>
+
+                                      </ng-container>
+                                      <!-- If the field has a row layout, render its sub-fields inline -->
+                                      <ng-container *ngIf="field.layout === 'row'">
+                                        <div class="col-md-3 mb-3">
+                                          <div class="d-flex align-items-center">
+                                            <ng-container *ngFor="let subField of field.fields">
+                                              <div class="col-auto me-2 mb-2">
+                                                <div class="form-outline">
+                                                  <!-- For non-checkbox types, display label in outline style -->
+                                                  <ng-container *ngIf="subField.type !== 'checkbox'">
+                                                    <label [for]="subField.id + '_' + i" class="form-label">
+                                                      {{ subField.displayName }}<span *ngIf="subField.required" class="text-danger"> * </span>
+                                                    </label>
+                                                  </ng-container>
+                                                  <div class="form-group">
+                                                    <ng-container [ngSwitch]="subField.type">
+                                                      <ng-container *ngSwitchDefault>
+                                                        <input class="form-control" [type]="subField.type"
+                                                               [id]="subField.id + '_' + i" name="{{ subField.id + '_' + i }}"
+                                                               [(ngModel)]="entry[subField.id]" placeholder="{{ subField.displayName }}"
+                                                               [required]="subField.required" #subFieldModel="ngModel" />
+                                                      </ng-container>
+                                                      <ng-container *ngSwitchCase="'select'">
+                                                        <select class="form-control" style="width:290px;" [id]="subField.id + '_' + i"
+                                                                name="{{ subField.id + '_' + i }}" [(ngModel)]="entry[subField.id]"
+                                                                [required]="subField.required" #subFieldModel="ngModel">
+
+                                                          <option *ngFor="let option of subField.options" [value]="option.value">
+                                                            {{ option.label }}
+                                                          </option>
+                                                        </select>
+                                                        <mat-icon class="custom-dropdown-arrow">arrow_drop_down</mat-icon>
+                                                      </ng-container>
+                                                      <ng-container *ngSwitchCase="'textarea'">
+                                                        <textarea class="form-control" [id]="subField.id + '_' + i"
+                                                                  name="{{ subField.id + '_' + i }}" [(ngModel)]="entry[subField.id]"
+                                                                  rows="3" placeholder="{{ subField.displayName }}"
+                                                                  [required]="subField.required" #subFieldModel="ngModel">
+                                                      </textarea>
+                                                      </ng-container>
+                                                      <ng-container *ngSwitchCase="'checkbox'">
+                                                        <div class="form-outline">
+                                                          <label [for]="subField.id + '_' + i" class="form-label">
+                                                            <span *ngIf="subField.required" class="text-danger"> * </span>
+                                                          </label>
+                                                          <div class="form-group d-flex align-items-center">
+                                                            <input type="checkbox" class="form-check-input"
+                                                                   [id]="subField.id + '_' + i" name="{{ subField.id + '_' + i }}"
+                                                                   [(ngModel)]="entry[subField.id]" />
+                                                          </div>
+                                                        </div>
+                                                      </ng-container>
+                                                    </ng-container>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            </ng-container>
+                                          </div>
                                         </div>
-                                      </div>
-                                    </ng-container>
+                                      </ng-container>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                              <!-- Primary Radio Button for Diagnosis Section -->
-                              <div class="col-md-3 mb-3" *ngIf="isDiagnosisSection(section)">
-                                <label class="form-label">Primary</label>
-                                <input type="radio" name="primary_{{section}}"
-                                       [value]="i" [(ngModel)]="formData[section].primaryIndex"
-                                       (change)="setPrimary(section, i)">
-                              </div>
-                              <!-- Add & Remove Buttons for Diagnosis, Provider, Services -->
-                              <div class="col-md-3 mb-3 text-end" *ngIf="isSpecialSection(section)">
-                                <button mat-icon-button color="warn"
-                                        *ngIf="formData[section].entries.length > 1"
-                                        (click)="removeEntry(section, i)">
-                                  <mat-icon>remove_circle</mat-icon>
-                                </button>
-                                <button mat-icon-button color="primary"
-                                        *ngIf="i === formData[section].entries.length - 1"
-                                        (click)="addEntry(section, i)">
-                                  <mat-icon>add_circle</mat-icon>
-                                </button>
+                                <!-- Primary Radio Button for Diagnosis Section -->
+                                <div class="col-md-3 mb-3" *ngIf="isDiagnosisSection(section)">
+                                  <label class="form-label">Primary</label>
+                                  <input type="radio" name="primary_{{section}}"
+                                         [value]="i" [(ngModel)]="formData[section].primaryIndex"
+                                         (change)="setPrimary(section, i)">
+                                </div>
+                                <!-- Add & Remove Buttons for Diagnosis, Provider, Services -->
+                                <div class="col-md-3 mb-3 text-end" *ngIf="isSpecialSection(section)">
+                                  <button mat-icon-button color="warn"
+                                          *ngIf="formData[section].entries.length > 1"
+                                          (click)="removeEntry(section, i)">
+                                    <mat-icon>remove_circle</mat-icon>
+                                  </button>
+                                  <button mat-icon-button color="primary"
+                                          *ngIf="i === formData[section].entries.length - 1"
+                                          (click)="addEntry(section, i)">
+                                    <mat-icon>add_circle</mat-icon>
+                                  </button>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </ng-template>
+                          </ng-template>
+                        </div>
                       </div>
-                    </div>
-                  </mat-card>
+                    </mat-card>
+                  </ng-container>
                 </ng-container>
               </div>
               <!-- Save Button -->
@@ -480,7 +488,8 @@
               </div>
 
               <!-- Status Details -->
-              <mat-card id="status" *ngIf="authTypeSelect">
+              <mat-card id="status" *ngIf="authTypeSelect && (isEditMode || isSaveSuccessful)">
+
                 <div class="card-header" (click)="isStatusExpanded = !isStatusExpanded" style="display: flex; align-items: center; justify-content: space-between;">
                   <div style="display: flex; align-items: center;">
                     <mat-icon>{{ isStatusExpanded ? 'expand_less' : 'expand_more' }}</mat-icon>

@@ -1,68 +1,175 @@
-<div class="form-container">
-  <form>
+<div class="form-container" *ngIf="isFormVisible">
+  <!-- wrapped the form -->
+
+  <form #noteForm="ngForm">
+
     <div class="form-grid">
+      <!-- First Row Fields -->
       <ng-container *ngFor="let field of notesFields">
-        <div *ngIf="field.id !== 'authorizationNotesGrid'" class="form-group"
-             [ngClass]="{'textarea-field': field.type === 'textarea', 'hidden': field.hidden}">
+        <ng-container *ngIf="field.type !== 'textarea' && field.id !== 'authorizationNotesGrid'">
+          <div class="form-group" [ngClass]="{ 'hidden': field.hidden }">
+            <ng-container [ngSwitch]="field.type">
+              <ng-container *ngSwitchCase="'select'">
+                <select [(ngModel)]="field.value"
+                        [required]="field.required"
+                        [name]="field.id"
+                        #fieldModel="ngModel" required>
+                  <option *ngFor="let option of field.options" [value]="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+                <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched || showValidationErrors)" class="text-danger">
+                  {{ field.requiredMsg || (field.displayName + ' is required.') }}
+                </div>
+              </ng-container>
+              <!-- Floating label just after the field -->
+              <!--<label *ngIf="field.type !== 'checkbox'">{{ field.label }}</label>-->
+              <ng-container *ngSwitchCase="'datetime-local'">
+                <input type="datetime-local"
+                       [(ngModel)]="field.value"
+                       [required]="field.required"
+                       [name]="field.id"
+                       placeholder=" "
+                       #fieldModel="ngModel" />
+                <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched || showValidationErrors)" class="text-danger">
+                  {{ field.requiredMsg || (field.displayName + ' is required.') }}
+                </div>
+              </ng-container>
 
-          <ng-container [ngSwitch]="field.type">
-            <select *ngSwitchCase="'select'" [(ngModel)]="field.value" [name]="field.id">
-              <option *ngFor="let option of field.options" [value]="option.value"
-                      [selected]="field.selectedOptions?.includes(option.value)">
-                {{ option.label }}
-              </option>
-            </select>
+              <!--<div *ngSwitchCase="'checkbox'" class="checkbox-inline">
+                <label>{{ field.label }}</label>
+                <input type="checkbox" [(ngModel)]="field.value" [name]="field.id" (change)="onAlertNoteChange($event)" />
 
-            <input *ngSwitchCase="'datetime-local'" type="datetime-local" [(ngModel)]="field.value" [name]="field.id">
+              </div>-->
 
-            <input *ngSwitchCase="'checkbox'" type="checkbox" [(ngModel)]="field.value" [name]="field.id"
-                   (change)="onAlertNoteChange($event)">
+              <div *ngSwitchCase="'checkbox'" class="form-group checkbox-inline">
+                <input type="checkbox"
+                       [(ngModel)]="showEndDatetimeField"
+                       name="authorizationAlertNote"
+                       (change)="onAlertNoteChange($event)" />
+                <label for="authorizationAlertNote">Alert Note</label>
 
-            <textarea *ngSwitchCase="'textarea'" [(ngModel)]="field.value" [name]="field.id"></textarea>
+              </div>
 
-            <input *ngSwitchDefault type="text" [(ngModel)]="field.value" [name]="field.id">
-          </ng-container>
+              <ng-container *ngSwitchDefault>
+                <input type="text"
+                       [(ngModel)]="field.value"
+                       [required]="field.required"
+                       [name]="field.id"
+                       placeholder=" "
+                       #fieldModel="ngModel" />
+                <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched || showValidationErrors)" class="text-danger">
+                  {{ field.requiredMsg || (field.displayName + ' is required.') }}
+                </div>
+              </ng-container>
+            </ng-container>
+            <label *ngIf="field.type !== 'checkbox'">{{ field.label }}</label>
 
+          </div>
+        </ng-container>
+      </ng-container>
+
+      <!-- End Datetime beside Alert Note -->
+      <div class="form-group" *ngIf="showEndDatetimeField">
+        <input type="datetime-local"
+               [(ngModel)]="endDatetimeValue"
+               name="endDatetimeValue"
+               placeholder=" " />
+        <label>End Datetime</label>
+      </div>
+
+      <!-- Textarea on full row -->
+      <ng-container *ngFor="let field of notesFields">
+        <div *ngIf="field.type === 'textarea'" class="form-group textarea-field">
+          <textarea [(ngModel)]="field.value"
+                    [required]="field.required"
+                    [name]="field.id"
+                    placeholder=" "
+                    #fieldModel="ngModel"></textarea>
           <label>{{ field.label }}</label>
+          <div *ngIf="field.required && fieldModel.invalid && (fieldModel.touched || fieldModel.dirty || showValidationErrors)" class="text-danger">
+            {{ field.requiredMsg || (field.displayName + ' is required.') }}
+          </div>
         </div>
       </ng-container>
 
-      <div *ngIf="showEndDatetimeField">
-        <label>End Datetime</label>
-        <input type="datetime-local" [(ngModel)]="endDatetimeValue">
+      <!-- Save Button Full Width Last Column -->
+      <div class="form-group button-right">
+        <button type="button" (click)="saveNote(noteForm)">Save</button>
+        <button type="button" (click)="cancelForm()">Cancel</button>
       </div>
-
-      <button type="button" (click)="saveNote()">Save</button>
     </div>
   </form>
 </div>
 
-<table>
-  <thead>
-    <tr>
-      <th>Note Type</th>
-      <th>Notes</th>
-      <th>Created On</th>
-      <th>Created By</th>
-      <th>Updated On</th>
-      <th>Updated By</th>
-      <th>Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr *ngFor="let note of notes">
-      <td>{{ note.authorizationNoteType }}</td>
-      <td>{{ note.authorizationNotes }}</td>
-      <td>{{ note.createdOn }}</td>
-      <td>{{ note.createdBy }}</td>
-      <td>{{ note.updatedOn }}</td>
-      <td>{{ note.updatedBy }}</td>
-      <td>
-        <button class="edit-btn" (click)="editNote(note)">Edit</button>
-        <button class="delete-btn" (click)="deleteNote(note.id)">Delete</button>
-      </td>
-    </tr>
-  </tbody>
-</table>
+<div >
+  <!-- wrapped the table -->
+  <!--*ngIf="!isFormVisible"-->
+  <div class="table-container">
+    <div class="d-flex justify-content-between align-items-center " style="width: 100%;  ">
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="search-bar-container-table">
+          <button mat-icon-button>
+            <mat-icon>search</mat-icon>
+          </button>
+          <!--<input class="input" matInput [readonly]="mode === 'view'" (keyup)="applyFilter($event)" placeholder="Start typing to search User " #input>-->
+          <input class="input" matInput (keyup)="applyFilter($event)" placeholder="Search Notes" />
+        </div>
+      </div>
+      <div>
+        <button mat-icon-button color="primary" (click)="openForm('add')" matTooltip="Add Notes">
+          <mat-icon>add</mat-icon>
+        </button>
+      </div>
+    </div>
+    <table class="responsive-table" mat-table [dataSource]="dataSource" matSort class="mat-elevation-z8">
+      <!-- Define columns here -->
+      <ng-container matColumnDef="authorizationNoteType">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Note Type</th>
+        <td mat-cell *matCellDef="let note">{{ note.authorizationNoteType }}</td>
+      </ng-container>
 
+      <ng-container matColumnDef="authorizationNotes">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Notes</th>
+        <td mat-cell *matCellDef="let note">{{ note.authorizationNotes }}</td>
+      </ng-container>
 
+      <ng-container matColumnDef="createdOn">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Created On</th>
+        <td mat-cell *matCellDef="let note">{{ note.createdOn }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="createdBy">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Created By</th>
+        <td mat-cell *matCellDef="let note">{{ note.createdBy }}</td>
+      </ng-container>
+
+      <!--<ng-container matColumnDef="updatedOn">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Updated On</th>
+        <td mat-cell *matCellDef="let note">{{ note.updatedOn }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="updatedBy">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Updated By</th>
+        <td mat-cell *matCellDef="let note">{{ note.updatedBy }}</td>
+      </ng-container>-->
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Actions</th>
+        <td mat-cell *matCellDef="let note">
+          <button mat-icon-button (click)="editNote(note)" matTooltip="Edit">
+            <mat-icon style="color: #007BFF">edit</mat-icon>
+          </button>
+          <button mat-icon-button (click)="deleteNote(note.id)" matTooltip="Delete">
+            <mat-icon style="color: #007BFF">delete</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+
+    <mat-paginator [pageSizeOptions]="[10, 15, 20]" showFirstLastButtons></mat-paginator>
+  </div>
+</div>

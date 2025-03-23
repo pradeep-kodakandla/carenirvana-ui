@@ -41,11 +41,11 @@ export class AuthorizationComponent {
   newTemplateName: string = '';
   showTemplateNameError: boolean = false;
   saveType: string = '';
+  saveTypeFrom: string = '';
   newAuthNumber: string | null = null;
   showAuthorizationComponent = false;
 
   DecisionFields: any = {};
-
   decisionData: any = {};
 
   authorizationNotesFields: any = []; // Fields JSON
@@ -53,6 +53,12 @@ export class AuthorizationComponent {
 
   authorizationDocumentFields: any = []; // Fields JSON
   authorizationDocumentData: any = []; // Data JSON
+
+
+  isEditMode: boolean = false;
+  isSaveSuccessful: boolean = false;
+
+
 
   // Method to set selected div (if needed elsewhere)
   selectDiv(index: number): void {
@@ -102,6 +108,7 @@ export class AuthorizationComponent {
     });
 
     if (this.newAuthNumber && this.newAuthNumber != 'DRAFT') {
+      this.isEditMode = true;
       this.getAuthDataByAuthNumber(this.newAuthNumber);
     }
 
@@ -533,6 +540,7 @@ export class AuthorizationComponent {
         CreatedBy: 1,
         responseData: JSON.stringify(this.formData) // Ensure it's a valid JSON string
       };
+      this.isSaveSuccessful = true;
     }
 
     if (this.saveType === 'Update') {
@@ -562,8 +570,10 @@ export class AuthorizationComponent {
         });
 
         this.loadDecisionData();
-        // Move to "Decision Details" stepper
-        this.stepperSelectedIndex = 1; // Navigate to Decision Details step
+        if (this.saveType === 'Update' && this.saveTypeFrom === '') {
+          // Move to "Decision Details" stepper
+          this.stepperSelectedIndex = 1; // Navigate to Decision Details step
+        }
       },
       error => {
         console.error('Error saving data:', error);
@@ -644,6 +654,17 @@ export class AuthorizationComponent {
   getRowLayoutFields(section: string): any[] {
     return this.config[section].fields.filter((field: any) => field.layout === 'row');
   }
+
+  shouldDisplaySection(section: string): boolean {
+    const isSpecialSection = ['Additional Details', 'Authorization Notes', 'Authorization Documents', 'Status Details'].includes(section);
+    if (this.isEditMode) return true;
+    if (!this.isEditMode && isSpecialSection) {
+      return this.isSaveSuccessful;
+    }
+    return true;
+  }
+
+
 
   /*************Decision Data***************/
 
@@ -748,6 +769,7 @@ export class AuthorizationComponent {
     }
     console.log('Updated Decision Data:', this.decisionData);
     this.saveType = 'Update';
+    this.saveTypeFrom = '';
     this.saveData(this.formData);
   }
 
@@ -761,6 +783,7 @@ export class AuthorizationComponent {
     this.formData['Authorization Notes'].entries = updatedNotes;
 
     this.saveType = 'Update';
+    this.saveTypeFrom = 'Notes';
     this.saveData(this.formData);
   }
   /*************Notes Data***************/
@@ -773,6 +796,7 @@ export class AuthorizationComponent {
     this.formData['Authorization Documents'].entries = updatedDocument;
 
     this.saveType = 'Update';
+    this.saveTypeFrom = 'Document';
     this.saveData(this.formData);
   }
   /*************Notes Data***************/
