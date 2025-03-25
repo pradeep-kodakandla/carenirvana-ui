@@ -345,3 +345,12 @@ textarea.ng-invalid.ng-touched {
   font-size: 24px;
   color: #666;
 }
+
+
+.five-col-layout {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  width: 100%;
+}
+

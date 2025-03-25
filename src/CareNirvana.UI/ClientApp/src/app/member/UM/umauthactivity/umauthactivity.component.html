@@ -1,0 +1,157 @@
+<div class="auth-form">
+  <form [formGroup]="activityForm">
+    <div class="form-grid">
+
+      <div class="form-group-outline">
+        <label>Member Name</label>
+        <input type="text" formControlName="memberName" [disabled]="true">
+
+      </div>
+
+      <div class="form-group-outline">
+        <label>Activity Type *</label>
+        <select formControlName="activityType">
+          <option value="">Select</option>
+          <option value="Medical Director Review">Medical Director Review</option>
+          <option value="Nurse Review">Nurse Review</option>
+        </select>
+      </div>
+
+      <div class="form-group-outline">
+        <label>Priority *</label>
+        <select formControlName="priority">
+          <option value="">Select</option>
+          <option value="High">High</option>
+          <option value="Low">Low</option>
+        </select>
+      </div>
+
+      <div class="form-group-outline">
+        <label>Assign To *</label>
+        <input type="text" formControlName="assignTo">
+      </div>
+
+      <div class="form-group-outline">
+        <label>Work Basket</label>
+        <select formControlName="workBasket">
+          <option value="">Select</option>
+          <option value="UM Reviewers">UM Reviewers</option>
+          <option value="No">No</option>
+        </select>
+      </div>
+
+      <div class="form-group-outline hybrid-datetime">
+        <label>Scheduled Date Time *</label>
+
+        <!-- Visible shortcut input -->
+        <input type="text"
+               placeholder="mm/dd/yyyy"
+               [value]="displayedScheduledValue"
+               (input)="onInputChange($event, 'scheduledDateTime')"
+               (blur)="handleDateShortcut('scheduledDateTime')"
+               (keydown.enter)="handleDateShortcut('scheduledDateTime')" />
+
+        <!-- Visible calendar icon -->
+        <span class="calendar-icon" (click)="triggerCalendar('scheduledDateTime')">
+          📅
+        </span>
+
+        <!-- Hidden native datetime-local input -->
+        <input type="datetime-local"
+               class="hidden-native"
+               #scheduledPicker
+               [value]="activityForm.get('scheduledDateTime')?.value"
+               (change)="onNativeDateChange($event, 'scheduledDateTime')" />
+      </div>
+
+      <div class="form-group-outline hybrid-datetime">
+        <label>Due Date Time</label>
+
+        <!-- Visible shortcut input -->
+        <input type="text"
+               placeholder="mm/dd/yyyy"
+               [value]="displayedScheduledValue"
+               (input)="onInputChange($event, 'dueDateTime')"
+               (blur)="handleDateShortcut('dueDateTime')"
+               (keydown.enter)="handleDateShortcut('dueDateTime')" />
+
+        <!-- Visible calendar icon -->
+        <span class="calendar-icon" (click)="triggerCalendar('dueDateTime')">
+          📅
+        </span>
+
+        <!-- Hidden native datetime-local input -->
+        <input type="datetime-local"
+               class="hidden-native"
+               #scheduledPicker
+               [value]="activityForm.get('dueDateTime')?.value"
+               (change)="onNativeDateChange($event, 'dueDateTime')" />
+      </div>
+
+      <!--<div class="form-group-outline">
+        <label></label>
+        <input type="datetime-local"
+               formControlName="dueDateTime"
+               placeholder="mm/dd/yyyy"
+               (blur)="handleDateShortcut('dueDateTime')"
+               (keydown.enter)="handleDateShortcut('dueDateTime')">
+      </div>-->
+
+
+
+      <div class="form-group-outline full-width">
+        <label>Comments *</label>
+        <textarea formControlName="comments" rows="3"></textarea>
+      </div>
+    </div>
+
+    <div class="button-group">
+      <button type="button" (click)="onSubmit()">Add</button>
+      <button type="button" (click)="onReset()">Reset</button>
+    </div>
+  </form>
+</div>
+
+<hr>
+
+<div class="activity-table">
+  <button class="add-btn" (click)="onReset()">Add Activity</button>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Activity Type</th>
+        <th>Priority</th>
+        <th>Scheduled</th>
+        <th>Due</th>
+        <th>Assign To</th>
+        <th>Status</th>
+        <th>Completed</th>
+        <th>Created</th>
+        <th>Created By</th>
+        <th>Comments</th>
+        <th>WB</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let row of activities.data; let i = index">
+        <td>{{ row.activityType }}</td>
+        <td>{{ row.priority }}</td>
+        <td>{{ row.scheduledDateTime }}</td>
+        <td>{{ row.dueDateTime }}</td>
+        <td>{{ row.assignTo }}</td>
+        <td>{{ row.status }}</td>
+        <td>{{ row.completedDate }}</td>
+        <td>{{ row.createdDatetime }}</td>
+        <td>{{ row.createdBy }}</td>
+        <td>{{ row.comments }}</td>
+        <td>{{ row.workBasket }}</td>
+        <td>
+          <button (click)="editActivity(i)">Edit</button>
+          <button (click)="deleteActivity(i)">Delete</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>

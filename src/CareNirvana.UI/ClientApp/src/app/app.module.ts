@@ -41,6 +41,7 @@ import { AuthdynamicComponent } from './member/UM/authdynamic/authdynamic.compon
 import { ProviderSearchComponent } from './Provider/provider-search/provider-search.component';
 import { UmauthnotesComponent } from './member/UM/umauthnotes/umauthnotes.component';
 import { UmauthdocumentsComponent } from './member/UM/umauthdocuments/umauthdocuments.component';
+import { UmauthactivityComponent } from './member/UM/umauthactivity/umauthactivity.component';
 
 import { ConfigurationComponent } from './admin/configuration/configuration.component';
 import { UsermanagementComponent } from './admin/usermanagement/usermanagement.component';
@@ -152,7 +153,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
     MemberProgramComponent,
     MemberTasksummaryComponent,
     MemberInfoComponent, AuthorizationComponent, DecisiondetailsComponent, AuthdetailsComponent, AuthdynamicComponent, ProviderSearchComponent,
-    UmauthnotesComponent, UmauthdocumentsComponent,
+    UmauthnotesComponent, UmauthdocumentsComponent, UmauthactivityComponent,
     NewDashBoardComponent, NewDashboard2Component,
     ConfigurationComponent, UsermanagementComponent, RolemanagementComponent, ProfilemanagementComponent, AppfeaturesetupComponent,
     UmdocumenttypeComponent, SettingsDialogComponent, UmactivitytypeComponent, DialogContentComponent, UmnotetypeComponent, ExternallinksComponent,
@@ -212,7 +213,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
       { path: 'provider-search', component: ProviderSearchComponent },
       { path: 'member-authnotes', component: UmauthnotesComponent },
       { path: 'member-authdocs', component: UmauthdocumentsComponent },
-
+      { path: 'member-authactivity', component: UmauthactivityComponent },
       { path: 'admin-config', component: ConfigurationComponent },
       { path: 'admin-user', component: UsermanagementComponent },
       { path: 'admin-role', component: RolemanagementComponent },

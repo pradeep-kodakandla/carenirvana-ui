@@ -507,6 +507,9 @@
                              (decisionSaved)="handleDecisionDataSaved($event)">></app-decisiondetails>
       </mat-step>
       <mat-step label="MD Review"></mat-step>
+      <mat-step label="Activity">
+        <app-umauthactivity></app-umauthactivity>
+      </mat-step>
       <mat-step label="Notes">
         <app-umauthnotes [notesFields]="authorizationNotesFields"
                          [notesData]="authorizationNotesData"
