@@ -135,7 +135,7 @@ export class AuthdetailsComponent implements OnInit {
     }
 
 
-    const tabLabel = `Auth No (${authNumber})`;
+    const tabLabel = `Auth No ${authNumber}`;
     const tabRoute = `/member-auth/${authNumber}/${this.memberId}`;
 
     // Check if tab already exists

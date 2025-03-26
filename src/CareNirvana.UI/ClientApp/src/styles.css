@@ -21,8 +21,8 @@ html, body {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
-  overflow-y:  unset;
-}
+/*  overflow-y:  unset;
+*/}
 
 main {
  /* min-height: 100vh;*/ /* Ensures content fills the screen */
@@ -30,7 +30,7 @@ main {
 }
 
 .container {
-  min-height: 100vh; /* Ensures content fills the screen */
+  min-height: 90vh; /* Ensures content fills the screen */
   padding-bottom: 20px;  /*This ensures space for the footer */
   margin:5px !important;
   overflow:auto;

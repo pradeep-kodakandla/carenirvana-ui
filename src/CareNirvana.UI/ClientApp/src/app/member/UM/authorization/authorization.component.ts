@@ -306,7 +306,13 @@ export class AuthorizationComponent {
                 });
               } else {
                 this.config[section]?.fields?.forEach((field: any) => {
-                  if (field.type === 'select' && field.datasource) {
+                  if (field.layout === 'row' && Array.isArray(field.fields)) {
+                    field.fields.forEach((subField: any) => {
+                      if (subField.type === 'select' && subField.datasource) {
+                        datasourceMap.set(subField.datasource, []);
+                      }
+                    });
+                  } else if (field.type === 'select' && field.datasource) {
                     datasourceMap.set(field.datasource, []);
                   }
                 });
@@ -314,7 +320,7 @@ export class AuthorizationComponent {
             }
           });
 
-          console.log('Datasource Map:', datasourceMap);
+
           datasourceMap.forEach((_, datasource) => {
             this.crudService.getData('um', datasource).subscribe(
               (serviceData: any[]) => {
@@ -337,13 +343,17 @@ export class AuthorizationComponent {
                               })
                             ];
                             field.options = options;
-
-                            if (field.defaultValue && this.formData[section][subSection]?.entries) {
+                            field.defaultValue = field.defaultValue ?? options[0]?.value ?? '';
+                            if (this.formData[section]?.[subSection]?.entries?.length) {
                               this.formData[section][subSection].entries.forEach((entry: any) => {
-                                entry[field.id] = field.defaultValue;
+                                const currentValue = entry[field.id];
+                                const isUnset = currentValue === undefined || currentValue === null || currentValue === '';
+                                if (isUnset) {
+                                  entry[field.id] = field.defaultValue;
+                                }
                               });
-                            } else if (this.formData[section]?.entries) {
-                              this.formData[section].entries.forEach((entry: any) => {
+                            } else if (this.formData[section][subSection]?.entries) {
+                              this.formData[section][subSection].entries.forEach((entry: any) => {
                                 entry[field.id] = '';
                               });
                             }
@@ -372,6 +382,22 @@ export class AuthorizationComponent {
                           } else if (this.formData[section]?.entries) {
                             this.formData[section].entries.forEach((entry: any) => {
                               entry[field.id] = '';
+                            });
+                          }
+                          else if (field.layout === 'row' && Array.isArray(field.fields)) {
+                            field.fields.forEach((subField: any) => {
+                              if (subField.type === 'select' && subField.datasource === datasource) {
+                                subField.options = [
+                                  { value: '', label: 'Select' },
+                                  ...serviceData.map((item: any) => {
+                                    const actualKey = Object.keys(item).find(key => key.toLowerCase() === expectedKey);
+                                    return {
+                                      value: item.id,
+                                      label: actualKey ? item[actualKey] : 'Unknown'
+                                    };
+                                  })
+                                ];
+                              }
                             });
                           }
                         }
@@ -416,15 +442,28 @@ export class AuthorizationComponent {
     }
   }
 
-
-
-  createEmptyEntry(fields: any[]): any {
-    let entry: any = {};
+  createEmptyEntry(fields: any[], isNew: boolean = false): any {
+    let entry: any = { __isNew: isNew }; // mark entry as new if needed
     fields.forEach(field => {
-      entry[field.id] = null;
+      if (field.layout === 'row' && Array.isArray(field.fields)) {
+        field.fields.forEach((subField: any) => {
+          entry[subField.id] = subField.defaultValue ?? '';
+        });
+      } else {
+        entry[field.id] = field.defaultValue ?? '';
+      }
     });
     return entry;
   }
+
+
+  //createEmptyEntry(fields: any[]): any {
+  //  let entry: any = {};
+  //  fields.forEach(field => {
+  //    entry[field.id] = null;
+  //  });
+  //  return entry;
+  //}
 
   //toggleSection(section: string): void {
   //  if (!section) {
@@ -466,12 +505,12 @@ export class AuthorizationComponent {
           entries: []
         };
       }
-      this.formData['Additional Details'][subSection].entries.splice(index + 1, 0, this.createEmptyEntry(this.config['Additional Details'].subsections[subSection].fields));
+      this.formData['Additional Details'][subSection].entries.splice(index + 1, 0, this.createEmptyEntry(this.config['Additional Details'].subsections[subSection].fields, true));
     } else {
       if (!this.formData[section]) {
         this.formData[section] = { expanded: true, entries: [] };
       }
-      this.formData[section].entries.splice(index + 1, 0, this.createEmptyEntry(this.config[section].fields));
+      this.formData[section].entries.splice(index + 1, 0, this.createEmptyEntry(this.config[section].fields, true));
     }
   }
 

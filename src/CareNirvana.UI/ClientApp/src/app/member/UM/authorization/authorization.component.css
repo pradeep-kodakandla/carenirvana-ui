@@ -24,11 +24,16 @@ body {
   padding: 0 !important;
 }
 
+.mat-horizontal-content-container {
+  overflow: hidden;
+  padding: 0px !important;
+}
+
 /* Main Form & Row */
 .main-form {
   border-radius: 4px;
-  margin-left: -20px;
-  width: 100%;
+  /*  margin-left: -20px;
+*/ width: 100%;
 }
 
 .row {
@@ -122,9 +127,22 @@ label {
   }
 
 /* Close Button */
+/*.close-container {*/
+/*align-self: end;*/
+/*padding-right: 35px;
+}*/
+
 .close-container {
-  /*align-self: end;*/
-  padding-right: 35px;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background-color: white;
+/*  padding: 10px 0;*/
+}
+
+.content-section {
+  height: calc(100vh - 140px); /* adjust 80px based on your header height overflow-y: auto;*/
+  padding-right: 8px; /* optional, to prevent scrollbar overlap*/
 }
 
 .close-btn {
@@ -346,11 +364,18 @@ textarea.ng-invalid.ng-touched {
   color: #666;
 }
 
-
-.five-col-layout {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 16px;
-  width: 100%;
+.col-5-layout {
+  flex: 0 0 20%;
+  max-width: 20%;
+  padding-left: 10px;
+  padding-right: 10px;
 }
 
+.entry-divider {
+  border: 0;
+  height: 1px;
+  background-color: #007BFF; /* or any color you like */
+  border-radius: 2px;
+  margin: 1rem 0;
+  opacity: 0.6; /* soften the line slightly */
+}

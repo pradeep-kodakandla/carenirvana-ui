@@ -40,9 +40,17 @@ export class HeaderComponent {
     this.selectedTabId = tab.label;
   }
 
+  //removeTab(tab: { label: string; route: string }): void {
+  //  this.headerService.removeTab(tab.route);
+  //}
+
   removeTab(tab: { label: string; route: string }): void {
-    this.headerService.removeTab(tab.route);
+    const confirmClose = window.confirm(`Are you sure you want to close the "${tab.label}" tab?`);
+    if (confirmClose) {
+      this.headerService.removeTab(tab.route);
+    }
   }
+
 
   onAddNewTab(): void {
     const newTabIndex = this.headerService.getTabs().length + 1;

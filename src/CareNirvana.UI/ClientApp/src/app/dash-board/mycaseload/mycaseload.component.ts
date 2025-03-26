@@ -95,8 +95,8 @@ export class MycaseloadComponent {
   }
 
 
-  onMemberClick(memberId: string): void {
-    const tabLabel = `Member Info (${memberId})`;
+  onMemberClick(memberId: string, memberName:string): void {
+    const tabLabel = `Member: ${memberName}`;
     const tabRoute = `/member-info/${memberId}`;
 
     // Check if tab already exists

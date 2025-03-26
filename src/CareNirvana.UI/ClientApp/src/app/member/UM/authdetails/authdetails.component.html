@@ -45,131 +45,82 @@
       <mat-icon>add</mat-icon>
     </button>
   </div>-->
-
-
-  <div class="add-container">
-    <button mat-icon-button
-            (click)="onAddClick()"
-            matTooltip="Click to add a new authorization"
-            [matTooltipClass]="'custom-tooltip'"
-            [ngClass]="{'highlight-add': showAddHighlight}">
-      <mat-icon>add</mat-icon>
-    </button>
+  <!--<div class="add-container">-->
+  <!--<button mat-icon-button
+          (click)="onAddClick()"
+          matTooltip="Click to add a new authorization"
+          [matTooltipClass]="'custom-tooltip'"
+          [ngClass]="{'highlight-add': showAddHighlight}">
+    <mat-icon>add</mat-icon>
+  </button>-->
+  <div class="row">
+    <div class="col-md-3 mb-3">
+      <button (click)="onAddClick()"
+              matTooltip="Click to add a new authorization"
+              [matTooltipClass]="'custom-tooltip'"
+              [ngClass]="{'highlight-add': showAddHighlight}" class="btn btn-primary" style="width:max-content;">
+        Add Auth
+      </button>
+    </div>
+    <!--</div>-->
   </div>
 </div>
 
-<!--<table class="responsive-table" mat-table [dataSource]="dataSource" multiTemplateDataRows matSort>
-  <ng-container matColumnDef="firstName">
-    <th mat-header-cell *matHeaderCellDef mat-sort-header> First Name </th>
-    <td mat-cell *matCellDef="let row"> {{row.firstName}} </td>
-  </ng-container>
+<div class="d-flex justify-content-between align-items-center " style="margin-left:10px; margin-right:10px;  ">
+  <table class="responsive-table" mat-table [dataSource]="dataSource" multiTemplateDataRows matSort>
 
-  <ng-container matColumnDef="lastName">
-    <th mat-header-cell *matHeaderCellDef mat-sort-header> Last Name </th>
-    <td mat-cell *matCellDef="let row"> {{row.lastName}} </td>
-  </ng-container>
+    <ng-container matColumnDef="authDetailId">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>  </th>
+      <td mat-cell *matCellDef="let row">
+        <div class="example-element-weight">
+          <button mat-icon-button [matMenuTriggerFor]="menu">
+            <mat-icon>list</mat-icon>
+          </button>
+        </div>
+      </td>
+    </ng-container>
 
-  <ng-container matColumnDef="DOB">
-    <th mat-header-cell *matHeaderCellDef mat-sort-header> Enrollment </th>
-    <td mat-cell *matCellDef="let row"> {{row.DOB}} </td>
-  </ng-container>
+    <ng-container matColumnDef="authNumber">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header> Auth Number </th>
+      <td mat-cell *matCellDef="let row">
+        <div class="example-element-weight">
+          <a mat-button (click)="onAddClick(row.authNumber)">{{row.authNumber}}</a>
+        </div>
+      </td>
+    </ng-container>
 
-  <ng-container matColumnDef="risk">
-    <th mat-header-cell *matHeaderCellDef mat-sort-header> Auth Number </th>
-    <td mat-cell *matCellDef="let row"> {{row.risk}} </td>
-  </ng-container>
+    <ng-container matColumnDef="authTypeId">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header> Auth Type ID </th>
+      <td mat-cell *matCellDef="let row"> {{row.authTypeId || ''}} </td>
+    </ng-container>
 
-  <ng-container matColumnDef="nextContact">
-    <th mat-header-cell *matHeaderCellDef mat-sort-header> Auth Type </th>
-    <td mat-cell *matCellDef="let row"> {{row.nextContact}} </td>
-  </ng-container>
+    <ng-container matColumnDef="memberId">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header> Member ID </th>
+      <td mat-cell *matCellDef="let row"> {{row.memberId || ''}} </td>
+    </ng-container>
 
-  <ng-container matColumnDef="assignedDate">
-    <th mat-header-cell *matHeaderCellDef mat-sort-header> Auth Due Date </th>
-    <td mat-cell *matCellDef="let row"> {{row.assignedDate}} </td>
-  </ng-container>
+    <ng-container matColumnDef="authDueDate">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header> Auth Due Date </th>
+      <td mat-cell *matCellDef="let row"> {{row.authDueDate || ''}} </td>
+    </ng-container>
 
-  <ng-container matColumnDef="programName">
-    <th mat-header-cell *matHeaderCellDef mat-sort-header> Next Review Date </th>
-    <td mat-cell *matCellDef="let row"> {{row.programName}} </td>
-  </ng-container>
+    <ng-container matColumnDef="nextReviewDate">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header> Next Review Date </th>
+      <td mat-cell *matCellDef="let row"> {{row.nextReviewDate || ''}} </td>
+    </ng-container>
 
-  <ng-container matColumnDef="description">
-    <th mat-header-cell *matHeaderCellDef mat-sort-header> Treatment Type </th>
-    <td mat-cell *matCellDef="let row"> {{row.programName}} </td>
+    <ng-container matColumnDef="treatmentType">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header> Treatment Type </th>
+      <td mat-cell *matCellDef="let row"> {{row.treatmentType || ''}} </td>
+    </ng-container>
 
-  </ng-container>-->
-<!-- Expanded Content Column - The detail row is made up of this one column that spans across all columns -->
-<!--<ng-container matColumnDef="expandedDetail">
-  <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns.length">
-  </td>
-</ng-container>-->
-<!-- Header and Rows -->
-<!--<tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-  <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-</table>-->
-<!-- Paginator -->
-<!--<mat-paginator [pageSizeOptions]="[10, 15, 20]" showFirstLastButtons></mat-paginator>-->
-<!-- Loading Spinner -->
-<!--<div *ngIf="isLoading" class="loading-container">
-  <mat-spinner></mat-spinner>
-</div>-->
-<!-- No Data Available Message -->
-
-
-<table class="responsive-table" mat-table [dataSource]="dataSource" multiTemplateDataRows matSort>
-
-  <ng-container matColumnDef="authDetailId">
-    <th mat-header-cell *matHeaderCellDef mat-sort-header>  </th>
-    <td mat-cell *matCellDef="let row">
-      <div class="example-element-weight">
-        <button mat-icon-button [matMenuTriggerFor]="menu">
-          <mat-icon>list</mat-icon>
-        </button>
-      </div>
-    </td>
-  </ng-container>
-
-  <ng-container matColumnDef="authNumber">
-    <th mat-header-cell *matHeaderCellDef mat-sort-header> Auth Number </th>
-    <td mat-cell *matCellDef="let row">
-      <div class="example-element-weight">
-        <a mat-button (click)="onAddClick(row.authNumber)">{{row.authNumber}}</a>
-      </div>
-    </td>
-  </ng-container>
-
-  <ng-container matColumnDef="authTypeId">
-    <th mat-header-cell *matHeaderCellDef mat-sort-header> Auth Type ID </th>
-    <td mat-cell *matCellDef="let row"> {{row.authTypeId || ''}} </td>
-  </ng-container>
-
-  <ng-container matColumnDef="memberId">
-    <th mat-header-cell *matHeaderCellDef mat-sort-header> Member ID </th>
-    <td mat-cell *matCellDef="let row"> {{row.memberId || ''}} </td>
-  </ng-container>
-
-  <ng-container matColumnDef="authDueDate">
-    <th mat-header-cell *matHeaderCellDef mat-sort-header> Auth Due Date </th>
-    <td mat-cell *matCellDef="let row"> {{row.authDueDate || ''}} </td>
-  </ng-container>
-
-  <ng-container matColumnDef="nextReviewDate">
-    <th mat-header-cell *matHeaderCellDef mat-sort-header> Next Review Date </th>
-    <td mat-cell *matCellDef="let row"> {{row.nextReviewDate || ''}} </td>
-  </ng-container>
-
-  <ng-container matColumnDef="treatmentType">
-    <th mat-header-cell *matHeaderCellDef mat-sort-header> Treatment Type </th>
-    <td mat-cell *matCellDef="let row"> {{row.treatmentType || ''}} </td>
-  </ng-container>
-
-  <!-- Header and Rows -->
-  <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-  <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-</table>
-<div *ngIf="isEmpty && !isLoading" style="text-align-last:center;" class="no-data">
-  <p>No data available</p>
+    <!-- Header and Rows -->
+    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+  </table>
+  <div *ngIf="isEmpty && !isLoading" style="text-align-last:center;" class="no-data">
+    <p>No data available</p>
+  </div>
+  <!-- Paginator -->
+  <mat-paginator [pageSizeOptions]="[10, 15, 20]" showFirstLastButtons></mat-paginator>
 </div>
-<!-- Paginator -->
-<mat-paginator [pageSizeOptions]="[10, 15, 20]" showFirstLastButtons></mat-paginator>
