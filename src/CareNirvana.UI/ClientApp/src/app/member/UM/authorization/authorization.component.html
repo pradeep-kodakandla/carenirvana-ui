@@ -21,6 +21,26 @@
 
 
   <div class="content-section">
+    <ng-template #enrollmentTooltip>
+      <div class="tooltip-container">
+        <div class="tooltip-row">
+          <label class="tooltip-label">LOB:</label>
+          <span class="tooltip-value">Medicare</span>
+        </div>
+        <div class="tooltip-row">
+          <label class="tooltip-label">Account:</label>
+          <span class="tooltip-value">Microsoft</span>
+        </div>
+        <div class="tooltip-row">
+          <label class="tooltip-label">Start Date:</label>
+          <span class="tooltip-value">01/01/2024</span>
+        </div>
+        <div class="tooltip-row">
+          <label class="tooltip-label">End Date:</label>
+          <span class="tooltip-value">12/31/2024</span>
+        </div>
+      </div>
+    </ng-template>
     <!-- Horizontal Stepper -->
     <mat-horizontal-stepper style="padding: 0; margin:-10px; background-color:transparent;" [selectedIndex]="stepperSelectedIndex" #stepper>
       <mat-step label="Request Details" style="padding: 0;">
@@ -44,7 +64,14 @@
                 </div>
                 <div class="selection-container" *ngIf="isExpanded">
                   <!-- Rounded selection boxes -->
-                  <div class="rounded-box" (click)="selectDiv(1)" [ngClass]="{ 'selected': selectedDiv === 1 }">
+                  <div class="rounded-box tooltip-wrapper" (click)="selectDiv(1)" [ngClass]="{ 'selected': selectedDiv === 1 }">
+                    <div class="tooltip-panel">
+                      <div class="tooltip-row"><label class="tooltip-label">LOB:</label><span>Medicare</span></div>
+                      <div class="tooltip-row"><label class="tooltip-label">Account:</label><span>Microsoft</span></div>
+                      <div class="tooltip-row"><label class="tooltip-label">Start Date:</label><span>01/01/2024</span></div>
+                      <div class="tooltip-row"><label class="tooltip-label">End Date:</label><span>12/31/2024</span></div>
+                    </div>
+
                     <div class="d-flex justify-content-between div-secondary">
                       <div>
                         <label class="label">LOB</label>
@@ -61,7 +88,13 @@
                     </div>
                     <div class="selectedBox"></div>
                   </div>
-                  <div class="rounded-box" (click)="selectDiv(2)" [ngClass]="{ 'selected': selectedDiv === 2 }">
+                  <div class="rounded-box tooltip-wrapper" (click)="selectDiv(2)" [ngClass]="{ 'selected': selectedDiv === 2 }">
+                    <div class="tooltip-panel">
+                      <div class="tooltip-row"><label class="tooltip-label">LOB:</label><span>Medicare</span></div>
+                      <div class="tooltip-row"><label class="tooltip-label">Account:</label><span>Microsoft</span></div>
+                      <div class="tooltip-row"><label class="tooltip-label">Start Date:</label><span>01/01/2024</span></div>
+                      <div class="tooltip-row"><label class="tooltip-label">End Date:</label><span>12/31/2024</span></div>
+                    </div>
                     <div class="d-flex justify-content-between div-secondary">
                       <div>
                         <label class="label">LOB</label>
@@ -78,7 +111,13 @@
                     </div>
                     <div class="selectedBox"></div>
                   </div>
-                  <div class="rounded-box" (click)="selectDiv(3)" [ngClass]="{ 'selected': selectedDiv === 3 }">
+                  <div class="rounded-box tooltip-wrapper" (click)="selectDiv(3)" [ngClass]="{ 'selected': selectedDiv === 3 }">
+                    <div class="tooltip-panel">
+                      <div class="tooltip-row"><label class="tooltip-label">LOB:</label><span>Medicare</span></div>
+                      <div class="tooltip-row"><label class="tooltip-label">Account:</label><span>Microsoft</span></div>
+                      <div class="tooltip-row"><label class="tooltip-label">Start Date:</label><span>01/01/2024</span></div>
+                      <div class="tooltip-row"><label class="tooltip-label">End Date:</label><span>12/31/2024</span></div>
+                    </div>
                     <div class="d-flex justify-content-between div-secondary">
                       <div>
                         <label class="label">LOB</label>
@@ -117,6 +156,22 @@
                               {{ template.TemplateName }}
                             </option>
                           </select>
+                        </div>
+                        <div class="position-relative" *ngIf="section === 'Provider Details'">
+                          <div class="row" style="width:auto !important;">
+                            <div class="col-12">
+                              <div class="provider-buttons-container d-flex flex-wrap align-items-center mb-2" style="gap: 10px;">
+                                <ng-container *ngFor="let field of getFieldsByType(config[section].fields, 'button')">
+                                  <button mat-raised-button
+                                          class="provider-button"
+                                          (click)="openButtonDialog(field, section, selectedProviderRowIndex); $event.stopPropagation()">
+                                    {{ field.buttonText }}
+                                  </button>
+                                </ng-container>
+                              </div>
+                            </div>
+                          </div>
+
                         </div>
                       </div>
 
@@ -223,7 +278,7 @@
                           <!-- Special rendering for providerDetails -->
                           <ng-container *ngIf="isProviderSection(section); else normalSection">
                             <!-- Buttons Container: Display button-type fields -->
-                            <div class="row">
+                            <!--<div class="row">
                               <div class="col-12">
                                 <div class="provider-buttons-container" style="margin-bottom: 10px;">
                                   <div *ngFor="let field of getFieldsByType(config[section].fields, 'button')"
@@ -235,14 +290,14 @@
                                   </div>
                                 </div>
                               </div>
-                            </div>
+                            </div>-->
                             <!-- Render remaining non-button fields -->
                             <div *ngIf="section !== 'Authorization Notes' && section !== 'Authorization Documents'">
                               <div *ngFor="let entry of formData[section].entries; let i = index" class="row align-items-center mb-3" (click)="selectedProviderRowIndex = i" [ngClass]="{'selected-row': i === selectedProviderRowIndex}">
                                 <!-- Show divider before each entry except the first -->
                                 <hr *ngIf="i !== 0" class="entry-divider my-3" />
                                 <div class="col-5-layout mb-3" *ngFor="let field of getNonButtonFields(config[section].fields); let j = index">
-                                  <div class="form-outline">
+                                  <div class="form-outline" *ngIf="providerFieldsVisible">
                                     <label [for]="field.id + '_' + i" class="form-label">
                                       {{ field.displayName }}<span *ngIf="field.required" class="text-danger"> * </span>
                                     </label>
@@ -304,6 +359,10 @@
                                       </ng-container>
                                     </div>
                                   </div>
+
+                                </div>
+                                <div *ngIf="!providerFieldsVisible">
+                                  <span>No data - Please use any button !!!</span>
                                 </div>
                                 <!-- Primary Radio Button for Diagnosis Section -->
                                 <div class="col-5-layout mb-3" *ngIf="isDiagnosisSection(section)">

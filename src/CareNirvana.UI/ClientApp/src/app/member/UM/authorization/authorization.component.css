@@ -52,6 +52,7 @@ body {
   gap: 10px;
   padding-top: 5px;
   padding-left: 10px;
+  overflow: visible;
 }
 
 .rounded-box {
@@ -137,7 +138,7 @@ label {
   top: 0;
   z-index: 1000;
   background-color: white;
-/*  padding: 10px 0;*/
+  /*  padding: 10px 0;*/
 }
 
 .content-section {
@@ -378,4 +379,64 @@ textarea.ng-invalid.ng-touched {
   border-radius: 2px;
   margin: 1rem 0;
   opacity: 0.6; /* soften the line slightly */
+}
+
+
+.provider-buttons-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+
+.tooltip-wrapper {
+  position: relative;
+}
+
+.tooltip-panel {
+  position: absolute;
+  /*left: 100%;*/ /* 👈 Tooltip appears to the right */
+  /*top: 50%;*/
+  bottom: 25%; /* 👇 Tooltip appears above */
+  transform: translateY(-50%) translateX(10px); /* vertical center + small gap */
+  background: white;
+  border-radius: 8px;
+  padding: 10px 14px;
+  border: 1px solid #007BFF;
+  box-shadow: 0 8px 20px rgba(0, 123, 255, 0.2);
+  font-size: 13px;
+  min-width: 240px;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.2s ease;
+}
+
+
+.tooltip-wrapper:hover .tooltip-panel {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+
+.tooltip-label {
+  font-weight: 600;
+  color: #007BFF;
+}
+
+.selection-container,
+mat-card,
+.main-form,
+.content,
+.mat-step,
+mat-horizontal-stepper {
+  overflow: visible !important;
+  position: relative;
 }

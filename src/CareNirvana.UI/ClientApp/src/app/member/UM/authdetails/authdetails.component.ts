@@ -128,8 +128,8 @@ export class AuthdetailsComponent implements OnInit {
 
   onAddClick(authNumber: string = '') {
     //console.log('Add Auth Clicked:', authNumber);
-    //this.addClicked.emit(authNumber);
-    //this.memberService.setIsCollapse(true);
+    this.addClicked.emit(authNumber);
+    this.memberService.setIsCollapse(true);
     if (!authNumber) {
       authNumber = 'DRAFT';
     }

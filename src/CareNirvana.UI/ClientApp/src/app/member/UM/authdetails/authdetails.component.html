@@ -118,9 +118,9 @@
     <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
     <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
   </table>
-  <div *ngIf="isEmpty && !isLoading" style="text-align-last:center;" class="no-data">
+  <!--<div *ngIf="isEmpty && !isLoading" style="text-align-last:center;" class="no-data">
     <p>No data available</p>
-  </div>
+  </div>-->
   <!-- Paginator -->
   <mat-paginator [pageSizeOptions]="[10, 15, 20]" showFirstLastButtons></mat-paginator>
 </div>

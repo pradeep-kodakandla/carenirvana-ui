@@ -53,12 +53,12 @@ export class AuthorizationComponent {
 
   authorizationDocumentFields: any = []; // Fields JSON
   authorizationDocumentData: any = []; // Data JSON
-
+  
 
   isEditMode: boolean = false;
   isSaveSuccessful: boolean = false;
 
-
+  providerFieldsVisible: boolean = false;
 
   // Method to set selected div (if needed elsewhere)
   selectDiv(index: number): void {
@@ -156,8 +156,6 @@ export class AuthorizationComponent {
                     this.authorizationDocumentData = savedData['Authorization Documents'].entries || [];
                   }
 
-                  console.log('Saved Data:', savedData);
-                  console.log('Saved Form Data:', this.formData);
                   this.loadDecisionData();
 
                   // ✅ Update additionalInfo dynamically
@@ -171,7 +169,7 @@ export class AuthorizationComponent {
                     { label: "Auth Status", value: savedData?.AuthStatus || "N/A" },
                     { label: "Overall Status", value: savedData?.OverallStatus || "N/A" }
                   ];
-
+                  this.providerFieldsVisible = true;
                 } catch (error) {
                   console.error('Error parsing Data:', error);
                 }
@@ -641,6 +639,7 @@ export class AuthorizationComponent {
     dialogRef.afterClosed().subscribe((result) => {
       if (result && result.length) {
         this.selectedProviders = result;
+        this.providerFieldsVisible = true;
         // Merge the first provider's data into the current row.
         this.formData[section].entries[rowIndex] = {
           ...this.formData[section].entries[rowIndex],
@@ -683,7 +682,7 @@ export class AuthorizationComponent {
     return section === 'Service Details';
   }
   isSpecialSection(section: string): boolean {
-    return this.isDiagnosisSection(section) || this.isProviderSection(section) || this.isServiceSection(section);
+    return this.isDiagnosisSection(section) || this.isServiceSection(section); //this.isProviderSection(section) ||
   }
 
   getNonRowLayoutFields(section: string): any[] {
