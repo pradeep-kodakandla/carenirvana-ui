@@ -8,7 +8,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { CrudService } from 'src/app/service/crud.service';
 import { MatDialog } from '@angular/material/dialog';
 import { ProviderSearchComponent } from 'src/app/Provider/provider-search/provider-search.component';
-
+import { HeaderService } from 'src/app/service/header.service';
 
 @Component({
   selector: 'app-authorization',
@@ -19,6 +19,8 @@ export class AuthorizationComponent {
   stepperSelectedIndex = 0;
   @Input() authNumber: string = '';
   @Input() memberId!: number;
+
+
   constructor(
     private memberService: MemberService,
     private authService: AuthService,
@@ -27,6 +29,7 @@ export class AuthorizationComponent {
     private crudService: CrudService,
     private snackBar: MatSnackBar,
     private route: ActivatedRoute,
+    private headerService: HeaderService
   ) { }
 
   highlightedSection: string | null = null;
@@ -37,11 +40,14 @@ export class AuthorizationComponent {
   isExpanded = true;
   isStatusExpanded = true;
   authTemplates: any[] = [];
+  authClass: any[] = [];
   selectedTemplateId: number = 0;
+  selectedAuthClassId: number = 0;
   newTemplateName: string = '';
   showTemplateNameError: boolean = false;
   saveType: string = '';
   saveTypeFrom: string = '';
+
   newAuthNumber: string | null = null;
   showAuthorizationComponent = false;
 
@@ -53,7 +59,7 @@ export class AuthorizationComponent {
 
   authorizationDocumentFields: any = []; // Fields JSON
   authorizationDocumentData: any = []; // Data JSON
-  
+
 
   isEditMode: boolean = false;
   isSaveSuccessful: boolean = false;
@@ -98,13 +104,10 @@ export class AuthorizationComponent {
   config: any; // JSON configuration loaded dynamically
 
   ngOnInit(): void {
-    // console.log('Received Auth Number via Input:', this.authNumber);
 
     this.route.paramMap.subscribe(params => {
       this.newAuthNumber = params.get('authNo'); // Extract authNumber
       this.memberId = Number(params.get('memberId'));
-      //console.log('Member ID:', this.memberId); // Debugging log
-      //console.log('Auth Number:', this.newAuthNumber); // Debugging log
     });
 
     if (this.newAuthNumber && this.newAuthNumber != 'DRAFT') {
@@ -112,9 +115,10 @@ export class AuthorizationComponent {
       this.getAuthDataByAuthNumber(this.newAuthNumber);
     }
 
-    //console.log('Member ID:', this.memberId);
+    this.loadAuthClass();
 
     this.loadAuthTemplates();
+
   }
 
   getAuthDataByAuthNumber(authNumber: string): void {
@@ -137,14 +141,14 @@ export class AuthorizationComponent {
               if (savedData) {
                 try {
                   if (typeof savedData === 'string') {
-                    savedData = JSON.parse(savedData); // ✅ Parse only if it's a string
+                    savedData = JSON.parse(savedData); // Parse only if it's a string
                   }
 
                   if (Array.isArray(savedData)) {
-                    savedData = savedData[0]; // ✅ Extract first object if wrapped in an array
+                    savedData = savedData[0]; // Extract first object if wrapped in an array
                   }
 
-                  this.formData = savedData; // ✅ Assign the correctly parsed object
+                  this.formData = savedData; // Assign the correctly parsed object
                   this.authNumber = data[0]?.AuthNumber;
                   this.saveType = 'Update';
 
@@ -158,7 +162,7 @@ export class AuthorizationComponent {
 
                   this.loadDecisionData();
 
-                  // ✅ Update additionalInfo dynamically
+                  // Update additionalInfo dynamically
                   this.additionalInfo = [
                     { label: "Auth No", value: data[0]?.AuthNumber || "N/A" },
                     { label: "Auth Type", value: data[0]?.AuthTypeId || "N/A" },
@@ -202,6 +206,22 @@ export class AuthorizationComponent {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
     return date.toISOString().split('T')[0]; // Extracts only YYYY-MM-DD
+  }
+
+  loadAuthClass(): void {
+    this.crudService.getData('um', 'authclass').subscribe({
+      
+      next: (response: any[]) => {
+        this.authClass = [
+          { id: 0, authClass: 'Select Auth Class' },  // optional default option
+          ...response
+        ];
+      },
+      error: (err) => {
+        console.error('Error fetching auth class:', err);
+        this.authClass = [{ id: 0, authClass: 'Select Auth Class' }];
+      }
+    });
   }
 
 
@@ -328,6 +348,7 @@ export class AuthorizationComponent {
                     if (section === 'Additional Details' && this.config[section].subsections) {
                       Object.keys(this.config[section].subsections).forEach(subSection => {
                         this.config[section].subsections[subSection]?.fields?.forEach((field: any) => {
+
                           if (field.type === 'select' && field.datasource === datasource) {
                             const expectedKey = field.datasource.toLowerCase();
                             const options = [
@@ -360,6 +381,36 @@ export class AuthorizationComponent {
                       });
                     } else {
                       this.config[section]?.fields?.forEach((field: any) => {
+
+                        if (field.layout === 'row' && Array.isArray(field.fields)) {
+                          field.fields.forEach((subField: any) => {
+                            if (subField.type === 'select' && subField.datasource === datasource) {
+                              const expectedKey = subField.datasource.toLowerCase();
+                              const options = [
+                                { value: '', label: 'Select' },
+                                ...serviceData.map((item: any) => {
+                                  const actualKey = Object.keys(item).find(key => key.toLowerCase() === expectedKey);
+                                  return {
+                                    value: item.id,
+                                    label: actualKey ? item[actualKey] : 'Unknown'
+                                  };
+                                })
+                              ];
+                              subField.options = options;
+
+                              // Apply default values to formData
+                              this.formData[section]?.entries?.forEach((entry: any) => {
+                                const currentValue = entry[subField.id];
+                                const isUnset = currentValue === undefined || currentValue === null || currentValue === '';
+                                if (isUnset) {
+                                  entry[subField.id] = subField.defaultValue ?? options[0]?.value ?? '';
+                                }
+                              });
+                            }
+                          });
+                        }
+
+
                         if (field.type === 'select' && field.datasource === datasource) {
                           const expectedKey = field.datasource.toLowerCase();
                           field.options = [
@@ -382,22 +433,8 @@ export class AuthorizationComponent {
                               entry[field.id] = '';
                             });
                           }
-                          else if (field.layout === 'row' && Array.isArray(field.fields)) {
-                            field.fields.forEach((subField: any) => {
-                              if (subField.type === 'select' && subField.datasource === datasource) {
-                                subField.options = [
-                                  { value: '', label: 'Select' },
-                                  ...serviceData.map((item: any) => {
-                                    const actualKey = Object.keys(item).find(key => key.toLowerCase() === expectedKey);
-                                    return {
-                                      value: item.id,
-                                      label: actualKey ? item[actualKey] : 'Unknown'
-                                    };
-                                  })
-                                ];
-                              }
-                            });
-                          }
+
+
                         }
                       });
                     }
@@ -416,8 +453,7 @@ export class AuthorizationComponent {
             decisionMemberInfo: { ...this.config['Member Provider Decision Info'].fields || [] }
 
           };
-          console.log("Passing Decision Fields:", this.DecisionFields);
-          console.log("COnfig Data:", this.config);
+
           if (this.config['Authorization Notes']) {
             this.authorizationNotesFields = this.config['Authorization Notes'].fields || [];
           }
@@ -453,23 +489,6 @@ export class AuthorizationComponent {
     });
     return entry;
   }
-
-
-  //createEmptyEntry(fields: any[]): any {
-  //  let entry: any = {};
-  //  fields.forEach(field => {
-  //    entry[field.id] = null;
-  //  });
-  //  return entry;
-  //}
-
-  //toggleSection(section: string): void {
-  //  if (!section) {
-  //    console.error("toggleSection received an undefined section.");
-  //    return;
-  //  }
-  //  this.formData[section].expanded = !this.formData[section].expanded;
-  //}
 
   toggleSection(section: string): void {
     if (!section) {
@@ -534,6 +553,7 @@ export class AuthorizationComponent {
   }
 
   saveData(form: NgForm): void {
+
     if (form.invalid) {
       // Mark all fields as touched to trigger validation messages
       Object.keys(form.controls).forEach(field => {
@@ -577,6 +597,37 @@ export class AuthorizationComponent {
         CreatedBy: 1,
         responseData: JSON.stringify(this.formData) // Ensure it's a valid JSON string
       };
+      
+
+      this.additionalInfo = [
+        { label: "Auth No", value: this.authNumber || "N/A" },
+        { label: "Auth Type", value: this.selectedTemplateId.toString() || "N/A" },
+        { label: "Due Date", value: this.formatDate(new Date().toISOString()) || "N/A" },
+        { label: "Days Left", value: this.calculateDaysLeft(new Date().toISOString()).toString() || "N/A" },
+        { label: "Request Priority", value: '' || "N/A" },
+        { label: "Auth Owner", value: this.memberId.toString() || "N/A" },
+        { label: "Auth Status", value: '' || "N/A" },
+        { label: "Overall Status", value: '' || "N/A" }
+      ];
+
+      const currentRoute = `/member-auth/DRAFT/${this.memberId}`;
+      const newRoute = `/member-auth/${this.authNumber}/${this.memberId}`;
+      const newLabel = `Auth No ${this.authNumber}`;
+
+      this.headerService.updateTab(currentRoute, {
+        label: newLabel,
+        route: newRoute,
+        memberId: String(this.memberId)
+      });
+
+      this.headerService.selectTab(newRoute);
+
+      // Optional: Update router URL
+      //this.route.paramMap.subscribe(() => {
+      //  this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+      //    this.router.navigate([newRoute]);
+      //  });
+      //});
       this.isSaveSuccessful = true;
     }
 
@@ -599,7 +650,11 @@ export class AuthorizationComponent {
 
     this.authService.saveAuthDetail(jsonData).subscribe(
       response => {
-        this.snackBar.open('Auth saved successfully!', 'Close', {
+
+        if (this.saveTypeFrom === '')
+          this.saveTypeFrom = 'Auth';
+
+        this.snackBar.open(this.saveTypeFrom + ' saved successfully!', 'Close', {
           horizontalPosition: 'center',
           verticalPosition: 'top',
           duration: 5000,
@@ -779,7 +834,6 @@ export class AuthorizationComponent {
       }
     };
 
-    console.log('✅ Updated Decision Data:', this.decisionData);
   }
 
 
@@ -805,9 +859,9 @@ export class AuthorizationComponent {
     } else {
       this.formData['Member Provider Decision Info'] = { entries: updatedDecisionData.decisionMemberInfo.entries };
     }
-    console.log('Updated Decision Data:', this.decisionData);
+
     this.saveType = 'Update';
-    this.saveTypeFrom = '';
+    this.saveTypeFrom = 'Decision';
     this.saveData(this.formData);
   }
 

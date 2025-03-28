@@ -46,6 +46,15 @@ export class HeaderService {
   getMemberId(route: string): string | undefined {
     return this.dynamicTabs.find(tab => tab.route === route)?.memberId;
   }
+
+  updateTab(oldRoute: string, newTab: { label: string; route: string; memberId: string }) {
+    const index = this.dynamicTabs.findIndex(t => t.route === oldRoute);
+    if (index !== -1) {
+      this.dynamicTabs[index] = newTab;
+    }
+  }
+
+
 }
 
 

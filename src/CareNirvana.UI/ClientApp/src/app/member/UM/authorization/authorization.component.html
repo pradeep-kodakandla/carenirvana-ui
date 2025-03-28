@@ -65,12 +65,12 @@
                 <div class="selection-container" *ngIf="isExpanded">
                   <!-- Rounded selection boxes -->
                   <div class="rounded-box tooltip-wrapper" (click)="selectDiv(1)" [ngClass]="{ 'selected': selectedDiv === 1 }">
-                    <div class="tooltip-panel">
+                    <!--<div class="tooltip-panel">
                       <div class="tooltip-row"><label class="tooltip-label">LOB:</label><span>Medicare</span></div>
                       <div class="tooltip-row"><label class="tooltip-label">Account:</label><span>Microsoft</span></div>
                       <div class="tooltip-row"><label class="tooltip-label">Start Date:</label><span>01/01/2024</span></div>
                       <div class="tooltip-row"><label class="tooltip-label">End Date:</label><span>12/31/2024</span></div>
-                    </div>
+                    </div>-->
 
                     <div class="d-flex justify-content-between div-secondary">
                       <div>
@@ -89,12 +89,12 @@
                     <div class="selectedBox"></div>
                   </div>
                   <div class="rounded-box tooltip-wrapper" (click)="selectDiv(2)" [ngClass]="{ 'selected': selectedDiv === 2 }">
-                    <div class="tooltip-panel">
+                    <!--<div class="tooltip-panel">
                       <div class="tooltip-row"><label class="tooltip-label">LOB:</label><span>Medicare</span></div>
                       <div class="tooltip-row"><label class="tooltip-label">Account:</label><span>Microsoft</span></div>
                       <div class="tooltip-row"><label class="tooltip-label">Start Date:</label><span>01/01/2024</span></div>
                       <div class="tooltip-row"><label class="tooltip-label">End Date:</label><span>12/31/2024</span></div>
-                    </div>
+                    </div>-->
                     <div class="d-flex justify-content-between div-secondary">
                       <div>
                         <label class="label">LOB</label>
@@ -112,12 +112,12 @@
                     <div class="selectedBox"></div>
                   </div>
                   <div class="rounded-box tooltip-wrapper" (click)="selectDiv(3)" [ngClass]="{ 'selected': selectedDiv === 3 }">
-                    <div class="tooltip-panel">
+                    <!--<div class="tooltip-panel">
                       <div class="tooltip-row"><label class="tooltip-label">LOB:</label><span>Medicare</span></div>
                       <div class="tooltip-row"><label class="tooltip-label">Account:</label><span>Microsoft</span></div>
                       <div class="tooltip-row"><label class="tooltip-label">Start Date:</label><span>01/01/2024</span></div>
                       <div class="tooltip-row"><label class="tooltip-label">End Date:</label><span>12/31/2024</span></div>
-                    </div>
+                    </div>-->
                     <div class="d-flex justify-content-between div-secondary">
                       <div>
                         <label class="label">LOB</label>
@@ -149,9 +149,28 @@
                         <mat-icon>{{ formData[section]?.expanded ? 'expand_less' : 'expand_more' }}</mat-icon>
                         <h6 style="color: #007BFF; font-weight: bold; margin: 0; padding-right: 50px;">{{ section | titlecase }}</h6>
                         <!-- Show Auth Type dropdown only for Auth Details -->
+
                         <div style="width:350px; padding-left:10px;" class="position-relative" *ngIf="section === 'Auth Details'">
-                          <select class="form-select" id="authType" name="authType" [(ngModel)]="selectedTemplateId"
-                                  (change)="onAuthTypeChange(); $event.stopPropagation();" appShowLabel>
+                          <label for="authClass" class="form-label" style="position: absolute; top: -8px; left: 18px; background: white; padding: 0 4px; font-size: 12px; color: #3f51b5;">
+                            Auth Class
+                          </label>
+                          <select class="form-select" id="authClass" name="authClass"
+                                  [(ngModel)]="selectedAuthClassId"
+                                  (change)="$event.stopPropagation();">
+                            <option *ngFor="let item of authClass" [value]="item.id">
+                              {{ item.authClass  }}
+                            </option>
+                          </select>
+                        </div>
+
+
+                        <div style="width:350px; padding-left:10px;" class="position-relative" *ngIf="section === 'Auth Details'">
+                          <label for="authType" class="form-label" style="position: absolute; top: -8px; left: 18px; background: white; padding: 0 4px; font-size: 12px; color: #3f51b5;">
+                            Auth Type
+                          </label>
+                          <select class="form-select" id="authType" name="authType"
+                                  [(ngModel)]="selectedTemplateId"
+                                  (change)="onAuthTypeChange(); $event.stopPropagation();">
                             <option *ngFor="let template of authTemplates" [value]="template.Id">
                               {{ template.TemplateName }}
                             </option>

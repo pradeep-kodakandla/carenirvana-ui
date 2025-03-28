@@ -7,33 +7,6 @@ interface Tab {
   name: string;
 }
 
-//interface DecisionEntry {
-//  decisionNumber: string;
-//  reviewType: string;
-//  decisionStatus: string;
-//  decisionStatusCode: string;
-//  serviceCode: string;
-//  serviceDescription: string;
-//  modifier: string;
-//  unitType: string;
-//  fromDate: string;
-//  toDate: string;
-//  requested: string;
-//  approved: string;
-//  denied: string;
-//  used: string;
-//  decisionDateTime: string;
-//  createdDateTime: string;
-//  updatedDateTime: string;
-//  dueDate: string;
-//  requestDatetime: string;
-//  requestReceivedVia: string;
-//  requestPriority: string;
-//  treatmentType: string;
-//  alternateServiceId: string;
-//  [key: string]: any; // Allow additional fields if needed
-//}
-
 interface Field {
   id: string;
   type: string;
@@ -87,8 +60,15 @@ export class DecisiondetailsComponent implements OnChanges {
         this.generateTabs();
 
         // ✅ Auto-select first tab and load all sections
-        if (this.tabs.length > 0) {
+        //if (this.tabs.length > 0) {
+        //  this.selectedTabId = this.tabs[0].id;
+        //  this.loadSectionsForTab(this.selectedTabId);
+        //}
+
+        if (this.tabs.length > 0 && !this.selectedTabId) {
           this.selectedTabId = this.tabs[0].id;
+          this.loadSectionsForTab(this.selectedTabId);
+        } else if (this.selectedTabId) {
           this.loadSectionsForTab(this.selectedTabId);
         }
       }, 0);
@@ -275,7 +255,7 @@ export class DecisiondetailsComponent implements OnChanges {
     this.decisionSaved.emit(this.decisionData);
 
     // Reload the sections to reflect the saved changes in the UI
-   // this.loadSectionsForTab(this.selectedTabId);
+    // this.loadSectionsForTab(this.selectedTabId);
   }
 
   toggleSection(section: Section): void {
