@@ -66,6 +66,7 @@ export class AuthorizationComponent {
 
   providerFieldsVisible: boolean = false;
 
+
   // Method to set selected div (if needed elsewhere)
   selectDiv(index: number): void {
     this.selectedDiv = index;

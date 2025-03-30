@@ -17,6 +17,7 @@ interface Field {
   defaultValue?: string;
   selectedOptions?: string[];
   datasource?: string;
+  isEnabled?: boolean;
 }
 
 interface Section {
@@ -28,6 +29,7 @@ interface Section {
     value: any;
     type: string;
     required: boolean;
+    isEnabled?: boolean;
     options?: Array<{ value: string; label: string }>;
     datasource?: string;
   }>;
@@ -155,6 +157,7 @@ export class DecisiondetailsComponent implements OnChanges {
           type: field.type,
           value: entry[field.id] || '',
           required: field.required || false,
+          isEnabled: field.isEnabled !== false,
           options: field.type === 'select' ? field.options || [] : undefined
         }))
       });
@@ -172,6 +175,7 @@ export class DecisiondetailsComponent implements OnChanges {
           type: field.type,
           value: entry[field.id] || '',
           required: field.required || false,
+          isEnabled: field.isEnabled !== false,
           options: field.type === 'select' ? field.options || [] : undefined
         }))
       });
@@ -189,6 +193,7 @@ export class DecisiondetailsComponent implements OnChanges {
           type: field.type,
           value: entry[field.id] || '',
           required: field.required || false,
+          isEnabled: field.isEnabled !== false,
           options: field.type === 'select' ? field.options || [] : undefined
         }))
       });

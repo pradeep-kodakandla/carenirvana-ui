@@ -30,6 +30,7 @@ interface TemplateField {
   fields?: TemplateField[];        // sub-fields if this is a row container
   authStatus?: string[];
   isActive?: boolean;
+  isEnabled?: boolean;
 }
 
 // Define an interface for a section.
@@ -274,6 +275,7 @@ export class UmauthtemplateBuilderComponent implements OnInit {
           const fieldToCopy = { ...draggedField };
           fieldToCopy.id = `${fieldToCopy.id}_copy_${Math.random().toString(36).substr(2, 9)}`;
           fieldToCopy.displayName = fieldToCopy.label; // Ensure display name
+          fieldToCopy.isEnabled = true; // ✅ default to true
 
           // Check if field is already added to prevent duplicates
           if (!event.container.data.some(f => f.id === fieldToCopy.id)) {
@@ -291,6 +293,7 @@ export class UmauthtemplateBuilderComponent implements OnInit {
           console.log(`Moved non-default field from availableFields to ${sectionName} at index ${event.currentIndex}`);
         }
         this.selectedField = fieldToSelect;
+        fieldToSelect.isEnabled = fieldToSelect.isEnabled ?? true;
       } else if (event.container.id === 'available' && !this.defaultFieldIds.includes(draggedField.id)) {
         transferArrayItem(event.previousContainer.data, event.container.data, event.previousIndex, event.currentIndex);
         this.selectedField = event.container.data[event.currentIndex];

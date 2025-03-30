@@ -18,6 +18,7 @@ interface TemplateField {
   layout?: string;                 // e.g. 'row'
   fields?: TemplateField[];        // sub-fields if this is a row container
   authStatus?: string[];
+  isEnabled?: boolean;
 }
 interface DropdownOption {
   id: string;
@@ -66,6 +67,14 @@ export class UmauthtemplateFieldPropertiesComponent implements OnChanges {
       if (!this.selectedField?.authStatus) {
         this.selectedField!.authStatus = []; // Ensure it's an array
       }
+
+      // Default isEnabled to true if missing
+      if (this.selectedField) {
+        if (this.selectedField.isEnabled === undefined) {
+          this.selectedField.isEnabled = true;
+        }
+      }
+
       // Only call API if the datasource has changed
       const currentDatasource = this.selectedField?.datasource ?? ''; // Ensure a valid string
       if (currentDatasource !== '' && currentDatasource !== this.previousDatasource) {

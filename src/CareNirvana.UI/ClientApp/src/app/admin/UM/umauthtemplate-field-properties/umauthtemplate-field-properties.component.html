@@ -16,7 +16,7 @@
         <label class="form-label">Label</label>
         <input type="text" class="form-control" [(ngModel)]="selectedField.label" (change)="emitUpdate()" disabled>
       </div>-->
-      <div *ngIf="selectedField.type !== 'button'" class="mb-3" >
+      <div *ngIf="selectedField.type !== 'button'" class="mb-3">
         <span class="info-label">Field Label: </span>
         <span class="info-value">{{ selectedField.label }}</span>
       </div>
@@ -38,6 +38,16 @@
           <option value="button">Button</option>
         </select>
       </div>
+
+      <!-- Is Enabled Checkbox -->
+      <div class="form-check mb-3" style="padding-top:10px;">
+        <input type="checkbox" class="form-check-input"
+               [(ngModel)]="selectedField.isEnabled"
+               (change)="emitUpdate()"
+               >
+        <label class="form-check-label">Is Enabled</label>
+      </div>
+
 
       <!-- Required Checkbox -->
       <div class="form-check mb-3" style="padding-top:10px;">

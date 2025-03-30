@@ -23,27 +23,27 @@
         <div class="section-content">
           <div class="row">
             <div class="col-md-3 mb-3" *ngFor="let field of section.fields; let i = index">
-              <div class="form-outline">
+              <div class="form-outline" [ngClass]="{ 'disabled-field': !field.isEnabled }">
                 <label [for]="field.id + '_' + i" class="form-label">
                   {{ field.displayName }} <span *ngIf="field.required" class="text-danger">*</span>
                 </label>
 
                 <ng-container [ngSwitch]="field.type">
                   <input *ngSwitchCase="'text'" type="text" class="form-control"
-                         [(ngModel)]="field.value">
+                         [(ngModel)]="field.value" [disabled]="!field.isEnabled">
                   <input *ngSwitchCase="'datetime-local'" type="datetime-local" class="form-control"
-                         [(ngModel)]="field.value">
+                         [(ngModel)]="field.value" [disabled]="!field.isEnabled">
                   <select *ngSwitchCase="'select'" class="form-control"
-                          [(ngModel)]="field.value">
+                          [(ngModel)]="field.value" [disabled]="!field.isEnabled">
                     <option *ngFor="let option of field.options" [value]="option.value">
                       {{ option.label }}
                     </option>
 
                   </select>
                   <textarea *ngSwitchCase="'textarea'" class="form-control"
-                            [(ngModel)]="field.value" rows="3"></textarea>
+                            [(ngModel)]="field.value" rows="3" [disabled]="!field.isEnabled"></textarea>
                   <input *ngSwitchCase="'checkbox'" type="checkbox" class="form-check-input"
-                         [(ngModel)]="field.value">
+                         [(ngModel)]="field.value" [disabled]="!field.isEnabled">
                 </ng-container>
               </div>
             </div>
