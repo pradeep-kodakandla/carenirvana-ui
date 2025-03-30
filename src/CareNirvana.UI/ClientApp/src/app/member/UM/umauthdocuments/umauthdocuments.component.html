@@ -33,7 +33,7 @@
           <mat-icon>search</mat-icon>
         </button>
         <!--<input class="input" matInput [readonly]="mode === 'view'" (keyup)="applyFilter($event)" placeholder="Start typing to search User " #input>-->
-        <input class="input" matInput (keyup)="applyFilter($event)" placeholder="Search Notes" />
+        <input class="input" matInput (keyup)="applyFilter($event)" placeholder="Search Documents" />
       </div>
     </div>
     <div>
@@ -43,9 +43,9 @@
     </div>
   </div>
   <table class="responsive-table" mat-table [dataSource]="dataSource" matSort class="mat-elevation-z8">
-    <ng-container matColumnDef="authorizationDocumentType">
+    <ng-container matColumnDef="authorizationDocumentTypeLabel">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Document Type</th>
-      <td mat-cell *matCellDef="let doc">{{ doc.authorizationDocumentType }}</td>
+      <td mat-cell *matCellDef="let doc">{{ doc.authorizationDocumentTypeLabel }}</td>
     </ng-container>
 
     <ng-container matColumnDef="authorizationDocumentDesc">
@@ -64,7 +64,7 @@
 
     <ng-container matColumnDef="createdOn">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Created On</th>
-      <td mat-cell *matCellDef="let doc">{{ doc.createdOn }}</td>
+      <td mat-cell *matCellDef="let doc">{{ doc.createdOn | date: 'MM/dd/yyyy HH:mm' }}</td>
     </ng-container>
 
     <ng-container matColumnDef="createdBy">

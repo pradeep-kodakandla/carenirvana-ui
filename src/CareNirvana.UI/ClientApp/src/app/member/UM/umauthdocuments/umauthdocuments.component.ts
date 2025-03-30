@@ -2,6 +2,7 @@ import { Component, OnInit, Input, Output, EventEmitter, OnChanges, SimpleChange
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
+import { CrudService } from 'src/app/service/crud.service';
 
 interface AuthorizationDocument {
   id: string;
@@ -22,6 +23,10 @@ interface AuthorizationDocument {
   styleUrl: './umauthdocuments.component.css'
 })
 export class UmauthdocumentsComponent implements OnInit, OnChanges {
+
+  constructor(private crudService: CrudService) { }
+
+
   @Input() documentFields: any[] = [];
   @Input() documentData: AuthorizationDocument[] = [];
   @Output() DocumentSaved = new EventEmitter<AuthorizationDocument[]>();
@@ -29,25 +34,45 @@ export class UmauthdocumentsComponent implements OnInit, OnChanges {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
+  documentTypeMap = new Map<string, string>();
   documents: AuthorizationDocument[] = [];
   dataSource = new MatTableDataSource<AuthorizationDocument>();
-  displayedColumns: string[] = ['authorizationDocumentType', 'authorizationDocumentDesc', 'authorizationSelectFiles', 'createdOn', 'createdBy', 'actions'];
+  //displayedColumns: string[] = ['authorizationDocumentType', 'authorizationDocumentDesc', 'authorizationSelectFiles', 'createdOn', 'createdBy', 'actions'];
+  displayedColumns: string[] = ['authorizationDocumentTypeLabel', 'authorizationDocumentDesc', 'authorizationSelectFiles', 'createdOn', 'createdBy', 'actions'];
+
 
   isFormVisible: boolean = false;
   currentDocument: AuthorizationDocument | null = null;
   allowedFileTypes = ["jpeg", "png", "jpg", "bmp", "gif", "docx", "doc", "txt", "xlsx", "xls", "pdf"];
 
   ngOnInit(): void {
-    this.documents = this.documentData || [];
+    this.crudService.getData('um', 'documenttype').subscribe((response) => {
+      this.documentTypeMap = new Map<string, string>(
+        response.map((opt: any) => [opt.id, opt.documentType])
+      );
+    });
+
+    //this.documents = this.documentData || [];
+    this.documents = (this.documentData || []).map(doc => ({
+      ...doc,
+      authorizationDocumentTypeLabel: this.documentTypeMap.get(doc.authorizationDocumentType || '') || 'Unknown'
+    }));
+
     this.removeEmptyRecords();
     this.dataSource.data = [...this.documents];
     this.dataSource.paginator = this.paginator;
     this.dataSource.sort = this.sort;
+
   }
 
   ngOnChanges(changes: SimpleChanges): void {
+    //this.documents = this.documentData || [];
+
     if (changes.documentData) {
-      this.documents = this.documentData || [];
+      this.documents = (this.documentData || []).map(doc => ({
+        ...doc,
+        authorizationDocumentTypeLabel: this.documentTypeMap.get(doc.authorizationDocumentType || '') || 'Unknown'
+      }));
       this.removeEmptyRecords();
       this.dataSource.data = [...this.documents];
     }
@@ -129,6 +154,12 @@ export class UmauthdocumentsComponent implements OnInit, OnChanges {
     }
 
     this.removeEmptyRecords();
+
+    this.documents = this.documents.map(doc => ({
+      ...doc,
+      authorizationNoteTypeLabel: this.documentTypeMap.get(doc.authorizationDocumentType || '') || 'Unknown'
+    }));
+
     this.dataSource.data = [...this.documents];
     this.DocumentSaved.emit(this.documents);
 
@@ -139,7 +170,15 @@ export class UmauthdocumentsComponent implements OnInit, OnChanges {
 
   editDocument(doc: AuthorizationDocument) {
     this.openForm('edit');
+
+    this.documents = this.documents.map(doc => ({
+      ...doc,
+      authorizationNoteTypeLabel: this.documentTypeMap.get(doc.authorizationDocumentType || '') || 'Unknown'
+    }));
+
+
     this.currentDocument = { ...doc };
+    this.dataSource.data = [...this.documents];
     this.documentFields.forEach(field => {
       field.value = doc[field.id as keyof AuthorizationDocument] || "";
     });
@@ -151,7 +190,10 @@ export class UmauthdocumentsComponent implements OnInit, OnChanges {
       document.deletedOn = new Date().toISOString();
       document.deletedBy = "Admin";
     }
-
+    this.documents = this.documents.map(doc => ({
+      ...doc,
+      authorizationNoteTypeLabel: this.documentTypeMap.get(doc.authorizationDocumentType || '') || 'Unknown'
+    }));
     this.documents = this.documents.filter(doc => !doc.deletedOn);
     this.removeEmptyRecords();
     this.dataSource.data = [...this.documents];

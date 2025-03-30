@@ -162,10 +162,12 @@ export class AuthorizationComponent {
 
                   this.loadDecisionData();
 
+                  const authTypeName = this.authTemplates.find(t => t.Id === data[0]?.AuthTypeId)?.TemplateName || 'N/A';
+
                   // Update additionalInfo dynamically
                   this.additionalInfo = [
                     { label: "Auth No", value: data[0]?.AuthNumber || "N/A" },
-                    { label: "Auth Type", value: data[0]?.AuthTypeId || "N/A" },
+                    { label: "Auth Type", value: authTypeName || "N/A" },
                     { label: "Due Date", value: this.formatDate(data[0]?.AuthDueDate) || "N/A" },
                     { label: "Days Left", value: this.calculateDaysLeft(data[0]?.AuthDueDate) || "N/A" },
                     { label: "Request Priority", value: savedData?.RequestPriority || "N/A" },
@@ -210,7 +212,7 @@ export class AuthorizationComponent {
 
   loadAuthClass(): void {
     this.crudService.getData('um', 'authclass').subscribe({
-      
+
       next: (response: any[]) => {
         this.authClass = [
           { id: 0, authClass: 'Select Auth Class' },  // optional default option
@@ -597,7 +599,7 @@ export class AuthorizationComponent {
         CreatedBy: 1,
         responseData: JSON.stringify(this.formData) // Ensure it's a valid JSON string
       };
-      
+
 
       this.additionalInfo = [
         { label: "Auth No", value: this.authNumber || "N/A" },
@@ -869,15 +871,20 @@ export class AuthorizationComponent {
 
   /*************Notes Data***************/
   handleAuthNotesSaved(updatedNotes: any) {
+    // Update formData for saving
     if (!this.formData['Authorization Notes']) {
       this.formData['Authorization Notes'] = { entries: [] };
     }
     this.formData['Authorization Notes'].entries = updatedNotes;
 
+    // 🔥 Update the shared Input-bound data so both instances refresh
+    this.authorizationNotesData = [...updatedNotes];
+
     this.saveType = 'Update';
     this.saveTypeFrom = 'Notes';
     this.saveData(this.formData);
   }
+
   /*************Notes Data***************/
 
   /*************Notes Data***************/
@@ -887,6 +894,7 @@ export class AuthorizationComponent {
     }
     this.formData['Authorization Documents'].entries = updatedDocument;
 
+    this.authorizationDocumentData = [...updatedDocument];
     this.saveType = 'Update';
     this.saveTypeFrom = 'Document';
     this.saveData(this.formData);

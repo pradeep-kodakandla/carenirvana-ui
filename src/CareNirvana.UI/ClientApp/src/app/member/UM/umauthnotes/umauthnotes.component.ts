@@ -1,14 +1,9 @@
-import { Component, OnInit, Input, Output, EventEmitter, OnChanges, SimpleChanges, ChangeDetectorRef, ViewChild  } from '@angular/core';
+import { Component, OnInit, Input, Output, EventEmitter, OnChanges, SimpleChanges, ChangeDetectorRef, ViewChild } from '@angular/core';
 import { NgForm } from '@angular/forms';
-import { MatTableDataSource, MatTableModule } from '@angular/material/table';
-import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
-import { MatSort, MatSortModule } from '@angular/material/sort';
-import { MatInputModule } from '@angular/material/input';
-import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatButtonModule } from '@angular/material/button';
-
-
+import { MatTableDataSource } from '@angular/material/table';
+import { MatPaginator } from '@angular/material/paginator';
+import { MatSort } from '@angular/material/sort';
+import { CrudService } from 'src/app/service/crud.service';
 interface AuthorizationNote {
   id: string;
   authorizationNoteType?: string;
@@ -31,6 +26,7 @@ interface AuthorizationNote {
 })
 export class UmauthnotesComponent implements OnInit {
 
+
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
@@ -39,7 +35,7 @@ export class UmauthnotesComponent implements OnInit {
   @Input() notesData: AuthorizationNote[] = [];
   @Output() NotesSaved = new EventEmitter<AuthorizationNote[]>();
 
-  constructor(private cdRef: ChangeDetectorRef) { }
+  constructor(private crudService: CrudService) { }
 
   notes: AuthorizationNote[] = [];
   currentNote: AuthorizationNote | null = null;
@@ -47,17 +43,32 @@ export class UmauthnotesComponent implements OnInit {
   endDatetimeValue: string = '';
   showValidationErrors = false;
   dataSource = new MatTableDataSource<AuthorizationNote>();
-  displayedColumns: string[] = ['authorizationNoteType', 'authorizationNotes', 'createdOn', 'createdBy', 'actions'];
+  displayedColumns: string[] = ['authorizationNoteTypeLabel', 'authorizationNotes', 'createdOn', 'createdBy', 'actions'];
   isFormVisible: boolean = false;
+  noteTypeMap = new Map<string, string>();
 
   ngOnInit(): void {
-    this.notes = this.notesData || [];
+
+    this.crudService.getData('um', 'notetype').subscribe((response) => {
+      this.noteTypeMap = new Map<string, string>(
+        response.map((opt: any) => [opt.id, opt.noteType])
+      );
+    });
+
+
+    //this.notes = this.notesData || [];
     this.removeEmptyRecords(); // Remove empty records on initialization
     this.notesFields.forEach(field => {
       if (field.type === 'select' && (field.value === undefined || field.value === null)) {
         field.value = ""; // Default to "Select"
       }
     });
+
+
+    this.notes = (this.notesData || []).map(note => ({
+      ...note,
+      authorizationNoteTypeLabel: this.noteTypeMap.get(note.authorizationNoteType || '') || 'Unknown'
+    }));
 
     this.dataSource.data = this.notes;
     this.dataSource.paginator = this.paginator;
@@ -66,7 +77,13 @@ export class UmauthnotesComponent implements OnInit {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes.notesData) {
-      this.notes = this.notesData || [];
+
+      this.notes = (this.notesData || []).map(note => ({
+        ...note,
+        authorizationNoteTypeLabel: this.noteTypeMap.get(note.authorizationNoteType || '') || 'Unknown'
+      }));
+
+      //this.notes = this.notesData || [];
       this.removeEmptyRecords();
     }
     this.notesFields.forEach(field => {
@@ -142,7 +159,14 @@ export class UmauthnotesComponent implements OnInit {
     this.removeEmptyRecords(); // Remove empty records before emitting
     this.NotesSaved.emit(this.notes);
     this.currentNote = null;
+
+    this.notes = this.notes.map(note => ({
+      ...note,
+      authorizationNoteTypeLabel: this.noteTypeMap.get(note.authorizationNoteType || '') || 'Unknown'
+    }));
+
     this.dataSource.data = [...this.notes];
+
     this.resetForm();
   }
 
@@ -153,10 +177,23 @@ export class UmauthnotesComponent implements OnInit {
     this.notesFields.forEach(field => {
       field.value = note[field.id] || "";
     });
+
+    this.notes = this.notes.map(note => ({
+      ...note,
+      authorizationNoteTypeLabel: this.noteTypeMap.get(note.authorizationNoteType || '') || 'Unknown'
+    }));
+
     this.dataSource.data = [...this.notes];
+
   }
 
   deleteNote(noteId: string) {
+
+    this.notes = this.notes.map(note => ({
+      ...note,
+      authorizationNoteTypeLabel: this.noteTypeMap.get(note.authorizationNoteType || '') || 'Unknown'
+    }));
+
     this.dataSource.data = this.notes;
 
     let note = this.notes.find(n => n.id === noteId);
@@ -166,7 +203,7 @@ export class UmauthnotesComponent implements OnInit {
     }
 
     this.notes = this.notes.filter(n => !n.deletedOn);
-    
+
     this.removeEmptyRecords(); // Remove empty records after delete
     this.dataSource.data = [...this.notes];
     this.NotesSaved.emit(this.notes);
@@ -195,13 +232,6 @@ export class UmauthnotesComponent implements OnInit {
   }
 
 
-  loadNotes() {
-    const storedNotes = localStorage.getItem('authorizationNotes');
-    if (storedNotes) {
-      this.notes = JSON.parse(storedNotes).filter((note: AuthorizationNote) => !note.deletedOn);
-    }
-  }
-
   getFieldValue(id: string): string | boolean | undefined {
     const field = this.notesFields.find(f => f.id === id);
     if (!field) return undefined;
@@ -218,7 +248,7 @@ export class UmauthnotesComponent implements OnInit {
   }
 
   openForm(mode: 'add' | 'edit') {
-    
+
     this.showValidationErrors = false;
     if (mode === 'add') {
       this.resetForm();
@@ -232,5 +262,4 @@ export class UmauthnotesComponent implements OnInit {
     this.currentNote = null;
     this.isFormVisible = false;
   }
-
 }

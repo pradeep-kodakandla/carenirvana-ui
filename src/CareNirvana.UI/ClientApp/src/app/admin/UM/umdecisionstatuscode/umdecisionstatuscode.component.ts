@@ -20,7 +20,7 @@ import { MatCheckboxChange } from '@angular/material/checkbox';
 })
 export class UmdecisionstatuscodeComponent implements OnInit {
   dataSource = new MatTableDataSource<any>();
-  displayedColumns: string[] = ['id', 'decisionStatusName', 'decisionStatusCode',  'activeFlag', 'createdBy', 'createdOn', 'actions'];
+  displayedColumns: string[] = ['id', 'decisionStatusName', 'decisionStatusCode', 'activeFlag', 'createdBy', 'createdOn', 'actions'];
   visibleColumns: string[] = [];
   editableRow: any = null;
   editableRows: Set<number> = new Set(); // Track editable rows by their ID
@@ -38,7 +38,7 @@ export class UmdecisionstatuscodeComponent implements OnInit {
   ngOnInit(): void {
     this.loadDecisionStatusOptions();
     this.loadData();
-    
+
   }
 
   loadData() {
@@ -65,7 +65,7 @@ export class UmdecisionstatuscodeComponent implements OnInit {
           this.statusLookup = new Map(
             this.decisionStatusOptions.map(option => [option.id, option.value])
           );
-          
+
         } else {
           console.error('Unexpected response structure:', response);
           this.snackBar.open('Error: Invalid status data structure!', 'Close', {
@@ -112,7 +112,7 @@ export class UmdecisionstatuscodeComponent implements OnInit {
 
   updateDisplayedColumns() {
     const optionalColumns = ['updatedBy', 'updatedOn', 'deletedBy', 'deletedOn'];
-    this.displayedColumns = ['id', 'decisionStatusName', 'decisionStatusCode',  'activeFlag', 'createdBy', 'createdOn', 'actions'];
+    this.displayedColumns = ['id', 'decisionStatusName', 'decisionStatusCode', 'activeFlag', 'createdBy', 'createdOn', 'actions'];
     this.displayedColumns.push(...this.visibleColumns.filter((col) => optionalColumns.includes(col)));
   }
 
@@ -224,7 +224,6 @@ export class UmdecisionstatuscodeComponent implements OnInit {
     // Check for duplicate Decision Status Code
     const isDuplicate = this.dataSource.data.some(
       (entry) =>
-        entry.decisionStatusName?.toLowerCase() === row.decisionStatusName.toLowerCase() &&
         entry.decisionStatusCode?.toLowerCase() === row.decisionStatusCode.toLowerCase() &&
         entry.id !== (this.selectedEntry?.id || null) // Exclude the current entry being edited
     );

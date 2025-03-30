@@ -7,6 +7,7 @@ import { MatMenuTrigger } from '@angular/material/menu';
 import { MemberService } from 'src/app/service/shared-member.service';
 import { AuthService } from 'src/app/service/auth.service';
 import { HeaderService } from 'src/app/service/header.service';
+import { CrudService } from 'src/app/service/crud.service';
 
 @Component({
   selector: 'app-authdetails',
@@ -24,7 +25,7 @@ export class AuthdetailsComponent implements OnInit {
   /*Div Selection Style change logic*/
   //displayedColumns: string[] = ['enrollmentStatus', 'memberId', 'firstName', 'lastName', 'DOB', 'risk', 'nextContact', 'assignedDate', 'programName', 'description'];
 
-  constructor(private router: Router, private memberService: MemberService, private authService: AuthService, private headerService: HeaderService) {
+  constructor(private router: Router, private memberService: MemberService, private authService: AuthService, private headerService: HeaderService, private crudService: CrudService) {
   }
 
   displayedColumns: string[] = [
@@ -66,18 +67,24 @@ export class AuthdetailsComponent implements OnInit {
 
         this.isEmpty = false;
         this.showAddHighlight = false;
-        this.authDetails = data.map((item: any) => ({
-          authDetailId: item.Id || '',
-          authNumber: item.AuthNumber || '',
-          authTypeId: item.AuthTypeId || '',
-          memberId: item.MemberId || '',
-          authDueDate: item.AuthDueDate || '',
-          nextReviewDate: item.NextReviewDate || '',
-          treatmentType: item.TreatmentType || ''
-        }));
 
-        this.dataSource.data = this.authDetails;
-        console.log('Auth Details:', this.authDetails);
+
+        this.authService.getAuthTemplates().subscribe((authTypes: any[]) => {
+          // Create a map for easy lookup
+          const authTypeMap = new Map(authTypes.map(type => [type.Id, type.TemplateName]));
+
+          this.authDetails = data.map((item: any) => ({
+            authDetailId: item.Id || '',
+            authNumber: item.AuthNumber || '',
+            authTypeId: authTypeMap.get(item.AuthTypeId) || '',
+            memberId: item.MemberId || '',
+            authDueDate: item.AuthDueDate || '',
+            nextReviewDate: item.NextReviewDate || '',
+            treatmentType: item.TreatmentType || ''
+          }));
+          this.dataSource.data = this.authDetails;
+        });
+
       },
       (error) => {
         console.error('Error fetching auth details:', error);
