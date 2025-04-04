@@ -243,7 +243,7 @@
                                             {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
                                           </div>
                                         </ng-container>
-                                        <ng-container *ngSwitchCase="'select'">
+                                        <!--<ng-container *ngSwitchCase="'select'">
                                           <select class="form-control"
                                                   [id]="field.id + '_' + i"
                                                   name="{{ field.id + '_' + i }}"
@@ -257,7 +257,69 @@
                                           <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
                                             {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
                                           </div>
+                                        </ng-container>-->
+                                        <ng-container *ngSwitchCase="'datetime-local'">
+                                          <input class="form-control"
+                                                 type="text"
+                                                 [id]="field.id + '_' + i"
+                                                 name="{{ field.id + '_' + i }}"
+                                                 [(ngModel)]="entry[field.id]"
+                                                 (blur)="handleDateTimeBlur(entry, field.id)"
+                                                 placeholder="Enter date or D+N (e.g., D+2)"
+                                                 [required]="field.required"
+                                                 #fieldModel="ngModel" />
+                                          <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
+                                            {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
+                                          </div>
                                         </ng-container>
+
+
+                                        <ng-container *ngSwitchCase="'select'">
+                                          <div class="form-outline">
+                                            <!-- Floating Label -->
+                                            <label [for]="field.id + '_' + i" class="form-label">
+                                              {{ field.displayName }}
+                                              <span *ngIf="field.required" class="text-danger"> *</span>
+                                            </label>
+
+                                            <!-- Input with Autocomplete Behavior -->
+                                            <input type="text"
+                                                   class="form-control"
+                                                   [id]="field.id + '_' + i"
+                                                   name="{{ field.id + '_' + i }}"
+                                                   [(ngModel)]="entry[field.id]"
+                                                   [required]="field.required"
+                                                   [attr.autocomplete]="'off'"
+                                                   placeholder="Select"
+                                                   (input)="filterOptions(field, entry[field.id], section, i)"
+                                                   (focus)="onFocus(field, section, i)"
+                                                   (blur)="onBlur(field, section, i)"
+                                                   (keydown)="handleKeydown($event, field, section, i, entry)"
+                                                   #fieldModel="ngModel" />
+
+                                            <!-- Autocomplete Dropdown -->
+                                            <div class="autocomplete-dropdown shadow-sm"
+                                                 *ngIf="showDropdown[section + '_' + i + '_' + field.id] && filteredOptions[section + '_' + i + '_' + field.id]?.length">
+                                              <div class="autocomplete-option"
+                                                   *ngFor="let option of filteredOptions[section + '_' + i + '_' + field.id]; let optIndex = index"
+                                                   [class.active]="hoveredIndexMap[section + '_' + i + '_' + field.id] === optIndex"
+                                                   (mousedown)="selectOption(option.label, entry, field.id, section, i)">
+                                                {{ option.label }}
+                                              </div>
+                                            </div>
+                                            <mat-icon class="custom-dropdown-arrow">arrow_drop_down</mat-icon>
+                                            <!-- Validation Message -->
+                                            <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)"
+                                                 class="text-danger mt-1">
+                                              {{ field.requiredMsg ? field.requiredMsg : (field.displayName + ' is required.') }}
+                                            </div>
+                                          </div>
+                                        </ng-container>
+
+
+
+
+
                                         <ng-container *ngSwitchCase="'textarea'">
                                           <textarea class="form-control"
                                                     [id]="field.id + '_' + i"
@@ -335,7 +397,7 @@
                                             {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
                                           </div>
                                         </ng-container>
-                                        <ng-container *ngSwitchCase="'select'">
+                                        <!--<ng-container *ngSwitchCase="'select'">
                                           <select class="form-control"
                                                   [id]="field.id + '_' + i"
                                                   name="{{ field.id + '_' + i }}"
@@ -348,6 +410,61 @@
                                           <mat-icon class="custom-dropdown-arrow">arrow_drop_down</mat-icon>
                                           <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
                                             {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
+                                          </div>
+                                        </ng-container>-->
+                                        <ng-container *ngSwitchCase="'datetime-local'">
+                                          <input class="form-control"
+                                                 type="text"
+                                                 [id]="field.id + '_' + i"
+                                                 name="{{ field.id + '_' + i }}"
+                                                 [(ngModel)]="entry[field.id]"
+                                                 (blur)="handleDateTimeBlur(entry, field.id)"
+                                                 placeholder="Enter date or D+N (e.g., D+2)"
+                                                 [required]="field.required"
+                                                 #fieldModel="ngModel" />
+                                          <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
+                                            {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
+                                          </div>
+                                        </ng-container>
+                                        <ng-container *ngSwitchCase="'select'">
+                                          <div class="form-outline">
+                                            <!-- Floating Label -->
+                                            <label [for]="field.id + '_' + i" class="form-label">
+                                              {{ field.displayName }}
+                                              <span *ngIf="field.required" class="text-danger"> *</span>
+                                            </label>
+
+                                            <!-- Input with Autocomplete Behavior -->
+                                            <input type="text"
+                                                   class="form-control"
+                                                   [id]="field.id + '_' + i"
+                                                   name="{{ field.id + '_' + i }}"
+                                                   [(ngModel)]="entry[field.id]"
+                                                   [required]="field.required"
+                                                   [attr.autocomplete]="'off'"
+                                                   placeholder="Select"
+                                                   (input)="filterOptions(field, entry[field.id], section, i)"
+                                                   (focus)="onFocus(field, section, i)"
+                                                   (blur)="onBlur(field, section, i)"
+                                                   (keydown)="handleKeydown($event, field, section, i, entry)"
+                                                   #fieldModel="ngModel" />
+
+                                            <!-- Autocomplete Dropdown -->
+                                            <div class="autocomplete-dropdown shadow-sm"
+                                                 *ngIf="showDropdown[section + '_' + i + '_' + field.id] && filteredOptions[section + '_' + i + '_' + field.id]?.length">
+                                              <div class="autocomplete-option"
+                                                   *ngFor="let option of filteredOptions[section + '_' + i + '_' + field.id]; let optIndex = index"
+                                                   [class.active]="hoveredIndexMap[section + '_' + i + '_' + field.id] === optIndex"
+                                                   (mousedown)="selectOption(option.label, entry, field.id, section, i)">
+                                                {{ option.label }}
+                                              </div>
+                                            </div>
+                                            <mat-icon class="custom-dropdown-arrow">arrow_drop_down</mat-icon>
+                                            <!-- Validation Message -->
+                                            <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)"
+                                                 class="text-danger mt-1">
+                                              {{ field.requiredMsg ? field.requiredMsg : (field.displayName + ' is required.') }}
+                                            </div>
                                           </div>
                                         </ng-container>
                                         <ng-container *ngSwitchCase="'textarea'">
@@ -434,7 +551,8 @@
                                               {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
                                             </div>
                                           </ng-container>
-                                          <ng-container *ngSwitchCase="'select'">
+
+                                          <!--<ng-container *ngSwitchCase="'select'">
                                             <select class="form-control"
                                                     [id]="field.id + '_' + i"
                                                     name="{{ field.id + '_' + i }}"
@@ -447,6 +565,61 @@
                                             <mat-icon class="custom-dropdown-arrow">arrow_drop_down</mat-icon>
                                             <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
                                               {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
+                                            </div>
+                                          </ng-container>-->
+                                          <ng-container *ngSwitchCase="'datetime-local'">
+                                            <input class="form-control"
+                                                   type="text"
+                                                   [id]="field.id + '_' + i"
+                                                   name="{{ field.id + '_' + i }}"
+                                                   [(ngModel)]="entry[field.id]"
+                                                   (blur)="handleDateTimeBlur(entry, field.id)"
+                                                   placeholder="Enter date or D+N (e.g., D+2)"
+                                                   [required]="field.required"
+                                                   #fieldModel="ngModel" />
+                                            <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
+                                              {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
+                                            </div>
+                                          </ng-container>
+                                          <ng-container *ngSwitchCase="'select'">
+                                            <div class="form-outline">
+                                              <!-- Floating Label -->
+                                              <label [for]="field.id + '_' + i" class="form-label">
+                                                {{ field.displayName }}
+                                                <span *ngIf="field.required" class="text-danger"> *</span>
+                                              </label>
+
+                                              <!-- Input with Autocomplete Behavior -->
+                                              <input type="text"
+                                                     class="form-control"
+                                                     [id]="field.id + '_' + i"
+                                                     name="{{ field.id + '_' + i }}"
+                                                     [(ngModel)]="entry[field.id]"
+                                                     [required]="field.required"
+                                                     [attr.autocomplete]="'off'"
+                                                     placeholder="Select"
+                                                     (input)="filterOptions(field, entry[field.id], section, i)"
+                                                     (focus)="onFocus(field, section, i)"
+                                                     (blur)="onBlur(field, section, i)"
+                                                     (keydown)="handleKeydown($event, field, section, i, entry)"
+                                                     #fieldModel="ngModel" />
+
+                                              <!-- Autocomplete Dropdown -->
+                                              <div class="autocomplete-dropdown shadow-sm"
+                                                   *ngIf="showDropdown[section + '_' + i + '_' + field.id] && filteredOptions[section + '_' + i + '_' + field.id]?.length">
+                                                <div class="autocomplete-option"
+                                                     *ngFor="let option of filteredOptions[section + '_' + i + '_' + field.id]; let optIndex = index"
+                                                     [class.active]="hoveredIndexMap[section + '_' + i + '_' + field.id] === optIndex"
+                                                     (mousedown)="selectOption(option.label, entry, field.id, section, i)">
+                                                  {{ option.label }}
+                                                </div>
+                                              </div>
+                                              <mat-icon class="custom-dropdown-arrow">arrow_drop_down</mat-icon>
+                                              <!-- Validation Message -->
+                                              <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)"
+                                                   class="text-danger mt-1">
+                                                {{ field.requiredMsg ? field.requiredMsg : (field.displayName + ' is required.') }}
+                                              </div>
                                             </div>
                                           </ng-container>
                                           <ng-container *ngSwitchCase="'textarea'">

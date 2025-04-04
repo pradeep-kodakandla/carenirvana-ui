@@ -66,6 +66,134 @@ export class AuthorizationComponent {
 
   providerFieldsVisible: boolean = false;
 
+  filteredOptions: { [key: string]: any[] } = {};
+  showDropdown: { [key: string]: boolean } = {};
+  focusedField: string = '';
+  hoveredIndexMap: { [key: string]: number } = {};
+
+
+  //********** Method to highlight the selected section and autocomplete ************//
+
+  filterOptions(field: any, inputValue: string, section: string, index: number) {
+    const key = `${section}_${index}_${field.id}`;
+    if (!field.options) return;
+
+    this.filteredOptions[key] = field.options.filter((opt: any) =>
+      opt.label.toLowerCase().includes((inputValue || '').toLowerCase())
+    );
+    this.showDropdown[key] = true;
+  }
+
+  selectOption(selectedLabel: string, entry: any, fieldId: string, section: string, index: number) {
+    entry[fieldId] = selectedLabel;
+    this.showDropdown[`${section}_${index}_${fieldId}`] = false;
+  }
+
+  onFocus(field: any, section: string, index: number) {
+    const key = `${section}_${index}_${field.id}`;
+    this.focusedField = key;
+    // Show full list on focus
+    this.filteredOptions[key] = field.options || [];
+    this.showDropdown[key] = true;
+  }
+
+  onBlur(field: any, section: string, index: number) {
+    const key = `${section}_${index}_${field.id}`;
+    setTimeout(() => {
+      this.showDropdown[key] = false;
+      this.focusedField = '';
+    }, 200); // delay to allow click
+  }
+
+  handleKeydown(event: KeyboardEvent, field: any, section: string, index: number, entry: any) {
+    const key = `${section}_${index}_${field.id}`;
+    const options = this.filteredOptions[key] || [];
+
+    if (field.type !== 'select') return;
+
+    if (!options.length) return;
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      this.hoveredIndexMap[key] = (this.hoveredIndexMap[key] ?? -1) + 1;
+      if (this.hoveredIndexMap[key] >= options.length) this.hoveredIndexMap[key] = 0;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      this.hoveredIndexMap[key] = (this.hoveredIndexMap[key] ?? options.length) - 1;
+      if (this.hoveredIndexMap[key] < 0) this.hoveredIndexMap[key] = options.length - 1;
+    }
+
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      event.stopPropagation(); // ✅ This is the fix!
+
+      const hovered = options[this.hoveredIndexMap[key]];
+      if (hovered) {
+        this.selectOption(hovered.label, entry, field.id, section, index);
+      }
+      return;
+    }
+
+
+    if (event.key === 'Escape') {
+      this.showDropdown[key] = false;
+    }
+  }
+  //********** Method to highlight the selected section and autocomplete ************//
+
+
+
+  //parseDynamicDateInput(input: string): string | null {
+  //  const match = input.match(/^d\+(\d+)$/i);
+  //  if (match) {
+  //    const daysToAdd = parseInt(match[1], 10);
+  //    const resultDate = new Date();
+  //    resultDate.setDate(resultDate.getDate() + daysToAdd);
+  //    return resultDate.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+  //  }
+  //  return null;
+  //}
+
+  handleDateTimeBlur(entry: any, fieldId: string): void {
+    const input = (entry[fieldId] || '').trim();
+    const match = /^d\+(\d+)$/i.exec(input);
+
+    let finalDate: Date;
+
+    if (match) {
+      const daysToAdd = parseInt(match[1], 10);
+      finalDate = new Date();
+      finalDate.setDate(finalDate.getDate() + daysToAdd);
+    } else {
+      const parsed = new Date(input);
+      if (!isNaN(parsed.getTime())) {
+        finalDate = parsed;
+      } else {
+        return; // Invalid input
+      }
+    }
+
+    // Format to MM-DD-YYYY HH:mm:ss in EST
+    const formatted = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }).format(finalDate);
+
+    // Fix the comma between date and time
+    const cleaned = formatted.replace(',', '');
+
+    entry[fieldId] = cleaned; // Example: 04-06-2025 14:30:12
+  }
+
+
 
   // Method to set selected div (if needed elsewhere)
   selectDiv(index: number): void {
@@ -216,7 +344,7 @@ export class AuthorizationComponent {
 
       next: (response: any[]) => {
         this.authClass = [
-          { id: 0, authClass: 'Select Auth Class' },  // optional default option
+          { id: 0, authClass: 'Select Auth Case' },  // optional default option
           ...response
         ];
       },
