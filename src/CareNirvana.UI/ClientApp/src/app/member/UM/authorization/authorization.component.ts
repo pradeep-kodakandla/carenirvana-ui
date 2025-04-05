@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output, Input } from '@angular/core';
+import { Component, EventEmitter, Output, Input, QueryList, ElementRef, ViewChildren } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { NgForm } from '@angular/forms';
 import { MemberService } from 'src/app/service/shared-member.service';
@@ -109,6 +109,9 @@ export class AuthorizationComponent {
     const key = `${section}_${index}_${field.id}`;
     const options = this.filteredOptions[key] || [];
 
+    console.log('Key:', key);
+    console.log('field.type:', field.type);
+
     if (field.type !== 'select') return;
 
     if (!options.length) return;
@@ -136,7 +139,6 @@ export class AuthorizationComponent {
       return;
     }
 
-
     if (event.key === 'Escape') {
       this.showDropdown[key] = false;
     }
@@ -144,28 +146,21 @@ export class AuthorizationComponent {
   //********** Method to highlight the selected section and autocomplete ************//
 
 
+  //********** Method to display the datetime ************//
 
-  //parseDynamicDateInput(input: string): string | null {
-  //  const match = input.match(/^d\+(\d+)$/i);
-  //  if (match) {
-  //    const daysToAdd = parseInt(match[1], 10);
-  //    const resultDate = new Date();
-  //    resultDate.setDate(resultDate.getDate() + daysToAdd);
-  //    return resultDate.toISOString().split('T')[0]; // Format: YYYY-MM-DD
-  //  }
-  //  return null;
-  //}
+  @ViewChildren('pickerRef') datetimePickers!: QueryList<ElementRef<HTMLInputElement>>;
+
 
   handleDateTimeBlur(entry: any, fieldId: string): void {
     const input = (entry[fieldId] || '').trim();
-    const match = /^d\+(\d+)$/i.exec(input);
+    let finalDate: Date | null = null;
 
-    let finalDate: Date;
-
-    if (match) {
-      const daysToAdd = parseInt(match[1], 10);
+    if (/^d\+(\d+)$/i.test(input)) {
+      const daysToAdd = parseInt(input.split('+')[1], 10);
       finalDate = new Date();
       finalDate.setDate(finalDate.getDate() + daysToAdd);
+    } else if (/^d$/i.test(input)) {
+      finalDate = new Date();
     } else {
       const parsed = new Date(input);
       if (!isNaN(parsed.getTime())) {
@@ -175,7 +170,6 @@ export class AuthorizationComponent {
       }
     }
 
-    // Format to MM-DD-YYYY HH:mm:ss in EST
     const formatted = new Intl.DateTimeFormat('en-US', {
       timeZone: 'America/New_York',
       month: '2-digit',
@@ -187,11 +181,75 @@ export class AuthorizationComponent {
       hour12: false
     }).format(finalDate);
 
-    // Fix the comma between date and time
     const cleaned = formatted.replace(',', '');
-
-    entry[fieldId] = cleaned; // Example: 04-06-2025 14:30:12
+    entry[fieldId] = cleaned;
   }
+
+  formatForInput(value: string): string {
+    if (!value) return '';
+    const parsed = new Date(value);
+    if (isNaN(parsed.getTime())) return '';
+    return parsed.toISOString().slice(0, 16); // 'YYYY-MM-DDTHH:mm'
+  }
+
+
+  handleNativePicker(event: Event, entry: any, fieldId: string): void {
+    const input = event.target as HTMLInputElement;
+    const value = input?.value;
+    if (!value) return;
+
+    const parsed = new Date(value);
+    if (isNaN(parsed.getTime())) return;
+
+    const formatted = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }).format(parsed);
+
+    entry[fieldId] = formatted.replace(',', '');
+  }
+
+  openNativePicker(picker: HTMLInputElement): void {
+    if ('showPicker' in picker && typeof picker.showPicker === 'function') {
+      picker.showPicker();
+    } else {
+      picker.click();
+    }
+  }
+
+  openNativePickerByIndex(index: number): void {
+    const picker = this.datetimePickers.toArray()[index]?.nativeElement;
+    if (picker) {
+      if ('showPicker' in picker && typeof (picker as any).showPicker === 'function') {
+        (picker as any).showPicker();
+      } else {
+        picker.click();
+      }
+    }
+  }
+
+  triggerPicker(elementId: string): void {
+    const hiddenInput = document.getElementById('native_' + elementId) as HTMLInputElement;
+    if (hiddenInput) {
+      if ('showPicker' in hiddenInput && typeof hiddenInput.showPicker === 'function') {
+        hiddenInput.showPicker();
+      } else {
+        hiddenInput.click();
+      }
+    } else {
+      console.warn('Picker not found for ID:', elementId);
+    }
+  }
+
+
+
+  //********** Method to display the datetime ************//
 
 
 

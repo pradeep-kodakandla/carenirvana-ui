@@ -259,18 +259,45 @@
                                           </div>
                                         </ng-container>-->
                                         <ng-container *ngSwitchCase="'datetime-local'">
-                                          <input class="form-control"
-                                                 type="text"
-                                                 [id]="field.id + '_' + i"
-                                                 name="{{ field.id + '_' + i }}"
-                                                 [(ngModel)]="entry[field.id]"
-                                                 (blur)="handleDateTimeBlur(entry, field.id)"
-                                                 placeholder="Enter date or D+N (e.g., D+2)"
-                                                 [required]="field.required"
-                                                 #fieldModel="ngModel" />
-                                          <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
-                                            {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
+                                          <div class="form-outline position-relative">
+                                            <!-- Floating label -->
+                                            <label [for]="field.id + '_' + i" class="form-label">
+                                              {{ field.displayName }}
+                                              <span *ngIf="field.required" class="text-danger"> *</span>
+                                            </label>
+
+                                            <!-- Text input for D, D+N, manual date -->
+                                            <input class="form-control pe-5"
+                                                   type="text"
+                                                   [id]="field.id + '_' + i"
+                                                   name="{{ field.id + '_' + i }}"
+                                                   [(ngModel)]="entry[field.id]"
+                                                   (blur)="handleDateTimeBlur(entry, field.id)"
+                                                   (keydown.enter)="$event.preventDefault()"
+                                                   placeholder="Enter date or D+N (e.g., D+2)"
+                                                   [required]="field.required"
+                                                   #fieldModel="ngModel" />
+
+                                            <!-- Icon button inside input field -->
+                                            <button type="button"
+                                                    class="btn position-absolute top-50 translate-middle-y"
+                                                    style="right: 10px; padding: 0;"
+                                                    (click)="triggerPicker(field.id + '_' + i)">
+                                              📅
+                                            </button>
+
+                                            <!-- Hidden datetime-local picker -->
+                                            <input type="datetime-local"
+                                                   [id]="'native_' + field.id + '_' + i"
+                                                   (change)="handleNativePicker($event, entry, field.id)"
+                                                   style="position: absolute; visibility: hidden; height: 0; width: 0; pointer-events: none;" />
+
+                                            <!-- Validation -->
+                                            <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger mt-1">
+                                              {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
+                                            </div>
                                           </div>
+
                                         </ng-container>
 
 
@@ -413,18 +440,45 @@
                                           </div>
                                         </ng-container>-->
                                         <ng-container *ngSwitchCase="'datetime-local'">
-                                          <input class="form-control"
-                                                 type="text"
-                                                 [id]="field.id + '_' + i"
-                                                 name="{{ field.id + '_' + i }}"
-                                                 [(ngModel)]="entry[field.id]"
-                                                 (blur)="handleDateTimeBlur(entry, field.id)"
-                                                 placeholder="Enter date or D+N (e.g., D+2)"
-                                                 [required]="field.required"
-                                                 #fieldModel="ngModel" />
-                                          <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
-                                            {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
+                                          <div class="form-outline position-relative">
+                                            <!-- Floating label -->
+                                            <label [for]="field.id + '_' + i" class="form-label">
+                                              {{ field.displayName }}
+                                              <span *ngIf="field.required" class="text-danger"> *</span>
+                                            </label>
+
+                                            <!-- Text input for D, D+N, manual date -->
+                                            <input class="form-control pe-5"
+                                                   type="text"
+                                                   [id]="field.id + '_' + i"
+                                                   name="{{ field.id + '_' + i }}"
+                                                   [(ngModel)]="entry[field.id]"
+                                                   (blur)="handleDateTimeBlur(entry, field.id)"
+                                                   (keydown.enter)="$event.preventDefault()"
+                                                   placeholder="Enter date or D+N (e.g., D+2)"
+                                                   [required]="field.required"
+                                                   #fieldModel="ngModel" />
+
+                                            <!-- Icon button inside input field -->
+                                            <button type="button"
+                                                    class="btn position-absolute top-50 translate-middle-y"
+                                                    style="right: 10px; padding: 0;"
+                                                    (click)="triggerPicker(field.id + '_' + i)">
+                                              📅
+                                            </button>
+
+                                            <!-- Hidden datetime-local picker -->
+                                            <input type="datetime-local"
+                                                   [id]="'native_' + field.id + '_' + i"
+                                                   (change)="handleNativePicker($event, entry, field.id)"
+                                                   style="position: absolute; visibility: hidden; height: 0; width: 0; pointer-events: none;" />
+
+                                            <!-- Validation -->
+                                            <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger mt-1">
+                                              {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
+                                            </div>
                                           </div>
+
                                         </ng-container>
                                         <ng-container *ngSwitchCase="'select'">
                                           <div class="form-outline">
@@ -568,19 +622,52 @@
                                             </div>
                                           </ng-container>-->
                                           <ng-container *ngSwitchCase="'datetime-local'">
-                                            <input class="form-control"
-                                                   type="text"
-                                                   [id]="field.id + '_' + i"
-                                                   name="{{ field.id + '_' + i }}"
-                                                   [(ngModel)]="entry[field.id]"
-                                                   (blur)="handleDateTimeBlur(entry, field.id)"
-                                                   placeholder="Enter date or D+N (e.g., D+2)"
-                                                   [required]="field.required"
-                                                   #fieldModel="ngModel" />
-                                            <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
-                                              {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
+                                            <div class="form-outline position-relative">
+                                              <!-- Floating label -->
+                                              <label [for]="field.id + '_' + i" class="form-label">
+                                                {{ field.displayName }}
+                                                <span *ngIf="field.required" class="text-danger"> *</span>
+                                              </label>
+
+                                              <!-- Text input for D, D+N, manual date -->
+                                              <input class="form-control pe-5"
+                                                     type="text"
+                                                     [id]="field.id + '_' + i"
+                                                     name="{{ field.id + '_' + i }}"
+                                                     [(ngModel)]="entry[field.id]"
+                                                     (blur)="handleDateTimeBlur(entry, field.id)"
+                                                     (keydown.enter)="$event.preventDefault()"
+                                                     placeholder="Enter date or D+N (e.g., D+2)"
+                                                     [required]="field.required"
+                                                     #fieldModel="ngModel" />
+
+                                              <!-- Icon button inside input field -->
+                                              <button type="button"
+                                                      class="btn position-absolute top-50 translate-middle-y"
+                                                      style="right: 10px; padding: 0;"
+                                                      (click)="triggerPicker(field.id + '_' + i)">
+                                                📅
+                                              </button>
+
+                                              <!-- Hidden datetime-local picker -->
+                                              <input type="datetime-local"
+                                                     [id]="'native_' + field.id + '_' + i"
+                                                     (change)="handleNativePicker($event, entry, field.id)"
+                                                     style="position: absolute; visibility: hidden; height: 0; width: 0; pointer-events: none;" />
+
+                                              <!-- Validation -->
+                                              <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger mt-1">
+                                                {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
+                                              </div>
                                             </div>
+
                                           </ng-container>
+
+
+
+
+
+
                                           <ng-container *ngSwitchCase="'select'">
                                             <div class="form-outline">
                                               <!-- Floating Label -->
@@ -648,7 +735,6 @@
                                             </div>
                                           </ng-container>
                                         </ng-container>
-
                                       </ng-container>
                                       <!-- If the field has a row layout, render its sub-fields inline -->
                                       <ng-container *ngIf="field.layout === 'row'">
@@ -713,17 +799,20 @@
                                           </ng-container>
                                         </div>
                                       </ng-container>
-
-
                                     </div>
                                   </div>
                                 </div>
                                 <!-- Primary Radio Button for Diagnosis Section -->
                                 <div class="col-5-layout mb-3" *ngIf="isDiagnosisSection(section)">
-                                  <label class="form-label">Primary</label>
-                                  <input type="radio" name="primary_{{section}}"
-                                         [value]="i" [(ngModel)]="formData[section].primaryIndex"
-                                         (change)="setPrimary(section, i)">
+                                  <div class="d-flex align-items-center">
+                                    <!--<label class="form-label me-2 mb-0">Primary</label>-->
+                                    <input type="radio"
+                                           name="primary_{{section}}"
+                                           [value]="i"
+                                           [(ngModel)]="formData[section].primaryIndex"
+                                           (change)="setPrimary(section, i)" />
+                                    <label class="form-label mb-0">Primary</label>
+                                  </div>
                                 </div>
                                 <!-- Add & Remove Buttons for Diagnosis, Provider, Services -->
                                 <div class="col-5-layout mb-3" *ngIf="isSpecialSection(section)">
