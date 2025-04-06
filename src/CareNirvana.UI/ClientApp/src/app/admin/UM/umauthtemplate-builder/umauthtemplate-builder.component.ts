@@ -9,6 +9,7 @@ import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CrudService } from 'src/app/service/crud.service';
 
 // Define an interface for a field.
 // Note: displayName is now optional so that objects without it won't cause compile errors.
@@ -31,6 +32,7 @@ interface TemplateField {
   authStatus?: string[];
   isActive?: boolean;
   isEnabled?: boolean;
+  sectionName?: string;
 }
 
 // Define an interface for a section.
@@ -66,6 +68,17 @@ export class UmauthtemplateBuilderComponent implements OnInit {
   editingRowId: string | null = null;
   dataSource = new MatTableDataSource<any>();
   selectedSectionObject: TemplateSectionModel | null = null;
+  authClass: any[] = [];
+  selectedClassId: number = 0;
+
+  originalMasterTemplate: { sections?: TemplateSectionModel[] } = {};
+
+  unavailableSections: string[] = [];
+  unavailableFieldsList: TemplateField[] = [];
+  unavailableFieldsGrouped: { [sectionName: string]: TemplateField[] } = {};
+
+
+
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -95,10 +108,12 @@ export class UmauthtemplateBuilderComponent implements OnInit {
     private templateService: TemplateService,
     private authService: AuthService,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private crudService: CrudService
   ) { }
 
   ngOnInit() {
+    this.loadAuthClass();
     this.loadAuthTemplates();
     this.loadData();
   }
@@ -114,6 +129,22 @@ export class UmauthtemplateBuilderComponent implements OnInit {
       error: (err) => {
         console.error('Error fetching auth templates:', err);
         this.authTemplates = [{ Id: 0, TemplateName: 'Select Auth Type' }];
+      }
+    });
+  }
+
+  loadAuthClass(): void {
+    this.crudService.getData('um', 'authclass').subscribe({
+
+      next: (response: any[]) => {
+        this.authClass = [
+          { id: 0, authClass: 'Select Auth Case' },  // optional default option
+          ...response
+        ];
+      },
+      error: (err) => {
+        console.error('Error fetching auth class:', err);
+        this.authClass = [{ id: 0, authClass: 'Select Auth Class' }];
       }
     });
   }
@@ -138,8 +169,6 @@ export class UmauthtemplateBuilderComponent implements OnInit {
   selectSection(section: TemplateSectionModel) {
     this.selectedSectionObject = section; // Directly reference the selected section
   }
-
-
 
   onFocus() {
     this.isFocused = true;
@@ -169,6 +198,7 @@ export class UmauthtemplateBuilderComponent implements OnInit {
     } else if (mode === 'add') {
       this.newTemplateName = '';
       this.selectedTemplateId = 0;
+      this.selectedClassId = 0; // Reset selected class ID
       // Clear the masterTemplate when adding a new template.
       this.masterTemplate = {};
       this.selectedEntry = {};
@@ -216,27 +246,74 @@ export class UmauthtemplateBuilderComponent implements OnInit {
           try {
             // Parse the new JSON format with a sections array.
             this.masterTemplate = JSON.parse(data[0].JsonContent);
-            console.log('Parsed config:', this.masterTemplate);
+
             if (this.masterTemplate.sections && Array.isArray(this.masterTemplate.sections)) {
               // Sort sections by order (using 0 as default if order is missing).
               this.masterTemplate.sections.sort((a, b) => (a.order || 0) - (b.order || 0));
               this.masterTemplate.sections.forEach((section) => {
-                // Expand each section by default.
+                // Expand each section by default
                 this.activeSections[section.sectionName] = true;
+
                 if (section.fields && Array.isArray(section.fields)) {
-                  // Sort fields by order within each section.
                   section.fields.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+                  // ✅ Tag each field with its section name so deletion works later
+                  section.fields.forEach(field => {
+                    field.sectionName = section.sectionName;
+                  });
                 }
-                // Add the section's identifier to the drop lists.
-                //this.allDropLists.push(section.sectionName);
+
                 if (typeof section.subsections === 'object' && !Array.isArray(section.subsections)) {
                   this.allDropLists.push(...Object.keys(section.subsections).map(sub => section.sectionName + '.' + sub));
-                }
-                else
+                } else {
                   this.allDropLists.push(section.sectionName);
-
+                }
               });
             }
+            // Set the original master template for comparison.
+            this.authService.getTemplate(1).subscribe({
+              next: (data: any) => {
+                if (!data || !data[0]?.JsonContent) {
+                  console.error('API returned invalid data:', data);
+                  return;
+                }
+
+                try {
+                  // Parse the new JSON format with a sections array.
+                  this.originalMasterTemplate = JSON.parse(data[0].JsonContent);
+                  if (this.originalMasterTemplate.sections && Array.isArray(this.originalMasterTemplate.sections)) {
+                    // Sort sections by order (using 0 as default if order is missing).
+                    this.originalMasterTemplate.sections.sort((a, b) => (a.order || 0) - (b.order || 0));
+                    this.originalMasterTemplate.sections.forEach((section) => {
+                      // Expand each section by default.
+                      this.activeSections[section.sectionName] = true;
+                      if (section.fields && Array.isArray(section.fields)) {
+                        // Sort fields by order within each section.
+                        section.fields.sort((a, b) => (a.order || 0) - (b.order || 0));
+                      }
+                      // Add the section's identifier to the drop lists.
+                      //this.allDropLists.push(section.sectionName);
+                      if (typeof section.subsections === 'object' && !Array.isArray(section.subsections)) {
+                        this.allDropLists.push(...Object.keys(section.subsections).map(sub => section.sectionName + '.' + sub));
+                      }
+                      else
+                        this.allDropLists.push(section.sectionName);
+
+                    });
+                  }
+                } catch (error) {
+                  console.error('Failed to parse JSON content:', error);
+                  this.originalMasterTemplate = {};
+                }
+                if (this.originalMasterTemplate.sections && this.masterTemplate.sections) {
+                  this.compareWithMasterTemplate(this.originalMasterTemplate.sections, this.masterTemplate.sections);
+                }
+              },
+              error: (err) => {
+                console.error('Error while fetching template:', err);
+                this.originalMasterTemplate = {};
+              }
+            });
             // Initialize available fields.
             this.availableFields = [
               { label: 'Text Field', displayName: 'Text Field', type: 'text', id: 'newText' },
@@ -255,22 +332,79 @@ export class UmauthtemplateBuilderComponent implements OnInit {
           this.masterTemplate = {};
         }
       });
+
     } else {
       this.masterTemplate = {};
       console.log('No valid template selected');
     }
   }
 
+
+  compareWithMasterTemplate(master: TemplateSectionModel[], selected: TemplateSectionModel[]) {
+    const selectedSectionNames = selected.map(s => s.sectionName);
+    const selectedFieldMap: { [section: string]: string[] } = {};
+
+    // Build a map of section name → field IDs from selected template
+    selected.forEach(section => {
+      if (section.fields) {
+        selectedFieldMap[section.sectionName] = section.fields.map(f => f.id);
+      } else {
+        selectedFieldMap[section.sectionName] = [];
+      }
+    });
+
+    // Reset tracking structures
+    this.unavailableSections = [];
+    this.unavailableFieldsList = [];
+    this.unavailableFieldsGrouped = {};
+
+    master.forEach(masterSec => {
+      const secName = masterSec.sectionName;
+
+      // Section is completely missing
+      if (!selectedSectionNames.includes(secName)) {
+        this.unavailableSections.push(secName);
+      }
+
+      // Process field-level differences
+      if (masterSec.fields) {
+        masterSec.fields.forEach(field => {
+          const isFieldMissing = !selectedFieldMap[secName]?.includes(field.id);
+          if (isFieldMissing) {
+            const displayName = field.displayName || field.label || field.id;
+
+            const fieldWithSection: TemplateField = {
+              ...field,
+              sectionName: secName,
+              displayName,
+              label: displayName
+            };
+
+            this.unavailableFieldsList.push(fieldWithSection);
+
+            // Group by section
+            if (!this.unavailableFieldsGrouped[secName]) {
+              this.unavailableFieldsGrouped[secName] = [];
+            }
+            this.unavailableFieldsGrouped[secName].push(fieldWithSection);
+          }
+        });
+      }
+    });
+  }
+
+
+
   drop(event: CdkDragDrop<TemplateField[]>, sectionName: string) {
     if (event.previousContainer === event.container) {
       moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
-      console.log(`Moved item within ${sectionName} from index ${event.previousIndex} to ${event.currentIndex}`);
     } else {
       const draggedField = event.previousContainer.data[event.previousIndex];
       const isDefaultField = this.defaultFieldIds.includes(draggedField.id);
       let fieldToSelect: TemplateField;
 
-      if (event.previousContainer.id === 'available') {
+      if (event.previousContainer.id === 'available' || event.previousContainer.id === 'unavailable') {
+
         if (isDefaultField) {
           const fieldToCopy = { ...draggedField };
           fieldToCopy.id = `${fieldToCopy.id}_copy_${Math.random().toString(36).substr(2, 9)}`;
@@ -281,30 +415,36 @@ export class UmauthtemplateBuilderComponent implements OnInit {
           if (!event.container.data.some(f => f.id === fieldToCopy.id)) {
             event.container.data.splice(event.currentIndex, 0, fieldToCopy);
             this.addFieldToSection(fieldToCopy, sectionName);
-            console.log(`Duplicated default field from availableFields to ${sectionName} at index ${event.currentIndex}`);
           }
           fieldToSelect = fieldToCopy;
+
+          // Remove from unavailableFieldsList if it came from there
+          if (event.previousContainer.id === 'unavailable') {
+            const idx = this.unavailableFieldsList.findIndex(f => f.id === fieldToCopy.id);
+            if (idx > -1) {
+              this.unavailableFieldsList.splice(idx, 1);
+            }
+          }
+
+
         } else {
           transferArrayItem(event.previousContainer.data, event.container.data, event.previousIndex, event.currentIndex);
           fieldToSelect = event.container.data[event.currentIndex];
 
           // Ensure field is only added once to the correct section
           this.addFieldToSection(fieldToSelect, sectionName);
-          console.log(`Moved non-default field from availableFields to ${sectionName} at index ${event.currentIndex}`);
         }
         this.selectedField = fieldToSelect;
         fieldToSelect.isEnabled = fieldToSelect.isEnabled ?? true;
       } else if (event.container.id === 'available' && !this.defaultFieldIds.includes(draggedField.id)) {
         transferArrayItem(event.previousContainer.data, event.container.data, event.previousIndex, event.currentIndex);
         this.selectedField = event.container.data[event.currentIndex];
-        console.log(`Moved field from ${sectionName} to availableFields at index ${event.currentIndex}`);
       } else {
         transferArrayItem(event.previousContainer.data, event.container.data, event.previousIndex, event.currentIndex);
         this.selectedField = event.container.data[event.currentIndex];
 
         // Ensure field is added to `masterTemplate.sections` only once
         this.addFieldToSection(this.selectedField, sectionName);
-        console.log(`Moved field from ${event.previousContainer.id} to ${sectionName} at index ${event.currentIndex}`);
       }
     }
 
@@ -363,9 +503,12 @@ export class UmauthtemplateBuilderComponent implements OnInit {
       // Update section name
       const sectionIndex = this.masterTemplate.sections?.findIndex(sec => sec.sectionName === this.selectedSectionObject!.sectionName);
       if (sectionIndex !== undefined && sectionIndex > -1) {
-        this.masterTemplate.sections![sectionIndex].sectionName = updatedField.sectionName;
+        this.masterTemplate.sections![sectionIndex].sectionName = updatedField.sectionName ?? '';
       }
-      this.selectedSectionObject = { ...updatedField };
+      if ('sectionName' in updatedField && typeof updatedField.sectionName === 'string') {
+        this.selectedSectionObject = { ...updatedField } as TemplateSectionModel;
+      }
+
     } else if ('id' in updatedField) {
       // Handle subsections
       if (this.selectedSection.includes('.')) {
@@ -395,6 +538,7 @@ export class UmauthtemplateBuilderComponent implements OnInit {
 
   deleteField(field: TemplateField, sectionName: string, event: Event): void {
     event.stopPropagation();
+
     if (sectionName === 'available') {
       const index = this.availableFields.findIndex(f => f.id === field.id);
       if (index > -1) {
@@ -407,9 +551,33 @@ export class UmauthtemplateBuilderComponent implements OnInit {
         if (index > -1) {
           section.fields.splice(index, 1);
         }
+
+        // Move to unavailable group based on original section name
+        const originalSection = field.sectionName || sectionName;
+        const displayName = field.displayName || field.label || field.id;
+
+        const fieldWithSection: TemplateField = {
+          ...field,
+          displayName,
+          label: displayName,
+          sectionName: originalSection
+        };
+
+        // Add to flat list (optional if used elsewhere)
+        this.unavailableFieldsList.push(fieldWithSection);
+
+        // Add to grouped list
+        if (!this.unavailableFieldsGrouped[originalSection]) {
+          this.unavailableFieldsGrouped[originalSection] = [];
+        }
+        this.unavailableFieldsGrouped[originalSection].push(fieldWithSection);
       }
     }
+
+    // Refresh UI
+    this.forceAngularChangeDetection();
   }
+
 
   saveTemplate(): void {
     if (!this.newTemplateName || this.newTemplateName.trim() === '') {
@@ -542,44 +710,100 @@ export class UmauthtemplateBuilderComponent implements OnInit {
   }
 
 
+  //moveFieldToAvailable(field: TemplateField, sectionName: string, event: Event): void {
+  //  event.stopPropagation();
+
+  //  // Check if the sectionName refers to a subsection
+  //  if (sectionName.includes('.')) {
+  //    const [mainSectionName, subSectionName] = sectionName.split('.');
+
+  //    // Find the main section
+  //    const mainSection = this.masterTemplate.sections?.find(sec => sec.sectionName === mainSectionName);
+
+  //    if (mainSection && mainSection.subsections) {
+  //      // Find the subsection
+  //      const subSection = mainSection.subsections[subSectionName];
+
+  //      if (subSection && subSection.fields) {
+  //        // Find and remove the field from the subsection
+  //        const index = subSection.fields.findIndex(f => f.id === field.id);
+  //        if (index > -1) {
+  //          subSection.fields.splice(index, 1);
+  //        }
+  //      }
+  //    }
+  //  } else {
+  //    // Handling for normal sections (not subsections)
+  //    const section = this.masterTemplate.sections?.find(sec => sec.sectionName === sectionName);
+  //    if (section && section.fields) {
+  //      const index = section.fields.findIndex(f => f.id === field.id);
+  //      if (index > -1) {
+  //        section.fields.splice(index, 1);
+  //      }
+  //    }
+  //  }
+
+  //  // Move the field to available fields
+  //  this.availableFields.push(field);
+
+  //  // 🔥 Force UI to update
+  //  this.forceAngularChangeDetection();
+  //}
   moveFieldToAvailable(field: TemplateField, sectionName: string, event: Event): void {
     event.stopPropagation();
 
-    // Check if the sectionName refers to a subsection
+    let wasRemoved = false;
+
+    // Remove from current section/subsection
     if (sectionName.includes('.')) {
       const [mainSectionName, subSectionName] = sectionName.split('.');
-
-      // Find the main section
       const mainSection = this.masterTemplate.sections?.find(sec => sec.sectionName === mainSectionName);
-
-      if (mainSection && mainSection.subsections) {
-        // Find the subsection
-        const subSection = mainSection.subsections[subSectionName];
-
-        if (subSection && subSection.fields) {
-          // Find and remove the field from the subsection
-          const index = subSection.fields.findIndex(f => f.id === field.id);
-          if (index > -1) {
-            subSection.fields.splice(index, 1);
-          }
+      const subSection = mainSection?.subsections?.[subSectionName];
+      if (subSection?.fields) {
+        const index = subSection.fields.findIndex(f => f.id === field.id);
+        if (index > -1) {
+          subSection.fields.splice(index, 1);
+          wasRemoved = true;
         }
       }
     } else {
-      // Handling for normal sections (not subsections)
       const section = this.masterTemplate.sections?.find(sec => sec.sectionName === sectionName);
-      if (section && section.fields) {
+      if (section?.fields) {
         const index = section.fields.findIndex(f => f.id === field.id);
         if (index > -1) {
           section.fields.splice(index, 1);
+          wasRemoved = true;
         }
       }
     }
 
-    // Move the field to available fields
-    this.availableFields.push(field);
+    // Move field to the correct target if it was removed
+    if (wasRemoved) {
+      const displayName = field.displayName || field.label || field.id;
+      const originalSection = field.sectionName || sectionName;
 
-    // 🔥 Force UI to update
-    this.forceAngularChangeDetection();
+      const fieldWithSection: TemplateField = {
+        ...field,
+        displayName,
+        label: displayName,
+        sectionName: originalSection
+      };
+
+      // If field came from master template (sectionName exists), add to unavailable
+      if (field.sectionName) {
+        if (!this.unavailableFieldsGrouped[originalSection]) {
+          this.unavailableFieldsGrouped[originalSection] = [];
+        }
+        this.unavailableFieldsGrouped[originalSection].push(fieldWithSection);
+
+        this.unavailableFieldsList.push(fieldWithSection); // optional: for flat list usage
+      } else {
+        // Otherwise add to default available list
+        this.availableFields.push(fieldWithSection);
+      }
+
+      this.forceAngularChangeDetection();
+    }
   }
 
   forceAngularChangeDetection(): void {
@@ -598,6 +822,39 @@ export class UmauthtemplateBuilderComponent implements OnInit {
   onDragEnded(field: TemplateField, section: string) {
     if (section !== 'available') {
       field.isActive = false;
+      this.forceAngularChangeDetection();
+    }
+  }
+
+  dropSection(event: CdkDragDrop<any[]>) {
+    const sectionName: string = event.item.data;
+
+    const sectionToRestore = this.originalMasterTemplate.sections?.find(
+      s => s.sectionName === sectionName
+    );
+
+    if (sectionToRestore) {
+      const alreadyExists = this.masterTemplate.sections?.some(
+        s => s.sectionName === sectionName
+      );
+      if (alreadyExists) {
+        console.warn(`Section '${sectionName}' already exists.`);
+        return;
+      }
+
+      this.masterTemplate.sections = this.masterTemplate.sections || [];
+      this.masterTemplate.sections.push(JSON.parse(JSON.stringify(sectionToRestore)));
+      this.activeSections[sectionName] = true;
+
+      const index = this.unavailableSections.indexOf(sectionName);
+      if (index > -1) this.unavailableSections.splice(index, 1);
+
+      if (this.unavailableFieldsGrouped[sectionName]) {
+        delete this.unavailableFieldsGrouped[sectionName];
+      }
+
+      this.unavailableFieldsList = this.unavailableFieldsList.filter(f => f.sectionName !== sectionName);
+
       this.forceAngularChangeDetection();
     }
   }

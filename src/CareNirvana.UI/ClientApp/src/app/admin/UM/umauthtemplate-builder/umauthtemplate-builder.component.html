@@ -100,6 +100,52 @@
         </div>
       </div>
     </div>
+
+    <!-- Unavailable Fields -->
+    <div class="card-header bg-primary text-white">
+      <h5 class="mb-0" style="height: 40px; padding-left: 10px; align-content: center;">Unavailable Fields</h5>
+    </div>
+    <div class="card-body" *ngIf="objectKeys(unavailableFieldsGrouped).length > 0">
+      <div *ngFor="let sectionName of objectKeys(unavailableFieldsGrouped)">
+        <strong>{{ sectionName }}</strong>
+        <div cdkDropList
+             [cdkDropListData]="unavailableFieldsGrouped[sectionName]"
+             [cdkDropListConnectedTo]="allDropLists"
+             (cdkDropListDropped)="drop($event, 'unavailable')"
+             class="drop-list mt-2 mb-3">
+          <div *ngFor="let field of unavailableFieldsGrouped[sectionName]"
+               cdkDrag
+               [cdkDragData]="field"
+               class="field-item"
+               [class.selected]="field === selectedField"
+               (click)="selectField(field, 'unavailable')">
+            {{ field.displayName }} ({{ field.type }})
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Unavailable Sections -->
+    <div class="card-header bg-warning text-dark mt-3">
+      <h6 style="padding-left: 10px;">Unavailable Sections</h6>
+    </div>
+    <div class="card-body">
+      <div cdkDropList
+           id="unavailable-sections"
+           [cdkDropListData]="unavailableSections"
+           [cdkDropListConnectedTo]="['section-drop']"
+           (cdkDropListDropped)="dropSection($event)"
+           class="drop-list">
+        <div *ngFor="let section of unavailableSections"
+             cdkDrag
+             [cdkDragData]="section"
+             class="field-item bg-light p-2 my-1 border rounded">
+          {{ section }}
+        </div>
+      </div>
+    </div>
+
+
   </div>
 
   <!-- Middle Column: Dynamic Template Builder -->
@@ -116,6 +162,17 @@
                [disabled]="formMode === 'edit'" />
         <span *ngIf="showTemplateNameError" style="color: red; font-size: 12px;">Template Name is required</span>
       </div>
+
+      <div style="width:350px; padding-left:10px;" class="position-relative">
+        <select class="form-select" id="authClass" name="Auth Case"
+                [(ngModel)]="selectedClassId"
+                appShowLabel
+                [disabled]="formMode === 'edit'">
+          <option *ngFor="let class of authClass" [value]="class.id">
+            {{ class.authClass }}
+          </option>
+        </select>
+      </div>
       <div style="width:350px; padding-left:10px;" class="position-relative">
         <select class="form-select" id="authType" name="Auth Type"
                 [(ngModel)]="selectedTemplateId"
@@ -128,6 +185,17 @@
         </select>
       </div>
     </div>
+
+    <!-- Drop target for whole sections -->
+    <div cdkDropList
+         id="section-drop"
+         [cdkDropListData]="masterTemplate.sections || []"
+         [cdkDropListConnectedTo]="['unavailable-sections']"
+         (cdkDropListDropped)="dropSection($event)"
+         class="drop-list-section mb-3 border p-2 rounded text-center bg-light">
+      <p class="text-muted m-0">Drop section here to add</p>
+    </div>
+
 
     <!-- Render dynamic sections from masterTemplate.sections -->
     <div class="accordion master-template-content" *ngIf="masterTemplate.sections && masterTemplate.sections.length">
@@ -185,7 +253,7 @@
                           <div class="field-item">
                             <div class="form-outline">
                               <label class="form-label">{{ field.displayName }} <span *ngIf="field.required" style="color: red;"> * </span></label>
-                              
+
                               <!-- Check field type -->
                               <ng-container *ngIf="field.type === 'select'; else normalField">
                                 <select class="custom-dropdown" [(ngModel)]="field.defaultValue">
@@ -308,9 +376,9 @@
                  (cdkDropListDropped)="drop($event, section.sectionName)"
                  class="drop-list horizontal-layout">
               <div *ngFor="let field of section.fields" cdkDrag [cdkDragData]="field"
-                    (click)="selectField(field, section.sectionName)" class="field-item"
-                    [class.selected]="field === selectedField"
-                    [class.active]="field.isActive" >
+                   (click)="selectField(field, section.sectionName)" class="field-item"
+                   [class.selected]="field === selectedField"
+                   [class.active]="field.isActive">
                 <ng-container *ngIf="field.type !== 'checkbox'; else checkboxField2">
                   <ng-container *ngIf="field.layout === 'row'; else normalField2">
                     <div class="field-item row-container" style="display: flex; gap: 10px; align-items: center;">
