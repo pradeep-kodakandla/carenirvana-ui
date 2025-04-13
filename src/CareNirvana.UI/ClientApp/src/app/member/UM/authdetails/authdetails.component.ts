@@ -69,7 +69,7 @@ export class AuthdetailsComponent implements OnInit {
         this.showAddHighlight = false;
 
 
-        this.authService.getAuthTemplates().subscribe((authTypes: any[]) => {
+        this.authService.getAuthTemplates(0).subscribe((authTypes: any[]) => {
           // Create a map for easy lookup
           const authTypeMap = new Map(authTypes.map(type => [type.Id, type.TemplateName]));
 

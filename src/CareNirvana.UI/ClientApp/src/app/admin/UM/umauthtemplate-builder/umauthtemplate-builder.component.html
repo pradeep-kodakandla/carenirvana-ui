@@ -27,9 +27,16 @@
     </ng-container>
     <!-- Template Name Column -->
     <ng-container matColumnDef="TemplateName">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Copy Auth Type From</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Template Name</th>
       <td mat-cell *matCellDef="let element">
         <span>{{ element.TemplateName }}</span>
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="authClass">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Auth Case</th>
+      <td mat-cell *matCellDef="let element">
+        <span>{{ element.authClass }}</span>
       </td>
     </ng-container>
     <!-- Created By Column -->
@@ -101,6 +108,26 @@
       </div>
     </div>
 
+    <!-- Unavailable Sections -->
+    <div class="card-header bg-primary text-white">
+      <h5 class="mb-0" style="height: 40px; padding-left: 10px; align-content: center;">Unavailable Sections</h5>
+    </div>
+    <div class="card-body">
+      <div cdkDropList
+           id="unavailable-sections"
+           [cdkDropListData]="unavailableSections"
+           [cdkDropListConnectedTo]="['section-drop']"
+           (cdkDropListDropped)="dropSection($event)"
+           class="drop-list">
+        <div *ngFor="let section of unavailableSections"
+             cdkDrag
+             [cdkDragData]="section"
+             class="field-item bg-light p-2 my-1 border rounded">
+          {{ section }}
+        </div>
+      </div>
+    </div>
+
     <!-- Unavailable Fields -->
     <div class="card-header bg-primary text-white">
       <h5 class="mb-0" style="height: 40px; padding-left: 10px; align-content: center;">Unavailable Fields</h5>
@@ -125,25 +152,6 @@
       </div>
     </div>
 
-    <!-- Unavailable Sections -->
-    <div class="card-header bg-warning text-dark mt-3">
-      <h6 style="padding-left: 10px;">Unavailable Sections</h6>
-    </div>
-    <div class="card-body">
-      <div cdkDropList
-           id="unavailable-sections"
-           [cdkDropListData]="unavailableSections"
-           [cdkDropListConnectedTo]="['section-drop']"
-           (cdkDropListDropped)="dropSection($event)"
-           class="drop-list">
-        <div *ngFor="let section of unavailableSections"
-             cdkDrag
-             [cdkDragData]="section"
-             class="field-item bg-light p-2 my-1 border rounded">
-          {{ section }}
-        </div>
-      </div>
-    </div>
 
 
   </div>
@@ -166,6 +174,7 @@
       <div style="width:350px; padding-left:10px;" class="position-relative">
         <select class="form-select" id="authClass" name="Auth Case"
                 [(ngModel)]="selectedClassId"
+                (change)="onAuthClassChange()"
                 appShowLabel
                 [disabled]="formMode === 'edit'">
           <option *ngFor="let class of authClass" [value]="class.id">
@@ -191,9 +200,8 @@
          id="section-drop"
          [cdkDropListData]="masterTemplate.sections || []"
          [cdkDropListConnectedTo]="['unavailable-sections']"
-         (cdkDropListDropped)="dropSection($event)"
-         class="drop-list-section mb-3 border p-2 rounded text-center bg-light">
-      <p class="text-muted m-0">Drop section here to add</p>
+         (cdkDropListDropped)="dropSection($event)">
+      <!--<p class="text-muted m-0">Drop section here to add</p>-->
     </div>
 
 

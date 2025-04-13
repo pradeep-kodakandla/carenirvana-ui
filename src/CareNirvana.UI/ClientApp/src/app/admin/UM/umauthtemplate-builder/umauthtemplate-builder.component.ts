@@ -60,7 +60,7 @@ export class UmauthtemplateBuilderComponent implements OnInit {
   selectedTemplateId: number = 0;
   newTemplateName: string = '';
   showTemplateNameError: boolean = false;
-  displayedColumns: string[] = ['Id', 'TemplateName', 'CreatedBy', 'CreatedOn', 'actions'];
+  displayedColumns: string[] = ['Id', 'TemplateName', 'authClass', 'CreatedBy', 'CreatedOn', 'actions'];
   isFormVisible: boolean = false;
   formMode: 'add' | 'edit' | 'view' = 'add';
   selectedEntry: any = {};
@@ -114,12 +114,11 @@ export class UmauthtemplateBuilderComponent implements OnInit {
 
   ngOnInit() {
     this.loadAuthClass();
-    this.loadAuthTemplates();
-    this.loadData();
+
   }
 
   loadAuthTemplates(): void {
-    this.authService.getAuthTemplates().subscribe({
+    this.authService.getAuthTemplates(this.selectedClassId).subscribe({
       next: (data: any[]) => {
         this.authTemplates = [
           { Id: 0, TemplateName: 'Select Auth Type' },
@@ -141,6 +140,7 @@ export class UmauthtemplateBuilderComponent implements OnInit {
           { id: 0, authClass: 'Select Auth Case' },  // optional default option
           ...response
         ];
+        this.loadData();
       },
       error: (err) => {
         console.error('Error fetching auth class:', err);
@@ -150,13 +150,27 @@ export class UmauthtemplateBuilderComponent implements OnInit {
   }
 
   loadData() {
-    this.authService.getAuthTemplates().subscribe((response) => {
-      this.dataSource.data = response.map((item: any) => ({ ...item }));
+    this.authService.getAuthTemplates(0).subscribe((response) => {
+      this.dataSource.data = response.map((item: any) => {
+        const matchingClass = this.authClass.find(c => String(c.id) === String(item.authclassid));
+        return {
+          ...item,
+          authClass: matchingClass ? matchingClass.authClass : ''
+        };
+      });
       this.dataSource.paginator = this.paginator;
       this.dataSource.sort = this.sort;
-      console.log("data", response);
     });
   }
+
+  onAuthClassChange(): void {
+    // Reset template ID to default
+    this.selectedTemplateId = 0;
+
+    // Clear existing template list and reload based on selected class
+    this.loadAuthTemplates();
+  }
+
 
   applyFilter(event: Event) {
     const filterValue = (event.target as HTMLInputElement).value;
@@ -192,8 +206,23 @@ export class UmauthtemplateBuilderComponent implements OnInit {
 
     if (mode === 'edit' && element) {
       this.newTemplateName = element.TemplateName;
-      this.selectedTemplateId = element.Id;
-      this.onAuthTypeChange();
+      this.selectedClassId = element.authclassid;
+
+      // ✅ Load templates first, then set selectedTemplateId
+      this.authService.getAuthTemplates(this.selectedClassId).subscribe({
+        next: (data: any[]) => {
+          this.authTemplates = [{ Id: 0, TemplateName: 'Select Auth Type' }, ...data];
+
+          // ✅ Set selectedTemplateId after dropdown is populated
+          this.selectedTemplateId = element.Id;
+          this.onAuthTypeChange(); // Load masterTemplate after setting TemplateId
+        },
+        error: (err) => {
+          console.error('Error fetching auth templates for edit mode:', err);
+          this.authTemplates = [{ Id: 0, TemplateName: 'Select Auth Type' }];
+        }
+      });
+
       this.selectedEntry = { ...element };
     } else if (mode === 'add') {
       this.newTemplateName = '';
@@ -236,11 +265,11 @@ export class UmauthtemplateBuilderComponent implements OnInit {
 
   onAuthTypeChange(): void {
     console.log('Selected Template ID:', this.selectedTemplateId);
-    if (this.selectedTemplateId && this.selectedTemplateId !== 0) {
+    if (this.selectedTemplateId && this.selectedTemplateId > 0) {
       this.authService.getTemplate(this.selectedTemplateId).subscribe({
         next: (data: any) => {
-          if (!data || !data[0].JsonContent) {
-            console.error('API returned invalid data:', data);
+          if (!data || !data.length || !data[0] || !data[0].JsonContent) {
+            console.error('API returned invalid data or missing JsonContent');
             return;
           }
           try {
@@ -362,8 +391,10 @@ export class UmauthtemplateBuilderComponent implements OnInit {
       const secName = masterSec.sectionName;
 
       // Section is completely missing
-      if (!selectedSectionNames.includes(secName)) {
+      const isWholeSectionMissing = !selectedSectionNames.includes(secName);
+      if (isWholeSectionMissing) {
         this.unavailableSections.push(secName);
+        return; // ✅ Skip checking fields in missing sections
       }
 
       // Process field-level differences
@@ -608,6 +639,7 @@ export class UmauthtemplateBuilderComponent implements OnInit {
       JsonContent: JSON.stringify(this.masterTemplate), // Ensuring subsections are included
       CreatedOn: new Date().toISOString(),
       CreatedBy: 1,
+      authclassid: this.selectedClassId,
       Id: this.formMode === 'edit' ? this.selectedEntry.Id : 0
     };
 
@@ -654,7 +686,7 @@ export class UmauthtemplateBuilderComponent implements OnInit {
 
   updateDisplayedColumns() {
     const optionalColumns = ['updatedBy', 'updatedOn', 'deletedBy', 'deletedOn'];
-    this.displayedColumns = ['Id', 'TemplateName', 'CreatedBy', 'CreatedOn', 'actions'];
+    this.displayedColumns = ['Id', 'TemplateName', 'authClass', 'CreatedBy', 'CreatedOn', 'actions'];
     this.displayedColumns.push(...this.visibleColumns.filter((col) => optionalColumns.includes(col)));
   }
 
@@ -671,7 +703,28 @@ export class UmauthtemplateBuilderComponent implements OnInit {
     if (confirm('Are you sure you want to delete this section?')) {
       if (this.masterTemplate.sections && Array.isArray(this.masterTemplate.sections)) {
         const index = this.masterTemplate.sections.findIndex(sec => sec.sectionName === sectionName);
+        //if (index > -1) {
+        //  this.masterTemplate.sections.splice(index, 1);
+        //}
         if (index > -1) {
+          const deletedSection = this.masterTemplate.sections[index];
+          const sectionName = deletedSection.sectionName;
+
+          // ✅ Move to unavailableSections
+          this.unavailableSections.push(sectionName);
+
+          // ✅ Move fields to unavailableFieldsGrouped
+          //if (deletedSection.fields && deletedSection.fields.length) {
+          //  this.unavailableFieldsGrouped[sectionName] = deletedSection.fields.map(field => ({
+          //    ...field,
+          //    sectionName,
+          //    displayName: field.displayName || field.label || field.id,
+          //    label: field.displayName || field.label || field.id
+          //  }));
+          //  this.unavailableFieldsList.push(...this.unavailableFieldsGrouped[sectionName]);
+          //}
+
+          // Remove from current template
           this.masterTemplate.sections.splice(index, 1);
         }
       }
@@ -858,6 +911,4 @@ export class UmauthtemplateBuilderComponent implements OnInit {
       this.forceAngularChangeDetection();
     }
   }
-
-
 }

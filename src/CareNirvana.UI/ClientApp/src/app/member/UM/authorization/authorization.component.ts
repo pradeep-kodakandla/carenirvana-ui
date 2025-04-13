@@ -72,16 +72,42 @@ export class AuthorizationComponent {
   hoveredIndexMap: { [key: string]: number } = {};
 
 
+
+  allCodesets: any[] = [];
+  filteredIcdCodes: any[] = [];
+  filteredServiceCodes: any[] = [];
+
+
+
   //********** Method to highlight the selected section and autocomplete ************//
 
   filterOptions(field: any, inputValue: string, section: string, index: number) {
     const key = `${section}_${index}_${field.id}`;
-    if (!field.options) return;
+   // if (!field.options) return;
 
-    this.filteredOptions[key] = field.options.filter((opt: any) =>
-      opt.label.toLowerCase().includes((inputValue || '').toLowerCase())
-    );
-    this.showDropdown[key] = true;
+    //this.filteredOptions[key] = field.options.filter((opt: any) =>
+    //  opt.label.toLowerCase().includes((inputValue || '').toLowerCase())
+    //);
+    //this.showDropdown[key] = true;
+    console.log('filterOptions called:', field.id, inputValue);
+    console.log('field.id:', field.id);
+    if (field.id === 'icd10Code' || field.id === 'serviceCode') {
+      const source = this.allCodesets;
+      const filtered = source.filter(code =>
+        code.code.toLowerCase().includes((inputValue || '').toLowerCase())
+      ).map(code => ({
+        value: code.code,
+        label: `${code.code} - ${code.codeDesc || ''}`
+      }));
+
+      this.filteredOptions[key] = filtered;
+      this.showDropdown[key] = true;
+    } else if (field.options) {
+      this.filteredOptions[key] = field.options.filter((opt: any) =>
+        opt.label.toLowerCase().includes((inputValue || '').toLowerCase())
+      );
+      this.showDropdown[key] = true;
+    }
   }
 
   selectOption(selectedLabel: string, entry: any, fieldId: string, section: string, index: number) {
@@ -304,7 +330,12 @@ export class AuthorizationComponent {
 
     this.loadAuthClass();
 
-    this.loadAuthTemplates();
+    this.authService.getAllCodesets().subscribe((data: any[]) => {
+      this.allCodesets = data || [];
+      console.log('All Codesets:', this.allCodesets);
+    });
+
+    //this.loadAuthTemplates();
 
   }
 
@@ -338,6 +369,15 @@ export class AuthorizationComponent {
                   this.formData = savedData; // Assign the correctly parsed object
                   this.authNumber = data[0]?.AuthNumber;
                   this.saveType = 'Update';
+
+                  //if (savedData['Diagnosis Details']?.selectedOptions) {
+                  //  this.populateSelectedOptions('Diagnosis Details', 'icd10Code', savedData['Diagnosis Details'].selectedOptions);
+                  //}
+
+                  //if (savedData['Service Details']?.selectedOptions) {
+                  //  this.populateSelectedOptions('Service Details', 'serviceCode', savedData['Service Details'].selectedOptions);
+                  //}
+
 
                   if (savedData && savedData['Authorization Notes']) {
                     this.authorizationNotesData = savedData['Authorization Notes'].entries || [];
@@ -413,9 +453,16 @@ export class AuthorizationComponent {
     });
   }
 
+  onAuthClassChange(): void {
+    // Reset template ID to default
+    this.selectedTemplateId = 0;
+
+    // Clear existing template list and reload based on selected class
+    this.loadAuthTemplates();
+  }
 
   loadAuthTemplates(): void {
-    this.authService.getAuthTemplates().subscribe({
+    this.authService.getAuthTemplates(this.selectedAuthClassId).subscribe({
       next: (data: any[]) => {
         this.authTemplates = [
           { Id: 0, TemplateName: 'Select Auth Type' },
@@ -443,6 +490,7 @@ export class AuthorizationComponent {
             return;
           }
           try {
+
             const parsedJson = JSON.parse(data[0].JsonContent);
             const configObj: any = {};
 
@@ -495,6 +543,22 @@ export class AuthorizationComponent {
                 entries: [this.createEmptyEntry(this.config[section]?.fields || [])],
                 primaryIndex: null
               };
+
+              // Loop over fields in Diagnosis Details
+              const diagFields = this.config['Diagnosis Details']?.fields || [];
+              const icdField = diagFields.find((f: any) => f.id === 'icd10Code' && Array.isArray(f.selectedOptions));
+
+              if (icdField) {
+                this.populateSelectedOptions('Diagnosis Details', 'icd10Code', icdField.selectedOptions);
+              }
+
+              // Loop over fields in Service Details
+              const servFields = this.config['Service Details']?.fields || [];
+              const serviceField = servFields.find((f: any) => f.id === 'serviceCode' && Array.isArray(f.selectedOptions));
+
+              if (serviceField) {
+                this.populateSelectedOptions('Service Details', 'serviceCode', serviceField.selectedOptions);
+              }
             }
           }
 
@@ -635,6 +699,14 @@ export class AuthorizationComponent {
               }
             );
           });
+
+          if (this.formData['Diagnosis Details']?.selectedOptions) {
+            this.populateSelectedOptions('Diagnosis Details', 'icd10Code', this.formData['Diagnosis Details'].selectedOptions);
+          }
+
+          if (this.formData['Service Details']?.selectedOptions) {
+            this.populateSelectedOptions('Service Details', 'serviceCode', this.formData['Service Details'].selectedOptions);
+          }
 
           this.DecisionFields = {
             decisionDetails: { ...this.config['Decision Details'].fields || [] },
@@ -1088,4 +1160,35 @@ export class AuthorizationComponent {
   }
   /*************Notes Data***************/
 
+  populateSelectedOptions(section: string, fieldId: string, selectedOptions: string[]): void {
+    if (!this.formData[section]) {
+      this.formData[section] = { expanded: true, entries: [] };
+    } else {
+      this.formData[section].entries = [];
+    }
+
+    if (!selectedOptions || selectedOptions.length === 0) {
+      this.formData[section].entries.push(this.createEmptyEntry(this.config[section].fields));
+    } else {
+      selectedOptions.forEach(code => {
+        const entry = this.createEmptyEntry(this.config[section].fields);
+        entry[fieldId] = code;
+
+        this.formData[section].entries.push(entry);
+
+        // 🔽 Map to description field
+        let descriptionFieldId = fieldId === 'icd10Code' ? 'icd10Description' :
+          fieldId === 'serviceCode' ? 'serviceDesc' : '';
+
+        if (descriptionFieldId && code) {
+          this.authService.getCodesetById(code).subscribe((data: any) => {
+            const matchedEntry = this.formData[section].entries.find((e: any) => e[fieldId] === code);
+            if (matchedEntry) {
+              matchedEntry[descriptionFieldId] = data?.codeDesc || 'Description not found';
+            }
+          });
+        }
+      });
+    }
+  }
 }

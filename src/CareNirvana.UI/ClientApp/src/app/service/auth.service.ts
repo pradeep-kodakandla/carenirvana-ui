@@ -7,13 +7,15 @@ import { Observable } from 'rxjs';
 })
 export class AuthService {
   private apiUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/auth'; // Update with your API URL
+  private apiUrlCodeSets = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/codesets'; // Update with your API URL
   //private apiUrl = 'https://localhost:51346/api/auth'; // Update with your API URL
+ // private apiUrlCodeSets = 'https://localhost:51346/api/codesets'; 
 
   constructor(private http: HttpClient) { }
 
   // Fetch auth templates from API
-  getAuthTemplates(): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/fetch`);
+  getAuthTemplates(authclassid: any): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/fetch/${authclassid}`);
   }
 
   getTemplate(id: any): Observable<any> {
@@ -42,6 +44,58 @@ export class AuthService {
   // Get auth details by authNumber
   getAuthDataByAuthNumber(authNumber: string): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/auth/${authNumber}`);
+  }
+
+  // GET: Get all codesets
+  getAllCodesets(): Observable<any> {
+    return this.http.get<any>(this.apiUrlCodeSets);
+  }
+
+  // GET: Get codeset by ID
+  getCodesetById(id: any): Observable<any> {
+    return this.http.get<any>(`${this.apiUrlCodeSets}/${id}`);
+  }
+
+  // POST: Create new codeset
+  createCodeset(data: any): Observable<any> {
+    return this.http.post<any>(this.apiUrlCodeSets, data, {
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
+  // PUT: Update existing codeset
+  updateCodeset(id: number, data: any): Observable<any> {
+    return this.http.put<any>(`${this.apiUrlCodeSets}/${id}`, data, {
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
+
+
+
+
+  // GET: Fetch all AuthActivities
+  getAllActivities(): Observable<any> {
+    return this.http.get<any>(this.apiUrl);
+  }
+
+  // GET: Fetch a single AuthActivity by ID
+  getActivityById(id: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/${id}`);
+  }
+
+  // POST: Create a new AuthActivity
+  createActivity(activity: any): Observable<any> {
+    return this.http.post<any>(this.apiUrl, activity, {
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
+  // PUT: Update an existing AuthActivity
+  updateActivity(id: number, activity: any): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/${id}`, activity, {
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 
 }

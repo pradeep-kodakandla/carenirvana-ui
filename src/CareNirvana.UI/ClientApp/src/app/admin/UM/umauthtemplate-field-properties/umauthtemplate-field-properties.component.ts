@@ -1,6 +1,10 @@
 import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges } from '@angular/core';
 import { CrudService } from 'src/app/service/crud.service';
 import { debounceTime, Subject } from 'rxjs';
+import { COMMA, ENTER } from '@angular/cdk/keycodes';
+import { AuthService } from 'src/app/service/auth.service';
+
+
 interface TemplateField {
   label: string;
   displayName?: string;
@@ -35,7 +39,7 @@ interface TemplateSectionModel {
 @Component({
   selector: 'app-umauthtemplate-field-properties',
   templateUrl: './umauthtemplate-field-properties.component.html',
-  styleUrls: ['./umauthtemplate-field-properties.component.css']
+  styleUrls: ['./umauthtemplate-field-properties.component.css'],
 })
 export class UmauthtemplateFieldPropertiesComponent implements OnChanges {
 
@@ -44,12 +48,22 @@ export class UmauthtemplateFieldPropertiesComponent implements OnChanges {
   @Output() fieldUpdated = new EventEmitter<TemplateField>();
   @Output() sectionUpdated = new EventEmitter<TemplateSectionModel>();
 
+  searchText: string = '';
+  allCodes: string[] = [];
+  filteredCodes: string[] = [];
+
+
+
+  readonly separatorKeysCodes = [ENTER, COMMA];
+
+
+
   dropdownOptions: DropdownOption[] = [];
   private previousDatasource: string | null = null; // Prevents continuous API calls
-  authStatusOptions: string[] = ['Open', 'Close', 'Cancelled', 'Close and Adjusted', 'Reopen','Withdrawn'];
+  authStatusOptions: string[] = ['Open', 'Close', 'Cancelled', 'Close and Adjusted', 'Reopen', 'Withdrawn'];
   private optionUpdateSubject = new Subject<void>();
 
-  constructor(private crudService: CrudService) {
+  constructor(private crudService: CrudService, private authService: AuthService) {
     this.optionUpdateSubject.pipe(debounceTime(500)).subscribe(() => {
       this.emitUpdate();
     });
@@ -81,6 +95,12 @@ export class UmauthtemplateFieldPropertiesComponent implements OnChanges {
 
         this.previousDatasource = currentDatasource; // Store current value safely
         this.onDatasourceChange();
+      }
+    }
+
+    if (changes['selectedField']?.currentValue) {
+      if (this.selectedField?.id === 'icd10Code' || this.selectedField?.id === 'serviceCode') {
+        this.loadCodesForField();
       }
     }
   }
@@ -261,6 +281,65 @@ export class UmauthtemplateFieldPropertiesComponent implements OnChanges {
       this.selectedField.defaultValue = undefined; // Reset the default selection
       this.emitUpdate();
     }
+  }
+
+  /**********ICD Code logic************** */
+  loadCodesForField(): void {
+    if (!this.selectedField) return;
+
+    if (['icd10Code', 'serviceCode'].includes(this.selectedField.id)) {
+      this.authService.getAllCodesets().subscribe((data: any[]) => {
+        this.allCodes = data.map(d => d.code); // or d.code + ' - ' + d.codeDesc
+        this.filteredCodes = [...this.allCodes];
+      });
+    }
+  }
+
+  filterCodes(): void {
+    const q = this.searchText.toLowerCase();
+    this.filteredCodes = this.allCodes.filter(c =>
+      c.toLowerCase().includes(q) &&
+      !this.selectedField?.selectedOptions?.includes(c)
+    );
+  }
+
+  selectCode(code: string): void {
+    if (!this.selectedField) return;
+
+    if (!this.selectedField.selectedOptions) {
+      this.selectedField.selectedOptions = [];
+    }
+
+    if (!this.selectedField.selectedOptions.includes(code)) {
+      this.selectedField.selectedOptions.push(code);
+      this.emitUpdate();
+    }
+
+    this.searchText = '';
+    this.filteredCodes = [];
+  }
+
+  addCodeFromText(): void {
+    if (!this.selectedField) return;
+
+    const code = this.searchText.trim().toUpperCase();
+    if (!this.selectedField.selectedOptions) {
+      this.selectedField.selectedOptions = [];
+    }
+
+    if (code && !this.selectedField.selectedOptions.includes(code)) {
+      this.selectedField.selectedOptions.push(code);
+      this.emitUpdate();
+    }
+
+    this.searchText = '';
+    this.filteredCodes = [];
+  }
+
+  removeCode(code: string): void {
+    if (!this.selectedField?.selectedOptions) return;
+    this.selectedField.selectedOptions = this.selectedField.selectedOptions.filter(c => c !== code);
+    this.emitUpdate();
   }
 
 }

@@ -13,9 +13,9 @@
 
       <!-- Label Input -->
       <!--<div *ngIf="selectedField.type !== 'button'" class="mb-3 form-outline" style="padding-bottom:15px;">
-        <label class="form-label">Label</label>
-        <input type="text" class="form-control" [(ngModel)]="selectedField.label" (change)="emitUpdate()" disabled>
-      </div>-->
+    <label class="form-label">Label</label>
+    <input type="text" class="form-control" [(ngModel)]="selectedField.label" (change)="emitUpdate()" disabled>
+  </div>-->
       <div *ngIf="selectedField.type !== 'button'" class="mb-3">
         <span class="info-label">Field Label: </span>
         <span class="info-value">{{ selectedField.label }}</span>
@@ -43,7 +43,7 @@
       <div class="form-check mb-3" style="padding-top:10px;">
         <input type="checkbox" class="form-check-input"
                [(ngModel)]="selectedField.isEnabled"
-               (change)="emitUpdate()" >
+               (change)="emitUpdate()">
         <label class="form-check-label">Is Editable</label>
       </div>
 
@@ -142,6 +142,45 @@
         <label class="form-label">Button Text</label>
         <input type="text" class="form-control" [(ngModel)]="selectedField.buttonText" (change)="emitUpdate()" placeholder="Enter button text">
       </div>
+
+
+      <!-- ICD10 Multi-Select Autocomplete -->
+      <div *ngIf="selectedField?.id === 'icd10Code' || selectedField?.id === 'serviceCode'" class="mb-3 form-outline">
+        <label class="form-label">
+          {{ selectedField.id === 'icd10Code' ? 'ICD10 Codes' : 'Service Codes' }}
+        </label>
+
+        <!-- Selected Tags -->
+        <div class="border p-2 rounded mb-2" style="min-height: 40px;">
+          <span *ngFor="let code of selectedField.selectedOptions" class="badge bg-primary me-1">
+            {{ code }}
+            <button type="button" class="btn-close btn-close-white btn-sm ms-1"
+                    (click)="removeCode(code)"></button>
+          </span>
+        </div>
+
+        <!-- Input box -->
+        <input type="text"
+               [(ngModel)]="searchText"
+               class="form-control"
+               placeholder="Type to search"
+               (input)="filterCodes()"
+               (keydown.enter)="addCodeFromText()" />
+
+        <!-- Suggestions -->
+        <ul class="list-group mt-1" *ngIf="filteredCodes.length && searchText">
+          <li class="list-group-item list-group-item-action"
+              *ngFor="let option of filteredCodes"
+              (click)="selectCode(option)">
+            {{ option }}
+          </li>
+        </ul>
+      </div>
+
+
+
+
+
 
     </div>
   </div>
