@@ -244,21 +244,6 @@
                                             {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
                                           </div>
                                         </ng-container>
-                                        <!--<ng-container *ngSwitchCase="'select'">
-                                          <select class="form-control"
-                                                  [id]="field.id + '_' + i"
-                                                  name="{{ field.id + '_' + i }}"
-                                                  [(ngModel)]="entry[field.id]"
-                                                  [required]="field.required"
-                                                  #fieldModel="ngModel">
-
-                                            <option *ngFor="let option of field.options" [value]="option.value">{{ option.label }}</option>
-                                          </select>
-                                          <mat-icon class="custom-dropdown-arrow">arrow_drop_down</mat-icon>
-                                          <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
-                                            {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
-                                          </div>
-                                        </ng-container>-->
                                         <ng-container *ngSwitchCase="'datetime-local'">
                                           <div class="form-outline position-relative">
                                             <!-- Floating label -->
@@ -273,7 +258,8 @@
                                                    [id]="field.id + '_' + i"
                                                    name="{{ field.id + '_' + i }}"
                                                    [(ngModel)]="entry[field.id]"
-                                                   (blur)="handleDateTimeBlur(entry, field.id)"
+                                                   [value]="field.dateOnly ? entry[field.id] : formatForInput(entry[field.id])"
+                                                   (blur)="handleDateTimeBlur(entry, field.id, field)"
                                                    (keydown.enter)="$event.preventDefault()"
                                                    placeholder="Enter date or D+N (e.g., D+2)"
                                                    [required]="field.required"
@@ -290,7 +276,8 @@
                                             <!-- Hidden datetime-local picker -->
                                             <input type="datetime-local"
                                                    [id]="'native_' + field.id + '_' + i"
-                                                   (change)="handleNativePicker($event, entry, field.id)"
+                                                   [value]="field.dateOnly ? entry[field.id] : formatForInput(entry[field.id])"
+                                                   (change)="handleNativePicker($event, entry, field.id, field)"
                                                    style="position: absolute; visibility: hidden; height: 0; width: 0; pointer-events: none;" />
 
                                             <!-- Validation -->
@@ -319,6 +306,7 @@
                                                    [required]="field.required"
                                                    [attr.autocomplete]="'off'"
                                                    placeholder="Select"
+                                                   [value]="displayLabels[field.id + '_' + i + '_' + section] || getOptionLabel(field, entry[field.id]) || ''"
                                                    (input)="filterOptions(field, entry[field.id], section, i)"
                                                    (focus)="onFocus(field, section, i)"
                                                    (blur)="onBlur(field, section, i)"
@@ -386,20 +374,6 @@
                         <div *ngIf="section !== 'Additional Details' && section !== 'Authorization Notes' && section !== 'Authorization Documents'">
                           <!-- Special rendering for providerDetails -->
                           <ng-container *ngIf="isProviderSection(section); else normalSection">
-                            <!-- Buttons Container: Display button-type fields -->
-                            <!--<div class="row">
-                              <div class="col-12">
-                                <div class="provider-buttons-container" style="margin-bottom: 10px;">
-                                  <div *ngFor="let field of getFieldsByType(config[section].fields, 'button')"
-                                       class="button-field-wrapper"
-                                       style="display: inline-block; margin-right: 10px; position: relative;">
-                                    <button mat-raised-button class="provider-button" (click)="openButtonDialog(field, section, selectedProviderRowIndex); $event.stopPropagation()">
-                                      {{ field.buttonText }}
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>-->
                             <!-- Render remaining non-button fields -->
                             <div *ngIf="section !== 'Authorization Notes' && section !== 'Authorization Documents'">
                               <div *ngFor="let entry of formData[section].entries; let i = index" class="row align-items-center mb-3" (click)="selectedProviderRowIndex = i" [ngClass]="{'selected-row': i === selectedProviderRowIndex}">
@@ -424,6 +398,7 @@
                                                    [required]="field.required"
                                                    #fieldModel="ngModel"
                                                    [attr.autocomplete]="'off'"
+                                                   [value]="displayLabels[field.id + '_' + i + '_' + section] || getOptionLabel(field, entry[field.id]) || ''"
                                                    (input)="filterOptions(field, entry[field.id], section, i)"
                                                    (focus)="onFocus(field, section, i)"
                                                    (blur)="onBlur(field, section, i)"
@@ -470,7 +445,8 @@
                                                    [id]="field.id + '_' + i"
                                                    name="{{ field.id + '_' + i }}"
                                                    [(ngModel)]="entry[field.id]"
-                                                   (blur)="handleDateTimeBlur(entry, field.id)"
+                                                   [value]="field.dateOnly ? entry[field.id] : formatForInput(entry[field.id])"
+                                                   (blur)="handleDateTimeBlur(entry, field.id, field)"
                                                    (keydown.enter)="$event.preventDefault()"
                                                    placeholder="Enter date or D+N (e.g., D+2)"
                                                    [required]="field.required"
@@ -487,7 +463,8 @@
                                             <!-- Hidden datetime-local picker -->
                                             <input type="datetime-local"
                                                    [id]="'native_' + field.id + '_' + i"
-                                                   (change)="handleNativePicker($event, entry, field.id)"
+                                                   [value]="field.dateOnly ? entry[field.id] : formatForInput(entry[field.id])"
+                                                   (change)="handleNativePicker($event, entry, field.id, field)"
                                                    style="position: absolute; visibility: hidden; height: 0; width: 0; pointer-events: none;" />
 
                                             <!-- Validation -->
@@ -514,6 +491,7 @@
                                                    [required]="field.required"
                                                    [attr.autocomplete]="'off'"
                                                    placeholder="Select"
+                                                   [value]="displayLabels[field.id + '_' + i + '_' + section] || getOptionLabel(field, entry[field.id]) || ''"
                                                    (input)="filterOptions(field, entry[field.id], section, i)"
                                                    (focus)="onFocus(field, section, i)"
                                                    (blur)="onBlur(field, section, i)"
@@ -623,21 +601,6 @@
                                             </div>
                                           </ng-container>
 
-                                          <!--<ng-container *ngSwitchCase="'select'">
-                                            <select class="form-control"
-                                                    [id]="field.id + '_' + i"
-                                                    name="{{ field.id + '_' + i }}"
-                                                    [(ngModel)]="entry[field.id]"
-                                                    [required]="field.required"
-                                                    #fieldModel="ngModel">
-
-                                              <option *ngFor="let option of field.options" [value]="option.value">{{ option.label }}</option>
-                                            </select>
-                                            <mat-icon class="custom-dropdown-arrow">arrow_drop_down</mat-icon>
-                                            <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
-                                              {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
-                                            </div>
-                                          </ng-container>-->
                                           <ng-container *ngSwitchCase="'datetime-local'">
                                             <div class="form-outline position-relative">
                                               <!-- Floating label -->
@@ -652,7 +615,8 @@
                                                      [id]="field.id + '_' + i"
                                                      name="{{ field.id + '_' + i }}"
                                                      [(ngModel)]="entry[field.id]"
-                                                     (blur)="handleDateTimeBlur(entry, field.id)"
+                                                     [value]="field.dateOnly ? entry[field.id] : formatForInput(entry[field.id])"
+                                                     (blur)="handleDateTimeBlur(entry, field.id, field)"
                                                      (keydown.enter)="$event.preventDefault()"
                                                      placeholder="Enter date or D+N (e.g., D+2)"
                                                      [required]="field.required"
@@ -669,7 +633,8 @@
                                               <!-- Hidden datetime-local picker -->
                                               <input type="datetime-local"
                                                      [id]="'native_' + field.id + '_' + i"
-                                                     (change)="handleNativePicker($event, entry, field.id)"
+                                                     [value]="field.dateOnly ? entry[field.id] : formatForInput(entry[field.id])"
+                                                     (change)="handleNativePicker($event, entry, field.id, field)"
                                                      style="position: absolute; visibility: hidden; height: 0; width: 0; pointer-events: none;" />
 
                                               <!-- Validation -->
@@ -679,11 +644,6 @@
                                             </div>
 
                                           </ng-container>
-
-
-
-
-
 
                                           <ng-container *ngSwitchCase="'select'">
                                             <div class="form-outline">
@@ -702,6 +662,7 @@
                                                      [required]="field.required"
                                                      [attr.autocomplete]="'off'"
                                                      placeholder="Select"
+                                                     [value]="displayLabels[field.id + '_' + i + '_' + section] || getOptionLabel(field, entry[field.id]) || ''"
                                                      (input)="filterOptions(field, entry[field.id], section, i)"
                                                      (focus)="onFocus(field, section, i)"
                                                      (blur)="onBlur(field, section, i)"

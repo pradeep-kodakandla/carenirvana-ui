@@ -47,6 +47,24 @@
         <label class="form-check-label">Is Editable</label>
       </div>
 
+      <!-- Default Value Input for datetime-local -->
+      <div *ngIf="selectedField.type === 'datetime-local'" class="mb-3 form-outline">
+        <label class="form-label">Default Value (D, D+1, D+2)</label>
+        <input type="text"
+               class="form-control"
+               [(ngModel)]="selectedField.defaultValue"
+               (change)="emitUpdate()"
+               placeholder="Enter default (e.g., D, D+1)">
+      </div>
+
+      <!-- Date Only Toggle -->
+      <div *ngIf="selectedField.type === 'datetime-local'" class="form-check mb-3">
+        <input type="checkbox"
+               class="form-check-input"
+               [(ngModel)]="selectedField.dateOnly"
+               (change)="emitUpdate()" />
+        <label class="form-check-label">Only Date (No Time)</label>
+      </div>
 
       <!-- Required Checkbox -->
       <div class="form-check mb-3" style="padding-top:10px;">

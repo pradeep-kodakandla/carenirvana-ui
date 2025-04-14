@@ -47,6 +47,7 @@ export class AuthorizationComponent {
   showTemplateNameError: boolean = false;
   saveType: string = '';
   saveTypeFrom: string = '';
+  displayLabels: { [key: string]: string } = {};
 
   newAuthNumber: string | null = null;
   showAuthorizationComponent = false;
@@ -83,7 +84,7 @@ export class AuthorizationComponent {
 
   filterOptions(field: any, inputValue: string, section: string, index: number) {
     const key = `${section}_${index}_${field.id}`;
-   // if (!field.options) return;
+    // if (!field.options) return;
 
     //this.filteredOptions[key] = field.options.filter((opt: any) =>
     //  opt.label.toLowerCase().includes((inputValue || '').toLowerCase())
@@ -110,10 +111,21 @@ export class AuthorizationComponent {
     }
   }
 
+  //selectOption(selectedLabel: string, entry: any, fieldId: string, section: string, index: number) {
+  //  entry[fieldId] = selectedLabel;
+  //  this.showDropdown[`${section}_${index}_${fieldId}`] = false;
+  //}
+
   selectOption(selectedLabel: string, entry: any, fieldId: string, section: string, index: number) {
-    entry[fieldId] = selectedLabel;
-    this.showDropdown[`${section}_${index}_${fieldId}`] = false;
+    const key = `${section}_${index}_${fieldId}`;
+    const selected = this.filteredOptions[key]?.find(opt => opt.label === selectedLabel);
+    if (selected) {
+      entry[fieldId] = selected.value; // Save the ID
+      this.displayLabels[`${fieldId}_${index}_${section}`] = selected.label; // Store label for display
+    }
+    this.showDropdown[key] = false;
   }
+
 
   onFocus(field: any, section: string, index: number) {
     const key = `${section}_${index}_${field.id}`;
@@ -177,7 +189,7 @@ export class AuthorizationComponent {
   @ViewChildren('pickerRef') datetimePickers!: QueryList<ElementRef<HTMLInputElement>>;
 
 
-  handleDateTimeBlur(entry: any, fieldId: string): void {
+  handleDateTimeBlur(entry: any, fieldId: string, field: any): void {
     const input = (entry[fieldId] || '').trim();
     let finalDate: Date | null = null;
 
@@ -194,6 +206,10 @@ export class AuthorizationComponent {
       } else {
         return; // Invalid input
       }
+
+      entry[fieldId] = field.dateOnly
+        ? this.formatDateOnly(finalDate)
+        : this.formatToEST(finalDate);
     }
 
     const formatted = new Intl.DateTimeFormat('en-US', {
@@ -219,7 +235,7 @@ export class AuthorizationComponent {
   }
 
 
-  handleNativePicker(event: Event, entry: any, fieldId: string): void {
+  handleNativePicker(event: Event, entry: any, fieldId: string, field: any): void {
     const input = event.target as HTMLInputElement;
     const value = input?.value;
     if (!value) return;
@@ -227,18 +243,31 @@ export class AuthorizationComponent {
     const parsed = new Date(value);
     if (isNaN(parsed.getTime())) return;
 
-    const formatted = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/New_York',
-      month: '2-digit',
-      day: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    }).format(parsed);
+    if (field.dateOnly) {
+      // ✅ Format to just MM/DD/YYYY in EST
+      const formattedDate = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric'
+      }).format(parsed);
 
-    entry[fieldId] = formatted.replace(',', '');
+      entry[fieldId] = formattedDate;
+    } else {
+      // Format to MM/DD/YYYY HH:mm:ss in EST
+      const formattedDateTime = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).format(parsed).replace(',', '');
+
+      entry[fieldId] = formattedDateTime;
+    }
   }
 
   openNativePicker(picker: HTMLInputElement): void {
@@ -708,6 +737,8 @@ export class AuthorizationComponent {
             this.populateSelectedOptions('Service Details', 'serviceCode', this.formData['Service Details'].selectedOptions);
           }
 
+
+
           this.DecisionFields = {
             decisionDetails: { ...this.config['Decision Details'].fields || [] },
             decisionNotes: { ...this.config['Decision Notes'].fields || [] },
@@ -737,15 +768,29 @@ export class AuthorizationComponent {
     }
   }
 
+  //createEmptyEntry(fields: any[], isNew: boolean = false): any {
+  //  let entry: any = { __isNew: isNew }; // mark entry as new if needed
+  //  fields.forEach(field => {
+  //    if (field.layout === 'row' && Array.isArray(field.fields)) {
+  //      field.fields.forEach((subField: any) => {
+  //        entry[subField.id] = subField.defaultValue ?? '';
+  //      });
+  //    } else {
+  //      entry[field.id] = field.defaultValue ?? '';
+  //    }
+  //  });
+  //  return entry;
+  //}
+
   createEmptyEntry(fields: any[], isNew: boolean = false): any {
-    let entry: any = { __isNew: isNew }; // mark entry as new if needed
+    let entry: any = { __isNew: isNew };
     fields.forEach(field => {
       if (field.layout === 'row' && Array.isArray(field.fields)) {
         field.fields.forEach((subField: any) => {
-          entry[subField.id] = subField.defaultValue ?? '';
+          entry[subField.id] = this.resolveDefaultValue(subField);
         });
       } else {
-        entry[field.id] = field.defaultValue ?? '';
+        entry[field.id] = this.resolveDefaultValue(field);
       }
     });
     return entry;
@@ -1160,6 +1205,7 @@ export class AuthorizationComponent {
   }
   /*************Notes Data***************/
 
+  /*************Populate Multiple ICD and Service Codes***************/
   populateSelectedOptions(section: string, fieldId: string, selectedOptions: string[]): void {
     if (!this.formData[section]) {
       this.formData[section] = { expanded: true, entries: [] };
@@ -1191,4 +1237,66 @@ export class AuthorizationComponent {
       });
     }
   }
+  /*************Populate Multiple ICD and Service Codes***************/
+
+  /*************Date Time Default value and Only Date setup ***************/
+  resolveDefaultValue(field: any): any {
+    if (field.type === 'datetime-local' && typeof field.defaultValue === 'string') {
+      const defaultVal = field.defaultValue.trim().toUpperCase();
+      let baseDate = new Date();
+
+      if (defaultVal === 'D') {
+        return this.formatToEST(baseDate, field.dateOnly);
+      }
+
+      const match = /^D\+(\d+)$/.exec(defaultVal);
+      if (match) {
+        const daysToAdd = parseInt(match[1], 10);
+        baseDate.setDate(baseDate.getDate() + daysToAdd);
+        return this.formatToEST(baseDate, field.dateOnly);
+      }
+    }
+
+    return field.defaultValue ?? '';
+  }
+
+  formatToEST(date: Date, dateOnly: boolean = false): string {
+    const options: Intl.DateTimeFormatOptions = dateOnly
+      ? {
+        timeZone: 'America/New_York',
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric'
+      }
+      : {
+        timeZone: 'America/New_York',
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      };
+
+    return new Intl.DateTimeFormat('en-US', options).format(date).replace(',', '');
+  }
+
+  formatDateOnly(date: Date): string {
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(date);
+  }
+
+  /*************Date Time Default value and Only Date setup ***************/
+
+  getOptionLabel(field: any, value: any): string {
+    if (!field || !field.options || !Array.isArray(field.options)) return '';
+    const match = field.options.find((opt: any) => opt.value === value);
+    return match ? match.label : '';
+  }
+
 }

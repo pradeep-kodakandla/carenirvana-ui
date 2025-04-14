@@ -23,6 +23,7 @@ interface TemplateField {
   fields?: TemplateField[];        // sub-fields if this is a row container
   authStatus?: string[];
   isEnabled?: boolean;
+  dateOnly?: boolean;
 }
 interface DropdownOption {
   id: string;

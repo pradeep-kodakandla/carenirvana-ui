@@ -33,6 +33,7 @@ interface TemplateField {
   isActive?: boolean;
   isEnabled?: boolean;
   sectionName?: string;
+  dateOnly?: boolean;
 }
 
 // Define an interface for a section.

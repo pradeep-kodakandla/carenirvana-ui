@@ -160,7 +160,7 @@
   <div class="middle-column">
     <div class="accordion" style="padding:10px; display:flex;">
       <div class="form-outline">
-        <label class="form-label">Template Name</label>
+        <label class="form-label">Auth Type</label>
         <input style="height: 35px; border-radius: 4px; width: 100%;"
                [class.border-red]="showTemplateNameError"
                [(ngModel)]="newTemplateName"
@@ -168,7 +168,7 @@
                placeholder="Enter template name"
                required
                [disabled]="formMode === 'edit'" />
-        <span *ngIf="showTemplateNameError" style="color: red; font-size: 12px;">Template Name is required</span>
+        <span *ngIf="showTemplateNameError" style="color: red; font-size: 12px;">Auth Type is required</span>
       </div>
 
       <div style="width:350px; padding-left:10px;" class="position-relative">
@@ -183,7 +183,7 @@
         </select>
       </div>
       <div style="width:350px; padding-left:10px;" class="position-relative">
-        <select class="form-select" id="authType" name="Auth Type"
+        <select class="form-select" id="authType" name="Clone From"
                 [(ngModel)]="selectedTemplateId"
                 (change)="onAuthTypeChange()"
                 appShowLabel
