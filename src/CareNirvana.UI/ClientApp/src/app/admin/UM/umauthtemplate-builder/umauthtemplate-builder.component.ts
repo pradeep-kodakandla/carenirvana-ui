@@ -10,6 +10,8 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CrudService } from 'src/app/service/crud.service';
+import { ValidationDialogComponent } from 'src/app/admin/UM/validation-dialog/validation-dialog.component';
+
 
 // Define an interface for a field.
 // Note: displayName is now optional so that objects without it won't cause compile errors.
@@ -912,4 +914,58 @@ export class UmauthtemplateBuilderComponent implements OnInit {
       this.forceAngularChangeDetection();
     }
   }
+
+
+  openValidationDialog(): void {
+    if (!this.selectedTemplateId || this.selectedTemplateId === 0) {
+      this.snackBar.open('Please select a template to manage validations', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.authService.getTemplateValidation(this.selectedTemplateId).subscribe({
+      next: (response: any) => {
+        console.log('Validation API Response:', response); // DEBUG
+
+        let validations: any[] = [];
+
+        try {
+          // FIX: Use correct casing "ValidationJson" instead of "validationJson"
+          validations = response?.ValidationJson
+            ? JSON.parse(response.ValidationJson)
+            : [];
+        } catch (e) {
+          console.error('Failed to parse ValidationJson:', e);
+        }
+
+        console.log('Parsed validations:', validations); // DEBUG
+
+        const dialogRef = this.dialog.open(ValidationDialogComponent, {
+          width: '1300px',
+          data: {
+            templateId: this.selectedTemplateId,
+            validations
+          }
+        });
+
+        dialogRef.afterClosed().subscribe((result: any) => {
+          if (result) {
+            const payload = {
+              templateId: this.selectedTemplateId,
+              validationJson: JSON.stringify(result)
+            };
+            this.authService.saveTemplateValidation(payload).subscribe(() => {
+              this.snackBar.open('Validations saved successfully!', 'Close', { duration: 3000 });
+            });
+          }
+        });
+      },
+      error: (err) => {
+        console.error('Error fetching validation rules:', err);
+      }
+    });
+  }
+
+
+
+
 }

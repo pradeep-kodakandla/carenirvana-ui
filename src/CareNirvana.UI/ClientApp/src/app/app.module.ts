@@ -43,6 +43,7 @@ import { UmauthnotesComponent } from './member/UM/umauthnotes/umauthnotes.compon
 import { UmauthdocumentsComponent } from './member/UM/umauthdocuments/umauthdocuments.component';
 import { UmauthactivityComponent } from './member/UM/umauthactivity/umauthactivity.component';
 
+
 import { ConfigurationComponent } from './admin/configuration/configuration.component';
 import { UsermanagementComponent } from './admin/usermanagement/usermanagement.component';
 import { RolemanagementComponent } from './admin/rolemanagement/rolemanagement.component';
@@ -80,6 +81,7 @@ import { UmauthstatusreasonComponent } from './admin/UM/umauthstatusreason/umaut
 import { BretestComponent } from './admin/UM/bretest/bretest.component';
 import { UmauthtemplateBuilderComponent } from './admin/UM/umauthtemplate-builder/umauthtemplate-builder.component';
 import { UmauthtemplateFieldPropertiesComponent } from './admin/UM/umauthtemplate-field-properties/umauthtemplate-field-properties.component';
+import { ValidationDialogComponent } from './admin/UM/validation-dialog/validation-dialog.component';
 
 import { CmnotetypeComponent } from './admin/CM/cmnotetype/cmnotetype.component';
 import { CmdocumenttypeComponent } from './admin/CM/cmdocumenttype/cmdocumenttype.component';
@@ -161,7 +163,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
     UmcertificationtypeComponent, UmdenialtypeComponent, UmdeterminationtypeComponent, UmdischargetoComponent, UmdischargetypeComponent,
     UmmedicationfrequencyComponent, UmnotificationtypeComponent, UmoutofareaindicatorComponent, UmplaceofserviceComponent, UmprescriptionquantityComponent,
     UmqualityindicatorComponent, UmtransportationtriptypeComponent, UmtreatmenttypeComponent, UmunittypeComponent, UmdecisionstatuscodeComponent, UmdenialreasonComponent,
-    UmauthtemplateComponent, BretestComponent, UmauthstatusreasonComponent, UmauthtemplateBuilderComponent, UmauthtemplateFieldPropertiesComponent,
+    UmauthtemplateComponent, BretestComponent, UmauthstatusreasonComponent, UmauthtemplateBuilderComponent, UmauthtemplateFieldPropertiesComponent, ValidationDialogComponent,
     CmnotetypeComponent, CmdocumenttypeComponent, AgnotetypeComponent, AgdocumenttypeComponent, CmaddresstypeComponent, CmadvancedirectivesComponent,
     CmappointmenttypeComponent, CmcauseofdeathComponent, CmevacuationzoneComponent, CmplaceofdeathComponent, CmsexualorientationComponent,
     CmconditionComponent, CmproblemComponent, CmgoalclassComponent, CmgoalComponent, CminterventionComponent, CmcareplanmatrixComponent,
@@ -250,7 +252,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
       { path: 'admin-umexternallink', component: ExternallinksComponent },
       { path: 'admin-umauthtemplatebuilder', component: UmauthtemplateBuilderComponent },
       { path: 'admin-umauthtemplateproperties', component: UmauthtemplateFieldPropertiesComponent },
-
+      { path: 'admin-umvalidationdialog', component: ValidationDialogComponent },
 
       { path: 'admin-cmnotetype', component: CmnotetypeComponent },
       { path: 'admin-cmdocumenttype', component: CmdocumenttypeComponent },

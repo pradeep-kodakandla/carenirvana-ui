@@ -1,0 +1,44 @@
+<h2 mat-dialog-title>Template Validations</h2>
+<mat-dialog-content>
+  <div *ngFor="let rule of data.validations; let i = index" class="validation-rule mb-3 border p-2 rounded">
+
+    <mat-checkbox [(ngModel)]="rule.enabled" class="mb-2">
+      Enable
+    </mat-checkbox>
+
+    <mat-form-field appearance="fill" class="w-100">
+      <mat-label>Validation ID</mat-label>
+      <input matInput [(ngModel)]="rule.id" disabled>
+    </mat-form-field>
+
+    <mat-form-field appearance="fill" class="w-100">
+      <mat-label>Error Message</mat-label>
+      <input matInput [(ngModel)]="rule.errorMessage">
+    </mat-form-field>
+
+    <mat-form-field appearance="fill" class="w-100">
+      <mat-label>Expression</mat-label>
+      <input matInput [(ngModel)]="rule.expression">
+    </mat-form-field>
+
+    <mat-form-field appearance="fill" class="w-100">
+      <mat-label>Depends On (comma separated)</mat-label>
+      <input matInput
+             [ngModel]="rule.dependsOn?.join(', ')"
+             (ngModelChange)="onDependsOnChange($event, rule)">
+    </mat-form-field>
+
+    <button mat-icon-button color="warn" (click)="removeValidation(i)" aria-label="Remove Validation">
+      <mat-icon>delete</mat-icon>
+    </button>
+
+    <mat-divider class="my-3"></mat-divider>
+  </div>
+
+  <button mat-stroked-button color="primary" (click)="addValidation()">Add Validation</button>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="close()">Cancel</button>
+  <button mat-raised-button color="primary" (click)="save()">Save</button>
+</mat-dialog-actions>
