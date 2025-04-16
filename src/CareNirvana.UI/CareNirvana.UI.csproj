@@ -27,6 +27,7 @@
     <None Remove="ClientApp\src\app\admin\" />
     <None Remove="ClientApp\src\app\core\" />
     <None Remove="ClientApp\src\app\dash-board\DashBoardComponent.ts" />
+    <None Remove="ClientApp\src\app\service\validation-expression.service.spec.ts" />
     <!--<None Remove="ClientApp\src\app\dash-board\DashBoardComponent.ts" />-->
     <None Remove="ClientApp\src\app\shared\" />
     <None Remove="ClientApp\src\app\login\" />

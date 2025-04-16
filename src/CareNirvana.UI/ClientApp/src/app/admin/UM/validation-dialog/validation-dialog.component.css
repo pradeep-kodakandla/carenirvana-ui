@@ -1,0 +1,93 @@
+/* Outlined Form Fields */
+.form-outline {
+  position: relative;
+  margin-bottom: 10px;
+  width: 100%;
+}
+
+  .form-outline .form-label {
+    position: absolute;
+    top: -10px;
+    left: 12px;
+    background: white;
+    padding: 0 5px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #555;
+  }
+
+  .form-outline .form-control {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #ccc;
+    border-radius: 5px;
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.3s ease-in-out;
+    background-color: white;
+  }
+
+    .form-outline .form-control:focus {
+      border-color: lightgray;
+      box-shadow: 0 0 5px rgba(30, 120, 171, 0.3);
+    }
+
+.rules-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px; /* more spacing between rule cards */
+  justify-content: space-between;
+}
+
+.validation-rule {
+  flex: 1 1 calc(33.33% - 16px); /* 3 per row with spacing */
+  min-width: 300px;
+  background: #f9f9f9;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+.form-outline input {
+  width: 100%;
+  /* increased from 35px */
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+
+.textarea-auto {
+  width: 100%;
+  font-size: 13px;
+  padding: 10px;
+  resize: none;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-sizing: border-box;
+  background-color: white;
+  overflow: hidden;
+  height: 35px;
+}
+
+
+.autocomplete-container {
+  width: 100%;
+}
+
+.autocomplete-list {
+  max-height: 200px;
+  overflow-y: auto;
+  width: 100%;
+  border-radius: 4px;
+}
+
+.autocomplete-item {
+  cursor: pointer;
+}
+
+  .autocomplete-item:hover {
+    background-color: #f1f1f1;
+  }

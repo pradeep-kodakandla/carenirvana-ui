@@ -1,44 +1,99 @@
-<h2 mat-dialog-title>Template Validations</h2>
+<h5 mat-dialog-title>Template Validations</h5>
 <mat-dialog-content>
-  <div *ngFor="let rule of data.validations; let i = index" class="validation-rule mb-3 border p-2 rounded">
+  <div class="rules-container">
+    <div *ngFor="let rule of data.validations; let i = index" class="validation-rule border p-2 rounded">
 
-    <mat-checkbox [(ngModel)]="rule.enabled" class="mb-2">
-      Enable
-    </mat-checkbox>
+      <mat-checkbox [(ngModel)]="rule.enabled" class="mb-2">
+        Enable
+      </mat-checkbox>
+      <mat-checkbox [(ngModel)]="rule.enabled" class="mb-2">
+        Error
+      </mat-checkbox>
 
-    <mat-form-field appearance="fill" class="w-100">
-      <mat-label>Validation ID</mat-label>
-      <input matInput [(ngModel)]="rule.id" disabled>
-    </mat-form-field>
+      <!--<div class="form-outline">
+        <label class="form-label">Validation ID</label>
+        <input [(ngModel)]="rule.id" disabled />
+      </div>-->
 
-    <mat-form-field appearance="fill" class="w-100">
-      <mat-label>Error Message</mat-label>
-      <input matInput [(ngModel)]="rule.errorMessage">
-    </mat-form-field>
+      <div class="form-outline">
+        <label class="form-label">Validation Message</label>
+        <textarea cdkTextareaAutosize
+                  cdkAutosizeMinRows="2"
+                  cdkAutosizeMaxRows="5"
+                  [(ngModel)]="rule.errorMessage"
+                  class="textarea-auto"></textarea>
+      </div>
 
-    <mat-form-field appearance="fill" class="w-100">
-      <mat-label>Expression</mat-label>
-      <input matInput [(ngModel)]="rule.expression">
-    </mat-form-field>
+      <div class="form-outline">
+        <label class="form-label">Expression</label>
+        <textarea cdkTextareaAutosize
+                  cdkAutosizeMinRows="2"
+                  cdkAutosizeMaxRows="5"
+                  [(ngModel)]="rule.expression"
+                  class="textarea-auto"></textarea>
+      </div>
 
-    <mat-form-field appearance="fill" class="w-100">
-      <mat-label>Depends On (comma separated)</mat-label>
-      <input matInput
-             [ngModel]="rule.dependsOn?.join(', ')"
-             (ngModelChange)="onDependsOnChange($event, rule)">
-    </mat-form-field>
+      <div class="form-outline">
+        <label class="form-label">Depends On (comma separated)</label>
+        <input [ngModel]="rule.dependsOn?.join(', ')"
+               (ngModelChange)="onDependsOnChange($event, rule)" />
+      </div>
 
-    <button mat-icon-button color="warn" (click)="removeValidation(i)" aria-label="Remove Validation">
-      <mat-icon>delete</mat-icon>
-    </button>
+      <button mat-icon-button color="warn" (click)="removeValidation(i)" aria-label="Remove Validation">
+        <mat-icon>delete</mat-icon>
+      </button>
 
-    <mat-divider class="my-3"></mat-divider>
+    </div>
+  </div>
+  <mat-divider></mat-divider>
+  <h4 class="mt-3">Add Validation</h4>
+
+  <!--<mat-form-field appearance="outline" class="w-100">
+    <mat-label>Describe your validation rule</mat-label>
+    <input type="text"
+           matInput
+           [formControl]="ruleInputControl"
+           [matAutocomplete]="auto" />
+    <mat-autocomplete #auto="matAutocomplete">
+      <mat-option *ngFor="let suggestion of filteredSuggestions$ | async" [value]="suggestion">
+        {{ suggestion }}
+      </mat-option>
+    </mat-autocomplete>
+  </mat-form-field>-->
+<div class="d-flex align-items-start gap-2">
+  <div class="autocomplete-container position-relative">
+    <input type="text"
+           class="form-control"
+           #inputElement
+           [formControl]="autoCompleteControl"
+           (focus)="inputElement.focus()" />
+
+    <div class="autocomplete-list border bg-white position-absolute shadow-sm z-10"
+         *ngIf="showAutocomplete && (filteredOptions$ | async)?.length"
+         style="bottom: 100%; left: 0; width: 100%; max-height: 200px; overflow-y: auto;">
+      <div *ngFor="let option of filteredOptions$ | async"
+           class="px-2 py-1 autocomplete-item"
+           (click)="onOptionSelected(option)">
+        {{ option }}
+      </div>
+    </div>
   </div>
 
-  <button mat-stroked-button color="primary" (click)="addValidation()">Add Validation</button>
+
+  <button mat-raised-button color="primary" (click)="addGeneratedValidation()">Generate & Add</button>
+</div>
+
+
+
+  <mat-error *ngIf="generateError" class="text-danger">
+    Could not generate validation from input. Please check your statement.
+  </mat-error>
 </mat-dialog-content>
 
+
+
 <mat-dialog-actions align="end">
+  <button mat-stroked-button color="primary" (click)="addValidation()">Add Validation</button>
   <button mat-button (click)="close()">Cancel</button>
   <button mat-raised-button color="primary" (click)="save()">Save</button>
 </mat-dialog-actions>

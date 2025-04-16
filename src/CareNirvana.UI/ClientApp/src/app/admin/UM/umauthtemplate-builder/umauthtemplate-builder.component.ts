@@ -941,10 +941,12 @@ export class UmauthtemplateBuilderComponent implements OnInit {
 
         const dialogRef = this.dialog.open(ValidationDialogComponent, {
           width: '1300px',
+          maxWidth: '1300px',
           data: {
             templateId: this.selectedTemplateId,
-            validations
-          }
+            validations,
+            templateJson: this.masterTemplate
+}
         });
 
         dialogRef.afterClosed().subscribe((result: any) => {

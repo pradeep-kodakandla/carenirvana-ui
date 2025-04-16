@@ -81,7 +81,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
     MatGridListModule,
     MatSidenavModule,
     BaseChartDirective, MatBadgeModule, MatButtonToggleModule, MatAutocompleteModule, MatCheckboxModule, MatStepperModule, MatTooltipModule, MatDialogModule,
-    MatSnackBarModule, MatDatepickerModule, MatNativeDateModule, MatRadioModule, BrowserModule, DragDropModule, MatAccordion, MatProgressSpinnerModule
+    MatSnackBarModule, MatDatepickerModule, MatNativeDateModule, MatRadioModule, BrowserModule, DragDropModule, MatAccordion, MatProgressSpinnerModule, 
   ],
   exports: [MatFormFieldModule, FlexLayoutModule,
     FormsModule,
@@ -106,7 +106,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
     MatTabsModule,
     MatGridListModule,
     MatSidenavModule, BaseChartDirective, MatBadgeModule, MatButtonToggleModule, MatAutocompleteModule, MatCheckboxModule, MatStepperModule, MatTooltipModule, MatDialogModule,
-    MatSnackBarModule, MatDatepickerModule, MatNativeDateModule, MatRadioModule, BrowserModule, DragDropModule, MatAccordion, MatProgressSpinnerModule
+    MatSnackBarModule, MatDatepickerModule, MatNativeDateModule, MatRadioModule, BrowserModule, DragDropModule, MatAccordion, MatProgressSpinnerModule, 
   ]
 })
 export class AngularMaterialModule { }
