@@ -107,7 +107,7 @@ export class ValidationDialogComponent implements OnInit {
     @Inject(MAT_DIALOG_DATA) public data: { templateId: number; validations: ValidationRule[]; templateJson: any },
     public dialogRef: MatDialogRef<ValidationDialogComponent>,
     private expressionService: ValidationExpressionsService
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.loadFieldsAndAliases();
@@ -318,10 +318,15 @@ export class ValidationDialogComponent implements OnInit {
 
   isValidStructuredRule(): boolean {
     const { mode, leftField, operator, rightField, rightConstant, logical, leftField2, operator2, rightField2, rightConstant2, thenField, thenValue, thenConstant, elseField, elseValue, elseConstant } = this.builder;
-    if (!leftField || !operator || (!rightField && !rightConstant)) return false;
+
+    // For NULL and NOTNULL, rightField and rightConstant are not required
+    if (!leftField || !operator) return false;
+    if (operator !== '== null' && operator !== '!= null' && !rightField && !rightConstant) return false;
     if (rightField === 'constant' && rightConstant === '') return false;
+
     if (mode === 'conditional') {
-      if (logical && (!leftField2 || !operator2 || (!rightField2 && !rightConstant2))) return false;
+      if (logical && (!leftField2 || !operator2)) return false;
+      if (logical && operator2 !== '== null' && operator2 !== '!= null' && (!rightField2 && !rightConstant2)) return false;
       if (logical && rightField2 === 'constant' && rightConstant2 === '') return false;
       if (thenField && (!thenValue && !thenConstant)) return false;
       if (thenField && thenValue === 'constant' && thenConstant === '') return false;
@@ -335,50 +340,68 @@ export class ValidationDialogComponent implements OnInit {
     const { mode, leftField, operator, rightField, rightConstant, logical, leftField2, operator2, rightField2, rightConstant2, thenField, thenValue, thenConstant, elseField, elseValue, elseConstant } = this.builder;
     if (!this.isValidStructuredRule()) return;
 
-    const rightValue = rightField === 'constant' ? (isNaN(Number(rightConstant)) ? `'${rightConstant}'` : rightConstant) : rightField;
-    let condition = `${ leftField } ${ operator } ${ rightValue } `;
+    let condition: string;
     let dependsOn = [leftField];
-    if (rightField !== 'constant' && rightField !== 'now') dependsOn.push(rightField);
+    let rightValue: string;
     let expression: string;
     let errorMessage: string;
 
+    // Handle NULL and NOTNULL operators
+    if (operator === '== null' || operator === '!= null') {
+      condition = `${leftField} ${operator}`;
+      rightValue = operator === '== null' ? 'null' : 'not null';
+    } else {
+      rightValue = rightField === 'constant' ? (isNaN(Number(rightConstant)) ? `'${rightConstant}'` : rightConstant) : rightField;
+      condition = `${leftField} ${operator} ${rightValue}`;
+      if (rightField !== 'constant' && rightField !== 'now') dependsOn.push(rightField);
+    }
+
     if (mode === 'simple') {
       expression = condition;
-      errorMessage = operator === '<='
-        ? `${ this.getFieldLabel(leftField) } must not be greater than ${ rightValue }.`
-        : operator === '>='
-        ? `${ this.getFieldLabel(leftField) } must not be less than ${ rightValue }.`
-        : `${ this.getFieldLabel(leftField) } must be ${ operator } ${ this.getFieldLabel(rightValue) || rightValue }.`;
+      errorMessage =
+        operator === '== null' ? `${this.getFieldLabel(leftField)} must be null.` :
+          operator === '!= null' ? `${this.getFieldLabel(leftField)} must not be null.` :
+            operator === '<=' ? `${this.getFieldLabel(leftField)} must not be greater than ${rightValue}.` :
+              operator === '>=' ? `${this.getFieldLabel(leftField)} must not be less than ${rightValue}.` :
+                `${this.getFieldLabel(leftField)} must be ${operator} ${this.getFieldLabel(rightValue) || rightValue}.`;
     } else {
-      if (logical && leftField2 && operator2 && rightField2) {
-        const rightValue2 = rightField2 === 'constant' ? (isNaN(Number(rightConstant2)) ? `'${rightConstant2}'` : rightConstant2) : rightField2;
-        condition = `(${ condition }) ${ logical } (${ leftField2 } ${ operator2 } ${ rightValue2 })`;
-        dependsOn.push(leftField2);
-        if (rightField2 !== 'constant' && rightField2 !== 'now') dependsOn.push(rightField2);
+      if (logical && leftField2 && operator2) {
+        let condition2: string;
+        if (operator2 === '== null' || operator2 === '!= null') {
+          condition2 = `${leftField2} ${operator2}`;
+          dependsOn.push(leftField2);
+        } else {
+          const rightValue2 = rightField2 === 'constant' ? (isNaN(Number(rightConstant2)) ? `'${rightConstant2}'` : rightConstant2) : rightField2;
+          condition2 = `${leftField2} ${operator2} ${rightValue2}`;
+          dependsOn.push(leftField2);
+          if (rightField2 !== 'constant' && rightField2 !== 'now') dependsOn.push(rightField2);
+        }
+        condition = `(${condition}) ${logical} (${condition2})`;
       }
 
       if (thenField && (thenValue || thenConstant)) {
         const thenVal = thenValue === 'constant' ? (isNaN(Number(thenConstant)) ? `'${thenConstant}'` : thenConstant) : thenValue;
         if (elseField && (elseValue || elseConstant)) {
           const elseVal = elseValue === 'constant' ? (isNaN(Number(elseConstant)) ? `'${elseConstant}'` : elseConstant) : elseValue;
-          expression = `${ condition } ?(${ thenField } = ${ thenVal }) : (${ elseField } = ${ elseVal })`;
-          errorMessage = `If ${ condition }, then ${ this.getFieldLabel(thenField) } must be ${ thenVal === 'now' ? 'current date' : this.getFieldLabel(thenVal) || thenVal }, else ${ this.getFieldLabel(elseField) } must be ${ elseVal === 'now' ? 'current date' : this.getFieldLabel(elseVal) || elseVal }.`;
+          expression = `${condition} ? (${thenField} = ${thenVal}) : (${elseField} = ${elseVal})`;
+          errorMessage = `If ${condition}, then ${this.getFieldLabel(thenField)} must be ${thenVal === 'now' ? 'current date' : this.getFieldLabel(thenVal) || thenVal}, else ${this.getFieldLabel(elseField)} must be ${elseVal === 'now' ? 'current date' : this.getFieldLabel(elseVal) || elseVal}.`;
           dependsOn.push(thenField, elseField);
           if (thenValue !== 'constant' && thenValue !== 'now') dependsOn.push(thenValue);
           if (elseValue !== 'constant' && elseValue !== 'now') dependsOn.push(elseValue);
         } else {
-          expression = `${ condition } ?(${ thenField } = ${ thenVal }) : true`;
-          errorMessage = `If ${ condition }, then ${ this.getFieldLabel(thenField) } must be ${ thenVal === 'now' ? 'current date' : this.getFieldLabel(thenVal) || thenVal }.`;
+          expression = `${condition} ? (${thenField} = ${thenVal}) : true`;
+          errorMessage = `If ${condition}, then ${this.getFieldLabel(thenField)} must be ${thenVal === 'now' ? 'current date' : this.getFieldLabel(thenVal) || thenVal}.`;
           dependsOn.push(thenField);
           if (thenValue !== 'constant' && thenValue !== 'now') dependsOn.push(thenValue);
         }
       } else {
         expression = condition;
-        errorMessage = operator === '<='
-          ? `${ this.getFieldLabel(leftField) } must not be greater than ${ rightValue }.`
-          : operator === '>='
-          ? `${ this.getFieldLabel(leftField) } must not be less than ${ rightValue }.`
-          : `Validation failed: ${ condition } `;
+        errorMessage =
+          operator === '== null' ? `${this.getFieldLabel(leftField)} must be null.` :
+            operator === '!= null' ? `${this.getFieldLabel(leftField)} must not be null.` :
+              operator === '<=' ? `${this.getFieldLabel(leftField)} must not be greater than ${rightValue}.` :
+                operator === '>=' ? `${this.getFieldLabel(leftField)} must not be less than ${rightValue}.` :
+                  `Validation failed: ${condition}`;
       }
     }
 
@@ -402,9 +425,9 @@ export class ValidationDialogComponent implements OnInit {
     }
 
     const mock: any = {
-      [leftField]: operator === '>=' ? -1 : operator === '>' ? new Date('2024-01-01') : 1500,
+      [leftField]: operator === '== null' ? null : operator === '!= null' ? 'someValue' : operator === '>=' ? -1 : operator === '>' ? new Date('2024-01-01') : 1500,
       [rightField]: rightField === 'constant' ? rightConstant : new Date('2024-01-02'),
-      [leftField2]: new Date('2024-01-03'),
+      [leftField2]: operator2 === '== null' ? null : operator2 === '!= null' ? 'someValue' : new Date('2024-01-03'),
       [rightField2]: rightField2 === 'constant' ? rightConstant2 : new Date('2024-01-04'),
       [thenField]: null,
       [elseField]: null
@@ -413,14 +436,25 @@ export class ValidationDialogComponent implements OnInit {
     if (elseValue && elseValue !== 'now' && elseValue !== 'constant') mock[elseValue] = 'TestValue2';
 
     try {
-      let condition = rightField === 'constant'
-        ? `mock['${leftField}'] ${ operator } ${ isNaN(Number(rightConstant)) ? `'${rightConstant}'` : rightConstant } `
-        : `new Date(mock['${leftField}']) ${ operator } new Date(mock['${rightField}'])`;
-      if (mode === 'conditional' && logical && leftField2 && operator2 && rightField2) {
-        const exp2 = rightField2 === 'constant'
-          ? `mock['${leftField2}'] ${ operator2 } ${ isNaN(Number(rightConstant2)) ? `'${rightConstant2}'` : rightConstant2 } `
-          : `new Date(mock['${leftField2}']) ${ operator2 } new Date(mock['${rightField2}'])`;
-        condition = `(${ condition }) ${ logical } (${ exp2 })`;
+      let condition: string;
+      if (operator === '== null' || operator === '!= null') {
+        condition = `mock['${leftField}'] ${operator}`;
+      } else {
+        condition = rightField === 'constant'
+          ? `mock['${leftField}'] ${operator} ${isNaN(Number(rightConstant)) ? `'${rightConstant}'` : rightConstant}`
+          : `new Date(mock['${leftField}']) ${operator} new Date(mock['${rightField}'])`;
+      }
+
+      if (mode === 'conditional' && logical && leftField2 && operator2) {
+        let exp2: string;
+        if (operator2 === '== null' || operator2 === '!= null') {
+          exp2 = `mock['${leftField2}'] ${operator2}`;
+        } else {
+          exp2 = rightField2 === 'constant'
+            ? `mock['${leftField2}'] ${operator2} ${isNaN(Number(rightConstant2)) ? `'${rightConstant2}'` : rightConstant2}`
+            : `new Date(mock['${leftField2}']) ${operator2} new Date(mock['${rightField2}'])`;
+        }
+        condition = `(${condition}) ${logical} (${exp2})`;
       }
 
       let result: boolean;

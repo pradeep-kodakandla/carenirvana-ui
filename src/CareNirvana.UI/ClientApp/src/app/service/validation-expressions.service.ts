@@ -24,7 +24,9 @@ export class ValidationExpressionsService {
       'not equal': '!=', 'different from': '!=',
       'greater or equal': '>=', 'not less than': '>=', 'at least': '>=',
       'less or equal': '<=', 'not greater than': '<=', 'cannot exceed': '<=',
-      'within': 'within'
+      'within': 'within',
+      'is null': '== null',
+      'is not null': '!= null'
     },
     conditions: ['if', 'when', 'unless'],
     logical: { 'and': '&&', 'or': '||' },
@@ -36,40 +38,40 @@ export class ValidationExpressionsService {
     {
       regex: /(.*)\s+(greater than|after|later than|exceeds)\s+(.*)/i,
       generate: (match: RegExpMatchArray, fields: string[]) => ({
-        expression: `${ fields[0] } > ${ fields[1] } `,
-        errorMessage: `${ this.getFieldLabel(fields[0]) } must be greater than ${ this.getFieldLabel(fields[1]) }.`,
+        expression: `${fields[0]} > ${fields[1]} `,
+        errorMessage: `${this.getFieldLabel(fields[0])} must be greater than ${this.getFieldLabel(fields[1])}.`,
         dependsOn: fields
       })
     },
     {
       regex: /(.*)\s+within\s+(.*)\s+and\s+(.*)/i,
       generate: (match: RegExpMatchArray, fields: string[]) => ({
-        expression: `${ fields[0] } >= ${ fields[1] } && ${ fields[0] } <= ${ fields[2] } `,
-        errorMessage: `${ this.getFieldLabel(fields[0]) } must be between ${ this.getFieldLabel(fields[1]) } and ${ this.getFieldLabel(fields[2]) }.`,
+        expression: `${fields[0]} >= ${fields[1]} && ${fields[0]} <= ${fields[2]} `,
+        errorMessage: `${this.getFieldLabel(fields[0])} must be between ${this.getFieldLabel(fields[1])} and ${this.getFieldLabel(fields[2])}.`,
         dependsOn: fields
       })
     },
     {
       regex: /(.*)\s+required\s+if\s+(.*)\s+is set/i,
       generate: (match: RegExpMatchArray, fields: string[]) => ({
-        expression: `${ fields[1] } ?!!${ fields[0] } : true`,
-        errorMessage: `${ this.getFieldLabel(fields[0]) } is required when ${ this.getFieldLabel(fields[1]) } is set.`,
+        expression: `${fields[1]} ?!!${fields[0]} : true`,
+        errorMessage: `${this.getFieldLabel(fields[0])} is required when ${this.getFieldLabel(fields[1])} is set.`,
         dependsOn: fields
       })
     },
     {
       regex: /(.*)\s+(not greater than|cannot exceed)\s+(\d+)/i,
       generate: (match: RegExpMatchArray, fields: string[]) => ({
-        expression: `${ fields[0] } <= ${ match[3] } `,
-        errorMessage: `${ this.getFieldLabel(fields[0]) } must not be greater than ${ match[3] }.`,
+        expression: `${fields[0]} <= ${match[3]} `,
+        errorMessage: `${this.getFieldLabel(fields[0])} must not be greater than ${match[3]}.`,
         dependsOn: fields
       })
     },
     {
       regex: /(.*)\s+(not less than|cannot be less than|at least)\s+(\d+)/i,
       generate: (match: RegExpMatchArray, fields: string[]) => ({
-        expression: `${ fields[0] } >= ${ match[3] } `,
-        errorMessage: `${ this.getFieldLabel(fields[0]) } must not be less than ${ match[3] }.`,
+        expression: `${fields[0]} >= ${match[3]} `,
+        errorMessage: `${this.getFieldLabel(fields[0])} must not be less than ${match[3]}.`,
         dependsOn: fields
       })
     },
@@ -84,8 +86,8 @@ export class ValidationExpressionsService {
         const elseField = fields[3];
         const elseValue = isNaN(Number(match[8])) ? `'${match[8]}'` : match[8];
         return {
-          expression: `${ conditionField1 } ${ operator } ${ conditionField2 } ?(${ thenField } = ${ thenValue }) : (${ elseField } = ${ elseValue })`,
-          errorMessage: `If ${ this.getFieldLabel(conditionField1) } ${ operator } ${ this.getFieldLabel(conditionField2) }, then ${ this.getFieldLabel(thenField) } must be ${ match[6] }, else ${ this.getFieldLabel(elseField) } must be ${ match[8] }.`,
+          expression: `${conditionField1} ${operator} ${conditionField2} ?(${thenField} = ${thenValue}) : (${elseField} = ${elseValue})`,
+          errorMessage: `If ${this.getFieldLabel(conditionField1)} ${operator} ${this.getFieldLabel(conditionField2)}, then ${this.getFieldLabel(thenField)} must be ${match[6]}, else ${this.getFieldLabel(elseField)} must be ${match[8]}.`,
           dependsOn: [conditionField1, conditionField2, thenField, elseField]
         };
       }
@@ -102,11 +104,27 @@ export class ValidationExpressionsService {
         const thenField = fields[4];
         const thenValue = isNaN(Number(match[9])) ? `'${match[9]}'` : match[9];
         return {
-          expression: `(${ conditionField1 } ${ operator1 } ${ conditionField2 }) && (${ conditionField3 } ${ operator2 } ${ conditionField4 }) ?(${ thenField } = ${ thenValue }) : true`,
-          errorMessage: `If ${ this.getFieldLabel(conditionField1) } ${ operator1 } ${ this.getFieldLabel(conditionField2) } and ${ this.getFieldLabel(conditionField3) } ${ operator2 } ${ this.getFieldLabel(conditionField4) }, then ${ this.getFieldLabel(thenField) } must be ${ match[9] }.`,
+          expression: `(${conditionField1} ${operator1} ${conditionField2}) && (${conditionField3} ${operator2} ${conditionField4}) ?(${thenField} = ${thenValue}) : true`,
+          errorMessage: `If ${this.getFieldLabel(conditionField1)} ${operator1} ${this.getFieldLabel(conditionField2)} and ${this.getFieldLabel(conditionField3)} ${operator2} ${this.getFieldLabel(conditionField4)}, then ${this.getFieldLabel(thenField)} must be ${match[9]}.`,
           dependsOn: [conditionField1, conditionField2, conditionField3, conditionField4, thenField]
         };
       }
+    },
+    {
+      regex: /(.*)\s+is\s+null/i,
+      generate: (match: RegExpMatchArray, fields: string[]) => ({
+        expression: `${fields[0]} == null`,
+        errorMessage: `${this.getFieldLabel(fields[0])} must be null.`,
+        dependsOn: fields
+      })
+    },
+    {
+      regex: /(.*)\s+is\s+not\s+null/i,
+      generate: (match: RegExpMatchArray, fields: string[]) => ({
+        expression: `${fields[0]} != null`,
+        errorMessage: `${this.getFieldLabel(fields[0])} must not be null.`,
+        dependsOn: fields
+      })
     }
   ];
 
@@ -152,8 +170,8 @@ export class ValidationExpressionsService {
     if (fieldMatches.length >= 2 && operator) {
       const fields = fieldMatches.map(m => m.id);
       const expression = hasNow
-        ? `${ fields[0] } ${ operator } now ? ${ fields[1] } ${ operator } ${ fields[0] } : true`
-        : `${ fields[0] } ${ operator } ${ fields[1] } `;
+        ? `${fields[0]} ${operator} now ? ${fields[1]} ${operator} ${fields[0]} : true`
+        : `${fields[0]} ${operator} ${fields[1]} `;
 
       return {
         expression,

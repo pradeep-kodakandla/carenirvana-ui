@@ -30,9 +30,11 @@
               <option value="!=">Not Equal to</option>
               <option value=">=">>= (Not less than)</option>
               <option value="<="><= (Not greater than)</option>
+              <option value="== null">Is NULL</option>
+              <option value="!= null">Is NOT NULL</option>
             </select>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-4" *ngIf="builder.operator !== '== null' && builder.operator !== '!= null'">
             <label>Right Value</label>
             <select class="form-select" [(ngModel)]="builder.rightField" (change)="builder.rightConstant = ''; onRightValueChange()">
               <option value="">-- Select Value --</option>
@@ -61,9 +63,11 @@
               <option value="!=">Not Equal to</option>
               <option value=">=">>= (Not less than)</option>
               <option value="<="><= (Not greater than)</option>
+              <option value="== null">Is NULL</option>
+              <option value="!= null">Is NOT NULL</option>
             </select>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-4" *ngIf="builder.operator !== '== null' && builder.operator !== '!= null'">
             <label>Right Value</label>
             <select class="form-select" [(ngModel)]="builder.rightField" (change)="builder.rightConstant = ''; onRightValueChange()">
               <option value="">-- Select Value --</option>
@@ -100,9 +104,11 @@
               <option value="!=">!=</option>
               <option value=">=">>= (Not less than)</option>
               <option value="<="><= (Not greater than)</option>
+              <option value="== null">Is NULL</option>
+              <option value="!= null">Is NOT NULL</option>
             </select>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-4" *ngIf="builder.operator2 !== '== null' && builder.operator2 !== '!= null'">
             <label>Right Value 2</label>
             <select class="form-select" [(ngModel)]="builder.rightField2" (change)="builder.rightConstant2 = ''; onRightValueChange(true)">
               <option value="">-- Select Value --</option>
@@ -114,7 +120,7 @@
           </div>
         </div>
         <!-- THEN Clause -->
-        <div *ngIf="builder.mode === 'conditional' && builder.leftField && builder.operator && (builder.rightField || builder.rightConstant)" class="row mb-3">
+        <div *ngIf="builder.mode === 'conditional' && builder.leftField && builder.operator && (builder.rightField || builder.rightConstant || builder.operator === '== null' || builder.operator === '!= null')" class="row mb-3">
           <div class="col-md-4">
             <label>THEN Set Field</label>
             <select class="form-select" [(ngModel)]="builder.thenField">
@@ -158,11 +164,11 @@
           <label>Expression Preview</label>
           <div class="bg-white border rounded p-2">
             <ng-container *ngIf="builder.mode === 'simple'">
-              {{ getFieldLabel(builder.leftField) }} {{ builder.operator }} {{ builder.rightField === 'constant' ? builder.rightConstant : getFieldLabel(builder.rightField) || builder.rightField }}
+              {{ getFieldLabel(builder.leftField) }} {{ builder.operator === '== null' ? 'is NULL' : builder.operator === '!= null' ? 'is NOT NULL' : builder.operator + ' ' + (builder.rightField === 'constant' ? builder.rightConstant : getFieldLabel(builder.rightField) || builder.rightField) }}
             </ng-container>
             <ng-container *ngIf="builder.mode === 'conditional'">
-              IF {{ getFieldLabel(builder.leftField) }} {{ builder.operator }} {{ builder.rightField === 'constant' ? builder.rightConstant : getFieldLabel(builder.rightField) || builder.rightField }}
-              {{ builder.logical ? ' ' + builder.logical + ' ' + getFieldLabel(builder.leftField2) + ' ' + builder.operator2 + ' ' + (builder.rightField2 === 'constant' ? builder.rightConstant2 : getFieldLabel(builder.rightField2) || builder.rightField2) : '' }}
+              IF {{ getFieldLabel(builder.leftField) }} {{ builder.operator === '== null' ? 'is NULL' : builder.operator === '!= null' ? 'is NOT NULL' : builder.operator + ' ' + (builder.rightField === 'constant' ? builder.rightConstant : getFieldLabel(builder.rightField) || builder.rightField) }}
+              {{ builder.logical ? ' ' + builder.logical + ' ' + getFieldLabel(builder.leftField2) + ' ' + (builder.operator2 === '== null' ? 'is NULL' : builder.operator2 === '!= null' ? 'is NOT NULL' : builder.operator2 + ' ' + (builder.rightField2 === 'constant' ? builder.rightConstant2 : getFieldLabel(builder.rightField2) || builder.rightField2)) : '' }}
               {{ builder.thenField && (builder.thenValue || builder.thenConstant) ? ' THEN ' + getFieldLabel(builder.thenField) + ' = ' + (builder.thenValue === 'constant' ? builder.thenConstant : getFieldLabel(builder.thenValue) || builder.thenValue) : '' }}
               {{ builder.elseField && (builder.elseValue || builder.elseConstant) ? ' ELSE ' + getFieldLabel(builder.elseField) + ' = ' + (builder.elseValue === 'constant' ? builder.elseConstant : getFieldLabel(builder.elseValue) || builder.elseValue) : '' }}
             </ng-container>
