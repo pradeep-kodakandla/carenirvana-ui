@@ -1,9 +1,8 @@
 <h5 mat-dialog-title>Template Validations</h5>
 <mat-dialog-content>
-  <mat-tab-group>
+  <mat-tab-group *ngIf="showTabs">
     <mat-tab label="Structured Builder">
       <div class="structured-builder mt-4 border p-3 rounded bg-light">
-        <h5 class="mb-3">Structured Expression Builder</h5>
         <!-- Mode Selector -->
         <div class="mb-3">
           <label class="me-3">Expression Mode:</label>
@@ -98,10 +97,10 @@
           <div class="col-md-2">
             <label>Op 2</label>
             <select class="form-select" [(ngModel)]="builder.operator2">
-              <option value=">">></option>
-              <option value="<"><</option>
-              <option value="==">==</option>
-              <option value="!=">!=</option>
+              <option value=">">Greater than</option>
+              <option value="<">Less than</option>
+              <option value="==">Equal to</option>
+              <option value="!=">Not Equal to</option>
               <option value=">=">>= (Not less than)</option>
               <option value="<="><= (Not greater than)</option>
               <option value="== null">Is NULL</option>
@@ -175,8 +174,9 @@
           </div>
         </div>
         <div class="d-flex gap-2">
-          <button mat-raised-button color="primary" (click)="addStructuredValidation()" [disabled]="!isValidStructuredRule()">Add Rule</button>
-          <button mat-stroked-button color="accent" (click)="testStructuredRule()">Test Rule</button>
+          <button mat-raised-button color="primary" class="common-button" (click)="addStructuredValidation()" [disabled]="!isValidStructuredRule()">Add Rule</button>
+          <button mat-stroked-button color="accent" class="common-button" (click)="testStructuredRule()">Test Rule</button>
+          <button mat-button class="common-button" (click)="showTabs = false">Cancel</button>
         </div>
         <div *ngIf="testResult" class="alert alert-info mt-3">
           <strong>Test Result:</strong> {{ testResult }}
@@ -185,7 +185,6 @@
     </mat-tab>
     <mat-tab label="Natural Language">
       <div class="natural-language mt-4 border p-3 rounded bg-light">
-        <h5 class="mb-3">Natural Language Rule Builder</h5>
         <div class="d-flex align-items-start gap-2">
           <div class="autocomplete-container position-relative w-100">
             <input type="text" class="form-control" #inputElement [formControl]="autoCompleteControl" (focus)="onInputFocus()" (blur)="onInputBlur()" />
@@ -204,7 +203,6 @@
     </mat-tab>
     <mat-tab label="Presets">
       <div class="presets mt-4 border p-3 rounded bg-light">
-        <h5 class="mb-3">Preset Validation Rules</h5>
         <div class="row mb-3" *ngFor="let preset of presets">
           <div class="col-md-4">
             <label>{{ preset.label }}</label>
@@ -222,41 +220,88 @@
               <option value="">-- Select Field C --</option>
               <option *ngFor="let field of allFields" [value]="field.id">{{ field.label }}</option>
             </select>
-            <input *ngIf="preset.dependsOn.includes('{CONST}')" type="text" class="form-control mb-2" [(ngModel)]="builder.presetConstant" placeholder="Enter value (e.g., 1000 or Delayed)" />
-            <button mat-raised-button color="primary" (click)="applyPreset(preset.label, builder.presetFieldA, builder.presetFieldB, builder.presetFieldC, builder.presetConstant)" [disabled]="!isValidPreset(preset)">Apply Preset</button>
+            <input *ngIf="preset.dependsOn.includes('{CONST}')" type="text" class="form-control mb-2"
+                   [(ngModel)]="preset.tempConstant"
+                   placeholder="Enter value (e.g., 1000 or Delayed)" />
+            <button mat-raised-button color="primary"
+                    (click)="applyPreset(preset.label, builder.presetFieldA, builder.presetFieldB, builder.presetFieldC, preset.tempConstant, preset.tempConstant2, preset)"
+                    [disabled]="!isValidPreset(preset)">
+              Apply Preset
+            </button>
+
           </div>
         </div>
       </div>
     </mat-tab>
   </mat-tab-group>
 
-  <div class="rules-container mt-4">
-    <h4>Current Validations</h4>
-    <div *ngFor="let rule of data.validations; let i = index" class="validation-rule border p-2 rounded mb-2">
-      <div class="d-flex justify-content-between">
-        <mat-checkbox [(ngModel)]="rule.enabled">Enable</mat-checkbox>
-        <button mat-icon-button color="warn" (click)="removeValidation(i)" aria-label="Remove Validation">
-          <mat-icon>delete</mat-icon>
+  <div style="padding-top:10px;" class="table-container">
+    <div class="d-flex justify-content-between align-items-center" style="width: 100%; padding-bottom:5px;">
+      <div class="search-box" [class.active]="isFocused">
+        <button mat-icon-button>
+          <mat-icon>search</mat-icon>
         </button>
+        <input type="text"
+               (keyup)="applyFilter($event)" placeholder="Search Validation"
+               class="search-input"
+               (focus)="onFocus()"
+               (blur)="onBlur()" />
       </div>
-      <div class="form-outline">
-        <label class="form-label">Validation Message</label>
-        <textarea cdkTextareaAutosize cdkAutosizeMinRows="2" cdkAutosizeMaxRows="5" [(ngModel)]="rule.errorMessage" class="textarea-auto"></textarea>
-      </div>
-      <div class="form-outline">
-        <label class="form-label">Expression</label>
-        <textarea cdkTextareaAutosize cdkAutosizeMinRows="2" cdkAutosizeMaxRows="5" [(ngModel)]="rule.expression" class="textarea-auto"></textarea>
-      </div>
-      <div class="form-outline">
-        <label class="form-label">Depends On (comma separated)</label>
-        <input [ngModel]="rule.dependsOn?.join(', ')" (ngModelChange)="onDependsOnChange($event, rule)" />
+      <div>
+        <button mat-icon-button color="primary" (click)="showTabs = true" matTooltip="Add Validation">
+          <mat-icon>add</mat-icon>
+        </button>
+
       </div>
     </div>
+    <table class="responsive-table" mat-table [dataSource]="dataSource" multiTemplateDataRows matSort>
+
+      <!-- Enable Column -->
+      <ng-container matColumnDef="enabled">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Enable</th>
+        <td mat-cell *matCellDef="let rule">
+          <mat-checkbox [(ngModel)]="rule.enabled"></mat-checkbox>
+        </td>
+      </ng-container>
+
+      <!-- Error Message Column -->
+      <ng-container matColumnDef="errorMessage">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Error Message</th>
+        <td mat-cell *matCellDef="let rule">
+          <textarea class="form-control" [(ngModel)]="rule.errorMessage" rows="2"></textarea>
+        </td>
+      </ng-container>
+
+      <!-- Expression Column -->
+      <ng-container matColumnDef="expression">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Expression</th>
+        <td mat-cell *matCellDef="let rule">
+          <textarea class="form-control" [(ngModel)]="rule.expression" rows="2"></textarea>
+        </td>
+      </ng-container>
+
+      <!-- Actions -->
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Actions</th>
+        <td mat-cell *matCellDef="let rule; let i = index">
+          <button mat-icon-button color="warn" (click)="removeValidation(i)">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+
+    <mat-paginator [pageSizeOptions]="[5, 10, 20]" showFirstLastButtons></mat-paginator>
   </div>
+
+
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-  <button mat-stroked-button color="primary" (click)="addValidation()">Add Validation</button>
-  <button mat-button (click)="close()">Cancel</button>
-  <button mat-raised-button color="primary" (click)="save()">Save</button>
+  <!--<button mat-stroked-button color="primary" (click)="showTabs = true">Add Validation</button>-->
+  <button mat-button class="common-button" (click)="close(); showTabs = false">Cancel</button>
+  <button mat-raised-button color="primary" class="common-button" (click)="save()">Save</button>
 </mat-dialog-actions>

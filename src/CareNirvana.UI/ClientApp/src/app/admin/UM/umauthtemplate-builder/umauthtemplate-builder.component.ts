@@ -915,7 +915,6 @@ export class UmauthtemplateBuilderComponent implements OnInit {
     }
   }
 
-
   openValidationDialog(): void {
     if (!this.selectedTemplateId || this.selectedTemplateId === 0) {
       this.snackBar.open('Please select a template to manage validations', 'Close', { duration: 3000 });
@@ -950,12 +949,13 @@ export class UmauthtemplateBuilderComponent implements OnInit {
         });
 
         dialogRef.afterClosed().subscribe((result: any) => {
+          console.log('Returned validations:', result); 
           if (result) {
             const payload = {
               templateId: this.selectedTemplateId,
               validationJson: JSON.stringify(result)
             };
-            this.authService.saveTemplateValidation(payload).subscribe(() => {
+            this.authService.updateTemplateValidation(payload).subscribe(() => {
               this.snackBar.open('Validations saved successfully!', 'Close', { duration: 3000 });
             });
           }
@@ -966,8 +966,4 @@ export class UmauthtemplateBuilderComponent implements OnInit {
       }
     });
   }
-
-
-
-
 }

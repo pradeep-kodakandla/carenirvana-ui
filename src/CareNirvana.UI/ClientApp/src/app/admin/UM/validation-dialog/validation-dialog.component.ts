@@ -5,6 +5,9 @@ import { FormControl } from '@angular/forms';
 import { of, Observable } from 'rxjs';
 import { map, startWith, debounceTime } from 'rxjs/operators';
 import { v4 as uuidv4 } from 'uuid';
+import { MatTableDataSource } from '@angular/material/table';
+import { MatPaginator } from '@angular/material/paginator';
+import { MatSort } from '@angular/material/sort';
 
 interface ValidationRule {
   id: string;
@@ -28,48 +31,61 @@ export class ValidationDialogComponent implements OnInit {
   newRuleText: string = '';
   generateError: boolean = false;
 
+  displayedColumns: string[] = ['enabled', 'errorMessage', 'expression', 'actions'];
+  dataSource!: MatTableDataSource<ValidationRule>;
+  showTabs = false;
+  isFocused = false;
+
   presets = [
     {
       label: 'Date is After Another Date',
       value: '{A} > {B}',
       dependsOn: ['{A}', '{B}'],
-      message: '{A} must be after {B}.'
+      message: '{A} must be after {B}.',
+      tempConstant: ''
     },
     {
       label: 'Date Within Range',
       value: '{A} >= {B} && {A} <= {C}',
       dependsOn: ['{A}', '{B}', '{C}'],
-      message: '{A} must be between {B} and {C}.'
+      message: '{A} must be between {B} and {C}.',
+      tempConstant: ''
     },
     {
       label: 'Field Required if Another is Set',
       value: '{B} ? !!{A} : true',
       dependsOn: ['{A}', '{B}'],
-      message: '{A} is required when {B} is set.'
+      message: '{A} is required when {B} is set.',
+      tempConstant: ''
     },
     {
       label: 'Number Not Greater Than 1000',
-      value: '{A} <= 1000',
+      value: '{A} <= {CONST}',
       dependsOn: ['{A}', '{CONST}'],
-      message: '{A} must not be greater than 1000.'
+      message: '{A} must not be greater than {CONST}.',
+      tempConstant: ''
     },
     {
       label: 'Number Not Less Than 0',
-      value: '{A} >= 0',
+      value: '{A} >= {CONST}',
       dependsOn: ['{A}', '{CONST}'],
-      message: '{A} must not be less than 0.'
+      message: '{A} must not be less than {CONST}.',
+      tempConstant: ''
     },
     {
       label: 'Field A Greater Than Field B',
       value: '{A} > {B}',
       dependsOn: ['{A}', '{B}'],
-      message: '{A} must be greater than {B}.'
+      message: '{A} must be greater than {B}.',
+      tempConstant: ''
     },
     {
       label: 'IF Field A > Field B THEN Set Field C ELSE Set Field C',
       value: '{A} > {B} ? ({C} = {CONST1}) : ({C} = {CONST2})',
       dependsOn: ['{A}', '{B}', '{C}', '{CONST1}', '{CONST2}'],
-      message: 'If {A} > {B}, then {C} must be {CONST1}, else {C} must be {CONST2}.'
+      message: 'If {A} > {B}, then {C} must be {CONST1}, else {C} must be {CONST2}.',
+      tempConstant: '',
+      tempConstant2: ''
     }
   ];
 
@@ -102,6 +118,8 @@ export class ValidationDialogComponent implements OnInit {
   allFields: { id: string; label: string }[] = [];
 
   @ViewChild('inputElement', { static: true }) inputElement!: ElementRef<HTMLInputElement>;
+  @ViewChild(MatPaginator) paginator!: MatPaginator;
+  @ViewChild(MatSort) sort!: MatSort;
 
   constructor(
     @Inject(MAT_DIALOG_DATA) public data: { templateId: number; validations: ValidationRule[]; templateJson: any },
@@ -112,6 +130,22 @@ export class ValidationDialogComponent implements OnInit {
   ngOnInit(): void {
     this.loadFieldsAndAliases();
     this.setupAutocomplete();
+    this.dataSource = new MatTableDataSource(this.data.validations);
+  }
+
+  ngAfterViewInit() {
+    this.dataSource.paginator = this.paginator;
+    this.dataSource.sort = this.sort;
+  }
+
+  applyFilter(event: Event) {
+    const filterValue = (event.target as HTMLInputElement).value.trim().toLowerCase();
+    this.dataSource.filter = filterValue;
+  }
+
+  removeValidation(index: number) {
+    this.data.validations.splice(index, 1);
+    this.dataSource.data = this.data.validations;
   }
 
   private loadFieldsAndAliases() {
@@ -212,6 +246,7 @@ export class ValidationDialogComponent implements OnInit {
   }
 
   save() {
+    console.log('Saving validations:', this.data.validations);
     this.dialogRef.close(this.data.validations);
   }
 
@@ -227,10 +262,7 @@ export class ValidationDialogComponent implements OnInit {
       dependsOn: [],
       enabled: true
     });
-  }
-
-  removeValidation(index: number) {
-    this.data.validations.splice(index, 1);
+    this.dataSource.data = [...this.data.validations];
   }
 
   onDependsOnChange(value: string, rule: ValidationRule) {
@@ -245,7 +277,9 @@ export class ValidationDialogComponent implements OnInit {
     const rule = this.expressionService.generateExpressionFromText(this.data.templateJson, this.newRuleText);
     if (rule.enabled) {
       rule.id = uuidv4();
-      this.data.validations.push(rule);
+      //this.data.validations.push(rule);
+      this.data.validations.unshift(rule); // Add to top
+      this.dataSource.data = [...this.data.validations]; // Refresh dataSource
       this.newRuleText = '';
       this.generateError = false;
     } else {
@@ -253,21 +287,22 @@ export class ValidationDialogComponent implements OnInit {
     }
   }
 
-  applyPreset(presetKey: string, fieldA: string, fieldB: string, fieldC?: string, constant?: string, constant2?: string): void {
-    const preset = this.presets.find(p => p.label === presetKey);
+  applyPreset(presetKey: string, fieldA: string, fieldB: string, fieldC?: string, constant?: string, constant2?: string, preset?: any): void {
+
+    //const preset = this.presets.find(p => p.label === presetKey);
     if (!preset || !fieldA || (preset.dependsOn.includes('{CONST}') && !constant) || (preset.dependsOn.includes('{CONST2}') && !constant2)) return;
 
     let expr = preset.value.replace('{A}', fieldA);
     let msg = preset.message.replace('{A}', this.getFieldLabel(fieldA));
     let depends: string[] = preset.dependsOn
-      .map(dep => {
+      .map((dep: string) => {
         if (dep === '{A}') return fieldA;
         if (dep === '{B}' && fieldB) return fieldB;
         if (dep === '{C}' && fieldC) return fieldC;
         if (dep === '{CONST}' || dep === '{CONST2}') return null; // Exclude constants
         return null;
       })
-      .filter((dep): dep is string => typeof dep === 'string' && dep.length > 0);
+      .filter((dep: string): dep is string => typeof dep === 'string' && dep.length > 0);
 
     if (fieldB) {
       expr = expr.replace('{B}', fieldB);
@@ -286,7 +321,7 @@ export class ValidationDialogComponent implements OnInit {
       msg = msg.replace('{CONST2}', constant2);
     }
 
-    this.data.validations.push({
+    this.data.validations.unshift({
       id: uuidv4(),
       expression: expr,
       dependsOn: [...new Set(depends)],
@@ -294,12 +329,19 @@ export class ValidationDialogComponent implements OnInit {
       enabled: true
     });
 
+    this.dataSource.sort = null;
+    this.dataSource.data = [...this.data.validations];
+    setTimeout(() => this.dataSource.sort = this.sort);
+
     // Reset preset fields
     this.builder.presetFieldA = '';
     this.builder.presetFieldB = '';
     this.builder.presetFieldC = '';
-    this.builder.presetConstant = '';
-    this.builder.presetConstant2 = '';
+    //this.builder.presetConstant = '';
+    //this.builder.presetConstant2 = '';
+    preset.tempConstant = '';
+    preset.tempConstant2 = '';
+
   }
 
   getFieldLabel(id: string): string {
@@ -311,8 +353,8 @@ export class ValidationDialogComponent implements OnInit {
       !!this.builder.presetFieldA &&
       (!preset.dependsOn.includes('{B}') || !!this.builder.presetFieldB) &&
       (!preset.dependsOn.includes('{C}') || !!this.builder.presetFieldC) &&
-      (!preset.dependsOn.includes('{CONST}') || this.builder.presetConstant !== '') &&
-      (!preset.dependsOn.includes('{CONST2}') || this.builder.presetConstant2 !== '')
+      (!preset.dependsOn.includes('{CONST}') || preset.tempConstant?.toString().trim() !== '') &&
+      (!preset.dependsOn.includes('{CONST2}') || preset.tempConstant2?.toString().trim() !== '')
     );
   }
 
@@ -405,13 +447,17 @@ export class ValidationDialogComponent implements OnInit {
       }
     }
 
-    this.data.validations.push({
+    this.data.validations.unshift({
       id: uuidv4(),
       expression,
       errorMessage,
       dependsOn: [...new Set(dependsOn.filter(f => f !== 'now'))],
       enabled: true
     });
+
+    this.dataSource.sort = null; // Reset sort temporarily
+    this.dataSource.data = [...this.data.validations];
+    setTimeout(() => this.dataSource.sort = this.sort); // Restore sort
 
     this.testResult = null;
     this.resetBuilder();
@@ -509,4 +555,13 @@ export class ValidationDialogComponent implements OnInit {
       presetConstant2: ''
     };
   }
+
+  onFocus() {
+    this.isFocused = true;
+  }
+
+  onBlur() {
+    this.isFocused = false;
+  }
+
 }
