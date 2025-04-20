@@ -1,0 +1,17 @@
+<h2 mat-dialog-title>{{ data.title }}</h2>
+
+<mat-dialog-content>
+  <div *ngFor="let item of data.messages">
+    <p [ngClass]="{
+          'text-danger': item.type === 'error',
+          'text-warning': item.type === 'warning'
+        }">
+      {{ item.msg }}
+    </p>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button *ngIf="data.allowContinue" color="primary" (click)="dialogRef.close('continue')">Continue</button>
+  <button mat-button (click)="dialogRef.close()">Close</button>
+</mat-dialog-actions>

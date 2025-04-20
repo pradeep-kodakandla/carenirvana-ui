@@ -9,6 +9,7 @@ import { CrudService } from 'src/app/service/crud.service';
 import { MatDialog } from '@angular/material/dialog';
 import { ProviderSearchComponent } from 'src/app/Provider/provider-search/provider-search.component';
 import { HeaderService } from 'src/app/service/header.service';
+import { ValidationErrorDialogComponent } from 'src/app/member/validation-error-dialog/validation-error-dialog.component';
 
 @Component({
   selector: 'app-authorization',
@@ -78,6 +79,10 @@ export class AuthorizationComponent {
   filteredIcdCodes: any[] = [];
   filteredServiceCodes: any[] = [];
 
+  validationRules: any[] = [];
+
+  sectionValidationMessages: { [sectionName: string]: string[] } = {};
+
 
 
   //********** Method to highlight the selected section and autocomplete ************//
@@ -111,10 +116,6 @@ export class AuthorizationComponent {
     }
   }
 
-  //selectOption(selectedLabel: string, entry: any, fieldId: string, section: string, index: number) {
-  //  entry[fieldId] = selectedLabel;
-  //  this.showDropdown[`${section}_${index}_${fieldId}`] = false;
-  //}
 
   selectOption(selectedLabel: string, entry: any, fieldId: string, section: string, index: number) {
     const key = `${section}_${index}_${fieldId}`;
@@ -333,7 +334,6 @@ export class AuthorizationComponent {
     { label: "Overall Status", value: "" }
   ];
 
-
   @Output() cancel = new EventEmitter<void>();
 
   onCancelClick(): void {
@@ -399,15 +399,6 @@ export class AuthorizationComponent {
                   this.authNumber = data[0]?.AuthNumber;
                   this.saveType = 'Update';
 
-                  //if (savedData['Diagnosis Details']?.selectedOptions) {
-                  //  this.populateSelectedOptions('Diagnosis Details', 'icd10Code', savedData['Diagnosis Details'].selectedOptions);
-                  //}
-
-                  //if (savedData['Service Details']?.selectedOptions) {
-                  //  this.populateSelectedOptions('Service Details', 'serviceCode', savedData['Service Details'].selectedOptions);
-                  //}
-
-
                   if (savedData && savedData['Authorization Notes']) {
                     this.authorizationNotesData = savedData['Authorization Notes'].entries || [];
                   }
@@ -415,6 +406,8 @@ export class AuthorizationComponent {
                   if (savedData && savedData['Authorization Documents']) {
                     this.authorizationDocumentData = savedData['Authorization Documents'].entries || [];
                   }
+
+                  //this.restoreDisplayLabels();
 
                   this.loadDecisionData();
 
@@ -431,7 +424,16 @@ export class AuthorizationComponent {
                     { label: "Auth Status", value: savedData?.AuthStatus || "N/A" },
                     { label: "Overall Status", value: savedData?.OverallStatus || "N/A" }
                   ];
-                  this.providerFieldsVisible = true;
+
+                  const providerSection = this.formData?.['Provider Details'];
+                  if (providerSection?.entries?.some((entry: any) => entry?.providerName?.trim())) {
+                    this.providerFieldsVisible = true;
+                  } else {
+                    this.providerFieldsVisible = false;
+                  }
+
+                  this.restoreDisplayLabels();
+
                 } catch (error) {
                   console.error('Error parsing Data:', error);
                 }
@@ -620,6 +622,7 @@ export class AuthorizationComponent {
             }
           });
 
+          let remaining = datasourceMap.size;
 
           datasourceMap.forEach((_, datasource) => {
             this.crudService.getData('um', datasource).subscribe(
@@ -722,9 +725,18 @@ export class AuthorizationComponent {
                     }
                   }
                 });
+
+                remaining--;
+                if (remaining === 0) {
+                  this.restoreDisplayLabels(); // ✅ Call after all options are populated
+                }
               },
               error => {
                 console.error('Error fetching data for datasource:', datasource, error);
+                remaining--;
+                if (remaining === 0) {
+                  this.restoreDisplayLabels(); // Still call even on error
+                }
               }
             );
           });
@@ -737,7 +749,7 @@ export class AuthorizationComponent {
             this.populateSelectedOptions('Service Details', 'serviceCode', this.formData['Service Details'].selectedOptions);
           }
 
-
+          this.getValidationRules();
 
           this.DecisionFields = {
             decisionDetails: { ...this.config['Decision Details'].fields || [] },
@@ -768,19 +780,26 @@ export class AuthorizationComponent {
     }
   }
 
-  //createEmptyEntry(fields: any[], isNew: boolean = false): any {
-  //  let entry: any = { __isNew: isNew }; // mark entry as new if needed
-  //  fields.forEach(field => {
-  //    if (field.layout === 'row' && Array.isArray(field.fields)) {
-  //      field.fields.forEach((subField: any) => {
-  //        entry[subField.id] = subField.defaultValue ?? '';
-  //      });
-  //    } else {
-  //      entry[field.id] = field.defaultValue ?? '';
-  //    }
-  //  });
-  //  return entry;
-  //}
+  getValidationRules(): void {
+    this.authService.getTemplateValidation(this.selectedTemplateId).subscribe({
+      next: (response: any) => {
+        try {
+          this.validationRules = response?.ValidationJson
+            ? JSON.parse(response.ValidationJson)
+            : [];
+          console.log('Loaded Validation Rules:', this.validationRules);
+        } catch (e) {
+          console.error('Failed to parse ValidationJson:', e);
+          this.validationRules = [];
+        }
+      },
+      error: (err) => {
+        console.error('Error fetching validation rules:', err);
+        this.validationRules = [];
+      }
+    });
+  }
+
 
   createEmptyEntry(fields: any[], isNew: boolean = false): any {
     let entry: any = { __isNew: isNew };
@@ -795,6 +814,7 @@ export class AuthorizationComponent {
     });
     return entry;
   }
+
 
   toggleSection(section: string): void {
     if (!section) {
@@ -875,18 +895,91 @@ export class AuthorizationComponent {
         if (errorElements.length > 0) {
           errorElements[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-      }, 200); // Slight delay to allow validation messages to be displayed
+      }, 200);
 
       return;
     }
 
+
+    // Validate before saving
+    //*****Validation logic - Start******/
+    const flatValues: any = {};
+    Object.values(this.formData).forEach((section: any) => {
+      if (section?.entries) {
+        section.entries.forEach((entry: any) => {
+          Object.entries(entry).forEach(([key, value]) => {
+            if (!flatValues[key]) flatValues[key] = value;
+          });
+        });
+      }
+    });
+
+    const failedErrors: any[] = [];
+    const failedWarnings: any[] = [];
+    this.sectionValidationMessages = {};
+
+    this.validationRules
+      .filter(r => r.enabled)
+      .forEach(rule => {
+        const result = this.evaluateExpression(rule, flatValues);
+        if (!result) {
+          const message = rule.isError ? `❌ ${rule.errorMessage}` : `⚠️ ${rule.errorMessage}`;
+
+          // Map this message to sections that include any of the rule's fields
+          this.sectionOrderAll.forEach(section => {
+            const fields = (this.config[section]?.fields || []);
+            const fieldIds = fields.map((f: any) => f.id);
+            const intersects = rule.dependsOn.some((dep: string) => fieldIds.includes(dep));
+
+            if (intersects) {
+              if (!this.sectionValidationMessages[section]) {
+                this.sectionValidationMessages[section] = [];
+              }
+              this.sectionValidationMessages[section].push(message);
+            }
+          });
+
+          if (rule.isError) failedErrors.push(rule);
+          else failedWarnings.push(rule);
+        }
+      });
+
+
+    if (failedErrors.length || failedWarnings.length) {
+      const allMessages = [
+        ...failedErrors.map(r => ({ msg: `❌ ${r.errorMessage}`, type: 'error' })),
+        ...failedWarnings.map(r => ({ msg: `⚠️ ${r.errorMessage}`, type: 'warning' }))
+      ];
+
+      const hasOnlyWarnings = failedWarnings.length > 0 && failedErrors.length === 0;
+
+      const dialogRef = this.dialog.open(ValidationErrorDialogComponent, {
+        width: '600px',
+        data: {
+          title: 'Validation Results',
+          messages: allMessages,
+          allowContinue: hasOnlyWarnings
+        }
+      });
+
+      dialogRef.afterClosed().subscribe(result => {
+        if (result === 'continue') {
+          this.proceedToSave(); // only allowed if it's just warnings
+        }
+      });
+
+      return;
+    }
+    //*****Validation logic - End ******/
+  }
+
+  proceedToSave(): void {
     if (this.saveType === '') {
       this.saveType = 'Add';
     }
 
     let jsonData: any = {}; // Use let to reassign
-    //console.log('Member ID:', this.memberId);
-    //console.log('Selected TemplatedId:', this.selectedTemplateId);
+
     if (this.saveType === 'Add') {
       this.authNumber = this.authNumberService.generateAuthNumber(9, true, true, false, false);
       //console.log("Auth Number:", this.authNumber);
@@ -903,7 +996,6 @@ export class AuthorizationComponent {
         CreatedBy: 1,
         responseData: JSON.stringify(this.formData) // Ensure it's a valid JSON string
       };
-
 
       this.additionalInfo = [
         { label: "Auth No", value: this.authNumber || "N/A" },
@@ -928,17 +1020,11 @@ export class AuthorizationComponent {
 
       this.headerService.selectTab(newRoute);
 
-      // Optional: Update router URL
-      //this.route.paramMap.subscribe(() => {
-      //  this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
-      //    this.router.navigate([newRoute]);
-      //  });
-      //});
       this.isSaveSuccessful = true;
     }
 
     if (this.saveType === 'Update') {
-      // console.log("Auth Number:", this.authNumber);
+
       jsonData = {
         Data: [this.formData],
         AuthNumber: this.authNumber,
@@ -1298,5 +1384,111 @@ export class AuthorizationComponent {
     const match = field.options.find((opt: any) => opt.value === value);
     return match ? match.label : '';
   }
+
+
+  //evaluateExpression(rule: any, values: any): boolean {
+  //  const { expression, dependsOn } = rule;
+  //  try {
+  //    const context: any = {};
+  //    dependsOn.forEach((key: string) => {
+  //      let val = values[key];
+  //      if (typeof val === 'string') {
+  //        const dateMatch = /\d{2}\/\d{2}\/\d{4}/.test(val) || /\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}/.test(val);
+  //        if (dateMatch) {
+  //          val = new Date(val);
+  //        } else if (!isNaN(Number(val))) {
+  //          val = Number(val);
+  //        }
+  //      }
+  //      context[key] = val;
+  //    });
+
+  //    const func = new Function(...dependsOn, `return ${expression};`);
+  //    return func(...dependsOn.map((k: string) => context[k]));
+  //  } catch (e) {
+  //    console.error('Error evaluating expression:', e, rule);
+  //    return true; // Ignore broken rule
+  //  }
+  //}
+
+  evaluateExpression(rule: any, values: any): boolean {
+    const { expression, dependsOn } = rule;
+
+    try {
+      // Include createdDateTime and now dynamically
+      let localDependsOn = [...dependsOn];
+      if (expression.includes('now') && !localDependsOn.includes('now')) {
+        localDependsOn.push('now');
+      }
+      if (expression.includes('createdDateTime') && !localDependsOn.includes('createdDateTime')) {
+        localDependsOn.push('createdDateTime');
+      }
+
+      const context: { [key: string]: any } = {};
+
+      localDependsOn.forEach((key: string) => {
+        let val: any;
+
+        // Treat 'now' and 'createdDateTime' as the current datetime
+        if (key === 'now' || key === 'createdDateTime') {
+          val = new Date();
+        } else {
+          val = values[key];
+          if (typeof val === 'string') {
+            const dateMatch = /\d{2}\/\d{2}\/\d{4}/.test(val) || /\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}/.test(val);
+            if (dateMatch) {
+              val = new Date(val);
+            } else if (!isNaN(Number(val))) {
+              val = Number(val);
+            }
+          }
+        }
+
+        context[key] = val;
+      });
+
+      console.log(`\n🔍 Evaluating Expression: ${expression}`);
+      localDependsOn.forEach((key: string) => {
+        console.log(`   ${key} =`, context[key]);
+      });
+
+      const func = new Function(...localDependsOn, `return ${expression};`);
+      const result = func(...localDependsOn.map((k: string) => context[k]));
+
+      console.log(`Result: ${result}\n`);
+      return result;
+    } catch (e) {
+      console.error('Error evaluating expression:', e, rule);
+      return true; // fail-safe
+    }
+  }
+
+  restoreDisplayLabels() {
+    if (!this.config || !this.formData) return;
+
+    this.sectionOrderAll.forEach(section => {
+      const sectionConfig = this.config[section];
+      if (!sectionConfig) return;
+
+      const entries = this.formData[section]?.entries || [];
+
+      entries.forEach((entry: any, i: number) => {
+        sectionConfig.fields?.forEach((field: any) => {
+          if (field.type === 'select') {
+            const key = `${field.id}_${i}_${section}`;
+            if (field.options?.length) {
+              const selected = field.options.find((opt: any) => opt.value == entry[field.id]);
+              if (selected) {
+                this.displayLabels[key] = selected.label;
+              }
+            }
+          }
+        });
+      });
+    });
+  }
+
+
+
 
 }

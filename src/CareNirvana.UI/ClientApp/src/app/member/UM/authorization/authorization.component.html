@@ -1,3 +1,4 @@
+
 <div class="container" style="padding: 0px !important; font-family: 'Open Sans', sans-serif !important; font-size: 14px !important; position: relative;" *ngIf="!showAuthorizationComponent">
   <!-- Close Button -->
   <div class="close-container d-flex justify-content-between align-items-center">
@@ -384,11 +385,28 @@
                                     <label [for]="field.id + '_' + i" class="form-label">
                                       {{ field.displayName }}<span *ngIf="field.required" class="text-danger"> * </span>
                                     </label>
+
                                     <div class="form-group">
                                       <ng-container [ngSwitch]="field.type">
                                         <ng-container *ngSwitchDefault>
-                                          <div class="position-relative">
-                                            <!-- ✅ important -->
+                                          <!--<div class="position-relative">-->
+                                          <!-- ✅ important -->
+                                          <!--<input class="form-control"
+                                                   [type]="field.type"
+                                                   [id]="field.id + '_' + i"
+                                                   name="{{ field.id + '_' + i }}"
+                                                   [(ngModel)]="entry[field.id]"
+                                                   placeholder="{{ field.displayName }}"
+                                                   [required]="field.required"
+                                                   #fieldModel="ngModel"
+                                                   [attr.autocomplete]="'off'"
+                                                   [value]="displayLabels[field.id + '_' + i + '_' + section] || getOptionLabel(field, entry[field.id]) || ''"
+                                                   (input)="filterOptions(field, entry[field.id], section, i)"
+                                                   (focus)="onFocus(field, section, i)"
+                                                   (blur)="onBlur(field, section, i)"
+                                                   (keydown)="handleKeydown($event, field, section, i, entry)" />
+                                          </div>-->
+                                          <div class="form-outline position-relative" *ngIf="providerFieldsVisible">
                                             <input class="form-control"
                                                    [type]="field.type"
                                                    [id]="field.id + '_' + i"
@@ -404,33 +422,14 @@
                                                    (blur)="onBlur(field, section, i)"
                                                    (keydown)="handleKeydown($event, field, section, i, entry)" />
 
-                                            <!-- autocomplete dropdown -->
-                                            <div class="autocomplete-dropdown shadow-sm"
-                                                 *ngIf="showDropdown[section + '_' + i + '_' + field.id] && filteredOptions[section + '_' + i + '_' + field.id]?.length">
-                                              <div class="autocomplete-option"
-                                                   *ngFor="let option of filteredOptions[section + '_' + i + '_' + field.id]; let optIndex = index"
-                                                   [class.active]="hoveredIndexMap[section + '_' + i + '_' + field.id] === optIndex"
-                                                   (mousedown)="selectOption(option.label, entry, field.id, section, i)">
-                                                {{ option.label }}
-                                              </div>
-                                            </div>
+                                            <!-- ✅ Move label *after* input for best floating effect -->
+                                            <label class="form-label" [for]="field.id + '_' + i">
+                                              {{ field.displayName }}
+                                              <span *ngIf="field.required" class="text-danger"> *</span>
+                                            </label>
                                           </div>
                                         </ng-container>
-                                        <!--<ng-container *ngSwitchCase="'select'">
-                                          <select class="form-control"
-                                                  [id]="field.id + '_' + i"
-                                                  name="{{ field.id + '_' + i }}"
-                                                  [(ngModel)]="entry[field.id]"
-                                                  [required]="field.required"
-                                                  #fieldModel="ngModel">
 
-                                            <option *ngFor="let option of field.options" [value]="option.value">{{ option.label }}</option>
-                                          </select>
-                                          <mat-icon class="custom-dropdown-arrow">arrow_drop_down</mat-icon>
-                                          <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched)" class="text-danger">
-                                            {{ field.requiredMsg ? field.requiredMsg : (field.displayName + " is required.") }}
-                                          </div>
-                                        </ng-container>-->
                                         <ng-container *ngSwitchCase="'datetime-local'">
                                           <div class="form-outline position-relative">
                                             <!-- Floating label -->
@@ -810,16 +809,28 @@
                           </ng-template>
                         </div>
                       </div>
+                      <div *ngIf="sectionValidationMessages[section]?.length" class="mt-3 px-3 pb-2">
+                        <div *ngFor="let msg of sectionValidationMessages[section]"
+                             [ngClass]="{
+                                           'text-danger': msg.startsWith('❌'),
+                                           'text-warning': msg.startsWith('⚠️')
+                                         }"
+                             class="small">
+                          {{ msg }}
+                        </div>
+                      </div>
+
                     </mat-card>
                   </ng-container>
                 </ng-container>
-
                 <!-- Save Button -->
                 <div class="text-center">
-                  <button mat-raised-button class="auth-button " (click)="saveData(authForm)">Save & Continue</button>
+                  <button mat-raised-button class="auth-button " (click)="saveData(authForm)">{{ isEditMode ? 'Save and Review' : 'Save and Continue' }}</button>
                   <!--<button mat-raised-button class="auth-button " (click)="loadData()">Load</button>-->
                 </div>
+
               </div>
+
 
 
               <!-- Status Details -->

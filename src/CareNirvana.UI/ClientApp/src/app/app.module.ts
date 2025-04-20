@@ -42,7 +42,7 @@ import { ProviderSearchComponent } from './Provider/provider-search/provider-sea
 import { UmauthnotesComponent } from './member/UM/umauthnotes/umauthnotes.component';
 import { UmauthdocumentsComponent } from './member/UM/umauthdocuments/umauthdocuments.component';
 import { UmauthactivityComponent } from './member/UM/umauthactivity/umauthactivity.component';
-
+import { ValidationErrorDialogComponent } from './member/validation-error-dialog/validation-error-dialog.component';
 
 import { ConfigurationComponent } from './admin/configuration/configuration.component';
 import { UsermanagementComponent } from './admin/usermanagement/usermanagement.component';
@@ -155,7 +155,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
     MemberProgramComponent,
     MemberTasksummaryComponent,
     MemberInfoComponent, AuthorizationComponent, DecisiondetailsComponent, AuthdetailsComponent, AuthdynamicComponent, ProviderSearchComponent,
-    UmauthnotesComponent, UmauthdocumentsComponent, UmauthactivityComponent,
+    UmauthnotesComponent, UmauthdocumentsComponent, UmauthactivityComponent, ValidationErrorDialogComponent,
     NewDashBoardComponent, NewDashboard2Component,
     ConfigurationComponent, UsermanagementComponent, RolemanagementComponent, ProfilemanagementComponent, AppfeaturesetupComponent,
     UmdocumenttypeComponent, SettingsDialogComponent, UmactivitytypeComponent, DialogContentComponent, UmnotetypeComponent, ExternallinksComponent,
@@ -209,6 +209,17 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
       { path: 'member-auth/:authNo/:memberId', component: AuthorizationComponent },
       { path: 'member-decision/:id', component: DecisiondetailsComponent },
       { path: 'member-authdetails', component: AuthdetailsComponent },
+      { path: 'member-um-validation', component: ValidationErrorDialogComponent },
+
+
+
+
+
+
+
+
+
+
       { path: 'dash-newdash', component: NewDashBoardComponent },
       { path: 'dash-newdash2', component: NewDashboard2Component },
       { path: 'member-authdynamic', component: AuthdynamicComponent },

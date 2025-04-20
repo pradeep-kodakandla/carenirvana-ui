@@ -716,17 +716,6 @@ export class UmauthtemplateBuilderComponent implements OnInit {
           // ✅ Move to unavailableSections
           this.unavailableSections.push(sectionName);
 
-          // ✅ Move fields to unavailableFieldsGrouped
-          //if (deletedSection.fields && deletedSection.fields.length) {
-          //  this.unavailableFieldsGrouped[sectionName] = deletedSection.fields.map(field => ({
-          //    ...field,
-          //    sectionName,
-          //    displayName: field.displayName || field.label || field.id,
-          //    label: field.displayName || field.label || field.id
-          //  }));
-          //  this.unavailableFieldsList.push(...this.unavailableFieldsGrouped[sectionName]);
-          //}
-
           // Remove from current template
           this.masterTemplate.sections.splice(index, 1);
         }
@@ -766,46 +755,7 @@ export class UmauthtemplateBuilderComponent implements OnInit {
   }
 
 
-  //moveFieldToAvailable(field: TemplateField, sectionName: string, event: Event): void {
-  //  event.stopPropagation();
-
-  //  // Check if the sectionName refers to a subsection
-  //  if (sectionName.includes('.')) {
-  //    const [mainSectionName, subSectionName] = sectionName.split('.');
-
-  //    // Find the main section
-  //    const mainSection = this.masterTemplate.sections?.find(sec => sec.sectionName === mainSectionName);
-
-  //    if (mainSection && mainSection.subsections) {
-  //      // Find the subsection
-  //      const subSection = mainSection.subsections[subSectionName];
-
-  //      if (subSection && subSection.fields) {
-  //        // Find and remove the field from the subsection
-  //        const index = subSection.fields.findIndex(f => f.id === field.id);
-  //        if (index > -1) {
-  //          subSection.fields.splice(index, 1);
-  //        }
-  //      }
-  //    }
-  //  } else {
-  //    // Handling for normal sections (not subsections)
-  //    const section = this.masterTemplate.sections?.find(sec => sec.sectionName === sectionName);
-  //    if (section && section.fields) {
-  //      const index = section.fields.findIndex(f => f.id === field.id);
-  //      if (index > -1) {
-  //        section.fields.splice(index, 1);
-  //      }
-  //    }
-  //  }
-
-  //  // Move the field to available fields
-  //  this.availableFields.push(field);
-
-  //  // 🔥 Force UI to update
-  //  this.forceAngularChangeDetection();
-  //}
-  moveFieldToAvailable(field: TemplateField, sectionName: string, event: Event): void {
+   moveFieldToAvailable(field: TemplateField, sectionName: string, event: Event): void {
     event.stopPropagation();
 
     let wasRemoved = false;
@@ -936,7 +886,6 @@ export class UmauthtemplateBuilderComponent implements OnInit {
           console.error('Failed to parse ValidationJson:', e);
         }
 
-        console.log('Parsed validations:', validations); // DEBUG
 
         const dialogRef = this.dialog.open(ValidationDialogComponent, {
           width: '1300px',

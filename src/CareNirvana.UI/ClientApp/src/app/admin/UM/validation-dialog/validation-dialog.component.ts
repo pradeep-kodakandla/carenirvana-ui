@@ -15,6 +15,7 @@ interface ValidationRule {
   expression: string;
   dependsOn: string[];
   enabled: boolean;
+  isError: boolean;
 }
 
 @Component({
@@ -31,7 +32,7 @@ export class ValidationDialogComponent implements OnInit {
   newRuleText: string = '';
   generateError: boolean = false;
 
-  displayedColumns: string[] = ['enabled', 'errorMessage', 'expression', 'actions'];
+  displayedColumns: string[] = ['enabled', 'isError', 'errorMessage', 'expression', 'actions'];
   dataSource!: MatTableDataSource<ValidationRule>;
   showTabs = false;
   isFocused = false;
@@ -260,7 +261,8 @@ export class ValidationDialogComponent implements OnInit {
       errorMessage: '',
       expression: '',
       dependsOn: [],
-      enabled: true
+      enabled: true,
+      isError: true
     });
     this.dataSource.data = [...this.data.validations];
   }
@@ -326,7 +328,8 @@ export class ValidationDialogComponent implements OnInit {
       expression: expr,
       dependsOn: [...new Set(depends)],
       errorMessage: msg,
-      enabled: true
+      enabled: true,
+      isError: true
     });
 
     this.dataSource.sort = null;
@@ -452,7 +455,8 @@ export class ValidationDialogComponent implements OnInit {
       expression,
       errorMessage,
       dependsOn: [...new Set(dependsOn.filter(f => f !== 'now'))],
-      enabled: true
+      enabled: true,
+      isError: true
     });
 
     this.dataSource.sort = null; // Reset sort temporarily

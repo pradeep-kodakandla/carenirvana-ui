@@ -535,3 +535,10 @@ input.form-control:focus + .floating-label {
   color: #495057;
 }
 
+.text-warning {
+  color: #ff9800; /* Material orange */
+}
+
+.text-danger {
+  color: #f44336; /* Material red */
+}
