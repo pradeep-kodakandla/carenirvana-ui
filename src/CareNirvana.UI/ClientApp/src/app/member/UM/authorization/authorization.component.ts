@@ -965,8 +965,8 @@ export class AuthorizationComponent {
 
     if (failedErrors.length || failedWarnings.length) {
       const allMessages = [
-        ...failedErrors.map(r => ({ msg: `❌ ${r.errorMessage}`, type: 'error' })),
-        ...failedWarnings.map(r => ({ msg: `⚠️ ${r.errorMessage}`, type: 'warning' }))
+        ...failedErrors.map(r => ({ msg: `❌ Error:+' '+   ${r.errorMessage}`, type: 'error' })),
+        ...failedWarnings.map(r => ({ msg: `⚠️ Warning:+' '+ ${r.errorMessage}`, type: 'warning' }))
       ];
 
       const hasOnlyWarnings = failedWarnings.length > 0 && failedErrors.length === 0;
@@ -988,7 +988,8 @@ export class AuthorizationComponent {
 
       return;
     }
-    //*****Validation logic - End ******/
+
+    else { this.proceedToSave(); }    //*****Validation logic - End ******/
   }
 
   proceedToSave(): void {
