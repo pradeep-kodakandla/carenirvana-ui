@@ -324,14 +324,14 @@ export class AuthorizationComponent {
 
   selectedDiv: number | null = null;
   additionalInfo = [
-    { label: "Auth No", value: "" },
-    { label: "Auth Type", value: "" },
-    { label: "Due Date", value: "" },
-    { label: "Days Left", value: "" },
-    { label: "Request Priority", value: "" },
-    { label: "Auth Owner", value: "" },
-    { label: "Auth Status", value: "" },
-    { label: "Overall Status", value: "" }
+    { label: "Auth No", value: "N/A" },
+    { label: "Auth Type", value: "N/A" },
+    { label: "Due Date", value: "N/A" },
+    { label: "Days Left", value: "N/A" },
+    { label: "Request Priority", value: "N/A" },
+    { label: "Auth Owner", value: "N/A" },
+    { label: "Auth Status", value: "N/A" },
+    { label: "Overall Status", value: "N/A" }
   ];
 
   @Output() cancel = new EventEmitter<void>();
@@ -376,7 +376,24 @@ export class AuthorizationComponent {
           this.selectDiv(1);
 
           let savedData = data[0]?.responseData;
-          const authTemplateId = data[0]?.AuthTypeId || 0; // Extract authTemplateId
+          const authTemplateId = data[0]?.AuthTypeId || 0;
+          const authClassId = data[0]?.AuthClassId || 0;
+          console.log('Selected Auth Class ID:', authClassId);
+          if (authClassId) {
+            this.selectedAuthClassId = authClassId;
+            console.log('Selected Auth Class ID:', this.selectedAuthClassId);
+            // First load templates for this class, then continue
+            this.authService.getAuthTemplates(authClassId).subscribe({
+              next: (templates: any[]) => {
+                this.authTemplates = [
+                  { Id: 0, TemplateName: 'Select Auth Type' },
+                  ...templates
+                ];
+              }
+            });
+          }
+
+
           if (authTemplateId) {
 
             this.selectedTemplateId = authTemplateId;
@@ -444,6 +461,7 @@ export class AuthorizationComponent {
           } else {
             console.warn("No authTemplateId found, skipping onAuthTypeChange.");
           }
+
         } else {
           console.warn("No authorization data returned for:", authNumber);
         }
@@ -987,6 +1005,7 @@ export class AuthorizationComponent {
         Data: [this.formData],
         AuthNumber: this.authNumber,
         AuthTypeId: this.selectedTemplateId,
+        AuthClassId: this.selectedAuthClassId,
         MemberId: this.memberId,
         AuthDueDate: new Date().toISOString(),
         NextReviewDate: new Date().toISOString(),
@@ -1382,34 +1401,14 @@ export class AuthorizationComponent {
   getOptionLabel(field: any, value: any): string {
     if (!field || !field.options || !Array.isArray(field.options)) return '';
     const match = field.options.find((opt: any) => opt.value === value);
-    return match ? match.label : '';
+    return match?.label || '';
   }
 
+  onInputChange(event: Event, field: any, section: string, index: number): void {
+    const inputValue = (event.target as HTMLInputElement).value;
+    this.filterOptions(field, inputValue, section, index);
+  }
 
-  //evaluateExpression(rule: any, values: any): boolean {
-  //  const { expression, dependsOn } = rule;
-  //  try {
-  //    const context: any = {};
-  //    dependsOn.forEach((key: string) => {
-  //      let val = values[key];
-  //      if (typeof val === 'string') {
-  //        const dateMatch = /\d{2}\/\d{2}\/\d{4}/.test(val) || /\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}/.test(val);
-  //        if (dateMatch) {
-  //          val = new Date(val);
-  //        } else if (!isNaN(Number(val))) {
-  //          val = Number(val);
-  //        }
-  //      }
-  //      context[key] = val;
-  //    });
-
-  //    const func = new Function(...dependsOn, `return ${expression};`);
-  //    return func(...dependsOn.map((k: string) => context[k]));
-  //  } catch (e) {
-  //    console.error('Error evaluating expression:', e, rule);
-  //    return true; // Ignore broken rule
-  //  }
-  //}
 
   evaluateExpression(rule: any, values: any): boolean {
     const { expression, dependsOn } = rule;

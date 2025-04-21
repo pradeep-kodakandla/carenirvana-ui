@@ -24,8 +24,9 @@
 
 
 
-<div class="d-flex justify-content-between align-items-center " style="width: 100%; padding-bottom:5px;  ">
+<div class="d-flex justify-content-between align-items-center w-100 pb-2">
 
+  <!-- Search Box -->
   <div class="search-box" [class.active]="isFocused">
     <button mat-icon-button>
       <mat-icon>search</mat-icon>
@@ -37,33 +38,19 @@
            (blur)="onBlur()" #input />
 
   </div>
-  <!--<div>
-    <button mat-icon-button color="primary" (click)="onAddClick()" matTooltip="Add Auth">
-      <mat-icon>add</mat-icon>
-    </button>
-  </div>-->
-  <!--<div class="add-container">-->
-  <!--<button mat-icon-button
-          (click)="onAddClick()"
+
+  <!-- Add Button -->
+  <button (click)="onAddClick()"
           matTooltip="Click to add a new authorization"
           [matTooltipClass]="'custom-tooltip'"
-          [ngClass]="{'highlight-add': showAddHighlight}">
-    <mat-icon>add</mat-icon>
-  </button>-->
-  <div class="row">
-    <div class="col-md-3 mb-3">
-      <button (click)="onAddClick()"
-              matTooltip="Click to add a new authorization"
-              [matTooltipClass]="'custom-tooltip'"
-              [ngClass]="{'highlight-add': showAddHighlight}" class="btn btn-primary" style="width:max-content;">
-        Add Auth
-      </button>
-    </div>
-    <!--</div>-->
-  </div>
+          class="btn btn-primary ms-3">
+    Add Auth
+  </button>
 </div>
 
-<div class="d-flex justify-content-between align-items-center " style="margin-left:10px; margin-right:10px;  ">
+
+<div class="d-flex flex-column" style="margin-left:10px; margin-right:10px; width: 100%;">
+
   <table class="responsive-table" mat-table [dataSource]="dataSource" multiTemplateDataRows matSort>
 
     <ng-container matColumnDef="authDetailId">
@@ -115,9 +102,10 @@
     <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
     <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
   </table>
-  <!--<div *ngIf="isEmpty && !isLoading" style="text-align-last:center;" class="no-data">
-    <p>No data available</p>
-  </div>-->
+  <div *ngIf="isEmpty && !isLoading" class="text-center w-100 mt-3 no-data">
+    <p class="text-muted">No data available</p>
+  </div>
+
   <!-- Paginator -->
   <mat-paginator [pageSizeOptions]="[10, 15, 20]" showFirstLastButtons></mat-paginator>
 </div>

@@ -209,7 +209,7 @@ label {
     background: white;
     padding: 0 5px;
     font-size: 12px;
-    font-weight: bold;
+    /*font-weight: bold;*/
     color: #555;
   }
 
@@ -218,7 +218,7 @@ label {
     padding: 5px;
     border: 2px solid #ccc;
     border-radius: 5px;
-    font-size: 14px;
+    font-size: 12px;
     outline: none;
     transition: border-color 0.3s ease-in-out;
     background-color: white;
@@ -541,4 +541,49 @@ input.form-control:focus + .floating-label {
 
 .text-danger {
   color: #f44336; /* Material red */
+}
+
+
+
+.form-outline {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.floating-label {
+  position: absolute;
+  top: -10px;
+  left: 12px;
+  background-color: white;
+  font-size: 12px;
+  padding: 0 4px;
+  color: #555;
+  z-index: 1;
+  transition: 0.2s ease;
+}
+
+.label-error {
+  color: #dc3545 !important;
+}
+
+.input-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+  .input-with-icon input {
+    width: 100%;
+  }
+
+.calendar-icon {
+  position: absolute;
+  right: 10px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 18px;
+  cursor: pointer;
+  top: 50%;
+  transform: translateY(-50%);
 }
