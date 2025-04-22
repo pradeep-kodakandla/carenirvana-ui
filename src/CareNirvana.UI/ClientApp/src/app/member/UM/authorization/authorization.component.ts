@@ -352,6 +352,10 @@ export class AuthorizationComponent {
       this.memberId = Number(params.get('memberId'));
     });
 
+    if (!this.newAuthNumber || this.newAuthNumber === 'DRAFT') {
+      this.selectDiv(1);
+    }
+
     if (this.newAuthNumber && this.newAuthNumber != 'DRAFT') {
       this.isEditMode = true;
       this.getAuthDataByAuthNumber(this.newAuthNumber);
@@ -965,8 +969,8 @@ export class AuthorizationComponent {
 
     if (failedErrors.length || failedWarnings.length) {
       const allMessages = [
-        ...failedErrors.map(r => ({ msg: `❌ Error:+' '+   ${r.errorMessage}`, type: 'error' })),
-        ...failedWarnings.map(r => ({ msg: `⚠️ Warning:+' '+ ${r.errorMessage}`, type: 'warning' }))
+        ...failedErrors.map(r => ({ msg: `❌ Error:   ${r.errorMessage}`, type: 'error' })),
+        ...failedWarnings.map(r => ({ msg: `⚠️ Warning: ${r.errorMessage}`, type: 'warning' }))
       ];
 
       const hasOnlyWarnings = failedWarnings.length > 0 && failedErrors.length === 0;
@@ -1186,6 +1190,9 @@ export class AuthorizationComponent {
             (entry: any) => entry.serviceCode === service.serviceCode
           ) || {};
 
+          console.log('Existing Entry:', existingEntry);
+          console.log('Service Details:', this.formData['Service Details']);
+
           return {
             // Ensure new values from Service Details are properly assigned while retaining previous ones
             decisionNumber: (index + 1).toString(),
@@ -1201,8 +1208,8 @@ export class AuthorizationComponent {
             // Ensure ALL additional fields from Decision Details are retained
             decisionStatus: service.decisionStatus || existingEntry.decisionStatus || '',
             decisionStatusCode: service.decisionStatusCode || existingEntry.decisionStatusCode || '',
-            requested: service.requested || existingEntry.requested || '',
-            approved: service.approved || existingEntry.approved || '',
+            requested: service.serviceReq || existingEntry.requested || '',
+            approved: service.serviceAppr || existingEntry.approved || '',
             used: service.used || existingEntry.used || '',
             decisionDateTime: service.decisionDateTime || existingEntry.decisionDateTime || '',
             createdDateTime: service.createdDateTime || existingEntry.createdDateTime || '',
@@ -1488,6 +1495,17 @@ export class AuthorizationComponent {
     });
   }
 
+  copyEntry(section: string, index: number): void {
+    if (!this.formData[section]) return;
+
+    const originalEntry = this.formData[section].entries[index];
+    const copiedEntry = { ...originalEntry, __isNew: true };
+
+    // Optional: Reset any field values if needed here
+    // Example: copiedEntry.someField = '';
+
+    this.formData[section].entries.push(copiedEntry);
+  }
 
 
 

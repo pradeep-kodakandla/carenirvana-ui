@@ -547,7 +547,7 @@
 
                                 </div>
                                 <div *ngIf="!providerFieldsVisible">
-                                  <span>No data - Please use any button !!!</span>
+                                  <span>"Please search for the provider. You can select a provider from above search options".</span>
                                 </div>
                                 <!-- Primary Radio Button for Diagnosis Section -->
                                 <div class="col-5-layout mb-3" *ngIf="isDiagnosisSection(section)">
@@ -800,7 +800,7 @@
                                            [value]="i"
                                            [(ngModel)]="formData[section].primaryIndex"
                                            (change)="setPrimary(section, i)" />
-                                    <label class="form-label mb-0">Primary</label>
+                                    <label class="form-label mb-0"> Primary</label>
                                   </div>
                                 </div>
                                 <!-- Add & Remove Buttons for Diagnosis, Provider, Services -->
@@ -809,6 +809,10 @@
                                           *ngIf="formData[section].entries.length > 1"
                                           (click)="removeEntry(section, i)">
                                     <mat-icon>remove_circle</mat-icon>
+                                  </button>
+                                  <button mat-icon-button color="accent" *ngIf="section === 'Service Details'"
+                                          (click)="copyEntry(section, i)">
+                                    <mat-icon>content_copy</mat-icon>
                                   </button>
                                   <button mat-icon-button color="primary"
                                           *ngIf="i === formData[section].entries.length - 1"

@@ -40,12 +40,29 @@
   </div>
 
   <!-- Add Button -->
-  <button (click)="onAddClick()"
-          matTooltip="Click to add a new authorization"
-          [matTooltipClass]="'custom-tooltip'"
-          class="btn btn-primary ms-3">
-    Add Auth
-  </button>
+  <div [matMenuTriggerFor]="addMenu" matTooltip="Click to choose an option" class="ms-3">
+    <button matTooltip="Click to add a new authorization"
+            class="btn btn-primary ms-3">
+      Add
+    </button>
+  </div><!--[matTooltipClass]="'custom-tooltip'"-->
+  <!-- Add Button with Menu -->
+  <!--<div [matMenuTriggerFor]="addMenu" matTooltip="Click to choose an option" class="ms-3">
+    <button mat-button class="btn btn-primary">
+      Add
+    </button>
+  </div>-->
+
+  <mat-menu #addMenu="matMenu">
+    <button mat-menu-item (click)="onAddClick()">
+      <mat-icon>check_circle</mat-icon>
+      <span>Auth Check</span>
+    </button>
+    <button mat-menu-item (click)="onAddClick()">
+      <mat-icon>add_circle</mat-icon>
+      <span>Add Auth</span>
+    </button>
+  </mat-menu>
 </div>
 
 
