@@ -5,6 +5,7 @@ import { COMMA, ENTER } from '@angular/cdk/keycodes';
 import { AuthService } from 'src/app/service/auth.service';
 
 
+
 interface TemplateField {
   label: string;
   displayName?: string;
@@ -50,8 +51,8 @@ export class UmauthtemplateFieldPropertiesComponent implements OnChanges {
   @Output() sectionUpdated = new EventEmitter<TemplateSectionModel>();
 
   searchText: string = '';
-  allCodes: string[] = [];
-  filteredCodes: string[] = [];
+  allCodes: { code: string; label: string }[] = [];
+  filteredCodes: { code: string; label: string }[] = [];
 
 
 
@@ -101,6 +102,7 @@ export class UmauthtemplateFieldPropertiesComponent implements OnChanges {
 
     if (changes['selectedField']?.currentValue) {
       if (this.selectedField?.id === 'icd10Code' || this.selectedField?.id === 'serviceCode') {
+        console.log("Field changed:", this.selectedField);
         this.loadCodesForField();
       }
     }
@@ -288,37 +290,45 @@ export class UmauthtemplateFieldPropertiesComponent implements OnChanges {
   loadCodesForField(): void {
     if (!this.selectedField) return;
 
-    if (['icd10Code', 'serviceCode'].includes(this.selectedField.id)) {
-      this.authService.getAllCodesets().subscribe((data: any[]) => {
-        this.allCodes = data.map(d => d.code); // or d.code + ' - ' + d.codeDesc
-        this.filteredCodes = [...this.allCodes];
-      });
-    }
+    const type = this.selectedField.id === 'icd10Code' ? 'ICD' : 'CPT';
+    this.authService.getAllCodesets(type).subscribe((data: any[]) => {
+      this.allCodes = data
+        .filter(d => d.type === type)
+        .map(d => ({
+          code: d.code,
+          label: `${d.code} - ${d.codeDesc || ''}`
+        }));
+
+      this.filteredCodes = [...this.allCodes];
+    });
   }
 
   filterCodes(): void {
     const q = this.searchText.toLowerCase();
-    this.filteredCodes = this.allCodes.filter(c =>
-      c.toLowerCase().includes(q) &&
-      !this.selectedField?.selectedOptions?.includes(c)
+
+    this.filteredCodes = this.allCodes.filter(item =>
+      item.label.toLowerCase().includes(q) &&
+      !this.selectedField?.selectedOptions?.includes(item.code)
     );
   }
 
-  selectCode(code: string): void {
+
+  selectCode(option: { code: string; label: string }): void {
     if (!this.selectedField) return;
 
     if (!this.selectedField.selectedOptions) {
       this.selectedField.selectedOptions = [];
     }
 
-    if (!this.selectedField.selectedOptions.includes(code)) {
-      this.selectedField.selectedOptions.push(code);
+    if (!this.selectedField.selectedOptions.includes(option.code)) {
+      this.selectedField.selectedOptions.push(option.code); // ✅ Save only code
       this.emitUpdate();
     }
 
     this.searchText = '';
     this.filteredCodes = [];
   }
+
 
   addCodeFromText(): void {
     if (!this.selectedField) return;

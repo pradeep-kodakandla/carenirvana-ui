@@ -479,13 +479,15 @@
                                                    class="form-control"
                                                    [id]="field.id + '_' + i"
                                                    name="{{ field.id + '_' + i }}"
+                                                   [(ngModel)]="displayLabels[field.id + '_' + i + '_' + section]"
+                                                   placeholder="{{ field.displayName }}"
                                                    [required]="field.required"
                                                    [attr.autocomplete]="'off'"
-                                                   [value]="displayLabels[field.id + '_' + i + '_' + section] || getOptionLabel(field, entry[field.id]) || ''"
                                                    (input)="onInputChange($event, field, section, i)"
                                                    (focus)="onFocus(field, section, i)"
                                                    (blur)="onBlur(field, section, i)"
                                                    (keydown)="handleKeydown($event, field, section, i, entry)" />
+
 
 
                                             <!-- Hidden ngModel binding -->
@@ -841,7 +843,7 @@
                 </ng-container>
                 <!-- Save Button -->
                 <div class="text-center">
-                  <button mat-raised-button class="auth-button " (click)="saveData(authForm)">{{ isEditMode ? 'Save and Review' : 'Save and Continue' }}</button>
+                  <button mat-raised-button class="auth-button " (click)="saveData(authForm)">{{ (authNumber && authNumber !== 'DRAFT') ? 'Save and Review' : 'Save and Continue' }}</button>
                   <!--<button mat-raised-button class="auth-button " (click)="loadData()">Load</button>-->
                 </div>
 

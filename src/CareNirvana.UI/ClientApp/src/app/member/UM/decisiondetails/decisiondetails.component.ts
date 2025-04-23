@@ -236,6 +236,24 @@ export class DecisiondetailsComponent implements OnChanges {
       return;
     }
 
+    const decisionEntry = this.decisionData.decisionDetails.entries[tabIndex];
+    const status = decisionEntry?.decisionStatus; // assuming this is the field ID
+    const reqApproved = decisionEntry?.approved;
+    const reqDenied = decisionEntry?.denied;
+
+    console.log('Decision Entry:', decisionEntry);
+
+    if (status === 'Approved' && (!reqApproved || reqDenied)) {
+      alert('If status is Approved, approved should be filled and denied should be 0.');
+      return;
+    }
+    if (status === 'Denied' && (!reqDenied || reqApproved)) {
+      alert('If status is Denied, denied should be filled and approved should be 0.');
+      return;
+    }
+
+
+
     // Define the mapping of section names to decisionData keys
     const sectionKeyMap: { [key: string]: string } = {
       "Decision Details": "decisionDetails",
@@ -261,9 +279,32 @@ export class DecisiondetailsComponent implements OnChanges {
 
     // Reload the sections to reflect the saved changes in the UI
     // this.loadSectionsForTab(this.selectedTabId);
+
+
+    if (status && status !== 'Pended' && !decisionEntry?.decisionDateTime) {
+      decisionEntry.decisionDateTime = new Date().toISOString();
+    }
+
+    if (!decisionEntry?.createdDateTime) {
+      decisionEntry.createdDateTime = new Date().toISOString();
+    }
+
+    decisionEntry.updatedDateTime = new Date().toISOString();
+
+    if (!decisionEntry?.dueDate) {
+      decisionEntry.dueDate = this.calculateDecisionDueDate();
+    }
   }
 
   toggleSection(section: Section): void {
     section.expanded = !section.expanded;
   }
+
+  calculateDecisionDueDate(): string {
+    const today = new Date();
+    today.setDate(today.getDate() + 7); // for example, 7 days ahead
+    return today.toISOString();
+  }
+
+
 }

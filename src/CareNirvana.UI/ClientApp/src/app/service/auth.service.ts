@@ -7,9 +7,9 @@ import { Observable } from 'rxjs';
 })
 export class AuthService {
   private apiUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/auth'; // Update with your API URL
-  private apiUrlCodeSets = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/codesets'; // Update with your API URL
+  //private apiUrlCodeSets = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/codesets'; // Update with your API URL
   //private apiUrl = 'https://localhost:51346/api/auth'; // Update with your API URL
-  //private apiUrlCodeSets = 'https://localhost:51346/api/codesets'; 
+  private apiUrlCodeSets = 'https://localhost:51346/api/codesets';
 
   constructor(private http: HttpClient) { }
 
@@ -47,13 +47,13 @@ export class AuthService {
   }
 
   // GET: Get all codesets
-  getAllCodesets(): Observable<any> {
-    return this.http.get<any>(this.apiUrlCodeSets);
+  getAllCodesets(type: any): Observable<any> {
+    return this.http.get<any>(`${this.apiUrlCodeSets}/type/${type}`);
   }
 
   // GET: Get codeset by ID
-  getCodesetById(id: any): Observable<any> {
-    return this.http.get<any>(`${this.apiUrlCodeSets}/${id}`);
+  getCodesetById(id: any, type: any): Observable<any> {
+    return this.http.get<any>(`${this.apiUrlCodeSets}/${id}/${type}`);
   }
 
   // POST: Create new codeset
@@ -69,10 +69,6 @@ export class AuthService {
       headers: { 'Content-Type': 'application/json' }
     });
   }
-
-
-
-
 
   // GET: Fetch all AuthActivities
   getAllActivities(): Observable<any> {

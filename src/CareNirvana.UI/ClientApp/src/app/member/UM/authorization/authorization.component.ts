@@ -98,13 +98,13 @@ export class AuthorizationComponent {
     console.log('filterOptions called:', field.id, inputValue);
     console.log('field.id:', field.id);
     if (field.id === 'icd10Code' || field.id === 'serviceCode') {
-      const source = this.allCodesets;
-      const filtered = source.filter(code =>
-        code.code.toLowerCase().includes((inputValue || '').toLowerCase())
-      ).map(code => ({
-        value: code.code,
-        label: `${code.code} - ${code.codeDesc || ''}`
-      }));
+      const type = field.id === 'icd10Code' ? 'ICD' : 'CPT';
+      const filtered = this.allCodesets
+        .filter(code => code.type === type && code.code.toLowerCase().includes((inputValue || '').toLowerCase()))
+        .map(code => ({
+          value: code.code,
+          label: `${code.code} - ${code.codeDesc || ''}`
+        }));
 
       this.filteredOptions[key] = filtered;
       this.showDropdown[key] = true;
@@ -128,13 +128,18 @@ export class AuthorizationComponent {
   }
 
 
-  onFocus(field: any, section: string, index: number) {
+  onFocus(field: any, section: string, index: number): void {
     const key = `${section}_${index}_${field.id}`;
     this.focusedField = key;
-    // Show full list on focus
-    this.filteredOptions[key] = field.options || [];
-    this.showDropdown[key] = true;
+    console.log('onFocus triggered for field:', field.id); // add this line
+    if (field.id === 'icd10Code' || field.id === 'serviceCode') {
+      this.filterOptions(field, '', section, index); // ✅ Show full list on focus
+    } else {
+      this.filteredOptions[key] = field.options || [];
+      this.showDropdown[key] = true;
+    }
   }
+
 
   onBlur(field: any, section: string, index: number) {
     const key = `${section}_${index}_${field.id}`;
@@ -363,14 +368,40 @@ export class AuthorizationComponent {
 
     this.loadAuthClass();
 
-    this.authService.getAllCodesets().subscribe((data: any[]) => {
-      this.allCodesets = data || [];
-      console.log('All Codesets:', this.allCodesets);
-    });
+    this.loadCodesetsByType();
+
+    //this.authService.getAllCodesets().subscribe((data: any[]) => {
+    //  this.allCodesets = data || [];
+    //  console.log('All Codesets:', this.allCodesets);
+    //});
 
     //this.loadAuthTemplates();
 
   }
+
+  loadCodesetsByType(): void {
+    const typesToLoad = ['ICD', 'CPT'];
+
+    typesToLoad.forEach(type => {
+      this.authService.getAllCodesets(type).subscribe({
+        next: (data: any[]) => {
+          const mapped = data.map(code => ({
+            code: code.code,
+            codeDesc: code.codeDesc,
+            type: type,
+            label: `${code.code} - ${code.codeDesc || ''}`,
+            value: code.code
+          }));
+
+          this.allCodesets = [...this.allCodesets, ...mapped];
+        },
+        error: (err) => {
+          console.error(`Failed to load codesets for type ${type}`, err);
+        }
+      });
+    });
+  }
+
 
   getAuthDataByAuthNumber(authNumber: string): void {
     this.authService.getAuthDataByAuthNumber(authNumber).subscribe(
@@ -809,7 +840,6 @@ export class AuthorizationComponent {
           this.validationRules = response?.ValidationJson
             ? JSON.parse(response.ValidationJson)
             : [];
-          console.log('Loaded Validation Rules:', this.validationRules);
         } catch (e) {
           console.error('Failed to parse ValidationJson:', e);
           this.validationRules = [];
@@ -1067,8 +1097,8 @@ export class AuthorizationComponent {
     this.authService.saveAuthDetail(jsonData).subscribe(
       response => {
 
-        if (this.saveTypeFrom === '')
-          this.saveTypeFrom = 'Auth';
+        //if (this.saveTypeFrom === '')
+
 
         this.snackBar.open(this.saveTypeFrom + ' saved successfully!', 'Close', {
           horizontalPosition: 'center',
@@ -1078,10 +1108,16 @@ export class AuthorizationComponent {
         });
 
         this.loadDecisionData();
-        if (this.saveType === 'Update' && this.saveTypeFrom === '') {
+        console.log('this.saveTypeFrom:', this.saveTypeFrom);
+        if (this.saveType === 'Update' && this.saveTypeFrom === 'Auth') {
           // Move to "Decision Details" stepper
           this.stepperSelectedIndex = 1; // Navigate to Decision Details step
         }
+
+        if (this.saveType === 'Add')
+          this.saveType = 'Update';
+        this.saveTypeFrom = 'Auth';
+
       },
       error => {
         console.error('Error saving data:', error);
@@ -1304,7 +1340,7 @@ export class AuthorizationComponent {
 
   /*************Notes Data***************/
 
-  /*************Notes Data***************/
+  /*************Documents Data***************/
   handleAuthDocumentSaved(updatedDocument: any) {
     if (!this.formData['Authorization Documents']) {
       this.formData['Authorization Documents'] = { entries: [] };
@@ -1316,7 +1352,7 @@ export class AuthorizationComponent {
     this.saveTypeFrom = 'Document';
     this.saveData(this.formData);
   }
-  /*************Notes Data***************/
+  /*************Documents Data***************/
 
   /*************Populate Multiple ICD and Service Codes***************/
   populateSelectedOptions(section: string, fieldId: string, selectedOptions: string[]): void {
@@ -1338,9 +1374,9 @@ export class AuthorizationComponent {
         // 🔽 Map to description field
         let descriptionFieldId = fieldId === 'icd10Code' ? 'icd10Description' :
           fieldId === 'serviceCode' ? 'serviceDesc' : '';
-
+        const type = fieldId === 'icd10Code' ? 'ICD' : 'CPT';
         if (descriptionFieldId && code) {
-          this.authService.getCodesetById(code).subscribe((data: any) => {
+          this.authService.getCodesetById(code, type).subscribe((data: any) => {
             const matchedEntry = this.formData[section].entries.find((e: any) => e[fieldId] === code);
             if (matchedEntry) {
               matchedEntry[descriptionFieldId] = data?.codeDesc || 'Description not found';
@@ -1414,6 +1450,7 @@ export class AuthorizationComponent {
 
   onInputChange(event: Event, field: any, section: string, index: number): void {
     const inputValue = (event.target as HTMLInputElement).value;
+    console.log('Input Value:', inputValue);
     this.filterOptions(field, inputValue, section, index);
   }
 
