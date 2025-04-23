@@ -7,9 +7,9 @@ import { Observable } from 'rxjs';
 })
 export class AuthService {
   private apiUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/auth'; // Update with your API URL
-  //private apiUrlCodeSets = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/codesets'; // Update with your API URL
+  private apiUrlCodeSets = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/codesets'; // Update with your API URL
   //private apiUrl = 'https://localhost:51346/api/auth'; // Update with your API URL
-  private apiUrlCodeSets = 'https://localhost:51346/api/codesets';
+  //private apiUrlCodeSets = 'https://localhost:51346/api/codesets';
 
   constructor(private http: HttpClient) { }
 
