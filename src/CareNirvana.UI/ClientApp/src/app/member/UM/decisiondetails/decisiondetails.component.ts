@@ -58,6 +58,8 @@ export class DecisiondetailsComponent implements OnChanges {
     if (changes['decisionData'] && this.decisionData) {
       setTimeout(() => {
         this.ensureDecisionDetailsEntries();
+
+
         this.generateTabs();
 
 
@@ -126,13 +128,14 @@ export class DecisiondetailsComponent implements OnChanges {
       }));
     }
 
-    if (!this.decisionData.decisionNotes.entries) {
+    if (!this.decisionData.decisionNotes.entries || this.decisionData.decisionNotes.entries.length !== serviceEntries.length) {
       this.decisionData.decisionNotes.entries = serviceEntries.map(() => ({}));
     }
 
-    if (!this.decisionData.decisionMemberInfo.entries) {
+    if (!this.decisionData.decisionMemberInfo.entries || this.decisionData.decisionMemberInfo.entries.length !== serviceEntries.length) {
       this.decisionData.decisionMemberInfo.entries = serviceEntries.map(() => ({}));
     }
+
   }
 
   generateTabs(): void {
@@ -216,7 +219,7 @@ export class DecisiondetailsComponent implements OnChanges {
         type: field.type,
         value,
         required: field.required || false,
-        isEnabled: field.isEnabled !== false,
+        isEnabled: true,
         options,
         filteredOptions,
         displayLabel: matchedOption?.label || '',
