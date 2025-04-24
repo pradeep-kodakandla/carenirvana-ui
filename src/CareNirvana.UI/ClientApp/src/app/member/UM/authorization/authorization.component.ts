@@ -89,12 +89,7 @@ export class AuthorizationComponent {
 
   filterOptions(field: any, inputValue: string, section: string, index: number) {
     const key = `${section}_${index}_${field.id}`;
-    // if (!field.options) return;
 
-    //this.filteredOptions[key] = field.options.filter((opt: any) =>
-    //  opt.label.toLowerCase().includes((inputValue || '').toLowerCase())
-    //);
-    //this.showDropdown[key] = true;
     console.log('filterOptions called:', field.id, inputValue);
     console.log('field.id:', field.id);
     if (field.id === 'icd10Code' || field.id === 'serviceCode') {
@@ -139,7 +134,6 @@ export class AuthorizationComponent {
       this.showDropdown[key] = true;
     }
   }
-
 
   onBlur(field: any, section: string, index: number) {
     const key = `${section}_${index}_${field.id}`;
@@ -1100,7 +1094,7 @@ export class AuthorizationComponent {
         //if (this.saveTypeFrom === '')
 
 
-        this.snackBar.open(this.saveTypeFrom + ' saved successfully!', 'Close', {
+        this.snackBar.open((this.saveTypeFrom && this.saveTypeFrom.trim() !== '' ? this.saveTypeFrom : 'Auth') + ' saved successfully!', 'Close', {
           horizontalPosition: 'center',
           verticalPosition: 'top',
           duration: 5000,
@@ -1215,9 +1209,10 @@ export class AuthorizationComponent {
 
   loadDecisionData(): void {
     // Initialize decisionData with entries arrays
+    const requestDetails = this.formData['Auth Details']?.entries?.[0] || {};
     this.decisionData = {
       serviceDetails: { ...this.formData['Service Details'] || {} },
-
+      requestDetails: { ...requestDetails },
       decisionDetails: {
         ...this.config['Decision Details'] || {},
         entries: this.formData['Service Details']?.entries.map((service: any, index: number) => {
@@ -1226,41 +1221,39 @@ export class AuthorizationComponent {
             (entry: any) => entry.serviceCode === service.serviceCode
           ) || {};
 
-          console.log('Existing Entry:', existingEntry);
-          console.log('Service Details:', this.formData['Service Details']);
-
           return {
             // Ensure new values from Service Details are properly assigned while retaining previous ones
-            decisionNumber: (index + 1).toString(),
-            serviceCode: service.serviceCode || existingEntry.serviceCode || 'N/A',
-            fromDate: service.fromDate || existingEntry.fromDate || '',
-            toDate: service.toDate || existingEntry.toDate || '',
-            serviceDescription: service.serviceDesc || existingEntry.serviceDescription || '',
-            reviewType: service.reviewType || existingEntry.reviewType || '',
-            unitType: service.unitType || existingEntry.unitType || '',
-            denied: service.serviceDenied || existingEntry.denied || '',
-            modifier: service.modifier || existingEntry.modifier || '',
+            serviceCode: existingEntry.serviceCode || service.serviceCode || 'N/A',
+            fromDate: existingEntry.fromDate || service.fromDate || '',
+            toDate: existingEntry.toDate || service.toDate || '',
+            serviceDescription: existingEntry.serviceDescription || service.serviceDesc || '',
+            reviewType: existingEntry.reviewType || service.reviewType || '',
+            unitType: existingEntry.unitType || service.unitType || '',
+            denied: existingEntry.denied || service.serviceDenied || '',
+            modifier: existingEntry.modifier || service.modifier || '',
 
-            // Ensure ALL additional fields from Decision Details are retained
-            decisionStatus: service.decisionStatus || existingEntry.decisionStatus || '',
-            decisionStatusCode: service.decisionStatusCode || existingEntry.decisionStatusCode || '',
-            requested: service.serviceReq || existingEntry.requested || '',
-            approved: service.serviceAppr || existingEntry.approved || '',
-            used: service.used || existingEntry.used || '',
-            decisionDateTime: service.decisionDateTime || existingEntry.decisionDateTime || '',
-            createdDateTime: service.createdDateTime || existingEntry.createdDateTime || '',
-            updatedDateTime: service.updatedDateTime || existingEntry.updatedDateTime || '',
-            dueDate: service.dueDate || existingEntry.dueDate || '',
-            decisionRequestDatetime: service.decisionRequestDatetime || existingEntry.decisionRequestDatetime || '',
-            requestReceivedVia: service.requestReceivedVia || existingEntry.requestReceivedVia || '',
-            requestPriority: service.requestPriority || existingEntry.requestPriority || '',
-            treatmentType: service.treatmentType || existingEntry.treatmentType || '',
-            alternateServiceId: service.alternateServiceId || existingEntry.alternateServiceId || '',
-            denialType: service.denialType || existingEntry.denialType || '',
-            denialReason: service.denialReason || existingEntry.denialReason || '',
-            newSelect_copy_25gqf4w2s: service.newSelect_copy_25gqf4w2s || existingEntry.newSelect_copy_25gqf4w2s || '',
-            newSelect_copy_bszkkn8o1: service.newSelect_copy_bszkkn8o1 || existingEntry.newSelect_copy_bszkkn8o1 || '',
-            newSelect_copy_3uon6b5w0: service.newSelect_copy_3uon6b5w0 || existingEntry.newSelect_copy_3uon6b5w0 || '',
+            // Decision-level fields
+            decisionStatus: existingEntry.decisionStatus || service.decisionStatus || '',
+            decisionStatusCode: existingEntry.decisionStatusCode || service.decisionStatusCode || '',
+            requested: existingEntry.requested || service.serviceReq || '',
+            approved: existingEntry.approved || service.serviceAppr || '',
+            used: existingEntry.used || service.used || '',
+            decisionDateTime: existingEntry.decisionDateTime || service.decisionDateTime || '',
+            createdDateTime: existingEntry.createdDateTime || service.createdDateTime || '',
+            updatedDateTime: existingEntry.updatedDateTime || service.updatedDateTime || '',
+            dueDate: existingEntry.dueDate || service.dueDate || '',
+
+            // From requestDetails
+            decisionRequestDatetime: existingEntry.decisionRequestDatetime || requestDetails.requestDatetime || '',
+            requestReceivedVia: existingEntry.requestReceivedVia || requestDetails.requestReceivedVia || '',
+            requestPriority: existingEntry.requestPriority || requestDetails.requestPriority || '',
+            treatmentType: existingEntry.treatmentType || requestDetails.treatmentType || '',
+            newSelect_copy_25gqf4w2s_21: existingEntry.newSelect_copy_25gqf4w2s_21 || requestDetails.newSelect_copy_t1hmnc0kp || '',
+            // Remaining
+            alternateServiceId: existingEntry.alternateServiceId || service.alternateServiceId || '',
+            denialType: existingEntry.denialType || service.denialType || '',
+            denialReason: existingEntry.denialReason || service.denialReason || '',
+
 
             // Preserve all remaining fields
             ...existingEntry

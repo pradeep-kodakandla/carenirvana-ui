@@ -6,8 +6,9 @@
            (click)="selectTab(tab.id)"
            [class.active]="selectedTabId === tab.id"
            class="tab">
-        {{ tab.name }}
+        {{ tab.name }}<span *ngIf="tab.decisionStatusLabel"> ({{ tab.decisionStatusLabel }})</span>
       </div>
+
     </div>
   </div>
 
@@ -15,8 +16,7 @@
   <div class="tab-content">
     <div class="decision-details-container">
       <mat-card *ngFor="let section of sections" class="section-card">
-
-        <div class="form-outline">
+        <div class="form-outline" style="padding-bottom:10px;">
           <label class="form-label">{{ section.sectionName }}</label>
         </div>
 
@@ -29,21 +29,84 @@
                 </label>
 
                 <ng-container [ngSwitch]="field.type">
-                  <input *ngSwitchCase="'text'" type="text" class="form-control"
-                         [(ngModel)]="field.value" [disabled]="!field.isEnabled">
-                  <input *ngSwitchCase="'datetime-local'" type="datetime-local" class="form-control"
-                         [(ngModel)]="field.value" [disabled]="!field.isEnabled">
-                  <select *ngSwitchCase="'select'" class="form-control"
-                          [(ngModel)]="field.value" [disabled]="!field.isEnabled">
-                    <option *ngFor="let option of field.options" [value]="option.value">
-                      {{ option.label }}
-                    </option>
+                  <!-- Text Input -->
+                  <ng-container *ngSwitchCase="'text'">
+                    <input type="text" class="form-control"
+                           [id]="field.id + '_' + i"
+                           [(ngModel)]="field.value"
+                           [disabled]="!field.isEnabled">
+                  </ng-container>
 
-                  </select>
-                  <textarea *ngSwitchCase="'textarea'" class="form-control"
-                            [(ngModel)]="field.value" rows="3" [disabled]="!field.isEnabled"></textarea>
-                  <input *ngSwitchCase="'checkbox'" type="checkbox" class="form-check-input"
-                         [(ngModel)]="field.value" [disabled]="!field.isEnabled">
+                  <!-- Datetime Input -->
+                  <ng-container *ngSwitchCase="'datetime-local'">
+                    <div class="form-outline position-relative">
+                      <label [for]="field.id + '_' + i" class="floating-label">
+                        {{ field.displayName }}<span *ngIf="field.required" class="text-danger"> *</span>
+                      </label>
+                      <div class="input-with-icon">
+                        <input class="form-control"
+                               type="text"
+                               [id]="field.id + '_' + i"
+                               [(ngModel)]="field.value"
+                               (blur)="handleDateTimeBlur(field, field.id, field)"
+                               placeholder="Enter D, D+1, D-1 or select"
+                               [disabled]="!field.isEnabled">
+                        <button type="button" class="calendar-icon" (click)="triggerPicker(field.id + '_' + i)">📅</button>
+                      </div>
+                      <input type="datetime-local"
+                             [id]="'native_' + field.id + '_' + i"
+                             [value]="formatForInput(field.value)"
+                             (change)="handleNativePicker($event, field, field.id, field)"
+                             style="position: absolute; visibility: hidden; height: 0; width: 0; pointer-events: none;" />
+                    </div>
+                  </ng-container>
+
+                  <!-- Custom Autocomplete for Select -->
+                  <ng-container *ngSwitchCase="'select'">
+                    <div class="form-outline">
+                      <label [for]="field.id + '_' + i" class="form-label">
+                        {{ field.displayName }}<span *ngIf="field.required" class="text-danger"> *</span>
+                      </label>
+                      <input type="text"
+                             class="form-control"
+                             [id]="field.id + '_' + i"
+                             [(ngModel)]="field.displayLabel"
+                             (input)="filterOptions(field)"
+                             (focus)="field.showDropdown = true"
+                             (blur)="onSelectBlur(field)"
+                             [disabled]="!field.isEnabled"
+                             [attr.autocomplete]="'off'">
+                      <span class="dropdown-arrow">&#9662;</span> <!-- ▼ icon -->
+                      <!-- Dropdown list -->
+                      <div class="autocomplete-dropdown"
+                           *ngIf="field.showDropdown && field.filteredOptions?.length">
+                        <div class="autocomplete-option"
+                             *ngFor="let option of field.filteredOptions"
+                             (mousedown)="selectDropdownOption(field, option)">
+                          {{ option.label }}
+                        </div>
+                      </div>
+                    </div>
+                  </ng-container>
+
+                  <!-- Textarea -->
+                  <ng-container *ngSwitchCase="'textarea'">
+                    <textarea class="form-control"
+                              [id]="field.id + '_' + i"
+                              [(ngModel)]="field.value"
+                              rows="3" [disabled]="!field.isEnabled">
+                    </textarea>
+                  </ng-container>
+
+                  <!-- Checkbox -->
+                  <ng-container *ngSwitchCase="'checkbox'">
+                    <div class="form-check">
+                      <input type="checkbox" class="form-check-input"
+                             [id]="field.id + '_' + i"
+                             [(ngModel)]="field.value" [disabled]="!field.isEnabled">
+                      <label class="form-check-label" [for]="field.id + '_' + i">{{ field.displayName }}</label>
+                    </div>
+                  </ng-container>
                 </ng-container>
               </div>
             </div>
