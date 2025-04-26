@@ -6,7 +6,7 @@ import { Observable, catchError, tap, throwError } from 'rxjs';
   providedIn: 'root'
 })
 export class AuthenticateService {
-  private apiUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/user/authenticate';
+  private apiUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/user';
   //private apiUrl = 'https://localhost:51346/api/user';
 
   constructor(private http: HttpClient) { }
@@ -22,6 +22,7 @@ export class AuthenticateService {
         })
       );
   }
+
 
   getAllUsers(): Observable<any[]> {
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
