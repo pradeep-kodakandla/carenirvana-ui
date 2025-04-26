@@ -619,13 +619,11 @@
                                                        [id]="field.id + '_' + i"
                                                        name="{{ field.id + '_' + i }}"
                                                        [(ngModel)]="entry[field.id]"
-                                                       [value]="field.dateOnly ? entry[field.id] : formatForInput(entry[field.id])"
                                                        (blur)="handleDateTimeBlur(entry, field.id, field)"
                                                        (keydown.enter)="$event.preventDefault()"
                                                        placeholder="Enter date or D+N (e.g., D+2)"
                                                        [required]="field.required"
                                                        #fieldModel="ngModel" />
-
                                                 <!-- Icon button inside input field -->
                                                 <button type="button"
                                                         class="btn btn-light position-absolute"
@@ -634,7 +632,7 @@
                                                   📅
                                                 </button>
                                               </div>
-
+                                              <!--[value]="field.dateOnly ? entry[field.id] : formatForInput(entry[field.id])"-->
                                               <!-- Hidden datetime-local picker -->
                                               <input type="datetime-local"
                                                      [id]="'native_' + field.id + '_' + i"
@@ -664,6 +662,7 @@
                                                      [id]="field.id + '_' + i"
                                                      name="{{ field.id + '_' + i }}"
                                                      [required]="field.required"
+                                                     [disabled]="field.isEnabled === false"
                                                      [attr.autocomplete]="'off'"
                                                      [value]="displayLabels[field.id + '_' + i + '_' + section] || getOptionLabel(field, entry[field.id]) || ''"
                                                      (input)="onInputChange($event, field, section, i)"
@@ -851,7 +850,7 @@
 
 
               <!-- Status Details -->
-              <mat-card id="status" *ngIf="authTypeSelect && (isEditMode || isSaveSuccessful)">
+              <!--<mat-card id="status" *ngIf="authTypeSelect && (isEditMode || isSaveSuccessful)">
 
                 <div class="card-header" (click)="isStatusExpanded = !isStatusExpanded" style="display: flex; align-items: center; justify-content: space-between;">
                   <div style="display: flex; align-items: center;">
@@ -859,7 +858,7 @@
                     <h6 style="color: #007BFF; font-weight: bold; padding-right:30px; margin:0;">Status</h6>
                   </div>
                 </div>
-              </mat-card>
+              </mat-card>-->
             </form>
           </div>
         </div>

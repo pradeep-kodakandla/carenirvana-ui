@@ -1,8 +1,10 @@
+/* --- Form Container --- */
 .form-container {
   max-width: 2000px;
   margin: 20px auto;
 }
 
+/* --- Form Grid --- */
 .form-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -10,132 +12,148 @@
   width: 100%;
 }
 
+/* --- Form Group --- */
 .form-group {
   position: relative;
-  display: flex;
+  display: block;
   flex-direction: column;
 }
 
+  /* Textarea takes full row */
   .form-group.textarea-field {
-    grid-column: span 2; /* Textarea spans 2 columns */
+    grid-column: 1 / -1;
   }
 
+  /* --- Inputs, Selects, Textareas --- */
   .form-group input,
   .form-group select,
   .form-group textarea {
     width: 100%;
-    padding: 10px;
+    padding: 8px;
     border: 2px solid #ccc;
-    border-radius: 4px;
-    font-size: 12px;
-    background: transparent;
-    outline: none;
-    transition: border 0.3s, box-shadow 0.3s;
-  }
-
-  .form-group label {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    background: white;
-    padding: 0 5px;
+    border-radius: 5px;
     font-size: 14px;
-    color: #666;
-    transition: 0.3s;
-    pointer-events: none;
+    background-color: white;
+    outline: none;
+    transition: border-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
   }
 
-  .form-group input:focus,
-  .form-group select:focus,
-  .form-group textarea:focus {
-    border-color: #007bff;
-    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
-  }
-
-    .form-group input:not([type="checkbox"]):focus + label,
-    .form-group input:not([type="checkbox"]):not(:placeholder-shown) + label,
-    .form-group input:focus + label,
-    .form-group input:not(:placeholder-shown) + label,
-    .form-group select:valid + label,
-    .form-group select:focus + label
-    .form-group textarea:focus + label,
-    .form-group textarea:not(:placeholder-shown) + label {
-      top: -10px;
-      font-size: 12px;
-      color: #555;
-      font-weight: bold;
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      border-color: #007bff;
+      box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
     }
 
+  /* --- Floating Labels --- */
+  .form-group label {
+    position: absolute;
+    top: -10px;
+    left: 12px;
+    background: white;
+    padding: 0 5px;
+    font-size: 12px;
+    color: #555;
+    z-index: 1;
+    transition: 0.2s ease;
+  }
+
+/* --- Hidden Fields --- */
 .hidden {
   display: none;
 }
 
+/* --- Calendar Icon Button --- */
+.calendar-icon {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  color: #555;
+}
 
-.form-container input[type="checkbox"] {
-  width: auto;
-  margin-left: 10px;
+/* --- Custom Dropdown Arrow --- */
+.dropdown-container {
+  position: relative;
+}
+
+.dropdown-arrow {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: 18px;
+  color: #888;
+}
+
+/* --- Autocomplete Dropdown --- */
+.autocomplete-dropdown {
+  position: absolute;
+  background: white;
+  border: 1px solid #ccc;
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.autocomplete-option {
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+  .autocomplete-option:hover {
+    background-color: #f1f1f1;
+  }
+
+/* --- Button Styling --- */
+.button-right {
+  grid-column: 4 / 5;
+  display: block;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
 }
 
 .form-container button {
   background-color: #007bff;
   color: white;
-  padding: 10px;
+  padding: 8px 20px;
   border: none;
-  border-radius: 4px;
+  border-radius: 5px;
   cursor: pointer;
-  font-size: 16px;
-  transition: background 0.3s ease-in-out;
+  font-size: 14px;
+  transition: background-color 0.3s ease-in-out;
 }
 
   .form-container button:hover {
     background-color: #0056b3;
   }
 
-
-
-/* Layout fix for checkbox + end datetime inline */
-.checkbox-inline {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+/* --- Text Danger for Validation --- */
+.text-danger {
+  color: #f44336;
+  font-size: 12px;
+  margin-top: 5px;
 }
 
-/* Make textarea span full row */
-.textarea-field {
-  grid-column: 1 / -1 !important;
-}
-
-/* Button right aligned on last row */
-.button-right {
-  grid-column: 4 / 5;
-  display: block;
-  justify-content: flex-end;
-  align-items: center;
-}
-
-
-/* Fix for datetime-local and textarea placeholder trick */
-.form-group input[type="datetime-local"],
-.form-group textarea {
-  placeholder-shown: initial; /* ensures detection */
-}
-
-  .form-group input[type="datetime-local"]::placeholder,
-  .form-group textarea::placeholder {
-    opacity: 0; /* hidden but triggers :not(:placeholder-shown) */
-  }
-
-/* Existing floating label support already works with this */
-
+/* --- Checkbox Inline --- */
 .checkbox-inline {
   display: flex;
   align-items: center;
   gap: 8px;
-  position: relative; /* prevent label from floating like other fields */
+  position: relative;
 }
 
   .checkbox-inline label {
-    position: static; /* stop the floating label behavior */
+    position: static;
     font-size: 14px;
     color: #333;
     margin: 0;
@@ -148,51 +166,17 @@
     margin: 0;
   }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-.search-bar-container-table {
-  padding: 0px 56px 0px 8px;
-  background: #eaf1fb;
-  border-radius: 5px;
-  display: flex;
-  align-items: center;
-}
-
-
-
-
-/* Container for the table */
+/* --- Table Styles --- */
 .table-container {
-  /*  margin: 20px;
-*/ overflow-x: auto;
+  overflow-x: auto;
 }
 
-/* Responsive Table */
 .responsive-table {
   width: 100%;
   border-collapse: collapse;
   font-family: Arial, sans-serif;
 }
 
-  /* Table Header */
   .responsive-table th {
     background-color: #4caf50;
     color: white;
@@ -200,41 +184,20 @@
     text-align: left;
   }
 
-  /* Table Body */
   .responsive-table td {
     padding: 5px;
     border: 1px solid #ddd;
   }
 
-  /* Row Hover Effect */
   .responsive-table tr:hover {
     background-color: #f1f1f1;
   }
 
-
-h2 {
-  text-align: left;
-  margin-bottom: 5px;
-}
-
-.form-section {
-  border: 1px solid #ccc;
-  padding: 5px;
-  margin-bottom: 5px;
+/* --- Search Bar for Table --- */
+.search-bar-container-table {
+  padding: 0px 56px 0px 8px;
+  background: #eaf1fb;
   border-radius: 5px;
-  background-color: #f9f9f9;
-  align-content: start;
-  align-items: start;
-  align-self: start;
-}
-
-.form-row {
   display: flex;
-  flex-wrap: wrap;
-  padding: 10px 10px 0px 10px;
-}
-
-mat-form-field {
-  flex: 1 1 calc(33.333% - 15px);
-  min-width: 150px;
+  align-items: center;
 }

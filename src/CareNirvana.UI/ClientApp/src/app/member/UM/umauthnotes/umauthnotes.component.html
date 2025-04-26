@@ -1,87 +1,118 @@
 <div class="form-container" *ngIf="isFormVisible">
-  <!-- wrapped the form -->
-
   <form #noteForm="ngForm">
-
     <div class="form-grid">
+
       <!-- First Row Fields -->
-      <ng-container *ngFor="let field of notesFields">
+      <ng-container *ngFor="let field of notesFields; let i = index">
+
         <ng-container *ngIf="field.type !== 'textarea' && field.id !== 'authorizationNotesGrid'">
           <div class="form-group" [ngClass]="{ 'hidden': field.hidden }">
+
             <ng-container [ngSwitch]="field.type">
+
+              <!-- Autocomplete Select -->
               <ng-container *ngSwitchCase="'select'">
-                <select [(ngModel)]="field.value"
-                        [required]="field.required"
-                        [name]="field.id"
-                        #fieldModel="ngModel" required>
-                  <option *ngFor="let option of field.options" [value]="option.value">
-                    {{ option.label }}
-                  </option>
-                </select>
-                <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched || showValidationErrors)" class="text-danger">
-                  {{ field.requiredMsg || (field.displayName + ' is required.') }}
+                <div class="form-outline dropdown-container">
+                  <label>{{ field.displayName }} <span *ngIf="field.required" class="text-danger">*</span></label>
+                  <input type="text"
+                         class="form-control"
+                         [(ngModel)]="field.displayLabel"
+                         (input)="filterOptions(field)"
+                         (focus)="field.showDropdown = true"
+                         (blur)="onSelectBlur(field)"
+                         [disabled]="!field.isEnabled"
+                         [name]="field.id"
+                         [attr.autocomplete]="'off'"
+                         #fieldModel="ngModel">
+                  <span class="dropdown-arrow">&#9662;</span>
+
+                  <div class="autocomplete-dropdown" *ngIf="field.showDropdown && field.filteredOptions?.length">
+                    <div class="autocomplete-option"
+                         *ngFor="let option of field.filteredOptions"
+                         (mousedown)="selectDropdownOption(field, option)">
+                      {{ option.label }}
+                    </div>
+                  </div>
+
+                  <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched || showValidationErrors)" class="text-danger">
+                    {{ field.requiredMsg || (field.displayName + ' is required.') }}
+                  </div>
                 </div>
               </ng-container>
-              <!-- Floating label just after the field -->
-              <!--<label *ngIf="field.type !== 'checkbox'">{{ field.label }}</label>-->
+
+              <!-- Datetime Local with D, D+1 -->
               <ng-container *ngSwitchCase="'datetime-local'">
-                <input type="datetime-local"
-                       [(ngModel)]="field.value"
-                       [required]="field.required"
-                       [name]="field.id"
-                       placeholder=" "
-                       #fieldModel="ngModel" />
-                <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched || showValidationErrors)" class="text-danger">
-                  {{ field.requiredMsg || (field.displayName + ' is required.') }}
+                <div class="form-outline position-relative">
+                  <label [for]="field.id + '_' + i" class="floating-label">
+                    {{ field.displayName }}<span *ngIf="field.required" class="text-danger"> *</span>
+                  </label>
+                  <div class="input-with-icon">
+                    <input class="form-control"
+                           type="text"
+                           [id]="field.id + '_' + i"
+                           [(ngModel)]="field.value"
+                           [name]="field.id"
+                           (blur)="handleDateTimeBlur(field, field.id, field)"
+                           placeholder="Enter D, D+1, D-1 or select">
+
+                    <button type="button" class="calendar-icon" (click)="triggerPicker('native_' + field.id + '_' + i)">📅</button>
+
+                  </div>
+
+                  <input type="datetime-local"
+                         class="hidden-datetime-picker"
+                         [id]="'native_' + field.id + '_' + i"
+                         [value]="formatForInput(field.value)"
+                         (change)="handleNativePicker($event, field, field.id, field)"
+                         style="position: absolute; top: -9999px; left: -9999px; visibility: visible;" />
+
+
                 </div>
               </ng-container>
 
-              <!--<div *ngSwitchCase="'checkbox'" class="checkbox-inline">
-                <label>{{ field.label }}</label>
-                <input type="checkbox" [(ngModel)]="field.value" [name]="field.id" (change)="onAlertNoteChange($event)" />
-
-              </div>-->
-
+              <!-- Checkbox -->
               <div *ngSwitchCase="'checkbox'" class="form-group checkbox-inline">
                 <input type="checkbox"
                        [(ngModel)]="showEndDatetimeField"
                        name="authorizationAlertNote"
-                       (change)="onAlertNoteChange($event)" />
+                       (change)="onAlertNoteChange($event)">
                 <label for="authorizationAlertNote">Alert Note</label>
-
               </div>
 
+              <!-- Regular Text Input -->
               <ng-container *ngSwitchDefault>
                 <input type="text"
+                       class="form-control"
                        [(ngModel)]="field.value"
                        [required]="field.required"
                        [name]="field.id"
                        placeholder=" "
-                       #fieldModel="ngModel" />
+                       #fieldModel="ngModel">
                 <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched || showValidationErrors)" class="text-danger">
                   {{ field.requiredMsg || (field.displayName + ' is required.') }}
                 </div>
               </ng-container>
+
             </ng-container>
-            <label *ngIf="field.type !== 'checkbox'">{{ field.label }}</label>
 
           </div>
         </ng-container>
       </ng-container>
 
-      <!-- End Datetime beside Alert Note -->
+      <!-- End Datetime Field when Alert Note checked -->
       <div class="form-group" *ngIf="showEndDatetimeField">
         <input type="datetime-local"
                [(ngModel)]="endDatetimeValue"
                name="endDatetimeValue"
-               placeholder=" " />
+               placeholder=" ">
         <label>End Datetime</label>
       </div>
 
-      <!-- Textarea on full row -->
+      <!-- Textarea Full Width -->
       <ng-container *ngFor="let field of notesFields">
         <div *ngIf="field.type === 'textarea'" class="form-group textarea-field">
-          <textarea [(ngModel)]="field.value"
+          <textarea class="form-control"
+                    [(ngModel)]="field.value"
                     [required]="field.required"
                     [name]="field.id"
                     placeholder=" "
@@ -93,16 +124,18 @@
         </div>
       </ng-container>
 
-      <!-- Save Button Full Width Last Column -->
+      <!-- Buttons -->
       <div class="form-group button-right">
         <button type="button" (click)="saveNote(noteForm)">Save</button>
         <button type="button" (click)="cancelForm()">Cancel</button>
       </div>
+
     </div>
   </form>
 </div>
 
-<div >
+
+<div>
   <!-- wrapped the table -->
   <!--*ngIf="!isFormVisible"-->
   <div class="table-container">

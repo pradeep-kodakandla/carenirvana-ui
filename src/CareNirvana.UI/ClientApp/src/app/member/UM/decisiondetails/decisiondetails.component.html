@@ -50,7 +50,7 @@
                                [(ngModel)]="field.value"
                                (blur)="handleDateTimeBlur(field, field.id, field)"
                                placeholder="Enter D, D+1, D-1 or select"
-                               [disabled]="!field.isEnabled">
+                               >
                         <button type="button" class="calendar-icon" (click)="triggerPicker(field.id + '_' + i)">📅</button>
                       </div>
                       <input type="datetime-local"
@@ -74,7 +74,7 @@
                              (input)="filterOptions(field)"
                              (focus)="field.showDropdown = true"
                              (blur)="onSelectBlur(field)"
-                             [disabled]="!field.isEnabled"
+                             
                              [attr.autocomplete]="'off'">
                       <span class="dropdown-arrow">&#9662;</span> <!-- ▼ icon -->
                       <!-- Dropdown list -->

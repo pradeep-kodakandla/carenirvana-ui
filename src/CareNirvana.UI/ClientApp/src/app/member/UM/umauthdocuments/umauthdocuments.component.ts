@@ -44,6 +44,7 @@ export class UmauthdocumentsComponent implements OnInit, OnChanges {
   isFormVisible: boolean = false;
   currentDocument: AuthorizationDocument | null = null;
   allowedFileTypes = ["jpeg", "png", "jpg", "bmp", "gif", "docx", "doc", "txt", "xlsx", "xls", "pdf"];
+  showValidationErrors = false;
 
   ngOnInit(): void {
     this.crudService.getData('um', 'documenttype').subscribe((response) => {
@@ -51,6 +52,19 @@ export class UmauthdocumentsComponent implements OnInit, OnChanges {
         response.map((opt: any) => [opt.id, opt.documentType])
       );
     });
+
+    this.documentFields.forEach(field => {
+      if (field.type === 'select') {
+        if (!field.value) {
+          field.value = "";
+          field.displayLabel = "Select"; // <-- Add this
+        } else {
+          const selected = field.options?.find((opt: any) => opt.value === field.value);
+          field.displayLabel = selected?.label || "Select";
+        }
+      }
+    });
+
 
     //this.documents = this.documentData || [];
     this.documents = (this.documentData || []).map(doc => ({
@@ -218,4 +232,23 @@ export class UmauthdocumentsComponent implements OnInit, OnChanges {
       });
     });
   }
+
+
+
+  filterOptions(field: any): void {
+    if (!field.options) return;
+    const searchValue = field.displayLabel?.toLowerCase() || '';
+    field.filteredOptions = field.options.filter((opt: any) => opt.label.toLowerCase().includes(searchValue));
+  }
+
+  selectDropdownOption(field: any, option: any): void {
+    field.value = option.value;
+    field.displayLabel = option.label;
+    field.showDropdown = false;
+  }
+
+  onSelectBlur(field: any): void {
+    setTimeout(() => { field.showDropdown = false; }, 200);
+  }
+
 }

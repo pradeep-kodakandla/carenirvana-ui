@@ -10,6 +10,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { ProviderSearchComponent } from 'src/app/Provider/provider-search/provider-search.component';
 import { HeaderService } from 'src/app/service/header.service';
 import { ValidationErrorDialogComponent } from 'src/app/member/validation-error-dialog/validation-error-dialog.component';
+import { AuthenticateService } from 'src/app/service/authentication.service';
 
 @Component({
   selector: 'app-authorization',
@@ -30,7 +31,8 @@ export class AuthorizationComponent {
     private crudService: CrudService,
     private snackBar: MatSnackBar,
     private route: ActivatedRoute,
-    private headerService: HeaderService
+    private headerService: HeaderService,
+    private authenticateService: AuthenticateService
   ) { }
 
   highlightedSection: string | null = null;
@@ -73,8 +75,6 @@ export class AuthorizationComponent {
   focusedField: string = '';
   hoveredIndexMap: { [key: string]: number } = {};
 
-
-
   allCodesets: any[] = [];
   filteredIcdCodes: any[] = [];
   filteredServiceCodes: any[] = [];
@@ -83,7 +83,11 @@ export class AuthorizationComponent {
 
   sectionValidationMessages: { [sectionName: string]: string[] } = {};
 
+  allUsers: any[] = [];
 
+  usersLoaded: boolean = false;
+
+  loggedInUsername: string = '';
 
   //********** Method to highlight the selected section and autocomplete ************//
 
@@ -118,6 +122,9 @@ export class AuthorizationComponent {
     if (selected) {
       entry[fieldId] = selected.value; // Save the ID
       this.displayLabels[`${fieldId}_${index}_${section}`] = selected.label; // Store label for display
+      if (fieldId === 'authWorkList' && section === 'Status Details') {
+        this.updateAuthWorkBasketUserState(section, entry);
+      }
     }
     this.showDropdown[key] = false;
   }
@@ -360,18 +367,38 @@ export class AuthorizationComponent {
       this.getAuthDataByAuthNumber(this.newAuthNumber);
     }
 
+    this.loggedInUsername = sessionStorage.getItem('loggedInUsername') || '';
+
+    console.log('Logged in username:', this.loggedInUsername);
     this.loadAuthClass();
 
     this.loadCodesetsByType();
 
-    //this.authService.getAllCodesets().subscribe((data: any[]) => {
-    //  this.allCodesets = data || [];
-    //  console.log('All Codesets:', this.allCodesets);
-    //});
-
-    //this.loadAuthTemplates();
+    this.loadAllUsers();
 
   }
+
+  loadAllUsers(): void {
+    this.authenticateService.getAllUsers().subscribe({
+      next: (users: any[]) => {
+        this.allUsers = users || [];
+        this.usersLoaded = true;
+
+        // 🔥 If config is already loaded, patch now
+        if (this.config && this.config['Status Details']) {
+          this.patchStatusDetailsUsers();
+        }
+      },
+      error: (err) => {
+        console.error('Failed to load users:', err);
+        this.usersLoaded = false;
+      }
+    });
+  }
+
+
+
+
 
   loadCodesetsByType(): void {
     const typesToLoad = ['ICD', 'CPT'];
@@ -407,10 +434,10 @@ export class AuthorizationComponent {
           let savedData = data[0]?.responseData;
           const authTemplateId = data[0]?.AuthTypeId || 0;
           const authClassId = data[0]?.AuthClassId || 0;
-          console.log('Selected Auth Class ID:', authClassId);
+
           if (authClassId) {
             this.selectedAuthClassId = authClassId;
-            console.log('Selected Auth Class ID:', this.selectedAuthClassId);
+
             // First load templates for this class, then continue
             this.authService.getAuthTemplates(authClassId).subscribe({
               next: (templates: any[]) => {
@@ -558,6 +585,7 @@ export class AuthorizationComponent {
   sectionOrderAll: string[] = []; // Capture the order of keys from the JSON
 
   onAuthTypeChange(): void {
+
     if (this.selectedTemplateId !== null && this.selectedTemplateId !== 0) {
       this.authTypeSelect = this.selectedAuthType !== 'sel';
 
@@ -591,10 +619,14 @@ export class AuthorizationComponent {
             this.sectionOrderAll = Object.keys(this.config)
               .sort((a, b) => (this.config[a]?.order || 0) - (this.config[b]?.order || 0));
 
+            if (this.usersLoaded && this.config['Status Details']) {
+              this.patchStatusDetailsUsers();
+            }
           } catch (error) {
             console.error('Error parsing JSON content:', error);
             this.config = {};
           }
+
 
           // Initialize formData
           this.formData = {};
@@ -639,6 +671,46 @@ export class AuthorizationComponent {
               }
             }
           }
+
+          // 🔥 After creating formData entries, set authActualOwner field
+          if (this.formData['Status Details']?.entries?.length) {
+            this.formData['Status Details'].entries.forEach((entry: any) => {
+              if (!entry['authAssignedTo']) {
+                entry['authActualOwner'] = this.loggedInUsername;
+              } else {
+                entry['authActualOwner'] = '';
+              }
+            });
+          }
+
+          console.log('FormData after initialization:', this.formData);
+
+          if (this.formData['Status Details']?.entries?.length) {
+            this.formData['Status Details'].entries.forEach((entry: any) => {
+
+              let assignedUserName = entry['authActualOwner'];
+
+              if (assignedUserName) {
+                // 🔥 Find UserId matching authAssignedTo
+                const matchedUser = this.allUsers.find(user => user.UserName === assignedUserName);
+                if (matchedUser) {
+                  entry['authActualOwner'] = matchedUser.UserId; // ✅ Set correct UserId
+                } else {
+                  entry['authActualOwner'] = '';
+                }
+              } else {
+                // 🔥 No authAssignedTo → default to logged-in user
+                const matchedLoggedInUser = this.allUsers.find(user => user.UserName === this.loggedInUsername);
+                if (matchedLoggedInUser) {
+                  entry['authActualOwner'] = matchedLoggedInUser.UserId; // ✅ Set correct UserId
+                } else {
+                  entry['authActualOwner'] = '';
+                }
+              }
+
+            });
+          }
+          this.restoreDisplayLabels();
 
           // Process select fields with a datasource
           const datasourceMap = new Map<string, any[]>();
@@ -773,6 +845,9 @@ export class AuthorizationComponent {
                   }
                 });
 
+
+
+
                 remaining--;
                 if (remaining === 0) {
                   this.restoreDisplayLabels(); // ✅ Call after all options are populated
@@ -826,6 +901,29 @@ export class AuthorizationComponent {
       console.log('No valid template selected');
     }
   }
+
+  patchStatusDetailsUsers(): void {
+
+    if (this.config && this.config['Status Details'] && this.allUsers.length > 0) {
+      const statusFields = this.config['Status Details'].fields;
+
+
+      statusFields.forEach((field: any) => {
+        if (field.id === 'authActualOwner' || field.id === 'authWorkList' || field.id === 'authWorkBasketUser') {
+          field.options = [
+            { value: '', label: 'Select' },
+            ...this.allUsers.map(user => ({
+              value: user.UserId,
+              label: user.UserName
+            }))
+          ];
+        }
+      });
+    } else {
+      console.warn('Cannot patch users: Either config not ready or allUsers is empty');
+    }
+  }
+
 
   getValidationRules(): void {
     this.authService.getTemplateValidation(this.selectedTemplateId).subscribe({
@@ -1090,11 +1188,7 @@ export class AuthorizationComponent {
 
     this.authService.saveAuthDetail(jsonData).subscribe(
       response => {
-
-        //if (this.saveTypeFrom === '')
-
-
-        this.snackBar.open((this.saveTypeFrom && this.saveTypeFrom.trim() !== '' ? this.saveTypeFrom : 'Auth') + ' saved successfully!', 'Close', {
+        this.snackBar.open((this.saveTypeFrom && this.saveTypeFrom.trim() !== '' ? this.saveTypeFrom : 'Authorization') + ' saved successfully!', 'Close', {
           horizontalPosition: 'center',
           verticalPosition: 'top',
           duration: 5000,
@@ -1111,7 +1205,6 @@ export class AuthorizationComponent {
         if (this.saveType === 'Add')
           this.saveType = 'Update';
         this.saveTypeFrom = 'Auth';
-
       },
       error => {
         console.error('Error saving data:', error);
@@ -1500,30 +1593,33 @@ export class AuthorizationComponent {
     }
   }
 
-  restoreDisplayLabels() {
-    if (!this.config || !this.formData) return;
+  restoreDisplayLabels(): void {
+    if (!this.formData || !this.config) {
+      return;
+    }
 
-    this.sectionOrderAll.forEach(section => {
-      const sectionConfig = this.config[section];
-      if (!sectionConfig) return;
+    for (let section of this.sectionOrderAll) {
+      const entries = this.formData[section]?.entries;
+      const fields = this.config[section]?.fields;
 
-      const entries = this.formData[section]?.entries || [];
+      if (!entries || !fields) continue;
 
       entries.forEach((entry: any, i: number) => {
-        sectionConfig.fields?.forEach((field: any) => {
-          if (field.type === 'select') {
+        fields.forEach((field: any) => {
+          if (field.type === 'select' && field.options?.length) {
             const key = `${field.id}_${i}_${section}`;
-            if (field.options?.length) {
-              const selected = field.options.find((opt: any) => opt.value == entry[field.id]);
-              if (selected) {
-                this.displayLabels[key] = selected.label;
-              }
+            const selectedOption = field.options.find((opt: any) => opt.value == entry[field.id]);
+            if (selectedOption) {
+              this.displayLabels[key] = selectedOption.label;
+            } else {
+              this.displayLabels[key] = '';
             }
           }
         });
       });
-    });
+    }
   }
+
 
   copyEntry(section: string, index: number): void {
     if (!this.formData[section]) return;
@@ -1535,6 +1631,30 @@ export class AuthorizationComponent {
     // Example: copiedEntry.someField = '';
 
     this.formData[section].entries.push(copiedEntry);
+  }
+
+  updateAuthWorkBasketUserState(section: string, entry: any): void {
+    const workListValue = entry['authWorkList'];
+
+    const statusFields = this.config?.['Status Details']?.fields || [];
+
+    const workBasketUserField = statusFields.find((f: any) => f.id === 'authWorkBasketUser');
+
+    if (workBasketUserField) {
+      // If a value is selected for authWorkList, enable authWorkBasketUser
+      workBasketUserField.isEnabled = !!workListValue;
+
+      // Optional: If you want to reset value if workList is cleared
+      if (!workListValue) {
+        entry['authWorkBasketUser'] = '';
+      }
+    }
+  }
+
+  
+  handleDateTimeInput(event: Event, entry: any, fieldId: string, field: any): void {
+    const input = (event.target as HTMLInputElement).value.trim();
+    entry[fieldId] = input; // Update the model immediately
   }
 
 

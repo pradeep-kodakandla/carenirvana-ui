@@ -5,9 +5,34 @@
         <ng-container *ngIf="field.id !== 'authorizationDocumentsGrid'">
           <div class="form-group">
             <ng-container [ngSwitch]="field.type">
-              <select *ngSwitchCase="'select'" [(ngModel)]="field.value" [name]="field.id" [ngModelOptions]="{standalone: true}">
-                <option *ngFor="let option of field.options" [value]="option.value">{{ option.label }}</option>
-              </select>
+              <!-- Autocomplete Select -->
+              <ng-container *ngSwitchCase="'select'">
+                <div class="form-outline dropdown-container">
+                  <label>{{ field.displayName }} <span *ngIf="field.required" class="text-danger">*</span></label>
+                  <input type="text"
+                         class="form-control"
+                         [(ngModel)]="field.displayLabel"
+                         (input)="filterOptions(field)"
+                         (focus)="field.showDropdown = true"
+                         (blur)="onSelectBlur(field)"
+                         [name]="field.id"
+                         [attr.autocomplete]="'off'"
+                         #fieldModel="ngModel">
+                  <span class="dropdown-arrow">&#9662;</span>
+
+                  <div class="autocomplete-dropdown" *ngIf="field.showDropdown && field.filteredOptions?.length">
+                    <div class="autocomplete-option"
+                         *ngFor="let option of field.filteredOptions"
+                         (mousedown)="selectDropdownOption(field, option)">
+                      {{ option.label }}
+                    </div>
+                  </div>
+
+                  <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched || showValidationErrors)" class="text-danger">
+                    {{ field.requiredMsg || (field.displayName + ' is required.') }}
+                  </div>
+                </div>
+              </ng-container>
               <textarea *ngSwitchCase="'textarea'" [(ngModel)]="field.value" [name]="field.id" [ngModelOptions]="{standalone: true}"></textarea>
               <input *ngSwitchCase="'file'" type="file" multiple (change)="handleFileUpload($event)">
               <label *ngSwitchCase="'label'">{{ field.info }}</label>

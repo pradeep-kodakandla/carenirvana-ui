@@ -1,9 +1,11 @@
-import { Component, OnInit, Input, Output, EventEmitter, OnChanges, SimpleChanges, ChangeDetectorRef, ViewChild } from '@angular/core';
+import { Component, OnInit, Input, Output, EventEmitter, OnChanges, SimpleChanges, ChangeDetectorRef, ViewChild, ViewChildren, ElementRef, QueryList } from '@angular/core';
 import { NgForm } from '@angular/forms';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { CrudService } from 'src/app/service/crud.service';
+
+
 interface AuthorizationNote {
   id: string;
   authorizationNoteType?: string;
@@ -57,12 +59,18 @@ export class UmauthnotesComponent implements OnInit {
 
 
     //this.notes = this.notesData || [];
-    this.removeEmptyRecords(); // Remove empty records on initialization
     this.notesFields.forEach(field => {
-      if (field.type === 'select' && (field.value === undefined || field.value === null)) {
-        field.value = ""; // Default to "Select"
+      if (field.type === 'select') {
+        if (!field.value) {
+          field.value = "";
+          field.displayLabel = "Select"; // <-- Add this
+        } else {
+          const selected = field.options?.find((opt: any) => opt.value === field.value);
+          field.displayLabel = selected?.label || "Select";
+        }
       }
     });
+
 
 
     this.notes = (this.notesData || []).map(note => ({
@@ -262,4 +270,187 @@ export class UmauthnotesComponent implements OnInit {
     this.currentNote = null;
     this.isFormVisible = false;
   }
+
+
+
+
+
+  filterOptions(field: any): void {
+    if (!field.options) return;
+    const searchValue = field.displayLabel?.toLowerCase() || '';
+    field.filteredOptions = field.options.filter((opt: any) => opt.label.toLowerCase().includes(searchValue));
+  }
+
+  selectDropdownOption(field: any, option: any): void {
+    field.value = option.value;
+    field.displayLabel = option.label;
+    field.showDropdown = false;
+  }
+
+  onSelectBlur(field: any): void {
+    setTimeout(() => { field.showDropdown = false; }, 200);
+  }
+
+  //********** Method to display the datetime ************//
+
+  @ViewChildren('pickerRef') datetimePickers!: QueryList<ElementRef<HTMLInputElement>>;
+
+
+  handleDateTimeBlur(field: any, fieldId: string, entry: any): void {
+    const input = (field.value || '').trim();
+    let finalDate: Date | null = null;
+
+    if (/^d\+\d+$/i.test(input)) {
+      const daysToAdd = parseInt(input.split('+')[1], 10);
+      finalDate = new Date();
+      finalDate.setDate(finalDate.getDate() + daysToAdd);
+    } else if (/^d-\d+$/i.test(input)) {
+      const daysSubtract = parseInt(input.split('-')[1], 10);
+      finalDate = new Date();
+      finalDate.setDate(finalDate.getDate() - daysSubtract);
+    } else if (/^d$/i.test(input)) {
+      finalDate = new Date();
+    } else {
+      const parsed = new Date(input);
+      if (!isNaN(parsed.getTime())) {
+        finalDate = parsed;
+      } else {
+        return; // Invalid input
+      }
+    }
+
+    if (finalDate) {
+      const formatted = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).format(finalDate).replace(',', '');
+
+      field.value = formatted;
+      entry[fieldId] = formatted;
+    }
+  }
+
+
+
+  formatForInput(value: string): string {
+    if (!value) return '';
+    const parsed = new Date(value);
+    if (isNaN(parsed.getTime())) return '';
+    return parsed.toISOString().slice(0, 16); // 'YYYY-MM-DDTHH:mm'
+  }
+
+
+  handleNativePicker(event: Event, entry: any, fieldId: string, field: any): void {
+    const input = event.target as HTMLInputElement;
+    const value = input?.value;
+    if (!value) return;
+
+    const parsed = new Date(value);
+    if (isNaN(parsed.getTime())) return;
+
+    if (field.dateOnly) {
+      // ✅ Format to just MM/DD/YYYY in EST
+      const formattedDate = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric'
+      }).format(parsed);
+
+      entry[fieldId] = formattedDate;
+    } else {
+      // Format to MM/DD/YYYY HH:mm:ss in EST
+      const formattedDateTime = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).format(parsed).replace(',', '');
+
+      entry[fieldId] = formattedDateTime;
+    }
+  }
+
+  openNativePicker(picker: HTMLInputElement): void {
+    if ('showPicker' in picker && typeof picker.showPicker === 'function') {
+      picker.showPicker();
+    } else {
+      picker.click();
+    }
+  }
+
+  openNativePickerByIndex(index: number): void {
+    const picker = this.datetimePickers.toArray()[index]?.nativeElement;
+    if (picker) {
+      if ('showPicker' in picker && typeof (picker as any).showPicker === 'function') {
+        (picker as any).showPicker();
+      } else {
+        picker.click();
+      }
+    }
+  }
+
+  triggerPicker(elementId: string): void {
+    console.log('Triggering picker for ID:', elementId);
+    const hiddenInput = document.getElementById(elementId) as HTMLInputElement;
+    console.log('Hidden input element:', hiddenInput);
+    if (hiddenInput) {
+      if ('showPicker' in hiddenInput && typeof hiddenInput.showPicker === 'function') {
+        hiddenInput.showPicker();
+      } else {
+        hiddenInput.click();
+      }
+    } else {
+      console.warn('Picker not found for ID:', elementId);
+    }
+  }
+
+  formatToEST(date: Date, dateOnly: boolean = false): string {
+    const options: Intl.DateTimeFormatOptions = dateOnly
+      ? {
+        timeZone: 'America/New_York',
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric'
+      }
+      : {
+        timeZone: 'America/New_York',
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      };
+
+    return new Intl.DateTimeFormat('en-US', options).format(date).replace(',', '');
+  }
+
+  formatDateOnly(date: Date): string {
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(date);
+  }
+
+  //********** Method to display the datetime ************//
+
+
+
+
+
+
 }
