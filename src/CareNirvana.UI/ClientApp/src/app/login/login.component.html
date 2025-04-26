@@ -37,7 +37,13 @@
       <!--<mat-checkbox class="remember-me">Remember me</mat-checkbox>
   <a class="forgot-password" href="#">Forgot Password?</a>-->
       <!--<button mat-raised-button class="login-button" (click)="goToPage('dash-board')">Login</button>-->
-      <button mat-raised-button class="login-button" type="submit">Login</button>
+      <button mat-raised-button class="login-button"
+              type="submit"
+              [disabled]="isSubmitting">
+        <mat-spinner *ngIf="isSubmitting" diameter="20" color="accent"></mat-spinner>
+        <span *ngIf="!isSubmitting">Login</span>
+      </button>
+
       <!-- Show error message -->
       <div *ngIf="errorMessage" class="error-message">{{ errorMessage }}</div>
     </form>

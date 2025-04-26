@@ -62,9 +62,20 @@ h2 {
     text-decoration: underline;
   }
 
+
 .login-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
   margin-top: 20px;
   width: 50%;
-  background-color: #007BFF!important;
-  color:white !important;
+  background-color: #007BFF !important;
+  color: white !important;
 }
+
+  .login-button mat-spinner {
+    position: absolute;
+    color: white !important;
+  }

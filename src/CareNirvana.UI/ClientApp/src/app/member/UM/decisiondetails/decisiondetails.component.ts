@@ -219,7 +219,7 @@ export class DecisiondetailsComponent implements OnChanges {
         type: field.type,
         value,
         required: field.required || false,
-        isEnabled: true,
+        isEnabled: field.isEnabled ?? true,
         options,
         filteredOptions,
         displayLabel: matchedOption?.label || '',

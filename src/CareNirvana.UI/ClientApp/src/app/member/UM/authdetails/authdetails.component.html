@@ -40,9 +40,9 @@
   </div>
 
   <!-- Add Button -->
-  <div [matMenuTriggerFor]="addMenu" matTooltip="Click to choose an option" class="ms-3">
+  <div matTooltip="Click to Add authorization" class="ms-3">
     <button matTooltip="Click to add a new authorization"
-            class="btn btn-primary ms-3">
+            class="btn btn-primary ms-3" (click)="onAddClick()">
       Add
     </button>
   </div><!--[matTooltipClass]="'custom-tooltip'"-->
