@@ -795,13 +795,13 @@
                                 <!-- Primary Radio Button for Diagnosis Section -->
                                 <div class="col-5-layout mb-3" *ngIf="isDiagnosisSection(section)">
                                   <div class="d-flex align-items-center">
-                                    <!--<label class="form-label me-2 mb-0">Primary</label>-->
                                     <input type="radio"
+                                           class="me-2"
                                            name="primary_{{section}}"
                                            [value]="i"
                                            [(ngModel)]="formData[section].primaryIndex"
                                            (change)="setPrimary(section, i)" />
-                                    <label class="form-label mb-0"> Primary</label>
+                                    <label class="form-label mb-0">Primary</label>
                                   </div>
                                 </div>
                                 <!-- Add & Remove Buttons for Diagnosis, Provider, Services -->

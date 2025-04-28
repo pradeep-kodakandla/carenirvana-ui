@@ -94,8 +94,6 @@ export class AuthorizationComponent {
   filterOptions(field: any, inputValue: string, section: string, index: number) {
     const key = `${section}_${index}_${field.id}`;
 
-    console.log('filterOptions called:', field.id, inputValue);
-    console.log('field.id:', field.id);
     if (field.id === 'icd10Code' || field.id === 'serviceCode') {
       const type = field.id === 'icd10Code' ? 'ICD' : 'CPT';
       const filtered = this.allCodesets
@@ -133,7 +131,6 @@ export class AuthorizationComponent {
   onFocus(field: any, section: string, index: number): void {
     const key = `${section}_${index}_${field.id}`;
     this.focusedField = key;
-    console.log('onFocus triggered for field:', field.id); // add this line
     if (field.id === 'icd10Code' || field.id === 'serviceCode') {
       this.filterOptions(field, '', section, index); // ✅ Show full list on focus
     } else {
@@ -153,9 +150,6 @@ export class AuthorizationComponent {
   handleKeydown(event: KeyboardEvent, field: any, section: string, index: number, entry: any) {
     const key = `${section}_${index}_${field.id}`;
     const options = this.filteredOptions[key] || [];
-
-    console.log('Key:', key);
-    console.log('field.type:', field.type);
 
     if (field.type !== 'select') return;
 
@@ -197,42 +191,36 @@ export class AuthorizationComponent {
 
 
   handleDateTimeBlur(entry: any, fieldId: string, field: any): void {
-    const input = (entry[fieldId] || '').trim();
+    const input = (entry[fieldId] || '').trim().toUpperCase();
+    let baseDate = new Date();
     let finalDate: Date | null = null;
 
-    if (/^d\+(\d+)$/i.test(input)) {
-      const daysToAdd = parseInt(input.split('+')[1], 10);
-      finalDate = new Date();
-      finalDate.setDate(finalDate.getDate() + daysToAdd);
-    } else if (/^d$/i.test(input)) {
-      finalDate = new Date();
+    if (input === 'D') {
+      finalDate = baseDate;
+    } else if (/^D\+(\d+)$/.test(input)) {
+      const daysToAdd = parseInt(input.match(/^D\+(\d+)$/)![1], 10);
+      baseDate.setDate(baseDate.getDate() + daysToAdd);
+      finalDate = baseDate;
+    } else if (/^D-(\d+)$/.test(input)) {
+      const daysToSubtract = parseInt(input.match(/^D-(\d+)$/)![1], 10);
+      baseDate.setDate(baseDate.getDate() - daysToSubtract);
+      finalDate = baseDate;
     } else {
       const parsed = new Date(input);
       if (!isNaN(parsed.getTime())) {
         finalDate = parsed;
       } else {
-        return; // Invalid input
+        return; // Invalid input, don't update
       }
+    }
 
+    if (finalDate) {
       entry[fieldId] = field.dateOnly
         ? this.formatDateOnly(finalDate)
         : this.formatToEST(finalDate);
     }
-
-    const formatted = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/New_York',
-      month: '2-digit',
-      day: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    }).format(finalDate);
-
-    const cleaned = formatted.replace(',', '');
-    entry[fieldId] = cleaned;
   }
+
 
   formatForInput(value: string): string {
     if (!value) return '';
@@ -456,7 +444,6 @@ export class AuthorizationComponent {
             this.onAuthTypeChange();
             // Trigger onAuthTypeChange() and ensure it completes before loading data
             setTimeout(() => {
-              console.log('onAuthTypeChange completed, now loading data...');
 
               if (savedData) {
                 try {
@@ -682,8 +669,6 @@ export class AuthorizationComponent {
               }
             });
           }
-
-          console.log('FormData after initialization:', this.formData);
 
           if (this.formData['Status Details']?.entries?.length) {
             this.formData['Status Details'].entries.forEach((entry: any) => {
@@ -1196,19 +1181,25 @@ export class AuthorizationComponent {
         });
 
         this.loadDecisionData();
-        console.log('this.saveTypeFrom:', this.saveTypeFrom);
-        if (this.saveType === 'Update' && this.saveTypeFrom === 'Auth') {
+
+        if (this.saveType === 'Update' && this.saveTypeFrom === 'Authorization') {
           // Move to "Decision Details" stepper
           this.stepperSelectedIndex = 1; // Navigate to Decision Details step
         }
 
         if (this.saveType === 'Add')
           this.saveType = 'Update';
-        this.saveTypeFrom = 'Auth';
+        this.saveTypeFrom = 'Authorization';
       },
       error => {
         console.error('Error saving data:', error);
         console.error('Error Details:', error.error);
+        this.snackBar.open('Error saving Authorization!', 'Close', {
+          horizontalPosition: 'center',
+          verticalPosition: 'top',
+          duration: 5000,
+          panelClass: ['success-snackbar']
+        });
       }
     );
   }
@@ -1315,41 +1306,37 @@ export class AuthorizationComponent {
           ) || {};
 
           return {
-            // Ensure new values from Service Details are properly assigned while retaining previous ones
-            serviceCode: existingEntry.serviceCode || service.serviceCode || 'N/A',
-            fromDate: existingEntry.fromDate || service.fromDate || '',
-            toDate: existingEntry.toDate || service.toDate || '',
-            serviceDescription: existingEntry.serviceDescription || service.serviceDesc || '',
-            reviewType: existingEntry.reviewType || service.reviewType || '',
-            unitType: existingEntry.unitType || service.unitType || '',
-            denied: existingEntry.denied || service.serviceDenied || '',
-            modifier: existingEntry.modifier || service.modifier || '',
+            ...existingEntry,  // ✅ Spread existing first
 
-            // Decision-level fields
-            decisionStatus: existingEntry.decisionStatus || service.decisionStatus || '',
-            decisionStatusCode: existingEntry.decisionStatusCode || service.decisionStatusCode || '',
-            requested: existingEntry.requested || service.serviceReq || '',
-            approved: existingEntry.approved || service.serviceAppr || '',
-            used: existingEntry.used || service.used || '',
-            decisionDateTime: existingEntry.decisionDateTime || service.decisionDateTime || '',
-            createdDateTime: existingEntry.createdDateTime || service.createdDateTime || '',
-            updatedDateTime: existingEntry.updatedDateTime || service.updatedDateTime || '',
-            dueDate: existingEntry.dueDate || service.dueDate || '',
+            serviceCode: this.getValidValue(existingEntry.serviceCode, service.serviceCode) || 'N/A',
+            fromDate: this.getValidValue(existingEntry.fromDate, service.fromDate) || '',
+            toDate: this.getValidValue(existingEntry.toDate, service.toDate) || '',
+            serviceDescription: this.getValidValue(existingEntry.serviceDescription, service.serviceDesc) || '',
+            reviewType: this.getValidValue(existingEntry.reviewType, service.reviewType) || '',
+            unitType: this.getValidValue(existingEntry.unitType, service.unitType) || '',
+            denied: this.getValidValue(existingEntry.denied, service.serviceDenied) || '',
+            modifier: this.getValidValue(existingEntry.modifier, service.modifier) || '',
+
+            decisionStatus: this.getValidValue(existingEntry.decisionStatus, service.decisionStatus) || '',
+            decisionStatusCode: this.getValidValue(existingEntry.decisionStatusCode, service.decisionStatusCode) || '',
+            requested: this.getValidValue(existingEntry.requested, service.serviceReq) || '',
+            approved: this.getValidValue(existingEntry.approved, service.serviceAppr) || '',
+            used: this.getValidValue(existingEntry.used, service.used) || '',
+            decisionDateTime: this.getValidValue(existingEntry.decisionDateTime, service.decisionDateTime) || '',
+            createdDateTime: this.getValidValue(existingEntry.createdDateTime, service.createdDateTime) || '',
+            updatedDateTime: this.getValidValue(existingEntry.updatedDateTime, service.updatedDateTime) || '',
+            dueDate: this.getValidValue(existingEntry.dueDate, service.dueDate) || '',
 
             // From requestDetails
-            decisionRequestDatetime: existingEntry.decisionRequestDatetime || requestDetails.requestDatetime || '',
-            requestReceivedVia: existingEntry.requestReceivedVia || requestDetails.requestReceivedVia || '',
-            requestPriority: existingEntry.requestPriority || requestDetails.requestPriority || '',
-            treatmentType: existingEntry.treatmentType || requestDetails.treatmentType || '',
-            newSelect_copy_25gqf4w2s_21: existingEntry.newSelect_copy_25gqf4w2s_21 || requestDetails.newSelect_copy_t1hmnc0kp || '',
-            // Remaining
-            alternateServiceId: existingEntry.alternateServiceId || service.alternateServiceId || '',
-            denialType: existingEntry.denialType || service.denialType || '',
-            denialReason: existingEntry.denialReason || service.denialReason || '',
+            decisionRequestDatetime: this.getValidValue(existingEntry.decisionRequestDatetime, requestDetails.requestDatetime) || '',
+            requestReceivedVia: this.getValidValue(existingEntry.requestReceivedVia, requestDetails.requestReceivedVia) || '',
+            requestPriority: this.getValidValue(existingEntry.requestPriority, requestDetails.requestPriority) || '',
+            treatmentType: this.getValidValue(existingEntry.treatmentType, requestDetails.treatmentType) || '',
+            newSelect_copy_25gqf4w2s_21: this.getValidValue(existingEntry.newSelect_copy_25gqf4w2s_21, requestDetails.newSelect_copy_t1hmnc0kp) || '',
 
-
-            // Preserve all remaining fields
-            ...existingEntry
+            alternateServiceId: this.getValidValue(existingEntry.alternateServiceId, service.alternateServiceId) || '',
+            denialType: this.getValidValue(existingEntry.denialType, service.denialType) || '',
+            denialReason: this.getValidValue(existingEntry.denialReason, service.denialReason) || ''
           };
         }) || this.config['Decision Details']?.entries || [] // If no new data, keep old entries
       },
@@ -1375,6 +1362,13 @@ export class AuthorizationComponent {
       }
     };
 
+  }
+
+  private getValidValue(primary: any, fallback: any): any {
+    if (primary === undefined || primary === null || (typeof primary === 'string' && primary.trim() === '')) {
+      return fallback;
+    }
+    return primary;
   }
 
 
@@ -1481,14 +1475,21 @@ export class AuthorizationComponent {
       let baseDate = new Date();
 
       if (defaultVal === 'D') {
-        return this.formatToEST(baseDate, field.dateOnly);
+        return field.dateOnly ? this.formatDateOnly(baseDate) : this.formatToEST(baseDate);
       }
 
-      const match = /^D\+(\d+)$/.exec(defaultVal);
-      if (match) {
-        const daysToAdd = parseInt(match[1], 10);
+      const plusMatch = /^D\+(\d+)$/.exec(defaultVal);
+      if (plusMatch) {
+        const daysToAdd = parseInt(plusMatch[1], 10);
         baseDate.setDate(baseDate.getDate() + daysToAdd);
-        return this.formatToEST(baseDate, field.dateOnly);
+        return field.dateOnly ? this.formatDateOnly(baseDate) : this.formatToEST(baseDate);
+      }
+
+      const minusMatch = /^D-(\d+)$/.exec(defaultVal);
+      if (minusMatch) {
+        const daysToSubtract = parseInt(minusMatch[1], 10);
+        baseDate.setDate(baseDate.getDate() - daysToSubtract);
+        return field.dateOnly ? this.formatDateOnly(baseDate) : this.formatToEST(baseDate);
       }
     }
 
@@ -1536,7 +1537,6 @@ export class AuthorizationComponent {
 
   onInputChange(event: Event, field: any, section: string, index: number): void {
     const inputValue = (event.target as HTMLInputElement).value;
-    console.log('Input Value:', inputValue);
     this.filterOptions(field, inputValue, section, index);
   }
 
@@ -1627,9 +1627,6 @@ export class AuthorizationComponent {
     const originalEntry = this.formData[section].entries[index];
     const copiedEntry = { ...originalEntry, __isNew: true };
 
-    // Optional: Reset any field values if needed here
-    // Example: copiedEntry.someField = '';
-
     this.formData[section].entries.push(copiedEntry);
   }
 
@@ -1650,13 +1647,6 @@ export class AuthorizationComponent {
       }
     }
   }
-
-  
-  handleDateTimeInput(event: Event, entry: any, fieldId: string, field: any): void {
-    const input = (event.target as HTMLInputElement).value.trim();
-    entry[fieldId] = input; // Update the model immediately
-  }
-
 
 
 }

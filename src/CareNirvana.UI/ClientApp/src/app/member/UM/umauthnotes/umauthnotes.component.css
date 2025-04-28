@@ -29,7 +29,6 @@
   .form-group select,
   .form-group textarea {
     width: 100%;
-    padding: 8px;
     border: 2px solid #ccc;
     border-radius: 5px;
     font-size: 14px;
@@ -69,12 +68,8 @@
   right: 10px;
   top: 50%;
   transform: translateY(-50%);
-  background: transparent;
-  border: none;
-  font-size: 20px;
   cursor: pointer;
-  padding: 0;
-  color: #555;
+  color: #495057;
 }
 
 /* --- Custom Dropdown Arrow --- */
@@ -122,7 +117,7 @@
   gap: 10px;
 }
 
-.form-container button {
+/*.form-container button {
   background-color: #007bff;
   color: white;
   padding: 8px 20px;
@@ -210,3 +205,39 @@
   width: auto !important;
 }
 
+.notes-button {
+  margin-bottom: 15px;
+  background-color: #007BFF !important;
+  color: white !important;
+  border-radius: 5px;
+  height: 30px;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  /*  border: 1px solid #ccc;
+  border-radius: 4px;*/
+  width: 50%; /* Adjust width as needed */
+}
+
+.search-input {
+  border: none;
+  outline: none;
+  flex: 1;
+}
+
+.search-box.active {
+  border-bottom: 2px solid #0078d7; /* Highlight color */
+}
+
+.calendar-hidden-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40px;
+  height: 40px;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+}

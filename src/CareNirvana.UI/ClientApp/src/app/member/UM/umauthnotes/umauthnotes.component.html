@@ -18,7 +18,7 @@
                          class="form-control"
                          [(ngModel)]="field.displayLabel"
                          (input)="filterOptions(field)"
-                         (focus)="field.showDropdown = true"
+                         (focus)="onFieldFocus(field)"
                          (blur)="onSelectBlur(field)"
                          [disabled]="!field.isEnabled"
                          [name]="field.id"
@@ -42,33 +42,40 @@
 
               <!-- Datetime Local with D, D+1 -->
               <ng-container *ngSwitchCase="'datetime-local'">
-                <div class="form-outline position-relative">
+                <div class="form-outline position-relative" style="margin-bottom: 1rem;">
                   <label [for]="field.id + '_' + i" class="floating-label">
-                    {{ field.displayName }}<span *ngIf="field.required" class="text-danger"> *</span>
+                    {{ field.displayName }}
+                    <span *ngIf="field.required" class="text-danger">*</span>
                   </label>
-                  <div class="input-with-icon">
+
+                  <div class="input-with-icon" style="position: relative;">
+                    <!-- 🚀 Visible TEXT input -->
                     <input class="form-control"
                            type="text"
                            [id]="field.id + '_' + i"
                            [(ngModel)]="field.value"
                            [name]="field.id"
-                           (blur)="handleDateTimeBlur(field, field.id, field)"
-                           placeholder="Enter D, D+1, D-1 or select">
+                           (blur)="handleDateTimeBlur(field)"
+                           placeholder="Enter D, D+1, D-1 or pick date">
 
-                    <button type="button" class="calendar-icon" (click)="triggerPicker('native_' + field.id + '_' + i)">📅</button>
-
+                    <!-- 📅 Calendar button -->
+                    <button type="button"
+                            style="position: absolute; top: 8px; right: 0px; background: none; border: none; cursor: pointer;"
+                            (click)="triggerCalendar(i)">
+                      📅
+                    </button>
+                    <!-- 🚀 Hidden REAL datetime-local field -->
+                    <input #calendarPickers
+                           type="datetime-local"
+                           style="opacity: 0; position: absolute; top: 8px; right: 8px; height: 100%; width: 40px; cursor: pointer;"
+                           (change)="handleCalendarChange($event, field)">
                   </div>
-
-                  <input type="datetime-local"
-                         class="hidden-datetime-picker"
-                         [id]="'native_' + field.id + '_' + i"
-                         [value]="formatForInput(field.value)"
-                         (change)="handleNativePicker($event, field, field.id, field)"
-                         style="position: absolute; top: -9999px; left: -9999px; visibility: visible;" />
-
-
                 </div>
               </ng-container>
+
+
+
+
 
               <!-- Checkbox -->
               <div *ngSwitchCase="'checkbox'" class="form-group checkbox-inline">
@@ -101,12 +108,34 @@
 
       <!-- End Datetime Field when Alert Note checked -->
       <div class="form-group" *ngIf="showEndDatetimeField">
-        <input type="datetime-local"
-               [(ngModel)]="endDatetimeValue"
-               name="endDatetimeValue"
-               placeholder=" ">
-        <label>End Datetime</label>
+        <div class="form-outline position-relative">
+          <label for="endDatetimeText" class="floating-label">End Datetime</label>
+
+          <div class="input-with-icon">
+            <!-- Actual visible text input -->
+            <input class="form-control"
+                   type="text"
+                   id="endDatetimeText"
+                   [(ngModel)]="endDatetimeValue"
+                   name="endDatetimeValue"
+                   (blur)="handleEndDatetimeBlur()"
+                   placeholder="Enter D, D+1, D-1 or select">
+
+            <!-- Calendar Icon to trigger hidden input -->
+            <button type="button" class="calendar-icon" style="border: none; background: none;" (click)="triggerNativePicker()">📅</button>
+
+            <!-- Hidden native datetime-local input -->
+            <input type="datetime-local"
+                   #hiddenEndDatetimePicker
+                   style="position: absolute; top: 0; left: 0; opacity: 0; pointer-events: none;"
+                   (change)="handleNativePickerForEndDatetime($event)" />
+          </div>
+        </div>
+
       </div>
+
+
+
 
       <!-- Textarea Full Width -->
       <ng-container *ngFor="let field of notesFields">
@@ -126,8 +155,8 @@
 
       <!-- Buttons -->
       <div class="form-group button-right">
-        <button type="button" (click)="saveNote(noteForm)">Save</button>
-        <button type="button" (click)="cancelForm()">Cancel</button>
+        <button type="button" class="notes-button" (click)="saveNote(noteForm)">Save</button>
+        <button type="button" class="notes-button" (click)="cancelForm()">Cancel</button>
       </div>
 
     </div>
@@ -139,22 +168,30 @@
   <!-- wrapped the table -->
   <!--*ngIf="!isFormVisible"-->
   <div class="table-container">
-    <div class="d-flex justify-content-between align-items-center " style="width: 100%;  ">
-      <div class="d-flex justify-content-between align-items-center">
-        <div class="search-bar-container-table">
-          <button mat-icon-button>
-            <mat-icon>search</mat-icon>
-          </button>
-          <!--<input class="input" matInput [readonly]="mode === 'view'" (keyup)="applyFilter($event)" placeholder="Start typing to search User " #input>-->
-          <input class="input" matInput (keyup)="applyFilter($event)" placeholder="Search Notes" />
-        </div>
+
+    <div class="d-flex justify-content-between align-items-center w-100 pb-2">
+
+      <!-- Search Box -->
+      <div class="search-box" [class.active]="isFocused">
+        <button mat-icon-button>
+          <mat-icon>search</mat-icon>
+        </button>
+        <input type="text"
+               (keyup)="applyFilter($event)" placeholder="Start typing to search notes"
+               class="search-input"
+               (focus)="onFocus()"
+               (blur)="onBlur()" #input />
       </div>
-      <div>
-        <button mat-icon-button color="primary" (click)="openForm('add')" matTooltip="Add Notes">
-          <mat-icon>add</mat-icon>
+
+      <!-- Add Button -->
+      <div matTooltip="Click to Add notes" class="ms-3">
+        <button class="btn btn-primary ms-3" (click)="openForm('add')" matTooltip="Click to Add notes">
+          Add
         </button>
       </div>
     </div>
+
+
     <table class="responsive-table" mat-table [dataSource]="dataSource" matSort class="mat-elevation-z8">
       <!-- Define columns here -->
       <ng-container matColumnDef="authorizationNoteTypeLabel">

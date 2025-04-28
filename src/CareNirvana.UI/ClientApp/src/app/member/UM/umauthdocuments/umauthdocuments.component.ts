@@ -251,4 +251,23 @@ export class UmauthdocumentsComponent implements OnInit, OnChanges {
     setTimeout(() => { field.showDropdown = false; }, 200);
   }
 
+  onFieldFocus(field: any): void {
+    field.showDropdown = true;
+
+    // Small trick to refresh filtered options in case user didn't type anything yet
+    if (!field.filteredOptions && field.options) {
+      field.filteredOptions = [...field.options];
+    }
+  }
+
+  isFocused = false;
+
+  onFocus() {
+    this.isFocused = true;
+  }
+
+  onBlur() {
+    this.isFocused = false;
+  }
+
 }

@@ -31,6 +31,7 @@ export class UmauthnotesComponent implements OnInit {
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
+  @ViewChild('hiddenEndDatetimePicker') hiddenEndDatetimePicker!: ElementRef<HTMLInputElement>;
 
   @Input() notesFields: any[] = [];
 
@@ -293,48 +294,60 @@ export class UmauthnotesComponent implements OnInit {
 
   //********** Method to display the datetime ************//
 
-  @ViewChildren('pickerRef') datetimePickers!: QueryList<ElementRef<HTMLInputElement>>;
+  @ViewChildren('calendarPickers') calendarPickers!: QueryList<ElementRef<HTMLInputElement>>;
 
 
-  handleDateTimeBlur(field: any, fieldId: string, entry: any): void {
-    const input = (field.value || '').trim();
-    let finalDate: Date | null = null;
 
-    if (/^d\+\d+$/i.test(input)) {
-      const daysToAdd = parseInt(input.split('+')[1], 10);
-      finalDate = new Date();
-      finalDate.setDate(finalDate.getDate() + daysToAdd);
-    } else if (/^d-\d+$/i.test(input)) {
-      const daysSubtract = parseInt(input.split('-')[1], 10);
-      finalDate = new Date();
-      finalDate.setDate(finalDate.getDate() - daysSubtract);
-    } else if (/^d$/i.test(input)) {
-      finalDate = new Date();
-    } else {
-      const parsed = new Date(input);
-      if (!isNaN(parsed.getTime())) {
-        finalDate = parsed;
+  triggerCalendar(index: number): void {
+    const picker = this.calendarPickers.toArray()[index]?.nativeElement;
+    if (picker) {
+      if (typeof picker.showPicker === 'function') {
+        picker.showPicker();
       } else {
-        return; // Invalid input
+        picker.click();
       }
     }
+  }
 
-    if (finalDate) {
-      const formatted = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'America/New_York',
-        month: '2-digit',
-        day: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-      }).format(finalDate).replace(',', '');
+  handleDateTimeBlur(field: any): void {
+    const input = (field.value || '').trim().toUpperCase();
+    let baseDate = new Date();
 
-      field.value = formatted;
-      entry[fieldId] = formatted;
+    if (input === 'D') {
+      field.value = this.formatDateTime(baseDate);
+    } else if (/^D\+(\d+)$/.test(input)) {
+      const daysToAdd = parseInt(input.match(/^D\+(\d+)$/)![1], 10);
+      baseDate.setDate(baseDate.getDate() + daysToAdd);
+      field.value = this.formatDateTime(baseDate);
+    } else if (/^D-(\d+)$/.test(input)) {
+      const daysToSubtract = parseInt(input.match(/^D-(\d+)$/)![1], 10);
+      baseDate.setDate(baseDate.getDate() - daysToSubtract);
+      field.value = this.formatDateTime(baseDate);
     }
   }
+
+  handleCalendarChange(event: Event, field: any): void {
+    const value = (event.target as HTMLInputElement).value;
+    if (value) {
+      field.value = this.formatDateTime(new Date(value));
+    }
+  }
+
+  formatDateTime(date: Date): string {
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }).format(date).replace(',', '');
+  }
+
+
+
 
 
 
@@ -381,24 +394,19 @@ export class UmauthnotesComponent implements OnInit {
     }
   }
 
-  openNativePicker(picker: HTMLInputElement): void {
-    if ('showPicker' in picker && typeof picker.showPicker === 'function') {
-      picker.showPicker();
-    } else {
-      picker.click();
-    }
-  }
 
-  openNativePickerByIndex(index: number): void {
-    const picker = this.datetimePickers.toArray()[index]?.nativeElement;
+  openNativePicker(picker: HTMLInputElement): void {
     if (picker) {
-      if ('showPicker' in picker && typeof (picker as any).showPicker === 'function') {
-        (picker as any).showPicker();
+      if ('showPicker' in picker && typeof picker.showPicker === 'function') {
+        picker.showPicker();
       } else {
         picker.click();
       }
     }
   }
+
+
+
 
   triggerPicker(elementId: string): void {
     console.log('Triggering picker for ID:', elementId);
@@ -446,11 +454,98 @@ export class UmauthnotesComponent implements OnInit {
     }).format(date);
   }
 
+
+
+  handleEndDatetimeBlur(): void {
+    const input = (this.endDatetimeValue || '').trim();
+    let finalDate: Date | null = null;
+
+    if (/^d\+\d+$/i.test(input)) {
+      const daysToAdd = parseInt(input.split('+')[1], 10);
+      finalDate = new Date();
+      finalDate.setDate(finalDate.getDate() + daysToAdd);
+    } else if (/^d-\d+$/i.test(input)) {
+      const daysSubtract = parseInt(input.split('-')[1], 10);
+      finalDate = new Date();
+      finalDate.setDate(finalDate.getDate() - daysSubtract);
+    } else if (/^d$/i.test(input)) {
+      finalDate = new Date();
+    } else {
+      const parsed = new Date(input);
+      if (!isNaN(parsed.getTime())) {
+        finalDate = parsed;
+      } else {
+        return; // Invalid input
+      }
+    }
+
+    if (finalDate) {
+      const formatted = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).format(finalDate).replace(',', '');
+
+      this.endDatetimeValue = formatted;
+    }
+  }
+
+  handleNativePickerForEndDatetime(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const value = input?.value;
+    if (!value) return;
+
+    const parsed = new Date(value);
+    if (isNaN(parsed.getTime())) return;
+
+    const formattedDateTime = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }).format(parsed).replace(',', '');
+
+    this.endDatetimeValue = formattedDateTime;
+  }
+
+  triggerNativePicker(): void {
+    if (this.hiddenEndDatetimePicker?.nativeElement) {
+      this.hiddenEndDatetimePicker.nativeElement.showPicker();
+    }
+  }
+
+
+
   //********** Method to display the datetime ************//
 
 
+  onFieldFocus(field: any): void {
+    field.showDropdown = true;
 
+    // Small trick to refresh filtered options in case user didn't type anything yet
+    if (!field.filteredOptions && field.options) {
+      field.filteredOptions = [...field.options];
+    }
+  }
 
+  isFocused = false;
+
+  onFocus() {
+    this.isFocused = true;
+  }
+
+  onBlur() {
+    this.isFocused = false;
+  }
 
 
 }

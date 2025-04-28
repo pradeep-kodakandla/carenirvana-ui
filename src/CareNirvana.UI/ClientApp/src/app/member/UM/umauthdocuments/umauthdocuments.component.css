@@ -201,3 +201,22 @@
   display: flex;
   align-items: center;
 }
+
+
+.search-box {
+  display: flex;
+  align-items: center;
+  /*  border: 1px solid #ccc;
+  border-radius: 4px;*/
+  width: 50%; /* Adjust width as needed */
+}
+
+.search-input {
+  border: none;
+  outline: none;
+  flex: 1;
+}
+
+.search-box.active {
+  border-bottom: 2px solid #0078d7; /* Highlight color */
+}

@@ -53,8 +53,6 @@ export class DecisiondetailsComponent implements OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
 
-    console.log("Decision Data Changes:", this.decisionData);
-
     if (changes['decisionData'] && this.decisionData) {
       setTimeout(() => {
         this.ensureDecisionDetailsEntries();
@@ -421,8 +419,6 @@ export class DecisiondetailsComponent implements OnChanges {
       entry[fieldId] = formatted;
     }
   }
-
-
 
   formatForInput(value: string): string {
     if (!value) return '';
