@@ -2,17 +2,37 @@ import { Component, ElementRef, ViewChild } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { MatTableDataSource } from '@angular/material/table';
 import { AuthActivity } from 'src/app/member/UM/umauthactivity/auth-activity.model.service';
+import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
+import { trigger, state, style, transition, animate } from '@angular/animations';
 
 @Component({
   selector: 'app-umauthactivity',
   templateUrl: './umauthactivity.component.html',
-  styleUrl: './umauthactivity.component.css'
+  styleUrl: './umauthactivity.component.css',
+  animations: [
+    trigger('collapseExpand', [
+      state('collapsed', style({
+        height: '0px',
+        opacity: 0,
+        overflow: 'hidden',
+      })),
+      state('expanded', style({
+        height: '*',
+        opacity: 1,
+        overflow: 'hidden',
+      })),
+      transition('collapsed <=> expanded', [
+        animate('300ms ease-in-out')
+      ]),
+    ])
+  ]
 })
 export class UmauthactivityComponent {
   activityForm: FormGroup;
   activities = new MatTableDataSource<AuthActivity>([]);
   displayedColumns: string[] = ['activityType', 'priority', 'scheduledDateTime', 'dueDateTime', 'assignTo', 'comments', 'actions'];
   editingIndex: number | null = null;
+  isEditing: boolean = false; // NEW FLAG
 
   constructor(private fb: FormBuilder) {
     this.activityForm = this.fb.group({
@@ -138,5 +158,68 @@ export class UmauthactivityComponent {
       this.scheduledPicker.nativeElement.click(); // fallback
     }
   }
+
+
+
+  collapsedIndexes: number[] = [];
+
+  toggleCollapse(index: number) {
+    if (this.collapsedIndexes.includes(index)) {
+      this.collapsedIndexes = this.collapsedIndexes.filter(i => i !== index);
+    } else {
+      this.collapsedIndexes.push(index);
+    }
+  }
+
+  dropActivity(event: CdkDragDrop<any[]>) {
+    moveItemInArray(this.activities.data, event.previousIndex, event.currentIndex);
+    this.activities._updateChangeSubscription(); // Refresh display
+  }
+
+  getPriorityClass(priority: string | null | undefined): string {
+    switch ((priority || '').toLowerCase()) {
+      case 'high':
+        return 'priority-high';
+      case 'low':
+        return 'priority-low';
+      default:
+        return 'priority-default';
+    }
+  }
+
+  selectedIndex: number | null = null;
+
+  onAddNewActivity() {
+    this.selectedIndex = null;
+    this.isEditing = true;   // Very important
+    this.onReset();          // Reset form
+  }
+
+
+  selectActivity(index: number) {
+    this.editActivity(index);
+    this.selectedIndex = index;
+    this.isEditing = true;   // Now we are in edit mode
+  }
+
+
+  onCancel() {
+    this.selectedIndex = null;
+    this.isEditing = false;  // Go back to summary
+  }
+
+
+  getCompletedCount(): number {
+    return this.activities.data.filter(a => a.status === 'Completed').length;
+  }
+
+  getPendingCount(): number {
+    return this.activities.data.filter(a => a.status !== 'Completed').length;
+  }
+
+  getPriorityCount(priority: string): number {
+    return this.activities.data.filter(a => (a.priority || '').toLowerCase() === priority.toLowerCase()).length;
+  }
+
 
 }
