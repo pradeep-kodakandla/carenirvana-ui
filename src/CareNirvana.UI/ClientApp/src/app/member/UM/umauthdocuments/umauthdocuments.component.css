@@ -1,107 +1,278 @@
-/* --- Form Container --- */
-.form-container {
-  max-width: 2000px;
-  margin: 20px auto;
+.auth-form {
+  padding: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  margin-bottom: 2rem;
 }
 
-/* --- Form Grid --- */
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 15px;
-  width: 100%;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
 }
 
-/* --- Form Group --- */
-.form-group {
+.form-group-outline {
   position: relative;
-  display: block;
+  margin-top: 1.5rem;
+}
+
+  .form-group-outline label {
+    position: absolute;
+    top: -10px;
+    left: 10px;
+    background: white;
+    padding: 0 5px;
+    font-size: 13px;
+    color: #333;
+    font-weight: 500;
+    z-index: 1;
+  }
+
+  .form-group-outline input,
+  .form-group-outline select,
+  .form-group-outline textarea {
+    width: 100%;
+    padding: 12px 10px;
+    border: 1px solid #888;
+    border-radius: 4px;
+    font-size: 14px;
+    background-color: white;
+  }
+
+.form-grid .form-outline,
+.form-grid .dropdown-container {
+  margin-bottom: 15px !important;
+  padding-bottom: 0 !important;
+}
+
+.form-grid {
+  row-gap: 0 !important;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  display: grid;
+  column-gap: 16px;
+}
+
+
+textarea {
+  resize: vertical;
+}
+
+.button-group {
+  margin-top: 1rem;
+  display: flex;
+  gap: 1rem;
+}
+
+  .button-group button {
+    padding: 8px 16px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+.add-btn {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.activity-container {
+  display: flex;
+  height: calc(100vh - 100px);
+  gap: 1rem;
+}
+
+.activity-left {
+  width: 40%;
+  overflow-y: auto;
+  border-right: 2px solid #eee;
+  padding-right: 1rem;
+}
+
+.activity-right {
+  width: 60%;
+  padding-left: 1rem;
+  overflow-y: auto;
+}
+
+.left-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  gap: 0.5rem;
+}
+
+.search-input {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+.right-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sort-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.sort-icon {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.sort-menu {
+  position: absolute;
+  top: 36px;
+  right: 0;
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  z-index: 10;
+  width: 200px;
+}
+
+.sort-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+  .sort-option:hover {
+    background-color: #f0f0f0;
+  }
+
+.timeline-list {
+  display: flex;
   flex-direction: column;
 }
 
-  /* Textarea takes full row */
-  .form-group.textarea-field {
-    grid-column: 1 / -1;
-  }
-
-  /* --- Inputs, Selects, Textareas --- */
-  .form-group input,
-  .form-group select,
-  .form-group textarea {
-    width: 100%;
-    padding: 8px;
-    border: 2px solid #ccc;
-    border-radius: 5px;
-    font-size: 14px;
-    background-color: white;
-    outline: none;
-    transition: border-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
-  }
-
-    .form-group input:focus,
-    .form-group select:focus,
-    .form-group textarea:focus {
-      border-color: #007bff;
-      box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
-    }
-
-  /* --- Floating Labels --- */
-  .form-group label {
-    position: absolute;
-    top: -10px;
-    left: 12px;
-    background: white;
-    padding: 0 5px;
-    font-size: 12px;
-    color: #555;
-    z-index: 1;
-    transition: 0.2s ease;
-  }
-
-/* --- Hidden Fields --- */
-.hidden {
-  display: none;
+.timeline-item {
+  position: relative;
+  margin-bottom: 1rem;
+  cursor: grab;
 }
 
-/* --- Calendar Icon Button --- */
-.calendar-icon {
+.timeline-dot {
   position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: transparent;
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 0;
+  left: 7px;
+  width: 16px;
+  height: 16px;
+  background: #007bff;
+  border-radius: 50%;
+  top: 10px;
+  border: 3px solid white;
+  z-index: 1;
+  visibility: hidden;
+}
+
+  .timeline-dot.completed {
+    background: #28a745;
+  }
+
+.timeline-content {
+  background: #f9f9f9;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.timeline-title {
+  font-weight: bold;
+  color: #333;
+}
+
+.timeline-summary {
+  font-size: 0.9rem;
   color: #555;
 }
 
-/* --- Custom Dropdown Arrow --- */
-.dropdown-container {
+.timeline-priority {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: white;
+}
+
+.priority-high {
+  background-color: #dc3545;
+}
+
+.priority-low {
+  background-color: #28a745;
+}
+
+.priority-default {
+  background-color: #6c757d;
+}
+
+.ai-summary {
+  padding: 2rem;
+  background: #f7f9fc;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  box-shadow: 0px 2px 6px rgba(0,0,0,0.08);
+}
+
+  .ai-summary h3 {
+    margin-bottom: 1rem;
+  }
+
+  .ai-summary p {
+    margin: 0.5rem 0;
+    font-size: 1rem;
+  }
+
+.is-invalid {
+  border-color: red !important;
+}
+
+.invalid-feedback {
+  color: red;
+  font-size: 0.85em;
+  margin-top: 4px;
+}
+
+
+..dropdown-container {
   position: relative;
 }
 
-.dropdown-arrow {
-  position: absolute;
-  top: 50%;
-  right: 10px;
-  transform: translateY(-50%);
-  pointer-events: none;
-  font-size: 18px;
-  color: #888;
-}
-
-/* --- Autocomplete Dropdown --- */
 .autocomplete-dropdown {
   position: absolute;
-  background: white;
-  border: 1px solid #ccc;
+  background: #fff;
+  z-index: 1000;
   width: 100%;
   max-height: 200px;
   overflow-y: auto;
-  z-index: 1000;
-  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid #ccc;
+  border-radius: 4px;
 }
 
 .autocomplete-option {
@@ -113,110 +284,131 @@
     background-color: #f1f1f1;
   }
 
-/* --- Button Styling --- */
-.button-right {
-  grid-column: 4 / 5;
-  display: block;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 10px;
+.form-outline {
+  position: relative;
+  margin-bottom: 1.5rem;
 }
 
-.form-container button {
-  background-color: #007bff;
-  color: white;
-  padding: 8px 20px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.3s ease-in-out;
+.floating-label {
+  position: absolute;
+  top: -10px;
+  left: 12px;
+  background-color: white;
+  padding: 0 4px;
+  font-size: 0.85rem;
+  color: #555;
+  z-index: 10;
 }
 
-  .form-container button:hover {
-    background-color: #0056b3;
-  }
-
-/* --- Text Danger for Validation --- */
-.text-danger {
-  color: #f44336;
-  font-size: 12px;
-  margin-top: 5px;
-}
-
-/* --- Checkbox Inline --- */
-.checkbox-inline {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.input-with-icon {
   position: relative;
 }
 
-  .checkbox-inline label {
-    position: static;
-    font-size: 14px;
-    color: #333;
-    margin: 0;
-    cursor: pointer;
+  .input-with-icon input.form-control {
+    padding-right: 30px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
   }
 
-  .checkbox-inline input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
-    margin: 0;
-  }
-
-/* --- Table Styles --- */
-.table-container {
-  overflow-x: auto;
+.dropdown-arrow {
+  position: absolute;
+  right: 10px;
+  top: 8px;
+  pointer-events: none;
+  font-size: 0.85rem;
+  color: #777;
 }
 
-.responsive-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-family: Arial, sans-serif;
+.autocomplete-option.highlighted {
+  background-color: #007BFF;
+  color: white;
 }
 
-  .responsive-table th {
-    background-color: #4caf50;
-    color: white;
-    padding: 10px;
-    text-align: left;
-  }
-
-  .responsive-table td {
-    padding: 5px;
-    border: 1px solid #ddd;
-  }
-
-  .responsive-table tr:hover {
-    background-color: #f1f1f1;
-  }
-
-/* --- Search Bar for Table --- */
-.search-bar-container-table {
-  padding: 0px 56px 0px 8px;
-  background: #eaf1fb;
-  border-radius: 5px;
-  display: flex;
-  align-items: center;
-}
-
-
-.search-box {
-  display: flex;
-  align-items: center;
-  /*  border: 1px solid #ccc;
-  border-radius: 4px;*/
-  width: 50%; /* Adjust width as needed */
-}
-
-.search-input {
+.calendar-icon-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
   border: none;
-  outline: none;
-  flex: 1;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+  z-index: 2;
 }
 
-.search-box.active {
-  border-bottom: 2px solid #0078d7; /* Highlight color */
+
+.icon-btn {
+  background: none;
+  border: none;
+  padding: 0 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  margin-left: 6px;
+}
+
+  .icon-btn:hover {
+    color: #007bff;
+  }
+
+.activity-actions {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+}
+
+.icon-btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.comments-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 16px;
+}
+
+.timeline-item.selected .timeline-content {
+  border: 2px solid #007bff;
+  background-color: #e9f5ff;
+}
+
+.icon-btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.info-note {
+  background-color: #eef4fc;
+  border-left: 4px solid #2196f3;
+  padding: 10px 14px;
+  margin: 10px 0;
+  font-size: 0.95rem;
+  color: #333;
+  border-radius: 4px;
+}
+
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.full-width {
+  grid-column: span 2;
+}
+
+.info-note {
+  background-color: #eef4fc;
+  border-left: 4px solid #2196f3;
+  padding: 12px 16px;
+  font-size: 0.95rem;
+  color: #333;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+textarea.form-control {
+  min-height: 100px;
 }

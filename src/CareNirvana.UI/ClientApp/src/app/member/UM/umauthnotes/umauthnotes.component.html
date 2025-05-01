@@ -1,245 +1,183 @@
-<div class="form-container" *ngIf="isFormVisible">
-  <form #noteForm="ngForm">
-    <div class="form-grid">
+<div class="activity-container">
+  <!-- LEFT SIDE: Notes List -->
+  <div class="activity-left">
+    <div class="left-controls">
+      <input type="text" placeholder="🔍 Search..." [(ngModel)]="searchTerm" (input)="applyFilter($event)" class="search-input" />
+      <div class="right-actions">
+        <div class="sort-wrapper" (mouseenter)="showSort = true" (mouseleave)="showSort = false">
+          <button class="sort-icon">⇅</button>
+          <div class="sort-menu" *ngIf="showSort">
+            <div class="sort-option" (click)="applySort('authorizationNoteTypeLabel_asc')">Note Type (A–Z)</div>
+            <div class="sort-option" (click)="applySort('authorizationNoteTypeLabel_desc')">Note Type (Z–A)</div>
+            <div class="sort-option" (click)="applySort('createdOn_desc')">Recent First</div>
+            <div class="sort-option" (click)="applySort('createdOn_asc')">Oldest First</div>
+          </div>
+        </div>
+        <button class="add-btn" (click)="openForm('add')">➕ Add Note</button>
+      </div>
+    </div>
 
-      <!-- First Row Fields -->
-      <ng-container *ngFor="let field of notesFields; let i = index">
+    <div class="timeline-list">
+      <div *ngFor="let note of dataSource.filteredData; let i = index" class="timeline-item" [class.selected]="note.id === selectedNoteId">
+        <div class="timeline-dot completed"></div>
+        <div class="timeline-content" (click)="editNote(note)">
+          <div class="timeline-header">
+            <div class="timeline-title">
+              {{ note.authorizationNoteTypeLabel }}
+              <span *ngIf="note.authorizationAlertNote" title="Alert Note" class="alert-icon">⚠️</span>
+            </div>
+            <div class="timeline-priority priority-default">{{ note.createdOn | date: 'short' }}</div>
+            <span class="activity-actions">
+              <button type="button" class="icon-btn" title="Edit" (click)="editNote(note)">✏️</button>
+              <button type="button" class="icon-btn" title="Delete" (click)="deleteNote(note.id)">🗑️</button>
+            </span>
+          </div>
+          <div class="timeline-summary">
+            {{ note.authorizationNotes }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        <ng-container *ngIf="field.type !== 'textarea' && field.id !== 'authorizationNotesGrid'">
-          <div class="form-group" [ngClass]="{ 'hidden': field.hidden }">
+  <!-- RIGHT SIDE: Form -->
+  <div class="activity-right">
+    <ng-container *ngIf="isFormVisible">
+      <div class="auth-form">
+        <form #noteForm="ngForm">
+          <div class="form-grid">
+            <ng-container *ngFor="let field of notesFields; let i = index">
+              <ng-container *ngIf="field.type !== 'textarea' && field.id !== 'authorizationNotesGrid'">
+                <div class="form-outline dropdown-container" [ngClass]="{ 'hidden': field.hidden }">
+                  <ng-container [ngSwitch]="field.type">
+                    <!-- Select Dropdown -->
+                    <ng-container *ngSwitchCase="'select'">
+                      <label class="floating-label">{{ field.displayName }} <span *ngIf="field.required" class="text-danger">*</span></label>
+                      <div class="input-with-icon">
+                        <input class="form-control"
+                               type="text"
+                               [(ngModel)]="field.displayLabel"
+                               (input)="filterOptions(field)"
+                               (focus)="onFieldFocus(field)"
+                               (blur)="onSelectBlur(field)"
+                               [disabled]="!field.isEnabled"
+                               [name]="field.id"
+                               autocomplete="off"
+                               #fieldModel="ngModel">
+                        <span class="dropdown-arrow">&#9662;</span>
+                        <div class="autocomplete-dropdown" *ngIf="field.showDropdown && field.filteredOptions?.length">
+                          <div class="autocomplete-option" *ngFor="let option of field.filteredOptions" (mousedown)="selectDropdownOption(field, option)">
+                            {{ option.label }}
+                          </div>
+                        </div>
+                      </div>
+                      <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched || showValidationErrors)" class="text-danger">
+                        {{ field.requiredMsg || (field.displayName + ' is required.') }}
+                      </div>
+                    </ng-container>
 
-            <ng-container [ngSwitch]="field.type">
+                    <!-- DateTime -->
+                    <ng-container *ngSwitchCase="'datetime-local'">
+                      <label class="floating-label">{{ field.displayName }} <span *ngIf="field.required" class="text-danger">*</span></label>
+                      <div class="input-with-icon">
+                        <input class="form-control"
+                               type="text"
+                               [(ngModel)]="field.value"
+                               [name]="field.id"
+                               (blur)="handleDateTimeBlur(field)"
+                               placeholder="Enter D, D+1, D-1 or select">
+                        <button type="button" class="calendar-icon-btn" (click)="triggerCalendar(i)">📅</button>
+                        <input type="datetime-local"
+                               #calendarPickers
+                               style="opacity: 0; position: absolute; pointer-events: none;"
+                               (change)="handleCalendarChange($event, field)">
+                      </div>
+                    </ng-container>
 
-              <!-- Autocomplete Select -->
-              <ng-container *ngSwitchCase="'select'">
-                <div class="form-outline dropdown-container">
-                  <label>{{ field.displayName }} <span *ngIf="field.required" class="text-danger">*</span></label>
-                  <input type="text"
-                         class="form-control"
-                         [(ngModel)]="field.displayLabel"
-                         (input)="filterOptions(field)"
-                         (focus)="onFieldFocus(field)"
-                         (blur)="onSelectBlur(field)"
-                         [disabled]="!field.isEnabled"
-                         [name]="field.id"
-                         [attr.autocomplete]="'off'"
-                         #fieldModel="ngModel">
-                  <span class="dropdown-arrow">&#9662;</span>
+                    <!-- Checkbox -->
+                    <ng-container *ngSwitchCase="'checkbox'">
+                      <div class="checkbox-inline">
+                        <input type="checkbox"
+                               [(ngModel)]="showEndDatetimeField"
+                               name="authorizationAlertNote"
+                               (change)="onAlertNoteChange($event)">
+                        <label for="authorizationAlertNote">Alert Note</label>
+                      </div>
+                    </ng-container>
 
-                  <div class="autocomplete-dropdown" *ngIf="field.showDropdown && field.filteredOptions?.length">
-                    <div class="autocomplete-option"
-                         *ngFor="let option of field.filteredOptions"
-                         (mousedown)="selectDropdownOption(field, option)">
-                      {{ option.label }}
-                    </div>
-                  </div>
-
-                  <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched || showValidationErrors)" class="text-danger">
-                    {{ field.requiredMsg || (field.displayName + ' is required.') }}
-                  </div>
+                    <!-- Default Text Input -->
+                    <ng-container *ngSwitchDefault>
+                      <label class="floating-label">{{ field.displayName }} <span *ngIf="field.required" class="text-danger">*</span></label>
+                      <input class="form-control"
+                             type="text"
+                             [(ngModel)]="field.value"
+                             [required]="field.required"
+                             [name]="field.id"
+                             #fieldModel="ngModel">
+                      <div *ngIf="field.required && fieldModel.invalid && (fieldModel.touched || fieldModel.dirty || showValidationErrors)" class="text-danger">
+                        {{ field.requiredMsg || (field.displayName + ' is required.') }}
+                      </div>
+                    </ng-container>
+                  </ng-container>
                 </div>
               </ng-container>
-
-              <!-- Datetime Local with D, D+1 -->
-              <ng-container *ngSwitchCase="'datetime-local'">
-                <div class="form-outline position-relative" style="margin-bottom: 1rem;">
-                  <label [for]="field.id + '_' + i" class="floating-label">
-                    {{ field.displayName }}
-                    <span *ngIf="field.required" class="text-danger">*</span>
-                  </label>
-
-                  <div class="input-with-icon" style="position: relative;">
-                    <!-- 🚀 Visible TEXT input -->
-                    <input class="form-control"
-                           type="text"
-                           [id]="field.id + '_' + i"
-                           [(ngModel)]="field.value"
-                           [name]="field.id"
-                           (blur)="handleDateTimeBlur(field)"
-                           placeholder="Enter D, D+1, D-1 or pick date">
-
-                    <!-- 📅 Calendar button -->
-                    <button type="button"
-                            style="position: absolute; top: 8px; right: 0px; background: none; border: none; cursor: pointer;"
-                            (click)="triggerCalendar(i)">
-                      📅
-                    </button>
-                    <!-- 🚀 Hidden REAL datetime-local field -->
-                    <input #calendarPickers
-                           type="datetime-local"
-                           style="opacity: 0; position: absolute; top: 8px; right: 8px; height: 100%; width: 40px; cursor: pointer;"
-                           (change)="handleCalendarChange($event, field)">
-                  </div>
-                </div>
-              </ng-container>
-
-
-
-
-
-              <!-- Checkbox -->
-              <div *ngSwitchCase="'checkbox'" class="form-group checkbox-inline">
-                <input type="checkbox"
-                       [(ngModel)]="showEndDatetimeField"
-                       name="authorizationAlertNote"
-                       (change)="onAlertNoteChange($event)">
-                <label for="authorizationAlertNote">Alert Note</label>
-              </div>
-
-              <!-- Regular Text Input -->
-              <ng-container *ngSwitchDefault>
-                <input type="text"
-                       class="form-control"
-                       [(ngModel)]="field.value"
-                       [required]="field.required"
-                       [name]="field.id"
-                       placeholder=" "
-                       #fieldModel="ngModel">
-                <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched || showValidationErrors)" class="text-danger">
-                  {{ field.requiredMsg || (field.displayName + ' is required.') }}
-                </div>
-              </ng-container>
-
             </ng-container>
 
+            <!-- End Datetime -->
+            <div class="form-outline" *ngIf="showEndDatetimeField">
+              <label class="floating-label">End Datetime</label>
+              <div class="input-with-icon">
+                <input class="form-control"
+                       type="text"
+                       [(ngModel)]="endDatetimeValue"
+                       name="endDatetimeValue"
+                       (blur)="handleEndDatetimeBlur()"
+                       placeholder="Enter D, D+1, D-1 or select">
+                <button type="button" class="calendar-icon-btn" (click)="triggerNativePicker()">📅</button>
+                <input type="datetime-local"
+                       #hiddenEndDatetimePicker
+                       style="opacity: 0; position: absolute; pointer-events: none;"
+                       (change)="handleNativePickerForEndDatetime($event)" />
+              </div>
+            </div>
+
+            <!-- Textarea Field -->
+            <ng-container *ngFor="let field of notesFields">
+              <div *ngIf="field.type === 'textarea'" class="form-outline full-width" style="grid-column: span 2;">
+                <label class="floating-label">{{ field.displayName }} <span *ngIf="field.required" class="text-danger">*</span></label>
+                <textarea class="form-control"
+                          [(ngModel)]="field.value"
+                          [required]="field.required"
+                          [name]="field.id"
+                          rows="3"
+                          #fieldModel="ngModel"></textarea>
+                <div *ngIf="field.required && fieldModel.invalid && (fieldModel.touched || fieldModel.dirty || showValidationErrors)" class="text-danger">
+                  {{ field.requiredMsg || (field.displayName + ' is required.') }}
+                </div>
+              </div>
+            </ng-container>
           </div>
-        </ng-container>
-      </ng-container>
 
-      <!-- End Datetime Field when Alert Note checked -->
-      <div class="form-group" *ngIf="showEndDatetimeField">
-        <div class="form-outline position-relative">
-          <label for="endDatetimeText" class="floating-label">End Datetime</label>
-
-          <div class="input-with-icon">
-            <!-- Actual visible text input -->
-            <input class="form-control"
-                   type="text"
-                   id="endDatetimeText"
-                   [(ngModel)]="endDatetimeValue"
-                   name="endDatetimeValue"
-                   (blur)="handleEndDatetimeBlur()"
-                   placeholder="Enter D, D+1, D-1 or select">
-
-            <!-- Calendar Icon to trigger hidden input -->
-            <button type="button" class="calendar-icon" style="border: none; background: none;" (click)="triggerNativePicker()">📅</button>
-
-            <!-- Hidden native datetime-local input -->
-            <input type="datetime-local"
-                   #hiddenEndDatetimePicker
-                   style="position: absolute; top: 0; left: 0; opacity: 0; pointer-events: none;"
-                   (change)="handleNativePickerForEndDatetime($event)" />
+          <div class="button-group">
+            <button type="button" (click)="saveNote(noteForm)">Save</button>
+            <button type="button" (click)="cancelForm()">Cancel</button>
           </div>
-        </div>
-
+        </form>
       </div>
+    </ng-container>
 
-
-
-
-      <!-- Textarea Full Width -->
-      <ng-container *ngFor="let field of notesFields">
-        <div *ngIf="field.type === 'textarea'" class="form-group textarea-field">
-          <textarea class="form-control"
-                    [(ngModel)]="field.value"
-                    [required]="field.required"
-                    [name]="field.id"
-                    placeholder=" "
-                    #fieldModel="ngModel"></textarea>
-          <label>{{ field.label }}</label>
-          <div *ngIf="field.required && fieldModel.invalid && (fieldModel.touched || fieldModel.dirty || showValidationErrors)" class="text-danger">
-            {{ field.requiredMsg || (field.displayName + ' is required.') }}
-          </div>
-        </div>
-      </ng-container>
-
-      <!-- Buttons -->
-      <div class="form-group button-right">
-        <button type="button" class="notes-button" (click)="saveNote(noteForm)">Save</button>
-        <button type="button" class="notes-button" (click)="cancelForm()">Cancel</button>
+    <ng-template #aiSummary>
+      <div class="ai-summary">
+        <h3>📝 Notes Summary</h3>
+        <p><strong>Total Notes:</strong> {{ dataSource.filteredData.length }}</p>
+        <p><strong>Alert Notes:</strong> {{ getAlertNoteCount() }}</p>
+        <p><strong>Last Created:</strong> {{ getLastCreatedDate() }}</p>
       </div>
+    </ng-template>
 
-    </div>
-  </form>
-</div>
+    <ng-container *ngIf="!isFormVisible">
+      <ng-container *ngTemplateOutlet="aiSummary"></ng-container>
+    </ng-container>
 
-
-<div>
-  <!-- wrapped the table -->
-  <!--*ngIf="!isFormVisible"-->
-  <div class="table-container">
-
-    <div class="d-flex justify-content-between align-items-center w-100 pb-2">
-
-      <!-- Search Box -->
-      <div class="search-box" [class.active]="isFocused">
-        <button mat-icon-button>
-          <mat-icon>search</mat-icon>
-        </button>
-        <input type="text"
-               (keyup)="applyFilter($event)" placeholder="Start typing to search notes"
-               class="search-input"
-               (focus)="onFocus()"
-               (blur)="onBlur()" #input />
-      </div>
-
-      <!-- Add Button -->
-      <div matTooltip="Click to Add notes" class="ms-3">
-        <button class="btn btn-primary ms-3" (click)="openForm('add')" matTooltip="Click to Add notes">
-          Add
-        </button>
-      </div>
-    </div>
-
-
-    <table class="responsive-table" mat-table [dataSource]="dataSource" matSort class="mat-elevation-z8">
-      <!-- Define columns here -->
-      <ng-container matColumnDef="authorizationNoteTypeLabel">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>Note Type</th>
-        <td mat-cell *matCellDef="let note">{{ note.authorizationNoteTypeLabel }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="authorizationNotes">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>Notes</th>
-        <td mat-cell *matCellDef="let note">{{ note.authorizationNotes }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="createdOn">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>Created On</th>
-        <td mat-cell *matCellDef="let note">{{ note.createdOn | date: 'MM/dd/yyyy HH:mm' }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="createdBy">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>Created By</th>
-        <td mat-cell *matCellDef="let note">{{ note.createdBy }}</td>
-      </ng-container>
-
-      <!--<ng-container matColumnDef="updatedOn">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>Updated On</th>
-        <td mat-cell *matCellDef="let note">{{ note.updatedOn }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="updatedBy">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>Updated By</th>
-        <td mat-cell *matCellDef="let note">{{ note.updatedBy }}</td>
-      </ng-container>-->
-
-      <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef>Actions</th>
-        <td mat-cell *matCellDef="let note">
-          <button mat-icon-button (click)="editNote(note)" matTooltip="Edit">
-            <mat-icon style="color: #007BFF">edit</mat-icon>
-          </button>
-          <button mat-icon-button (click)="deleteNote(note.id)" matTooltip="Delete">
-            <mat-icon style="color: #007BFF">delete</mat-icon>
-          </button>
-        </td>
-      </ng-container>
-
-      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-    </table>
-
-    <mat-paginator [pageSizeOptions]="[10, 15, 20]" showFirstLastButtons></mat-paginator>
   </div>
 </div>

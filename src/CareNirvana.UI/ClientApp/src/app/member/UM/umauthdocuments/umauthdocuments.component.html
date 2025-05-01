@@ -1,136 +1,141 @@
-<div class="form-container" *ngIf="isFormVisible">
-  <form>
-    <div class="form-grid">
-      <ng-container *ngFor="let field of documentFields">
-        <ng-container *ngIf="field.id !== 'authorizationDocumentsGrid'">
-          <div class="form-group">
-            <ng-container [ngSwitch]="field.type">
-              <!-- Autocomplete Select -->
-              <ng-container *ngSwitchCase="'select'">
-                <div class="form-outline dropdown-container">
-                  <label>{{ field.displayName }} <span *ngIf="field.required" class="text-danger">*</span></label>
-                  <input type="text"
-                         class="form-control"
-                         [(ngModel)]="field.displayLabel"
-                         (input)="filterOptions(field)"
-                         (focus)="onFieldFocus(field)"
-                         (blur)="onSelectBlur(field)"
-                         [name]="field.id"
-                         [attr.autocomplete]="'off'"
-                         #fieldModel="ngModel">
-                  <span class="dropdown-arrow">&#9662;</span>
-
-                  <div class="autocomplete-dropdown" *ngIf="field.showDropdown && field.filteredOptions?.length">
-                    <div class="autocomplete-option"
-                         *ngFor="let option of field.filteredOptions"
-                         (mousedown)="selectDropdownOption(field, option)">
-                      {{ option.label }}
-                    </div>
-                  </div>
-
-                  <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched || showValidationErrors)" class="text-danger">
-                    {{ field.requiredMsg || (field.displayName + ' is required.') }}
-                  </div>
-                </div>
-              </ng-container>
-              <textarea *ngSwitchCase="'textarea'" [(ngModel)]="field.value" [name]="field.id" [ngModelOptions]="{standalone: true}"></textarea>
-              <input *ngSwitchCase="'file'" type="file" multiple (change)="handleFileUpload($event)">
-              <label *ngSwitchCase="'label'">{{ field.info }}</label>
-              <input *ngSwitchDefault type="text" [(ngModel)]="field.value" [name]="field.id" [ngModelOptions]="{standalone: true}">
-            </ng-container>
-            <label>{{ field.label }}</label>
+<div class="activity-container">
+  <!-- LEFT SIDE: Document Timeline -->
+  <div class="activity-left">
+    <div class="left-controls">
+      <input type="text" placeholder="🔍 Search..." [(ngModel)]="searchTerm" (input)="applyFilter($event)" class="search-input" />
+      <div class="right-actions">
+        <div class="sort-wrapper" (mouseenter)="showSort = true" (mouseleave)="showSort = false">
+          <button class="sort-icon">⇅</button>
+          <div class="sort-menu" *ngIf="showSort">
+            <div class="sort-option" (click)="applySort('authorizationDocumentTypeLabel_asc')">Doc Type (A–Z)</div>
+            <div class="sort-option" (click)="applySort('authorizationDocumentTypeLabel_desc')">Doc Type (Z–A)</div>
+            <div class="sort-option" (click)="applySort('createdOn_desc')">Recent First</div>
+            <div class="sort-option" (click)="applySort('createdOn_asc')">Oldest First</div>
           </div>
-        </ng-container>
-      </ng-container>
-      <div class="form-group button-right">
-        <button type="button" (click)="saveDocument()">Save</button>
-        <button type="button" (click)="cancelForm()">Cancel</button>
+        </div>
+        <button class="add-btn" (click)="openForm('add')">➕ Add Document</button>
       </div>
     </div>
-  </form>
-</div>
 
-<div class="table-container">
-
-  <div class="d-flex justify-content-between align-items-center w-100 pb-2">
-
-    <!-- Search Box -->
-    <div class="search-box" [class.active]="isFocused">
-      <button mat-icon-button>
-        <mat-icon>search</mat-icon>
-      </button>
-      <input type="text"
-             (keyup)="applyFilter($event)" placeholder="Start typing to search documents"
-             class="search-input"
-             (focus)="onFocus()"
-             (blur)="onBlur()" #input />
-
-    </div>
-
-    <!-- Add Button -->
-    <div matTooltip="Click to Add documents" class="ms-3">
-      <button class="btn btn-primary ms-3" (click)="openForm('add')" matTooltip="Click to Add documents">
-        Add
-      </button>
+    <div class="timeline-list">
+      <div *ngFor="let doc of dataSource.filteredData" class="timeline-item" [class.selected]="doc.id === selectedDocumentId">
+        <div class="timeline-dot completed"></div>
+        <div class="timeline-content" (click)="onContentClick($event, doc)">
+          <div class="timeline-header">
+            <div class="timeline-title">{{ doc.authorizationDocumentTypeLabel }}</div>
+            <div class="timeline-priority priority-default">{{ doc.createdOn | date: 'short' }}</div>
+            <span class="activity-actions">
+              <button type="button" class="icon-btn" title="Edit" (click)="editDocument(doc)">✏️</button>
+              <button type="button" class="icon-btn" title="Delete" (click)="deleteDocument(doc.id)">🗑️</button>
+            </span>
+          </div>
+          <div class="timeline-summary">
+            {{ doc.authorizationDocumentDesc }}<br />
+            <!--<span *ngFor="let file of doc.authorizationSelectFiles">
+              📎 <a href="#" (click)="viewDocument(file)">{{ file }}</a>
+            </span>-->
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <table class="responsive-table" mat-table [dataSource]="dataSource" matSort class="mat-elevation-z8">
-    <ng-container matColumnDef="authorizationDocumentTypeLabel">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Document Type</th>
-      <td mat-cell *matCellDef="let doc">{{ doc.authorizationDocumentTypeLabel }}</td>
+  <!-- RIGHT SIDE: Document Form -->
+  <div class="activity-right">
+    <ng-container *ngIf="isFormVisible">
+      <div class="auth-form">
+        <form #docForm="ngForm" novalidate>
+
+          <div class="form-grid">
+            <ng-container *ngFor="let field of documentFields; let i = index">
+              <ng-container *ngIf="field.id !== 'authorizationDocumentsGrid'">
+                <div [class.full-width]="field.type === 'textarea' || field.type === 'label'" class="form-outline dropdown-container" [ngClass]="{ 'hidden': field.hidden }">
+                  <ng-container [ngSwitch]="field.type">
+
+                    <!-- Dropdown -->
+                    <ng-container *ngSwitchCase="'select'">
+                      <label class="floating-label">{{ field.displayName }} <span *ngIf="field.required" class="text-danger">*</span></label>
+                      <div class="input-with-icon">
+                        <input class="form-control"
+                               type="text"
+                               [(ngModel)]="field.displayLabel"
+                               (input)="filterOptions(field)"
+                               (focus)="onFieldFocus(field)"
+                               (blur)="onSelectBlur(field)"
+                               [name]="field.id"
+                               autocomplete="off"
+                               #fieldModel="ngModel" />
+                        <span class="dropdown-arrow">&#9662;</span>
+                        <div class="autocomplete-dropdown" *ngIf="field.showDropdown && field.filteredOptions?.length">
+                          <div class="autocomplete-option" *ngFor="let option of field.filteredOptions" (mousedown)="selectDropdownOption(field, option)">
+                            {{ option.label }}
+                          </div>
+                        </div>
+                      </div>
+                      <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched || showValidationErrors)" class="text-danger">
+                        {{ field.requiredMsg || (field.displayName + ' is required.') }}
+                      </div>
+                    </ng-container>
+
+                    <!-- File Upload -->
+                    <ng-container *ngSwitchCase="'file'">
+                      <label class="floating-label">{{ field.displayName }}</label>
+                      <input type="file" multiple (change)="handleFileUpload($event)" class="form-control">
+                    </ng-container>
+
+                    <!-- Textarea -->
+                    <ng-container *ngSwitchCase="'textarea'">
+                      <label class="floating-label">{{ field.displayName }}</label>
+                      <textarea [(ngModel)]="field.value" class="form-control" [name]="field.id" rows="3"></textarea>
+                    </ng-container>
+
+                    <!-- Static Label (Information Note) -->
+                    <ng-container *ngSwitchCase="'label'">
+                      <div class="info-note">
+                        <strong>{{ field.displayName }}:</strong>
+                        <div>{{ field.info }}</div>
+                      </div>
+                    </ng-container>
+
+                    <!-- Default Input -->
+                    <ng-container *ngSwitchDefault>
+                      <label class="floating-label">{{ field.displayName }} <span *ngIf="field.required" class="text-danger">*</span></label>
+                      <input class="form-control"
+                             type="text"
+                             [(ngModel)]="field.value"
+                             [name]="field.id"
+                             #fieldModel="ngModel" />
+                      <div *ngIf="field.required && fieldModel.invalid && (fieldModel.touched || fieldModel.dirty || showValidationErrors)" class="text-danger">
+                        {{ field.requiredMsg || (field.displayName + ' is required.') }}
+                      </div>
+                    </ng-container>
+
+                  </ng-container>
+                </div>
+              </ng-container>
+            </ng-container>
+          </div>
+
+
+          <div class="button-group">
+            <button type="button" (click)="saveDocument(docForm)">Save</button>
+            <button type="button" (click)="cancelForm()">Cancel</button>
+          </div>
+        </form>
+      </div>
     </ng-container>
 
-    <ng-container matColumnDef="authorizationDocumentDesc">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Description</th>
-      <td mat-cell *matCellDef="let doc">{{ doc.authorizationDocumentDesc }}</td>
+    <!-- AI Summary -->
+    <ng-template #aiSummary>
+      <div class="ai-summary">
+        <h3>📄 Document Summary</h3>
+        <p><strong>Total Documents:</strong> {{ dataSource.filteredData.length }}</p>
+        <p><strong>Last Uploaded:</strong> {{ getLastCreatedDate() }}</p>
+      </div>
+    </ng-template>
+
+    <ng-container *ngIf="!isFormVisible">
+      <ng-container *ngTemplateOutlet="aiSummary"></ng-container>
     </ng-container>
-
-    <ng-container matColumnDef="authorizationSelectFiles">
-      <th mat-header-cell *matHeaderCellDef>Files</th>
-      <td mat-cell *matCellDef="let doc">
-        <span *ngFor="let file of doc.authorizationSelectFiles">
-          <a href="#" (click)="viewDocument(file)">{{ file }}</a>
-        </span>
-      </td>
-    </ng-container>
-
-    <ng-container matColumnDef="createdOn">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Created On</th>
-      <td mat-cell *matCellDef="let doc">{{ doc.createdOn | date: 'MM/dd/yyyy HH:mm' }}</td>
-    </ng-container>
-
-    <ng-container matColumnDef="createdBy">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Created By</th>
-      <td mat-cell *matCellDef="let doc">{{ doc.createdBy }}</td>
-    </ng-container>
-
-    <!--<ng-container matColumnDef="updatedOn">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Updated On</th>
-      <td mat-cell *matCellDef="let doc">{{ doc.updatedOn }}</td>
-    </ng-container>
-
-    <ng-container matColumnDef="updatedBy">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Updated By</th>
-      <td mat-cell *matCellDef="let doc">{{ doc.updatedBy }}</td>
-    </ng-container>-->
-    ne
-
-    <ng-container matColumnDef="actions">
-      <th mat-header-cell *matHeaderCellDef>Actions</th>
-      <td mat-cell *matCellDef="let doc">
-        <button mat-icon-button (click)="editDocument(doc)" matTooltip="Edit">
-          <mat-icon>edit</mat-icon>
-        </button>
-        <button mat-icon-button (click)="deleteDocument(doc.id)" matTooltip="Delete">
-          <mat-icon>delete</mat-icon>
-        </button>
-      </td>
-    </ng-container>
-
-    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-  </table>
-
-  <mat-paginator [pageSizeOptions]="[10, 15, 20]" showFirstLastButtons></mat-paginator>
+  </div>
 </div>

@@ -19,6 +19,7 @@ interface AuthorizationNote {
   updatedBy?: string;
   deletedOn?: string;
   deletedBy?: string;
+  authorizationNoteTypeLabel?: string;
 }
 
 @Component({
@@ -49,40 +50,38 @@ export class UmauthnotesComponent implements OnInit {
   displayedColumns: string[] = ['authorizationNoteTypeLabel', 'authorizationNotes', 'createdOn', 'createdBy', 'actions'];
   isFormVisible: boolean = false;
   noteTypeMap = new Map<string, string>();
+  selectedNoteId: string | null = null;
 
   ngOnInit(): void {
-
     this.crudService.getData('um', 'notetype').subscribe((response) => {
       this.noteTypeMap = new Map<string, string>(
         response.map((opt: any) => [opt.id, opt.noteType])
       );
+
+      // ✅ Only map notes AFTER noteTypeMap is ready
+      this.notes = (this.notesData || []).map(note => ({
+        ...note,
+        authorizationNoteTypeLabel: this.noteTypeMap.get(note.authorizationNoteType || '') || 'Unknown'
+      }));
+
+      this.dataSource.data = this.notes;
+      this.dataSource.paginator = this.paginator;
+      this.dataSource.sort = this.sort;
     });
 
-
-    //this.notes = this.notesData || [];
     this.notesFields.forEach(field => {
       if (field.type === 'select') {
         if (!field.value) {
           field.value = "";
-          field.displayLabel = "Select"; // <-- Add this
+          field.displayLabel = "Select";
         } else {
           const selected = field.options?.find((opt: any) => opt.value === field.value);
           field.displayLabel = selected?.label || "Select";
         }
       }
     });
-
-
-
-    this.notes = (this.notesData || []).map(note => ({
-      ...note,
-      authorizationNoteTypeLabel: this.noteTypeMap.get(note.authorizationNoteType || '') || 'Unknown'
-    }));
-
-    this.dataSource.data = this.notes;
-    this.dataSource.paginator = this.paginator;
-    this.dataSource.sort = this.sort;
   }
+
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes.notesData) {
@@ -122,9 +121,7 @@ export class UmauthnotesComponent implements OnInit {
     const isChecked = event.target.checked;
     this.showEndDatetimeField = isChecked;
 
-    if (!isChecked) {
-      this.endDatetimeValue = '';
-    }
+
   }
 
   saveNote(form: NgForm): void {
@@ -141,6 +138,8 @@ export class UmauthnotesComponent implements OnInit {
     this.notesFields.forEach(field => {
       newNote[field.id] = field.value;
     });
+    newNote.authorizationAlertNote = this.showEndDatetimeField;
+    newNote.authorizationNoteEndDate = this.endDatetimeValue || '';
 
     // Ensure `authorizationNoteType` is correctly captured
     if (!newNote.authorizationNoteType || newNote.authorizationNoteType === "") {
@@ -152,14 +151,14 @@ export class UmauthnotesComponent implements OnInit {
       newNote.id = this.currentNote.id;
       newNote.createdOn = this.currentNote.createdOn;
       newNote.createdBy = this.currentNote.createdBy;
-      newNote.updatedOn = new Date().toISOString();
+      newNote.updatedOn = this.formatToEST(new Date());
       newNote.updatedBy = "Admin";
 
       this.notes = this.notes.map(note => note.id === this.currentNote!.id ? newNote : note);
     } else {
       // Adding a new note
       newNote.id = new Date().getTime().toString();
-      newNote.createdOn = new Date().toISOString();
+      newNote.createdOn = this.formatToEST(new Date());
       newNote.createdBy = "Admin";
 
       this.notes.push(newNote);
@@ -182,21 +181,40 @@ export class UmauthnotesComponent implements OnInit {
   editNote(note: any) {
     this.openForm('edit');
     this.isFormVisible = true;
+    this.selectedNoteId = note.id;
     this.currentNote = { ...note };
+
     this.notesFields.forEach(field => {
-      field.value = note[field.id] || "";
+      const value = note[field.id] || '';
+      field.value = value;
+
+      if (field.type === 'select') {
+        const selected = field.options?.find((opt: any) => opt.value === value);
+        field.displayLabel = selected?.label || 'Select';
+      }
     });
 
+    // ✅ Handle alert note checkbox and end datetime outside loop
+    this.showEndDatetimeField = !!note.authorizationAlertNote;
+    this.endDatetimeValue = note.authorizationNoteEndDate || '';
+
+    // Refresh mapped labels for display
     this.notes = this.notes.map(note => ({
       ...note,
       authorizationNoteTypeLabel: this.noteTypeMap.get(note.authorizationNoteType || '') || 'Unknown'
     }));
 
     this.dataSource.data = [...this.notes];
-
   }
 
+
+
   deleteNote(noteId: string) {
+
+    const confirmDelete = confirm("Are you sure you want to delete this notes?");
+    if (!confirmDelete) {
+      return; // User canceled
+    }
 
     this.notes = this.notes.map(note => ({
       ...note,
@@ -208,7 +226,7 @@ export class UmauthnotesComponent implements OnInit {
     let note = this.notes.find(n => n.id === noteId);
     if (note) {
       note.deletedBy = "Admin";
-      note.deletedOn = new Date().toISOString();
+      note.deletedOn = this.formatToEST(new Date());
     }
 
     this.notes = this.notes.filter(n => !n.deletedOn);
@@ -233,12 +251,23 @@ export class UmauthnotesComponent implements OnInit {
 
   resetForm() {
     this.notesFields.forEach(field => {
-      field.value = field.type === "checkbox" ? false : "";
+      if (field.type === 'checkbox') {
+        field.value = false;
+      } else if (field.type === 'select') {
+        field.value = "";
+        field.displayLabel = "Select"; // ✅ Reset label for dropdown
+      } else {
+        field.value = "";
+      }
     });
+
     this.showEndDatetimeField = false;
+    this.endDatetimeValue = ''; // ✅ Clear the end datetime field
     this.showValidationErrors = false;
     this.isFormVisible = false;
+    this.selectedNoteId = null;
   }
+
 
 
   getFieldValue(id: string): string | boolean | undefined {
@@ -270,6 +299,7 @@ export class UmauthnotesComponent implements OnInit {
     this.resetForm();
     this.currentNote = null;
     this.isFormVisible = false;
+    this.selectedNoteId = null;
   }
 
 
@@ -547,5 +577,30 @@ export class UmauthnotesComponent implements OnInit {
     this.isFocused = false;
   }
 
+  searchTerm: string = '';
+  showSort: boolean = false;
+  sortBy: string = '';
+
+  applySort(option: string) {
+    this.sortBy = option;
+    const [field, direction] = option.split('_');
+    const dir = direction === 'desc' ? -1 : 1;
+    this.dataSource.data = [...this.dataSource.data.sort((a, b) => {
+      const aVal = (a as any)[field] || '';
+      const bVal = (b as any)[field] || '';
+      return aVal.toString().localeCompare(bVal.toString()) * dir;
+    })];
+  }
+
+  getAlertNoteCount(): number {
+    return this.notes.filter(note => note.authorizationAlertNote === true).length;
+  }
+
+  getLastCreatedDate(): string {
+    if (!this.notes.length) return 'N/A';
+    const latest = [...this.notes]
+      .sort((a, b) => new Date(b.createdOn).getTime() - new Date(a.createdOn).getTime())[0];
+    return this.formatToEST(new Date(latest.createdOn));
+  }
 
 }
