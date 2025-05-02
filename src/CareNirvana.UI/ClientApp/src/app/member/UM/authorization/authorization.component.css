@@ -587,3 +587,18 @@ input.form-control:focus + .floating-label {
   top: 50%;
   transform: translateY(-50%);
 }
+
+
+.service-overlap-error {
+  background-color: #ffe0e0;
+  border: 1px solid red;
+  padding: 10px;
+  margin-top: 10px;
+  border-radius: 5px;
+  font-size: 14px;
+}
+
+.section-error {
+  border: 2px solid red !important;
+  box-shadow: 0 0 8px red !important;
+}

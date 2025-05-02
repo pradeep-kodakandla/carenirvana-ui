@@ -68,13 +68,14 @@ export class UmauthdocumentsComponent implements OnInit, OnChanges {
       );
 
       this.mapLabels();
+      this.removeEmptyRecords();
+      this.dataSource.data = [...this.documents];
+      this.dataSource.paginator = this.paginator;
+      this.dataSource.sort = this.sort;
     });
 
     this.initDropdowns();
-    this.removeEmptyRecords();
-    this.dataSource.data = [...this.documents];
-    this.dataSource.paginator = this.paginator;
-    this.dataSource.sort = this.sort;
+
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -88,9 +89,11 @@ export class UmauthdocumentsComponent implements OnInit, OnChanges {
   mapLabels() {
     this.documents = (this.documentData || []).map(doc => ({
       ...doc,
-      authorizationDocumentTypeLabel: this.documentTypeMap.get(doc.authorizationDocumentType || '') || 'Unknown'
+      authorizationDocumentTypeLabel: doc.authorizationDocumentTypeLabel ||
+        (this.documentTypeMap.get(doc.authorizationDocumentType || '') || 'Unknown')
     }));
   }
+
 
   initDropdowns() {
     this.documentFields.forEach(field => {
@@ -143,7 +146,7 @@ export class UmauthdocumentsComponent implements OnInit, OnChanges {
       newDoc.id = this.currentDocument.id;
       newDoc.createdOn = this.currentDocument.createdOn;
       newDoc.createdBy = this.currentDocument.createdBy;
-      newDoc.updatedOn = new Date().toISOString();
+      newDoc.updatedOn = this.formatToEST(new Date());
       newDoc.updatedBy = "Admin";
 
       this.documents = this.documents.map(doc =>
@@ -152,7 +155,7 @@ export class UmauthdocumentsComponent implements OnInit, OnChanges {
     } else {
       // Add new
       newDoc.id = new Date().getTime().toString();
-      newDoc.createdOn = new Date().toISOString();
+      newDoc.createdOn = this.formatToEST(new Date());
       newDoc.createdBy = "Admin";
 
       this.documents.push(newDoc);
@@ -258,10 +261,13 @@ export class UmauthdocumentsComponent implements OnInit, OnChanges {
   }
 
   getLastCreatedDate(): string {
-    if (!this.documents.length) return 'N/A';
-    const latest = [...this.documents].sort((a, b) =>
+    const validDocs = this.documents.filter(doc => this.isValidDate(doc.createdOn));
+    if (!validDocs.length) return 'N/A';
+
+    const latest = [...validDocs].sort((a, b) =>
       new Date(b.createdOn).getTime() - new Date(a.createdOn).getTime()
     )[0];
+
     return new Intl.DateTimeFormat('en-US', {
       timeZone: 'America/New_York',
       month: '2-digit',
@@ -270,9 +276,15 @@ export class UmauthdocumentsComponent implements OnInit, OnChanges {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
-      hour12: false
+      hour12: true
     }).format(new Date(latest.createdOn)).replace(',', '');
   }
+
+  isValidDate(input: any): boolean {
+    const date = new Date(input);
+    return input && !isNaN(date.getTime());
+  }
+
 
   viewDocument(fileName: string) {
     alert(`Opening document: ${fileName}`);
@@ -349,12 +361,17 @@ export class UmauthdocumentsComponent implements OnInit, OnChanges {
   onBlur() { this.isFocused = false; }
 
   private removeEmptyRecords() {
-    this.documents = this.documents.filter(doc =>
-      Object.keys(doc).some(key => {
+    this.documents = this.documents.filter(doc => {
+      const hasValidFields = Object.keys(doc).some(key => {
         const value = doc[key as keyof AuthorizationDocument];
         return value !== null && value !== "" && value !== undefined;
-      })
-    );
+      });
+
+      const hasValidDate = this.isValidDate(doc.createdOn);
+      const hasValidType = (doc.authorizationDocumentTypeLabel && doc.authorizationDocumentTypeLabel !== 'Unknown');
+
+      return hasValidFields && hasValidDate && hasValidType;
+    });
   }
 
   onContentClick(event: MouseEvent, doc: AuthorizationDocument) {
@@ -363,4 +380,25 @@ export class UmauthdocumentsComponent implements OnInit, OnChanges {
     this.editDocument(doc);
   }
 
+  formatToEST(date: Date, dateOnly: boolean = false): string {
+    const options: Intl.DateTimeFormatOptions = dateOnly
+      ? {
+        timeZone: 'America/New_York',
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric'
+      }
+      : {
+        timeZone: 'America/New_York',
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      };
+
+    return new Intl.DateTimeFormat('en-US', options).format(date).replace(',', '');
+  }
 }

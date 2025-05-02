@@ -23,7 +23,7 @@
         <div class="timeline-content" (click)="onContentClick($event, doc)">
           <div class="timeline-header">
             <div class="timeline-title">{{ doc.authorizationDocumentTypeLabel }}</div>
-            <div class="timeline-priority priority-default">{{ doc.createdOn | date: 'short' }}</div>
+            <div class="timeline-priority priority-default">{{ doc.createdOn }}</div>
             <span class="activity-actions">
               <button type="button" class="icon-btn" title="Edit" (click)="editDocument(doc)">✏️</button>
               <button type="button" class="icon-btn" title="Delete" (click)="deleteDocument(doc.id)">🗑️</button>

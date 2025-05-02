@@ -58,13 +58,14 @@ export class UmauthnotesComponent implements OnInit {
         response.map((opt: any) => [opt.id, opt.noteType])
       );
 
-      // ✅ Only map notes AFTER noteTypeMap is ready
       this.notes = (this.notesData || []).map(note => ({
         ...note,
         authorizationNoteTypeLabel: this.noteTypeMap.get(note.authorizationNoteType || '') || 'Unknown'
       }));
 
-      this.dataSource.data = this.notes;
+      this.removeEmptyRecords(); // ✅ << ADD THIS
+
+      this.dataSource.data = [...this.notes]; // ✅ After cleaning
       this.dataSource.paginator = this.paginator;
       this.dataSource.sort = this.sort;
     });
@@ -81,6 +82,7 @@ export class UmauthnotesComponent implements OnInit {
       }
     });
   }
+
 
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -126,28 +128,21 @@ export class UmauthnotesComponent implements OnInit {
 
   saveNote(form: NgForm): void {
     this.showValidationErrors = true;
-    let newNote: any = {};
-    this.dataSource.data = this.notes;
 
     if (form.invalid) {
-      // Form is invalid – stop submission
       console.warn('Validation failed');
       return;
     }
-    // Capture form field values dynamically
+
+    let newNote: any = {};
     this.notesFields.forEach(field => {
       newNote[field.id] = field.value;
     });
     newNote.authorizationAlertNote = this.showEndDatetimeField;
     newNote.authorizationNoteEndDate = this.endDatetimeValue || '';
 
-    // Ensure `authorizationNoteType` is correctly captured
-    if (!newNote.authorizationNoteType || newNote.authorizationNoteType === "") {
-      console.warn("⚠️ Warning: authorizationNoteType is missing or empty!");
-    }
-
     if (this.currentNote) {
-      // Editing an existing note
+      // Editing existing note
       newNote.id = this.currentNote.id;
       newNote.createdOn = this.currentNote.createdOn;
       newNote.createdBy = this.currentNote.createdBy;
@@ -164,19 +159,22 @@ export class UmauthnotesComponent implements OnInit {
       this.notes.push(newNote);
     }
 
-    this.removeEmptyRecords(); // Remove empty records before emitting
-    this.NotesSaved.emit(this.notes);
-    this.currentNote = null;
-
+    // 🛠 Map the authorizationNoteTypeLabel BEFORE emitting
     this.notes = this.notes.map(note => ({
       ...note,
       authorizationNoteTypeLabel: this.noteTypeMap.get(note.authorizationNoteType || '') || 'Unknown'
     }));
 
+    this.removeEmptyRecords(); // ✅ Remove bad records
+
     this.dataSource.data = [...this.notes];
 
+    this.NotesSaved.emit([...this.notes]); // ✅ Emit clean notes after mapping
+
+    this.currentNote = null;
     this.resetForm();
   }
+
 
   editNote(note: any) {
     this.openForm('edit');
@@ -241,13 +239,17 @@ export class UmauthnotesComponent implements OnInit {
    */
   private removeEmptyRecords() {
     this.notes = this.notes.filter(note => {
-      return Object.keys(note).some(key => {
-        const typedKey = key as keyof typeof note; // Explicitly cast key
+      const hasValidFields = Object.keys(note).some(key => {
+        const typedKey = key as keyof typeof note;
         return note[typedKey] !== null && note[typedKey] !== "" && note[typedKey] !== undefined;
       });
+
+      const hasValidDate = this.isValidDate(note.createdOn);
+      const hasValidType = (note.authorizationNoteTypeLabel && note.authorizationNoteTypeLabel !== 'Unknown');
+
+      return hasValidFields && hasValidDate && hasValidType;
     });
   }
-
 
   resetForm() {
     this.notesFields.forEach(field => {
@@ -372,7 +374,7 @@ export class UmauthnotesComponent implements OnInit {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
-      hour12: false
+      hour12: true
     }).format(date).replace(',', '');
   }
 
@@ -417,7 +419,7 @@ export class UmauthnotesComponent implements OnInit {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        hour12: false
+        hour12: true
       }).format(parsed).replace(',', '');
 
       entry[fieldId] = formattedDateTime;
@@ -469,7 +471,7 @@ export class UmauthnotesComponent implements OnInit {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        hour12: false
+        hour12: true
       };
 
     return new Intl.DateTimeFormat('en-US', options).format(date).replace(',', '');
@@ -518,7 +520,7 @@ export class UmauthnotesComponent implements OnInit {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        hour12: false
+        hour12: true
       }).format(finalDate).replace(',', '');
 
       this.endDatetimeValue = formatted;
@@ -541,7 +543,7 @@ export class UmauthnotesComponent implements OnInit {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
-      hour12: false
+      hour12: true
     }).format(parsed).replace(',', '');
 
     this.endDatetimeValue = formattedDateTime;
@@ -597,10 +599,40 @@ export class UmauthnotesComponent implements OnInit {
   }
 
   getLastCreatedDate(): string {
-    if (!this.notes.length) return 'N/A';
-    const latest = [...this.notes]
-      .sort((a, b) => new Date(b.createdOn).getTime() - new Date(a.createdOn).getTime())[0];
+    const validNotes = this.notes.filter(note => this.isValidDate(note.createdOn));
+    if (!validNotes.length) return 'N/A';
+
+    const latest = [...validNotes].sort((a, b) =>
+      new Date(b.createdOn).getTime() - new Date(a.createdOn).getTime()
+    )[0];
+
     return this.formatToEST(new Date(latest.createdOn));
   }
+
+  isValidDate(input: any): boolean {
+    const date = new Date(input);
+    return input && !isNaN(date.getTime());
+  }
+
+
+  isAlertNoteActive(note: AuthorizationNote): boolean {
+    if (!note.authorizationAlertNote) {
+      return false;
+    }
+
+    if (!note.authorizationNoteEndDate) {
+      return true; // If no end datetime, assume still active
+    }
+
+    const now = new Date();
+    const noteEndDate = new Date(note.authorizationNoteEndDate);
+
+    if (isNaN(noteEndDate.getTime())) {
+      return true; // Invalid date format - assume active
+    }
+
+    return noteEndDate.getTime() > now.getTime();
+  }
+
 
 }

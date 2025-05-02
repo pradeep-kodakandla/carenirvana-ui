@@ -24,9 +24,13 @@
           <div class="timeline-header">
             <div class="timeline-title">
               {{ note.authorizationNoteTypeLabel }}
-              <span *ngIf="note.authorizationAlertNote" title="Alert Note" class="alert-icon">⚠️</span>
+              <mat-icon *ngIf="isAlertNoteActive(note)" class="alert-bell-icon" title="Active Alert Note">
+                notifications
+              </mat-icon>
+
+
             </div>
-            <div class="timeline-priority priority-default">{{ note.createdOn | date: 'short' }}</div>
+            <div class="timeline-priority priority-default">{{ note.createdOn }}</div>
             <span class="activity-actions">
               <button type="button" class="icon-btn" title="Edit" (click)="editNote(note)">✏️</button>
               <button type="button" class="icon-btn" title="Delete" (click)="deleteNote(note.id)">🗑️</button>
@@ -98,6 +102,7 @@
                     <ng-container *ngSwitchCase="'checkbox'">
                       <div class="checkbox-inline">
                         <input type="checkbox"
+                               class="me-2"
                                [(ngModel)]="showEndDatetimeField"
                                name="authorizationAlertNote"
                                (change)="onAlertNoteChange($event)">

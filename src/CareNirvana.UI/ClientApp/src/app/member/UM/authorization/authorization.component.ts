@@ -258,7 +258,7 @@ export class AuthorizationComponent {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        hour12: false
+        hour12: true
       }).format(parsed).replace(',', '');
 
       entry[fieldId] = formattedDateTime;
@@ -477,7 +477,7 @@ export class AuthorizationComponent {
                   this.additionalInfo = [
                     { label: "Auth No", value: data[0]?.AuthNumber || "N/A" },
                     { label: "Auth Type", value: authTypeName || "N/A" },
-                    { label: "Due Date", value: this.formatDate(data[0]?.AuthDueDate) || "N/A" },
+                    { label: "Due Date", value: this.formatDateOnly(new Date(data[0]?.AuthDueDate)) || "N/A" },
                     { label: "Days Left", value: this.calculateDaysLeft(data[0]?.AuthDueDate) || "N/A" },
                     { label: "Request Priority", value: savedData?.RequestPriority || "N/A" },
                     { label: "Auth Owner", value: savedData?.AuthOwner || "N/A" },
@@ -523,11 +523,11 @@ export class AuthorizationComponent {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24)); // Convert ms to days
   }
 
-  private formatDate(dateString: string): string {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toISOString().split('T')[0]; // Extracts only YYYY-MM-DD
-  }
+  //private formatDate(dateString: string): string {
+  //  if (!dateString) return "N/A";
+  //  const date = new Date(dateString);
+  //  return date.toISOString().split('T')[0]; // Extracts only YYYY-MM-DD
+  //}
 
   loadAuthClass(): void {
     this.crudService.getData('um', 'authclass').subscribe({
@@ -1007,9 +1007,9 @@ export class AuthorizationComponent {
     this.formData[section].primaryIndex = index;
   }
 
-  saveData(form: NgForm): void {
+  saveData(form: NgForm, validateAuthorization: boolean = true): void {
 
-    if (form.invalid) {
+    if (form.invalid && validateAuthorization) {
       // Mark all fields as touched to trigger validation messages
       Object.keys(form.controls).forEach(field => {
         form.controls[field].markAsTouched({ onlySelf: true });
@@ -1029,6 +1029,20 @@ export class AuthorizationComponent {
       return;
     }
 
+    this.checkOverlappingServiceDates();
+
+    if (validateAuthorization && this.serviceOverlapMessages.length > 0) {
+      // Stop saving if service dates overlap
+      return;
+    }
+
+
+
+    //✅ Skip validation for Decision, Notes, Documents
+    if (!validateAuthorization) {
+      this.proceedToSave();
+      return;
+    }
 
     // Validate before saving
     //*****Validation logic - Start******/
@@ -1131,7 +1145,7 @@ export class AuthorizationComponent {
       this.additionalInfo = [
         { label: "Auth No", value: this.authNumber || "N/A" },
         { label: "Auth Type", value: this.selectedTemplateId.toString() || "N/A" },
-        { label: "Due Date", value: this.formatDate(new Date().toISOString()) || "N/A" },
+        { label: "Due Date", value: this.formatDateOnly(new Date()) || "N/A" },
         { label: "Days Left", value: this.calculateDaysLeft(new Date().toISOString()).toString() || "N/A" },
         { label: "Request Priority", value: '' || "N/A" },
         { label: "Auth Owner", value: this.memberId.toString() || "N/A" },
@@ -1397,7 +1411,7 @@ export class AuthorizationComponent {
 
     this.saveType = 'Update';
     this.saveTypeFrom = 'Decision';
-    this.saveData(this.formData);
+    this.saveData(this.formData, false);
   }
 
   /*************Decision Data***************/
@@ -1415,7 +1429,11 @@ export class AuthorizationComponent {
 
     this.saveType = 'Update';
     this.saveTypeFrom = 'Notes';
-    this.saveData(this.formData);
+    this.saveData(this.formData, false);
+    console.log('Authorization Notes saved:', this.formData['Authorization Notes'].entries);
+    setTimeout(() => {
+      this.authorizationNotesData = [...this.formData['Authorization Notes'].entries];
+    }, 300); // small delay so Save API call completes
   }
 
   /*************Notes Data***************/
@@ -1430,7 +1448,7 @@ export class AuthorizationComponent {
     this.authorizationDocumentData = [...updatedDocument];
     this.saveType = 'Update';
     this.saveTypeFrom = 'Document';
-    this.saveData(this.formData);
+    this.saveData(this.formData, false);
   }
   /*************Documents Data***************/
 
@@ -1512,7 +1530,7 @@ export class AuthorizationComponent {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        hour12: false
+        hour12: true
       };
 
     return new Intl.DateTimeFormat('en-US', options).format(date).replace(',', '');
@@ -1648,5 +1666,61 @@ export class AuthorizationComponent {
     }
   }
 
+  /****** Service Code Overlap *******/
+  overlappingServiceCodes: { fromCode: string; toCode: string }[] = [];
+  overlappingServiceIndexes: Set<number> = new Set();
+  serviceOverlapMessages: string[] = [];
+
+  private checkOverlappingServiceDates(): void {
+    this.serviceOverlapMessages = [];
+
+    const serviceDetails = this.formData['Service Details']?.entries || [];
+
+    type ServicePeriod = {
+      index: number;
+      serviceCode: string;
+      fromDate: Date;
+      toDate: Date;
+    };
+
+    const periods: ServicePeriod[] = serviceDetails
+      .map((entry: any, index: number) => ({
+        index,
+        serviceCode: entry.serviceCode,
+        fromDate: entry.fromDate ? new Date(entry.fromDate) : null,
+        toDate: entry.toDate ? new Date(entry.toDate) : null
+      }))
+      .filter((e: ServicePeriod) => e.fromDate !== null && e.toDate !== null)
+      .sort((a: ServicePeriod, b: ServicePeriod) => a.fromDate.getTime() - b.fromDate.getTime());
+
+    for (let i = 0; i < periods.length - 1; i++) {
+      const current = periods[i];
+      const next = periods[i + 1];
+
+      if (current.toDate.getTime() >= next.fromDate.getTime()) {
+        this.serviceOverlapMessages.push(
+          `Overlap between ${current.serviceCode} and ${next.serviceCode}`
+        );
+      }
+    }
+
+    // 🔥 Auto Scroll if overlap found
+    if (this.serviceOverlapMessages.length > 0) {
+      setTimeout(() => {
+        const element = document.getElementById('service-details-section');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 200);
+    }
+  }
+
+  onServiceDetailChange(): void {
+    if (this.serviceOverlapMessages.length > 0) {
+      this.checkOverlappingServiceDates();
+    }
+  }
+
+  /****** Service Code Overlap *******/
 
 }

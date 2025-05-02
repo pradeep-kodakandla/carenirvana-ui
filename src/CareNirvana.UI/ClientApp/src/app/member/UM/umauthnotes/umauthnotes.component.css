@@ -84,7 +84,7 @@ textarea {
 
 .activity-container {
   display: flex;
-  height: calc(100vh - 100px);
+  /*height: calc(100vh - 100px);*/
   gap: 1rem;
 }
 
@@ -389,4 +389,9 @@ textarea {
   -webkit-box-orient: vertical;
 }
 
-
+.alert-bell-icon {
+  color: red;
+  vertical-align: middle;
+  font-size: 20px; /* adjust as needed */
+  margin-left: 4px; /* optional spacing */
+}
