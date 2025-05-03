@@ -143,8 +143,9 @@
                 <!--<mat-card *ngFor="let section of sectionOrder">-->
                 <ng-container *ngFor="let section of sectionOrder">
                   <ng-container *ngIf="shouldDisplaySection(section)">
-                    <mat-card [id]="section === 'Service Details' ? 'service-details-section' : null"
+                    <mat-card [id]="'section-' + section"
                               [ngClass]="{ 'section-error': serviceOverlapMessages.length > 0 && section === 'Service Details' }">
+
 
 
 
@@ -835,7 +836,11 @@
                                   </li>
                                 </ul>
                               </div>
-
+                              <div *ngIf="sectionValidationMessages[section]?.length" class="validation-messages">
+                                <div *ngFor="let msg of sectionValidationMessages[section]" class="text-danger" style="padding-left:40px;">
+                                  {{ msg }}
+                                </div>
+                              </div>
 
                             </div>
                           </ng-template>

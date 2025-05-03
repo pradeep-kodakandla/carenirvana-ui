@@ -1008,18 +1008,14 @@ export class AuthorizationComponent {
   }
 
   saveData(form: NgForm, validateAuthorization: boolean = true): void {
-
     if (form.invalid && validateAuthorization) {
-      // Mark all fields as touched to trigger validation messages
       Object.keys(form.controls).forEach(field => {
         form.controls[field].markAsTouched({ onlySelf: true });
       });
 
-      // Delay execution to allow Angular to render validation messages
       setTimeout(() => {
-        // Get all visible validation messages
         const errorElements = Array.from(document.querySelectorAll('.text-danger'))
-          .filter(el => el.clientHeight > 0); // Ensure only visible elements are considered
+          .filter(el => el.clientHeight > 0);
 
         if (errorElements.length > 0) {
           errorElements[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1029,23 +1025,8 @@ export class AuthorizationComponent {
       return;
     }
 
-    this.checkOverlappingServiceDates();
-
-    if (validateAuthorization && this.serviceOverlapMessages.length > 0) {
-      // Stop saving if service dates overlap
-      return;
-    }
-
-
-
-    //✅ Skip validation for Decision, Notes, Documents
-    if (!validateAuthorization) {
-      this.proceedToSave();
-      return;
-    }
-
-    // Validate before saving
-    //*****Validation logic - Start******/
+    // Always validate first
+    this.sectionValidationMessages = {}; // clear
     const flatValues: any = {};
     Object.values(this.formData).forEach((section: any) => {
       if (section?.entries) {
@@ -1059,7 +1040,6 @@ export class AuthorizationComponent {
 
     const failedErrors: any[] = [];
     const failedWarnings: any[] = [];
-    this.sectionValidationMessages = {};
 
     this.validationRules
       .filter(r => r.enabled)
@@ -1068,7 +1048,6 @@ export class AuthorizationComponent {
         if (!result) {
           const message = rule.isError ? `❌ ${rule.errorMessage}` : `⚠️ ${rule.errorMessage}`;
 
-          // Map this message to sections that include any of the rule's fields
           this.sectionOrderAll.forEach(section => {
             const fields = (this.config[section]?.fields || []);
             const fieldIds = fields.map((f: any) => f.id);
@@ -1087,14 +1066,18 @@ export class AuthorizationComponent {
         }
       });
 
+    // Then check overlaps
+    this.checkOverlappingServiceDates();
 
-    if (failedErrors.length || failedWarnings.length) {
+    if (validateAuthorization && (this.serviceOverlapMessages.length > 0 || failedErrors.length > 0)) {
+      // If overlaps or validation errors exist, open dialog (not proceed)
       const allMessages = [
-        ...failedErrors.map(r => ({ msg: `❌ Error:   ${r.errorMessage}`, type: 'error' })),
-        ...failedWarnings.map(r => ({ msg: `⚠️ Warning: ${r.errorMessage}`, type: 'warning' }))
+        ...failedErrors.map(r => ({ msg: `❌ Error: ${r.errorMessage}`, type: 'error' })),
+        ...failedWarnings.map(r => ({ msg: `⚠️ Warning: ${r.errorMessage}`, type: 'warning' })),
+        ...(this.serviceOverlapMessages || []).map(m => ({ msg: `❌ Service Overlap: ${m}`, type: 'error' }))
       ];
 
-      const hasOnlyWarnings = failedWarnings.length > 0 && failedErrors.length === 0;
+      const hasOnlyWarnings = failedWarnings.length > 0 && failedErrors.length === 0 && this.serviceOverlapMessages.length === 0;
 
       const dialogRef = this.dialog.open(ValidationErrorDialogComponent, {
         width: '600px',
@@ -1106,16 +1089,34 @@ export class AuthorizationComponent {
       });
 
       dialogRef.afterClosed().subscribe(result => {
-        if (result === 'continue') {
-          this.proceedToSave(); // only allowed if it's just warnings
+        if (result === 'continue' && hasOnlyWarnings) {
+          this.proceedToSave();
+        }
+
+        const errorSections = Object.keys(this.sectionValidationMessages).filter(section =>
+          this.sectionValidationMessages[section]?.length
+        );
+
+        if (errorSections.length > 0) {
+          const firstErrorSectionId = `section-${errorSections[0]}`;
+          const firstErrorSection = document.getElementById(firstErrorSectionId);
+
+          if (firstErrorSection) {
+            setTimeout(() => {
+              firstErrorSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 200);
+          }
         }
       });
+
 
       return;
     }
 
-    else { this.proceedToSave(); }    //*****Validation logic - End ******/
+    // If no errors
+    this.proceedToSave();
   }
+
 
   proceedToSave(): void {
     if (this.saveType === '') {
