@@ -24,23 +24,25 @@
 
     <div cdkDropList (cdkDropListDropped)="dropActivity($event)" class="timeline-list">
       <div *ngFor="let activity of filteredActivities; let i = index" cdkDrag class="timeline-item">
-        <div class="timeline-dot" [ngClass]="{'completed': activity.status === 'Completed'}"></div>
+        <div class="timeline-dot" [ngClass]="{'completed': activity.statusId === 2}"></div>
         <div class="timeline-content" (click)="selectActivity(i)">
           <div class="timeline-header">
             <div class="timeline-title">
-              {{ getActivityTypeLabel(activity.activityType) || 'Unknown Activity' }}
-              <span *ngIf="activity.status === 'Completed'">✅</span>
-              <span *ngIf="activity.status !== 'Completed'">⏳</span>
+              Activity Type: {{ activity.activityTypeLabel || 'Unknown Activity' }}
+
+
+              <span *ngIf="activity.statusId === 2">✅</span>
+              <span *ngIf="activity.statusId !== 2">⏳</span>
             </div>
-            <div class="timeline-priority" [ngClass]="getPriorityClass(activity.priority)">
-              {{ activity.priority || 'No Priority' }}
+            <div class="timeline-priority" [ngClass]="getPriorityClass(activity.priorityId)">
+              Priority: {{ activity.priorityLabel || 'No Priority' }}
             </div>
             <!-- Action Icons -->
             <span class="activity-actions">
               <button type="button"
                       class="icon-btn"
                       title="Accept"
-                      [disabled]="activity.status === 'Completed'"
+                      [disabled]="activity.statusId === 2"
                       (click)="markAsCompleted(i)">
                 👍
               </button>
@@ -51,7 +53,7 @@
             </span>
           </div>
           <div class="timeline-summary">
-            Assigned To: {{ activity.assignTo }} | Scheduled: {{ formatDateEST(activity.scheduledDateTime) }}
+            Assign To: {{ getProviderName(activity.referredTo) || 'No Assignee' }} | Scheduled: {{ formatDateEST(activity.scheduledDateTime) }}
           </div>
         </div>
       </div>

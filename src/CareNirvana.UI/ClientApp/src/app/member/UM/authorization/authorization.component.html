@@ -889,7 +889,7 @@
       </mat-step>
       <mat-step label="MD Review" [completed]="!!authNumber" [editable]="!!authNumber"></mat-step>
       <mat-step label="Activity" [completed]="!!authNumber" [editable]="!!authNumber">
-        <app-umauthactivity></app-umauthactivity>
+        <app-umauthactivity [authDetailId]="authDetailId"></app-umauthactivity>
       </mat-step>
       <mat-step label="Notes" [completed]="!!authNumber" [editable]="!!authNumber">
         <app-umauthnotes [notesFields]="authorizationNotesFields"

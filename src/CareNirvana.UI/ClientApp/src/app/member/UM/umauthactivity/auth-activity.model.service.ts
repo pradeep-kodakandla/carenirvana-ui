@@ -1,13 +1,23 @@
 export interface AuthActivity {
-  activityType: string;
-  priority: string;
-  scheduledDateTime: string;
-  dueDateTime: string;
-  assignTo: string;
-  status: string;
-  completedDate: string;
-  createdDatetime: string;
-  createdBy: string;
-  comments: string;
-  workBasket: string;
+  authActivityId?: number;
+  authDetailId?: number;
+  activityTypeId?: number;      // <-- New
+  priorityId?: number;          // <-- New
+  providerId?: number | null;   // <-- New
+  referredTo?: number | null;   // <-- New
+  scheduledDateTime?: string;
+  dueDateTime?: string;
+  comment?: string;
+  statusId?: number;
+  activeFlag?: boolean;
+  createdBy?: number;
+  createdOn?: Date;
+  updatedBy?: number;
+  updatedOn?: Date;
+  deletedBy?: number;
+  deletedOn?: Date;
+  completedDate?: string;
+
+  activityTypeLabel?: string;
+  priorityLabel?: string;
 }

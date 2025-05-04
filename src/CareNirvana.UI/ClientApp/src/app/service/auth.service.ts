@@ -6,10 +6,11 @@ import { Observable } from 'rxjs';
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/auth'; // Update with your API URL
-  private apiUrlCodeSets = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/codesets'; // Update with your API URL
-  //private apiUrl = 'https://localhost:51346/api/auth'; // Update with your API URL
-  //private apiUrlCodeSets = 'https://localhost:51346/api/codesets';
+  //private apiUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/auth'; // Update with your API URL
+  //private apiUrlCodeSets = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/codesets'; // Update with your API URL
+  private apiUrl = 'https://localhost:51346/api/auth'; // Update with your API URL
+  private apiUrlCodeSets = 'https://localhost:51346/api/codesets';
+  private apiUrlActivities = 'https://localhost:51346/api/authactivity';
 
   constructor(private http: HttpClient) { }
 
@@ -71,25 +72,25 @@ export class AuthService {
   }
 
   // GET: Fetch all AuthActivities
-  getAllActivities(): Observable<any> {
-    return this.http.get<any>(this.apiUrl);
+  getAllActivities(id: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrlActivities}/authdetail/${id}`);
   }
 
   // GET: Fetch a single AuthActivity by ID
   getActivityById(id: number): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/${id}`);
+    return this.http.get<any>(`${this.apiUrlActivities}/${id}`);
   }
 
   // POST: Create a new AuthActivity
   createActivity(activity: any): Observable<any> {
-    return this.http.post<any>(this.apiUrl, activity, {
+    return this.http.post<any>(this.apiUrlActivities, activity, {
       headers: { 'Content-Type': 'application/json' }
     });
   }
 
   // PUT: Update an existing AuthActivity
   updateActivity(id: number, activity: any): Observable<any> {
-    return this.http.put<any>(`${this.apiUrl}/${id}`, activity, {
+    return this.http.put<any>(`${this.apiUrlActivities}/${id}`, activity, {
       headers: { 'Content-Type': 'application/json' }
     });
   }

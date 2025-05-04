@@ -1,4 +1,4 @@
-import { Component, ViewChild, ElementRef } from '@angular/core';
+import { Component, ViewChild, ElementRef, Input, SimpleChanges } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { AuthActivity } from 'src/app/member/UM/umauthactivity/auth-activity.model.service';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
@@ -6,6 +6,7 @@ import { trigger, state, style, transition, animate } from '@angular/animations'
 import { CrudService } from 'src/app/service/crud.service';
 import { Validators } from '@angular/forms';
 import { AuthenticateService } from 'src/app/service/authentication.service';
+import { AuthService } from 'src/app/service/auth.service';
 
 @Component({
   selector: 'app-umauthactivity',
@@ -41,6 +42,8 @@ export class UmauthactivityComponent {
   dueDateText: string = '';
   assignToDisplay: string = '';
   filteredUsers: { value: string; label: string }[] = [];
+  @Input() authDetailId: number | null = null;
+
 
   showDropdowns: { [key: string]: boolean } = {
     activityType: false,
@@ -50,7 +53,7 @@ export class UmauthactivityComponent {
     workBasketUser: false
   };
 
-  constructor(private fb: FormBuilder, private crudService: CrudService, private authenticateService: AuthenticateService) {
+  constructor(private fb: FormBuilder, private crudService: CrudService, private authenticateService: AuthenticateService, private activityService: AuthService) {
     this.activityForm = this.fb.group({
       memberName: ['John Doer'],
       activityType: ['', Validators.required],
@@ -68,6 +71,7 @@ export class UmauthactivityComponent {
     this.filteredActivities = this.activities;
     this.priorityDisplay = 'Select';
     this.workBasketDisplay = 'Select';
+    console.log('Received authDetailId:', this.authDetailId);
 
     this.loadActivityTypes();
     this.loadUsers();
@@ -79,6 +83,61 @@ export class UmauthactivityComponent {
     });
 
   }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['authDetailId']) {
+      const newId = changes['authDetailId'].currentValue;
+      if (newId != null) {
+        console.log('Received authDetailId in ngOnChanges:', newId);
+        this.loadActivitiesForAuth(newId);
+      }
+    }
+  }
+
+  loadActivitiesForAuth(authDetailId: number): void {
+    console.log('Now loading activities for authDetailId:', authDetailId);
+
+    this.activityService.getAllActivities(authDetailId).subscribe({
+      next: (data: any[]) => {
+        console.log('Received activities:', data);
+        this.activities = (data || []).map(activity => ({
+          authActivityId: activity.AuthActivityId,
+          authDetailId: activity.AuthDetailId,
+          activityTypeId: activity.ActivityTypeId,
+          priorityId: activity.PriorityId,
+          providerId: activity.ProviderId,
+          scheduledDateTime: activity.FollowUpDateTime,
+          dueDate: activity.DueDate,
+          dueDateTime: activity.DueDate,
+          referredTo: activity.ReferredTo,
+          isWorkBasket: activity.IsWorkBasket,
+          queueId: activity.QueueId,
+          comment: activity.Comment,
+          statusId: activity.StatusId,
+          performedDateTime: activity.PerformedDateTime,
+          performedBy: activity.PerformedBy,
+          activeFlag: activity.ActiveFlag,
+          createdOn: activity.CreatedOn,
+          createdBy: activity.CreatedBy,
+          updatedOn: activity.UpdatedOn,
+          updatedBy: activity.UpdatedBy,
+          deletedOn: activity.DeletedOn,
+          deletedBy: activity.DeletedBy,
+
+          // ✨ Extra frontend fields for UI
+          activityTypeLabel: this.getActivityTypeLabel(activity.ActivityTypeId?.toString()),
+          priorityLabel: this.getPriorityLabel(activity.PriorityId?.toString())
+        }));
+
+        this.filteredActivities = [...this.activities];
+        console.log('Loaded activities:', this.activities);
+      },
+      error: (err) => {
+        console.error('Failed to load activities', err);
+      }
+    });
+  }
+
 
   loadActivityTypes() {
     this.crudService.getData('um', 'activitytype').subscribe((data: any[]) => {
@@ -99,8 +158,9 @@ export class UmauthactivityComponent {
   loadUsers() {
     this.authenticateService.getAllUsers().subscribe({
       next: (users: any[]) => {
+        console.log('Loaded users:', users);
         this.filteredUsers = users.map(u => ({
-          value: u.UserName,
+          value: u.UserId,
           label: u.UserName
         }));
         const loggedIn = sessionStorage.getItem('loggedInUsername');
@@ -115,11 +175,12 @@ export class UmauthactivityComponent {
   applySearch() {
     const term = this.searchTerm.toLowerCase();
     this.filteredActivities = this.activities.filter(a =>
-      a.activityType?.toLowerCase().includes(term) ||
-      a.assignTo?.toLowerCase().includes(term) ||
-      a.comments?.toLowerCase().includes(term)
+      this.getActivityTypeLabel(a.activityTypeId?.toString()).toLowerCase().includes(term) ||
+      this.getProviderName(a.referredTo).toLowerCase().includes(term) ||
+      (a.comment?.toLowerCase().includes(term) ?? false)
     );
   }
+
 
   applySort(option: string) {
     this.sortBy = option;
@@ -139,39 +200,81 @@ export class UmauthactivityComponent {
 
   getSortableValue(activity: AuthActivity, field: string): string {
     switch (field) {
-      case 'activityType': return activity.activityType || '';
-      case 'priority': return activity.priority || '';
-      case 'status': return activity.status || '';
-      case 'assignTo': return activity.assignTo || '';
+      case 'activityType': return this.getActivityTypeLabel(activity.activityTypeId?.toString() || '');
+      case 'priority': return this.getPriorityLabel(activity.priorityId?.toString() || '');
+      case 'status': return this.getStatusLabel(activity.statusId);
+      case 'assignTo': return this.getProviderName(activity.referredTo);
       default: return '';
     }
   }
 
   onSubmit() {
-
     if (this.activityForm.invalid) {
       this.activityForm.markAllAsTouched();
       return;
     }
+    console.log('Form submitted:', this.activityForm.value);
 
-    const newActivity: AuthActivity = {
-      ...this.activityForm.value,
-      status: this.editingIndex !== null ? this.activities[this.editingIndex].status : 'Pending',
-      completedDate: this.editingIndex !== null ? this.activities[this.editingIndex].completedDate : 'N/A',
-      createdDatetime: new Date().toLocaleString(),
-      createdBy: 'Test User',
+    const selectedAssignToName = this.activityForm.value.assignTo;
+    const selectedUser = this.filteredUsers.find(u => u.label === selectedAssignToName);
+    const assignToUserId = selectedUser ? selectedUser.value : null;
+    //console.log('AssignTo UserId:', assignToUserId);
+    const loggedInUser = this.filteredUsers.find(u => u.label === sessionStorage.getItem('loggedInUsername'));
+    const loggedInUserId = loggedInUser ? loggedInUser.value : null;
+    console.log('LoggedIn UserId:', loggedInUserId);
+    console.log('Assiged To:', this.activityForm.value.assignTo);
+    const newActivity: any = {
+      authDetailId: this.authDetailId,
+      activityTypeId: Number(this.activityForm.value.activityType) || null,
+      priorityId: Number(this.activityForm.value.priority) || null,
+      providerId: null,
+      followUpDateTime: this.activityForm.value.scheduledDateTime || null,
+      dueDate: this.activityForm.value.dueDateTime || null,
+      comment: this.activityForm.value.comments || null,
+      statusId: 1,
+      activeFlag: true,
+      CreatedBy: Number(loggedInUserId),
+      CreatedOn: new Date(),
+      ReferredTo: Number(assignToUserId) || null
     };
 
-    if (this.editingIndex !== null) {
-      this.activities[this.editingIndex] = newActivity;
+    console.log('Submitting activity:', newActivity);
+    if (this.editingIndex !== null && this.activities[this.editingIndex]?.authActivityId) {
+      // Update existing
+      const activityId = this.activities[this.editingIndex].authActivityId;
+      if (activityId != null) {
+        this.activityService.updateActivity(activityId, newActivity).subscribe({
+          next: () => {
+            console.log('Activity updated successfully');
+            this.loadActivitiesForAuth(this.authDetailId!);
+            this.onReset();
+            this.isEditing = false;
+          },
+          error: (err) => {
+            console.error('Update failed', err);
+          }
+        });
+      }
     } else {
-      this.activities.push(newActivity);
+      // Insert new
+      this.activityService.createActivity(newActivity).subscribe({
+        next: () => {
+          console.log('Activity created successfully');
+          this.loadActivitiesForAuth(this.authDetailId!);
+          this.onReset();
+          this.isEditing = false;
+        },
+        error: (err) => {
+          console.error('Create failed', err);
+        }
+      });
     }
 
     this.onReset();
     this.applySearch();
     this.sortActivities();
   }
+
 
   onReset() {
     this.activityForm.reset({
@@ -194,31 +297,79 @@ export class UmauthactivityComponent {
     this.assignToDisplay = sessionStorage.getItem('loggedInUsername') || 'Select';
   }
 
-
-
   editActivity(index: number) {
     const activity = this.activities[index];
-    this.activityForm.patchValue(activity);
 
-    const selected = this.activityTypes.find(opt => opt.value === activity.activityType);
-    this.activityTypeDisplay = selected?.label || '';
-    this.assignToDisplay = activity.assignTo || 'Select';
+    this.activityForm.patchValue({
+      memberName: 'John Doer',
+      activityType: activity.activityTypeId?.toString() || '',
+      priority: activity.priorityId?.toString() || '',
+      assignTo: this.getProviderName(activity.referredTo) || '',
+      workBasket: '',
+      scheduledDateTime: activity.scheduledDateTime ? new Date(activity.scheduledDateTime) : '',
+      dueDateTime: activity.dueDateTime ? new Date(activity.dueDateTime) : '',
+      comments: activity.comment || '',
+      workBasketUser: ''
+    });
 
-    // ✅ Add these lines
-    this.scheduledDateText = this.formatForDisplay(new Date(activity.scheduledDateTime));
-    this.dueDateText = this.formatForDisplay(new Date(activity.dueDateTime));
+    // Set display fields (Dropdown text)
+    const selectedActivityType = this.activityTypes.find(opt => opt.value === activity.activityTypeId?.toString());
+    this.activityTypeDisplay = selectedActivityType?.label || '';
+
+    const selectedAssignTo = this.filteredUsers.find(opt => opt.value == activity.referredTo?.toString());
+    this.assignToDisplay = selectedAssignTo?.label || 'Select';
+
+    const selectedPriority = this.filteredPriorities.find(opt => opt.value === activity.priorityId?.toString());
+    this.priorityDisplay = selectedPriority?.label || '';
+
+    // Set date text for Scheduled and Due
+    if (activity.scheduledDateTime) {
+      this.scheduledDateText = this.formatForDisplay(new Date(activity.scheduledDateTime));
+    } else {
+      this.scheduledDateText = '';
+    }
+
+    if (activity.dueDateTime) {  
+      this.dueDateText = this.formatForDisplay(new Date(activity.dueDateTime));
+    } else {
+      this.dueDateText = '';
+    }
 
     this.editingIndex = index;
   }
 
 
 
+  //deleteActivity(index: number) {
+  //  this.activities.splice(index, 1);
+
+  //}
+
   deleteActivity(index: number) {
-    this.activities.splice(index, 1);
+    const activity = this.activities[index];
+    if (activity?.authActivityId) {
+      if (confirm('Are you sure you want to delete this activity?')) {
+        this.activityService.updateActivity(activity.authActivityId, {
+          ...activity,
+          activeFlag: false,
+          deletedOn: new Date(),
+          deletedBy: sessionStorage.getItem('loggedInUsername')
+        }).subscribe({
+          next: () => {
+            console.log('Activity deleted successfully (soft delete)');
+            this.loadActivitiesForAuth(this.authDetailId!);
+          },
+          error: (err) => {
+            console.error('Delete failed', err);
+          }
+        });
+      }
+    }
     this.onReset();
     this.applySearch();
     this.sortActivities();
   }
+
 
   toggleCollapse(index: number) {
     if (this.collapsedIndexes.includes(index)) {
@@ -232,13 +383,14 @@ export class UmauthactivityComponent {
     moveItemInArray(this.activities, event.previousIndex, event.currentIndex);
   }
 
-  getPriorityClass(priority: string | null | undefined): string {
-    switch ((priority || '').toLowerCase()) {
-      case 'high': return 'priority-high';
-      case 'low': return 'priority-low';
-      default: return 'priority-default';
-    }
+  getPriorityClass(priorityId: number | null | undefined): string {
+    if (!priorityId) return 'priority-default'; // no priority
+    if (priorityId === 1) return 'priority-high';
+    if (priorityId === 2) return 'priority-medium';
+    if (priorityId === 3) return 'priority-low';
+    return 'priority-default';
   }
+
 
   onAddNewActivity() {
     this.selectedIndex = null;
@@ -258,16 +410,19 @@ export class UmauthactivityComponent {
   }
 
   getCompletedCount(): number {
-    return this.activities.filter(a => a.status === 'Completed').length;
+    return this.activities.filter(a => a.statusId === 2).length;
   }
 
   getPendingCount(): number {
-    return this.activities.filter(a => a.status !== 'Completed').length;
+    return this.activities.filter(a => a.statusId !== 2).length;
   }
 
   getPriorityCount(priority: string): number {
-    return this.activities.filter(a => (a.priority || '').toLowerCase() === priority.toLowerCase()).length;
+    return this.activities.filter(a =>
+      this.getPriorityLabel(a.priorityId?.toString() || '').toLowerCase() === priority.toLowerCase()
+    ).length;
   }
+
 
   /******Select field******/
 
@@ -288,15 +443,22 @@ export class UmauthactivityComponent {
   selectDropdownOption(field: string, option: { value: string, label: string }) {
     this.activityForm.get(field)?.setValue(option.value);
 
-    if (field === 'activityType') this.activityTypeDisplay = option.label;
-    else if (field === 'priority') this.priorityDisplay = option.label;
-    else if (field === 'workBasket') this.workBasketDisplay = option.label;
-    else if (field === 'assignTo') this.assignToDisplay = option.label;
-    else if (field === 'workBasketUser') this.workBasketUserDisplay = option.label;
+    const displayMap: any = {
+      activityType: 'activityTypeDisplay',
+      priority: 'priorityDisplay',
+      workBasket: 'workBasketDisplay',
+      assignTo: 'assignToDisplay',
+      workBasketUser: 'workBasketUserDisplay'
+    };
+
+    if (displayMap[field]) {
+      (this as any)[displayMap[field]] = option.label;
+    }
 
     this.showDropdowns[field] = false;
     this.highlightedIndex = -1;
   }
+
 
 
   openDropdown(field: string): void {
@@ -305,8 +467,9 @@ export class UmauthactivityComponent {
 
     if (field === 'priority') this.filteredPriorities = [
       { value: '', label: 'Select' },
-      { value: 'High', label: 'High' },
-      { value: 'Low', label: 'Low' }
+      { value: '1', label: 'High' },
+      { value: '2', label: 'Meidum' },
+      { value: '3', label: 'Low' }
     ];
     if (field === 'workBasket') this.filteredWorkBaskets = [
       { value: '', label: 'Select' },
@@ -316,6 +479,7 @@ export class UmauthactivityComponent {
     if (field === 'workBasketUser') {
       this.filteredUsers = [...this.filteredUsers];
     }
+
 
   }
 
@@ -402,20 +566,18 @@ export class UmauthactivityComponent {
     }
   }
 
-  getActivityTypeLabel(code: string): string {
-    const match = this.activityTypes.find(type => type.value === code);
-    return match?.label || code;
-  }
 
   markAsCompleted(index: number) {
     const activity = this.activities[index];
-    if (activity.status !== 'Completed') {
-      activity.status = 'Completed';
-      activity.completedDate = new Date().toLocaleString();
-      this.applySearch(); // reapply filter
-      this.sortActivities(); // if sorted
+    if (activity.statusId !== 2) {  // 2 = Completed
+      activity.statusId = 2;
+      // Optional if you want to store completedDate manually:
+      // activity.completedDate = new Date().toISOString();
+      this.applySearch();
+      this.sortActivities();
     }
   }
+
 
 
 
@@ -512,9 +674,11 @@ export class UmauthactivityComponent {
     this.dueDateText = input;
   }
 
-  formatDateEST(date: Date | string): string {
-    if (!date) return '';
+  formatDateEST(date?: string): string {
+    if (!date) return '';  // <-- this fixes undefined input
     const parsedDate = new Date(date);
+    if (isNaN(parsedDate.getTime())) return ''; // invalid date check
+
     return new Intl.DateTimeFormat('en-US', {
       timeZone: 'America/New_York',
       year: 'numeric',
@@ -527,5 +691,39 @@ export class UmauthactivityComponent {
     }).format(parsedDate).replace(',', '');
   }
 
+
   /******Date time field******/
+
+
+  getActivityTypeLabel(code: string | undefined): string {
+    if (!code) return 'Unknown Activity';
+
+    const match = this.activityTypes.find(type => type.value === code);
+
+    return match?.label || code;
+  }
+
+  getPriorityLabel(code: string | undefined): string {
+    if (!code) return 'No Priority';
+
+    // 🛡️ Safe type conversion if your priorities list stores string codes
+    const match = this.filteredPriorities.find(p => p.value.toString() === code);
+
+    return match?.label || code;
+  }
+
+
+  getProviderName(providerId: number | null | undefined): string {
+    if (!providerId) return 'No Assignee';
+    const user = this.filteredUsers.find(u => u.value == String(providerId));
+    return user?.label || 'No Assignee';
+  }
+
+  getStatusLabel(statusId: number | undefined): string {
+    if (statusId === 2) return 'Completed';
+    if (statusId === 1) return 'Pending';
+    return 'Unknown';
+  }
+
+
 }

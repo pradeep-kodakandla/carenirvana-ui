@@ -51,6 +51,7 @@ export class AuthorizationComponent {
   saveType: string = '';
   saveTypeFrom: string = '';
   displayLabels: { [key: string]: string } = {};
+  authDetailId: number | null = null;
 
   newAuthNumber: string | null = null;
   showAuthorizationComponent = false;
@@ -422,6 +423,7 @@ export class AuthorizationComponent {
           let savedData = data[0]?.responseData;
           const authTemplateId = data[0]?.AuthTypeId || 0;
           const authClassId = data[0]?.AuthClassId || 0;
+          this.authDetailId = data[0]?.Id || null;
 
           if (authClassId) {
             this.selectedAuthClassId = authClassId;
@@ -1188,6 +1190,10 @@ export class AuthorizationComponent {
 
     this.authService.saveAuthDetail(jsonData).subscribe(
       response => {
+        if (response && response.id) {
+          this.authDetailId = response.id;  // <-- Assign it to a variable (define this.authDetailId first)
+        }
+        console.log('AuthDetailId:', this.authDetailId);
         this.snackBar.open((this.saveTypeFrom && this.saveTypeFrom.trim() !== '' ? this.saveTypeFrom : 'Authorization') + ' saved successfully!', 'Close', {
           horizontalPosition: 'center',
           verticalPosition: 'top',
@@ -1467,24 +1473,27 @@ export class AuthorizationComponent {
       selectedOptions.forEach(code => {
         const entry = this.createEmptyEntry(this.config[section].fields);
         entry[fieldId] = code;
-
         this.formData[section].entries.push(entry);
 
-        // 🔽 Map to description field
+        // 🔥 Find description from already loaded allCodesets
         let descriptionFieldId = fieldId === 'icd10Code' ? 'icd10Description' :
           fieldId === 'serviceCode' ? 'serviceDesc' : '';
+
         const type = fieldId === 'icd10Code' ? 'ICD' : 'CPT';
+
         if (descriptionFieldId && code) {
-          this.authService.getCodesetById(code, type).subscribe((data: any) => {
-            const matchedEntry = this.formData[section].entries.find((e: any) => e[fieldId] === code);
-            if (matchedEntry) {
-              matchedEntry[descriptionFieldId] = data?.codeDesc || 'Description not found';
-            }
-          });
+          const matchedCode = this.allCodesets.find(c => c.code === code && c.type === type);
+          if (matchedCode) {
+            entry[descriptionFieldId] = matchedCode.codeDesc || 'Description not found';
+          } else {
+            entry[descriptionFieldId] = 'Description not found';
+          }
         }
       });
     }
   }
+
+
   /*************Populate Multiple ICD and Service Codes***************/
 
   /*************Date Time Default value and Only Date setup ***************/
