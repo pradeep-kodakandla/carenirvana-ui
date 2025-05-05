@@ -224,6 +224,9 @@ textarea {
   background-color: #dc3545;
 }
 
+.priority-medium {
+  background-color: orange; /* 🔥 make Medium priority orange */
+}
 .priority-low {
   background-color: #28a745;
 }

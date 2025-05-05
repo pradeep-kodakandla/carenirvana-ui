@@ -412,3 +412,8 @@ textarea {
 textarea.form-control {
   min-height: 100px;
 }
+
+.autocomplete-option.highlighted {
+  background-color: #007bff;
+  color: white;
+}

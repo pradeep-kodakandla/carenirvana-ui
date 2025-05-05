@@ -94,7 +94,7 @@
                   <div class="autocomplete-option"
                        *ngFor="let option of filteredActivityTypes; let i = index"
                        [ngClass]="{'highlighted': i === highlightedIndex}"
-                       (click)="selectDropdownOption('activityType', option)">
+                       (mousedown)="selectDropdownOption('activityType', option)">
                     {{ option.label }}
                   </div>
 
@@ -304,6 +304,7 @@
         <p><strong>Completed:</strong> {{ getCompletedCount() }}</p>
         <p><strong>Pending:</strong> {{ getPendingCount() }}</p>
         <p><strong>High Priority:</strong> {{ getPriorityCount('High') }}</p>
+        <p><strong>Medium Priority:</strong> {{ getPriorityCount('Medium') }}</p>
         <p><strong>Low Priority:</strong> {{ getPriorityCount('Low') }}</p>
       </div>
     </ng-template>

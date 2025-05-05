@@ -395,3 +395,8 @@ textarea {
   font-size: 20px; /* adjust as needed */
   margin-left: 4px; /* optional spacing */
 }
+
+.autocomplete-option.highlighted {
+  background-color: #007bff;
+  color: white;
+}

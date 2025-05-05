@@ -62,15 +62,18 @@
                                type="text"
                                [(ngModel)]="field.displayLabel"
                                (input)="filterOptions(field)"
+                               (keydown)="handleDropdownKeydown($event, field)"
                                (focus)="onFieldFocus(field)"
                                (blur)="onSelectBlur(field)"
-                               [disabled]="!field.isEnabled"
                                [name]="field.id"
                                autocomplete="off"
                                #fieldModel="ngModel">
                         <span class="dropdown-arrow">&#9662;</span>
-                        <div class="autocomplete-dropdown" *ngIf="field.showDropdown && field.filteredOptions?.length">
-                          <div class="autocomplete-option" *ngFor="let option of field.filteredOptions" (mousedown)="selectDropdownOption(field, option)">
+                        <div class="autocomplete-dropdown" *ngIf="field.showDropdown && field.filteredOptions?.length" [attr.data-field-id]="field.id">
+                          <div class="autocomplete-option"
+                               *ngFor="let option of field.filteredOptions; let i = index"
+                               [class.highlighted]="i === field.highlightedIndex"
+                               (mousedown)="selectDropdownOption(field, option)">
                             {{ option.label }}
                           </div>
                         </div>

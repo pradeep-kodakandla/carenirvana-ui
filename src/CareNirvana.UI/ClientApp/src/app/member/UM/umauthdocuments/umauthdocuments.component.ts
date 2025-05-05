@@ -351,6 +351,7 @@ export class UmauthdocumentsComponent implements OnInit, OnChanges {
 
   onFieldFocus(field: any): void {
     field.showDropdown = true;
+    field.highlightedIndex = -1;
     if (!field.filteredOptions && field.options) {
       field.filteredOptions = [...field.options];
     }
@@ -401,4 +402,45 @@ export class UmauthdocumentsComponent implements OnInit, OnChanges {
 
     return new Intl.DateTimeFormat('en-US', options).format(date).replace(',', '');
   }
+
+  handleDropdownKeydown(event: KeyboardEvent, field: any): void {
+    if (!field.filteredOptions?.length) return;
+
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        field.highlightedIndex = (field.highlightedIndex + 1) % field.filteredOptions.length;
+        this.scrollHighlightedIntoView(field);
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        field.highlightedIndex = (field.highlightedIndex - 1 + field.filteredOptions.length) % field.filteredOptions.length;
+        this.scrollHighlightedIntoView(field);
+        break;
+      case 'Enter':
+        if (field.highlightedIndex >= 0 && field.highlightedIndex < field.filteredOptions.length) {
+          this.selectDropdownOption(field, field.filteredOptions[field.highlightedIndex]);
+        }
+        break;
+      case 'Escape':
+        field.showDropdown = false;
+        break;
+    }
+  }
+
+  scrollHighlightedIntoView(field: any): void {
+    setTimeout(() => {
+      const dropdown = document.querySelector(`.autocomplete-dropdown[data-field-id="${field.id}"]`);
+      if (!dropdown) return;
+
+      const options = dropdown.querySelectorAll('.autocomplete-option');
+      if (field.highlightedIndex >= 0 && field.highlightedIndex < options.length) {
+        const selected = options[field.highlightedIndex] as HTMLElement;
+        selected.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }, 10);
+  }
+
+
+
 }
