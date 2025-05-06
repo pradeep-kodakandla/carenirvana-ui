@@ -60,8 +60,8 @@ export class UmauthactivityComponent {
       priority: ['', Validators.required],
       assignTo: [sessionStorage.getItem('loggedInUsername') || '', Validators.required],
       workBasket: [''],
-      scheduledDateTime: [new Date(), Validators.required],
-      dueDateTime: [''],
+      scheduledDateTime: ['', Validators.required],
+      dueDateTime: ['', Validators.required],
       comments: ['', Validators.required],
       workBasketUser: [''],
     });
@@ -311,7 +311,7 @@ export class UmauthactivityComponent {
       priority: '',
       assignTo: sessionStorage.getItem('loggedInUsername') || '',
       workBasket: '',
-      scheduledDateTime: new Date(),
+      scheduledDateTime: '',
       dueDateTime: '',
       comments: ''
     });
@@ -689,21 +689,31 @@ export class UmauthactivityComponent {
 
   handleCalendarChange(event: Event, controlName: string): void {
     const value = (event.target as HTMLInputElement).value;
-    //if (value) {
-    //  const date = new Date(value);
-    //  this.activityForm.get(controlName)?.setValue(date);
-    //  this.scheduledDateText = this.formatForDisplay(date);
-    //}
     if (value) {
       const date = new Date(value);
+      const control = this.activityForm.get(controlName);
+      control?.setValue(date);
+      control?.markAsTouched();
+
       if (controlName === 'scheduledDateTime') {
-        this.activityForm.get(controlName)?.setValue(date);
         this.scheduledDateText = this.formatForDisplay(date);
       } else if (controlName === 'dueDateTime') {
         this.dueDateText = this.formatForDisplay(date);
       }
+    } else {
+      // If calendar input cleared, reset control too
+      const control = this.activityForm.get(controlName);
+      control?.setValue('');
+      control?.markAsTouched();
+
+      if (controlName === 'scheduledDateTime') {
+        this.scheduledDateText = '';
+      } else if (controlName === 'dueDateTime') {
+        this.dueDateText = '';
+      }
     }
   }
+
 
 
   triggerCalendar(pickerType: 'scheduled' | 'due'): void {

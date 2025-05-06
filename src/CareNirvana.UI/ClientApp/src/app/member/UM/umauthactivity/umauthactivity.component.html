@@ -175,6 +175,7 @@
               <div class="input-with-icon">
                 <input type="text"
                        class="form-control"
+                       formControlName="scheduledDateTime"
                        [value]="scheduledDateText"
                        (input)="onScheduledTextChange($event)"
                        (blur)="handleDateTimeBlur('scheduledDateText', 'scheduledDateTime')"
@@ -199,11 +200,13 @@
               <div class="input-with-icon">
                 <input type="text"
                        class="form-control"
+                       formControlName="dueDateTime"
                        [value]="dueDateText"
                        (input)="onDueTextChange($event)"
                        (blur)="handleDateTimeBlur('dueDateText', 'dueDateTime')"
                        [ngClass]="{'is-invalid': activityForm.get('dueDateTime')?.touched && activityForm.get('dueDateTime')?.invalid}"
                        placeholder="Enter D, D+1, D-1 or select" />
+
 
                 <button type="button" class="calendar-icon-btn" (click)="triggerCalendar('due')">📅</button>
 

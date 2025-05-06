@@ -602,3 +602,12 @@ input.form-control:focus + .floating-label {
   border: 2px solid red !important;
   box-shadow: 0 0 8px red !important;
 }
+
+/* Only affect the red star inside the floating label */
+label .text-danger {
+  font-size: inherit;
+  transform: scale(1.5);
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 2px;
+}
