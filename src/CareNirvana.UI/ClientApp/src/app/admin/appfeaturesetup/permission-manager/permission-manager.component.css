@@ -1,0 +1,64 @@
+.module-section {
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 5px;
+  background-color: #fff;
+}
+
+.module-header {
+  background-color: #f8f9fa;
+  padding: 5px 5px;
+  border-radius: 5px;
+  border: 1px solid #dee2e6;
+}
+
+.sticky-footer {
+  position: sticky;
+  bottom: 0;
+  background-color: #fff;
+  z-index: 100;
+}
+
+.small {
+  font-size: 0.85rem;
+}
+
+.ms-4 {
+  margin-left: 1.5rem !important;
+}
+
+.me-2 {
+  margin-right: 0.5rem !important;
+}
+
+.dropdown-menu {
+  padding: 10px;
+}
+
+.dropdown-toggle::after {
+  margin-left: 0.5rem;
+}
+
+.mat-select-panel {
+  max-height: 300px;
+}
+
+.module-content .row > div {
+  min-height: 180px;
+}
+
+.module-content .row {
+  border-color: #dee2e6;
+}
+
+.module-content .border-end {
+  border-right: 1px solid #dee2e6 !important;
+}
+
+.module-content .border-bottom {
+  border-bottom: 1px solid #dee2e6 !important;
+}
+
+.p-3 {
+  padding: 5px;
+}

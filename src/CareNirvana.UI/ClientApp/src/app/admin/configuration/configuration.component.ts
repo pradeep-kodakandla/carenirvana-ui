@@ -5,6 +5,7 @@ import { UsermanagementComponent } from 'src/app/admin/usermanagement/usermanage
 import { RolemanagementComponent } from 'src/app/admin/rolemanagement/rolemanagement.component';
 import { ProfilemanagementComponent } from 'src/app/admin/profilemanagement/profilemanagement.component';
 import { AppfeaturesetupComponent } from 'src/app/admin/appfeaturesetup/appfeaturesetup.component';
+import { PermissionManagerComponent } from 'src/app/admin/appfeaturesetup/permission-manager/permission-manager.component';
 
 // UM Components
 import { UmdocumenttypeComponent } from 'src/app/admin/UM/umdocumenttype/umdocumenttype.component';
@@ -104,7 +105,7 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
   searchQuery: string = '';
   selectedMenu: MenuItem | null = null;
   selectedSubMenu: string | null = null;
-  isMenuCollapsed: boolean = false; 
+  isMenuCollapsed: boolean = false;
 
   private readonly componentMap: ComponentMap = {
     'User Management': UsermanagementComponent,
@@ -178,7 +179,8 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
     'QOC Score': AgqocscoreComponent,
     'QOC Investigation Reason': AgqocinvestigationreasonComponent,
     'Resolution Category': AgresolutioncategoryComponent,
-    'Resolution Sub Category': AgresolutionsubcategoryComponent
+    'Resolution Sub Category': AgresolutionsubcategoryComponent,
+    'Role Permission': PermissionManagerComponent
   };
 
   private readonly mainMenu: MenuItem[] = [
@@ -216,7 +218,7 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
     { name: 'Manage', children: ['Member Merge'] },
     {
       name: 'Administration',
-      children: ['User Management', 'Role Management', 'Profile Management', 'Application Features Setup']
+      children: ['User Management', 'Role Management', 'Profile Management', 'Application Features Setup', 'Role Permission']
     },
     { name: 'Configuration Management', children: ['Config Push'] },
     { name: 'Business Rules Engine', children: ['Rules'] }
@@ -301,10 +303,10 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
 
       const componentFactory = this.componentFactoryResolver.resolveComponentFactory(component);
       this.dynamicContainer.clear();
-      const componentRef =this.dynamicContainer.createComponent(componentFactory);
+      const componentRef = this.dynamicContainer.createComponent(componentFactory);
       // Check if the loaded component is UmauthtemplateBuilderComponent
       if (componentKey === 'Auth Template') {
-       // Subscribe to the menuCollapse event to keep collapsing if needed
+        // Subscribe to the menuCollapse event to keep collapsing if needed
         (componentRef.instance as UmauthtemplateBuilderComponent).menuCollapse.subscribe(() => {
           this.isMenuCollapsed = true; // Collapse menu when "Edit" or "Add" is clicked
         });

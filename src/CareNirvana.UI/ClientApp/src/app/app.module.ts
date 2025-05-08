@@ -49,6 +49,8 @@ import { UsermanagementComponent } from './admin/usermanagement/usermanagement.c
 import { RolemanagementComponent } from './admin/rolemanagement/rolemanagement.component';
 import { ProfilemanagementComponent } from './admin/profilemanagement/profilemanagement.component';
 import { AppfeaturesetupComponent } from './admin/appfeaturesetup/appfeaturesetup.component';
+import { PermissionManagerComponent } from 'src/app/admin/appfeaturesetup/permission-manager/permission-manager.component';
+
 import { UmdocumenttypeComponent } from './admin/UM/umdocumenttype/umdocumenttype.component';
 import { UmactivitytypeComponent } from './admin/UM/umactivitytype/umactivitytype.component';
 import { SettingsDialogComponent } from './admin/UM/settings-dialog/settings-dialog.component';
@@ -157,7 +159,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
     MemberInfoComponent, AuthorizationComponent, DecisiondetailsComponent, AuthdetailsComponent, AuthdynamicComponent, ProviderSearchComponent,
     UmauthnotesComponent, UmauthdocumentsComponent, UmauthactivityComponent, ValidationErrorDialogComponent,
     NewDashBoardComponent, NewDashboard2Component,
-    ConfigurationComponent, UsermanagementComponent, RolemanagementComponent, ProfilemanagementComponent, AppfeaturesetupComponent,
+    ConfigurationComponent, UsermanagementComponent, RolemanagementComponent, ProfilemanagementComponent, AppfeaturesetupComponent, PermissionManagerComponent,
     UmdocumenttypeComponent, SettingsDialogComponent, UmactivitytypeComponent, DialogContentComponent, UmnotetypeComponent, ExternallinksComponent,
     UmclaimtypeComponent, UmactivitypriorityComponent, UmadmissionlevelComponent, UmadmissiontypeComponent, UmadmitreasonComponent,
     UmcertificationtypeComponent, UmdenialtypeComponent, UmdeterminationtypeComponent, UmdischargetoComponent, UmdischargetypeComponent,
@@ -231,6 +233,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
       { path: 'admin-user', component: UsermanagementComponent },
       { path: 'admin-role', component: RolemanagementComponent },
       { path: 'admin-profile', component: ProfilemanagementComponent },
+      { path: 'admin-permission', component: PermissionManagerComponent },
       { path: 'admin-appfeature', component: AppfeaturesetupComponent },
       { path: 'admin-umdocumenttype', component: UmdocumenttypeComponent },
       { path: 'admin-settingdialog', component: SettingsDialogComponent },
