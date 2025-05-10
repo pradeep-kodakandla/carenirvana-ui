@@ -62,3 +62,16 @@
 .p-3 {
   padding: 5px;
 }
+
+::ng-deep .mat-tab-group {
+  background: #fdfdfd;
+  border-radius: 8px;
+  margin-top: 10px;
+}
+
+.field-table-scroll {
+  max-height: 400px; /* Adjust height as needed */
+  overflow-y: auto;
+  border: 1px solid #dee2e6;
+  border-radius: 5px;
+}

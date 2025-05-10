@@ -1,224 +1,183 @@
-<div class="container py-4">
+<mat-tab-group>
+  <mat-tab label="Permissions">
+    <!-- EXISTING CONTENT GOES HERE -->
+    <div class="container py-4">
 
-  <!--<h2 class="text-center mb-4">Role Permissions Manager</h2>-->
+      <div style="display: flex; gap: 20px;">
 
-  <div style="display: flex; gap: 20px;">
-
-    <!-- Role Dropdown -->
-    <div style="flex: 1;">
-      <mat-form-field appearance="outline" class="w-100">
-        <mat-label>Select Role</mat-label>
-
-        <mat-select [(ngModel)]="selectedRole">
-          <mat-option *ngFor="let role of roles" [value]="role">
-            {{ role }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
-    </div>
-
-    <!-- Module Multi-Select Dropdown -->
-    <div style="flex: 1;">
-      <mat-form-field appearance="outline" class="w-100">
-        <mat-label>Select Modules</mat-label>
-
-        <mat-select [(ngModel)]="selectedModules" multiple (ngModelChange)="onModulesChanged()">
-          <mat-option *ngFor="let mod of allModules" [value]="mod.moduleId">
-            {{ mod.moduleName }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
-    </div>
-
-    <!-- Feature Group Dropdown -->
-    <mat-form-field appearance="outline" class="w-100">
-      <mat-label>Select Feature Group</mat-label>
-      <mat-select [(ngModel)]="selectedFeatureGroup" (selectionChange)="onFeatureGroupChanged($event)">
-        <mat-option *ngFor="let feature of availableFeatureGroups" [value]="feature">
-          {{ feature }}
-        </mat-option>
-      </mat-select>
-    </mat-form-field>
-
-
-
-  </div>
-
-
-
-  <div *ngIf="selectedModules.length > 0" class="mb-4">
-    <input type="text" class="form-control mb-3" placeholder="Search features..." [(ngModel)]="searchText">
-  </div>
-
-  <ng-container *ngIf="readyToRender">
-    <div *ngFor="let module of filteredModules" class="module-section mb-4">
-
-      <!--<div class="d-flex justify-content-between align-items-center module-header"
-               (click)="toggleExpand(module.moduleId)"
-               style="cursor: pointer;">
-
-            <h5 class="fw-bold m-0">
-          {{ module.moduleName }}
-          <span class="expand-icon">
-            <i [class]="expandState[module.moduleId] ? 'bi bi-caret-down-fill' : 'bi bi-caret-right-fill'"></i>
-          </span>
-        </h5>
-
-      </div>-->
-
-      <div *ngIf="expandState[module.moduleId]" class="module-content mt-3">
-
-        <div *ngFor="let featureGroup of module.featureGroups" class="feature-group-section mt-3">
-
-          <h6 class="fw-bold mt-3 mb-2">{{ featureGroup.featureGroupName }}</h6>
-
-          <div class="table-responsive">
-            <table class="table table-bordered table-striped align-middle">
-              <thead class="table-light">
-                <tr>
-                  <th>
-                    <input type="checkbox"
-                           [checked]="isAllPagesSelected(featureGroup)"
-                           [indeterminate]="isSomePagesSelected(featureGroup)"
-                           (change)="toggleAllPagesForGroup(featureGroup, $event)" />
-                    Features
-                  </th>
-
-                  <th class="text-center">
-                    <input type="checkbox"
-                           [checked]="isAllSelected('View', featureGroup)"
-                           [indeterminate]="isSomeSelected('View', featureGroup)"
-                           (change)="toggleAll('View', featureGroup, $event)" />
-                    View
-                  </th>
-
-                  <th class="text-center">
-                    <input type="checkbox"
-                           [checked]="isAllSelected('Edit', featureGroup)"
-                           [indeterminate]="isSomeSelected('Edit', featureGroup)"
-                           (change)="toggleAll('Edit', featureGroup, $event)" />
-                    Edit
-                  </th>
-
-                  <th class="text-center">
-                    <input type="checkbox"
-                           [checked]="isAllSelected('Add', featureGroup)"
-                           [indeterminate]="isSomeSelected('Add', featureGroup)"
-                           (change)="toggleAll('Add', featureGroup, $event)" />
-                    Add
-                  </th>
-
-                  <th class="text-center">
-                    <input type="checkbox"
-                           [checked]="isAllSelected('Delete', featureGroup)"
-                           [indeterminate]="isSomeSelected('Delete', featureGroup)"
-                           (change)="toggleAll('Delete', featureGroup, $event)" />
-                    Delete
-                  </th>
-
-                  <th class="text-center">
-                    <input type="checkbox"
-                           [checked]="isAllSelected('Download', featureGroup)"
-                           [indeterminate]="isSomeSelected('Download', featureGroup)"
-                           (change)="toggleAll('Download', featureGroup, $event)" />
-                    Download
-                  </th>
-
-                  <th class="text-center">
-                    <input type="checkbox"
-                           [checked]="isAllSelected('Print', featureGroup)"
-                           [indeterminate]="isSomeSelected('Print', featureGroup)"
-                           (change)="toggleAll('Print', featureGroup, $event)" />
-                    Print
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody>
-                <tr *ngFor="let page of featureGroup.pages" [hidden]="!filterPage(page.name)">
-                  <td>
-                    <input type="checkbox"
-                           [checked]="isPageFullySelected(page)"
-                           [indeterminate]="isPagePartiallySelected(page)"
-                           (change)="togglePageSelection(page, $event)">
-                    <span class="fw-bold ms-2">{{ page.name }}</span>
-                  </td>
-
-                  <!-- Action columns -->
-                  <td class="text-center">
-                    <ng-container *ngIf="getAction(page, 'View'); else disabledCell">
-                      <input type="checkbox"
-                             class="form-check-input"
-                             [ngModel]="getAction(page, 'View')!.checked"
-                             (ngModelChange)="onActionChange(page, 'View', $event)">
-                    </ng-container>
-                    <ng-template #disabledCell>
-                      <input type="checkbox" class="form-check-input" disabled>
-                    </ng-template>
-                  </td>
-
-                  <td class="text-center">
-                    <ng-container *ngIf="getAction(page, 'Edit'); else disabledCell">
-                      <input type="checkbox"
-                             class="form-check-input"
-                             [ngModel]="getAction(page, 'Edit')!.checked"
-                             (ngModelChange)="onActionChange(page, 'Edit', $event)">
-                    </ng-container>
-                  </td>
-
-                  <td class="text-center">
-                    <ng-container *ngIf="getAction(page, 'Add'); else disabledCell">
-                      <input type="checkbox"
-                             class="form-check-input"
-                             [ngModel]="getAction(page, 'Add')!.checked"
-                             (ngModelChange)="onActionChange(page, 'Add', $event)">
-                    </ng-container>
-                  </td>
-
-                  <td class="text-center">
-                    <ng-container *ngIf="getAction(page, 'Delete'); else disabledCell">
-                      <input type="checkbox"
-                             class="form-check-input"
-                             [ngModel]="getAction(page, 'Delete')!.checked"
-                             (ngModelChange)="onActionChange(page, 'Delete', $event)">
-                    </ng-container>
-                  </td>
-
-                  <td class="text-center">
-                    <ng-container *ngIf="getAction(page, 'Download'); else disabledCell">
-                      <input type="checkbox"
-                             class="form-check-input"
-                             [ngModel]="getAction(page, 'Download')!.checked"
-                             (ngModelChange)="onActionChange(page, 'Download', $event)">
-                    </ng-container>
-                  </td>
-
-                  <td class="text-center">
-                    <ng-container *ngIf="getAction(page, 'Print'); else disabledCell">
-                      <input type="checkbox"
-                             class="form-check-input"
-                             [ngModel]="getAction(page, 'Print')!.checked"
-                             (ngModelChange)="onActionChange(page, 'Print', $event)">
-                    </ng-container>
-                  </td>
-
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-
+        <!-- Role Dropdown -->
+        <div style="flex: 1;">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Select Role</mat-label>
+            <mat-select [(ngModel)]="selectedRole">
+              <mat-option *ngFor="let role of roles" [value]="role">
+                {{ role }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
         </div>
 
+        <!-- Module Multi-Select Dropdown -->
+        <div style="flex: 1;">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Select Modules</mat-label>
+            <mat-select [(ngModel)]="selectedModules" multiple (ngModelChange)="onModulesChanged()">
+              <mat-option *ngFor="let mod of allModules" [value]="mod.moduleId">
+                {{ mod.moduleName }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <!-- Feature Group Dropdown -->
+        <mat-form-field appearance="outline" class="w-100">
+          <mat-label>Select Feature Groups</mat-label>
+          <mat-select [(ngModel)]="selectedFeatureGroups" multiple (ngModelChange)="onFeatureGroupsChanged()">
+            <mat-option *ngFor="let feature of availableFeatureGroups" [value]="feature">
+              {{ feature }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
       </div>
 
+      <div *ngIf="selectedModules.length > 0" class="mb-4">
+        <input type="text" class="form-control mb-3" placeholder="Search features..." [(ngModel)]="searchText">
+      </div>
+
+      <ng-container *ngIf="readyToRender">
+        <div class="table-responsive mt-4 field-table-scroll">
+          <table class="table table-bordered table-striped align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Features</th>
+                <th class="text-center" *ngFor="let col of ['View','Edit','Add','Delete','Download','Print']">
+                  <input type="checkbox"
+                         [checked]="isAllSelectedGlobal(col)"
+                         [indeterminate]="isSomeSelectedGlobal(col)"
+                         (change)="toggleAllGlobal(col, $event)">
+                  {{ col }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngFor="let module of filteredModules">
+                <ng-container *ngFor="let featureGroup of module.featureGroups">
+                  <ng-container *ngFor="let page of featureGroup.pages">
+                    <tr [hidden]="!filterPage(page.name)">
+                      <td (click)="togglePageExpand(page.name)" style="cursor: pointer;">
+                        <span class="fw-bold d-flex align-items-center">
+                          <mat-icon *ngIf="page.resources?.length" class="me-1">
+                            {{ pageExpandState[page.name] ? 'expand_more' : 'chevron_right' }}
+                          </mat-icon>
+                          {{ featureGroup.featureGroupName }} &raquo; {{ page.name }}
+                        </span>
+                      </td>
+                      <td class="text-center" *ngFor="let col of ['View','Edit','Add','Delete','Download','Print']">
+                        <input type="checkbox"
+                               class="form-check-input"
+                               [checked]="isPageActionSelected(col, page)"
+                               [indeterminate]="isPageActionPartiallySelected(col, page)"
+                               (change)="onPageCheckboxChanged($event, page, col)">
+                      </td>
+                    </tr>
+                    <!-- Resource Rows Inline -->
+                    <ng-container *ngIf="pageExpandState[page.name] && page.resources?.length">
+                      <tr *ngFor="let res of page.resources" class="bg-light">
+                        <td class="ps-5 text-muted">↳ {{ res.name }}</td>
+                        <td class="text-center" *ngFor="let col of ['View','Edit','Add','Delete','Download','Print']">
+                          <ng-container *ngIf="getResourceAction(res, col) as resAction; else disabledCell">
+                            <input type="checkbox"
+                                   class="form-check-input"
+                                   [checked]="resAction.checked"
+                                   (change)="onResourceCheckboxChanged($event, resAction)">
+                          </ng-container>
+                        </td>
+                      </tr>
+                    </ng-container>
+                  </ng-container>
+                </ng-container>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+
+        <ng-template #disabledCell>
+          <input type="checkbox" class="form-check-input" disabled>
+        </ng-template>
+      </ng-container>
+
+      <div class="sticky-footer bg-light p-3 shadow-sm d-flex justify-content-end">
+        <button class="btn btn-success me-2" (click)="savePermissions()">Save Changes</button>
+        <button class="btn btn-secondary">Cancel</button>
+      </div>
     </div>
+  </mat-tab>
 
-  </ng-container>
+  <mat-tab label="Field Level Access">
+    <div class="p-4">
+      <ng-container *ngIf="selectedFeatureGroups.length === 0; else fieldAccessTable">
+        <div class="alert alert-warning d-flex align-items-center" role="alert">
+          <mat-icon class="me-2">warning</mat-icon>
+          <div>
+            <strong>Field Level Access is currently unavailable.</strong><br />
+            Please select one or more <strong>Feature Groups</strong> from the <em>Permissions</em> tab to enable field-level configuration.
+          </div>
+        </div>
+      </ng-container>
+      <ng-template #fieldAccessTable>
+        <div class="field-table-scroll">
+          <table class="table table-bordered table-striped table-sm mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Module</th>
+                <!--<th>Feature Group</th>
+                <th>Feature</th>-->
+                <th>Field</th>
+                <th style="width: 160px;">Access</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngFor="let module of filteredModules">
+                <ng-container *ngFor="let fg of module.featureGroups">
+                  <ng-container *ngFor="let page of fg.pages">
+                    <ng-container *ngIf="page.fields?.length">
+                      <tr *ngFor="let field of page.fields">
+                        <td>
+                          {{ module.moduleName }}
+                          <!--<td>{{ fg.featureGroupName }}</td>
+                                                <td>{{ fg.featureGroupName }}</td>
+                          <td></td>-->
+                        <td> {{ page.name }} &raquo; {{ field.fieldName }}</td>
+                        <td>
+                          <select class="form-select form-select-sm"
+                                  [(ngModel)]="field.access">
+                            <option value="Editable">Editable</option>
+                            <option value="Read-only">Read-only</option>
+                            <option value="Hidden">Hidden</option>
+                          </select>
+                        </td>
+                      </tr>
+                    </ng-container>
+                  </ng-container>
+                </ng-container>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </ng-template>
+    </div>
+  </mat-tab>
 
-  <div class="sticky-footer bg-light p-3 shadow-sm d-flex justify-content-end">
-    <button class="btn btn-success me-2" (click)="savePermissions()">Save Changes</button>
-    <button class="btn btn-secondary">Cancel</button>
-  </div>
 
+  <mat-tab label="Home Dashboard Setup">
+    <div class="p-4">
+      <p>Quick Links tab content will be added here...</p>
+    </div>
+  </mat-tab>
 
+  <mat-tab label="Banner Lavel Config">
+    <div class="p-4">
+      <p>Reports tab content will be added here...</p>
+    </div>
+  </mat-tab>
+</mat-tab-group>

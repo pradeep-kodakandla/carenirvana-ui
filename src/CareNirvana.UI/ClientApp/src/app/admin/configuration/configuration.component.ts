@@ -323,7 +323,7 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
 
   private loadInitialComponent(): void {
     if (this.dynamicContainer) {
-      this.loadComponent('Auth Template');
+      this.loadComponent('Role Permission');
     } else {
       console.error('Dynamic container not initialized');
     }

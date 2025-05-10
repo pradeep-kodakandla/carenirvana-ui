@@ -16,7 +16,9 @@ interface PageNode {
   checked: boolean;
   resources: ResourceNode[];
   actions: ActionNode[];
+  fields?: FieldNode[]; // New field-level access array
 }
+
 
 interface FeatureGroupNode {
   featureGroupName: string;
@@ -33,6 +35,12 @@ interface RolePermission {
   roleId: string;
   modules: ModuleNode[];
 }
+
+interface FieldNode {
+  fieldName: string;
+  access: 'Editable' | 'Read-only' | 'Hidden';
+}
+
 
 @Component({
   selector: 'app-permission-manager',
@@ -54,8 +62,9 @@ export class PermissionManagerComponent {
   readyToRender: boolean = false;
   searchText: string = '';
   filteredModules: ModuleNode[] = [];
-
+  pageExpandState: { [pageName: string]: boolean } = {};
   expandState: { [key: string]: boolean } = {}; // moduleId -> expanded
+  selectedFeatureGroups: string[] = [];
 
   rolePermission: RolePermission = {
     roleId: '',
@@ -123,7 +132,7 @@ export class PermissionManagerComponent {
         moduleName: 'Care Management',
         featureGroups: [
           {
-            featureGroupName: 'Medical History',
+            featureGroupName: 'Member Summary',
             pages: [
               {
                 name: 'Member Info',
@@ -132,7 +141,12 @@ export class PermissionManagerComponent {
                   { name: 'View', checked: false },
                   { name: 'Update', checked: false }
                 ],
-                resources: []
+                resources: [],
+                fields: [
+                  { fieldName: 'First Name', access: 'Editable' },
+                  { fieldName: 'Last Name', access: 'Read-only' },
+                  { fieldName: 'Phone', access: 'Hidden' }
+                ]
               },
               {
                 name: 'Program',
@@ -151,7 +165,12 @@ export class PermissionManagerComponent {
                   { name: 'Assign', checked: false },
                   { name: 'Remove', checked: false }
                 ],
-                resources: []
+                resources: [],
+                fields: [
+                  { fieldName: 'Care Team Fields1', access: 'Editable' },
+                  { fieldName: 'Care Team Fields2', access: 'Read-only' },
+                  { fieldName: 'Care Team Fields3', access: 'Hidden' }
+                ]
               }
             ]
           },
@@ -171,7 +190,7 @@ export class PermissionManagerComponent {
             ]
           },
           {
-            featureGroupName: 'Member Summary',
+            featureGroupName: 'Medical History',
             pages: [
               {
                 name: 'Alerts',
@@ -358,6 +377,16 @@ export class PermissionManagerComponent {
       })
       .filter(mod => mod !== null);
 
+    this.pageExpandState = {};
+    this.filteredModules.forEach(mod => {
+      mod.featureGroups.forEach(fg => {
+        fg.pages.forEach(page => {
+          this.pageExpandState[page.name] = false;
+        });
+      });
+    });
+
+
     this.readyToRender = true;
   }
 
@@ -398,25 +427,32 @@ export class PermissionManagerComponent {
   }
 
   // For column (action) header level
-  isAllSelected(actionName: string, featureGroup: FeatureGroupNode): boolean {
-    const allPages = featureGroup.pages.filter(p => this.getAction(p, actionName));
-    return allPages.length > 0 && allPages.every(p => this.getAction(p, actionName)?.checked);
-  }
+  //isAllSelected(actionName: string, featureGroup: FeatureGroupNode): boolean {
+  //  const allPages = featureGroup.pages.filter(p => this.getAction(p, actionName));
+  //  return allPages.length > 0 && allPages.every(p => this.getAction(p, actionName)?.checked);
+  //}
 
-  isSomeSelected(actionName: string, featureGroup: FeatureGroupNode): boolean {
-    const pages = featureGroup.pages.filter(p => this.getAction(p, actionName));
-    return pages.some(p => this.getAction(p, actionName)?.checked) && !this.isAllSelected(actionName, featureGroup);
-  }
+  //isSomeSelected(actionName: string, featureGroup: FeatureGroupNode): boolean {
+  //  const pages = featureGroup.pages.filter(p => this.getAction(p, actionName));
+  //  return pages.some(p => this.getAction(p, actionName)?.checked) && !this.isAllSelected(actionName, featureGroup);
+  //}
 
   toggleAll(actionName: string, featureGroup: FeatureGroupNode, event: any): void {
     const checked = event.target.checked;
     featureGroup.pages.forEach(page => {
-      const action = this.getAction(page, actionName);
-      if (action) {
-        action.checked = checked;
+      const pageAction = this.getAction(page, actionName);
+      if (pageAction) {
+        pageAction.checked = checked;
       }
+      page.resources?.forEach(res => {
+        const resAction = res.actions.find(a => a.name.toLowerCase() === actionName.toLowerCase());
+        if (resAction) {
+          resAction.checked = checked;
+        }
+      });
     });
   }
+
 
   // For page-name header level (all page's all actions)
   isAllPagesSelected(featureGroup: FeatureGroupNode): boolean {
@@ -441,6 +477,199 @@ export class PermissionManagerComponent {
     if (action) {
       action.checked = checked;
     }
+
+    page.resources?.forEach(res => {
+      const resAction = res.actions.find(a => a.name.toLowerCase() === actionName.toLowerCase());
+      if (resAction) {
+        resAction.checked = checked;
+      }
+    });
+  }
+
+
+  togglePageExpand(pageName: string): void {
+    this.pageExpandState[pageName] = !this.pageExpandState[pageName];
+  }
+
+  // At Page level
+  isPageActionSelected(actionName: string, page: PageNode): boolean {
+    const allActions: ActionNode[] = [];
+
+    const pageAction = this.getAction(page, actionName);
+    if (pageAction) allActions.push(pageAction);
+
+    page.resources.forEach(res => {
+      const resAction = this.getResourceAction(res, actionName);
+      if (resAction) allActions.push(resAction);
+    });
+
+    return allActions.length > 0 && allActions.every(a => a.checked);
+  }
+
+  isPageActionPartiallySelected(actionName: string, page: PageNode): boolean {
+    const allActions: ActionNode[] = [];
+
+    const pageAction = this.getAction(page, actionName);
+    if (pageAction) allActions.push(pageAction);
+
+    page.resources.forEach(res => {
+      const resAction = this.getResourceAction(res, actionName);
+      if (resAction) allActions.push(resAction);
+    });
+
+    const anyChecked = allActions.some(a => a.checked);
+    const allChecked = allActions.every(a => a.checked);
+
+    return anyChecked && !allChecked;
+  }
+
+
+  // At Feature Group (header) level
+  isAllSelected(actionName: string, featureGroup: FeatureGroupNode): boolean {
+    const allActions: ActionNode[] = [];
+
+    featureGroup.pages.forEach(page => {
+      const pageAction = this.getAction(page, actionName);
+      if (pageAction) allActions.push(pageAction);
+
+      page.resources.forEach(res => {
+        const resAction = this.getResourceAction(res, actionName);
+        if (resAction) allActions.push(resAction);
+      });
+    });
+
+    return allActions.length > 0 && allActions.every(a => a.checked);
+  }
+
+  isSomeSelected(actionName: string, featureGroup: FeatureGroupNode): boolean {
+    const allActions: ActionNode[] = [];
+
+    featureGroup.pages.forEach(page => {
+      const pageAction = this.getAction(page, actionName);
+      if (pageAction) allActions.push(pageAction);
+
+      page.resources.forEach(res => {
+        const resAction = this.getResourceAction(res, actionName);
+        if (resAction) allActions.push(resAction);
+      });
+    });
+
+    const any = allActions.some(a => a.checked);
+    const all = allActions.every(a => a.checked);
+
+    return any && !all;
+  }
+
+  // Reuse this helper
+  getResourceAction(res: ResourceNode, actionName: string): ActionNode | undefined {
+    return res.actions.find(a => a.name.toLowerCase() === actionName.toLowerCase());
+  }
+
+  onPageCheckboxChanged(event: Event, page: PageNode, actionName: string): void {
+    const input = event.target as HTMLInputElement;
+    const checked = input?.checked ?? false;
+    this.onActionChange(page, actionName, checked);
+  }
+
+  onResourceCheckboxChange(): void {
+    // intentionally empty — triggers change detection
+  }
+
+  onResourceCheckboxChanged(event: Event, resAction: ActionNode): void {
+    const input = event.target as HTMLInputElement;
+    resAction.checked = input?.checked ?? false;
+  }
+
+  onFeatureGroupsChanged(): void {
+    this.readyToRender = false;
+    this.filteredModules = [];
+
+    if (!this.selectedModules || this.selectedModules.length === 0) return;
+
+    this.filteredModules = this.rolePermission.modules
+      .filter(m => this.selectedModules.includes(m.moduleId))
+      .map(mod => {
+        const matchingFeatureGroups = mod.featureGroups.filter(fg =>
+          this.selectedFeatureGroups.includes(fg.featureGroupName)
+        );
+
+        return {
+          ...mod,
+          featureGroups: matchingFeatureGroups
+        };
+      })
+      .filter(mod => mod.featureGroups.length > 0);
+
+    // Initialize page expand state
+    this.pageExpandState = {};
+    this.filteredModules.forEach(mod => {
+      mod.featureGroups.forEach(fg => {
+        fg.pages.forEach(page => {
+          this.pageExpandState[page.name] = false;
+        });
+      });
+    });
+
+    this.readyToRender = true;
+  }
+
+  isAllSelectedGlobal(actionName: string): boolean {
+    const actions: ActionNode[] = [];
+
+    this.filteredModules.forEach(module => {
+      module.featureGroups.forEach(fg => {
+        fg.pages.forEach(page => {
+          const pageAction = this.getAction(page, actionName);
+          if (pageAction) actions.push(pageAction);
+          page.resources?.forEach(res => {
+            const resAction = this.getResourceAction(res, actionName);
+            if (resAction) actions.push(resAction);
+          });
+        });
+      });
+    });
+
+    return actions.length > 0 && actions.every(a => a.checked);
+  }
+
+  isSomeSelectedGlobal(actionName: string): boolean {
+    const actions: ActionNode[] = [];
+
+    this.filteredModules.forEach(module => {
+      module.featureGroups.forEach(fg => {
+        fg.pages.forEach(page => {
+          const pageAction = this.getAction(page, actionName);
+          if (pageAction) actions.push(pageAction);
+          page.resources?.forEach(res => {
+            const resAction = this.getResourceAction(res, actionName);
+            if (resAction) actions.push(resAction);
+          });
+        });
+      });
+    });
+
+    const anyChecked = actions.some(a => a.checked);
+    const allChecked = actions.every(a => a.checked);
+
+    return anyChecked && !allChecked;
+  }
+
+  toggleAllGlobal(actionName: string, event: Event): void {
+    const checked = (event.target as HTMLInputElement)?.checked ?? false;
+
+    this.filteredModules.forEach(module => {
+      module.featureGroups.forEach(fg => {
+        fg.pages.forEach(page => {
+          const pageAction = this.getAction(page, actionName);
+          if (pageAction) pageAction.checked = checked;
+
+          page.resources?.forEach(res => {
+            const resAction = this.getResourceAction(res, actionName);
+            if (resAction) resAction.checked = checked;
+          });
+        });
+      });
+    });
   }
 
 
