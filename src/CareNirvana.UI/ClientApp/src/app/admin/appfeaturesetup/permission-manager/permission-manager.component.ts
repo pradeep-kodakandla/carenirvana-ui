@@ -1,9 +1,10 @@
 import { Component } from '@angular/core';
-
+import { RolepermissionService } from 'src/app/service/rolepermission.service';
 interface ActionNode {
   name: string;
   checked: boolean;
 }
+
 
 interface ResourceNode {
   name: string;
@@ -49,13 +50,19 @@ interface FieldNode {
 })
 export class PermissionManagerComponent {
 
+
   roles = ['Care Manager', 'Admin', 'Supervisor', 'Intake', 'Medical Director'];
 
-  allModules = [
-    { moduleId: 'UM', moduleName: 'UM' },
-    { moduleId: 'CM', moduleName: 'CM' },
-    { moduleId: 'AG', moduleName: 'AG' }
-  ];
+  allModules: { moduleId: string, moduleName: string }[] = [];
+
+  ngOnInit(): void {
+    this.roleService.getModules().subscribe(modules => {
+      this.allModules = modules;
+      console.log('Modules:', this.allModules);
+    });
+
+  }
+
 
   selectedRole: string = '';
   selectedModules: string[] = [];
@@ -239,7 +246,7 @@ export class PermissionManagerComponent {
 
 
 
-  constructor() {
+  constructor(private roleService: RolepermissionService) {
     this.rolePermission.modules.forEach(mod => {
       this.expandState[mod.moduleId] = true;
     });
@@ -329,22 +336,25 @@ export class PermissionManagerComponent {
 
 
   onModulesChanged() {
-    this.readyToRender = false; // Reset
-    this.selectedFeatureGroup = '';
     this.availableFeatureGroups = [];
+    this.selectedFeatureGroups = [];
 
-    if (this.selectedModules && this.selectedModules.length > 0) {
-      const featureGroupsSet = new Set<string>();
+    const allRequests = this.selectedModules.map(modId =>
+      this.roleService.getFeatureGroups(+modId)
+    );
 
-      this.selectedModules.forEach(moduleId => {
-        const groups = this.featureGroupsMapping[moduleId];
-        if (groups) {
-          groups.forEach(g => featureGroupsSet.add(g));
-        }
+    Promise.all(allRequests.map(obs => obs.toPromise()))
+      .then(results => {
+        const uniqueGroups = new Set<string>();
+        results.forEach(groups => {
+          (groups ?? []).forEach(group => uniqueGroups.add(group.featureGroupName));
+        });
+        this.availableFeatureGroups = Array.from(uniqueGroups);
+      })
+
+      .catch(error => {
+        console.error('Error loading feature groups:', error);
       });
-
-      this.availableFeatureGroups = Array.from(featureGroupsSet);
-    }
   }
 
 
@@ -584,34 +594,69 @@ export class PermissionManagerComponent {
     this.readyToRender = false;
     this.filteredModules = [];
 
-    if (!this.selectedModules || this.selectedModules.length === 0) return;
+    if (!this.selectedModules.length) return;
 
-    this.filteredModules = this.rolePermission.modules
-      .filter(m => this.selectedModules.includes(m.moduleId))
-      .map(mod => {
-        const matchingFeatureGroups = mod.featureGroups.filter(fg =>
-          this.selectedFeatureGroups.includes(fg.featureGroupName)
-        );
+    const modulePromises = this.selectedModules.map(async modId => {
+      const featureGroups = await this.roleService.getFeatureGroups(+modId).toPromise();
+      const matchingGroups = (featureGroups ?? []).filter(g =>
+        this.selectedFeatureGroups.includes(g.featureGroupName)
+      );
 
-        return {
-          ...mod,
-          featureGroups: matchingFeatureGroups
-        };
-      })
-      .filter(mod => mod.featureGroups.length > 0);
+      const featureGroupNodes = await Promise.all(
+        matchingGroups.map(async fg => {
+          const features = await this.roleService.getFeatures(fg.featureGroupId).toPromise();
 
-    // Initialize page expand state
-    this.pageExpandState = {};
-    this.filteredModules.forEach(mod => {
-      mod.featureGroups.forEach(fg => {
-        fg.pages.forEach(page => {
-          this.pageExpandState[page.name] = false;
-        });
-      });
+          const pageNodes = await Promise.all(
+            (features ?? []).map(async f => {
+              const resources = await this.roleService.getResources(f.featureId).toPromise();
+
+              return {
+                name: f.featureName,
+                checked: false,
+                actions: [
+                  { name: 'View', checked: false },
+                  { name: 'Edit', checked: false },
+                  { name: 'Add', checked: false },
+                  { name: 'Delete', checked: false },
+                  { name: 'Print', checked: false },
+                  { name: 'Download', checked: false }
+                ],
+                resources: (resources ?? []).map(r => ({
+                  name: r.resourceName,
+                  checked: false,
+                  actions: [
+                    ...(r.allowView ? [{ name: 'View', checked: false }] : []),
+                    ...(r.allowAdd ? [{ name: 'Add', checked: false }] : []),
+                    ...(r.allowEdit ? [{ name: 'Edit', checked: false }] : []),
+                    ...(r.allowDelete ? [{ name: 'Delete', checked: false }] : []),
+                    ...(r.allowPrint ? [{ name: 'Print', checked: false }] : []),
+                    ...(r.allowDownload ? [{ name: 'Download', checked: false }] : [])
+                  ]
+                }))
+              };
+            })
+          );
+
+          return {
+            featureGroupName: fg.featureGroupName,
+            pages: pageNodes
+          };
+        })
+      );
+
+      return {
+        moduleId: modId,
+        moduleName: this.getModuleName(modId),
+        featureGroups: featureGroupNodes
+      };
     });
 
-    this.readyToRender = true;
+    Promise.all(modulePromises).then(result => {
+      this.filteredModules = result;
+      this.readyToRender = true;
+    });
   }
+
 
   isAllSelectedGlobal(actionName: string): boolean {
     const actions: ActionNode[] = [];
