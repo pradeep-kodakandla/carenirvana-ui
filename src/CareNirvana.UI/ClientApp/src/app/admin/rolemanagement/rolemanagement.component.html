@@ -1,14 +1,5 @@
 <div class="container" *ngIf="!isFormVisible">
-  <!--<button mat-raised-button color="primary" (click)="openForm('add')">Add New</button>-->
-  <!-- Search Input -->
-  <!--<div class="d-flex justify-content-between align-items-center" style="width:70%;">
-    <div class="search-bar-container-table">
-      <mat-form-field appearance="fill" class="search-bar">
-        <mat-label>Search</mat-label>
-        <input matInput (keyup)="applyFilter($event)" placeholder="Search..." />
-      </mat-form-field>
-    </div>
-  </div>-->
+
   <div class="card-header">
     <h4 style="color: #007BFF; font-weight: bold;">Role Management</h4>
   </div>
@@ -31,10 +22,11 @@
       <!-- Table -->
       <!--<table mat-table [dataSource]="dataSource" matSort class="mat-elevation-z8">-->
       <!-- ID Column -->
-      <ng-container matColumnDef="id">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header> ID </th>
-        <td mat-cell *matCellDef="let element"> {{ element.id }} </td>
+      <ng-container matColumnDef="roleId">
+        <th mat-header-cell *matHeaderCellDef> ID </th>
+        <td mat-cell *matCellDef="let element"> {{ element.roleId }} </td>
       </ng-container>
+
 
       <!-- Name Column -->
       <ng-container matColumnDef="name">
@@ -43,22 +35,24 @@
       </ng-container>
 
       <!-- Email Column -->
+      <!-- Manager Access -->
       <ng-container matColumnDef="managerAccess">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header> Mangager Access </th>
-        <td mat-cell *matCellDef="let element"> {{ element.managerAccess }} </td>
+        <th mat-header-cell *matHeaderCellDef> Manager Access </th>
+        <td mat-cell *matCellDef="let element"> {{ element.managerAccess ? element.managerAccess : 'No' }} </td>
       </ng-container>
 
-      <!-- Role Column -->
+      <!-- QOC Access -->
       <ng-container matColumnDef="qocAccess">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header> QOC Access </th>
-        <td mat-cell *matCellDef="let element"> {{ element.qocAccess }} </td>
+        <th mat-header-cell *matHeaderCellDef> QOC Access </th>
+        <td mat-cell *matCellDef="let element"> {{ element.qocAccess ? element.qocAccess : 'No' }} </td>
       </ng-container>
 
-      <!-- Role Column -->
+      <!-- Sensitive -->
       <ng-container matColumnDef="sensitive">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header> Sensitive Diagnosis Member Access? </th>
-        <td mat-cell *matCellDef="let element"> {{ element.sensitive }} </td>
+        <th mat-header-cell *matHeaderCellDef> Sensitive </th>
+        <td mat-cell *matCellDef="let element"> {{ element.sensitive ? element.sensitive : 'No' }} </td>
       </ng-container>
+
 
       <ng-container matColumnDef="createdBy">
         <th mat-header-cell *matHeaderCellDef mat-sort-header> Created By </th>
@@ -80,7 +74,7 @@
           <button mat-icon-button (click)="openForm('edit', element)">
             <mat-icon style="color: #007BFF">edit</mat-icon>
           </button>
-          <button mat-icon-button (click)="deleteRow(element.id)">
+          <button mat-icon-button (click)="deleteRow(element.roleId)">
             <mat-icon style="color: #007BFF">delete</mat-icon>
           </button>
         </td>
@@ -97,42 +91,68 @@
 </div>
 
 <!-- Form Section -->
-<div *ngIf="isFormVisible" class="form-container">
+<div *ngIf="isFormVisible" style="margin:10px;">
   <h4 style="color: #007BFF !important; font-weight: bold;">{{ formMode | titlecase }} Role</h4>
   <form>
     <div>
-      <!-- Login Details Section -->
-      <div class="card mb-4" style="margin:2px !important;">
-        <div class="card-header">
-          <h6 style="color: #007BFF; font-weight: bold;">Role Details</h6>
+      <div class="form-row d-flex flex-wrap align-items-center gap-3 mb-3">
+        <!-- Bootstrap Floating Label -->
+        <div class="form-outline-floating mb-3 floated-always">
+          <input type="text"
+                 class="form-control outlined-input"
+                 id="roleName"
+                 placeholder="Enter role name"
+                 name="name"
+                 [(ngModel)]="selectedEntry.name"
+                 [disabled]="formMode === 'view'">
+          <label for="roleName">Name</label>
         </div>
-        <div class="form-row">
-          <mat-form-field appearance="outline" [class.read-only]="formMode === 'view'">
-            <mat-label>Name</mat-label>
-            <input matInput [(ngModel)]="selectedEntry.name" name="name" [disabled]="formMode === 'view'" />
-          </mat-form-field>
 
-          <mat-form-field appearance="outline" [class.read-only]="formMode === 'view'">
-            <mat-label>Manager Access</mat-label>
-            <input matInput [(ngModel)]="selectedEntry.managerAccess" name="managerAccess" [disabled]="formMode === 'view'" />
-          </mat-form-field>
 
-          <mat-form-field appearance="outline" [class.read-only]="formMode === 'view'">
-            <mat-label>QOC Access</mat-label>
-            <input matInput [(ngModel)]="selectedEntry.qocAccess" name="qocAccess" [disabled]="formMode === 'view'" />
-          </mat-form-field>
 
-          <mat-form-field appearance="outline" [class.read-only]="formMode === 'view'">
-            <mat-label>Sensitive Diagnosis Member Access?</mat-label>
-            <input matInput [(ngModel)]="selectedEntry.sensitive" name="sensitive" [disabled]="formMode === 'view'" />
-          </mat-form-field>
+        <!-- Bootstrap Checkboxes -->
+        <div class="form-check me-3">
+          <input type="checkbox"
+                 class="form-check-input"
+                 id="managerAccess"
+                 [(ngModel)]="selectedEntry.managerAccess"
+                 name="managerAccess"
+                 [disabled]="formMode === 'view'">
+          <label class="form-check-label" for="managerAccess">Manager Access</label>
+        </div>
+
+        <div class="form-check me-3">
+          <input type="checkbox"
+                 class="form-check-input"
+                 id="qocAccess"
+                 [(ngModel)]="selectedEntry.qocAccess"
+                 name="qocAccess"
+                 [disabled]="formMode === 'view'">
+          <label class="form-check-label" for="qocAccess">QOC Access</label>
+        </div>
+
+        <div class="form-check">
+          <input type="checkbox"
+                 class="form-check-input"
+                 id="sensitiveAccess"
+                 [(ngModel)]="selectedEntry.sensitive"
+                 name="sensitive"
+                 [disabled]="formMode === 'view'">
+          <label class="form-check-label" for="sensitiveAccess">Sensitive Diagnosis Member Access?</label>
         </div>
       </div>
+
+
+
+      <app-permission-manager *ngIf="formMode === 'add' || formMode === 'edit'"
+                              [permissionData]="parsedPermissionsJson">
+      </app-permission-manager>
+
     </div>
 
     <div style="text-align:right;">
-      <button mat-button class="login-button" *ngIf="formMode !== 'view'" (click)="saveEntry()">Save</button>
-      <button mat-button class="login-button" (click)="cancelForm()">Cancel</button>
+      <button mat-raised-button class="role-button" style="border-radius:5px !important;" *ngIf="formMode !== 'view'" (click)="saveEntry()">Save</button>
+      <button mat-raised-button class="role-button" style="border-radius:5px !important;" (click)="cancelForm()">Cancel</button>
     </div>
   </form>
 </div>

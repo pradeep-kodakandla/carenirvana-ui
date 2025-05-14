@@ -30,6 +30,21 @@ export interface Resource {
   allowDownload: boolean;
 }
 
+export interface CfgRole {
+  roleId?: number;
+  name: string;
+  managerAccess: string;
+  qocAccess: string;
+  sensitive: string;
+  permissions?: any; // JSON object
+  createdBy?: number;
+  createdOn?: string;
+  updatedBy?: number;
+  updatedOn?: string;
+  deletedBy?: number;
+  deletedOn?: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -84,6 +99,27 @@ export class RolepermissionService {
         allowDownload: r.AllowDownload
       })))
     );
+  }
+
+
+  getRoles(): Observable<CfgRole[]> {
+    return this.http.get<CfgRole[]>(this.baseUrl);
+  }
+
+  getRoleById(roleId: number): Observable<CfgRole> {
+    return this.http.get<CfgRole>(`${this.baseUrl}/${roleId}`);
+  }
+
+  addRole(role: CfgRole): Observable<number> {
+    return this.http.post<number>(this.baseUrl, role);
+  }
+
+  updateRole(roleId: number, role: CfgRole): Observable<void> {
+    return this.http.put<void>(`${this.baseUrl}/${roleId}`, role);
+  }
+
+  deleteRole(roleId: number, deletedBy: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${roleId}?deletedBy=${deletedBy}`);
   }
 
 }

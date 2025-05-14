@@ -1,12 +1,12 @@
 <mat-tab-group>
   <mat-tab label="Permissions">
     <!-- EXISTING CONTENT GOES HERE -->
-    <div class="container py-4">
+    <div class="py-4">
 
       <div style="display: flex; gap: 20px;">
 
         <!-- Role Dropdown -->
-        <div style="flex: 1;">
+        <!--<div style="flex: 1;">
           <mat-form-field appearance="outline" class="w-100">
             <mat-label>Select Role</mat-label>
             <mat-select [(ngModel)]="selectedRole">
@@ -15,8 +15,7 @@
               </mat-option>
             </mat-select>
           </mat-form-field>
-        </div>
-
+        </div>-->
         <!-- Module Multi-Select Dropdown -->
         <div style="flex: 1;">
           <mat-form-field appearance="outline" class="w-100">
@@ -46,11 +45,12 @@
 
       <ng-container *ngIf="readyToRender">
         <div class="table-responsive mt-4 field-table-scroll">
-          <table class="table table-bordered table-striped align-middle">
-            <thead class="table-light">
+          <table class="responsive-table">
+            <!--<table class="table table-bordered table-striped align-middle">-->
+            <thead>
               <tr>
-                <th>Features</th>
-                <th class="text-center" *ngFor="let col of ['View','Edit','Add','Delete','Download','Print']">
+                <th style="background-color: #007BFF;">Features</th>
+                <th style="background-color: #007BFF;" class="text-center" *ngFor="let col of ['Add','Edit','View','Delete','Download','Print']">
                   <input type="checkbox"
                          [checked]="isAllSelectedGlobal(col)"
                          [indeterminate]="isSomeSelectedGlobal(col)"
@@ -72,7 +72,7 @@
                           {{ featureGroup.featureGroupName }} &raquo; {{ page.name }}
                         </span>
                       </td>
-                      <td class="text-center" *ngFor="let col of ['View','Edit','Add','Delete','Download','Print']">
+                      <td class="text-center" *ngFor="let col of ['Add','Edit','View','Delete','Download','Print']">
                         <input type="checkbox"
                                class="form-check-input"
                                [checked]="isPageActionSelected(col, page)"
@@ -84,11 +84,14 @@
                     <ng-container *ngIf="pageExpandState[page.name] && page.resources?.length">
                       <tr *ngFor="let res of page.resources" class="bg-light">
                         <td class="ps-5 text-muted">↳ {{ res.name }}</td>
-                        <td class="text-center" *ngFor="let col of ['View','Edit','Add','Delete','Download','Print']">
+                        <td class="text-center" *ngFor="let col of ['Add','Edit','View','Delete','Download','Print']">
                           <ng-container *ngIf="getResourceAction(res, col) as resAction; else disabledCell">
                             <input type="checkbox"
                                    class="form-check-input"
                                    [checked]="resAction.checked"
+                                   [disabled]="!resAction.hasOwnProperty('checked')"
+                                   [ngClass]="{ 'opacity-50': !resAction.hasOwnProperty('checked') }"
+                                   matTooltip="{{ !resAction.hasOwnProperty('checked') ? 'Not permitted for this resource' : '' }}"
                                    (change)="onResourceCheckboxChanged($event, resAction)">
                           </ng-container>
                         </td>
@@ -106,10 +109,10 @@
         </ng-template>
       </ng-container>
 
-      <div class="sticky-footer bg-light p-3 shadow-sm d-flex justify-content-end">
+      <!--<div class="sticky-footer bg-light p-3 shadow-sm d-flex justify-content-end">
         <button class="btn btn-success me-2" (click)="savePermissions()">Save Changes</button>
         <button class="btn btn-secondary">Cancel</button>
-      </div>
+      </div>-->
     </div>
   </mat-tab>
 
@@ -126,8 +129,8 @@
       </ng-container>
       <ng-template #fieldAccessTable>
         <div class="field-table-scroll">
-          <table class="table table-bordered table-striped table-sm mb-0">
-            <thead class="table-light">
+          <table class="responsive-table">
+            <thead >
               <tr>
                 <th>Module</th>
                 <!--<th>Feature Group</th>
@@ -143,6 +146,9 @@
                     <ng-container *ngIf="page.fields?.length">
                       <tr *ngFor="let field of page.fields">
                         <td>
+
+
+
                           {{ module.moduleName }}
                           <!--<td>{{ fg.featureGroupName }}</td>
                                                 <td>{{ fg.featureGroupName }}</td>
