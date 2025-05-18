@@ -1,155 +1,93 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Modern Tab Navigation</title>
-  <!--<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">-->
-  <link rel="stylesheet" href="member.component.css"> <!-- Link to the CSS file -->
-</head>
-<body>
+<div class="tab-container">
+  <!-- 🌟 Main Tabs Navigation (Feature Group Names) -->
+  <ul class="tab-header" role="tablist" *ngIf="!showAuthorizationComponent">
+    <li *ngFor="let tab of mainTabs; let i = index">
+      <button class="nav-link-header"
+              [ngClass]="{ 'active': i === 0 }"
+              data-bs-toggle="tab"
+              [attr.data-bs-target]="'#' + getSafeId(tab.name)"
+              type="button">
+        {{ tab.name }}
+      </button>
+    </li>
+  </ul>
 
-  <div class="tab-container">
-    <!-- 🌟 Main Tabs Navigation -->
-    <ul class="tab-header" role="tablist" *ngIf="!showAuthorizationComponent">
-      <li>
-        <button class="nav-link-header active" data-bs-toggle="tab" data-bs-target="#authorizations" type="button">
-          Authorizations
-        </button>
-      </li>
-      <li>
-        <button class="nav-link-header " data-bs-toggle="tab" data-bs-target="#summary" type="button">
-          Summary
-        </button>
-      </li>
-      <li>
-        <button class="nav-link-header" data-bs-toggle="tab" data-bs-target="#medical-history" type="button">
-          Medical History
-        </button>
-      </li>
-      <li>
-        <button class="nav-link-header" data-bs-toggle="tab" data-bs-target="#engagement" type="button">
-          Engagement
-        </button>
-      </li>
+  <!-- 🌟 Main Tab Content -->
+  <div class="tab-content">
+    <div *ngFor="let tab of mainTabs; let i = index"
+         class="tab-pane fade"
+         [ngClass]="{ 'show active': i === 0 }"
+         [attr.id]="getSafeId(tab.name)">
 
-      <li>
-        <button class="nav-link-header" data-bs-toggle="tab" data-bs-target="#complaints" type="button">
-          Complaints
-        </button>
-      </li>
-    </ul>
-
-    <!-- 🌟 Main Tab Content -->
-    <div class="tab-content">
-      <div class="tab-pane fade" id="summary">
-        <!-- 🌟 Nested Tabs (Inside Summary) -->
-        <ul class="child-tab-header" role="tablist">
-          <li>
-            <button class="nav-link-header active" data-bs-toggle="tab" data-bs-target="#member-info" type="button">
-              Member Info
-            </button>
-          </li>
-          <li>
-            <button class="nav-link-header" data-bs-toggle="tab" data-bs-target="#task-summary" type="button">
-              Task Summary
-            </button>
-          </li>
-          <li>
-            <button class="nav-link-header" data-bs-toggle="tab" data-bs-target="#care-plan" type="button">
-              Care Plan
-            </button>
-          </li>
-          <li>
-            <button class="nav-link-header" data-bs-toggle="tab" data-bs-target="#program" type="button">
-              Program
-            </button>
-          </li>
-          <li>
-            <button class="nav-link-header" data-bs-toggle="tab" data-bs-target="#enrollment" type="button">
-              Enrollment
-            </button>
-          </li>
-          <li>
-            <button class="nav-link-header" data-bs-toggle="tab" data-bs-target="#careteam" type="button">
-              Care Team
-            </button>
-          </li>
-          <li>
-            <button class="nav-link-header" data-bs-toggle="tab" data-bs-target="#notes" type="button">
-              Notes
-            </button>
-          </li>
-          <li>
-            <button class="nav-link-header" data-bs-toggle="tab" data-bs-target="#documents" type="button">
-              Documents
-            </button>
-          </li>
-          <li>
-            <button class="nav-link-header" data-bs-toggle="tab" data-bs-target="#alerts" type="button">
-              Alerts
-            </button>
-          </li>
-        </ul>
-
-        <!-- 🌟 Nested Tab Content -->
-        <div class="tab-content">
-          <div class="tab-pane fade show active" id="member-info">
-            <app-member-info></app-member-info>
-          </div>
-          <div class="tab-pane fade" id="task-summary">
-            <app-member-tasksummary></app-member-tasksummary>
-          </div>
-          <div class="tab-pane fade" id="care-plan">
-            <p>📌 Care Plan information...</p>
-          </div>
-          <div class="tab-pane fade" id="program">
-            <app-member-program></app-member-program>
-          </div>
-          <div class="tab-pane fade" id="enrollment">
-            <app-member-enrollment></app-member-enrollment>
-          </div>
-          <div class="tab-pane fade" id="careteam">
-            <app-member-careteam></app-member-careteam>
-          </div>
-          <div class="tab-pane fade" id="notes">
-            <app-member-notes></app-member-notes>
-          </div>
-          <div class="tab-pane fade" id="documents">
-            <app-member-documents></app-member-documents>
-          </div>
-          <div class="tab-pane fade" id="alerts">
-            <app-member-alerts></app-member-alerts>
-          </div>
-        </div>
-      </div>
-
-      <!-- Other Main Tabs -->
-      <div class="tab-pane fade" id="medical-history">
-        <p>📌 Medical History Content...</p>
-      </div>
-      <div class="tab-pane fade" id="engagement">
-        <p>📌 Engagement Content...</p>
-      </div>
-      <div class="tab-pane fade show active" id="authorizations">
-        <!--<app-authorization></app-authorization>-->
+      <div *ngIf="tab.name === 'Authorization'">
         <div *ngIf="!showAuthorizationComponent">
           <app-authdetails [memberId]="memberId" (addClicked)="onAddClick($event)"></app-authdetails>
         </div>
-
         <div *ngIf="showAuthorizationComponent">
           <app-authorization [authNumber]="authNumber" [memberId]="memberId" (cancel)="onCancel()"></app-authorization>
-          <!--<app-authdynamic (cancel)="onCancel()"></app-authdynamic>-->
         </div>
       </div>
-      <div class="tab-pane fade" id="complaints">
-        <p>📌 Complaints Content...</p>
+      <!-- 🌟 Child Tabs Navigation (Pages) -->
+      <!-- 🌟 Child Tabs Navigation (Pages) -->
+      <ul class="child-tab-header" role="tablist" *ngIf="tab.pages.length > 0 && tab.name !== 'Authorization'">
+
+        <li *ngFor="let page of tab.pages; let j = index">
+          <button class="nav-link-header"
+                  [ngClass]="{ 'active': j === 0 }"
+                  data-bs-toggle="tab"
+                  [attr.data-bs-target]="'#' + getSafeId(tab.name) + '-' + getSafeId(page.name)"
+                  type="button">
+            {{ page.name }}
+          </button>
+        </li>
+      </ul>
+      <div *ngIf="tab.pages.length === 0" class="p-3 text-muted">
+        No pages available for this section.
       </div>
+      <!-- 🌟 Child Tab Content -->
+      <!-- 🌟 Child Tab Content (exclude for Authorization) -->
+      <div class="tab-content" *ngIf="tab.pages.length > 0 && tab.name !== 'Authorization'">
+
+        <div *ngFor="let page of tab.pages; let j = index"
+             class="tab-pane fade"
+             [ngClass]="{ 'show active': j === 0 }"
+             [attr.id]="getSafeId(tab.name) + '-' + getSafeId(page.name)">
+
+          <!-- 🧩 Render Components by Page Name -->
+          <ng-container [ngSwitch]="page.name">
+            <app-member-info *ngSwitchCase="'Member Info'"></app-member-info>
+            <app-member-tasksummary *ngSwitchCase="'Task Summary'"></app-member-tasksummary>
+            <app-member-program *ngSwitchCase="'Program'"></app-member-program>
+            <app-member-enrollment *ngSwitchCase="'Enrollment'"></app-member-enrollment>
+            <app-member-careteam *ngSwitchCase="'Care Team'"></app-member-careteam>
+            <app-member-notes *ngSwitchCase="'Notes'"></app-member-notes>
+            <app-member-documents *ngSwitchCase="'Documents'"></app-member-documents>
+            <app-member-alerts *ngSwitchCase="'Alerts'"></app-member-alerts>
+            <p *ngSwitchDefault>📌 {{ page.name }} content...</p>
+
+            <ng-container>
+              <!-- 🛑 Direct Auth Component Content (no child tabs) -->
+
+
+            </ng-container>
+
+          </ng-container>
+
+        </div>
+      </div>
+
     </div>
   </div>
 
-  <!-- Bootstrap 5 JS (for tab functionality) -->
-  <!--<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>-->
-
-</body>
-</html>
+  <!-- Static Authorization Tab (if needed separately) -->
+  <!--<div class="tab-content">
+    <div class="tab-pane fade show active" id="authorizations">
+      <div *ngIf="!showAuthorizationComponent">
+        <app-authdetails [memberId]="memberId" (addClicked)="onAddClick($event)"></app-authdetails>
+      </div>
+      <div *ngIf="showAuthorizationComponent">
+        <app-authorization [authNumber]="authNumber" [memberId]="memberId" (cancel)="onCancel()"></app-authorization>
+      </div>
+    </div>
+  </div>-->
+</div>

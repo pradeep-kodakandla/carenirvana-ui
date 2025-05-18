@@ -38,6 +38,9 @@ export class UmauthnotesComponent implements OnInit {
 
   @Input() notesData: AuthorizationNote[] = [];
   @Output() NotesSaved = new EventEmitter<AuthorizationNote[]>();
+  @Input() canAdd = false;
+  @Input() canEdit = false;
+  @Input() canView = true;
 
   constructor(private crudService: CrudService) { }
 

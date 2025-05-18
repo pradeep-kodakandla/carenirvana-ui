@@ -342,6 +342,7 @@ export class AuthorizationComponent {
 
   ngOnInit(): void {
 
+    this.loadPermissionsForAuthorization();
     this.route.paramMap.subscribe(params => {
       this.newAuthNumber = params.get('authNo'); // Extract authNumber
       this.memberId = Number(params.get('memberId'));
@@ -1733,4 +1734,50 @@ export class AuthorizationComponent {
 
   /****** Service Code Overlap *******/
 
+
+  /************* Helper Methods ***************/
+  permissionsMap: any = {};
+
+  loadPermissionsForAuthorization() {
+    const permissionsJson = JSON.parse(sessionStorage.getItem('rolePermissionsJson') || '[]');
+    const umModule = permissionsJson.find((m: any) => m.moduleName === 'Utilization Management');
+    if (!umModule) return;
+
+    const authFeatureGroup = umModule.featureGroups.find((fg: any) => fg.featureGroupName === 'Authorization');
+    if (!authFeatureGroup) return;
+
+    for (let page of authFeatureGroup.pages) {
+      const pageName = page.name;
+      const pagePermissions: any = {};
+
+      page.actions.forEach((action: any) => {
+        pagePermissions[action.name.toLowerCase()] = action.checked;
+      });
+
+      const resourcePermissions: any = {};
+      page.resources?.forEach((resource: any) => {
+        const resName = resource.name;
+        resourcePermissions[resName] = {};
+        resource.actions.forEach((action: any) => {
+          resourcePermissions[resName][action.name.toLowerCase()] = action.checked;
+        });
+      });
+
+      this.permissionsMap[pageName] = {
+        ...pagePermissions,
+        resources: resourcePermissions
+      };
+    }
+  }
+
+  hasPagePermission(page: string, action: string): boolean {
+    return this.permissionsMap[page]?.[action.toLowerCase()] ?? false;
+  }
+
+  hasResourcePermission(page: string, resource: string, action: string): boolean {
+    return this.permissionsMap[page]?.resources?.[resource]?.[action.toLowerCase()] ?? false;
+  }
+
+
+  /************* Helper Methods ***************/
 }

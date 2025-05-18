@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Output, ViewChild, ViewEncapsulation, OnInit, Input } from '@angular/core';
 import { Router } from '@angular/router';
-import { MatPaginator } from '@angular/material/paginator';
+import { MatPaginator, PageEvent } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatMenuTrigger } from '@angular/material/menu';
@@ -8,6 +8,7 @@ import { MemberService } from 'src/app/service/shared-member.service';
 import { AuthService } from 'src/app/service/auth.service';
 import { HeaderService } from 'src/app/service/header.service';
 import { CrudService } from 'src/app/service/crud.service';
+
 
 @Component({
   selector: 'app-authdetails',
@@ -24,6 +25,13 @@ export class AuthdetailsComponent implements OnInit {
   showAddHighlight = false;
   /*Div Selection Style change logic*/
   //displayedColumns: string[] = ['enrollmentStatus', 'memberId', 'firstName', 'lastName', 'DOB', 'risk', 'nextContact', 'assignedDate', 'programName', 'description'];
+  permissionsMap: any = {};
+  @ViewChild(MatPaginator) paginator!: MatPaginator;
+
+  pageSize = 10;
+  pageIndex = 0;
+  pagedCardData: any[] = [];
+  viewMode: 'card' | 'table' = 'card'; // or set default
 
   constructor(private router: Router, private memberService: MemberService, private authService: AuthService, private headerService: HeaderService, private crudService: CrudService) {
   }
@@ -36,7 +44,7 @@ export class AuthdetailsComponent implements OnInit {
   dataSource = new MatTableDataSource<any>();
 
 
-  @ViewChild(MatPaginator) paginator!: MatPaginator;
+  //@ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
   loadPage(page: string) {
@@ -47,6 +55,8 @@ export class AuthdetailsComponent implements OnInit {
 
   ngOnInit(): void {
     this.getAuthDetails();
+    this.loadPermissionsForAuthorizationActions();
+
   }
 
   getAuthDetails(): void {
@@ -83,6 +93,7 @@ export class AuthdetailsComponent implements OnInit {
             treatmentType: item.TreatmentType || ''
           }));
           this.dataSource.data = this.authDetails;
+          this.updatePagedCardData();
         });
 
       },
@@ -99,18 +110,19 @@ export class AuthdetailsComponent implements OnInit {
 
 
   ngAfterViewInit() {
-    this.dataSource.paginator = this.paginator;
+    if (this.viewMode === 'table') {
+      this.dataSource.paginator = this.paginator;
+    }
     this.dataSource.sort = this.sort;
   }
 
   applyFilter(event: Event) {
     const filterValue = (event.target as HTMLInputElement).value;
     this.dataSource.filter = filterValue.trim().toLowerCase();
-
-    if (this.dataSource.paginator) {
-      this.dataSource.paginator.firstPage();
-    }
+    this.pageIndex = 0;
+    this.updatePagedCardData();
   }
+
 
   /*Table Context Menu*/
   @ViewChild(MatMenuTrigger)
@@ -162,4 +174,90 @@ export class AuthdetailsComponent implements OnInit {
       });
     }
   }
+
+  compactMode: boolean = false;
+
+  toggleViewMode(): void {
+    this.viewMode = this.viewMode === 'card' ? 'table' : 'card';
+    this.pageIndex = 0;
+
+    if (this.viewMode === 'card') {
+      this.updatePagedCardData();
+    } else {
+      this.dataSource.paginator = this.paginator;
+    }
+  }
+
+
+
+
+  toggleCompactMode() {
+    this.compactMode = !this.compactMode;
+  }
+
+  /**********Helper Methods********/
+  globalActionPermissions: any = {};
+
+  loadPermissionsForAuthorizationActions() {
+    const permissionsJson = JSON.parse(sessionStorage.getItem('rolePermissionsJson') || '[]');
+    const umModule = permissionsJson.find((m: any) => m.moduleName === 'Utilization Management');
+    if (!umModule) return;
+
+    const authFeatureGroup = umModule.featureGroups.find((fg: any) => fg.featureGroupName === 'Authorization');
+    if (!authFeatureGroup) return;
+
+    const actionsPage = authFeatureGroup.pages.find((p: any) => p.name === 'Actions');
+    if (!actionsPage) return;
+
+    // 🔹 Page-level actions
+    for (const action of actionsPage.actions ?? []) {
+      this.globalActionPermissions[action.name.toLowerCase()] = action.checked;
+    }
+
+    // 🔹 Resource-level actions
+    for (const resource of actionsPage.resources ?? []) {
+      const resourceName = resource.name;
+      this.permissionsMap[resourceName] = {};
+      for (const action of resource.actions) {
+        this.permissionsMap[resourceName][action.name.toLowerCase()] = action.checked;
+      }
+    }
+  }
+
+  hasPermission(resource: string, action: string): boolean {
+    return this.permissionsMap[resource]?.[action.toLowerCase()] ?? false;
+  }
+
+  hasPagePermission(action: string): boolean {
+    return this.globalActionPermissions[action.toLowerCase()] ?? false;
+  }
+
+
+  handleCardPagination(event: PageEvent) {
+    this.pageSize = event.pageSize;
+    this.pageIndex = event.pageIndex;
+    this.updatePagedCardData();
+  }
+
+  updatePagedCardData(): void {
+    const start = this.pageIndex * this.pageSize;
+    const end = start + this.pageSize;
+    this.pagedCardData = this.dataSource.filteredData.slice(start, end);
+  }
+
+
+  onPageChange(event: PageEvent): void {
+    this.pageSize = event.pageSize;
+    this.pageIndex = event.pageIndex;
+
+    if (this.viewMode === 'card') {
+      this.updatePagedCardData();
+    } else if (this.viewMode === 'table') {
+      this.dataSource.paginator = this.paginator;
+    }
+  }
+
+
+  /**********Helper Methods********/
 }
+

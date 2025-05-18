@@ -43,6 +43,9 @@ export class UmauthactivityComponent {
   assignToDisplay: string = '';
   filteredUsers: { value: string; label: string }[] = [];
   @Input() authDetailId: number | null = null;
+  @Input() canAdd = false;
+  @Input() canEdit = false;
+  @Input() canView = true;
 
 
   showDropdowns: { [key: string]: boolean } = {

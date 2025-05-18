@@ -115,7 +115,7 @@
       </mat-card>
 
       <div class="text-center mt-3">
-        <button class="btn btn-primary" (click)="saveDecisionData()">Save</button>
+        <button class="btn btn-primary" (click)="saveDecisionData()" [disabled]="!canAdd">Save</button>
       </div>
 
       <h5>Guidelines</h5>

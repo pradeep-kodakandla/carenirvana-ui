@@ -860,7 +860,7 @@
                 </ng-container>
                 <!-- Save Button -->
                 <div class="text-center">
-                  <button mat-raised-button class="auth-button " (click)="saveData(authForm)">{{ (authNumber && authNumber !== 'DRAFT') ? 'Save and Review' : 'Save and Continue' }}</button>
+                  <button mat-raised-button class="auth-button " [disabled]="!hasPagePermission('Request Details', 'Edit')" (click)="saveData(authForm)">{{ (authNumber && authNumber !== 'DRAFT') ? 'Save and Review' : 'Save and Continue' }}</button>
                   <!--<button mat-raised-button class="auth-button " (click)="loadData()">Load</button>-->
                 </div>
 
@@ -882,26 +882,66 @@
           </div>
         </div>
       </mat-step>
-      <mat-step label="Decision Details" [completed]="!!authNumber" [editable]="!!authNumber">
+      <mat-step label="Decision Details"
+                *ngIf="hasPagePermission('Decision Details', 'View')"
+                [completed]="!!authNumber"
+                [editable]="!!authNumber">
         <app-decisiondetails [decisionFields]="DecisionFields"
                              [decisionData]="decisionData"
-                             (decisionSaved)="handleDecisionDataSaved($event)">></app-decisiondetails>
+                             [canAdd]="hasPagePermission('Decision Details', 'Add')"
+                             [canEdit]="hasPagePermission('Decision Details', 'Edit')"
+                             [canView]="hasPagePermission('Decision Details', 'View')"
+                             (decisionSaved)="handleDecisionDataSaved($event)">
+        </app-decisiondetails>
       </mat-step>
+
       <mat-step label="MD Review" [completed]="!!authNumber" [editable]="!!authNumber"></mat-step>
-      <mat-step label="Activity" [completed]="!!authNumber" [editable]="!!authNumber">
-        <app-umauthactivity [authDetailId]="authDetailId"></app-umauthactivity>
+      <!--<mat-step label="MD Review"
+                *ngIf="hasPagePermission('MD Review', 'View')"
+                [completed]="!!authNumber"
+                [editable]="!!authNumber">
+        <app-mdreview [canAdd]="hasPagePermission('MD Review', 'Add')"
+                      [canEdit]="hasPagePermission('MD Review', 'Edit')"
+                      [canView]="hasPagePermission('MD Review', 'View')">
+        </app-mdreview>
+      </mat-step>-->
+
+      <mat-step label="Activity"
+                *ngIf="hasPagePermission('Auth Activity', 'View')"
+                [completed]="!!authNumber"
+                [editable]="!!authNumber">
+        <app-umauthactivity [authDetailId]="authDetailId"
+                            [canAdd]="hasPagePermission('Auth Activity', 'Add')"
+                            [canEdit]="hasPagePermission('Auth Activity', 'Edit')">
+        </app-umauthactivity>
       </mat-step>
-      <mat-step label="Notes" [completed]="!!authNumber" [editable]="!!authNumber">
+
+      <mat-step label="Notes"
+                *ngIf="hasPagePermission('Auth Notes', 'View')"
+                [completed]="!!authNumber"
+                [editable]="!!authNumber">
         <app-umauthnotes [notesFields]="authorizationNotesFields"
                          [notesData]="authorizationNotesData"
+                         [canAdd]="hasPagePermission('Auth Notes', 'Add')"
+                         [canEdit]="hasPagePermission('Auth Notes', 'Edit')"
+                         [canView]="hasPagePermission('Auth Notes', 'View')"
                          (NotesSaved)="handleAuthNotesSaved($event)">
         </app-umauthnotes>
       </mat-step>
-      <mat-step label="Documents" [completed]="!!authNumber" [editable]="!!authNumber">
+
+      <mat-step label="Documents"
+                *ngIf="hasPagePermission('Auth Documents', 'View')"
+                [completed]="!!authNumber"
+                [editable]="!!authNumber">
         <app-umauthdocuments [documentFields]="authorizationDocumentFields"
                              [documentData]="authorizationDocumentData"
-                             (DocumentSaved)="handleAuthDocumentSaved($event)"></app-umauthdocuments>
+                             [canAdd]="hasPagePermission('Auth Documents', 'Add')"
+                             [canEdit]="hasPagePermission('Auth Documents', 'Edit')"
+                             [canView]="hasPagePermission('Auth Documents', 'View')"
+                             (DocumentSaved)="handleAuthDocumentSaved($event)">
+        </app-umauthdocuments>
       </mat-step>
+
       <mat-step label="Close" [completed]="!!authNumber" [editable]="!!authNumber"></mat-step>
     </mat-horizontal-stepper>
   </div>

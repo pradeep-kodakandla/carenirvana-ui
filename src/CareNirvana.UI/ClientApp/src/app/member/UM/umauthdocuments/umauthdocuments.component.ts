@@ -32,6 +32,9 @@ export class UmauthdocumentsComponent implements OnInit, OnChanges {
   @Input() documentFields: any[] = [];
   @Input() documentData: AuthorizationDocument[] = [];
   @Output() DocumentSaved = new EventEmitter<AuthorizationDocument[]>();
+  @Input() canAdd = false;
+  @Input() canEdit = false;
+  @Input() canView = true;
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;

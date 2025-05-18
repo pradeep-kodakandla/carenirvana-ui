@@ -17,7 +17,7 @@
             <div class="sort-option" (click)="applySort('status_desc')">Status (Z–A)</div>
           </div>
         </div>
-        <button class="add-btn" (click)="onAddNewActivity()">➕ Add Activity</button>
+        <button class="add-btn" (click)="onAddNewActivity()" [disabled]="!canAdd">➕ Add Activity</button>
       </div>
 
     </div>
@@ -47,7 +47,7 @@
                 👍
               </button>
 
-              <button type="button" class="icon-btn" title="Delete" (click)="deleteActivity(i)">
+              <button type="button" class="icon-btn" title="Delete" [disabled]="!canEdit" (click)="deleteActivity(i)">
                 🗑️
               </button>
             </span>
@@ -293,8 +293,8 @@
           </div>
 
           <div class="button-group">
-            <button type="button" (click)="onSubmit()">Save</button>
-            <button type="button" (click)="onCancel()">Cancel</button>
+            <button type="button" (click)="onSubmit()" [disabled]="!canAdd">Save</button>
+            <button type="button" (click)="onCancel()" >Cancel</button>
           </div>
         </form>
       </div>

@@ -71,7 +71,7 @@ body {
 
 /* ----------------- TAB CONTENT STYLING ----------------- */
 .tab-content {
-/*  padding: 15px;*/
+  padding: 15px;
   background: #ffffff;
   border-radius: 8px;
 /*  margin-top: 5px;*/

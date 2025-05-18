@@ -41,6 +41,9 @@ export class DecisiondetailsComponent implements OnChanges {
   @Input() decisionData: any;
   @Input() decisionFields: any;
   @Output() decisionSaved = new EventEmitter<any>();
+  @Input() canAdd = false;
+  @Input() canEdit = false;
+  @Input() canView = true;
 
   formFields: { key: string; value: any }[] = [];
   sections: Section[] = [];
