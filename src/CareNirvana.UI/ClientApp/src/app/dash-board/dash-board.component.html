@@ -2,121 +2,143 @@
   <mat-drawer-content mode="side" opened>
 
     <div class="dashboard-container">
-
-      <div class="rounded-box" [ngClass]="{ 'selected': selectedDiv === 1 }" (click)="selectDiv(1)" (click)="onSelect('A')">
-        <!--(click)="mainDrawer.toggle()"-->
+      <div class="rounded-box"
+           *ngFor="let widget of dashboardWidgets; let i = index"
+           [ngClass]="{ 'selected': defaultWidget === widget.key }"
+           (click)="handleWidgetClick(i + 1, widget.key)">
         <div class="d-flex justify-content-between align-items-center div-secondary">
           <div style="padding-left:10px;">
-            <h1>65</h1>
+            <h1>0</h1> <!-- Replace 0 with actual dynamic count if needed -->
           </div>
           <div style="text-align:center;">
-            My Case Load
+            {{ widget.customLabel }}
           </div>
           <div style="padding-right:10px;">
-            <mat-icon>people</mat-icon>
+            <mat-icon>{{ getIconForWidget(widget.key) }}</mat-icon>
           </div>
         </div>
-        <!--<label class="form-check-label label-primary" style="padding-left:20px;">
+        <mat-divider class="divider" [class.selected-divider]="defaultWidget === widget.key"></mat-divider>
+
+
+
+      </div>
+    </div>
+
+    <!--<div class="dashboard-container">
+
+    <div class="rounded-box" [ngClass]="{ 'selected': selectedDiv === 1 }" (click)="selectDiv(1)" (click)="onSelect('A')">-->
+    <!--(click)="mainDrawer.toggle()"-->
+    <!--<div class="d-flex justify-content-between align-items-center div-secondary">
+      <div style="padding-left:10px;">
+        <h1>65</h1>
+      </div>
+      <div style="text-align:center;">
         My Case Load
-      </label>-->
-        <mat-divider style="border-top-color:white" [ngClass]="{ 'selected': selectedDiv === 1 }" class="selectedBox"></mat-divider>
-
       </div>
-
-      <div class="rounded-box" (click)="selectDiv(2)" (click)="onSelect('B')">
-        <div class="d-flex justify-content-between align-items-center div-secondary">
-          <div style="padding-left:10px;">
-            <h1>15</h1>
-          </div>
-          <div style="text-align:center;">
-            Assigned Authorizations
-          </div>
-          <div style="padding-right:10px;">
-            <mat-icon>assignment_turned_in</mat-icon>
-          </div>
-        </div>
-        <!--<label class="form-check-label label-primary" style="padding-left:20px;">
-        Assigned Authorizations
-
-      </label>-->
-
-        <mat-divider style="border-top-color:white" [ngClass]="{ 'selected': selectedDiv === 2 }" class="selectedBox"></mat-divider>
-
+      <div style="padding-right:10px;">
+        <mat-icon>people</mat-icon>
       </div>
+    </div>-->
+    <!--<label class="form-check-label label-primary" style="padding-left:20px;">
+      My Case Load
+    </label>-->
+    <!--<mat-divider style="border-top-color:white" [ngClass]="{ 'selected': selectedDiv === 1 }" class="selectedBox"></mat-divider>
 
-      <div class="rounded-box" [ngClass]="{ 'selected': selectedDiv === 3 }" (click)="selectDiv(3)" (click)="onSelect('C')">
-        <div class="d-flex justify-content-between align-items-center div-secondary">
-          <!--<div class="form-check mb-0">-->
-          <div style="padding-left:10px;">
-            <h1>150</h1>
-          </div>
-          <div style="text-align:center;">
-            Requests
-          </div>
-          <div style="padding-right:10px;">
-            <mat-icon>assignment_add</mat-icon>
-          </div>
+    </div>
+
+    <div class="rounded-box" (click)="selectDiv(2)" (click)="onSelect('B')">
+      <div class="d-flex justify-content-between align-items-center div-secondary">
+        <div style="padding-left:10px;">
+          <h1>15</h1>
         </div>
-        <!--<label class="form-check-label label-primary" style="padding-left:20px;">
+        <div style="text-align:center;">
+          Assigned Authorizations
+        </div>
+        <div style="padding-right:10px;">
+          <mat-icon>assignment_turned_in</mat-icon>
+        </div>
+      </div>-->
+    <!--<label class="form-check-label label-primary" style="padding-left:20px;">
+      Assigned Authorizations
+
+    </label>-->
+    <!--<mat-divider style="border-top-color:white" [ngClass]="{ 'selected': selectedDiv === 2 }" class="selectedBox"></mat-divider>
+
+    </div>
+
+    <div class="rounded-box" [ngClass]="{ 'selected': selectedDiv === 3 }" (click)="selectDiv(3)" (click)="onSelect('C')">
+      <div class="d-flex justify-content-between align-items-center div-secondary">-->
+    <!--<div class="form-check mb-0">-->
+    <!--<div style="padding-left:10px;">
+        <h1>150</h1>
+      </div>
+      <div style="text-align:center;">
         Requests
-      </label>-->
-        <mat-divider style="border-top-color:white" [ngClass]="{ 'selected': selectedDiv === 3 }" class="selectedBox"></mat-divider>
-
       </div>
-      <div class="rounded-box" [ngClass]="{ 'selected': selectedDiv === 4 }" (click)="selectDiv(4)" (click)="onSelect('D')">
-        <div class="d-flex justify-content-between align-items-center div-secondary">
-          <div style="padding-left:10px;">
-            <h1>70</h1>
-          </div>
-          <div style="text-align:center;">
-            My Activities
-          </div>
-          <div style="padding-right:10px;">
-            <mat-icon>event</mat-icon>
-          </div>
+      <div style="padding-right:10px;">
+        <mat-icon>assignment_add</mat-icon>
+      </div>
+    </div>-->
+    <!--<label class="form-check-label label-primary" style="padding-left:20px;">
+      Requests
+    </label>-->
+    <!--<mat-divider style="border-top-color:white" [ngClass]="{ 'selected': selectedDiv === 3 }" class="selectedBox"></mat-divider>
+
+    </div>
+    <div class="rounded-box" [ngClass]="{ 'selected': selectedDiv === 4 }" (click)="selectDiv(4)" (click)="onSelect('D')">
+      <div class="d-flex justify-content-between align-items-center div-secondary">
+        <div style="padding-left:10px;">
+          <h1>70</h1>
         </div>
-        <!--<label class="form-check-label label-primary" style="padding-left:20px;">
-      </label>-->
-        <mat-divider style="border-top-color:white" [ngClass]="{ 'selected': selectedDiv === 4 }" class="selectedBox"></mat-divider>
-
-      </div>
-      <div class="rounded-box" [ngClass]="{ 'selected': selectedDiv === 5 }" (click)="selectDiv(5)" (click)="onSelect('E')">
-        <div class="d-flex justify-content-between align-items-center div-secondary">
-          <div style="padding-left:10px;">
-            <h1>0</h1>
-          </div>
-          <div style="text-align:center;">
-            Assigned Complaints
-          </div>
-          <div style="padding-right:10px;">
-            <mat-icon>assignment</mat-icon>
-          </div>
+        <div style="text-align:center;">
+          My Activities
         </div>
-        <!--<label class="form-check-label label-primary" style="padding-left:20px;">
-        Assigned Complaints
-      </label>-->
-        <mat-divider style="border-top-color:white" [ngClass]="{ 'selected': selectedDiv === 5 }" class="selectedBox"></mat-divider>
-
-      </div>
-      <div class="rounded-box" [ngClass]="{ 'selected': selectedDiv === 6 }" (click)="selectDiv(6)" (click)="onSelect('F')">
-        <div class="d-flex justify-content-between align-items-center div-secondary">
-          <div style="padding-left:10px;">
-            <h1>10</h1>
-          </div>
-          <div style="text-align:center;">
-            Faxes
-          </div>
-          <div style="padding-right:10px;">
-            <mat-icon>fax</mat-icon>
-          </div>
+        <div style="padding-right:10px;">
+          <mat-icon>event</mat-icon>
         </div>
-        <!--<label class="form-check-label label-primary" style="padding-left:20px;">
-        Faxes
-      </label>-->
-        <mat-divider style="border-top-color:white" [ngClass]="{ 'selected': selectedDiv === 6}" class="selectedBox"></mat-divider>
+      </div>-->
+    <!--<label class="form-check-label label-primary" style="padding-left:20px;">
+    </label>-->
+    <!--<mat-divider style="border-top-color:white" [ngClass]="{ 'selected': selectedDiv === 4 }" class="selectedBox"></mat-divider>
 
-      </div>
-      <!--<div class="rounded-box" [ngClass]="{ 'selected': selectedDiv === 6 }" (click)="selectDiv(6)" (click)="onSelect('F')">
+    </div>
+    <div class="rounded-box" [ngClass]="{ 'selected': selectedDiv === 5 }" (click)="selectDiv(5)" (click)="onSelect('E')">
+      <div class="d-flex justify-content-between align-items-center div-secondary">
+        <div style="padding-left:10px;">
+          <h1>0</h1>
+        </div>
+        <div style="text-align:center;">
+          Assigned Complaints
+        </div>
+        <div style="padding-right:10px;">
+          <mat-icon>assignment</mat-icon>
+        </div>
+      </div>-->
+    <!--<label class="form-check-label label-primary" style="padding-left:20px;">
+      Assigned Complaints
+    </label>-->
+    <!--<mat-divider style="border-top-color:white" [ngClass]="{ 'selected': selectedDiv === 5 }" class="selectedBox"></mat-divider>
+
+    </div>
+    <div class="rounded-box" [ngClass]="{ 'selected': selectedDiv === 6 }" (click)="selectDiv(6)" (click)="onSelect('F')">
+      <div class="d-flex justify-content-between align-items-center div-secondary">
+        <div style="padding-left:10px;">
+          <h1>10</h1>
+        </div>
+        <div style="text-align:center;">
+          Faxes
+        </div>
+        <div style="padding-right:10px;">
+          <mat-icon>fax</mat-icon>
+        </div>
+      </div>-->
+    <!--<label class="form-check-label label-primary" style="padding-left:20px;">
+      Faxes
+    </label>-->
+    <!--<mat-divider style="border-top-color:white" [ngClass]="{ 'selected': selectedDiv === 6}" class="selectedBox"></mat-divider>
+
+    </div>-->
+    <!--<div class="rounded-box" [ngClass]="{ 'selected': selectedDiv === 6 }" (click)="selectDiv(6)" (click)="onSelect('F')">
       <div class="d-flex justify-content-between align-items-center div-secondary">
         <div class="form-check mb-0">
           <h1>10</h1>
@@ -144,8 +166,7 @@
       </label>
 
     </div>-->
-
-    </div>
+    <!--</div>-->
 
     <div #dynamicContainer></div>
 

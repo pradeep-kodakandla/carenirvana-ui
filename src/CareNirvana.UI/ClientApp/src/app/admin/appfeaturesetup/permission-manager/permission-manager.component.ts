@@ -1,6 +1,22 @@
 import { Component, Input, OnInit, ViewEncapsulation } from '@angular/core';
 import { RolepermissionService } from 'src/app/service/rolepermission.service';
 
+export interface CfgResourceField {
+  resourceFieldId: number;
+  resourceId: number;
+  fieldName: string;
+  allowEdit: boolean;
+  allowVisible: boolean;
+  activeFlag: boolean;
+  createdOn?: string;
+  createdBy?: number;
+  updatedOn?: string;
+  updatedBy?: number;
+  deletedOn?: string;
+  deletedBy?: number;
+  access?: 'Editable' | 'Read-only' | 'Hidden'; // For dropdown binding
+}
+
 @Component({
   selector: 'app-permission-manager',
   templateUrl: './permission-manager.component.html',
@@ -20,6 +36,7 @@ export class PermissionManagerComponent implements OnInit {
   expandState: { [key: string]: boolean } = {};
   searchText: string = '';
   readyToRender = false;
+  fieldLevelAccessFields: CfgResourceField[] = [];
 
   constructor(private roleService: RolepermissionService) { }
 
@@ -28,16 +45,26 @@ export class PermissionManagerComponent implements OnInit {
       this.allModules = modules;
       this.allModules.forEach(mod => this.expandState[mod.moduleId] = true);
     });
+    this.loadFieldLevelAccess(); // Load field level access data
+
   }
 
   @Input() set permissionData(data: any) {
-    if (Array.isArray(data)) {
-      this.filteredModules = data;
+    
 
-      this.selectedModules = data.map(m => m.moduleId);
-      this.selectedFeatureGroups = data.flatMap(m => m.featureGroups.map((fg: any) => fg.featureGroupName));
-      this.availableFeatureGroups = [...this.selectedFeatureGroups]; // ✅ set available FG too
+    if (!data || typeof data !== 'object') {
+      return;
+    }
 
+    // ✅ Handle full JSON { modules: [...], dashboardWidgets: { ... } }
+    const modules = Array.isArray(data) ? data : data.modules;
+
+    if (Array.isArray(modules)) {
+      this.filteredModules = modules;
+      
+      this.selectedModules = modules.map(m => m.moduleId);
+      this.selectedFeatureGroups = modules.flatMap(m => m.featureGroups.map((fg: any) => fg.featureGroupName));
+      this.availableFeatureGroups = [...this.selectedFeatureGroups];
       this.readyToRender = true;
 
       // Expand all pages
@@ -54,7 +81,19 @@ export class PermissionManagerComponent implements OnInit {
       this.availableFeatureGroups = [];
       this.readyToRender = false;
     }
+
+    // ✅ Load dashboard widgets if available
+    if (data.dashboardWidgets?.widgets?.length) {
+      this.dashboardWidgets = data.dashboardWidgets.widgets.map((w: any) => ({
+        key: w.key,
+        defaultLabel: w.defaultLabel,
+        customLabel: w.customLabel || '',
+        enabled: w.enabled
+      }));
+      this.defaultWidget = data.dashboardWidgets.defaultWidget;
+    }
   }
+
 
 
   onModulesChanged() {
@@ -245,8 +284,55 @@ export class PermissionManagerComponent implements OnInit {
     return actions;
   }
 
-  savePermissions() {
-    console.log('Permissions JSON:', JSON.stringify(this.filteredModules, null, 2));
-    alert('Permissions saved!');
+  //savePermissions() {
+  //  console.log('Permissions JSON:', JSON.stringify(this.filteredModules, null, 2));
+  //  alert('Permissions saved!');
+  //}
+
+
+  /*********Resource Field Logic***********/
+
+  loadFieldLevelAccess(): void {
+    const resourceId = 1;
+    this.roleService.getResourceFieldsByResourceId(resourceId).subscribe(data => {
+      // Attach a default 'access' property for UI binding
+      this.fieldLevelAccessFields = data.map(f => ({
+        ...f,
+        access: f.allowEdit ? 'Editable' : f.allowVisible ? 'Read-only' : 'Hidden'
+      }));
+      
+    });
   }
+
+  /*********Resource Field Logic***********/
+
+  dashboardWidgets = [
+    { key: 'myCaseLoad', defaultLabel: 'My Case Load', customLabel: 'My Case Load', enabled: true },
+    { key: 'assignedAuthorizations', defaultLabel: 'Assigned Authorizations', customLabel: 'Assigned Authorizations', enabled: true },
+    { key: 'requests', defaultLabel: 'Requests', customLabel: 'Requests', enabled: true },
+    { key: 'myActivities', defaultLabel: 'My Activities', customLabel: 'My Activities', enabled: true },
+    { key: 'assignedComplaints', defaultLabel: 'Assigned Complaints', customLabel: 'Assigned Complaints', enabled: true },
+    { key: 'faxes', defaultLabel: 'Faxes', customLabel: 'Faxes', enabled: true }
+  ];
+
+  defaultWidget: string = 'myCaseLoad';
+
+  getFinalPermissionJson(): any {
+    return {
+      modules: this.filteredModules,
+      dashboardWidgets: {
+        widgets: this.dashboardWidgets.map(w => ({
+          key: w.key,
+          defaultLabel: w.defaultLabel,
+          customLabel: w.customLabel,
+          enabled: w.enabled
+        })),
+        defaultWidget: this.defaultWidget
+      }
+    };
+  }
+
+
+
+
 }

@@ -128,56 +128,68 @@
         </div>
       </ng-container>
       <ng-template #fieldAccessTable>
-        <div class="field-table-scroll">
+        <div class="table-responsive mt-4 field-table-scroll">
           <table class="responsive-table">
-            <thead >
+            <thead>
               <tr>
-                <th>Module</th>
-                <!--<th>Feature Group</th>
-                <th>Feature</th>-->
-                <th>Field</th>
-                <th style="width: 160px;">Access</th>
+                <th style="background-color: #007BFF;">Resource</th>
+                <th style="background-color: #007BFF;">Field</th>
+                <th style="width: 160px; background-color: #007BFF;">Access</th>
               </tr>
             </thead>
             <tbody>
-              <ng-container *ngFor="let module of filteredModules">
-                <ng-container *ngFor="let fg of module.featureGroups">
-                  <ng-container *ngFor="let page of fg.pages">
-                    <ng-container *ngIf="page.fields?.length">
-                      <tr *ngFor="let field of page.fields">
-                        <td>
-
-
-
-                          {{ module.moduleName }}
-                          <!--<td>{{ fg.featureGroupName }}</td>
-                                                <td>{{ fg.featureGroupName }}</td>
-                          <td></td>-->
-                        <td> {{ page.name }} &raquo; {{ field.fieldName }}</td>
-                        <td>
-                          <select class="form-select form-select-sm"
-                                  [(ngModel)]="field.access">
-                            <option value="Editable">Editable</option>
-                            <option value="Read-only">Read-only</option>
-                            <option value="Hidden">Hidden</option>
-                          </select>
-                        </td>
-                      </tr>
-                    </ng-container>
-                  </ng-container>
-                </ng-container>
-              </ng-container>
+              <tr *ngFor="let field of fieldLevelAccessFields">
+                <td>Personal Details</td>
+                <td>{{ field.fieldName }}</td>
+                <td>
+                  <select class="form-select form-select-sm" [(ngModel)]="field.access">
+                    <option value="Editable">Editable</option>
+                    <option value="Read-only">Read-only</option>
+                    <option value="Hidden">Hidden</option>
+                  </select>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
       </ng-template>
+
     </div>
   </mat-tab>
 
 
   <mat-tab label="Home Dashboard Setup">
     <div class="p-4">
-      <p>Home Dashboard Setup tab content will be added here...</p>
+
+      <!-- Widget Selection Table -->
+      <div class="table-responsive mt-4 field-table-scroll">
+        <table class="responsive-table">
+          <thead class="table-primary">
+            <tr>
+              <th style="background-color: #007BFF;">Enable</th>
+              <th style="background-color: #007BFF;">Widget</th>
+              <th style="background-color: #007BFF;">Custom Label</th>
+              <th style="background-color: #007BFF;">Set as Default</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let widget of dashboardWidgets">
+              <td class="text-center">
+                <mat-checkbox [(ngModel)]="widget.enabled" ></mat-checkbox>
+              </td>
+              <td>{{ widget.defaultLabel }}</td>
+              <td>
+                <input class="form-control form-control-sm" [(ngModel)]="widget.customLabel" [disabled]="!widget.enabled">
+              </td>
+              <td class="text-center">
+                <mat-radio-group [(ngModel)]="defaultWidget" [disabled]="!widget.enabled">
+                  <mat-radio-button [value]="widget.key"></mat-radio-button>
+                </mat-radio-group>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </mat-tab>
 

@@ -1,6 +1,21 @@
 import { Component, Input, ViewEncapsulation } from '@angular/core';
 import { RolepermissionService, CfgRole } from 'src/app/service/rolepermission.service';
 
+
+interface DashboardWidget {
+  key: string;
+  defaultLabel: string;
+  customLabel: string;
+  enabled: boolean;
+}
+interface PermissionConfig {
+  modules?: any[];
+  dashboardWidgets?: {
+    widgets: DashboardWidget[];
+    defaultWidget: string;
+  };
+}
+
 @Component({
   selector: 'app-member',
   templateUrl: './member.component.html',
@@ -12,7 +27,7 @@ export class MemberComponent {
   @Input() memberId!: number;
   authNumber: string = '';
   currentStep = 1;
-  roleConfig: any[] = [];
+  roleConfig: PermissionConfig = {};
   mainTabs: any[] = [];
   constructor(private roleService: RolepermissionService) { }
 
@@ -28,7 +43,8 @@ export class MemberComponent {
         ? JSON.parse(rawPermissions)
         : rawPermissions;
 
-      sessionStorage.setItem('rolePermissionsJson', JSON.stringify(this.roleConfig));
+      sessionStorage.setItem('rolePermissionsJson', JSON.stringify(this.roleConfig.modules));
+      console.log('Role Permissions:', this.roleConfig.modules); // ✅ Debugging log
 
       // console.log('Role Config:', this.roleConfig); // ✅ Debugging log
       this.buildTabsFromRoleConfig();
@@ -39,7 +55,7 @@ export class MemberComponent {
   buildTabsFromRoleConfig(): void {
     this.mainTabs = [];
 
-    this.roleConfig.forEach((module: any) => {
+    this.roleConfig.modules?.forEach((module: any) => {
       (module.featureGroups || []).forEach((group: any) => {
         this.mainTabs.push({
           name: group.featureGroupName,

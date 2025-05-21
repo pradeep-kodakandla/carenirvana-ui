@@ -186,7 +186,15 @@ mat-card-title {
 
 
 
+/* For 2 or 3 widgets: show side by side */
+.widget-row {
+  justify-content: center;
+}
 
+/* For 4 or more: stack in column or wrap */
+.widget-column {
+  flex-direction: column;
+}
 
 
 
@@ -194,41 +202,21 @@ mat-card-title {
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
-  justify-content: space-between;
+/*  justify-content: space-between;*/
 /*  padding: 10px;
 */  background-color: #f8f9fa;
 }
 
-/*.dashboard-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: #007bff;
-  color: white;
-  padding: 10px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  flex: 1 1 calc(16% - 16px);*/ /* Adjust size to fit within the container */
-  /*min-width: 150px;
-  max-width: 200px;
-  box-sizing: border-box;
+.selected-divider {
+  border-top: 4px solid orange !important;
+  width: 100%;
+  margin-top: 4px;
 }
 
-.card-content {
-  display: flex;
-  flex-direction: column;
+.divider {
+  border-top: 2px solid transparent;
 }
 
-.card-number {
-  font-size: 24px;
-  font-weight: bold;
+.selected-divider {
+  border-top: 4px solid orange !important;
 }
-
-.card-text {
-  font-size: 14px;
-}
-
-.card-icon {
-  font-size: 32px;
-  margin-left: 10px;
-}*/

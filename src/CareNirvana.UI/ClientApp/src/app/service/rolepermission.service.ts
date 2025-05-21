@@ -45,13 +45,29 @@ export interface CfgRole {
   deletedOn?: string;
 }
 
+export interface CfgResourceField {
+  resourceFieldId: number;
+  resourceId: number;
+  fieldName: string;
+  allowEdit: boolean;
+  allowVisible: boolean;
+  activeFlag: boolean;
+  createdOn?: string;
+  createdBy?: number;
+  updatedOn?: string;
+  updatedBy?: number;
+  deletedOn?: string;
+  deletedBy?: number;
+}
+
+
 @Injectable({
   providedIn: 'root'
 })
 export class RolepermissionService {
 
-  private baseUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/rolepermission'; // Change this to your deployed backend URL
-  //private baseUrl = 'https://localhost:51346/api/rolepermission';
+  //private baseUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/rolepermission'; // Change this to your deployed backend URL
+  private baseUrl = 'https://localhost:51346/api/rolepermission';
 
   constructor(private http: HttpClient) { }
 
@@ -121,5 +137,26 @@ export class RolepermissionService {
   deleteRole(roleId: number, deletedBy: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${roleId}?deletedBy=${deletedBy}`);
   }
+
+  getResourceFieldsByResourceId(resourceId: number): Observable<CfgResourceField[]> {
+    return this.http.get<any[]>(`${this.baseUrl}/resourcefields/${resourceId}`).pipe(
+      map(fields => fields.map(f => ({
+        resourceFieldId: f.ResourceFieldId,
+        resourceId: f.ResourceId,
+        fieldName: f.FieldName,
+        allowEdit: f.AllowEdit,
+        allowVisible: f.AllowVisible,
+        activeFlag: f.ActiveFlag,
+        createdOn: f.CreatedOn,
+        createdBy: f.CreatedBy,
+        updatedOn: f.UpdatedOn,
+        updatedBy: f.UpdatedBy,
+        deletedOn: f.DeletedOn,
+        deletedBy: f.DeletedBy,
+        access: f.access || (f.AllowEdit ? 'Editable' : f.AllowVisible ? 'Read-only' : 'Hidden')
+      })))
+    );
+  }
+
 
 }

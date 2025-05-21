@@ -40,7 +40,6 @@ export class RolemanagementComponent implements OnInit {
 
   loadData() {
     this.roleService.getRoles().subscribe((response) => {
-      console.log('Raw Roles:', response);
       const normalized = response
         .filter(item => item.deletedOn == null)
         .map(item => this.toCamelCase(item));
@@ -87,6 +86,7 @@ export class RolemanagementComponent implements OnInit {
       this.selectedEntry = normalized;
 
       try {
+        
         this.parsedPermissionsJson = JSON.parse(normalized.permissions ?? '[]');
       } catch (e) {
         console.error('Invalid permissions JSON', e);
@@ -107,15 +107,16 @@ export class RolemanagementComponent implements OnInit {
     this.isFormVisible = true;
   }
 
-
-
   saveEntry() {
+    const fullPermissionJson = this.permissionManagerComponent.getFinalPermissionJson();
+    this.selectedEntry.permissions = fullPermissionJson;
+
     const role: CfgRole = {
       ...this.selectedEntry,
       managerAccess: this.selectedEntry.managerAccess ? 'Yes' : '',
       qocAccess: this.selectedEntry.qocAccess ? 'Yes' : '',
       sensitive: this.selectedEntry.sensitive ? 'Yes' : '',
-      permissions: JSON.stringify(this.permissionManagerComponent.filteredModules),
+      permissions: JSON.stringify(fullPermissionJson),
       createdBy: 1 // or your actual userId
     };
 
