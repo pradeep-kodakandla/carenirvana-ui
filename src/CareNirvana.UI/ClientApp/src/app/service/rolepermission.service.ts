@@ -66,8 +66,8 @@ export interface CfgResourceField {
 })
 export class RolepermissionService {
 
-  //private baseUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/rolepermission'; // Change this to your deployed backend URL
-  private baseUrl = 'https://localhost:51346/api/rolepermission';
+  private baseUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/rolepermission'; // Change this to your deployed backend URL
+  //private baseUrl = 'https://localhost:51346/api/rolepermission';
 
   constructor(private http: HttpClient) { }
 
