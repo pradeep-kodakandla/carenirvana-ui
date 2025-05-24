@@ -74,7 +74,8 @@ export class MemberInfoComponent implements OnInit {
 
   addresses = [
     {
-      type: 'Primary', number: '12345 Example Way' },
+      type: 'Primary', number: '12345 Example Way'
+    },
     { type: 'Secondary', number: '12345 Example Way' },
   ];
 
@@ -96,6 +97,7 @@ export class MemberInfoComponent implements OnInit {
   onEdit(section: string) {
     console.log(`Edit button clicked for ${section}`);
   }
+
 
 
 

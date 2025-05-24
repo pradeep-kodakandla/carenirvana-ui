@@ -14,7 +14,7 @@ export interface CfgResourceField {
   updatedBy?: number;
   deletedOn?: string;
   deletedBy?: number;
-  access?: 'Editable' | 'Read-only' | 'Hidden'; // For dropdown binding
+  access?: 'Edit' | 'View' | 'Hide'; // For dropdown binding
 }
 
 @Component({
@@ -284,13 +284,10 @@ export class PermissionManagerComponent implements OnInit {
     return actions;
   }
 
-  //savePermissions() {
-  //  console.log('Permissions JSON:', JSON.stringify(this.filteredModules, null, 2));
-  //  alert('Permissions saved!');
-  //}
-
 
   /*********Resource Field Logic***********/
+
+  selectedFieldAccessHeader: 'Edit' | 'View' | 'Hide' = 'Edit';
 
   loadFieldLevelAccess(): void {
     const resourceId = 1;
@@ -298,14 +295,21 @@ export class PermissionManagerComponent implements OnInit {
       // Attach a default 'access' property for UI binding
       this.fieldLevelAccessFields = data.map(f => ({
         ...f,
-        access: f.allowEdit ? 'Editable' : f.allowVisible ? 'Read-only' : 'Hidden'
+        access: f.allowEdit ? 'Edit' : f.allowVisible ? 'View' : 'Hide'
       }));
       
     });
   }
 
+  setAllFieldAccess(accessType: 'Edit' | 'View' | 'Hide') {
+    for (const field of this.fieldLevelAccessFields) {
+      field.access = accessType;
+    }
+    this.selectedFieldAccessHeader = accessType;
+  }
   /*********Resource Field Logic***********/
 
+  /*********Dash Board Logic***********/
   dashboardWidgets = [
     { key: 'myCaseLoad', defaultLabel: 'My Case Load', customLabel: 'My Case Load', enabled: true },
     { key: 'assignedAuthorizations', defaultLabel: 'Assigned Authorizations', customLabel: 'Assigned Authorizations', enabled: true },
@@ -332,7 +336,9 @@ export class PermissionManagerComponent implements OnInit {
     };
   }
 
+  hasAnyWidgetSelected(): boolean {
+    return this.dashboardWidgets?.some(widget => widget.enabled);
+  }
 
-
-
+  /*********Dash Board Logic***********/
 }

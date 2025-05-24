@@ -7,8 +7,6 @@ import { CrudService } from 'src/app/service/crud.service';
 import { SettingsDialogComponent } from 'src/app/admin/UM/settings-dialog/settings-dialog.component';
 import {
   MatSnackBar,
-  MatSnackBarHorizontalPosition,
-  MatSnackBarVerticalPosition,
 } from '@angular/material/snack-bar';
 import { MatCheckboxChange } from '@angular/material/checkbox';
 

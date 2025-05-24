@@ -17,7 +17,6 @@ export interface Feature {
   featureId: number;
   featureName: string;
 }
-
 export interface Resource {
   featureResourceId: number;
   resourceId: number;
@@ -80,7 +79,6 @@ export class RolepermissionService {
     );
   }
 
-
   getFeatureGroups(moduleId: number): Observable<FeatureGroup[]> {
     return this.http.get<any[]>(`${this.baseUrl}/featuregroups/${moduleId}`).pipe(
       map(groups => (groups ?? []).map(g => ({
@@ -90,7 +88,6 @@ export class RolepermissionService {
     );
   }
 
-
   getFeatures(featureGroupId: number): Observable<Feature[]> {
     return this.http.get<any[]>(`${this.baseUrl}/features/${featureGroupId}`).pipe(
       map(features => (features ?? []).map(f => ({
@@ -99,7 +96,6 @@ export class RolepermissionService {
       })))
     );
   }
-
 
   getResources(featureId: number): Observable<Resource[]> {
     return this.http.get<any[]>(`${this.baseUrl}/resources/${featureId}`).pipe(
@@ -116,7 +112,6 @@ export class RolepermissionService {
       })))
     );
   }
-
 
   getRoles(): Observable<CfgRole[]> {
     return this.http.get<CfgRole[]>(this.baseUrl);
@@ -157,6 +152,4 @@ export class RolepermissionService {
       })))
     );
   }
-
-
 }

@@ -611,3 +611,29 @@ label .text-danger {
   vertical-align: middle;
   margin-left: 2px;
 }
+
+/* === Increase Height of Dynamic Form Controls === */
+
+.form-outline .form-control,
+.form-outline textarea,
+.form-outline select,
+input.form-control {
+  min-height: 40px;
+  font-size: 14px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+/* Optional: slightly increase textarea rows */
+textarea.form-control {
+  min-height: 80px;
+  line-height: 1.5;
+}
+
+/* Better alignment for floating label */
+.form-outline .form-label,
+.floating-label {
+  font-size: 13px;
+  top: -10px !important;
+}
+

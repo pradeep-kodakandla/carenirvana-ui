@@ -44,7 +44,6 @@ export class MemberComponent {
         : rawPermissions;
 
       sessionStorage.setItem('rolePermissionsJson', JSON.stringify(this.roleConfig.modules));
-      console.log('Role Permissions:', this.roleConfig.modules); // ✅ Debugging log
 
       // console.log('Role Config:', this.roleConfig); // ✅ Debugging log
       this.buildTabsFromRoleConfig();
@@ -63,8 +62,6 @@ export class MemberComponent {
         });
       });
     });
-
-    console.log('Main Tabs (including empty feature groups):', this.mainTabs);
   }
 
 
@@ -88,8 +85,12 @@ export class MemberComponent {
     this.showAuthorizationComponent = false;
   }
 
+  //getSafeId(name: string): string {
+  //  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-'); // Only lowercase letters and digits
+  //}
+
   getSafeId(name: string): string {
-    return name.toLowerCase().replace(/[^a-z0-9]+/g, '-'); // Only lowercase letters and digits
+    return name.replace(/\s+/g, '-').toLowerCase();
   }
 
 

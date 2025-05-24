@@ -11,6 +11,7 @@ import { MatTableDataSource } from '@angular/material/table';
 import { MatMenuTrigger } from '@angular/material/menu';
 import { RolepermissionService, CfgRole } from 'src/app/service/rolepermission.service';
 import { PermissionManagerComponent } from '../appfeaturesetup/permission-manager/permission-manager.component';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-rolemanagement',
@@ -32,7 +33,7 @@ export class RolemanagementComponent implements OnInit {
   @ViewChild(PermissionManagerComponent)
   permissionManagerComponent!: PermissionManagerComponent;
 
-  constructor(private roleService: RolepermissionService) { }
+  constructor(private roleService: RolepermissionService, private snackBar: MatSnackBar) { }
 
   ngOnInit(): void {
     this.loadData();
@@ -86,7 +87,7 @@ export class RolemanagementComponent implements OnInit {
       this.selectedEntry = normalized;
 
       try {
-        
+
         this.parsedPermissionsJson = JSON.parse(normalized.permissions ?? '[]');
       } catch (e) {
         console.error('Invalid permissions JSON', e);
@@ -108,6 +109,16 @@ export class RolemanagementComponent implements OnInit {
   }
 
   saveEntry() {
+
+    if (!this.permissionManagerComponent.hasAnyWidgetSelected()) {
+      this.snackBar.open('Please select at least one widget in Home Dashboard Setup.', 'Close', {
+        duration: 4000,
+        horizontalPosition: 'center',
+        verticalPosition: 'top',
+      });
+      return;
+    }
+
     const fullPermissionJson = this.permissionManagerComponent.getFinalPermissionJson();
     this.selectedEntry.permissions = fullPermissionJson;
 
@@ -123,13 +134,25 @@ export class RolemanagementComponent implements OnInit {
     if (this.formMode === 'add') {
       this.roleService.addRole(role).subscribe(() => {
         this.loadData();
+        this.snackBar.open('Role added successfully!', 'Close', {
+          horizontalPosition: 'center',
+          verticalPosition: 'top',
+          duration: 5000
+
+        });
       });
     } else if (this.formMode === 'edit') {
       this.roleService.updateRole(this.selectedEntry.roleId, role).subscribe(() => {
         this.loadData();
+        this.snackBar.open('Role updated successfully!', 'Close', {
+          horizontalPosition: 'center',
+          verticalPosition: 'top',
+          duration: 5000
+
+        });
       });
     }
-    this.isFormVisible = false;
+    //this.isFormVisible = false;
   }
 
   deleteRow(id: number) {

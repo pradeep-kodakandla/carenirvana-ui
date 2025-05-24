@@ -1,182 +1,243 @@
-
-table {
-  width: 100%;
+.dashboard-wrapper {
+  padding: 0.3rem;
+  background-color: #f4f7fb;
 }
 
-.mat-mdc-header-cell {
-  justify-content: left;
-  color: white;
-  font-weight: bold !important;
-  padding: 0px 0px 0px 15px;
-  background-color: #007BFF !important;
-  font-family: 'Open Sans', sans-serif;
-  border-right-color: white;
-  border-right-width: thin;
-}
-
-tr.example-detail-row {
-  height: 0;
-}
-
-.example-element-detail {
-  overflow: hidden;
+/* Layout: Search and Summary in One Row */
+.top-bar {
   display: flex;
-}
-
-.search-bar-container-table {
-  padding: 0px 56px 0px 0px;
-  background: #eaf1fb;
-  border-radius: 5px;
-  display: flex;
-  align-items: center;
-}
-
-.input {
-  font-size: 1.1rem;
-  outline: none;
-  border: none;
-  background: inherit;
-  min-width: 300px;
-}
-
-.status-cell {
-  display: flex;
-  align-items: center;
-}
-
-mat-icon {
-  margin-right: 5px;
-}
-
-.status-link {
-  text-decoration: none;
-  font-weight: bold;
-}
-
-.status-active {
-  color: green;
-  text-decoration: underline;
-}
-
-.status-inactive {
-  color: red;
-  text-decoration: underline;
-}
-
-.status-ends-soon {
-  color: orange;
-}
-
-.mat-button-toggle-standalone.mat-button-toggle-appearance-standard, .mat-button-toggle-group-appearance-standard {
-  border-radius: 5px;
-  border: solid 1px var(--mat-standard-button-toggle-divider-color, var(--mat-app-outline));
-}
-
-
-/* Container for the table */
-.table-container {
-  /*  margin: 20px;
-*/ overflow-x: auto;
-}
-
-/* Responsive Table */
-.responsive-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-family: 'Open Sans', sans-serif;
-}
-
-  /* Table Header */
-  .responsive-table th {
-    background-color: #4caf50;
-    color: white;
-    padding: 10px;
-    text-align: left;
-  }
-
-  /* Table Body */
-  .responsive-table td {
-    padding: 3px;
-    border: 1px solid #ddd;
-  }
-
-  /* Row Hover Effect */
-  .responsive-table tr:hover {
-    background-color: #f1f1f1;
-  }
-
-
-/* Mobile Responsive Adjustments */
-@media (max-width: 768px) {
-  .responsive-table {
-    font-size: 14px;
-  }
-
-  button {
-    padding: 1px;
-    font-size: 12px;
-  }
-}
-
-@media (max-width: 480px) {
-  .responsive-table th,
-  .responsive-table td {
-    padding: 8px;
-    font-size: 12px;
-  }
-
-  button {
-    font-size: 10px;
-    padding: 4px;
-  }
-}
-
-.search-container-table {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
   justify-content: space-between;
-  /*  background-color: #f8f9fa;
-*/ /*  padding: 10px;
-*/
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin-bottom: 0.3rem;
+}
+
+.search-section {
+  flex: 1 1 300px;
+}
+
+.search-bar {
+  width: 100%;
+  height: 100%;
+}
+
+.summary-container {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.75rem;
+}
+
+.summary-card {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  min-width: auto;
+  white-space: nowrap;
+  background-color: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  height:40px;
+}
+
+.summary-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+  .summary-row mat-icon {
+    color: #007bff;
+    font-size: 24px;
+  }
+
+.stat-label {
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.stat-value {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #212529;
+}
+
+/* Member Card Layout */
+.card-grid.column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.member-card {
+  background-color: #fff;
   border-radius: 8px;
-  /*  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-*/
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease-in-out;
+  cursor: pointer;
+  padding: 0.4rem;
 }
 
-.search-field-table {
-  flex: 1;
-  max-width: 60%;
-  min-width: 300px;
-  margin-right: 10px;
+  .member-card:hover {
+    transform: scale(1.01);
+  }
+
+.card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
-.status-group {
+.avatar {
+  background: #007bff;
+  color: white;
+  border-radius: 50%;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.info {
+  flex-grow: 1;
+  min-width: 200px;
+}
+
+  .info h3 {
+    margin: 0;
+    font-size: 1.2rem;
+  }
+
+    .info h3 a {
+      color: #007bff;
+      text-decoration: none;
+    }
+
+      .info h3 a:hover {
+        text-decoration: underline;
+      }
+
+  .info p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #6c757d;
+  }
+
+.header-metrics {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: auto;
 }
 
-mat-button-toggle {
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  padding: 5px 10px;
-  font-size: 14px;
-  font-family: 'Open Sans', sans-serif;
+.action-button {
+  margin-left: 0.5rem;
 }
 
-
-::ng-deep .mat-mdc-menu-panel {
-  background-color: white !important;
+.card-body-row {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+  gap: 1rem;
 }
 
-.body-item {
-  padding: 2px;
-  text-align: left;
-}
-
-  .body-item button:hover {
-    text-decoration: underline; /* Underline on selection */
-    font-weight: bold; /* Optional: Make text bold */
-    background: none;
+  .card-body-row p {
+    margin: 0;
+    font-size: 0.9rem;
   }
+
+/* Expanded section (initially empty) */
+.card-expand {
+  margin-top: 1rem;
+}
+
+/* Risk Chips */
+mat-chip.high {
+  background: #dc3545 !important;
+  color: white;
+}
+
+mat-chip.medium {
+  background: #fd7e14 !important;
+  color: white;
+}
+
+mat-chip.low {
+  background: #007bff !important;
+  color: white;
+}
+
+/* Responsive Adjustments */
+@media screen and (max-width: 768px) {
+  .top-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .summary-container {
+    flex-wrap: wrap;
+  }
+
+  .card-body-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-metrics {
+    justify-content: flex-start;
+  }
+}
+
+.search-input {
+  flex: 1;
+  height:40px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  min-width: -webkit-fill-available;
+}
+
+.view-toggle {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.table-wrapper {
+  margin-top: 15px;
+}
+
+.mat-column-actions {
+  width: 50px;
+  text-align: center;
+}
+
+mat-paginator {
+  margin-top: 16px;
+  justify-content: center;
+}
+
+.risk-label {
+  font-weight: 600;
+  font-size: 14px;
+  display: inline-block;
+  margin-top: 4px;
+}
+
+.high-risk-text {
+  color: #f44336;
+}
+
+.medium-risk-text {
+  color: #ff9800;
+}
+
+.low-risk-text {
+  color: #4caf50;
+}
+
+
+

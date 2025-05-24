@@ -18,7 +18,7 @@ body {
 /* ----------------- MAIN TABS NAVIGATION ----------------- */
 .tab-header {
   display: flex;
-  gap: 10px;
+  /*gap: 10px;*/
   border-bottom: 2px solid #ddd;
   padding-left: 0px;
 }
@@ -48,7 +48,7 @@ body {
 /* ----------------- NESTED TABS ----------------- */
 .child-tab-header {
   display: flex;
-  gap: 10px;
+  /*gap: 10px;*/
   margin-top: -15px;
   border-bottom: 1px solid #ddd;
   padding-left: 0px;
@@ -71,7 +71,7 @@ body {
 
 /* ----------------- TAB CONTENT STYLING ----------------- */
 .tab-content {
-  padding: 15px;
+  padding: 5px;
   background: #ffffff;
   border-radius: 8px;
 /*  margin-top: 5px;*/

@@ -134,19 +134,40 @@
               <tr>
                 <th style="background-color: #007BFF;">Resource</th>
                 <th style="background-color: #007BFF;">Field</th>
-                <th style="width: 160px; background-color: #007BFF;">Access</th>
+                <th class="text-center" style="background-color: #007BFF;">
+                  <input type="radio" name="global-access"
+                         [(ngModel)]="selectedFieldAccessHeader"
+                         [value]="'Edit'"
+                         (change)="setAllFieldAccess('Edit')"> Edit
+                </th>
+                <th class="text-center" style="background-color: #007BFF;">
+                  <input type="radio" name="global-access"
+                         [(ngModel)]="selectedFieldAccessHeader"
+                         [value]="'View'"
+                         (change)="setAllFieldAccess('View')"> View
+                </th>
+                <th class="text-center" style="background-color: #007BFF;">
+                  <input type="radio" name="global-access"
+                         [(ngModel)]="selectedFieldAccessHeader"
+                         [value]="'Hide'"
+                         (change)="setAllFieldAccess('Hide')"> Hide
+                </th>
               </tr>
             </thead>
+
+
             <tbody>
               <tr *ngFor="let field of fieldLevelAccessFields">
                 <td>Personal Details</td>
                 <td>{{ field.fieldName }}</td>
-                <td>
-                  <select class="form-select form-select-sm" [(ngModel)]="field.access">
-                    <option value="Editable">Editable</option>
-                    <option value="Read-only">Read-only</option>
-                    <option value="Hidden">Hidden</option>
-                  </select>
+                <td class="text-center">
+                  <input type="radio" name="{{ field.fieldName }}" [value]="'Edit'" [(ngModel)]="field.access">
+                </td>
+                <td class="text-center">
+                  <input type="radio" name="{{ field.fieldName }}" [value]="'View'" [(ngModel)]="field.access">
+                </td>
+                <td class="text-center">
+                  <input type="radio" name="{{ field.fieldName }}" [value]="'Hide'" [(ngModel)]="field.access">
                 </td>
               </tr>
             </tbody>
@@ -160,6 +181,12 @@
 
   <mat-tab label="Home Dashboard Setup">
     <div class="p-4">
+      <div *ngIf="!hasAnyWidgetSelected()" class="alert alert-info d-flex align-items-center mb-3" role="alert">
+        <mat-icon class="me-2">info</mat-icon>
+        <div>
+          Please select at least one widget in <strong>Home Dashboard Setup</strong>.
+        </div>
+      </div>
 
       <!-- Widget Selection Table -->
       <div class="table-responsive mt-4 field-table-scroll">
@@ -168,14 +195,14 @@
             <tr>
               <th style="background-color: #007BFF;">Enable</th>
               <th style="background-color: #007BFF;">Widget</th>
-              <th style="background-color: #007BFF;">Custom Label</th>
+              <th style="background-color: #007BFF;">Rename</th>
               <th style="background-color: #007BFF;">Set as Default</th>
             </tr>
           </thead>
           <tbody>
             <tr *ngFor="let widget of dashboardWidgets">
               <td class="text-center">
-                <mat-checkbox [(ngModel)]="widget.enabled" ></mat-checkbox>
+                <mat-checkbox [(ngModel)]="widget.enabled"></mat-checkbox>
               </td>
               <td>{{ widget.defaultLabel }}</td>
               <td>

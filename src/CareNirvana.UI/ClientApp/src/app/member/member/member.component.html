@@ -1,12 +1,13 @@
 <div class="tab-container">
-  <!-- 🌟 Main Tabs Navigation (Feature Group Names) -->
-  <ul class="tab-header" role="tablist" *ngIf="!showAuthorizationComponent">
-    <li *ngFor="let tab of mainTabs; let i = index">
-      <button class="nav-link-header"
-              [ngClass]="{ 'active': i === 0 }"
+  <!-- 🌟 Main Tabs Navigation -->
+  <ul class="tab-header nav nav-tabs" role="tablist" *ngIf="!showAuthorizationComponent">
+    <li class="nav-item" *ngFor="let tab of mainTabs; let i = index">
+      <button class="nav-link"
+              [class.active]="i === 0"
               data-bs-toggle="tab"
               [attr.data-bs-target]="'#' + getSafeId(tab.name)"
-              type="button">
+              type="button"
+              role="tab">
         {{ tab.name }}
       </button>
     </li>
@@ -16,9 +17,12 @@
   <div class="tab-content">
     <div *ngFor="let tab of mainTabs; let i = index"
          class="tab-pane fade"
-         [ngClass]="{ 'show active': i === 0 }"
-         [attr.id]="getSafeId(tab.name)">
+         [class.show]="i === 0"
+         [class.active]="i === 0"
+         [attr.id]="getSafeId(tab.name)"
+         role="tabpanel">
 
+      <!-- 🌟 Special Authorization Handling -->
       <div *ngIf="tab.name === 'Authorization'">
         <div *ngIf="!showAuthorizationComponent">
           <app-authdetails [memberId]="memberId" (addClicked)="onAddClick($event)"></app-authdetails>
@@ -27,67 +31,51 @@
           <app-authorization [authNumber]="authNumber" [memberId]="memberId" (cancel)="onCancel()"></app-authorization>
         </div>
       </div>
-      <!-- 🌟 Child Tabs Navigation (Pages) -->
-      <!-- 🌟 Child Tabs Navigation (Pages) -->
-      <ul class="child-tab-header" role="tablist" *ngIf="tab.pages.length > 0 && tab.name !== 'Authorization'">
 
-        <li *ngFor="let page of tab.pages; let j = index">
-          <button class="nav-link-header"
-                  [ngClass]="{ 'active': j === 0 }"
-                  data-bs-toggle="tab"
-                  [attr.data-bs-target]="'#' + getSafeId(tab.name) + '-' + getSafeId(page.name)"
-                  type="button">
-            {{ page.name }}
-          </button>
-        </li>
-      </ul>
-      <div *ngIf="tab.pages.length === 0" class="p-3 text-muted">
-        No pages available for this section.
-      </div>
-      <!-- 🌟 Child Tab Content -->
-      <!-- 🌟 Child Tab Content (exclude for Authorization) -->
-      <div class="tab-content" *ngIf="tab.pages.length > 0 && tab.name !== 'Authorization'">
+      <!-- 🌟 Child Tabs and Content -->
+      <ng-container *ngIf="tab.name !== 'Authorization'">
+        <!-- Child Tab Headers -->
+        <ul class="child-tab-header nav nav-tabs mt-2" role="tablist" *ngIf="tab.pages.length > 0">
+          <li class="nav-item" *ngFor="let page of tab.pages; let j = index">
+            <button class="nav-link"
+                    [class.active]="j === 0"
+                    data-bs-toggle="tab"
+                    [attr.data-bs-target]="'#' + getSafeId(tab.name) + '-' + getSafeId(page.name)"
+                    type="button"
+                    role="tab">
+              {{ page.name }}
+            </button>
+          </li>
+        </ul>
 
-        <div *ngFor="let page of tab.pages; let j = index"
-             class="tab-pane fade"
-             [ngClass]="{ 'show active': j === 0 }"
-             [attr.id]="getSafeId(tab.name) + '-' + getSafeId(page.name)">
-
-          <!-- 🧩 Render Components by Page Name -->
-          <ng-container [ngSwitch]="page.name">
-            <app-member-info *ngSwitchCase="'Member Info'"></app-member-info>
-            <app-member-tasksummary *ngSwitchCase="'Task Summary'"></app-member-tasksummary>
-            <app-member-program *ngSwitchCase="'Program'"></app-member-program>
-            <app-member-enrollment *ngSwitchCase="'Enrollment'"></app-member-enrollment>
-            <app-member-careteam *ngSwitchCase="'Care Team'"></app-member-careteam>
-            <app-member-notes *ngSwitchCase="'Notes'"></app-member-notes>
-            <app-member-documents *ngSwitchCase="'Documents'"></app-member-documents>
-            <app-member-alerts *ngSwitchCase="'Alerts'"></app-member-alerts>
-            <p *ngSwitchDefault>📌 {{ page.name }} content...</p>
-
-            <ng-container>
-              <!-- 🛑 Direct Auth Component Content (no child tabs) -->
-
-
-            </ng-container>
-
-          </ng-container>
-
+        <!-- Message when no pages -->
+        <div *ngIf="tab.pages.length === 0" class="p-3 text-muted">
+          No pages available for this section.
         </div>
-      </div>
 
+        <!-- Child Tab Contents -->
+        <div class="tab-content mt-2" *ngIf="tab.pages.length > 0">
+          <div *ngFor="let page of tab.pages; let j = index"
+               class="tab-pane fade"
+               [class.show]="j === 0"
+               [class.active]="j === 0"
+               [attr.id]="getSafeId(tab.name) + '-' + getSafeId(page.name)"
+               role="tabpanel">
+
+            <ng-container [ngSwitch]="page.name">
+              <app-member-info *ngSwitchCase="'Member Info'"></app-member-info>
+              <app-member-tasksummary *ngSwitchCase="'Task Summary'"></app-member-tasksummary>
+              <app-member-program *ngSwitchCase="'Program'"></app-member-program>
+              <app-member-enrollment *ngSwitchCase="'Enrollment'"></app-member-enrollment>
+              <app-member-careteam *ngSwitchCase="'Care Team'"></app-member-careteam>
+              <app-member-notes *ngSwitchCase="'Notes'"></app-member-notes>
+              <app-member-documents *ngSwitchCase="'Documents'"></app-member-documents>
+              <app-member-alerts *ngSwitchCase="'Alerts'"></app-member-alerts>
+              <p *ngSwitchDefault>📌 {{ page.name }} content...</p>
+            </ng-container>
+          </div>
+        </div>
+      </ng-container>
     </div>
   </div>
-
-  <!-- Static Authorization Tab (if needed separately) -->
-  <!--<div class="tab-content">
-    <div class="tab-pane fade show active" id="authorizations">
-      <div *ngIf="!showAuthorizationComponent">
-        <app-authdetails [memberId]="memberId" (addClicked)="onAddClick($event)"></app-authdetails>
-      </div>
-      <div *ngIf="showAuthorizationComponent">
-        <app-authorization [authNumber]="authNumber" [memberId]="memberId" (cancel)="onCancel()"></app-authorization>
-      </div>
-    </div>
-  </div>-->
 </div>

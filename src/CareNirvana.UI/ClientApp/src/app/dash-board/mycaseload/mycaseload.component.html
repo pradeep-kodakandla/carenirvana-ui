@@ -1,212 +1,149 @@
-
-
-<mat-drawer-container class="sidenav-container" autosize>
-  <mat-drawer-content mode="side" opened>
-    <div class="search-container-table">
-      <div class="search-bar-container-table">
-        <button mat-icon-button>
-          <mat-icon>search</mat-icon>
-        </button>
-        <input class="input" matInput (keyup)="applyFilter($event)" placeholder="Start typing to search My Case Load " #input>
-      </div>
-      <mat-button-toggle-group class="status-group" appearance="legacy">
-        <mat-button-toggle value="assigned">Assigned: 65</mat-button-toggle>
-        <mat-button-toggle value="high-risk">High Risk: 20</mat-button-toggle>
-        <mat-button-toggle value="medium-risk">Medium Risk: 5</mat-button-toggle>
-        <mat-button-toggle value="low-risk">Low Risk: 40</mat-button-toggle>
-      </mat-button-toggle-group>
+<!-- mycaseload-dashboard.component.html -->
+<div class="dashboard-wrapper">
+  <!-- Search and Summary Cards in One Row -->
+  <div class="top-bar">
+    <!-- Search -->
+    <div class="search-section">
+      <!--<mat-form-field appearance="outline" class="search-bar">
+        <mat-label>Search Caseload</mat-label>
+        <input matInput (input)="onSearch($event)" placeholder="Enter name, ID, etc." />
+        <button mat-icon-button matSuffix><mat-icon>search</mat-icon></button>
+      </mat-form-field>-->
+      <input type="text" placeholder="🔍 Search..." (input)="onSearch($event)" class="search-input" />
     </div>
 
-    <mat-drawer-container class="sidenav-container" autosize>
-      <mat-drawer-content mode="side" opened>
-        <div class="table-container">
-          <table class="responsive-table" mat-table [dataSource]="dataSource" multiTemplateDataRows matSort>
-            <ng-container matColumnDef="menu">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>  </th>
-              <td mat-cell *matCellDef="let row">
-                <div class="status-cell" style="flex-direction:column; align-items:center;">
-                  <button mat-icon-button (click)="openMenu($event)"
-                          aria-label="Menu options" [matMenuTriggerFor]="menu">
-                    <mat-icon>list</mat-icon>
-                  </button>
-                  <mat-menu #menu="matMenu">
-                    <div class="body-item">
-                      <button mat-menu-item>
-                        <span>Add Activity</span>
-                      </button>
-                      <button mat-menu-item>
-                        <span>Run Assessment</span>
-                      </button>
-                      <button mat-menu-item>
-                        <!--<mat-icon>notifications_off</mat-icon>-->
-                        <span>Messages</span>
-                      </button>
-                      <button mat-menu-item>
-                        <span>Add Notes</span>
-                      </button>
-                      <button mat-menu-item>
-                        <span>Send Letter</span>
-                      </button>
-                      <button mat-menu-item>
-                        <!--<mat-icon>notifications_off</mat-icon>-->
-                        <span>Unassign</span>
-                      </button>
-                      <button mat-menu-item>
-                        <!--<mat-icon>notifications_off</mat-icon>-->
-                        <span>Summary</span>
-                      </button>
-                    </div>
-                  </mat-menu>
-                </div>
-              </td>
-            </ng-container>
-
-
-            <ng-container matColumnDef="enrollmentStatus">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Enrollment Status </th>
-              <td mat-cell *matCellDef="let row">
-                <div class="status-cell">
-                  <a [routerLink]="" style="cursor:pointer;" class="status-link" [ngClass]="{
-                    'status-active': row.enrollmentStatus === 'Active',
-                    'status-inactive': row.enrollmentStatus === 'Inactive',
-                    'status-ends-soon': row.enrollmentStatus === 'Ends Soon'
-                     }">
-                    {{ row.enrollmentStatus }}
-                  </a>
-                </div>
-              </td>
-            </ng-container>
-
-            <ng-container matColumnDef="memberId">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Member ID </th>
-              <td mat-cell *matCellDef="let row">
-                <!--<div class="example-element-weight"> (click)="addTabAndNavigate(row.memberId)"
-                  <a mat-button (click)="addTabAndNavigate(row.memberId)">{{row.memberId}}</a>
-                </div>-->
-                <a [routerLink]="" style="cursor:pointer;" (click)="onMemberClick(row.memberId, row.firstName +' '+ row.lastName)">{{row.memberId}}</a>
-              </td>
-            </ng-container>
-
-            <ng-container matColumnDef="firstName">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> First Name </th>
-              <td mat-cell *matCellDef="let row"> {{row.firstName}} </td>
-            </ng-container>
-
-            <ng-container matColumnDef="lastName">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Last Name </th>
-              <td mat-cell *matCellDef="let row"> {{row.lastName}} </td>
-            </ng-container>
-
-            <ng-container matColumnDef="DOB">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> DOB </th>
-              <td mat-cell *matCellDef="let row"> {{row.DOB}} </td>
-            </ng-container>
-
-            <ng-container matColumnDef="risk">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Risk </th>
-              <td mat-cell *matCellDef="let row"> {{row.risk}} </td>
-            </ng-container>
-
-            <ng-container matColumnDef="nextContact">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Next Contact </th>
-              <td mat-cell *matCellDef="let row"> {{row.nextContact}} </td>
-            </ng-container>
-
-            <ng-container matColumnDef="assignedDate">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Assigned Date </th>
-              <td mat-cell *matCellDef="let row"> {{row.assignedDate}} </td>
-            </ng-container>
-
-            <ng-container matColumnDef="programName">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Programe Name </th>
-              <td mat-cell *matCellDef="let row"> {{row.programName}} </td>
-            </ng-container>
-
-            <ng-container matColumnDef="description" style="flex-direction:column; align-items:center;">
-              <th mat-header-cell *matHeaderCellDef aria-label="row actions">&nbsp;</th>
-              <td mat-cell *matCellDef="let row">
-                <button mat-icon-button aria-label="expand row" (click)="(expandedElement = expandedElement === row ? null : row); $event.stopPropagation()">
-                  @if (expandedElement === row) {
-                  <mat-icon>keyboard_arrow_up</mat-icon>
-                  } @else {
-                  <mat-icon>keyboard_arrow_down</mat-icon>
-                  }
-                </button>
-              </td>
-            </ng-container>
-
-            <!-- Expanded Content Column - The detail row is made up of this one column that spans across all columns -->
-
-            <ng-container matColumnDef="expandedDetail">
-              <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns.length">
-                <div class="example-element-detail" style="flex-direction:column; align-items:center;"
-                     [@detailExpand]="row == expandedElement ? 'expanded' : 'collapsed'">
-                  <div class="example-element-description">
-                    <!--{{row.description}}-->
-                    <mat-chip-set aria-label="selection">
-                      <mat-chip>Open Authorizations: 10</mat-chip>
-                      <mat-chip>Open Activities: 50</mat-chip>
-                      <mat-chip>Open Care Plans: 5</mat-chip>
-                    </mat-chip-set>
-                    <span class="example-element-description-attribution"> </span>
-                  </div>
-                </div>
-              </td>
-            </ng-container>
-
-            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;"
-                class="example-element-row"
-                [class.example-expanded-row]="expandedElement === row"
-                (click)="expandedElement = expandedElement === row ? null : row">
-            </tr>
-            <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="example-detail-row"></tr>
-
-            <!--<tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;" (click)="expandedElement = expandedElement === row ? null : row"></tr>-->
-            <!-- Row shown when there is no matching data. -->
-            <tr class="mat-row" *matNoDataRow>
-              <td class="mat-cell" colspan="9">No data matching the filter "{{input.value}}"</td>
-            </tr>
-          </table>
-          <mat-paginator [pageSizeOptions]="[10, 25, 100]" aria-label="Select page of users"></mat-paginator>
+    <!-- Summary Cards -->
+    <div class="summary-container" style="padding-left:10px;">
+      <mat-card class="summary-card" *ngFor="let item of summaryStats">
+        <div class="summary-row">
+          <mat-icon>{{ item.icon }}</mat-icon>
+          <span class="stat-label">{{ item.label }}:</span>
+          <span class="stat-value">{{ item.value }}</span>
         </div>
-      </mat-drawer-content>
-      <mat-drawer #drawer class="sidenav" style="width:22%;height:50%;align-content:center; " position="end" mode="side" opened="false">
-        <div style="display: block;">
-          <canvas baseChart
-                  [type]="'pie'"
-                  [datasets]="pieChartDatasets"
-                  [labels]="pieChartLabels"
-                  [options]="pieChartOptions"
-                  [plugins]="pieChartPlugins"
-                  [legend]="pieChartLegend">
-          </canvas>
-        </div>
-      </mat-drawer>
-    </mat-drawer-container>
-  </mat-drawer-content>
-  <mat-drawer #mainDrawer class="sidenav" style="width:15%;" mode="side" opened="false">
-    <div>
-      <mat-card>
-        <mat-card-header style="background-color: #007BFF;">
-          <mat-card-title style="color: white;">PATIENTS LIST</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <mat-list>
-            <mat-list-item *ngFor="let item of items">
-              <!--<img mat-card-image [src]="item.photo" alt="{{ item.header }}">-->
-              it
-              <mat-card-title>{{ item.header }}</mat-card-title>
-              /m
-              >
-
-              <p>{{ item.content }}</p>
-            </mat-list-item>
-          </mat-list>
-        </mat-card-content>
       </mat-card>
     </div>
-  </mat-drawer>
-</mat-drawer-container>
+    <!-- View Mode Toggle Button -->
+    <div class="view-toggle">
+      <button mat-icon-button (click)="toggleViewMode()" matTooltip="Toggle View">
+        <mat-icon>{{ viewMode === 'card' ? 'view_module' : 'table_rows' }}</mat-icon>
+      </button>
+    </div>
 
+
+  </div>
+  <mat-menu #menu="matMenu">
+    <button mat-menu-item>📄 Add Activity</button>
+    <button mat-menu-item>📝 Add Notes</button>
+    <button mat-menu-item>📨 Send Letter</button>
+    <button mat-menu-item>👤 Unassign</button>
+  </mat-menu>
+  <!-- Member Card List (One per Row) -->
+  <div class="card-grid column" *ngIf="viewMode === 'card'">
+    <mat-card class="member-card" *ngFor="let member of pagedMembers" (click)="toggleExpand(member)">
+      <div class="card-header">
+        <div class="avatar">
+          <mat-icon>person</mat-icon>
+        </div>
+        <div class="info">
+          <h3>
+            <a href="javascript:void(0)" (click)="onMemberClick(member.memberId, member.firstName + ' ' + member.lastName); $event.stopPropagation();">
+              {{ member.firstName }} {{ member.lastName }}
+            </a>
+          </h3>
+          <p>ID: {{ member.memberId }}</p>
+        </div>
+        <div class="header-metrics">
+          <span class="risk-label" [ngClass]="getRiskClass(member.risk)">
+            {{ getRiskEmoji(member.risk) }} {{ getRiskLabel(member.risk) }}
+          </span>
+
+          <mat-chip color="primary">Open Auth: {{ member.authCount }}</mat-chip>
+          <mat-chip color="accent">Open Activities: {{ member.activityCount }}</mat-chip>
+          <mat-chip color="warn">Care Plans: {{ member.carePlanCount }}</mat-chip>
+          <mat-chip *ngIf="member.contactOverdue" color="warn">Overdue</mat-chip>
+        </div>
+        <button mat-icon-button class="action-button" [matMenuTriggerFor]="menu" (click)="$event.stopPropagation()">
+          <mat-icon>more_vert</mat-icon>
+        </button>
+
+      </div>
+
+      <div class="card-body-row">
+        <p><strong>Program:</strong> {{ member.programName }}</p>
+        <p><strong>Next Contact:</strong> {{ member.nextContact }}</p>
+        <p><strong>Assigned:</strong> {{ member.assignedDate }}</p>
+        <p><strong>Program:</strong> {{ member.programName }}</p>
+        <p><strong>Next Contact:</strong> {{ member.nextContact }}</p>
+        <p><strong>Assigned:</strong> {{ member.assignedDate }}</p>
+      </div>
+
+      <div class="card-expand" *ngIf="expandedMember === member">
+        <p>Additional details to add</p>
+      </div>
+    </mat-card>
+  </div>
+
+  <div class="table-wrapper" *ngIf="viewMode === 'table'">
+    <table mat-table [dataSource]="dataSource" matSort class="mat-elevation-z1 full-width-table">
+
+      <!-- Name Column -->
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header> Name </th>
+        <td mat-cell *matCellDef="let member">
+          <a href="javascript:void(0)" (click)="onMemberClick(member.memberId, member.firstName + ' ' + member.lastName)">
+            {{ member.firstName }} {{ member.lastName }}
+          </a>
+        </td>
+      </ng-container>
+
+      <!-- ID Column -->
+      <ng-container matColumnDef="memberId">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header> ID </th>
+        <td mat-cell *matCellDef="let member"> {{ member.memberId }} </td>
+      </ng-container>
+
+      <!-- Risk Column -->
+      <ng-container matColumnDef="risk">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header> Risk </th>
+        <td mat-cell *matCellDef="let member"> {{ member.risk }} </td>
+      </ng-container>
+
+      <!-- Program Column -->
+      <ng-container matColumnDef="program">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header> Program </th>
+        <td mat-cell *matCellDef="let member"> {{ member.programName }} </td>
+      </ng-container>
+
+      <!-- Next Contact Column -->
+      <ng-container matColumnDef="nextContact">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header> Next Contact </th>
+        <td mat-cell *matCellDef="let member"> {{ member.nextContact }} </td>
+      </ng-container>
+
+      <!-- Assigned Date Column -->
+      <ng-container matColumnDef="assignedDate">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header> Assigned </th>
+        <td mat-cell *matCellDef="let member"> {{ member.assignedDate }} </td>
+      </ng-container>
+
+      <!-- Actions Column -->
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef> Actions </th>
+        <td mat-cell *matCellDef="let member">
+          <button mat-icon-button [matMenuTriggerFor]="menu" (click)="selectedMember = member">
+            <mat-icon>more_vert</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <!-- Table Row Definitions -->
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+
+
+  </div>
+  <!-- Paginator Always at Bottom -->
+  <mat-paginator [pageSize]="10" [pageSizeOptions]="[5, 10, 20]" showFirstLastButtons></mat-paginator>
+
+</div>

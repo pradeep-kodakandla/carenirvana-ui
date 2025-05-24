@@ -1194,7 +1194,7 @@ export class AuthorizationComponent {
         if (response && response.id) {
           this.authDetailId = response.id;  // <-- Assign it to a variable (define this.authDetailId first)
         }
-        console.log('AuthDetailId:', this.authDetailId);
+
         this.snackBar.open((this.saveTypeFrom && this.saveTypeFrom.trim() !== '' ? this.saveTypeFrom : 'Authorization') + ' saved successfully!', 'Close', {
           horizontalPosition: 'center',
           verticalPosition: 'top',
@@ -1438,7 +1438,7 @@ export class AuthorizationComponent {
     this.saveType = 'Update';
     this.saveTypeFrom = 'Notes';
     this.saveData(this.formData, false);
-    console.log('Authorization Notes saved:', this.formData['Authorization Notes'].entries);
+
     setTimeout(() => {
       this.authorizationNotesData = [...this.formData['Authorization Notes'].entries];
     }, 300); // small delay so Save API call completes
