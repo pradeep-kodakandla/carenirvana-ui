@@ -189,7 +189,4 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
       default: return '';
     }
   }
-
-
-
 }
