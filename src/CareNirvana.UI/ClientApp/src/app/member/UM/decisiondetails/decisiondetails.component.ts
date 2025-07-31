@@ -1,11 +1,16 @@
 import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, ViewChildren, QueryList, ElementRef } from '@angular/core';
 import { CrudService } from 'src/app/service/crud.service';
+import { MatDialog } from '@angular/material/dialog';
+import { DecisionbulkdialogComponent } from 'src/app/member/UM/decisionbulkdialog/decisionbulkdialog.component';
+
 
 // Define interfaces for better type safety
 interface Tab {
   id: string;
   name: string;
   decisionStatusLabel?: string;
+  selected?: boolean;
+  bgClass: string;
 }
 
 interface Field {
@@ -52,7 +57,10 @@ export class DecisiondetailsComponent implements OnChanges {
   tabs: Tab[] = [];
   selectedTabId: string = '';
 
-  constructor(private crudService: CrudService) { }
+  authorizationNotesFields: any = []; // Fields JSON
+  authorizationNotesData: any = []; // Data JSON
+
+  constructor(private crudService: CrudService, private dialog: MatDialog) { }
 
   ngOnChanges(changes: SimpleChanges): void {
 
@@ -141,17 +149,29 @@ export class DecisiondetailsComponent implements OnChanges {
 
   generateTabs(): void {
     const serviceEntries = this.decisionData?.serviceDetails?.entries || [];
+    const decisionEntries = this.decisionData?.decisionDetails?.entries || [];
 
     this.tabs = serviceEntries.map((service: any, index: number) => {
-      // Try to find the loaded display label from the section
-      const section = this.sections.find(s => s.sectionName === 'Decision Details');
-      const statusField = section?.fields?.find(f => f.id === 'decisionStatus');
-      const decisionStatusLabel = statusField?.displayLabel || '';
+      const decisionEntry = decisionEntries[index];
+      const decisionStatusValue = decisionEntry?.decisionStatus || '';
+      const decisionStatusLabel = this.getDecisionStatusLabel(decisionStatusValue);
+
+      // Assign background color class
+      let bgClass = 'tab-orange'; // default
+      if (decisionStatusLabel === 'Approved') {
+        bgClass = 'tab-green';
+      } else if (
+        decisionStatusLabel === 'Denied' ||
+        decisionStatusLabel === 'Void'
+      ) {
+        bgClass = 'tab-red';
+      }
 
       return {
         id: (index + 1).toString(),
         name: `Decision ${index + 1} : (${service.serviceCode || 'N/A'}) ${this.formatDate(service.fromDate)} - ${this.formatDate(service.toDate)}`,
-        decisionStatusLabel
+        decisionStatusLabel,
+        bgClass
       };
     });
 
@@ -159,6 +179,7 @@ export class DecisiondetailsComponent implements OnChanges {
       this.selectedTabId = this.tabs[0].id;
     }
   }
+
 
 
   getDecisionStatusLabel(value: string): string {
@@ -305,6 +326,37 @@ export class DecisiondetailsComponent implements OnChanges {
       return;
     }
 
+    if (this.enableBulkDecision) {
+      const selectedTabs = this.tabs.filter(t => t.selected);
+      if (selectedTabs.length > 0) {
+        const currentSection = this.sections.find(s => s.sectionName === this.tabs.find(t => t.id === this.selectedTabId)?.name);
+        const decisionField = currentSection?.fields.find(f => f.id === 'decisionStatus_1');
+
+        if (decisionField && decisionField.value) {
+          const decisionValue = decisionField.value;
+          const decisionDisplay = decisionField.displayLabel;
+
+          selectedTabs.forEach(tab => {
+            const section = this.sections.find(s => s.sectionName === tab.name);
+            const fieldToUpdate = section?.fields.find(f => f.id === 'decisionStatus_1');
+            if (fieldToUpdate) {
+              fieldToUpdate.value = decisionValue;
+              fieldToUpdate.displayLabel = decisionDisplay;
+            }
+          });
+
+          alert(`Bulk decision '${decisionDisplay}' applied to ${selectedTabs.length} tab(s).`);
+          this.enableBulkDecision = false;
+          this.tabs.forEach(t => t.selected = false);
+        } else {
+          alert('Please set Decision Status in the current tab before applying bulk decision.');
+          return;
+        }
+      } else {
+        alert('Please select at least one tab to apply bulk decision.');
+        return;
+      }
+    }
 
     // Define the mapping of section names to decisionData keys
     const sectionKeyMap: { [key: string]: string } = {
@@ -540,6 +592,58 @@ export class DecisiondetailsComponent implements OnChanges {
       );
     }
   }
+
+  openBulkActionPopup() {
+    const dialogRef = this.dialog.open(DecisionbulkdialogComponent, {
+      width: '800px',
+      data: { decisions: this.decisionData }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result?.action === 'approve') {
+        this.bulkUpdateDecisions('Approved', result.decisionData);
+      } else if (result?.action === 'deny') {
+        this.bulkUpdateDecisions('Denied', result.decisionData);
+      }
+    });
+
+  }
+
+  bulkUpdateDecisions(status: string, decisionData: any[]) {
+    const updated = decisionData.map(d => {
+      return {
+        ...d,
+        decisionStatus: status,
+        approved: status === 'Approved' ? d.requested : '',
+        denied: status === 'Denied' ? d.requested : ''
+      };
+    });
+
+    // assign back the updated array
+    this.decisionData.entries = [...updated];
+
+    this.saveDecisionData();
+  }
+
+
+  get decisions(): any[] {
+    const decisionSection = this.sections.find(s => s.sectionName === 'Decision Lines');
+    return decisionSection?.fields || [];
+  }
+
+
+  handleAuthNotesSaved(updatedNotes: any) {
+
+  }
+
+  enableBulkDecision: boolean = false;
+
+  addGuideline(type: string): void {
+    console.log('Selected guideline:', type);
+    // Implement action based on type
+  }
+
+
 
 
 }

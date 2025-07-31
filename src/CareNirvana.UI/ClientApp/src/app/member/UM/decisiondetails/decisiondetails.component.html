@@ -3,10 +3,19 @@
   <div class="tabs-container">
     <div class="tabs">
       <div *ngFor="let tab of tabs"
-           (click)="selectTab(tab.id)"
+           class="tab"
            [class.active]="selectedTabId === tab.id"
-           class="tab">
-        {{ tab.name }}<span *ngIf="tab.decisionStatusLabel"> ({{ tab.decisionStatusLabel }})</span>
+           [ngClass]="tab.bgClass">
+        <input *ngIf="enableBulkDecision"
+               type="checkbox"
+               [checked]="tab.selected"
+               (change)="tab.selected = !tab.selected"
+               style="margin-right: 5px;" />
+
+        <span (click)="selectTab(tab.id)"
+              style="cursor: pointer;">
+          {{ tab.name }} <span *ngIf="tab.decisionStatusLabel"> ({{ tab.decisionStatusLabel }})</span>
+        </span>
       </div>
 
     </div>
@@ -14,125 +23,137 @@
 
   <!-- Right Side: Decision Details -->
   <div class="tab-content">
+    <div style="text-align:end;">
+      <button class="btn btn-primary" (click)="saveDecisionData()" [disabled]="!canAdd">Save</button>
+      <button class="btn btn-primary" (click)="enableBulkDecision = !enableBulkDecision">
+        {{ enableBulkDecision ? 'Cancel Bulk Decision' : 'Bulk Decision' }}
+      </button>
+
+    </div>
     <div class="decision-details-container">
-      <mat-card *ngFor="let section of sections" class="section-card">
-        <div class="form-outline" style="padding-bottom:10px;">
-          <label class="form-label">{{ section.sectionName }}</label>
-        </div>
+      <ng-container *ngFor="let section of sections">
+        <mat-card *ngIf="section.sectionName !== 'Decision Notes'" class="section-card">
+          <div class="form-outline" style="padding-bottom:10px;">
+            <label class="form-label">{{ section.sectionName }}</label>
+          </div>
 
-        <div class="section-content">
-          <div class="row">
-            <div class="col-md-3 mb-3" *ngFor="let field of section.fields; let i = index">
-              <div class="form-outline" [ngClass]="{ 'disabled-field': !field.isEnabled }">
-                <label [for]="field.id + '_' + i" class="form-label">
-                  {{ field.displayName }} <span *ngIf="field.required" class="text-danger">*</span>
-                </label>
+          <div class="section-content">
+            <div class="row">
+              <div class="col-md-3 mb-3" *ngFor="let field of section.fields; let i = index">
+                <div class="form-outline" [ngClass]="{ 'disabled-field': !field.isEnabled }">
+                  <label [for]="field.id + '_' + i" class="form-label">
+                    {{ field.displayName }} <span *ngIf="field.required" class="text-danger">*</span>
+                  </label>
 
-                <ng-container [ngSwitch]="field.type">
-                  <!-- Text Input -->
-                  <ng-container *ngSwitchCase="'text'">
-                    <input type="text" class="form-control"
-                           [id]="field.id + '_' + i"
-                           [(ngModel)]="field.value"
-                           [disabled]="!field.isEnabled">
-                  </ng-container>
-
-                  <!-- Datetime Input -->
-                  <ng-container *ngSwitchCase="'datetime-local'">
-                    <div class="form-outline position-relative">
-                      <label [for]="field.id + '_' + i" class="floating-label">
-                        {{ field.displayName }}<span *ngIf="field.required" class="text-danger"> *</span>
-                      </label>
-                      <div class="input-with-icon">
-                        <input class="form-control"
-                               type="text"
-                               [id]="field.id + '_' + i"
-                               [(ngModel)]="field.value"
-                               (blur)="handleDateTimeBlur(field, field.id, field)"
-                               placeholder="Enter D, D+1, D-1 or select"
-                               >
-                        <button type="button" class="calendar-icon" (click)="triggerPicker(field.id + '_' + i)">📅</button>
-                      </div>
-                      <input type="datetime-local"
-                             [id]="'native_' + field.id + '_' + i"
-                             [value]="formatForInput(field.value)"
-                             (change)="handleNativePicker($event, field, field.id, field)"
-                             style="position: absolute; visibility: hidden; height: 0; width: 0; pointer-events: none;" />
-                    </div>
-                  </ng-container>
-
-                  <!-- Custom Autocomplete for Select -->
-                  <ng-container *ngSwitchCase="'select'">
-                    <div class="form-outline">
-                      <label [for]="field.id + '_' + i" class="form-label">
-                        {{ field.displayName }}<span *ngIf="field.required" class="text-danger"> *</span>
-                      </label>
-                      <input type="text"
-                             class="form-control"
+                  <ng-container [ngSwitch]="field.type">
+                    <!-- Text Input -->
+                    <ng-container *ngSwitchCase="'text'">
+                      <input type="text" class="form-control"
                              [id]="field.id + '_' + i"
-                             [(ngModel)]="field.displayLabel"
-                             (input)="filterOptions(field)"
-                             (focus)="field.showDropdown = true"
-                             (blur)="onSelectBlur(field)"
-                             
-                             [attr.autocomplete]="'off'">
-                      <span class="dropdown-arrow">&#9662;</span> <!-- ▼ icon -->
-                      <!-- Dropdown list -->
-                      <div class="autocomplete-dropdown"
-                           *ngIf="field.showDropdown && field.filteredOptions?.length">
-                        <div class="autocomplete-option"
-                             *ngFor="let option of field.filteredOptions"
-                             (mousedown)="selectDropdownOption(field, option)">
-                          {{ option.label }}
+                             [(ngModel)]="field.value"
+                             [disabled]="!field.isEnabled">
+                    </ng-container>
+
+                    <!-- Datetime Input -->
+                    <ng-container *ngSwitchCase="'datetime-local'">
+                      <div class="form-outline position-relative">
+                        <label [for]="field.id + '_' + i" class="floating-label">
+                          {{ field.displayName }}<span *ngIf="field.required" class="text-danger"> *</span>
+                        </label>
+                        <div class="input-with-icon">
+                          <input class="form-control"
+                                 type="text"
+                                 [id]="field.id + '_' + i"
+                                 [(ngModel)]="field.value"
+                                 (blur)="handleDateTimeBlur(field, field.id, field)"
+                                 placeholder="Enter D, D+1, D-1 or select">
+                          <button type="button" class="calendar-icon" (click)="triggerPicker(field.id + '_' + i)">📅</button>
+                        </div>
+                        <input type="datetime-local"
+                               [id]="'native_' + field.id + '_' + i"
+                               [value]="formatForInput(field.value)"
+                               (change)="handleNativePicker($event, field, field.id, field)"
+                               style="position: absolute; visibility: hidden; height: 0; width: 0; pointer-events: none;" />
+                      </div>
+                    </ng-container>
+
+                    <!-- Custom Autocomplete for Select -->
+                    <ng-container *ngSwitchCase="'select'">
+                      <div class="form-outline">
+                        <label [for]="field.id + '_' + i" class="form-label">
+                          {{ field.displayName }}<span *ngIf="field.required" class="text-danger"> *</span>
+                        </label>
+                        <input type="text"
+                               class="form-control"
+                               [id]="field.id + '_' + i"
+                               [(ngModel)]="field.displayLabel"
+                               (input)="filterOptions(field)"
+                               (focus)="field.showDropdown = true"
+                               (blur)="onSelectBlur(field)"
+                               [attr.autocomplete]="'off'">
+                        <span class="dropdown-arrow">&#9662;</span> <!-- ▼ icon -->
+                        <!-- Dropdown list -->
+                        <div class="autocomplete-dropdown"
+                             *ngIf="field.showDropdown && field.filteredOptions?.length">
+                          <div class="autocomplete-option"
+                               *ngFor="let option of field.filteredOptions"
+                               (mousedown)="selectDropdownOption(field, option)">
+                            {{ option.label }}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </ng-container>
+                    </ng-container>
 
-                  <!-- Textarea -->
-                  <ng-container *ngSwitchCase="'textarea'">
-                    <textarea class="form-control"
-                              [id]="field.id + '_' + i"
-                              [(ngModel)]="field.value"
-                              rows="3" [disabled]="!field.isEnabled">
+                    <!-- Textarea -->
+                    <ng-container *ngSwitchCase="'textarea'">
+                      <textarea class="form-control"
+                                [id]="field.id + '_' + i"
+                                [(ngModel)]="field.value"
+                                rows="3" [disabled]="!field.isEnabled">
                     </textarea>
-                  </ng-container>
+                    </ng-container>
 
-                  <!-- Checkbox -->
-                  <ng-container *ngSwitchCase="'checkbox'">
-                    <div class="form-check">
-                      <input type="checkbox" class="form-check-input"
-                             [id]="field.id + '_' + i"
-                             [(ngModel)]="field.value" [disabled]="!field.isEnabled">
-                      <label class="form-check-label" [for]="field.id + '_' + i">{{ field.displayName }}</label>
-                    </div>
+                    <!-- Checkbox -->
+                    <ng-container *ngSwitchCase="'checkbox'">
+                      <div class="form-check">
+                        <input type="checkbox" class="form-check-input"
+                               [id]="field.id + '_' + i"
+                               [(ngModel)]="field.value" [disabled]="!field.isEnabled">
+                        <label class="form-check-label" [for]="field.id + '_' + i">{{ field.displayName }}</label>
+                      </div>
+                    </ng-container>
                   </ng-container>
-                </ng-container>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </mat-card>
-
-      <div class="text-center mt-3">
+        </mat-card>
+        <ng-container *ngIf="section.sectionName === 'Decision Notes'">
+          <app-umauthnotes [notesFields]="authorizationNotesFields"
+                           [notesData]="authorizationNotesData"
+                           (NotesSaved)="handleAuthNotesSaved($event)">
+          </app-umauthnotes>
+        </ng-container>
+      </ng-container>
+      <div style="text-align:end;">
         <button class="btn btn-primary" (click)="saveDecisionData()" [disabled]="!canAdd">Save</button>
+        <button class="btn btn-primary" (click)="enableBulkDecision = !enableBulkDecision">
+          {{ enableBulkDecision ? 'Cancel Bulk Decision' : 'Bulk Decision' }}
+        </button>
+
       </div>
 
       <h5>Guidelines</h5>
-      <div class="row">
-        <div class="col-md-3 mb-3">
-          <button class="btn btn-primary">+ MCG</button>
-        </div>
-        <div class="col-md-3 mb-3">
-          <button class="btn btn-primary">+ InterQual</button>
-        </div>
-        <div class="col-md-3 mb-3">
-          <button class="btn btn-primary">+ Internal</button>
-        </div>
-        <div class="col-md-3 mb-3">
-          <button class="btn btn-primary">+ Others</button>
+      <div class="guideline-dropdown">
+        <button class="btn btn-primary">+ Add Guidelines</button>
+        <div class="guideline-options">
+          <button class="dropdown-item" (click)="addGuideline('MCG')">+ MCG</button>
+          <button class="dropdown-item" (click)="addGuideline('InterQual')">+ InterQual</button>
+          <button class="dropdown-item" (click)="addGuideline('Internal')">+ Internal</button>
+          <button class="dropdown-item" (click)="addGuideline('Others')">+ Others</button>
         </div>
       </div>
+
     </div>
   </div>
 </div>

@@ -36,6 +36,7 @@ import { MemberTasksummaryComponent } from './member/member-tasksummary/member-t
 import { MemberInfoComponent } from './member/member-info/member-info.component';
 import { AuthorizationComponent } from './member/UM/authorization/authorization.component';
 import { DecisiondetailsComponent } from './member/UM/decisiondetails/decisiondetails.component';
+import { DecisionbulkdialogComponent } from './member/UM/decisionbulkdialog/decisionbulkdialog.component';
 import { AuthdetailsComponent } from './member/UM/authdetails/authdetails.component';
 import { AuthdynamicComponent } from './member/UM/authdynamic/authdynamic.component';
 import { ProviderSearchComponent } from './Provider/provider-search/provider-search.component';
@@ -160,7 +161,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
     UmauthnotesComponent, UmauthdocumentsComponent, UmauthactivityComponent, ValidationErrorDialogComponent,
     NewDashBoardComponent, NewDashboard2Component,
     ConfigurationComponent, UsermanagementComponent, RolemanagementComponent, ProfilemanagementComponent, AppfeaturesetupComponent, PermissionManagerComponent,
-    UmdocumenttypeComponent, SettingsDialogComponent, UmactivitytypeComponent, DialogContentComponent, UmnotetypeComponent, ExternallinksComponent,
+    UmdocumenttypeComponent, SettingsDialogComponent, UmactivitytypeComponent, DecisionbulkdialogComponent, DialogContentComponent, UmnotetypeComponent, ExternallinksComponent,
     UmclaimtypeComponent, UmactivitypriorityComponent, UmadmissionlevelComponent, UmadmissiontypeComponent, UmadmitreasonComponent,
     UmcertificationtypeComponent, UmdenialtypeComponent, UmdeterminationtypeComponent, UmdischargetoComponent, UmdischargetypeComponent,
     UmmedicationfrequencyComponent, UmnotificationtypeComponent, UmoutofareaindicatorComponent, UmplaceofserviceComponent, UmprescriptionquantityComponent,
@@ -212,6 +213,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
       { path: 'member-decision/:id', component: DecisiondetailsComponent },
       { path: 'member-authdetails', component: AuthdetailsComponent },
       { path: 'member-um-validation', component: ValidationErrorDialogComponent },
+      { path: 'member-decisionbulk', component: DecisionbulkdialogComponent },
 
 
 

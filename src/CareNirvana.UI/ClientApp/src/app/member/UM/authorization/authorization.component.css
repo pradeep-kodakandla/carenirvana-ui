@@ -17,18 +17,6 @@ body {
   padding: 20px;
 }
 
-/* Horizontal Stepper */
-.mat-horizontal-stepper .mat-horizontal-content-container,
-.mat-horizontal-content-container {
-  display: none;
-  padding: 0 !important;
-}
-
-.mat-horizontal-content-container {
-  overflow: hidden;
-  padding: 0px !important;
-}
-
 /* Main Form & Row */
 .main-form {
   border-radius: 4px;
@@ -636,4 +624,3 @@ textarea.form-control {
   font-size: 13px;
   top: -10px !important;
 }
-

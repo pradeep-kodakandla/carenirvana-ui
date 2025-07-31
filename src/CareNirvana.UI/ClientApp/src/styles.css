@@ -21,19 +21,20 @@ html, body {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
-/*  overflow-y:  unset;
-*/}
+  /*  overflow-y:  unset;
+*/
+}
 
 main {
- /* min-height: 100vh;*/ /* Ensures content fills the screen */
+  /* min-height: 100vh;*/ /* Ensures content fills the screen */
   padding-bottom: 25px; /* This ensures space for the footer */
 }
 
 .container {
   min-height: 90vh; /* Ensures content fills the screen */
-  padding-bottom: 20px;  /*This ensures space for the footer */
-  margin:5px !important;
-  overflow:auto;
+  padding-bottom: 20px; /*This ensures space for the footer */
+  margin: 5px !important;
+  overflow: auto;
 }
 
 .sidebar {
@@ -82,8 +83,8 @@ body {
 }
 
 
-.mat-mdc-table{
-    background-color:transparent !important;
+.mat-mdc-table {
+  background-color: transparent !important;
 }
 
 .mat-mdc-header-cell {
@@ -135,6 +136,7 @@ body {
   /*  margin: 20px;
 */ overflow-x: auto;
 }
+
 table {
   width: 100%; /* Ensures the table adapts to the container */
 }
@@ -287,4 +289,45 @@ icon-admin {
 
 
 
+/* Horizontal Stepper */
 
+
+.mat-horizontal-content-container {
+  overflow: hidden;
+  padding: 1px !important;
+}
+
+/* Base step header — grey arrows */
+.mat-horizontal-stepper-header {
+  position: relative;
+  background-color: #ccc;
+  color: white;
+  margin-right: 5px;
+  padding: 8px 16px;
+  clip-path: polygon(0% 0%, calc(100% - 10px) 0%, 100% 50%, calc(100% - 10px) 100%, 0% 100%, 10px 50%);
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  font-weight: 600;
+  cursor: pointer;
+  height: 40px !important;
+}
+
+  .mat-horizontal-stepper-header[aria-selected='true'] {
+    background-color: green !important; /* Green for active */
+    transform: scale(1.05);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    color: white !important;
+  }
+
+  .mat-horizontal-stepper-header[aria-selected='false']:hover {
+    background-color: #999;
+    transform: scale(1.03);
+  }
+
+  .mat-horizontal-stepper-header .mat-step-icon {
+    display: none;
+  }
+
+  .mat-horizontal-stepper-header[aria-selected='true'] .mat-step-label {
+    color: white !important; /* ✅ Force step label to be white */
+    font-weight: bold;
+  }

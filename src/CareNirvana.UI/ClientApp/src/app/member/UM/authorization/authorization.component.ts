@@ -15,7 +15,8 @@ import { AuthenticateService } from 'src/app/service/authentication.service';
 @Component({
   selector: 'app-authorization',
   templateUrl: './authorization.component.html',
-  styleUrls: ['./authorization.component.css']
+  styleUrls: ['./authorization.component.css'],
+ 
 })
 export class AuthorizationComponent {
   stepperSelectedIndex = 0;
@@ -90,6 +91,8 @@ export class AuthorizationComponent {
 
   loggedInUsername: string = '';
 
+  dropdownPosition: { [key: string]: 'up' | 'down' } = {};
+
   //********** Method to highlight the selected section and autocomplete ************//
 
   filterOptions(field: any, inputValue: string, section: string, index: number) {
@@ -138,6 +141,7 @@ export class AuthorizationComponent {
       this.filteredOptions[key] = field.options || [];
       this.showDropdown[key] = true;
     }
+
   }
 
   onBlur(field: any, section: string, index: number) {
@@ -1439,9 +1443,9 @@ export class AuthorizationComponent {
     this.saveTypeFrom = 'Notes';
     this.saveData(this.formData, false);
 
-    setTimeout(() => {
-      this.authorizationNotesData = [...this.formData['Authorization Notes'].entries];
-    }, 300); // small delay so Save API call completes
+    //setTimeout(() => {
+    //  this.authorizationNotesData = [...this.formData['Authorization Notes'].entries];
+    //}, 30); // small delay so Save API call completes
   }
 
   /*************Notes Data***************/

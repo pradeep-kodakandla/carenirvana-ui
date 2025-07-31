@@ -43,9 +43,9 @@
       </div>
     </ng-template>
     <!-- Horizontal Stepper -->
-    <mat-horizontal-stepper style="padding: 0; margin:-10px; background-color:transparent;" [selectedIndex]="stepperSelectedIndex" #stepper>
-      <mat-step label="Request Details" style="padding: 0;">
-        <div class="content" style="padding: 0;">
+    <mat-horizontal-stepper style="padding: 5px;  background-color:transparent;" [selectedIndex]="stepperSelectedIndex" #stepper>
+      <mat-step label="Request Details" >
+        <div class="content" style="padding-top: 5px;">
           <div class="main-form" style="padding: 0;">
             <!-- Wrap dynamic form in an NgForm -->
             <form #authForm="ngForm">
