@@ -21,14 +21,17 @@
 
     <!-- RIGHT PANE -->
     <div class="right-pane" *ngIf="selectedAuth">
-      <div class="top-controls">
-        <button (click)="onPrevious()" [disabled]="selectedIndex === 0">&lt; Previous</button>
-        <span>Review {{ selectedIndex! + 1 }} of {{ auths.length }}</span>
-        <button (click)="onNext()" [disabled]="selectedIndex === auths.length - 1">Next &gt;</button>
+      <div class="review-header-bar">
+        <h2>Authorization Review</h2>
+        <div class="review-controls">
+          <button (click)="onPrevious()" [disabled]="selectedIndex === 0">&lt; Previous</button>
+          <span>Review {{ selectedIndex! + 1 }} of {{ auths.length }}</span>
+          <button (click)="onNext()" [disabled]="selectedIndex === auths.length - 1">Next &gt;</button>
+        </div>
       </div>
 
       <div class="review-header">
-        <h2>Authorization Review</h2>
+
         <p>
           Due Date: {{ selectedAuth.dueDate }} | Priority: {{ selectedAuth.priority }}
         </p>
@@ -38,11 +41,29 @@
       <div class="review-content">
         <h3>Clinical Context & Instructions</h3>
         <h4>Clinical Documents</h4>
-        <p><strong>Member ID:</strong> {{ selectedAuth.memberId }}</p>
-        <p><strong>Auth #:</strong> {{ selectedAuth.authNumber }}</p>
-        <p><strong>Auth Type:</strong> {{ selectedAuth.authType }}</p>
-        <p><strong>Facility:</strong> {{ selectedAuth.facility }}</p>
-        <p><strong>Network Status:</strong> {{ selectedAuth.networkStatus }}</p>
+        <div class="clinical-documents">
+          <div class="field">
+            <label>Member ID:</label>
+            <span>{{ selectedAuth.memberId }}</span>
+          </div>
+          <div class="field">
+            <label>Auth #:</label>
+            <span>{{ selectedAuth.authNumber }}</span>
+          </div>
+          <div class="field">
+            <label>Auth Type:</label>
+            <span>{{ selectedAuth.authType }}</span>
+          </div>
+          <div class="field">
+            <label>Facility:</label>
+            <span>{{ selectedAuth.facility }}</span>
+          </div>
+          <div class="field">
+            <label>Network Status:</label>
+            <span>{{ selectedAuth.networkStatus }}</span>
+          </div>
+        </div>
+
 
         <h4>Service Lines</h4>
         <table class="service-table">
