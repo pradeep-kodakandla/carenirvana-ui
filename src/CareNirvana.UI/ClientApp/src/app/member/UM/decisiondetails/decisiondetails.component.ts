@@ -313,75 +313,82 @@ export class DecisiondetailsComponent implements OnChanges {
   }
 
   saveDecisionData(): void {
-    // Check if a tab is selected
     if (!this.selectedTabId) {
       console.warn("No tab selected. Cannot save decision data.");
       return;
     }
 
-    // Find the index of the selected tab
     const tabIndex = this.tabs.findIndex(tab => tab.id === this.selectedTabId);
     if (tabIndex === -1) {
       console.warn(`Selected tab with ID ${this.selectedTabId} not found.`);
       return;
     }
 
+    let hasValidationError = false;
+    let decisionValue: any = "";
+    let selectedTabs = [this.tabs[tabIndex]];
+
+    // If bulk decision is enabled, validate and prepare selected tabs
     if (this.enableBulkDecision) {
-      const selectedTabs = this.tabs.filter(t => t.selected);
-      if (selectedTabs.length > 0) {
-        const currentSection = this.sections.find(s => s.sectionName === this.tabs.find(t => t.id === this.selectedTabId)?.name);
-        const decisionField = currentSection?.fields.find(f => f.id === 'decisionStatus_1');
+      selectedTabs = this.tabs.filter(t => t.selected);
+      const currentSection = this.sections.find(s => s.sectionId === this.selectedTabId);
+      const decisionField = currentSection?.fields.find(f => f.id === 'decisionStatus');
 
-        if (decisionField && decisionField.value) {
-          const decisionValue = decisionField.value;
-          const decisionDisplay = decisionField.displayLabel;
+      if (!decisionField || !decisionField.value) {
+        alert('Please set Decision Status in the current tab before applying bulk decision.');
+        return;
+      }
 
-          selectedTabs.forEach(tab => {
-            const section = this.sections.find(s => s.sectionName === tab.name);
-            const fieldToUpdate = section?.fields.find(f => f.id === 'decisionStatus_1');
-            if (fieldToUpdate) {
-              fieldToUpdate.value = decisionValue;
-              fieldToUpdate.displayLabel = decisionDisplay;
-            }
-          });
+      decisionValue = decisionField.value;
+      const decisionDisplay = decisionField.displayLabel;
 
-          alert(`Bulk decision '${decisionDisplay}' applied to ${selectedTabs.length} tab(s).`);
-          this.enableBulkDecision = false;
-          this.tabs.forEach(t => t.selected = false);
-        } else {
-          alert('Please set Decision Status in the current tab before applying bulk decision.');
-          return;
-        }
-      } else {
+      if (selectedTabs.length === 0) {
         alert('Please select at least one tab to apply bulk decision.');
         return;
       }
+
+      //selectedTabs.forEach(tab => {
+      //  const section = this.sections.find(s => s.sectionName === tab.name);
+      //  const fieldToUpdate = section?.fields.find(f => f.id === 'decisionStatus');
+      //  if (fieldToUpdate) {
+      //    fieldToUpdate.value = decisionValue;
+      //    fieldToUpdate.displayLabel = decisionDisplay;
+      //  }
+      //});
+
+      alert(`Bulk decision '${decisionField.displayLabel}' applied to ${selectedTabs.length} tab(s).`);
     }
 
-    // Define the mapping of section names to decisionData keys
+    // Define section mapping
     const sectionKeyMap: { [key: string]: string } = {
       "Decision Details": "decisionDetails",
       "Decision Notes": "decisionNotes",
       "Member Provider Decision Info": "decisionMemberInfo"
     };
 
-    let hasValidationError = false;
-    // Update the entries for each section based on the selected tab's index
-    this.sections.forEach(section => {
-      const sectionKey = sectionKeyMap[section.sectionName];
-      if (sectionKey && this.decisionData[sectionKey]?.entries[tabIndex]) {
-        const entry = this.decisionData[sectionKey].entries[tabIndex];
-        const previousStatus = this.decisionData.decisionDetails.entries[tabIndex].decisionStatus;
+    console.log('Selected tabs:', selectedTabs);
+
+    selectedTabs.forEach(tab => {
+      const index = this.tabs.findIndex(t => t.id === tab.id);
+      console.log('Processing tab index:', index);
+      this.sections.forEach(section => {
+        const sectionKey = sectionKeyMap[section.sectionName];
+        if (!sectionKey || !this.decisionData[sectionKey]?.entries[index]) {
+          console.warn(`Section ${section.sectionName} or entry at index ${index} not found in decisionData.`);
+          return;
+        }
+
+        const entry = this.decisionData[sectionKey].entries[index];
         const currentStatus = section.fields.find(f => f.id === 'decisionStatus')?.value;
+        const previousStatus = this.decisionData.decisionDetails.entries[index].decisionStatus;
 
         section.fields.forEach(field => {
           entry[field.id] = field.value;
         });
+
         const now = this.formatToEST(new Date());
 
-
-        // Business Rules Check
-        if (section.sectionName === 'Decision Details') {
+        if (!this.enableBulkDecision && section.sectionName === 'Decision Details') {
           const requested = entry.requested || '';
           const approved = entry.approved || '0';
           const denied = entry.denied || '0';
@@ -405,27 +412,44 @@ export class DecisiondetailsComponent implements OnChanges {
             alert('If status is Denied, Approved should be 0.');
             hasValidationError = true;
           }
-
-          // Update decisionDateTime if decisionStatus changed
-          if (previousStatus !== currentStatus) {
-            this.decisionData.decisionDetails.entries[tabIndex].decisionDateTime = now;
-          }
-
-          // Always update updatedDateTime
-          this.decisionData.decisionDetails.entries[tabIndex].updatedDateTime = now;
         }
-      } else {
-        console.warn(`Section ${section.sectionName} or entry at index ${tabIndex} not found in decisionData.`);
-      }
+
+        // Update timestamps
+        if (previousStatus !== currentStatus) {
+          this.decisionData.decisionDetails.entries[index].decisionDateTime = now;
+        }
+        this.decisionData.decisionDetails.entries[index].updatedDateTime = now;
+
+        // For bulk, set approved/denied based on decision
+        if (this.enableBulkDecision && section.sectionName === 'Decision Details') {
+
+          console.log('Bulk decision value:', decisionValue);
+          console.log('Decision Status:', this.decisionData.decisionDetails.entries[index].decisionStatus);
+
+          this.decisionData.decisionDetails.entries[index].decisionStatus = decisionValue;
+          if (decisionValue === '1') {
+            this.decisionData.decisionDetails.entries[index].approved = entry.requested || '';
+            this.decisionData.decisionDetails.entries[index].denied = 0;
+          } else if (decisionValue === '3') {
+            this.decisionData.decisionDetails.entries[index].denied = entry.requested || '';
+            this.decisionData.decisionDetails.entries[index].approved = 0;
+          }
+        }
+      });
     });
-    if (hasValidationError) return
-    // Emit the updated decisionData to the parent component
+
+    if (this.enableBulkDecision) {
+      this.enableBulkDecision = false;
+      this.tabs.forEach(t => t.selected = false);
+    }
+
+    if (hasValidationError) return;
+
+    console.log('Decision data before saving:', this.decisionData);
+
     this.decisionSaved.emit(this.decisionData);
-
-    // Reload the sections to reflect the saved changes in the UI
-    // this.loadSectionsForTab(this.selectedTabId);
-
   }
+
 
   toggleSection(section: Section): void {
     section.expanded = !section.expanded;
@@ -643,7 +667,9 @@ export class DecisiondetailsComponent implements OnChanges {
     // Implement action based on type
   }
 
+  @Output() goToMdReview = new EventEmitter<void>();
 
-
-
+  gotoMDReview() {
+    this.goToMdReview.emit();
+  }
 }

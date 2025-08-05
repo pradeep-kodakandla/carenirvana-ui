@@ -6,7 +6,7 @@ import { MyactivitiesComponent } from './myactivities/myactivities.component';
 import { AssignedcomplaintsComponent } from './assignedcomplaints/assignedcomplaints.component';
 import { FaxesComponent } from './faxes/faxes.component';
 import { RolepermissionService, CfgRole } from 'src/app/service/rolepermission.service';
-
+import { MdreviewdashboardComponent } from './mdreviewdashboard/mdreviewdashboard.component';
 
 interface DashboardWidget {
   key: string;
@@ -140,6 +140,9 @@ export class DashBoardComponent {
         break;
       case 'faxes':
         this.loadComponent(FaxesComponent);
+        break;
+      case 'mdreview':
+        this.loadComponent(MdreviewdashboardComponent);
         break;
     }
   }

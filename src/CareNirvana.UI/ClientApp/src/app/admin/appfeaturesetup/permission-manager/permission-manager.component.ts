@@ -316,7 +316,8 @@ export class PermissionManagerComponent implements OnInit {
     { key: 'requests', defaultLabel: 'Requests', customLabel: 'Requests', enabled: true },
     { key: 'myActivities', defaultLabel: 'My Activities', customLabel: 'My Activities', enabled: true },
     { key: 'assignedComplaints', defaultLabel: 'Assigned Complaints', customLabel: 'Assigned Complaints', enabled: true },
-    { key: 'faxes', defaultLabel: 'Faxes', customLabel: 'Faxes', enabled: true }
+    { key: 'faxes', defaultLabel: 'Faxes', customLabel: 'Faxes', enabled: true },
+    { key: 'mdreview', defaultLabel: 'MD Review', customLabel: 'MD Review', enabled: true },
   ];
 
   defaultWidget: string = 'myCaseLoad';

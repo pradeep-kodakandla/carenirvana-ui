@@ -891,20 +891,19 @@
                              [canAdd]="hasPagePermission('Decision Details', 'Add')"
                              [canEdit]="hasPagePermission('Decision Details', 'Edit')"
                              [canView]="hasPagePermission('Decision Details', 'View')"
-                             (decisionSaved)="handleDecisionDataSaved($event)">
+                             (decisionSaved)="handleDecisionDataSaved($event)"
+                             (goToMdReview)="stepper.selectedIndex = 2">
         </app-decisiondetails>
       </mat-step>
 
-      <mat-step label="MD Review" [completed]="!!authNumber" [editable]="!!authNumber"></mat-step>
-      <!--<mat-step label="MD Review"
+      <!--<mat-step label="MD Review" [completed]="!!authNumber" [editable]="!!authNumber"></mat-step>-->
+      <mat-step label="MD Review"
                 *ngIf="hasPagePermission('MD Review', 'View')"
                 [completed]="!!authNumber"
                 [editable]="!!authNumber">
-        <app-mdreview [canAdd]="hasPagePermission('MD Review', 'Add')"
-                      [canEdit]="hasPagePermission('MD Review', 'Edit')"
-                      [canView]="hasPagePermission('MD Review', 'View')">
+        <app-mdreview>
         </app-mdreview>
-      </mat-step>-->
+      </mat-step>
 
       <mat-step label="Activity"
                 *ngIf="hasPagePermission('Auth Activity', 'View')"

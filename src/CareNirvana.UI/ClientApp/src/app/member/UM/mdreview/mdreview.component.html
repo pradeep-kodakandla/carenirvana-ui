@@ -1,0 +1,181 @@
+<div class="auth-form">
+  <form [formGroup]="mdrForm">
+    <div class="form-grid">
+
+      <!-- Assignment Type -->
+      <div class="form-outline dropdown-container">
+        <label class="floating-label">Assignment Type <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" formControlName="assignmentType" />
+      </div>
+
+      <!-- Activity Type -->
+      <div class="form-outline dropdown-container">
+        <label class="floating-label">Activity Type <span class="text-danger">*</span></label>
+        <div class="input-with-icon">
+          <input type="text" class="form-control" [value]="activityTypeDisplay"
+                 (input)="onDropdownInput($event, 'activityType')"
+                 (focus)="openDropdown('activityType')"
+                 (blur)="closeDropdown('activityType')" />
+          <span class="dropdown-arrow">&#9662;</span>
+          <div class="autocomplete-dropdown" *ngIf="showDropdowns.activityType && filteredActivityTypes?.length">
+            <div class="autocomplete-option" *ngFor="let option of filteredActivityTypes"
+                 (mousedown)="selectDropdownOption('activityType', option)">
+              {{ option.label }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Priority -->
+      <div class="form-outline dropdown-container">
+        <label class="floating-label">Priority <span class="text-danger">*</span></label>
+        <div class="input-with-icon">
+          <input type="text" class="form-control" [value]="priorityDisplay"
+                 (input)="onDropdownInput($event, 'priority')"
+                 (focus)="openDropdown('priority')"
+                 (blur)="closeDropdown('priority')" />
+          <span class="dropdown-arrow">&#9662;</span>
+          <div class="autocomplete-dropdown" *ngIf="showDropdowns.priority && filteredPriorities?.length">
+            <div class="autocomplete-option" *ngFor="let option of filteredPriorities"
+                 (mousedown)="selectDropdownOption('priority', option)">
+              {{ option.label }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Assign To -->
+      <div class="form-outline dropdown-container">
+        <label class="floating-label">Assign To <span class="text-danger">*</span></label>
+        <div class="input-with-icon">
+          <input type="text" class="form-control" [value]="assignToDisplay"
+                 (input)="onDropdownInput($event, 'assignTo')"
+                 (focus)="openDropdown('assignTo')"
+                 (blur)="closeDropdown('assignTo')" />
+          <span class="dropdown-arrow">&#9662;</span>
+          <div class="autocomplete-dropdown" *ngIf="showDropdowns.assignTo && filteredUsers?.length">
+            <div class="autocomplete-option" *ngFor="let option of filteredUsers"
+                 (mousedown)="selectDropdownOption('assignTo', option)">
+              {{ option.label }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scheduled Date -->
+      <div class="form-outline position-relative">
+        <label class="floating-label">Scheduled Date & Time <span class="text-danger">*</span></label>
+        <div class="input-with-icon">
+          <input type="text" class="form-control" formControlName="scheduledDateTime"
+                 placeholder="Enter D, D+1, D-1 or select"
+                 [value]="scheduledDateText"
+                 (input)="onDateTextChange($event, 'scheduledDateTime')"
+                 (blur)="handleDateBlur('scheduledDateTime')" />
+          <button type="button" class="calendar-icon-btn" (click)="triggerCalendar('scheduled')">📅</button>
+          <input type="datetime-local" #scheduledPicker style="opacity: 0; position: absolute;"
+                 (change)="handleCalendarChange($event, 'scheduledDateTime')" />
+        </div>
+      </div>
+
+      <!-- Due Date -->
+      <div class="form-outline position-relative">
+        <label class="floating-label">Due Date & Time <span class="text-danger">*</span></label>
+        <div class="input-with-icon">
+          <input type="text" class="form-control" formControlName="dueDateTime"
+                 placeholder="Enter D, D+1, D-1 or select"
+                 [value]="dueDateText"
+                 (input)="onDateTextChange($event, 'dueDateTime')"
+                 (blur)="handleDateBlur('dueDateTime')" />
+          <button type="button" class="calendar-icon-btn" (click)="triggerCalendar('due')">📅</button>
+          <input type="datetime-local" #duePicker style="opacity: 0; position: absolute;"
+                 (change)="handleCalendarChange($event, 'dueDateTime')" />
+        </div>
+      </div>
+
+      <!-- Work Basket -->
+      <div class="form-outline dropdown-container">
+        <label class="floating-label">Work Basket</label>
+        <div class="input-with-icon">
+          <input type="text" class="form-control" [value]="workBasketDisplay"
+                 (input)="onDropdownInput($event, 'workBasket')"
+                 (focus)="openDropdown('workBasket')"
+                 (blur)="closeDropdown('workBasket')" />
+          <span class="dropdown-arrow">&#9662;</span>
+          <div class="autocomplete-dropdown" *ngIf="showDropdowns.workBasket && filteredWorkBaskets?.length">
+            <div class="autocomplete-option" *ngFor="let option of filteredWorkBaskets"
+                 (mousedown)="selectDropdownOption('workBasket', option)">
+              {{ option.label }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Work Basket Users -->
+      <div class="form-outline dropdown-container">
+        <label class="floating-label">Work Basket Users</label>
+        <div class="input-with-icon">
+          <input type="text" class="form-control" [value]="workBasketUserDisplay"
+                 [disabled]="!mdrForm.get('workBasket')?.value"
+                 (input)="onDropdownInput($event, 'workBasketUser')"
+                 (focus)="openDropdown('workBasketUser')"
+                 (blur)="closeDropdown('workBasketUser')" />
+          <span class="dropdown-arrow">&#9662;</span>
+          <div class="autocomplete-dropdown" *ngIf="showDropdowns.workBasketUser && filteredUsers?.length">
+            <div class="autocomplete-option" *ngFor="let option of filteredUsers"
+                 (mousedown)="selectDropdownOption('workBasketUser', option)">
+              {{ option.label }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Clinical Context -->
+      <div class="form-outline full-width" style="grid-column: span 2;">
+        <label class="floating-label">Clinical Context & Instructions</label>
+        <textarea class="form-control" rows="3" formControlName="clinicalInstructions"></textarea>
+      </div>
+    </div>
+
+    <h3>Select the service lines for review</h3>
+    <div class="service-line-table-wrapper">
+      <table class="service-line-table">
+        <thead>
+          <tr>
+            <th><input type="checkbox" [checked]="isAllSelected()" (change)="toggleAllSelection($event)" /></th>
+            <th>Service Code</th>
+            <th>Service Description</th>
+            <th>From Date</th>
+            <th>To Date</th>
+            <th>Requested</th>
+            <th>Approved</th>
+            <th>Denied</th>
+            <th>Initial Recommendation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let line of serviceLines; let i = index">
+            <td>
+              <input type="checkbox"
+                     [(ngModel)]="line.selected"
+                     [ngModelOptions]="{ standalone: true }"
+                     name="lineSelect{{i}}" />
+            </td>
+            <td><a href="#">{{ line.serviceCode }}</a></td>
+            <td><a href="#">{{ line.description }}</a></td>
+            <td>{{ line.fromDate }}</td>
+            <td>{{ line.toDate }}</td>
+            <td>{{ line.requested }}</td>
+            <td>{{ line.approved }}</td>
+            <td>{{ line.denied }}</td>
+            <td><button [ngClass]="getRecommendationClass(line.recommendation)">{{ line.recommendation }}</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="button-group">
+      <button type="button" (click)="submitReview()">Submit for Medical Director Review</button>
+      <button type="button" (click)="cancelReview()">Cancel</button>
+    </div>
+  </form>
+</div>

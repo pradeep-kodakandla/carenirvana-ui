@@ -1,0 +1,262 @@
+/* ----- Global Layout ----- */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.main-wrapper {
+  /*  height: 100vh;
+  width: 100vw;*/
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  display: flex;
+/*  width: 100%;
+  height: 100%;*/
+  transition: all 0.3s ease;
+  background: linear-gradient(to right, #e0f7fa, #f9fbfd);
+  max-width: 1600px !important;
+}
+
+/* ----- Left Side: Cards ----- */
+.left-pane {
+  width: 100%;
+  transition: width 0.3s ease;
+  padding: 8px 12px;
+  overflow-y: auto;
+  background: linear-gradient(to right, #eef4f8, #f8fcff);
+}
+
+.container.review-mode .left-pane {
+  width: 25%;
+  backdrop-filter: blur(10px);
+/*  background: rgba(255, 255, 255, 0.4);*/
+  border-right: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+/* ----- Right Side: Review ----- */
+.right-pane {
+  display: none;
+}
+
+.container.review-mode .right-pane {
+  display: block;
+  width: 75%;
+  padding: 16px 20px;
+  overflow-y: auto;
+  backdrop-filter: blur(14px);
+  background: rgba(255, 255, 255, 0.6);
+  border-left: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.05);
+}
+
+/* ----- Cards ----- */
+.card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+  border-left: 4px solid transparent;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+  .card:hover {
+    transform: translateY(-1px);
+    border-left-color: #007bba;
+  }
+
+  .card.selected {
+    border-left-color: #32b3a3;
+    background: rgba(255, 255, 255, 0.9);
+  }
+
+  .card p {
+    margin: 0; /* remove space between fields */
+    padding: 2px 0; /* optional: minimal vertical breathing room */
+    font-size: 13px;
+    color: #333;
+    line-height: 1.3;
+  }
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-weight: bold;
+  color: #007bba;
+}
+
+.review-btn {
+  background: #007bba;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-size: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+  .review-btn:hover {
+    background: #005e8c;
+  }
+
+/* ----- Top Controls (Next/Previous) ----- */
+.top-controls {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+  .top-controls button {
+    background: #007bba;
+    color: white;
+    border: none;
+    padding: 5px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+
+    .top-controls button:disabled {
+      background: #cccccc;
+      cursor: not-allowed;
+    }
+
+/* ----- Review Content ----- */
+.review-header h2 {
+  margin: 0;
+  color: #333;
+}
+
+.review-header p {
+  margin: 2px 0;
+  color: #666;
+  font-size: 13px;
+}
+
+.review-content h3,
+.review-content h4 {
+  margin: 12px 0 4px;
+  color: #007bba;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 3px;
+}
+
+.review-content p {
+  margin: 2px 0;
+  font-size: 13px;
+  color: #444;
+}
+
+/* ----- Table ----- */
+.service-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  margin-top: 6px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+  .service-table th,
+  .service-table td {
+    border: 1px solid #ddd;
+    padding: 4px 6px;
+    text-align: left;
+  }
+
+  .service-table th {
+    background-color: #eaf3f8;
+    color: #007bba;
+  }
+
+/* ----- Decision Section ----- */
+.decision-options {
+  margin: 10px 0 6px;
+  font-size: 13px;
+}
+
+  .decision-options label {
+    display: block;
+    margin-bottom: 4px;
+    cursor: pointer;
+  }
+
+.green {
+  color: #2E7D32;
+}
+
+.red {
+  color: #C62828;
+}
+
+.blue {
+  color: #1565C0;
+}
+
+/* ----- Textarea ----- */
+textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #bbb;
+  border-radius: 5px;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.9);
+  resize: vertical;
+  margin-top: 6px;
+}
+
+/* ----- Action Buttons (Sticky Footer) ----- */
+.action-buttons {
+  margin-top: 16px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-start;
+  padding-top: 8px;
+  border-top: 1px solid #ccc;
+  background: rgba(255, 255, 255, 0.9);
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.04);
+}
+
+  .action-buttons button {
+    padding: 6px 14px;
+    font-size: 13px;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+  }
+
+.submit {
+  background-color: #32b3a3;
+  color: white;
+}
+
+.save {
+  background-color: #aaa;
+  color: white;
+}
+
+.close {
+  background-color: #f44336;
+  color: white;
+}

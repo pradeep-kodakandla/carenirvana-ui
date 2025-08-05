@@ -1,0 +1,94 @@
+<div class="main-wrapper">
+  <div class="container" [class.review-mode]="selectedIndex !== null">
+    <!-- LEFT PANE -->
+    <div class="left-pane">
+      <div class="card-list">
+        <div *ngFor="let auth of auths; let i = index"
+             class="card"
+             [class.selected]="isSelected(i)"
+             (click)="onReviewClick(i)">
+          <div class="card-header">
+            <strong>{{ auth.firstName }} {{ auth.lastName }}</strong>
+            <button class="review-btn" (click)="onReviewClick(i); $event.stopPropagation()">Review</button>
+          </div>
+          <p>Auth #: {{ auth.authNumber }}</p>
+          <p>Type: {{ auth.authType }}</p>
+          <p>Due: {{ auth.dueDate }}</p>
+          <p>Priority: {{ auth.priority }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANE -->
+    <div class="right-pane" *ngIf="selectedAuth">
+      <div class="top-controls">
+        <button (click)="onPrevious()" [disabled]="selectedIndex === 0">&lt; Previous</button>
+        <span>Review {{ selectedIndex! + 1 }} of {{ auths.length }}</span>
+        <button (click)="onNext()" [disabled]="selectedIndex === auths.length - 1">Next &gt;</button>
+      </div>
+
+      <div class="review-header">
+        <h2>Authorization Review</h2>
+        <p>
+          Due Date: {{ selectedAuth.dueDate }} | Priority: {{ selectedAuth.priority }}
+        </p>
+        <p><strong>Overall Recommendation:</strong> {{ selectedAuth.recommendation }}</p>
+      </div>
+
+      <div class="review-content">
+        <h3>Clinical Context & Instructions</h3>
+        <h4>Clinical Documents</h4>
+        <p><strong>Member ID:</strong> {{ selectedAuth.memberId }}</p>
+        <p><strong>Auth #:</strong> {{ selectedAuth.authNumber }}</p>
+        <p><strong>Auth Type:</strong> {{ selectedAuth.authType }}</p>
+        <p><strong>Facility:</strong> {{ selectedAuth.facility }}</p>
+        <p><strong>Network Status:</strong> {{ selectedAuth.networkStatus }}</p>
+
+        <h4>Service Lines</h4>
+        <table class="service-table">
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Description</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Req.</th>
+              <th>Appr.</th>
+              <th>Denied</th>
+              <th>Initial</th>
+              <th>Director</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let line of selectedAuth.serviceLines">
+              <td><a href="#">{{ line.code }}</a></td>
+              <td>{{ line.desc }}</td>
+              <td>{{ line.from }}</td>
+              <td>{{ line.to }}</td>
+              <td>{{ line.req }}</td>
+              <td>{{ line.appr }}</td>
+              <td>{{ line.denied }}</td>
+              <td>{{ line.initial }}</td>
+              <td>{{ line.director }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h4>Medical Director Decision</h4>
+        <div class="decision-options">
+          <label><input type="radio" name="decision"> <span class="green">Approve</span></label><br />
+          <label><input type="radio" name="decision"> <span class="red">Deny</span></label><br />
+          <label><input type="radio" name="decision"> <span class="blue">Request more information</span></label>
+        </div>
+
+        <textarea rows="4" placeholder="Comments and Recommendations"></textarea>
+
+        <div class="action-buttons">
+          <button class="submit">Submit Decision</button>
+          <button class="save">Save & Continue Later</button>
+          <button class="close" (click)="closeReview()">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

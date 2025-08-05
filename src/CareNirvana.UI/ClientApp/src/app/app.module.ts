@@ -24,6 +24,7 @@ import { AssignedcomplaintsComponent } from './dash-board/assignedcomplaints/ass
 import { FaxesComponent } from './dash-board/faxes/faxes.component';
 import { NewDashBoardComponent } from './dash-board/new-dash-board/new-dash-board.component';
 import { NewDashboard2Component } from './dash-board/new-dashboard2/new-dashboard2.component';
+import { MdreviewdashboardComponent } from './dash-board/mdreviewdashboard/mdreviewdashboard.component';
 
 import { MemberAlertsComponent } from './member/member-alerts/member-alerts.component';
 import { MemberCareplanComponent } from './member/member-careplan/member-careplan.component';
@@ -44,6 +45,7 @@ import { UmauthnotesComponent } from './member/UM/umauthnotes/umauthnotes.compon
 import { UmauthdocumentsComponent } from './member/UM/umauthdocuments/umauthdocuments.component';
 import { UmauthactivityComponent } from './member/UM/umauthactivity/umauthactivity.component';
 import { ValidationErrorDialogComponent } from './member/validation-error-dialog/validation-error-dialog.component';
+import { MdreviewComponent } from './member/UM/mdreview/mdreview.component';
 
 import { ConfigurationComponent } from './admin/configuration/configuration.component';
 import { UsermanagementComponent } from './admin/usermanagement/usermanagement.component';
@@ -158,8 +160,8 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
     MemberProgramComponent,
     MemberTasksummaryComponent,
     MemberInfoComponent, AuthorizationComponent, DecisiondetailsComponent, AuthdetailsComponent, AuthdynamicComponent, ProviderSearchComponent,
-    UmauthnotesComponent, UmauthdocumentsComponent, UmauthactivityComponent, ValidationErrorDialogComponent,
-    NewDashBoardComponent, NewDashboard2Component,
+    UmauthnotesComponent, UmauthdocumentsComponent, UmauthactivityComponent, ValidationErrorDialogComponent, MdreviewComponent,
+    NewDashBoardComponent, NewDashboard2Component, MdreviewdashboardComponent,
     ConfigurationComponent, UsermanagementComponent, RolemanagementComponent, ProfilemanagementComponent, AppfeaturesetupComponent, PermissionManagerComponent,
     UmdocumenttypeComponent, SettingsDialogComponent, UmactivitytypeComponent, DecisionbulkdialogComponent, DialogContentComponent, UmnotetypeComponent, ExternallinksComponent,
     UmclaimtypeComponent, UmactivitypriorityComponent, UmadmissionlevelComponent, UmadmissiontypeComponent, UmadmitreasonComponent,
@@ -198,6 +200,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
       { path: 'dash-myactivities', component: MyactivitiesComponent },
       { path: 'dash-assigncomplaint', component: AssignedcomplaintsComponent },
       { path: 'dash-faxes', component: FaxesComponent },
+      { path: 'dash-mdreview', component: MdreviewdashboardComponent },
 
       { path: 'member-alerts', component: MemberAlertsComponent },
       { path: 'member-careplan', component: MemberCareplanComponent },
@@ -214,9 +217,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
       { path: 'member-authdetails', component: AuthdetailsComponent },
       { path: 'member-um-validation', component: ValidationErrorDialogComponent },
       { path: 'member-decisionbulk', component: DecisionbulkdialogComponent },
-
-
-
+      { path: 'member-mdreview', component: MdreviewComponent }, 
 
 
 

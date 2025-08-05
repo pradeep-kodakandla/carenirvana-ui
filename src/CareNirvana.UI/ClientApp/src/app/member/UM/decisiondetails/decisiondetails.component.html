@@ -24,6 +24,7 @@
   <!-- Right Side: Decision Details -->
   <div class="tab-content">
     <div style="text-align:end;">
+      <button class="btn btn-primary" (click)="gotoMDReview()">MD Review</button>
       <button class="btn btn-primary" (click)="saveDecisionData()" [disabled]="!canAdd">Save</button>
       <button class="btn btn-primary" (click)="enableBulkDecision = !enableBulkDecision">
         {{ enableBulkDecision ? 'Cancel Bulk Decision' : 'Bulk Decision' }}
