@@ -11,7 +11,7 @@ html, body {
   /*  height: 100vh;
   width: 100vw;*/
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
 }
 
 .container {
@@ -20,7 +20,7 @@ html, body {
   height: 100%;*/
   transition: all 0.3s ease;
   background: linear-gradient(to right, #e0f7fa, #f9fbfd);
-  max-width: 1600px !important;
+  max-width: 100%;
 }
 
 /* ----- Left Side: Cards ----- */
@@ -74,7 +74,7 @@ html, body {
 
   .card:hover {
     transform: translateY(-1px);
-    border-left-color: #007bba;
+    border-left-color: #007BFF;
   }
 
   .card.selected {
@@ -95,11 +95,11 @@ html, body {
   justify-content: space-between;
   margin-bottom: 4px;
   font-weight: bold;
-  color: #007bba;
+  color: #007BFF;
 }
 
 .review-btn {
-  background: #007bba;
+  background: #007BFF;
   color: white;
   border: none;
   border-radius: 20px;
@@ -123,7 +123,7 @@ html, body {
 }
 
   .top-controls button {
-    background: #007bba;
+    background: #007BFF;
     color: white;
     border: none;
     padding: 5px 14px;
@@ -138,10 +138,10 @@ html, body {
     }
 
 /* ----- Review Content ----- */
-.review-header h2 {
+/*.review-header h2 {
   margin: 0;
   color: #333;
-}
+}*/
 
 .review-header p {
   margin: 2px 0;
@@ -149,10 +149,10 @@ html, body {
   font-size: 13px;
 }
 
-.review-content h3,
-.review-content h4 {
+.review-content h2,
+.review-content h6 {
   margin: 12px 0 4px;
-  color: #007bba;
+  color: #007BFF;
   border-bottom: 1px solid #ccc;
   padding-bottom: 3px;
 }
@@ -183,7 +183,7 @@ html, body {
 
   .service-table th {
     background-color: #eaf3f8;
-    color: #007bba;
+    color: #007BFF;
   }
 
 /* ----- Decision Section ----- */
@@ -290,7 +290,7 @@ textarea {
 }
 
   .review-controls button {
-    background: #007bba;
+    background: #007BFF;
     color: white;
     border: none;
     padding: 5px 14px;
@@ -327,6 +327,140 @@ textarea {
 
     .clinical-documents .field label {
       font-weight: 600;
-      color: #007bba;
+      color: #007BFF;
       min-width: 100px;
     }
+
+/* ----- 3 Column Layout ----- */
+.container-3col {
+  display: flex;
+  /*  width: 100%;
+  height: 100%;*/
+  transition: all 0.3s ease;
+  background: linear-gradient(to right, #e0f7fa, #f9fbfd);
+  max-width: 100%;
+}
+
+.col-left, .col-middle, .col-summary {
+  height: 100%;
+  overflow-y: auto;
+  padding: 12px 16px;
+  box-sizing: border-box;
+}
+
+/* Left Column */
+.col-left {
+  width: 20%;
+  background: linear-gradient(to right, #eef4f8, #f8fcff);
+  border-right: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+/* Middle Column */
+.col-middle {
+  width: 40%;
+  background: rgba(255, 255, 255, 0.6);
+  border-right: 1px solid rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(10px);
+}
+
+/* Right Column (Summary) */
+.col-summary {
+  width: 40%;
+  background: rgba(255, 255, 255, 0.85);
+  border-left: 1px solid rgba(255, 255, 255, 0.4);
+  padding: 16px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+  .col-summary h3 {
+    margin-top: 0;
+    color: #007BFF;
+  }
+
+  .col-summary h4 {
+    margin-top: 16px;
+    color: #007BFF;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 4px;
+  }
+
+
+.full-width {
+  width: 100% !important;
+}
+
+
+.search-section {
+  flex: 1 1 300px;
+}
+
+.search-bar {
+  width: 100%;
+  height: 100%;
+}
+
+.summary-container {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.75rem;
+}
+
+.summary-card {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  min-width: auto;
+  white-space: nowrap;
+  background-color: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  height: 40px;
+}
+
+.summary-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+  .summary-row mat-icon {
+    color: #007bff;
+    font-size: 24px;
+  }
+
+.stat-label {
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.stat-value {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #212529;
+}
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin-bottom: 0.3rem;
+}
+
+
+.card-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 8px 16px; /* row gap / column gap */
+}
+
+  .card-fields p {
+    margin: 0;
+    font-size: 12px;
+  }
+
+  .card-fields .field label {
+    font-weight: 600;
+    color: #007BFF;
+    min-width: 100px;
+  }

@@ -1,4 +1,5 @@
 import { Component, ViewEncapsulation } from '@angular/core';
+import { AuthService } from 'src/app/service/auth.service';
 
 @Component({
   selector: 'app-mdreviewdashboard',
@@ -7,6 +8,29 @@ import { Component, ViewEncapsulation } from '@angular/core';
   encapsulation: ViewEncapsulation.None,
 })
 export class MdreviewdashboardComponent {
+
+  selectedAuthData: any = {};
+  constructor(
+    private authService: AuthService
+  ) { }
+
+  ngonInit(): void {
+    this.authService.getAuthDataByAuthNumber('TCZBGT7Y3').subscribe(
+      (data) => {
+        this.auths = data;
+        this.selectedAuthData = data[0]?.responseData; // default selection
+      });
+  }
+
+
+  // Summary widgets
+  summaryStats = [
+    { label: 'Urgent Auths', value: 65, icon: 'assignment_ind' },
+    { label: 'Pending Reviews', value: 20, icon: 'priority_high' },
+    { label: 'Reviewed Today', value: 5, icon: 'report_problem' },
+    { label: 'Over Due', value: 40, icon: 'check_circle' }
+  ];
+
 
   auths = [
     {
@@ -70,4 +94,21 @@ export class MdreviewdashboardComponent {
   closeReview() {
     this.selectedIndex = null;
   }
+
+  searchText: string = '';
+
+  filteredAuths(): any[] {
+    if (!this.searchText) return this.auths;
+    const lower = this.searchText.toLowerCase();
+    return this.auths.filter(auth =>
+      (auth.firstName + ' ' + auth.lastName).toLowerCase().includes(lower) ||
+      (auth.authNumber || '').toLowerCase().includes(lower)
+    );
+  }
+
+  onSearch(event: any): void {
+    const filterValue = event.target.value.trim().toLowerCase();
+
+  }
+
 }

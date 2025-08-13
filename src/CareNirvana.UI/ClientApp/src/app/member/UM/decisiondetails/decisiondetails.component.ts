@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, ViewChildren, QueryList, ElementRef } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, ViewChildren, QueryList, ElementRef, OnInit } from '@angular/core';
 import { CrudService } from 'src/app/service/crud.service';
 import { MatDialog } from '@angular/material/dialog';
 import { DecisionbulkdialogComponent } from 'src/app/member/UM/decisionbulkdialog/decisionbulkdialog.component';
@@ -37,18 +37,34 @@ interface Section {
   expanded?: boolean;
 }
 
+export interface MdReviewLine {
+  serviceCode: string;
+  description: string;
+  fromDate: string;
+  toDate: string;
+  requested: number | string;
+  approved: number | string;
+  denied: number | string;
+  selected: boolean;
+  recommendation: string;
+}
+
 @Component({
   selector: 'app-decisiondetails',
   templateUrl: './decisiondetails.component.html',
   styleUrls: ['./decisiondetails.component.css']
 })
-export class DecisiondetailsComponent implements OnChanges {
+export class DecisiondetailsComponent implements OnChanges, OnInit {
   @Input() decisionData: any;
   @Input() decisionFields: any;
   @Output() decisionSaved = new EventEmitter<any>();
   @Input() canAdd = false;
   @Input() canEdit = false;
   @Input() canView = true;
+  @Input() authorizationNotesFields: any[] = [];
+  @Input() authorizationNotesData: any;
+  @Input() runEnsure = 0;
+  @Output() goToMdReview = new EventEmitter<MdReviewLine[]>();
 
   formFields: { key: string; value: any }[] = [];
   sections: Section[] = [];
@@ -57,20 +73,47 @@ export class DecisiondetailsComponent implements OnChanges {
   tabs: Tab[] = [];
   selectedTabId: string = '';
 
-  authorizationNotesFields: any = []; // Fields JSON
-  authorizationNotesData: any = []; // Data JSON
-
   constructor(private crudService: CrudService, private dialog: MatDialog) { }
 
+
+
+  ngOnInit(): void {
+    // If the parent already has decisionData when this step instantiates,
+    // do the same work you do after a click.
+    if (this.decisionData && (!this.tabs || this.tabs.length === 0)) {
+      this.ensureDecisionDetailsEntries();
+      this.generateTabs();
+
+      if (this.tabs.length > 0) {
+        this.selectedTabId = this.selectedTabId || this.tabs[0].id;
+        this.loadSectionsForTab(this.selectedTabId);
+      }
+    }
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
+
+    if (changes['runEnsure']) {
+      // ensure view exists, then run
+
+      setTimeout(() => {
+        this.ensureDecisionDetailsEntries();
+        this.generateTabs();
+        if (this.tabs.length > 0 && !this.selectedTabId) {
+          this.selectedTabId = this.tabs[0].id;
+          this.loadSectionsForTab(this.selectedTabId);
+        } else if (this.selectedTabId) {
+          this.loadSectionsForTab(this.selectedTabId);
+        }
+
+      }, 0);
+    }
 
     if (changes['decisionData'] && this.decisionData) {
       setTimeout(() => {
         this.ensureDecisionDetailsEntries();
 
-
         this.generateTabs();
-
 
         if (this.tabs.length > 0 && !this.selectedTabId) {
           this.selectedTabId = this.tabs[0].id;
@@ -78,10 +121,11 @@ export class DecisiondetailsComponent implements OnChanges {
         } else if (this.selectedTabId) {
           this.loadSectionsForTab(this.selectedTabId);
         }
+
+        if (changes['decisionData']) {
+          this.updateFormFields(this.decisionData || {});
+        }
       }, 0);
-    }
-    if (changes['decisionData']) {
-      this.updateFormFields(this.decisionData || {});
     }
   }
 
@@ -90,7 +134,6 @@ export class DecisiondetailsComponent implements OnChanges {
       this.loadSectionsForTab(this.selectedTabId);
     }
   }
-
 
   selectDropdownOption(field: any, option: any): void {
     field.value = option.value;
@@ -115,14 +158,30 @@ export class DecisiondetailsComponent implements OnChanges {
   }
 
   ensureDecisionDetailsEntries(): void {
+    console.log('calling the stepper change event from auth page');
     if (!this.decisionData?.serviceDetails || !Array.isArray(this.decisionData.serviceDetails.entries)) {
-
+      console.log('calling the stepper change event from auth page');
       this.decisionData = {
         ...this.decisionData,
         decisionDetails: { ...this.decisionData.decisionDetails, entries: [] },
         decisionNotes: { ...this.decisionData.decisionNotes, entries: [] },
         decisionMemberInfo: { ...this.decisionData.decisionMemberInfo, entries: [] }
       };
+
+      // Initialize dropdown options so they show immediately
+      this.sections.forEach(section => {
+        section.fields.forEach(field => {
+          if (field.type === 'select' && field.options) {
+            field.filteredOptions = [...field.options];
+          }
+        });
+      });
+
+      // Select the first tab by default if not already set
+      if (!this.selectedTabId && this.tabs?.length) {
+        this.selectedTabId = this.tabs[0].id;
+      }
+
       return;
     }
 
@@ -209,6 +268,7 @@ export class DecisiondetailsComponent implements OnChanges {
       return;
     }
 
+
     this.sections = [];
 
     const enrichField = (field: any, entry: any) => {
@@ -249,9 +309,6 @@ export class DecisiondetailsComponent implements OnChanges {
       };
 
     };
-
-
-
 
     if (this.decisionData.decisionDetails?.fields && this.decisionData.decisionDetails.entries[tabIndex]) {
       const entry = this.decisionData.decisionDetails.entries[tabIndex];
@@ -366,11 +423,11 @@ export class DecisiondetailsComponent implements OnChanges {
       "Member Provider Decision Info": "decisionMemberInfo"
     };
 
-    console.log('Selected tabs:', selectedTabs);
+
 
     selectedTabs.forEach(tab => {
       const index = this.tabs.findIndex(t => t.id === tab.id);
-      console.log('Processing tab index:', index);
+
       this.sections.forEach(section => {
         const sectionKey = sectionKeyMap[section.sectionName];
         if (!sectionKey || !this.decisionData[sectionKey]?.entries[index]) {
@@ -423,9 +480,6 @@ export class DecisiondetailsComponent implements OnChanges {
         // For bulk, set approved/denied based on decision
         if (this.enableBulkDecision && section.sectionName === 'Decision Details') {
 
-          console.log('Bulk decision value:', decisionValue);
-          console.log('Decision Status:', this.decisionData.decisionDetails.entries[index].decisionStatus);
-
           this.decisionData.decisionDetails.entries[index].decisionStatus = decisionValue;
           if (decisionValue === '1') {
             this.decisionData.decisionDetails.entries[index].approved = entry.requested || '';
@@ -444,8 +498,6 @@ export class DecisiondetailsComponent implements OnChanges {
     }
 
     if (hasValidationError) return;
-
-    console.log('Decision data before saving:', this.decisionData);
 
     this.decisionSaved.emit(this.decisionData);
   }
@@ -630,7 +682,6 @@ export class DecisiondetailsComponent implements OnChanges {
         this.bulkUpdateDecisions('Denied', result.decisionData);
       }
     });
-
   }
 
   bulkUpdateDecisions(status: string, decisionData: any[]) {
@@ -657,7 +708,7 @@ export class DecisiondetailsComponent implements OnChanges {
 
 
   handleAuthNotesSaved(updatedNotes: any) {
-
+    this.authorizationNotesData = updatedNotes;
   }
 
   enableBulkDecision: boolean = false;
@@ -667,9 +718,87 @@ export class DecisiondetailsComponent implements OnChanges {
     // Implement action based on type
   }
 
-  @Output() goToMdReview = new EventEmitter<void>();
+  //********** Method MD Review ************//
 
-  gotoMDReview() {
-    this.goToMdReview.emit();
+
+  // Accepts either a section object with { fields: Field[] } or an Array<Field>
+  private getField(sectionOrFields: any, id: string) {
+    const fields = Array.isArray(sectionOrFields)
+      ? sectionOrFields
+      : Array.isArray(sectionOrFields?.fields)
+        ? sectionOrFields.fields
+        : null;
+
+    if (!fields) return undefined;
+    return fields.find((f: any) => f?.id === id);
   }
+
+  private pick(sectionOrFields: any, id: string): any {
+    const f = this.getField(sectionOrFields, id);
+    if (!f) return '';
+
+    // For selects, prefer the human-friendly label when available
+    if (f.type === 'select') {
+      if (f.displayLabel && f.displayLabel.trim() !== '') return f.displayLabel;
+      // fall back to the selected option's label if possible
+      const opt = (f.filteredOptions || f.options || []).find((o: any) => o?.value === f.value);
+      if (opt?.label) return opt.label;
+    }
+
+    // Default: raw value
+    return f.value ?? '';
+  }
+
+  // Build the rows to show in MD Review
+  public getMdReviewLines(): MdReviewLine[] {
+    const list = this.sections ?? [];
+    console.log('MD Review sections:', list);
+
+    if (!Array.isArray(list) || list.length === 0) return [];
+
+    const hasField = (sec: any, id: string) => !!this.getField(sec, id);
+
+    const rows: MdReviewLine[] = [];
+    for (const sec of list) {
+      // skip notes / non-service sections by heuristic
+      const sectionName = (sec?.sectionName ?? '').toString().toLowerCase();
+      if (sectionName.includes('decision notes')) continue;
+
+      // consider it a service line if it has code or description (you can tighten if needed)
+      if (!hasField(sec, 'serviceCode') && !hasField(sec, 'serviceDescription')) continue;
+
+      rows.push({
+        serviceCode: this.pick(sec, 'serviceCode'),
+        description: this.pick(sec, 'serviceDescription'),
+        fromDate: this.pick(sec, 'fromDate'),
+        toDate: this.pick(sec, 'toDate'),
+        requested: this.pick(sec, 'requested'),
+        approved: this.pick(sec, 'approved'),
+        denied: this.pick(sec, 'denied'),
+        selected: false,
+        recommendation: 'Pending'
+      });
+    }
+
+    // Optionally filter out completely empty template lines
+    return rows.filter(r =>
+      r.serviceCode || r.description || r.requested || r.approved || r.denied
+    );
+  }
+
+
+  gotoMDReview(): void {
+    const rows = this.getMdReviewLines();
+    this.goToMdReview.emit(rows);
+  }
+
+  //********** Method MD Review ************//
+
+  toggleBulkDecision(): void {
+    this.enableBulkDecision = !this.enableBulkDecision;
+    if (!this.enableBulkDecision) {
+      (this.tabs || []).forEach(t => (t.selected = false));
+    }
+  }
+
 }

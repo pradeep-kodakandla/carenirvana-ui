@@ -37,6 +37,10 @@
     border-radius: 4px;
   }
 
+.dropdown-container {
+  position: relative;
+  overflow: visible; /* allow the panel to overflow the card/grid */
+}
 .dropdown-arrow {
   position: absolute;
   right: 10px;
@@ -140,4 +144,43 @@
   border: none;
   padding: 4px 10px;
   border-radius: 4px;
+}
+
+/* Turn the dropdown into an overlay so it doesn't push rows down */
+.autocomplete-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  z-index: 1000; /* sit on top of grid/table */
+}
+
+/* A little polish */
+.autocomplete-option {
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+  .autocomplete-option:hover {
+    background: #f5f5f5;
+  }
+
+/* Keep grid from visually stretching when overlays show */
+.form-grid {
+  align-items: start;
+}
+
+/* Hide native pickers cleanly */
+.hidden-picker {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
 }

@@ -1,7 +1,24 @@
+
 <div class="main-wrapper">
-  <div class="container" [class.review-mode]="selectedIndex !== null">
-    <!-- LEFT PANE -->
-    <div class="left-pane">
+  <div class="container">
+    <!-- LEFT COLUMN (20%) -->
+    <div class="col-left" [ngClass]="{ 'full-width': !selectedAuth }">
+      <div class="top-bar">
+        <div class="search-section">
+          <input type="text" placeholder="🔍 Search..." (input)="onSearch($event)" class="search-input" />
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="summary-container" style="padding-left:10px;" *ngIf="!selectedAuth">
+          <mat-card class="summary-card" *ngFor="let item of summaryStats">
+            <div class="summary-row">
+              <mat-icon>{{ item.icon }}</mat-icon>
+              <span class="stat-label">{{ item.label }}:</span>
+              <span class="stat-value">{{ item.value }}</span>
+            </div>
+          </mat-card>
+        </div>
+      </div>
       <div class="card-list">
         <div *ngFor="let auth of auths; let i = index"
              class="card"
@@ -11,16 +28,56 @@
             <strong>{{ auth.firstName }} {{ auth.lastName }}</strong>
             <button class="review-btn" (click)="onReviewClick(i); $event.stopPropagation()">Review</button>
           </div>
-          <p>Auth #: {{ auth.authNumber }}</p>
-          <p>Type: {{ auth.authType }}</p>
-          <p>Due: {{ auth.dueDate }}</p>
-          <p>Priority: {{ auth.priority }}</p>
+          <div class="card-fields">
+            <div class="field">
+              <label>Auth #:</label>
+              <span>{{ auth.authNumber }}</span>
+            </div>
+            <div class="field">
+              <label>Auth Type:</label>
+              <span>{{ auth.authType }}</span>
+            </div>
+            <div class="field" *ngIf="!selectedAuth">
+              <label>Review Due Date:</label>
+              <span>{{ auth.dueDate }}</span>
+            </div>
+            <div class="field">
+              <label>Review Priority:</label>
+              <span>{{ auth.priority }}</span>
+            </div>
+            <div class="field" *ngIf="!selectedAuth">
+              <label>Member ID:</label>
+              <span>{{ auth.authType }}</span>
+            </div>
+            <div class="field" *ngIf="!selectedAuth">
+              <label>Member Name:</label>
+              <span>{{ auth.authType }}</span>
+            </div>
+            <div class="field" *ngIf="!selectedAuth">
+              <label>Eligibility:</label>
+              <span>{{  auth.authType}}</span>
+            </div>
+            <div class="field" *ngIf="!selectedAuth">
+              <label>Treatment Type:</label>
+              <span>{{ auth.authType }}</span>
+            </div>
+            <div class="field" *ngIf="!selectedAuth">
+              <label>Provider ID:</label>
+              <span>{{ auth.authType }}</span>
+            </div>
+            <div class="field" *ngIf="!selectedAuth">
+              <label>Auth Due Date:</label>
+              <span>{{ auth.authType }}</span>
+            </div>
+          </div>
+
+
         </div>
       </div>
     </div>
 
-    <!-- RIGHT PANE -->
-    <div class="right-pane" *ngIf="selectedAuth">
+    <!-- MIDDLE COLUMN (40%) -->
+    <div class="col-middle" *ngIf="selectedAuth">
       <div class="review-header-bar">
         <h2>Authorization Review</h2>
         <div class="review-controls">
@@ -31,19 +88,21 @@
       </div>
 
       <div class="review-header">
-
-        <p>
-          Due Date: {{ selectedAuth.dueDate }} | Priority: {{ selectedAuth.priority }}
-        </p>
-        <p><strong>Overall Recommendation:</strong> {{ selectedAuth.recommendation }}</p>
+        <p>Review Due Date: {{ selectedAuth.dueDate }} | Review Priority: {{ selectedAuth.priority }}</p>
+        <p style="color:green;"><strong>Overall Initial Recommendation:</strong> {{ selectedAuth.recommendation }}</p>
       </div>
 
       <div class="review-content">
-        <h3>Clinical Context & Instructions</h3>
-        <h4>Clinical Documents</h4>
+        <h6>Clinical Context & Instructions</h6>
+        <h6>Clinical Documents</h6>
         <div class="clinical-documents">
           <div class="field">
             <label>Member ID:</label>
+            <span>{{ selectedAuth.memberId }}</span>
+          </div>
+
+          <div class="field">
+            <label>Member Name:</label>
             <span>{{ selectedAuth.memberId }}</span>
           </div>
           <div class="field">
@@ -65,7 +124,7 @@
         </div>
 
 
-        <h4>Service Lines</h4>
+        <h6>Service Lines</h6>
         <table class="service-table">
           <thead>
             <tr>
@@ -76,8 +135,8 @@
               <th>Req.</th>
               <th>Appr.</th>
               <th>Denied</th>
-              <th>Initial</th>
-              <th>Director</th>
+              <th>Initial Recommendation</th>
+              <th>MD's Recommendation</th>
             </tr>
           </thead>
           <tbody>
@@ -95,7 +154,7 @@
           </tbody>
         </table>
 
-        <h4>Medical Director Decision</h4>
+        <h6>Medical Director's Decision</h6>
         <div class="decision-options">
           <label><input type="radio" name="decision"> <span class="green">Approve</span></label><br />
           <label><input type="radio" name="decision"> <span class="red">Deny</span></label><br />
@@ -106,10 +165,37 @@
 
         <div class="action-buttons">
           <button class="submit">Submit Decision</button>
-          <button class="save">Save & Continue Later</button>
+          <button class="save">Save & Continue</button>
           <button class="close" (click)="closeReview()">Close</button>
         </div>
       </div>
     </div>
+
+
+    <!-- RIGHT COLUMN (40%) -->
+    <div class="col-summary" *ngIf="selectedAuth">
+      <h3>Auth Summary</h3>
+      <p><strong>Member ID:</strong> {{ selectedAuthData.memberId }}</p>
+      <p><strong>Member Name:</strong> {{ selectedAuthData.memberName }}</p>
+      <p><strong>Auth #:</strong> {{ selectedAuthData.authNumber }}</p>
+      <p><strong>Auth Type:</strong> {{ selectedAuthData.authType }}</p>
+      <p><strong>Facility:</strong> {{ selectedAuthData.facility }}</p>
+      <p><strong>Request Date:</strong> {{ selectedAuthData.requestDate }}</p>
+      <p><strong>Expected Admission:</strong> {{ selectedAuthData.expectedAdmissionDatetime }}</p>
+      <p><strong>Expected Discharge:</strong> {{ selectedAuthData.expectedDischargeDatetime }}</p>
+
+      <h4>Diagnosis</h4>
+      <ul>
+        <li *ngFor="let dx of selectedAuthData.diagnosisDetails">{{ dx.icd10Code }} - {{ dx.icd10Description }}</li>
+      </ul>
+
+      <h4>Notes</h4>
+      <ul>
+        <li *ngFor="let note of selectedAuthData.authorizationNotes">
+          <strong>{{ note.authorizationNoteTypeLabel }}:</strong> {{ note.authorizationNotes }}
+        </li>
+      </ul>
+    </div>
   </div>
 </div>
+

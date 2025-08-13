@@ -5,7 +5,19 @@
       <!-- Assignment Type -->
       <div class="form-outline dropdown-container">
         <label class="floating-label">Assignment Type <span class="text-danger">*</span></label>
-        <input type="text" class="form-control" formControlName="assignmentType" />
+        <div class="input-with-icon">
+          <input type="text" class="form-control" [value]="assignmentTypeDisplay"
+                 (input)="onDropdownInput($event, 'assignmentType')"
+                 (focus)="openDropdown('assignmentType')"
+                 (blur)="closeDropdown('assignmentType')" />
+          <span class="dropdown-arrow">&#9662;</span>
+          <div class="autocomplete-dropdown" *ngIf="showDropdowns.assignmentType && filteredAssignmentTypes?.length">
+            <div class="autocomplete-option" *ngFor="let option of filteredAssignmentTypes"
+                 (mousedown)="selectDropdownOption('assignmentType', option)">
+              {{ option.label }}
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Activity Type -->
@@ -66,13 +78,17 @@
       <div class="form-outline position-relative">
         <label class="floating-label">Scheduled Date & Time <span class="text-danger">*</span></label>
         <div class="input-with-icon">
-          <input type="text" class="form-control" formControlName="scheduledDateTime"
+          <!-- remove formControlName here; this is purely the display/editor text -->
+          <input type="text" class="form-control"
                  placeholder="Enter D, D+1, D-1 or select"
                  [value]="scheduledDateText"
                  (input)="onDateTextChange($event, 'scheduledDateTime')"
                  (blur)="handleDateBlur('scheduledDateTime')" />
           <button type="button" class="calendar-icon-btn" (click)="triggerCalendar('scheduled')">📅</button>
-          <input type="datetime-local" #scheduledPicker style="opacity: 0; position: absolute;"
+
+          <!-- the actual control lives on the hidden native picker -->
+          <input type="datetime-local" #scheduledPicker class="hidden-picker"
+                 formControlName="scheduledDateTime"
                  (change)="handleCalendarChange($event, 'scheduledDateTime')" />
         </div>
       </div>
@@ -81,13 +97,15 @@
       <div class="form-outline position-relative">
         <label class="floating-label">Due Date & Time <span class="text-danger">*</span></label>
         <div class="input-with-icon">
-          <input type="text" class="form-control" formControlName="dueDateTime"
+          <input type="text" class="form-control"
                  placeholder="Enter D, D+1, D-1 or select"
                  [value]="dueDateText"
                  (input)="onDateTextChange($event, 'dueDateTime')"
                  (blur)="handleDateBlur('dueDateTime')" />
           <button type="button" class="calendar-icon-btn" (click)="triggerCalendar('due')">📅</button>
-          <input type="datetime-local" #duePicker style="opacity: 0; position: absolute;"
+
+          <input type="datetime-local" #duePicker class="hidden-picker"
+                 formControlName="dueDateTime"
                  (change)="handleCalendarChange($event, 'dueDateTime')" />
         </div>
       </div>
@@ -162,8 +180,8 @@
             </td>
             <td><a href="#">{{ line.serviceCode }}</a></td>
             <td><a href="#">{{ line.description }}</a></td>
-            <td>{{ line.fromDate }}</td>
-            <td>{{ line.toDate }}</td>
+            <td>{{ toDisplayFormat(line.fromDate) }}</td>
+            <td>{{ toDisplayFormat(line.toDate) }}</td>
             <td>{{ line.requested }}</td>
             <td>{{ line.approved }}</td>
             <td>{{ line.denied }}</td>

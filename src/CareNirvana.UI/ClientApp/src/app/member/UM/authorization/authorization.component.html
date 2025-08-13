@@ -43,7 +43,7 @@
       </div>
     </ng-template>
     <!-- Horizontal Stepper -->
-    <mat-horizontal-stepper style="padding: 5px;  background-color:transparent;" [selectedIndex]="stepperSelectedIndex" #stepper>
+    <mat-horizontal-stepper style="padding: 5px;  background-color:transparent;" [selectedIndex]="stepperSelectedIndex" (selectionChange)="onStepperChanged($event)" #stepper>
       <mat-step label="Request Details" >
         <div class="content" style="padding-top: 5px;">
           <div class="main-form" style="padding: 0;">
@@ -892,7 +892,10 @@
                              [canEdit]="hasPagePermission('Decision Details', 'Edit')"
                              [canView]="hasPagePermission('Decision Details', 'View')"
                              (decisionSaved)="handleDecisionDataSaved($event)"
-                             (goToMdReview)="stepper.selectedIndex = 2">
+                             [authorizationNotesFields]="authorizationNotesFields"
+                             [authorizationNotesData]="authorizationNotesData"
+                             [runEnsure]="decisionEnsureSignal"
+                             (goToMdReview)="handleGoToMdReview($event); stepper.selectedIndex = 2">
         </app-decisiondetails>
       </mat-step>
 
@@ -900,8 +903,9 @@
       <mat-step label="MD Review"
                 *ngIf="hasPagePermission('MD Review', 'View')"
                 [completed]="!!authNumber"
-                [editable]="!!authNumber">
-        <app-mdreview>
+                [editable]="!!authNumber"
+                >
+        <app-mdreview [serviceLines]="mdReviewLines">
         </app-mdreview>
       </mat-step>
 

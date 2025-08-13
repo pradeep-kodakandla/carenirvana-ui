@@ -8,8 +8,8 @@
            [ngClass]="tab.bgClass">
         <input *ngIf="enableBulkDecision"
                type="checkbox"
-               [checked]="tab.selected"
-               (change)="tab.selected = !tab.selected"
+               [(ngModel)]="tab.selected"
+               (click)="$event.stopPropagation()"
                style="margin-right: 5px;" />
 
         <span (click)="selectTab(tab.id)"
@@ -138,7 +138,7 @@
       </ng-container>
       <div style="text-align:end;">
         <button class="btn btn-primary" (click)="saveDecisionData()" [disabled]="!canAdd">Save</button>
-        <button class="btn btn-primary" (click)="enableBulkDecision = !enableBulkDecision">
+        <button class="btn btn-primary" (click)="toggleBulkDecision()">
           {{ enableBulkDecision ? 'Cancel Bulk Decision' : 'Bulk Decision' }}
         </button>
 

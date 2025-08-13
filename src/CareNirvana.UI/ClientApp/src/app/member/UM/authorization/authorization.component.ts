@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output, Input, QueryList, ElementRef, ViewChildren } from '@angular/core';
+import { Component, EventEmitter, Output, Input, QueryList, ElementRef, ViewChildren, AfterViewInit, ChangeDetectorRef, ViewChild } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { NgForm } from '@angular/forms';
 import { MemberService } from 'src/app/service/shared-member.service';
@@ -11,6 +11,13 @@ import { ProviderSearchComponent } from 'src/app/Provider/provider-search/provid
 import { HeaderService } from 'src/app/service/header.service';
 import { ValidationErrorDialogComponent } from 'src/app/member/validation-error-dialog/validation-error-dialog.component';
 import { AuthenticateService } from 'src/app/service/authentication.service';
+import { StepperSelectionEvent } from '@angular/cdk/stepper';
+import { MdreviewComponent } from 'src/app/member/UM/mdreview/mdreview.component';
+import { DecisiondetailsComponent, MdReviewLine } from 'src/app/member/UM/decisiondetails/decisiondetails.component';
+
+
+const DECISION_STEP_INDEX = 1;
+const MD_REVIEW_STEP_INDEX = 2;
 
 @Component({
   selector: 'app-authorization',
@@ -22,7 +29,6 @@ export class AuthorizationComponent {
   stepperSelectedIndex = 0;
   @Input() authNumber: string = '';
   @Input() memberId!: number;
-
 
   constructor(
     private memberService: MemberService,
@@ -92,6 +98,29 @@ export class AuthorizationComponent {
   loggedInUsername: string = '';
 
   dropdownPosition: { [key: string]: 'up' | 'down' } = {};
+
+  decisionEnsureSignal = 0;
+
+  //********** Method MD Review ************//
+  mdReviewLines: MdReviewLine[] = [];
+  @ViewChild(DecisiondetailsComponent) decisionCmp?: DecisiondetailsComponent;
+  @ViewChild(MdreviewComponent) mdReviewCmp?: MdreviewComponent;
+
+  handleGoToMdReview(rows: MdReviewLine[]) {
+    // Make a new reference so change detection fires
+    this.mdReviewLines = [...(rows ?? [])];
+  }
+
+  onStepperChanged(evt: StepperSelectionEvent) {
+    if (evt.selectedIndex === DECISION_STEP_INDEX) {
+      this.decisionEnsureSignal++; // child will see this change
+    }
+    if (evt?.selectedIndex === MD_REVIEW_STEP_INDEX) {
+      const rows = this.decisionCmp?.getMdReviewLines?.() ?? [];
+      this.mdReviewLines = [...rows];
+    }
+  }
+  //********** Method MD Review ************//
 
   //********** Method to highlight the selected section and autocomplete ************//
 
@@ -363,7 +392,6 @@ export class AuthorizationComponent {
 
     this.loggedInUsername = sessionStorage.getItem('loggedInUsername') || '';
 
-    console.log('Logged in username:', this.loggedInUsername);
     this.loadAuthClass();
 
     this.loadCodesetsByType();
@@ -890,7 +918,7 @@ export class AuthorizationComponent {
       });
     } else {
       this.config = {};
-      console.log('No valid template selected');
+
     }
   }
 
