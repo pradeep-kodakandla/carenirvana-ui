@@ -158,9 +158,9 @@ export class DecisiondetailsComponent implements OnChanges, OnInit {
   }
 
   ensureDecisionDetailsEntries(): void {
-    console.log('calling the stepper change event from auth page');
+    
     if (!this.decisionData?.serviceDetails || !Array.isArray(this.decisionData.serviceDetails.entries)) {
-      console.log('calling the stepper change event from auth page');
+      
       this.decisionData = {
         ...this.decisionData,
         decisionDetails: { ...this.decisionData.decisionDetails, entries: [] },
@@ -751,40 +751,88 @@ export class DecisiondetailsComponent implements OnChanges, OnInit {
 
   // Build the rows to show in MD Review
   public getMdReviewLines(): MdReviewLine[] {
-    const list = this.sections ?? [];
+    const list = this.decisionData?.decisionDetails?.entries || [];
     console.log('MD Review sections:', list);
 
     if (!Array.isArray(list) || list.length === 0) return [];
 
-    const hasField = (sec: any, id: string) => !!this.getField(sec, id);
+    // ---------- local helpers (keep function self-contained) ----------
+    const hasField = (sec: any, id: string) => {
+      // prefer direct property if present; otherwise use your existing getField
+      if (sec && Object.prototype.hasOwnProperty.call(sec, id)) {
+        const v = sec[id];
+        return v !== undefined && v !== null && String(v).trim() !== '';
+      }
+      return !!this.getField(sec, id);
+    };
+
+    const pickDirectFirst = (sec: any, id: string): any => {
+      if (sec && Object.prototype.hasOwnProperty.call(sec, id)) return sec[id];
+      return this.pick(sec, id);
+    };
+
+    const toInt = (v: any): number => {
+      if (typeof v === 'number') return v;
+      if (typeof v === 'string') {
+        const s = v.trim();
+        if (s === '') return 0;
+        const n = Number(s);
+        return isNaN(n) ? 0 : n;
+      }
+      return 0;
+    };
+
+    const mapDecisionStatus = (status: any, approved: any, denied: any):
+      'Approved' | 'Denied' | 'Pending' => {
+      const s = String(status ?? '').trim();
+      if (s === '1') return 'Approved';
+      if (s === '3') return 'Denied';
+      // fallback inference
+      const a = toInt(approved);
+      const d = toInt(denied);
+      if (a > 0 && d === 0) return 'Approved';
+      if (d > 0 && a === 0) return 'Denied';
+      return 'Pending';
+    };
+    // ------------------------------------------------------------------
 
     const rows: MdReviewLine[] = [];
     for (const sec of list) {
-      // skip notes / non-service sections by heuristic
+      // keep your skip heuristic intact
       const sectionName = (sec?.sectionName ?? '').toString().toLowerCase();
       if (sectionName.includes('decision notes')) continue;
 
-      // consider it a service line if it has code or description (you can tighten if needed)
+      // treat as a service line if it has code or description
       if (!hasField(sec, 'serviceCode') && !hasField(sec, 'serviceDescription')) continue;
 
+      const serviceCode = pickDirectFirst(sec, 'serviceCode');
+      const description = pickDirectFirst(sec, 'serviceDescription');
+      const fromDate = pickDirectFirst(sec, 'fromDate'); // keep as string; template formats it
+      const toDate = pickDirectFirst(sec, 'toDate');
+      const requested = pickDirectFirst(sec, 'requested');
+      const approved = pickDirectFirst(sec, 'approved');
+      const denied = pickDirectFirst(sec, 'denied');
+      const decisionStatus = pickDirectFirst(sec, 'decisionStatus');
+
       rows.push({
-        serviceCode: this.pick(sec, 'serviceCode'),
-        description: this.pick(sec, 'serviceDescription'),
-        fromDate: this.pick(sec, 'fromDate'),
-        toDate: this.pick(sec, 'toDate'),
-        requested: this.pick(sec, 'requested'),
-        approved: this.pick(sec, 'approved'),
-        denied: this.pick(sec, 'denied'),
-        selected: false,
-        recommendation: 'Pending'
+        serviceCode,
+        description,
+        fromDate,
+        toDate,
+        requested,
+        approved,
+        denied,
+        selected: false, // keep existing default selection behavior
+        recommendation: mapDecisionStatus(decisionStatus, approved, denied)
       });
     }
 
-    // Optionally filter out completely empty template lines
+    // Keep your final filter intact
     return rows.filter(r =>
       r.serviceCode || r.description || r.requested || r.approved || r.denied
     );
   }
+
 
 
   gotoMDReview(): void {

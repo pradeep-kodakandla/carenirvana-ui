@@ -1,6 +1,9 @@
 import { Component, OnInit, ViewChild, ElementRef, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MdReviewLine } from '../decisiondetails/decisiondetails.component';
+import { CrudService } from 'src/app/service/crud.service';
+import { AuthService } from 'src/app/service/auth.service';
+import { AuthenticateService } from 'src/app/service/authentication.service';
 
 @Component({
   selector: 'app-mdreview',
@@ -14,13 +17,20 @@ export class MdreviewComponent implements OnInit, OnChanges {
   mdrForm!: FormGroup;
 
   activityTypeDisplay = '';
-  assignmentTypeDisplay = '';
-  priorityDisplay = '';
+  assignmentTypeDisplay = 'Specific Medical Director';
+  priorityDisplay = 'Select';
   assignToDisplay = '';
   workBasketDisplay = '';
   workBasketUserDisplay = '';
   scheduledDateText = '';
   dueDateText = '';
+  showWorkBasketFields = false;
+  allSelected = true;
+  activityTypes: { value: string, label: string }[] = [{ value: '', label: 'Select' }];
+
+  // Optional: constants to avoid typos
+  
+  private readonly ASSIGNMENT_WORK_BASKET = 'Work Basket Assignment';
 
   showDropdowns: any = {
     activityType: false,
@@ -34,14 +44,14 @@ export class MdreviewComponent implements OnInit, OnChanges {
   highlightedIndex = -1;
 
   filteredActivityTypes = [{ label: 'Initial Review' }, { label: 'Follow-Up' }];
-  filteredAssignmentTypes = [{ label: 'Individual' }, { label: 'Work Basket' }];
-  filteredPriorities = [{ label: 'High' }, { label: 'Medium' }, { label: 'Low' }];
+  filteredAssignmentTypes = [{ label: 'Specific Medical Director' }, { label: 'Work Basket Assignment' }];
+  filteredPriorities = [{ label: 'Select' }, { label: 'High' }, { label: 'Medium' }, { label: 'Low' }];
   filteredUsers = [{ label: 'Dr. Smith' }, { label: 'Dr. Jane' }];
   filteredWorkBaskets = [{ label: 'UM-QA' }, { label: 'UM-CCR' }];
 
   @ViewChild('scheduledPicker') scheduledPicker!: ElementRef<HTMLInputElement>;
   @ViewChild('duePicker') duePicker!: ElementRef<HTMLInputElement>;
-  constructor(private fb: FormBuilder) { }
+  constructor(private fb: FormBuilder, private crudService: CrudService, private authenticateService: AuthenticateService, private activityService: AuthService) { }
 
   ngOnInit(): void {
 
@@ -63,6 +73,70 @@ export class MdreviewComponent implements OnInit, OnChanges {
     const d = this.mdrForm.get('dueDateTime')?.value ?? '';
     this.scheduledDateText = s;
     this.dueDateText = d;
+    this.applyAssignmentTypeSideEffects(this.assignmentTypeDisplay);
+    this.loadActivityTypes();
+    this.loadUsers();
+  }
+
+  loadActivityTypes() {
+    this.crudService.getData('um', 'activitytype').subscribe((data: any[]) => {
+      const options = data.map(item => ({
+        value: item.code || item.value || item.id,
+        label: item.label || item.activityType || item.display
+      }));
+
+      this.activityTypes = [{ value: '', label: 'Select' }, ...options];
+      this.filteredActivityTypes = [...this.activityTypes];
+     // this.updateActivityLabels();
+
+      // If form has value, sync label to display
+      const selected = this.activityTypes.find(a => a.value === this.mdrForm.get('activityType')?.value);
+      this.activityTypeDisplay = selected?.label || 'Select';
+    });
+  }
+
+
+  loadUsers() {
+    this.authenticateService.getAllUsers().subscribe({
+      next: (users: any[]) => {
+        console.log('Loaded users:', users);
+        this.filteredUsers = users.map(u => ({
+          value: u.UserId,
+          label: u.UserName
+        }));
+
+        const loggedInUsername = sessionStorage.getItem('loggedInUsername');
+        const loggedInUser = this.filteredUsers.find(u => u.label === loggedInUsername);
+
+        if (loggedInUser) {
+          // Set the actual UserId in the FormControl value!
+          this.mdrForm.get('assignTo')?.setValue(loggedInUser);
+          this.assignToDisplay = loggedInUsername || 'Select';
+        } else {
+          this.mdrForm.get('assignTo')?.setValue('');
+          this.assignToDisplay = 'Select';
+        }
+      }
+    });
+  }
+
+  /** Centralized place to flip visibility + clear WB fields when not needed */
+  private applyAssignmentTypeSideEffects(label: string): void {
+    this.showWorkBasketFields = (label === this.ASSIGNMENT_WORK_BASKET);
+
+    if (!this.showWorkBasketFields) {
+      // Clear any prior WB selections when switching away
+      this.workBasketDisplay = '';
+      this.workBasketUserDisplay = '';
+
+      // If you keep reactive controls for these, clear them too:
+      try {
+        this.mdrForm.patchValue?.({
+          workBasket: null,
+          workBasketUser: null
+        });
+      } catch { }
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -74,6 +148,9 @@ export class MdreviewComponent implements OnInit, OnChanges {
         if (copy.recommendation === undefined) copy.recommendation = 'Pending';
         return copy;
       });
+    }
+    if (this.serviceLines.length > 0) {
+      this.serviceLines.forEach(row => row.selected = true);
     }
   }
 
@@ -114,7 +191,12 @@ export class MdreviewComponent implements OnInit, OnChanges {
     }, 150); // slight delay for click selection
   }
 
-  selectDropdownOption(field: string, option: any) {
+  selectDropdownOption(field: string, option: { label: string;[k: string]: any }): void {
+    if (field === 'assignmentType') {
+      this.assignmentTypeDisplay = option.label;
+      this.applyAssignmentTypeSideEffects(option.label);
+      return;
+    }
     switch (field) {
       case 'activityType':
         this.activityTypeDisplay = option.label;
@@ -267,10 +349,55 @@ export class MdreviewComponent implements OnInit, OnChanges {
   submitReview() {
     console.log('Form submitted:', this.mdrForm.value);
     console.log('Selected lines:', this.serviceLines.filter(l => l.selected));
+
+    const selected = (this.serviceLines || [])
+      .filter(l => l.selected)
+      .map(l => ({
+       // decisionLineId: l.id ?? null,       // if you have it
+        serviceCode: l.serviceCode,
+        description: l.description,
+        fromDate: l.fromDate,
+        toDate: l.toDate,
+        requested: l.requested,
+        approved: l.approved,
+        denied: l.denied,
+        initialRecommendation: l.recommendation
+      }));
+
+    const newActivity = {
+     // authDetailId: this.authDetailId,
+      activityTypeId: Number(this.mdrForm.value.activityType) || null,
+      priorityId: Number(this.mdrForm.value.priority) || null,
+      providerId: null,
+      followUpDateTime: this.mdrForm.value.scheduledDateTime || null,
+      dueDate: this.mdrForm.value.dueDateTime || null,
+      comment: this.mdrForm.value.comments || null,
+      statusId: 1,                             // e.g., Open
+      activeFlag: true,
+     // createdBy: Number(loggedInUserId),
+      createdOn: new Date(),
+      referredTo: Number(this.mdrForm.value.assignTo) || null,
+      assignmentType: this.assignmentTypeDisplay,          // e.g., "Specific Medical Director" or "Work Basket Assignment"
+      assignedToUserId: Number(this.mdrForm.value.assignTo) || null,
+      assignedToWorkBasketId: Number(this.mdrForm.value.workBasket) || null,
+      serviceLineCount: selected.length,
+      payloadSnapshotJson: JSON.stringify(selected)
+    };
+
+    const request = {
+      activity: newActivity,
+      lines: selected
+    };
+
+    console.log('Request payload:', request);
   }
 
   cancelReview() {
     this.mdrForm.reset();
     this.serviceLines.forEach(l => (l.selected = false));
+  }
+
+  hasSelection(): boolean {
+    return Array.isArray(this.serviceLines) && this.serviceLines.some(l => !!l.selected);
   }
 }

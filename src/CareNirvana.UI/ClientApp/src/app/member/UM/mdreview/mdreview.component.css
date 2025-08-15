@@ -41,6 +41,7 @@
   position: relative;
   overflow: visible; /* allow the panel to overflow the card/grid */
 }
+
 .dropdown-arrow {
   position: absolute;
   right: 10px;
@@ -65,8 +66,9 @@
 
 .button-group {
   margin-top: 1rem;
-  display: flex;
+  display: block;
   gap: 1rem;
+  text-align: right;
 }
 
   .button-group button {
@@ -78,6 +80,17 @@
     cursor: pointer;
   }
 
+    .button-group button[disabled] {
+      background-color: #ccc; /* gray background */
+      color: #666; /* lighter text */
+      border-color: #aaa; /* muted border */
+      cursor: not-allowed; /* show "no" cursor */
+      opacity: 0.7; /* slightly transparent */
+    }
+
+      .button-group button[disabled]:hover {
+        background-color: #ccc;
+      }
 /* Service Line Table Styles */
 .service-line-table-wrapper {
   overflow-x: auto;

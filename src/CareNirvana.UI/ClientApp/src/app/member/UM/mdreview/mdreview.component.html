@@ -1,6 +1,8 @@
 <div class="auth-form">
   <form [formGroup]="mdrForm">
-    <div class="form-grid">
+    <h5 *ngIf="hasSelection()">Send for Medical Director Review​</h5>
+    <div class="form-grid" style="padding-top:5px;" *ngIf="hasSelection()">
+
 
       <!-- Assignment Type -->
       <div class="form-outline dropdown-container">
@@ -111,7 +113,7 @@
       </div>
 
       <!-- Work Basket -->
-      <div class="form-outline dropdown-container">
+      <div class="form-outline dropdown-container" *ngIf="showWorkBasketFields">
         <label class="floating-label">Work Basket</label>
         <div class="input-with-icon">
           <input type="text" class="form-control" [value]="workBasketDisplay"
@@ -129,7 +131,7 @@
       </div>
 
       <!-- Work Basket Users -->
-      <div class="form-outline dropdown-container">
+      <div class="form-outline dropdown-container" *ngIf="showWorkBasketFields">
         <label class="floating-label">Work Basket Users</label>
         <div class="input-with-icon">
           <input type="text" class="form-control" [value]="workBasketUserDisplay"
@@ -154,12 +156,12 @@
       </div>
     </div>
 
-    <h3>Select the service lines for review</h3>
+    <h5>Select the service lines for review</h5>
     <div class="service-line-table-wrapper">
       <table class="service-line-table">
         <thead>
           <tr>
-            <th><input type="checkbox" [checked]="isAllSelected()" (change)="toggleAllSelection($event)" /></th>
+            <th><input type="checkbox" [checked]="isAllSelected()" [(ngModel)]="allSelected" (change)="toggleAllSelection($event)" /></th>
             <th>Service Code</th>
             <th>Service Description</th>
             <th>From Date</th>
@@ -178,8 +180,8 @@
                      [ngModelOptions]="{ standalone: true }"
                      name="lineSelect{{i}}" />
             </td>
-            <td><a href="#">{{ line.serviceCode }}</a></td>
-            <td><a href="#">{{ line.description }}</a></td>
+            <td>{{ line.serviceCode }}</td>
+            <td>{{ line.description }}</td>
             <td>{{ toDisplayFormat(line.fromDate) }}</td>
             <td>{{ toDisplayFormat(line.toDate) }}</td>
             <td>{{ line.requested }}</td>
@@ -192,8 +194,8 @@
     </div>
 
     <div class="button-group">
-      <button type="button" (click)="submitReview()">Submit for Medical Director Review</button>
-      <button type="button" (click)="cancelReview()">Cancel</button>
+      <button type="button" (click)="submitReview()" [disabled]="!hasSelection()">Submit for Medical Director Review</button>
+      <button type="button" (click)="cancelReview()" [disabled]="!hasSelection()">Cancel</button>
     </div>
   </form>
 </div>
