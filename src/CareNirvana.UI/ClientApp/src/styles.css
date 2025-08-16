@@ -331,3 +331,34 @@ icon-admin {
     color: white !important; /* ✅ Force step label to be white */
     font-weight: bold;
   }
+
+
+/* Keep the field compact and aligned with other inputs */
+.compact-mat {
+  --mat-form-field-container-height: 40px;
+  --mat-form-field-container-vertical-padding: 6px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+/* Make the search row look like a sticky header inside the panel */
+.cdk-overlay-pane .select-with-search-panel .search-option {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fff;
+  padding: 8px 8px 4px 8px; /* tighter padding */
+  border-bottom: 1px solid #eee;
+}
+
+  /* Prevent hover/selection styling on the disabled search row */
+  .cdk-overlay-pane .select-with-search-panel .search-option.mdc-list-item--disabled {
+    opacity: 1; /* keep search input fully visible */
+  }
+
+/* Optional: reduce option vertical padding to show more results */
+.cdk-overlay-pane .select-with-search-panel .mat-mdc-option {
+  min-height: 36px;
+}

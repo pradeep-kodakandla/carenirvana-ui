@@ -103,12 +103,15 @@ export class AuthorizationComponent {
 
   //********** Method MD Review ************//
   mdReviewLines: MdReviewLine[] = [];
+  mdReviewHasActivities = false;
+  forceShowMdReview = false; // set to true when clicking MD Review button
+
   @ViewChild(DecisiondetailsComponent) decisionCmp?: DecisiondetailsComponent;
   @ViewChild(MdreviewComponent) mdReviewCmp?: MdreviewComponent;
 
   handleGoToMdReview(rows: MdReviewLine[]) {
-    // Make a new reference so change detection fires
-    this.mdReviewLines = [...(rows ?? [])];
+    this.forceShowMdReview = true;        // override visibility guard
+    this.stepperSelectedIndex = 2;        // MD Review tab index in your stepper
   }
 
   onStepperChanged(evt: StepperSelectionEvent) {
@@ -398,6 +401,22 @@ export class AuthorizationComponent {
 
     this.loadAllUsers();
 
+    this.loadMdReviewAvailability();
+  }
+
+  // --- Call once you have the needed context (e.g., ngOnInit or after auth load) ---
+  private loadMdReviewAvailability(): void {
+    // undefined + 24 per requirement
+    this.authService.getMdReviewActivities(undefined, 24).subscribe({
+      next: (rows: any[]) => {
+        this.mdReviewLines = rows ?? [];
+        this.mdReviewHasActivities = this.mdReviewLines.length > 0;
+      },
+      error: () => {
+        this.mdReviewLines = [];
+        this.mdReviewHasActivities = false;
+      }
+    });
   }
 
   loadAllUsers(): void {

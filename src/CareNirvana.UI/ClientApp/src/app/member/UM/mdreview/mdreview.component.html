@@ -40,6 +40,38 @@
         </div>
       </div>
 
+      <!--<div class="compact-field">
+        <mat-form-field appearance="outline" class="full-width compact-mat"
+                        style="--mat-form-field-container-height:40px; --mat-form-field-container-vertical-padding:6px;">
+          <mat-label>Priority</mat-label>
+
+          <mat-select [formControl]="priorityCtrl"
+                      (openedChange)="onOpen($event)"
+                      (closed)="onClosed()"
+                      panelClass="select-with-search-panel">-->
+            <!-- Search row -->
+            <!--<mat-option disabled class="search-option">
+              <input #searchInput
+                     matInput
+                     type="text"
+                     placeholder="Search..."
+                     [formControl]="priorityFilterCtrl"
+                     (click)="$event.stopPropagation()"
+                     (keydown)="onSearchKeydown($event)">
+            </mat-option>-->
+
+            <!-- Filtered options -->
+            <!--<mat-option *ngFor="let p of filteredPriorities$ | async" [value]="p">
+              {{ p }}
+            </mat-option>
+
+            <mat-option *ngIf="(filteredPriorities$ | async)?.length === 0" disabled>
+              No results
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+      </div>-->
       <!-- Priority -->
       <div class="form-outline dropdown-container">
         <label class="floating-label">Priority <span class="text-danger">*</span></label>

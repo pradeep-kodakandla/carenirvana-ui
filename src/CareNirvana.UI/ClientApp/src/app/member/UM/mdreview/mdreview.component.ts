@@ -4,6 +4,13 @@ import { MdReviewLine } from '../decisiondetails/decisiondetails.component';
 import { CrudService } from 'src/app/service/crud.service';
 import { AuthService } from 'src/app/service/auth.service';
 import { AuthenticateService } from 'src/app/service/authentication.service';
+import { map } from 'rxjs/operators';
+import { DatePipe } from '@angular/common';
+
+interface MdReviewActivityDto {
+  activity: any;   // or your AuthActivity model
+  lines: any[];    // or your AuthActivityLine model
+}
 
 @Component({
   selector: 'app-mdreview',
@@ -28,8 +35,10 @@ export class MdreviewComponent implements OnInit, OnChanges {
   allSelected = true;
   activityTypes: { value: string, label: string }[] = [{ value: '', label: 'Select' }];
 
+  activities: MdReviewActivityDto[] = [];
+
   // Optional: constants to avoid typos
-  
+
   private readonly ASSIGNMENT_WORK_BASKET = 'Work Basket Assignment';
 
   showDropdowns: any = {
@@ -39,6 +48,12 @@ export class MdreviewComponent implements OnInit, OnChanges {
     workBasket: false,
     workBasketUser: false
   };
+
+  priorities = [
+    { id: 1, label: 'High' },
+    { id: 2, label: 'Routine' },   // default
+    { id: 3, label: 'Low' }
+  ];
 
   activeDropdown = '';
   highlightedIndex = -1;
@@ -51,7 +66,7 @@ export class MdreviewComponent implements OnInit, OnChanges {
 
   @ViewChild('scheduledPicker') scheduledPicker!: ElementRef<HTMLInputElement>;
   @ViewChild('duePicker') duePicker!: ElementRef<HTMLInputElement>;
-  constructor(private fb: FormBuilder, private crudService: CrudService, private authenticateService: AuthenticateService, private activityService: AuthService) { }
+  constructor(private fb: FormBuilder, private crudService: CrudService, private authenticateService: AuthenticateService, private activityService: AuthService, private datePipe: DatePipe) { }
 
   ngOnInit(): void {
 
@@ -76,6 +91,11 @@ export class MdreviewComponent implements OnInit, OnChanges {
     this.applyAssignmentTypeSideEffects(this.assignmentTypeDisplay);
     this.loadActivityTypes();
     this.loadUsers();
+
+    // Default Priority to ID=2 (Routine) and reflect label in the input
+    this.mdrForm.get('priority')?.setValue(2);
+    const defP = this.priorities.find(p => p.id === 2);
+    this.priorityDisplay = defP?.label ?? '';
   }
 
   loadActivityTypes() {
@@ -87,7 +107,7 @@ export class MdreviewComponent implements OnInit, OnChanges {
 
       this.activityTypes = [{ value: '', label: 'Select' }, ...options];
       this.filteredActivityTypes = [...this.activityTypes];
-     // this.updateActivityLabels();
+      // this.updateActivityLabels();
 
       // If form has value, sync label to display
       const selected = this.activityTypes.find(a => a.value === this.mdrForm.get('activityType')?.value);
@@ -200,7 +220,7 @@ export class MdreviewComponent implements OnInit, OnChanges {
     switch (field) {
       case 'activityType':
         this.activityTypeDisplay = option.label;
-        this.mdrForm.get('activityType')?.setValue(option.label);
+        this.mdrForm.get('activityType')?.setValue(option.value);
         break;
       case 'assignmentType':
         this.assignmentTypeDisplay = option.label;
@@ -208,7 +228,7 @@ export class MdreviewComponent implements OnInit, OnChanges {
         break;
       case 'priority':
         this.priorityDisplay = option.label;
-        this.mdrForm.get('priority')?.setValue(option.label);
+        this.mdrForm.get('priority')?.setValue(option.id);
         break;
       case 'assignTo':
         this.assignToDisplay = option.label;
@@ -346,51 +366,51 @@ export class MdreviewComponent implements OnInit, OnChanges {
     }
   }
 
-  submitReview() {
-    console.log('Form submitted:', this.mdrForm.value);
-    console.log('Selected lines:', this.serviceLines.filter(l => l.selected));
+  //submitReview() {
+  //  console.log('Form submitted:', this.mdrForm.value);
+  //  console.log('Selected lines:', this.serviceLines.filter(l => l.selected));
 
-    const selected = (this.serviceLines || [])
-      .filter(l => l.selected)
-      .map(l => ({
-       // decisionLineId: l.id ?? null,       // if you have it
-        serviceCode: l.serviceCode,
-        description: l.description,
-        fromDate: l.fromDate,
-        toDate: l.toDate,
-        requested: l.requested,
-        approved: l.approved,
-        denied: l.denied,
-        initialRecommendation: l.recommendation
-      }));
+  //  const selected = (this.serviceLines || [])
+  //    .filter(l => l.selected)
+  //    .map(l => ({
+  //     // decisionLineId: l.id ?? null,       // if you have it
+  //      serviceCode: l.serviceCode,
+  //      description: l.description,
+  //      fromDate: l.fromDate,
+  //      toDate: l.toDate,
+  //      requested: l.requested,
+  //      approved: l.approved,
+  //      denied: l.denied,
+  //      initialRecommendation: l.recommendation
+  //    }));
 
-    const newActivity = {
-     // authDetailId: this.authDetailId,
-      activityTypeId: Number(this.mdrForm.value.activityType) || null,
-      priorityId: Number(this.mdrForm.value.priority) || null,
-      providerId: null,
-      followUpDateTime: this.mdrForm.value.scheduledDateTime || null,
-      dueDate: this.mdrForm.value.dueDateTime || null,
-      comment: this.mdrForm.value.comments || null,
-      statusId: 1,                             // e.g., Open
-      activeFlag: true,
-     // createdBy: Number(loggedInUserId),
-      createdOn: new Date(),
-      referredTo: Number(this.mdrForm.value.assignTo) || null,
-      assignmentType: this.assignmentTypeDisplay,          // e.g., "Specific Medical Director" or "Work Basket Assignment"
-      assignedToUserId: Number(this.mdrForm.value.assignTo) || null,
-      assignedToWorkBasketId: Number(this.mdrForm.value.workBasket) || null,
-      serviceLineCount: selected.length,
-      payloadSnapshotJson: JSON.stringify(selected)
-    };
+  //  const newActivity = {
+  //   // authDetailId: this.authDetailId,
+  //    activityTypeId: Number(this.mdrForm.value.activityType) || null,
+  //    priorityId: Number(this.mdrForm.value.priority) || null,
+  //    providerId: null,
+  //    followUpDateTime: this.mdrForm.value.scheduledDateTime || null,
+  //    dueDate: this.mdrForm.value.dueDateTime || null,
+  //    comment: this.mdrForm.value.comments || null,
+  //    statusId: 1,                             // e.g., Open
+  //    activeFlag: true,
+  //   // createdBy: Number(loggedInUserId),
+  //    createdOn: new Date(),
+  //    referredTo: Number(this.mdrForm.value.assignTo) || null,
+  //    assignmentType: this.assignmentTypeDisplay,          // e.g., "Specific Medical Director" or "Work Basket Assignment"
+  //    assignedToUserId: Number(this.mdrForm.value.assignTo) || null,
+  //    assignedToWorkBasketId: Number(this.mdrForm.value.workBasket) || null,
+  //    serviceLineCount: selected.length,
+  //    payloadSnapshotJson: JSON.stringify(selected)
+  //  };
 
-    const request = {
-      activity: newActivity,
-      lines: selected
-    };
+  //  const request = {
+  //    activity: newActivity,
+  //    lines: selected
+  //  };
 
-    console.log('Request payload:', request);
-  }
+  //  console.log('Request payload:', request);
+  //}
 
   cancelReview() {
     this.mdrForm.reset();
@@ -399,5 +419,77 @@ export class MdreviewComponent implements OnInit, OnChanges {
 
   hasSelection(): boolean {
     return Array.isArray(this.serviceLines) && this.serviceLines.some(l => !!l.selected);
+  }
+
+
+  // Load activities for given authDetailId
+  loadMdReviewActivities(authDetailId?: number) {
+    // wherever you call the GET
+    this.activityService.getMdReviewActivities(undefined, 24)// this.authDetailId)
+      .pipe(
+        map((res: any[]) =>
+          (res || []).map(x => ({
+            activity: x.activity ?? x.item1 ?? x.Item1,   // handle different casings
+            lines: x.lines ?? x.item2 ?? x.Item2
+          }))
+        )
+      )
+      .subscribe({
+        next: (data: MdReviewActivityDto[]) => {
+          this.activities = data;   // <-- now exists, strongly typed
+        },
+        error: err => console.error('Error fetching MD Review activities', err)
+      });
+
+  }
+
+  // Submit new MD Review activity with selected lines
+  submitReview() {
+    if (!this.hasSelection()) return;
+
+    console.log('Form submitted:', this.mdrForm.value);
+    console.log('Selected lines:', this.serviceLines.filter(l => l.selected));
+    const selectedLines = this.serviceLines.filter(l => l.selected);
+    const payload = {
+      authDetailId: 24,//this.authDetailId,
+      activityTypeId: this.mdrForm.value.activityType,
+      priorityId: this.mdrForm.value.priority,
+      referredTo: this.mdrForm.value.assignTo?.value ?? null,
+      scheduledDateTime: this.formatDateForApi(this.mdrForm.value.scheduledDateTime), 
+      dueDateTime: this.formatDateForApi(this.mdrForm.value.dueDateTime),
+      clinicalInstructions: this.mdrForm.value.clinicalInstructions,
+      lines: selectedLines
+    };
+
+    console.log('Payload for MD Review Activity:', payload);
+    this.activityService.createMdReviewActivity(payload)
+      .subscribe({
+        next: res => {
+          console.log('Created MD Review Activity', res);
+          this.loadMdReviewActivities(24); // reload list
+        },
+        error: err => console.error('Error creating MD Review activity', err)
+      });
+  }
+
+  // Update a line decision (e.g. Approved/Denied)
+  updateLineDecision(line: any, decision: string) {
+    const payload = {
+      mddecision: decision,
+      mdnotes: line.notes || null
+    };
+
+    this.activityService.updateMdReviewLine(line.id, payload)
+      .subscribe({
+        next: res => {
+          console.log('Line updated', res);
+          line.mddecision = decision;
+        },
+        error: err => console.error('Error updating line', err)
+      });
+  }
+
+  private formatDateForApi(date: any): string | null {
+    return this.datePipe.transform(date, 'yyyyMMdd HH:mm:ss');
   }
 }

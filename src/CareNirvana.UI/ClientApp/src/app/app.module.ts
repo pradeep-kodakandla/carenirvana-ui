@@ -1,5 +1,6 @@
 import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
 import { RouterModule, Routes } from '@angular/router';
@@ -319,7 +320,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
 
     ])
   ],
-  providers: [SidenavService],
+  providers: [SidenavService, DatePipe],
   bootstrap: [AppComponent],
   exports: [ShowLabelDirective]
 })

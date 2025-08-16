@@ -8,10 +8,10 @@ import { Observable } from 'rxjs';
 export class AuthService {
   private apiUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/auth';
   private apiUrlCodeSets = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/codesets';
-  private apiUrlActivities = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/authactivity';
+  //private apiUrlActivities = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/authactivity';
   // private apiUrl = 'https://localhost:51346/api/auth';
   //private apiUrlCodeSets = 'https://localhost:51346/api/codesets';
-  //private apiUrlActivities = 'https://localhost:51346/api/authactivity';
+  private apiUrlActivities = 'https://localhost:51346/api/authactivity';
 
   constructor(private http: HttpClient) { }
 
@@ -109,5 +109,22 @@ export class AuthService {
     return this.http.post<any>(`${this.apiUrl}/validation/update`, payload);
   }
 
+
+  getMdReviewActivities(activityId?: number, authDetailId?: number) {
+    let params: any = {};
+    if (activityId) params.activityId = activityId;
+    if (authDetailId) params.authDetailId = authDetailId;
+
+    return this.http.get<any[]>(`${this.apiUrlActivities}/mdreview`, { params });
+  }
+
+
+  createMdReviewActivity(activity: any) {
+    return this.http.post<any>(`${this.apiUrlActivities}/mdreview`, activity);
+  }
+
+  updateMdReviewLine(lineId: number, lineUpdate: any) {
+    return this.http.put<any>(`${this.apiUrlActivities}/mdreview/line/${lineId}`, lineUpdate);
+  }
 
 }

@@ -889,7 +889,7 @@
 
       <!--<mat-step label="MD Review" [completed]="!!authNumber" [editable]="!!authNumber"></mat-step>-->
       <mat-step label="MD Review"
-                *ngIf="hasPagePermission('MD Review', 'View')"
+                *ngIf="hasPagePermission('MD Review', 'View') && (mdReviewHasActivities || forceShowMdReview)"
                 [completed]="!!authNumber"
                 [editable]="!!authNumber"
                 >
