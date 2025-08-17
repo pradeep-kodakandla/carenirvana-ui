@@ -1,7 +1,7 @@
 <div class="auth-form">
   <form [formGroup]="mdrForm">
-    <h5 *ngIf="hasSelection()">Send for Medical Director Review​</h5>
-    <div class="form-grid" style="padding-top:5px;" *ngIf="hasSelection()">
+    <h5>Send for Medical Director Review​</h5>
+    <div class="form-grid" style="padding-top:5px;" >
 
 
       <!-- Assignment Type -->
@@ -41,27 +41,26 @@
       </div>
 
       <!--<div class="compact-field">
-        <mat-form-field appearance="outline" class="full-width compact-mat"
-                        style="--mat-form-field-container-height:40px; --mat-form-field-container-vertical-padding:6px;">
-          <mat-label>Priority</mat-label>
+      <mat-form-field appearance="outline" class="full-width compact-mat"
+                      style="--mat-form-field-container-height:40px; --mat-form-field-container-vertical-padding:6px;">
+        <mat-label>Priority</mat-label>
 
-          <mat-select [formControl]="priorityCtrl"
-                      (openedChange)="onOpen($event)"
-                      (closed)="onClosed()"
-                      panelClass="select-with-search-panel">-->
-            <!-- Search row -->
-            <!--<mat-option disabled class="search-option">
-              <input #searchInput
-                     matInput
-                     type="text"
-                     placeholder="Search..."
-                     [formControl]="priorityFilterCtrl"
-                     (click)="$event.stopPropagation()"
-                     (keydown)="onSearchKeydown($event)">
-            </mat-option>-->
-
-            <!-- Filtered options -->
-            <!--<mat-option *ngFor="let p of filteredPriorities$ | async" [value]="p">
+        <mat-select [formControl]="priorityCtrl"
+                    (openedChange)="onOpen($event)"
+                    (closed)="onClosed()"
+                    panelClass="select-with-search-panel">-->
+      <!-- Search row -->
+      <!--<mat-option disabled class="search-option">
+        <input #searchInput
+               matInput
+               type="text"
+               placeholder="Search..."
+               [formControl]="priorityFilterCtrl"
+               (click)="$event.stopPropagation()"
+               (keydown)="onSearchKeydown($event)">
+      </mat-option>-->
+      <!-- Filtered options -->
+      <!--<mat-option *ngFor="let p of filteredPriorities$ | async" [value]="p">
               {{ p }}
             </mat-option>
 
@@ -189,11 +188,47 @@
     </div>
 
     <h5>Select the service lines for review</h5>
-    <div class="service-line-table-wrapper">
+
+    <!-- View toolbar -->
+    <div class="view-toolbar">
+      <div class="segmented">
+        <button type="button"
+                [class.active]="viewMode === 'table'"
+                (click)="switchView('table')">
+          Table
+        </button>
+        <button type="button"
+                [class.active]="viewMode === 'cards'"
+                (click)="switchView('cards')">
+          Cards
+        </button>
+      </div>
+
+      <!-- Cards-only bulk select -->
+      <div class="cards-bulk-select" *ngIf="viewMode === 'cards'">
+        <label class="select-all">
+          <input type="checkbox"
+                 [checked]="isEverySelectableSelected()"
+                 [indeterminate]="isSomeSelectableSelected() && !isEverySelectableSelected()"
+                 (change)="toggleAllSelection($event)"
+                 [disabled]="noSelectableLines()" />
+
+          Select all
+        </label>
+      </div>
+    </div>
+
+    <!-- TABLE VIEW -->
+    <div class="service-line-table-wrapper" *ngIf="viewMode === 'table'">
       <table class="service-line-table">
         <thead>
           <tr>
-            <th><input type="checkbox" [checked]="isAllSelected()" [(ngModel)]="allSelected" (change)="toggleAllSelection($event)" /></th>
+            <th>
+              <input type="checkbox"
+                     [(ngModel)]="allSelected"
+                     [ngModelOptions]="{ standalone: true }"
+                     (change)="toggleAllSelection($event)" />
+            </th>
             <th>Service Code</th>
             <th>Service Description</th>
             <th>From Date</th>
@@ -202,15 +237,18 @@
             <th>Approved</th>
             <th>Denied</th>
             <th>Initial Recommendation</th>
+            <th>MD's Review Status</th> <!-- NEW -->
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let line of serviceLines; let i = index">
+          <tr *ngFor="let line of serviceLines; let i = index; trackBy: trackByLine">
             <td>
               <input type="checkbox"
                      [(ngModel)]="line.selected"
                      [ngModelOptions]="{ standalone: true }"
-                     name="lineSelect{{i}}" />
+                     name="lineSelect{{i}}"
+                     [disabled]="isMdInProgress(line)" />
+
             </td>
             <td>{{ line.serviceCode }}</td>
             <td>{{ line.description }}</td>
@@ -219,15 +257,67 @@
             <td>{{ line.requested }}</td>
             <td>{{ line.approved }}</td>
             <td>{{ line.denied }}</td>
-            <td><button [ngClass]="getRecommendationClass(line.recommendation)">{{ line.recommendation }}</button></td>
+            <td>
+              <button [ngClass]="getRecommendationClass(line.recommendation)">
+                {{ line.recommendation }}
+              </button>
+            </td>
+            <td>
+              <span class="mdr-badge" [ngClass]="mdStatusClass(getMdStatus(line))">
+                {{ getMdStatus(line) }}
+              </span>
+            </td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <div class="button-group">
-      <button type="button" (click)="submitReview()" [disabled]="!hasSelection()">Submit for Medical Director Review</button>
-      <button type="button" (click)="cancelReview()" [disabled]="!hasSelection()">Cancel</button>
+    <!-- CARDS VIEW -->
+    <div *ngIf="viewMode === 'cards'" class="cards-grid cards--fullrow">
+      <div class="sl-card" *ngFor="let line of serviceLines; let i = index; trackBy: trackByLine">
+        <div class="sl-card-header">
+          <div class="sl-card-title">
+            <input type="checkbox"
+                   class="sl-select"
+                   [(ngModel)]="line.selected"
+                   [ngModelOptions]="{ standalone: true }"
+                   name="cardSelect{{i}}"
+                   [disabled]="isMdInProgress(line)" />
+
+            <strong>{{ line.serviceCode }}</strong>
+            <span class="muted">• {{ line.description }}</span>
+          </div>
+          <span class="mdr-badge" [ngClass]="mdStatusClass(getMdStatus(line))">
+            {{ getMdStatus(line) }}
+          </span>
+        </div>
+
+
+        <div class="kv-row">
+          <div class="kv-inline"><span class="kv-label">From Date</span><span class="kv-value">{{ toDisplayFormat(line.fromDate) }}</span></div>
+          <div class="kv-inline"><span class="kv-label">To Date</span><span class="kv-value">{{ toDisplayFormat(line.toDate) }}</span></div>
+          <div class="kv-inline"><span class="kv-label">Requested</span><span class="kv-value">{{ line.requested }}</span></div>
+          <div class="kv-inline"><span class="kv-label">Approved</span><span class="kv-value">{{ line.approved }}</span></div>
+          <div class="kv-inline"><span class="kv-label">Denied</span><span class="kv-value">{{ line.denied }}</span></div>
+          <div class="kv-inline">
+            <span class="kv-label">Initial Recommendation</span>
+            <span class="kv-value">
+              <button [ngClass]="getRecommendationClass(line.recommendation)">
+                {{ line.recommendation || line.recommendation }}
+              </button>
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
+
+    <!-- Actions (unchanged) -->
+    <div class="button-group">
+      <button type="button" (click)="submitReview()" [disabled]="!hasSelection() || noSelectableLines()">
+        Submit for Medical Director Review
+      </button>
+      <button type="button" (click)="cancelReview()" [disabled]="!hasSelection() || noSelectableLines()">Cancel</button>
+    </div>
+
   </form>
 </div>

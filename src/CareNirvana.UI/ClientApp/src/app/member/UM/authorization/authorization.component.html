@@ -44,7 +44,7 @@
     </ng-template>
     <!-- Horizontal Stepper -->
     <mat-horizontal-stepper style="padding: 5px;  background-color:transparent;" [selectedIndex]="stepperSelectedIndex" (selectionChange)="onStepperChanged($event)" #stepper>
-      <mat-step label="Request Details" >
+      <mat-step label="Request Details">
         <div class="content" style="padding-top: 5px;">
           <div class="main-form" style="padding: 0;">
             <!-- Wrap dynamic form in an NgForm -->
@@ -67,11 +67,11 @@
                   <!-- Rounded selection boxes -->
                   <div class="rounded-box tooltip-wrapper" (click)="selectDiv(1)" [ngClass]="{ 'selected': selectedDiv === 1 }">
                     <!--<div class="tooltip-panel">
-                      <div class="tooltip-row"><label class="tooltip-label">LOB:</label><span>Medicare</span></div>
-                      <div class="tooltip-row"><label class="tooltip-label">Account:</label><span>Microsoft</span></div>
-                      <div class="tooltip-row"><label class="tooltip-label">Start Date:</label><span>01/01/2024</span></div>
-                      <div class="tooltip-row"><label class="tooltip-label">End Date:</label><span>12/31/2024</span></div>
-                    </div>-->
+                  <div class="tooltip-row"><label class="tooltip-label">LOB:</label><span>Medicare</span></div>
+                  <div class="tooltip-row"><label class="tooltip-label">Account:</label><span>Microsoft</span></div>
+                  <div class="tooltip-row"><label class="tooltip-label">Start Date:</label><span>01/01/2024</span></div>
+                  <div class="tooltip-row"><label class="tooltip-label">End Date:</label><span>12/31/2024</span></div>
+                </div>-->
 
                     <div class="d-flex justify-content-between div-secondary">
                       <div>
@@ -91,11 +91,11 @@
                   </div>
                   <div class="rounded-box tooltip-wrapper" (click)="selectDiv(2)" [ngClass]="{ 'selected': selectedDiv === 2 }">
                     <!--<div class="tooltip-panel">
-                      <div class="tooltip-row"><label class="tooltip-label">LOB:</label><span>Medicare</span></div>
-                      <div class="tooltip-row"><label class="tooltip-label">Account:</label><span>Microsoft</span></div>
-                      <div class="tooltip-row"><label class="tooltip-label">Start Date:</label><span>01/01/2024</span></div>
-                      <div class="tooltip-row"><label class="tooltip-label">End Date:</label><span>12/31/2024</span></div>
-                    </div>-->
+                  <div class="tooltip-row"><label class="tooltip-label">LOB:</label><span>Medicare</span></div>
+                  <div class="tooltip-row"><label class="tooltip-label">Account:</label><span>Microsoft</span></div>
+                  <div class="tooltip-row"><label class="tooltip-label">Start Date:</label><span>01/01/2024</span></div>
+                  <div class="tooltip-row"><label class="tooltip-label">End Date:</label><span>12/31/2024</span></div>
+                </div>-->
                     <div class="d-flex justify-content-between div-secondary">
                       <div>
                         <label class="label">LOB</label>
@@ -114,11 +114,11 @@
                   </div>
                   <div class="rounded-box tooltip-wrapper" (click)="selectDiv(3)" [ngClass]="{ 'selected': selectedDiv === 3 }">
                     <!--<div class="tooltip-panel">
-                      <div class="tooltip-row"><label class="tooltip-label">LOB:</label><span>Medicare</span></div>
-                      <div class="tooltip-row"><label class="tooltip-label">Account:</label><span>Microsoft</span></div>
-                      <div class="tooltip-row"><label class="tooltip-label">Start Date:</label><span>01/01/2024</span></div>
-                      <div class="tooltip-row"><label class="tooltip-label">End Date:</label><span>12/31/2024</span></div>
-                    </div>-->
+                  <div class="tooltip-row"><label class="tooltip-label">LOB:</label><span>Medicare</span></div>
+                  <div class="tooltip-row"><label class="tooltip-label">Account:</label><span>Microsoft</span></div>
+                  <div class="tooltip-row"><label class="tooltip-label">Start Date:</label><span>01/01/2024</span></div>
+                  <div class="tooltip-row"><label class="tooltip-label">End Date:</label><span>12/31/2024</span></div>
+                </div>-->
                     <div class="d-flex justify-content-between div-secondary">
                       <div>
                         <label class="label">LOB</label>
@@ -888,20 +888,16 @@
       </mat-step>
 
       <!--<mat-step label="MD Review" [completed]="!!authNumber" [editable]="!!authNumber"></mat-step>-->
-      <mat-step label="MD Review"
-                *ngIf="hasPagePermission('MD Review', 'View') && (mdReviewHasActivities || forceShowMdReview)"
-                [completed]="!!authNumber"
-                [editable]="!!authNumber"
-                >
-        <app-mdreview [serviceLines]="mdReviewLines">
-        </app-mdreview>
+      <mat-step label="MD Review" 
+                *ngIf="hasPagePermission('MD Review','View') && (mdReviewHasActivities || (forceShowMdReview && !!authDetailId))"
+                [completed]="!!authNumber" [editable]="!!authNumber">
+        <app-mdreview *ngIf="mdReviewLines?.length" [authDetailId]="authDetailId" [serviceLines]="mdReviewLines"></app-mdreview>
       </mat-step>
 
-      <mat-step label="Activity"
-                *ngIf="hasPagePermission('Auth Activity', 'View')"
-                [completed]="!!authNumber"
-                [editable]="!!authNumber">
-        <app-umauthactivity [authDetailId]="authDetailId"
+
+      <mat-step label="Activity" *ngIf="hasPagePermission('Auth Activity', 'View')" [completed]="!!authNumber" [editable]="!!authNumber">
+        <app-umauthactivity *ngIf="authDetailId"
+                            [authDetailId]="authDetailId"
                             [canAdd]="hasPagePermission('Auth Activity', 'Add')"
                             [canEdit]="hasPagePermission('Auth Activity', 'Edit')">
         </app-umauthactivity>

@@ -12,6 +12,29 @@ interface MdReviewActivityDto {
   lines: any[];    // or your AuthActivityLine model
 }
 
+type MdActivityLine = {
+  serviceCode?: string;
+  ServiceCode?: string;
+  code?: string;
+  CPT?: string;
+  DecisionLineId?: number | string;
+  decisionLineId?: number | string;
+  // ...other fields
+};
+
+type MdActivity = {
+  activity: any; // could contain MDStatus, MDAgg, etc.
+  lines: MdActivityLine[];
+};
+
+type MdIndexEntry = {
+  hasAnyActivity: boolean;
+  hasPendingLike: boolean;   // pending / in progress
+  hasCompletedLike: boolean; // completed / closed
+};
+type MdReviewStatus = 'MD Review in progress' | 'MD Review completed' | 'Not requested';
+type MdReviewLineVM = MdReviewLine & { mdrStatus?: MdReviewStatus; selected?: boolean };
+
 @Component({
   selector: 'app-mdreview',
   templateUrl: './mdreview.component.html',
@@ -19,6 +42,7 @@ interface MdReviewActivityDto {
 })
 export class MdreviewComponent implements OnInit, OnChanges {
 
+  @Input() authDetailId: number | null = null;
   @Input() serviceLines: MdReviewLine[] = [];
 
   mdrForm!: FormGroup;
@@ -51,22 +75,28 @@ export class MdreviewComponent implements OnInit, OnChanges {
 
   priorities = [
     { id: 1, label: 'High' },
-    { id: 2, label: 'Routine' },   // default
+    { id: 2, label: 'Medium' },
     { id: 3, label: 'Low' }
   ];
 
   activeDropdown = '';
   highlightedIndex = -1;
 
-  filteredActivityTypes = [{ label: 'Initial Review' }, { label: 'Follow-Up' }];
+  filteredActivityTypes = [{ label: '' }];
   filteredAssignmentTypes = [{ label: 'Specific Medical Director' }, { label: 'Work Basket Assignment' }];
   filteredPriorities = [{ label: 'Select' }, { label: 'High' }, { label: 'Medium' }, { label: 'Low' }];
-  filteredUsers = [{ label: 'Dr. Smith' }, { label: 'Dr. Jane' }];
+  filteredUsers = [{ label: '' }];
   filteredWorkBaskets = [{ label: 'UM-QA' }, { label: 'UM-CCR' }];
 
   @ViewChild('scheduledPicker') scheduledPicker!: ElementRef<HTMLInputElement>;
   @ViewChild('duePicker') duePicker!: ElementRef<HTMLInputElement>;
   constructor(private fb: FormBuilder, private crudService: CrudService, private authenticateService: AuthenticateService, private activityService: AuthService, private datePipe: DatePipe) { }
+
+
+  displayLines: MdReviewLineVM[] = [];        // <-- bind UI to this
+  private mdIndexByServiceCode = new Map<string, { hasAnyActivity: boolean; hasPendingLike: boolean; hasCompletedLike: boolean }>();
+
+
 
   ngOnInit(): void {
 
@@ -119,7 +149,6 @@ export class MdreviewComponent implements OnInit, OnChanges {
   loadUsers() {
     this.authenticateService.getAllUsers().subscribe({
       next: (users: any[]) => {
-        console.log('Loaded users:', users);
         this.filteredUsers = users.map(u => ({
           value: u.UserId,
           label: u.UserName
@@ -348,10 +377,10 @@ export class MdreviewComponent implements OnInit, OnChanges {
     return this.serviceLines.every(line => line.selected);
   }
 
-  toggleAllSelection(event: any) {
-    const isChecked = event.target.checked;
-    this.serviceLines.forEach(line => (line.selected = isChecked));
-  }
+  //toggleAllSelection(event: any) {
+  //  const isChecked = event.target.checked;
+  //  this.serviceLines.forEach(line => (line.selected = isChecked));
+  //}
 
   getRecommendationClass(status: string): string {
     switch (status.toLowerCase()) {
@@ -366,52 +395,6 @@ export class MdreviewComponent implements OnInit, OnChanges {
     }
   }
 
-  //submitReview() {
-  //  console.log('Form submitted:', this.mdrForm.value);
-  //  console.log('Selected lines:', this.serviceLines.filter(l => l.selected));
-
-  //  const selected = (this.serviceLines || [])
-  //    .filter(l => l.selected)
-  //    .map(l => ({
-  //     // decisionLineId: l.id ?? null,       // if you have it
-  //      serviceCode: l.serviceCode,
-  //      description: l.description,
-  //      fromDate: l.fromDate,
-  //      toDate: l.toDate,
-  //      requested: l.requested,
-  //      approved: l.approved,
-  //      denied: l.denied,
-  //      initialRecommendation: l.recommendation
-  //    }));
-
-  //  const newActivity = {
-  //   // authDetailId: this.authDetailId,
-  //    activityTypeId: Number(this.mdrForm.value.activityType) || null,
-  //    priorityId: Number(this.mdrForm.value.priority) || null,
-  //    providerId: null,
-  //    followUpDateTime: this.mdrForm.value.scheduledDateTime || null,
-  //    dueDate: this.mdrForm.value.dueDateTime || null,
-  //    comment: this.mdrForm.value.comments || null,
-  //    statusId: 1,                             // e.g., Open
-  //    activeFlag: true,
-  //   // createdBy: Number(loggedInUserId),
-  //    createdOn: new Date(),
-  //    referredTo: Number(this.mdrForm.value.assignTo) || null,
-  //    assignmentType: this.assignmentTypeDisplay,          // e.g., "Specific Medical Director" or "Work Basket Assignment"
-  //    assignedToUserId: Number(this.mdrForm.value.assignTo) || null,
-  //    assignedToWorkBasketId: Number(this.mdrForm.value.workBasket) || null,
-  //    serviceLineCount: selected.length,
-  //    payloadSnapshotJson: JSON.stringify(selected)
-  //  };
-
-  //  const request = {
-  //    activity: newActivity,
-  //    lines: selected
-  //  };
-
-  //  console.log('Request payload:', request);
-  //}
-
   cancelReview() {
     this.mdrForm.reset();
     this.serviceLines.forEach(l => (l.selected = false));
@@ -422,55 +405,127 @@ export class MdreviewComponent implements OnInit, OnChanges {
   }
 
 
-  // Load activities for given authDetailId
-  loadMdReviewActivities(authDetailId?: number) {
-    // wherever you call the GET
-    this.activityService.getMdReviewActivities(undefined, 24)// this.authDetailId)
-      .pipe(
-        map((res: any[]) =>
-          (res || []).map(x => ({
-            activity: x.activity ?? x.item1 ?? x.Item1,   // handle different casings
-            lines: x.lines ?? x.item2 ?? x.Item2
-          }))
-        )
-      )
-      .subscribe({
-        next: (data: MdReviewActivityDto[]) => {
-          this.activities = data;   // <-- now exists, strongly typed
-        },
-        error: err => console.error('Error fetching MD Review activities', err)
-      });
+  // Submit new MD Review activity with selected lines
 
+  private numOrNull(v: any): number | null {
+    if (v === '' || v === undefined || v === null) return null;
+    const n = Number((v as any)?.value ?? v);
+    return isNaN(n) ? null : n;
   }
 
-  // Submit new MD Review activity with selected lines
-  submitReview() {
-    if (!this.hasSelection()) return;
 
-    console.log('Form submitted:', this.mdrForm.value);
-    console.log('Selected lines:', this.serviceLines.filter(l => l.selected));
-    const selectedLines = this.serviceLines.filter(l => l.selected);
-    const payload = {
-      authDetailId: 24,//this.authDetailId,
-      activityTypeId: this.mdrForm.value.activityType,
-      priorityId: this.mdrForm.value.priority,
-      referredTo: this.mdrForm.value.assignTo?.value ?? null,
-      scheduledDateTime: this.formatDateForApi(this.mdrForm.value.scheduledDateTime), 
-      dueDateTime: this.formatDateForApi(this.mdrForm.value.dueDateTime),
-      clinicalInstructions: this.mdrForm.value.clinicalInstructions,
-      lines: selectedLines
+  // --- MAIN: drop-in submitReview() ---
+  submitReview(): void {
+    if (!this.hasSelection?.()) return;
+
+    const selected = (this.serviceLines || []).filter((l: any) => !!l?.selected);
+    if (!selected.length) return;
+
+    const fv = this.mdrForm?.value ?? {};
+    const isWB = ((fv.assignmentType?.value ?? fv.assignmentType) + '')
+      .toLowerCase()
+      .includes('work');
+
+    // Build Activity with ISO datetimes
+    const Activity = {
+      authDetailId: this.authDetailId, // TODO: use actual id if available
+      activityTypeId: this.numOrNull(fv.activityType ?? fv.activityTypeId),
+      priorityId: this.numOrNull(fv.priority ?? fv.priorityId),
+      referredTo: isWB ? null : this.numOrNull(fv.assignTo),
+      isWorkBasket: isWB ? true : null,
+      queueId: isWB ? this.numOrNull(fv.workBasketQueue) : null,
+      followUpDateTime: this.toIsoUtc(fv.scheduledDateTime),
+      dueDate: this.toIsoUtc(fv.dueDateTime),
+      comment: fv.clinicalInstructions || '',
+      createdOn: this.toIsoUtc(new Date()), // <= ISO with "T"
+      createdBy: 1 // or this.currentUserId
     };
 
-    console.log('Payload for MD Review Activity:', payload);
-    this.activityService.createMdReviewActivity(payload)
-      .subscribe({
-        next: res => {
-          console.log('Created MD Review Activity', res);
-          this.loadMdReviewActivities(24); // reload list
-        },
-        error: err => console.error('Error creating MD Review activity', err)
-      });
+    // Map lines with ISO dates + numeric counts
+    const Lines = selected.map((l: any) => ({
+      decisionLineId: l.decisionLineId ?? null,
+      serviceCode: l.serviceCode ?? l.code ?? null,
+      description: l.description ?? l.codeDesc ?? null,
+      fromDate: this.toIsoUtc(l.fromDate),
+      toDate: this.toIsoUtc(l.toDate),
+      requested: Number(l.requested ?? 0) || 0,
+      approved: Number(l.approved ?? 0) || 0,
+      denied: Number(l.denied ?? 0) || 0,
+      initialRecommendation: l.initialRecommendation ?? l.recommendation ?? null
+    }));
+
+    // Validate: any unparseable date -> stop and show why
+    const badDates = [
+      Activity.followUpDateTime, Activity.dueDate,
+      ...Lines.flatMap(x => [x.fromDate, x.toDate])
+    ].filter(d => d === null);
+
+    if (badDates.length) {
+      console.error('One or more dates could not be converted to ISO. Aborting submit.', badDates);
+      // TODO show snackbar/toast for the user
+      return;
+    }
+
+    const payload = {
+      Activity,             // PascalCase or camelCase both bind; keep your current shape
+      Lines,
+      PayloadSnapshotJson: JSON.stringify({
+        source: 'mdreview-ui',
+        selectedCount: Lines.length,
+        ts: this.toIsoUtc(new Date()) // ISO too
+      })
+    };
+
+
+    this.activityService.createMdReviewActivity(payload).subscribe({
+      next: (res: any) => {
+        const idToReload = this.authDetailId || undefined; // or this.authDetailId
+        this.loadMdReviewActivities?.(idToReload);
+        (this.serviceLines || []).forEach((l: any) => (l.selected = false));
+      },
+      error: (err: any) => {
+        // You’ll now see the controller’s specific message instead of ArgumentNullException
+        console.error('Error creating MD Review activity', err);
+        console.error('Server said:', err?.error);
+      }
+    });
   }
+
+
+  private toIsoUtc(v: any): string | null {
+    if (!v) return null;
+
+    // Let your existing formatter run first if you like
+    const s = this.formatDateForApi ? this.formatDateForApi(v) : v;
+
+    // Already Date?
+    if (s instanceof Date) return s.toISOString().replace(/\.\d{3}Z$/, 'Z');
+
+    // Already ISO with T? Parse then force UTC Z
+    if (typeof s === 'string' && /T\d{2}:\d{2}/.test(s)) {
+      const d = new Date(s);
+      return isNaN(d.getTime()) ? null : d.toISOString().replace(/\.\d{3}Z$/, 'Z');
+    }
+
+    // yyyy-MM-dd HH:mm:ss
+    let m = ('' + s).match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/);
+    if (m) return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6])
+      .toISOString().replace(/\.\d{3}Z$/, 'Z');
+
+    // yyyyMMdd HH:mm:ss
+    m = ('' + s).match(/^(\d{4})(\d{2})(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/);
+    if (m) return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6])
+      .toISOString().replace(/\.\d{3}Z$/, 'Z');
+
+    // MM/dd/yyyy HH:mm:ss
+    m = ('' + s).match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})$/);
+    if (m) return new Date(+m[3], +m[1] - 1, +m[2], +m[4], +m[5], +m[6])
+      .toISOString().replace(/\.\d{3}Z$/, 'Z');
+
+    const d2 = new Date(s);
+    return isNaN(d2.getTime()) ? null : d2.toISOString().replace(/\.\d{3}Z$/, 'Z');
+  }
+
 
   // Update a line decision (e.g. Approved/Denied)
   updateLineDecision(line: any, decision: string) {
@@ -482,7 +537,6 @@ export class MdreviewComponent implements OnInit, OnChanges {
     this.activityService.updateMdReviewLine(line.id, payload)
       .subscribe({
         next: res => {
-          console.log('Line updated', res);
           line.mddecision = decision;
         },
         error: err => console.error('Error updating line', err)
@@ -490,6 +544,339 @@ export class MdreviewComponent implements OnInit, OnChanges {
   }
 
   private formatDateForApi(date: any): string | null {
-    return this.datePipe.transform(date, 'yyyyMMdd HH:mm:ss');
+    return this.datePipe.transform(date, 'yyyy-MM-dd HH:mm:ss');
   }
+
+
+
+
+
+
+
+
+  // New: view state
+  viewMode: 'table' | 'cards' = 'cards';
+
+  switchView(mode: 'table' | 'cards'): void {
+    this.viewMode = mode;
+  }
+
+  // Optional: stable trackBy if you have an id; else fall back to index
+  trackByLine = (_: number, line: any) => line?.id ?? line?.decisionLineId ?? _;
+
+  // Compute MD status from line data or activity joins
+  getMdStatus(line: any): string {
+    // Prefer explicit flags coming from your API if present.
+    // Fallbacks keep it robust without changing your payload shape.
+    //console.log('Computing MD status for line', line);
+    if (line?.mdrStatus) {
+      // normalize to a friendly label if backend sends enums/codes
+      const s = String(line.mdrStatus).toLowerCase();
+      if (s.includes('in') && s.includes('progress')) return 'MD Review in progress';
+      if (s.includes('complete') || s.includes('done')) return 'MD Review completed';
+      if (s.includes('pending')) return 'MD Review in progress';
+    }
+    if (line?.mdReviewRequested || line?.mdRequested || line?.isMdReviewRequested) {
+      return 'MD Review in progress';
+    }
+    return 'MD Review in progress';
+  }
+
+  // Map status to badge class
+  mdStatusClass(status: string): string {
+    const s = status.toLowerCase();
+    if (s.includes('in progress') || s.includes('pending')) return 'mdr-in-progress';
+    if (s.includes('completed')) return 'mdr-completed';
+    return 'mdr-not-requested';
+  }
+
+  ///********Load Activities**********///
+
+  //private mdIndexByServiceCode = new Map<string, MdIndexEntry>();
+
+  // Load activities for given authDetailId
+  loadMdReviewActivities(authDetailId?: number) {
+    this.activityService.getMdReviewActivities(undefined, authDetailId ?? (this.authDetailId || undefined)) // your value
+      .pipe(
+        map((res: any[]) =>
+          (res || []).map(x => ({
+            activity: x.activity ?? x.item1 ?? x.Item1,
+            lines: x.lines ?? x.item2 ?? x.Item2
+          }))
+        )
+      )
+      .subscribe({
+        next: (data: MdReviewActivityDto[]) => {
+          this.activities = data;
+
+          // 1) Build an index by Service Code
+          this.rebuildMdStatusIndex();
+
+          // 2) Enrich the existing serviceLines with mdrStatus
+          this.enrichServiceLinesWithMdPerLineStatus();
+        },
+        error: err => console.error('Error fetching MD Review activities', err)
+      });
+  }
+
+  private rebuildMdStatusIndex(): void {
+    this.mdIndexByServiceCode.clear();
+
+    for (const a of (this.activities ?? [])) {
+      const act = a?.activity ?? {};
+      const mdStatusCandidates = [
+        act?.MDStatus, act?.MdStatus, act?.mdStatus,
+        act?.MDAgg, act?.MDAggregate, act?.mdAgg,
+        act?.status, act?.Status
+      ].filter(x => x != null);
+
+      const hasPending = mdStatusCandidates.some(this.isPendingLike.bind(this));
+      const hasCompleted = mdStatusCandidates.some(this.isCompletedLike.bind(this));
+
+      const lines = a?.lines ?? [];
+      for (const ln of lines) {
+        const code = this.getLineServiceCode(ln);
+        if (!code) continue;
+
+        const current = this.mdIndexByServiceCode.get(code) ?? {
+          hasAnyActivity: false,
+          hasPendingLike: false,
+          hasCompletedLike: false
+        };
+
+        current.hasAnyActivity = true;
+        current.hasPendingLike = current.hasPendingLike || hasPending;
+        current.hasCompletedLike = current.hasCompletedLike || hasCompleted;
+
+        // If the line-level itself carries status fields, merge them in
+        const lnStatusCandidates = [
+          (ln as any)?.MDStatus, (ln as any)?.Status, (ln as any)?.status
+        ].filter(x => x != null);
+
+        if (lnStatusCandidates.length) {
+          current.hasPendingLike = current.hasPendingLike || lnStatusCandidates.some(this.isPendingLike.bind(this));
+          current.hasCompletedLike = current.hasCompletedLike || lnStatusCandidates.some(this.isCompletedLike.bind(this));
+        }
+
+        this.mdIndexByServiceCode.set(code, current);
+      }
+    }
+  }
+
+  // Disable iff status is "in progress" (or pending)
+  isMdInProgress(line: any): boolean {
+    const status = (line?.mdrStatus ?? this.getMdStatus(line) ?? '').toString().toLowerCase();
+    return status.includes('in progress') || status.includes('pending');
+  }
+
+  // How many lines can be selected right now
+  private selectableLines(): any[] {
+    return (this.displayLines || []).filter(l => !this.isMdInProgress(l));
+  }
+
+  // For header/bulk checkbox state
+  noSelectableLines(): boolean {
+    return this.selectableLines().length === 0;
+  }
+  isEverySelectableSelected(): boolean {
+    const s = this.selectableLines();
+    return s.length > 0 && s.every(l => !!l.selected);
+  }
+  isSomeSelectableSelected(): boolean {
+    const s = this.selectableLines();
+    return s.some(l => !!l.selected) && !this.isEverySelectableSelected();
+  }
+
+  // Respect disabled rows when bulk-toggling
+  toggleAllSelection(evt: Event): void {
+    const checked = (evt.target as HTMLInputElement).checked;
+    for (const l of (this.displayLines || [])) {
+      if (this.isMdInProgress(l)) continue; // don't touch locked rows
+      l.selected = checked;
+    }
+  }
+
+
+
+  private statusLabelForKey(
+    codeKey: string | null,
+    idKey: string | null
+  ): MdReviewStatus {
+    const byCode = codeKey ? this.mdByServiceCode.get(codeKey) : undefined;
+    const byId = idKey ? this.mdByDecisionLineId.get(idKey) : undefined;
+    const val = byCode ?? byId;
+    if (val === 'completed') return 'MD Review completed';
+    if (val === 'in-progress') return 'MD Review in progress';
+    return 'Not requested';
+  }
+
+  private enrichServiceLinesWithMdPerLineStatus(): void {
+    if (!Array.isArray(this.displayLines ?? this.serviceLines)) return;
+
+    const source = (this.displayLines?.length ? this.displayLines : this.serviceLines) as any[];
+
+    const enriched = source.map(line => {
+      const codeKey = this.getLineServiceCode(line);
+      const idKey = this.getLineDecisionLineId(line);
+      const mdrStatus = this.statusLabelForKey(codeKey, idKey);
+      return { ...line, mdrStatus };
+    });
+
+    // Write back to the collection you bind in the template (displayLines)
+    this.displayLines = enriched;
+
+    this.displayLines = (source || []).map(line => {
+      const codeKey = this.getLineServiceCode(line);
+      const idKey = this.getLineDecisionLineId(line);
+      const mdrStatus = this.statusLabelForKey(codeKey, idKey); // 'MD Review in progress' | 'completed' | 'Not requested'
+      const locked = /in progress|pending/i.test(mdrStatus);
+      return {
+        ...line,
+        mdrStatus,
+        selected: locked ? false : !!line.selected
+      };
+    });
+  }
+
+
+
+  // --- Normalizers ---
+  private normalizeCode(val: any): string {
+    return (val ?? '').toString().trim().toUpperCase();
+  }
+  private getLineServiceCode(obj: any): string | null {
+    const code =
+      obj?.serviceCode ?? obj?.ServiceCode ?? obj?.code ?? obj?.CPT ?? null;
+    return code ? this.normalizeCode(code) : null;
+  }
+  private getLineDecisionLineId(obj: any): string | null {
+    const id = obj?.decisionLineId ?? obj?.DecisionLineId ?? null;
+    return (id ?? null) !== null ? String(id) : null;
+  }
+
+  // --- Status classifiers: keep them tight and line-focused ---
+  private isPendingLike(val: any): boolean {
+    const s = (val ?? '').toString().toLowerCase();
+    return ['pending', 'in progress', 'requested', 'notreviewed', 'not reviewed', 'open']
+      .some(k => s.includes(k));
+  }
+  private isCompletedLike(val: any): boolean {
+    const s = (val ?? '').toString().toLowerCase();
+    return ['complete', 'completed', 'closed', 'final', 'approved', 'denied', 'void']
+      .some(k => s.includes(k));
+  }
+
+
+  private toDisplayMdStatus(entry?: { hasAnyActivity: boolean; hasPendingLike: boolean; hasCompletedLike: boolean }): MdReviewStatus {
+    if (!entry || !entry.hasAnyActivity) return 'Not requested';
+    if (entry.hasPendingLike) return 'MD Review in progress';
+    if (entry.hasCompletedLike) return 'MD Review completed';
+    return 'MD Review in progress';
+  }
+
+
+
+  private findInputLineByCode(code: string): MdReviewLineVM | undefined {
+    return (this.serviceLines as any[] || []).find(sl => this.getLineServiceCode(sl) === code);
+  }
+
+  private mapInputLinesWithStatus(): MdReviewLineVM[] {
+    this.rebuildMdStatusIndex(); // safe even if activities empty
+    return (this.serviceLines || []).map(sl => {
+      const code = this.getLineServiceCode(sl);
+      const mdr = this.toDisplayMdStatus(code ? this.mdIndexByServiceCode.get(code) : undefined);
+      return { ...(sl as any), mdrStatus: mdr, selected: (sl as any).selected ?? false };
+    });
+  }
+
+  /** MAIN: sets `displayLines` from activities if available; else from input. */
+  private buildDisplayLines(): void {
+    const hasActivityLines =
+      Array.isArray(this.activities) &&
+      this.activities.some(a => Array.isArray(a?.lines) && a.lines.length);
+
+    if (hasActivityLines) {
+      this.rebuildMdStatusIndex();
+
+      const fromActivities: MdReviewLineVM[] = [];
+      const seen = new Set<string>();
+
+      for (const a of this.activities) {
+        for (const ln of (a.lines || [])) {
+          const code = this.getLineServiceCode(ln);
+          if (!code) continue;
+          if (seen.has(code)) continue; // dedupe by Service Code (adjust if you need per-line duplicates)
+          seen.add(code);
+
+          const base = this.findInputLineByCode(code);
+          const mdr = this.toDisplayMdStatus(this.mdIndexByServiceCode.get(code));
+
+          fromActivities.push({
+            ...(base ?? {}) as any,     // keep your original fields if they exist
+            ...(ln as any),             // overlay activity line fields
+            mdrStatus: mdr,
+            selected: base?.selected ?? false
+          });
+        }
+      }
+
+      this.displayLines = fromActivities.length ? fromActivities : this.mapInputLinesWithStatus();
+    } else {
+      this.displayLines = this.mapInputLinesWithStatus();
+    }
+  }
+
+
+
+
+  // Maps for quick lookup; use whichever key you prefer (ServiceCode or DecisionLineId)
+  private mdByServiceCode = new Map<string, 'in-progress' | 'completed'>();
+  private mdByDecisionLineId = new Map<string, 'in-progress' | 'completed'>();
+
+  private rebuildMdPerLineIndex(): void {
+    this.mdByServiceCode.clear();
+    this.mdByDecisionLineId.clear();
+
+    for (const a of (this.activities ?? [])) {
+      // Optional: activity-level hint (used only when line has no own status)
+      const actPendingHint =
+        this.isPendingLike(a?.activity?.MdReviewStatus) ||
+        this.isPendingLike(a?.activity?.MdAggregateDecision);
+
+      for (const ln of (a?.lines ?? [])) {
+        const code = this.getLineServiceCode(ln);
+        const dlnId = this.getLineDecisionLineId(ln);
+
+        // Decide line status
+        const lineCompleted =
+          this.isCompletedLike((ln as any)?.MdDecision) ||
+          this.isCompletedLike((ln as any)?.Status);
+
+        const linePending =
+          this.isPendingLike((ln as any)?.Status) ||
+          this.isPendingLike((ln as any)?.MdDecision) ||
+          actPendingHint;
+
+        // update function: promote to completed if seen; otherwise in-progress
+        const apply = (key: string | null, map: Map<string, 'in-progress' | 'completed'>) => {
+          if (!key) return;
+          const curr = map.get(key);
+          if (lineCompleted) {
+            map.set(key, 'completed');
+          } else if (linePending && curr !== 'completed') {
+            map.set(key, 'in-progress');
+          }
+        };
+
+        apply(code, this.mdByServiceCode);
+        apply(dlnId, this.mdByDecisionLineId);
+      }
+    }
+  }
+
+
+
+
+
+  ///********Load Activities**********///
 }

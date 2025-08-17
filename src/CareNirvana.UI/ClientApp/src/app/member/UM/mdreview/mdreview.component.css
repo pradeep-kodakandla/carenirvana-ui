@@ -197,3 +197,177 @@
   height: 0;
   pointer-events: none;
 }
+
+
+
+/* View toggle toolbar */
+.view-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: .5rem 0 1rem;
+  gap: 1rem;
+}
+
+.segmented {
+  display: inline-flex;
+  border: 1px solid #d7d7d7;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+  .segmented > button {
+    padding: 6px 14px;
+    font-size: 13px;
+    border: none;
+    background: #fafafa;
+    cursor: pointer;
+  }
+
+    .segmented > button + button {
+      border-left: 1px solid #e6e6e6;
+    }
+
+    .segmented > button.active {
+      background: #007bff;
+      color: #fff;
+    }
+
+.cards-bulk-select .select-all {
+  font-size: 13px;
+  color: #333;
+}
+
+/* Cards grid */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+/* Single card */
+.sl-card {
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.05);
+}
+
+.sl-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.sl-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.sl-select {
+  transform: scale(1.1);
+}
+
+.muted {
+  color: #777;
+}
+
+/* Key/Value grid inside card */
+.sl-card-body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  font-size: 13px;
+}
+
+.kv label {
+  display: block;
+  color: #666;
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.kv span {
+  font-weight: 600;
+}
+
+/* MD Review status badge */
+.mdr-badge {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.mdr-in-progress {
+  background: #fff3cd; /* soft amber */
+  color: #7a5d00;
+  border-color: #ffec99;
+}
+
+.mdr-not-requested {
+  background: #f1f3f5; /* soft gray */
+  color: #495057;
+  border-color: #e9ecef;
+}
+
+.mdr-completed {
+  background: #d3f9d8; /* soft green */
+  color: #0b5d1e;
+  border-color: #c3f7ca;
+}
+
+/* One card per row */
+.cards-grid.cards--fullrow {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.sl-card {
+  width: 100%;
+}
+
+
+.kv-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px 24px;
+  padding-top: 6px;
+}
+
+.kv-inline {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.kv-label {
+  color: #1976d2; /* material primary-ish blue */
+  font-weight: 600;
+}
+
+  .kv-label::after {
+    content: ':';
+    margin-left: 2px;
+  }
+
+.kv-value {
+  color: #212529;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Keep your existing badge styles (mdr-in-progress, etc.) */
+
+
+/* Reuse your existing table + buttons styling unchanged */

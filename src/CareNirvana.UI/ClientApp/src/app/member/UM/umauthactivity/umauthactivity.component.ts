@@ -91,7 +91,6 @@ export class UmauthactivityComponent {
     if (changes['authDetailId']) {
       const newId = changes['authDetailId'].currentValue;
       if (newId != null) {
-        console.log('Received authDetailId in ngOnChanges:', newId);
         this.loadActivitiesForAuth(newId);
       }
     }
@@ -172,7 +171,6 @@ export class UmauthactivityComponent {
   loadUsers() {
     this.authenticateService.getAllUsers().subscribe({
       next: (users: any[]) => {
-        console.log('Loaded users:', users);
         this.filteredUsers = users.map(u => ({
           value: u.UserId,
           label: u.UserName

@@ -14,7 +14,7 @@ import { AuthenticateService } from 'src/app/service/authentication.service';
 import { StepperSelectionEvent } from '@angular/cdk/stepper';
 import { MdreviewComponent } from 'src/app/member/UM/mdreview/mdreview.component';
 import { DecisiondetailsComponent, MdReviewLine } from 'src/app/member/UM/decisiondetails/decisiondetails.component';
-
+import { map } from 'rxjs/operators';    
 
 const DECISION_STEP_INDEX = 1;
 const MD_REVIEW_STEP_INDEX = 2;
@@ -23,7 +23,7 @@ const MD_REVIEW_STEP_INDEX = 2;
   selector: 'app-authorization',
   templateUrl: './authorization.component.html',
   styleUrls: ['./authorization.component.css'],
- 
+
 })
 export class AuthorizationComponent {
   stepperSelectedIndex = 0;
@@ -122,6 +122,7 @@ export class AuthorizationComponent {
       const rows = this.decisionCmp?.getMdReviewLines?.() ?? [];
       this.mdReviewLines = [...rows];
     }
+    if (evt.selectedIndex !== 2) this.forceShowMdReview = false;
   }
   //********** Method MD Review ************//
 
@@ -401,13 +402,15 @@ export class AuthorizationComponent {
 
     this.loadAllUsers();
 
-    this.loadMdReviewAvailability();
+
   }
 
   // --- Call once you have the needed context (e.g., ngOnInit or after auth load) ---
   private loadMdReviewAvailability(): void {
     // undefined + 24 per requirement
-    this.authService.getMdReviewActivities(undefined, 24).subscribe({
+    console.log('Loading MD Review activities for authDetailId:', this.authDetailId);
+    this.mdReviewHasActivities = false
+    this.authService.getMdReviewActivities(undefined, this.authDetailId ?? undefined).subscribe({
       next: (rows: any[]) => {
         this.mdReviewLines = rows ?? [];
         this.mdReviewHasActivities = this.mdReviewLines.length > 0;
@@ -417,6 +420,8 @@ export class AuthorizationComponent {
         this.mdReviewHasActivities = false;
       }
     });
+    console.log('MD Review Has Activity', this.forceShowMdReview);
+
   }
 
   loadAllUsers(): void {
@@ -491,6 +496,8 @@ export class AuthorizationComponent {
             });
           }
 
+          if (this.authDetailId) { this.loadMdReviewActivities(this.authDetailId); }
+           // this.loadMdReviewAvailability();
 
           if (authTemplateId) {
 
@@ -1828,6 +1835,39 @@ export class AuthorizationComponent {
   hasResourcePermission(page: string, resource: string, action: string): boolean {
     return this.permissionsMap[page]?.resources?.[resource]?.[action.toLowerCase()] ?? false;
   }
+
+  private resetMdReviewGate(): void {
+    this.mdReviewHasActivities = false;
+    this.forceShowMdReview = false;
+    this.mdReviewLines = [];
+  }
+
+  // wherever you set a new authDetailId
+  setAuthDetailId(id: number | null) {
+    if (this.authDetailId !== id) {
+      this.authDetailId = id;
+      this.resetMdReviewGate();
+      if (id) this.loadMdReviewActivities(id);
+    }
+  }
+
+  private loadMdReviewActivities(id: number) {
+    console.log('Loading MD Review activities for authDetailId:', id);
+    this.authService.getMdReviewActivities(undefined, id).subscribe({
+      next: (res) => {
+        console.log('MD Review Activities Response:', res);
+        this.mdReviewHasActivities = Array.isArray(res) && res.length > 0;
+        this.mdReviewLines = Array.isArray(res) ? (res as MdReviewLine[]) : [];
+        console.log('MD Review Has Activity', this.mdReviewHasActivities);
+      },
+      error: () => {
+        this.mdReviewHasActivities = false;
+        this.mdReviewLines = [];
+        console.log('MD Review Activities Response Error:');
+      }
+    });
+  }
+
 
 
   /************* Helper Methods ***************/
