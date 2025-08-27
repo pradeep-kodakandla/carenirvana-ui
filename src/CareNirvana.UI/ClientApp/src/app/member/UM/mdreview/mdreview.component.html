@@ -1,46 +1,57 @@
-<div class="auth-form">
-  <form [formGroup]="mdrForm">
-    <h5>Send for Medical Director Review​</h5>
-    <div class="form-grid" style="padding-top:5px;" >
+<div class="page-header">
+  <!-- Top-right MD Review button -->
+  <button type="button"
+          class="btn btn-primary mdreview-btn"
+          (click)="openMdReview()"
+          *ngIf="!showMdReview">
+    MD Review
+  </button>
+</div>
+<ng-container *ngIf="showMdReview">
+  <div class="auth-form">
+    <!--*ngIf="!hasAnyActivity()"-->
+    <form [formGroup]="mdrForm">
+      <h5 style="color: #007BFF"> Send for Medical Director Review​</h5>
+      <div class="form-grid" style="padding-top:5px;">
 
 
-      <!-- Assignment Type -->
-      <div class="form-outline dropdown-container">
-        <label class="floating-label">Assignment Type <span class="text-danger">*</span></label>
-        <div class="input-with-icon">
-          <input type="text" class="form-control" [value]="assignmentTypeDisplay"
-                 (input)="onDropdownInput($event, 'assignmentType')"
-                 (focus)="openDropdown('assignmentType')"
-                 (blur)="closeDropdown('assignmentType')" />
-          <span class="dropdown-arrow">&#9662;</span>
-          <div class="autocomplete-dropdown" *ngIf="showDropdowns.assignmentType && filteredAssignmentTypes?.length">
-            <div class="autocomplete-option" *ngFor="let option of filteredAssignmentTypes"
-                 (mousedown)="selectDropdownOption('assignmentType', option)">
-              {{ option.label }}
+        <!-- Assignment Type -->
+        <div class="form-outline dropdown-container">
+          <label class="floating-label">Assignment Type <span class="text-danger">*</span></label>
+          <div class="input-with-icon">
+            <input type="text" class="form-control" [value]="assignmentTypeDisplay"
+                   (input)="onDropdownInput($event, 'assignmentType')"
+                   (focus)="openDropdown('assignmentType')"
+                   (blur)="closeDropdown('assignmentType')" />
+            <span class="dropdown-arrow">&#9662;</span>
+            <div class="autocomplete-dropdown" *ngIf="showDropdowns.assignmentType && filteredAssignmentTypes?.length">
+              <div class="autocomplete-option" *ngFor="let option of filteredAssignmentTypes"
+                   (mousedown)="selectDropdownOption('assignmentType', option)">
+                {{ option.label }}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Activity Type -->
-      <div class="form-outline dropdown-container">
-        <label class="floating-label">Activity Type <span class="text-danger">*</span></label>
-        <div class="input-with-icon">
-          <input type="text" class="form-control" [value]="activityTypeDisplay"
-                 (input)="onDropdownInput($event, 'activityType')"
-                 (focus)="openDropdown('activityType')"
-                 (blur)="closeDropdown('activityType')" />
-          <span class="dropdown-arrow">&#9662;</span>
-          <div class="autocomplete-dropdown" *ngIf="showDropdowns.activityType && filteredActivityTypes?.length">
-            <div class="autocomplete-option" *ngFor="let option of filteredActivityTypes"
-                 (mousedown)="selectDropdownOption('activityType', option)">
-              {{ option.label }}
+        <!-- Activity Type -->
+        <div class="form-outline dropdown-container">
+          <label class="floating-label">Activity Type <span class="text-danger">*</span></label>
+          <div class="input-with-icon">
+            <input type="text" class="form-control" [value]="activityTypeDisplay"
+                   (input)="onDropdownInput($event, 'activityType')"
+                   (focus)="openDropdown('activityType')"
+                   (blur)="closeDropdown('activityType')" />
+            <span class="dropdown-arrow">&#9662;</span>
+            <div class="autocomplete-dropdown" *ngIf="showDropdowns.activityType && filteredActivityTypes?.length">
+              <div class="autocomplete-option" *ngFor="let option of filteredActivityTypes"
+                   (mousedown)="selectDropdownOption('activityType', option)">
+                {{ option.label }}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!--<div class="compact-field">
+        <!--<div class="compact-field">
       <mat-form-field appearance="outline" class="full-width compact-mat"
                       style="--mat-form-field-container-height:40px; --mat-form-field-container-vertical-padding:6px;">
         <mat-label>Priority</mat-label>
@@ -49,8 +60,8 @@
                     (openedChange)="onOpen($event)"
                     (closed)="onClosed()"
                     panelClass="select-with-search-panel">-->
-      <!-- Search row -->
-      <!--<mat-option disabled class="search-option">
+        <!-- Search row -->
+        <!--<mat-option disabled class="search-option">
         <input #searchInput
                matInput
                type="text"
@@ -59,8 +70,8 @@
                (click)="$event.stopPropagation()"
                (keydown)="onSearchKeydown($event)">
       </mat-option>-->
-      <!-- Filtered options -->
-      <!--<mat-option *ngFor="let p of filteredPriorities$ | async" [value]="p">
+        <!-- Filtered options -->
+        <!--<mat-option *ngFor="let p of filteredPriorities$ | async" [value]="p">
               {{ p }}
             </mat-option>
 
@@ -71,253 +82,338 @@
         </mat-form-field>
 
       </div>-->
-      <!-- Priority -->
-      <div class="form-outline dropdown-container">
-        <label class="floating-label">Priority <span class="text-danger">*</span></label>
-        <div class="input-with-icon">
-          <input type="text" class="form-control" [value]="priorityDisplay"
-                 (input)="onDropdownInput($event, 'priority')"
-                 (focus)="openDropdown('priority')"
-                 (blur)="closeDropdown('priority')" />
-          <span class="dropdown-arrow">&#9662;</span>
-          <div class="autocomplete-dropdown" *ngIf="showDropdowns.priority && filteredPriorities?.length">
-            <div class="autocomplete-option" *ngFor="let option of filteredPriorities"
-                 (mousedown)="selectDropdownOption('priority', option)">
-              {{ option.label }}
+        <!-- Priority -->
+        <div class="form-outline dropdown-container">
+          <label class="floating-label">Priority <span class="text-danger">*</span></label>
+          <div class="input-with-icon">
+            <input type="text" class="form-control" [value]="priorityDisplay"
+                   (input)="onDropdownInput($event, 'priority')"
+                   (focus)="openDropdown('priority')"
+                   (blur)="closeDropdown('priority')" />
+            <span class="dropdown-arrow">&#9662;</span>
+            <div class="autocomplete-dropdown" *ngIf="showDropdowns.priority && filteredPriorities?.length">
+              <div class="autocomplete-option" *ngFor="let option of filteredPriorities"
+                   (mousedown)="selectDropdownOption('priority', option)">
+                {{ option.label }}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Assign To -->
-      <div class="form-outline dropdown-container">
-        <label class="floating-label">Assign To <span class="text-danger">*</span></label>
-        <div class="input-with-icon">
-          <input type="text" class="form-control" [value]="assignToDisplay"
-                 (input)="onDropdownInput($event, 'assignTo')"
-                 (focus)="openDropdown('assignTo')"
-                 (blur)="closeDropdown('assignTo')" />
-          <span class="dropdown-arrow">&#9662;</span>
-          <div class="autocomplete-dropdown" *ngIf="showDropdowns.assignTo && filteredUsers?.length">
-            <div class="autocomplete-option" *ngFor="let option of filteredUsers"
-                 (mousedown)="selectDropdownOption('assignTo', option)">
-              {{ option.label }}
+        <!-- Assign To -->
+        <div class="form-outline dropdown-container">
+          <label class="floating-label">Assign To <span class="text-danger">*</span></label>
+          <div class="input-with-icon">
+            <input type="text" class="form-control" [value]="assignToDisplay"
+                   (input)="onDropdownInput($event, 'assignTo')"
+                   (focus)="openDropdown('assignTo')"
+                   (blur)="closeDropdown('assignTo')" />
+            <span class="dropdown-arrow">&#9662;</span>
+            <div class="autocomplete-dropdown" *ngIf="showDropdowns.assignTo && filteredUsers?.length">
+              <div class="autocomplete-option" *ngFor="let option of filteredUsers"
+                   (mousedown)="selectDropdownOption('assignTo', option)">
+                {{ option.label }}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Scheduled Date -->
-      <div class="form-outline position-relative">
-        <label class="floating-label">Scheduled Date & Time <span class="text-danger">*</span></label>
-        <div class="input-with-icon">
-          <!-- remove formControlName here; this is purely the display/editor text -->
-          <input type="text" class="form-control"
-                 placeholder="Enter D, D+1, D-1 or select"
-                 [value]="scheduledDateText"
-                 (input)="onDateTextChange($event, 'scheduledDateTime')"
-                 (blur)="handleDateBlur('scheduledDateTime')" />
-          <button type="button" class="calendar-icon-btn" (click)="triggerCalendar('scheduled')">📅</button>
+        <!-- Scheduled Date -->
+        <div class="form-outline position-relative">
+          <label class="floating-label">Scheduled Date & Time <span class="text-danger">*</span></label>
+          <div class="input-with-icon">
+            <!-- remove formControlName here; this is purely the display/editor text -->
+            <input type="text" class="form-control"
+                   placeholder="Enter D, D+1, D-1 or select"
+                   [value]="scheduledDateText"
+                   (input)="onDateTextChange($event, 'scheduledDateTime')"
+                   (blur)="handleDateBlur('scheduledDateTime')" />
+            <button type="button" class="calendar-icon-btn" (click)="triggerCalendar('scheduled')">📅</button>
 
-          <!-- the actual control lives on the hidden native picker -->
-          <input type="datetime-local" #scheduledPicker class="hidden-picker"
-                 formControlName="scheduledDateTime"
-                 (change)="handleCalendarChange($event, 'scheduledDateTime')" />
+            <!-- the actual control lives on the hidden native picker -->
+            <input type="datetime-local" #scheduledPicker class="hidden-picker"
+                   formControlName="scheduledDateTime"
+                   (change)="handleCalendarChange($event, 'scheduledDateTime')" />
+          </div>
         </div>
-      </div>
 
-      <!-- Due Date -->
-      <div class="form-outline position-relative">
-        <label class="floating-label">Due Date & Time <span class="text-danger">*</span></label>
-        <div class="input-with-icon">
-          <input type="text" class="form-control"
-                 placeholder="Enter D, D+1, D-1 or select"
-                 [value]="dueDateText"
-                 (input)="onDateTextChange($event, 'dueDateTime')"
-                 (blur)="handleDateBlur('dueDateTime')" />
-          <button type="button" class="calendar-icon-btn" (click)="triggerCalendar('due')">📅</button>
+        <!-- Due Date -->
+        <div class="form-outline position-relative">
+          <label class="floating-label">Due Date & Time <span class="text-danger">*</span></label>
+          <div class="input-with-icon">
+            <input type="text" class="form-control"
+                   placeholder="Enter D, D+1, D-1 or select"
+                   [value]="dueDateText"
+                   (input)="onDateTextChange($event, 'dueDateTime')"
+                   (blur)="handleDateBlur('dueDateTime')" />
+            <button type="button" class="calendar-icon-btn" (click)="triggerCalendar('due')">📅</button>
 
-          <input type="datetime-local" #duePicker class="hidden-picker"
-                 formControlName="dueDateTime"
-                 (change)="handleCalendarChange($event, 'dueDateTime')" />
+            <input type="datetime-local" #duePicker class="hidden-picker"
+                   formControlName="dueDateTime"
+                   (change)="handleCalendarChange($event, 'dueDateTime')" />
+          </div>
         </div>
-      </div>
 
-      <!-- Work Basket -->
-      <div class="form-outline dropdown-container" *ngIf="showWorkBasketFields">
-        <label class="floating-label">Work Basket</label>
-        <div class="input-with-icon">
-          <input type="text" class="form-control" [value]="workBasketDisplay"
-                 (input)="onDropdownInput($event, 'workBasket')"
-                 (focus)="openDropdown('workBasket')"
-                 (blur)="closeDropdown('workBasket')" />
-          <span class="dropdown-arrow">&#9662;</span>
-          <div class="autocomplete-dropdown" *ngIf="showDropdowns.workBasket && filteredWorkBaskets?.length">
-            <div class="autocomplete-option" *ngFor="let option of filteredWorkBaskets"
-                 (mousedown)="selectDropdownOption('workBasket', option)">
-              {{ option.label }}
+        <!-- Work Basket -->
+        <div class="form-outline dropdown-container" *ngIf="showWorkBasketFields">
+          <label class="floating-label">Work Basket</label>
+          <div class="input-with-icon">
+            <input type="text" class="form-control" [value]="workBasketDisplay"
+                   (input)="onDropdownInput($event, 'workBasket')"
+                   (focus)="openDropdown('workBasket')"
+                   (blur)="closeDropdown('workBasket')" />
+            <span class="dropdown-arrow">&#9662;</span>
+            <div class="autocomplete-dropdown" *ngIf="showDropdowns.workBasket && filteredWorkBaskets?.length">
+              <div class="autocomplete-option" *ngFor="let option of filteredWorkBaskets"
+                   (mousedown)="selectDropdownOption('workBasket', option)">
+                {{ option.label }}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Work Basket Users -->
-      <div class="form-outline dropdown-container" *ngIf="showWorkBasketFields">
-        <label class="floating-label">Work Basket Users</label>
-        <div class="input-with-icon">
-          <input type="text" class="form-control" [value]="workBasketUserDisplay"
-                 [disabled]="!mdrForm.get('workBasket')?.value"
-                 (input)="onDropdownInput($event, 'workBasketUser')"
-                 (focus)="openDropdown('workBasketUser')"
-                 (blur)="closeDropdown('workBasketUser')" />
-          <span class="dropdown-arrow">&#9662;</span>
-          <div class="autocomplete-dropdown" *ngIf="showDropdowns.workBasketUser && filteredUsers?.length">
-            <div class="autocomplete-option" *ngFor="let option of filteredUsers"
-                 (mousedown)="selectDropdownOption('workBasketUser', option)">
-              {{ option.label }}
+        <!-- Work Basket Users -->
+        <div class="form-outline dropdown-container" *ngIf="showWorkBasketFields">
+          <label class="floating-label">Work Basket Users</label>
+          <div class="input-with-icon">
+            <input type="text" class="form-control" [value]="workBasketUserDisplay"
+                   [disabled]="!mdrForm.get('workBasket')?.value"
+                   (input)="onDropdownInput($event, 'workBasketUser')"
+                   (focus)="openDropdown('workBasketUser')"
+                   (blur)="closeDropdown('workBasketUser')" />
+            <span class="dropdown-arrow">&#9662;</span>
+            <div class="autocomplete-dropdown" *ngIf="showDropdowns.workBasketUser && filteredUsers?.length">
+              <div class="autocomplete-option" *ngFor="let option of filteredUsers"
+                   (mousedown)="selectDropdownOption('workBasketUser', option)">
+                {{ option.label }}
+              </div>
             </div>
           </div>
         </div>
+
+        <!-- Clinical Context -->
+        <div class="form-outline full-width" style="grid-column: span 2;">
+          <label class="floating-label">Clinical Context & Instructions</label>
+          <textarea class="form-control" rows="3" formControlName="clinicalInstructions"></textarea>
+        </div>
       </div>
 
-      <!-- Clinical Context -->
-      <div class="form-outline full-width" style="grid-column: span 2;">
-        <label class="floating-label">Clinical Context & Instructions</label>
-        <textarea class="form-control" rows="3" formControlName="clinicalInstructions"></textarea>
-      </div>
-    </div>
+      <h5 style="color: #007BFF">Select the service lines for review</h5>
 
-    <h5>Select the service lines for review</h5>
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1rem;">
+        <label style="white-space: nowrap;"><strong>Set Initial Recommendation for selected lines:</strong></label>
+        <select class="form-control" style="width: 220px;"
+                [(ngModel)]="globalInitialRecommendation"
+                [ngModelOptions]="{ standalone: true }"
+                (change)="applyGlobalRecommendation()">
+          <option value="">Select</option>
+          <option value="Approved">Approved</option>
+          <option value="Denied">Denied</option>
+          <option value="Partially Approved">Partially Approved</option>
+        </select>
 
-    <!-- View toolbar -->
-    <div class="view-toolbar">
-      <div class="segmented">
-        <button type="button"
-                [class.active]="viewMode === 'table'"
-                (click)="switchView('table')">
-          Table
-        </button>
-        <button type="button"
-                [class.active]="viewMode === 'cards'"
-                (click)="switchView('cards')">
-          Cards
-        </button>
       </div>
 
-      <!-- Cards-only bulk select -->
-      <div class="cards-bulk-select" *ngIf="viewMode === 'cards'">
-        <label class="select-all">
-          <input type="checkbox"
-                 [checked]="isEverySelectableSelected()"
-                 [indeterminate]="isSomeSelectableSelected() && !isEverySelectableSelected()"
-                 (change)="toggleAllSelection($event)"
-                 [disabled]="noSelectableLines()" />
 
-          Select all
-        </label>
+      <!-- View toolbar -->
+      <div class="view-toolbar">
+        <!-- Cards-only bulk select: now on the LEFT -->
+        <div class="cards-bulk-select" *ngIf="viewMode === 'cards'">
+          <label class="select-all">
+            <input type="checkbox"
+                   [checked]="isEverySelectableSelected()"
+                   [indeterminate]="isSomeSelectableSelected() && !isEverySelectableSelected()"
+                   (change)="toggleAllSelection($event)"
+                   [disabled]="noSelectableLines()" />
+            Select all
+          </label>
+        </div>
+
+        <!-- View toggle pushed to the RIGHT -->
+        <div class="segmented">
+          <button type="button"
+                  [class.active]="viewMode === 'table'"
+                  (click)="switchView('table')">
+            Table
+          </button>
+          <button type="button"
+                  [class.active]="viewMode === 'cards'"
+                  (click)="switchView('cards')">
+            Cards
+          </button>
+        </div>
       </div>
-    </div>
 
-    <!-- TABLE VIEW -->
-    <div class="service-line-table-wrapper" *ngIf="viewMode === 'table'">
-      <table class="service-line-table">
-        <thead>
-          <tr>
-            <th>
+      <!-- TABLE VIEW -->
+      <div class="service-line-table-wrapper" *ngIf="viewMode === 'table'">
+        <table class="service-line-table">
+          <thead>
+            <tr>
+              <th>
+                <input type="checkbox"
+                       [(ngModel)]="allSelected"
+                       [ngModelOptions]="{ standalone: true }"
+                       (change)="toggleAllSelection($event)" />
+              </th>
+              <th>Service Code</th>
+              <th>Service Description</th>
+              <th>From Date</th>
+              <th>To Date</th>
+              <th>Requested</th>
+              <th>Approved</th>
+              <th>Denied</th>
+              <th>Current Status</th>
+              <th>Initial Recommendation</th>
+              <th>MD's Review Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let line of serviceLines; let i = index; trackBy: trackByLine" [ngClass]="{ 'row-in-progress': getMdStatus(line) === 'MD Review in progress',
+                      'row-default': getMdStatus(line) !== 'MD Review in progress' }">
+              <td>
+                <input type="checkbox"
+                       [(ngModel)]="line.selected"
+                       [ngModelOptions]="{ standalone: true }"
+                       name="lineSelect{{i}}"
+                       [disabled]="isMdInProgress(line)" />
+              </td>
+              <td>{{ line.serviceCode }}</td>
+              <td>{{ line.description }}</td>
+              <td>{{ toDisplayFormat(line.fromDate) }}</td>
+              <td>{{ toDisplayFormat(line.toDate) }}</td>
+              <td>{{ line.requested }}</td>
+              <td>{{ line.approved }}</td>
+              <td>{{ line.denied }}</td>
+              <td>
+                <label [ngClass]="(line.currentStatus)">
+                  {{ line.currentStatus }}
+                </label>
+              </td>
+              <td>
+                <select class="form-control"
+                        [(ngModel)]="line.initialRecommendation"
+                        [ngModelOptions]="{ standalone: true }">
+                  <option value="">Select</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Denied">Denied</option>
+                  <option value="Partially Approved">Partially Approved</option>
+                </select>
+
+              </td>
+
+              <td>
+                <span class="mdr-badge" [ngClass]="mdStatusClass(getMdStatus(line))">
+                  {{ getMdStatus(line) }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- CARDS VIEW -->
+      <div *ngIf="viewMode === 'cards'" class="cards-grid cards--fullrow">
+        <div class="sl-card" *ngFor="let line of serviceLines; let i = index; trackBy: trackByLine"
+             [ngClass]="{ 'row-in-progress': getMdStatus(line) === 'MD Review in progress' }">
+          <div class="sl-card-header">
+            <div class="sl-card-title">
               <input type="checkbox"
-                     [(ngModel)]="allSelected"
-                     [ngModelOptions]="{ standalone: true }"
-                     (change)="toggleAllSelection($event)" />
-            </th>
-            <th>Service Code</th>
-            <th>Service Description</th>
-            <th>From Date</th>
-            <th>To Date</th>
-            <th>Requested</th>
-            <th>Approved</th>
-            <th>Denied</th>
-            <th>Initial Recommendation</th>
-            <th>MD's Review Status</th> <!-- NEW -->
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let line of serviceLines; let i = index; trackBy: trackByLine">
-            <td>
-              <input type="checkbox"
+                     class="sl-select"
                      [(ngModel)]="line.selected"
                      [ngModelOptions]="{ standalone: true }"
-                     name="lineSelect{{i}}"
+                     name="cardSelect{{i}}"
                      [disabled]="isMdInProgress(line)" />
 
-            </td>
-            <td>{{ line.serviceCode }}</td>
-            <td>{{ line.description }}</td>
-            <td>{{ toDisplayFormat(line.fromDate) }}</td>
-            <td>{{ toDisplayFormat(line.toDate) }}</td>
-            <td>{{ line.requested }}</td>
-            <td>{{ line.approved }}</td>
-            <td>{{ line.denied }}</td>
-            <td>
-              <button [ngClass]="getRecommendationClass(line.recommendation)">
-                {{ line.recommendation }}
-              </button>
-            </td>
-            <td>
-              <span class="mdr-badge" [ngClass]="mdStatusClass(getMdStatus(line))">
-                {{ getMdStatus(line) }}
+              <strong>{{ line.serviceCode }}</strong>
+              <span class="muted">• {{ line.description }}</span>
+            </div>
+            <span class="mdr-badge" [ngClass]="mdStatusClass(getMdStatus(line))">
+              {{ getMdStatus(line) }}
+            </span>
+          </div>
+
+
+          <div class="kv-row">
+            <div class="kv-inline"><span class="kv-label">From Date</span><span class="kv-value">{{ toDisplayFormat(line.fromDate) }}</span></div>
+            <div class="kv-inline"><span class="kv-label">To Date</span><span class="kv-value">{{ toDisplayFormat(line.toDate) }}</span></div>
+            <div class="kv-inline"><span class="kv-label">Requested</span><span class="kv-value">{{ line.requested }}</span></div>
+            <div class="kv-inline"><span class="kv-label">Approved</span><span class="kv-value">{{ line.approved }}</span></div>
+            <div class="kv-inline"><span class="kv-label">Denied</span><span class="kv-value">{{ line.denied }}</span></div>
+            <div class="kv-inline">
+              <span class="kv-label">Current Status</span>
+              <span class="kv-value">
+                <label [ngClass]="(line.currentStatus)">
+                  {{ line.currentStatus || line.currentStatus }}
+                </label>
               </span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+            </div>
+            <div class="kv-inline">
+              <span class="kv-label">Initial Recommendation</span>
+              <span class="kv-value">
+                <select class="form-control"
+                        [(ngModel)]="line.initialRecommendation"
+                        [ngModelOptions]="{ standalone: true }">
+                  <option value="">Select</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Denied">Denied</option>
+                  <option value="Partially Approved">Partially Approved</option>
+                </select>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions (unchanged) -->
+      <div class="button-group">
+        <button type="button" (click)="submitReview()" >
+          Submit for Medical Director Review
+        </button>
+        <button type="button" (click)="cancelReview(); closeMdReview()" >Cancel</button>
+      </div>
+    </form>
+  </div>
+</ng-container>
+
+<ng-container *ngIf="!showMdReview">
+  <div class="activity-layout">
+    <!--*ngIf="hasAnyActivity()" Left: Activity summary cards -->
+    <div class="left-column">
+      <div class="sl-card" *ngFor="let line of activities">
+        <div *ngIf="line.Activity" class="sl-card-body">
+          <div class="kv-row">
+            <!--<div><span class="kv-label">AuthActivityId</span><span class="kv-value">{{ line.Activity.AuthActivityId }}</span></div>-->
+            <div><span class="kv-label">Activity Type</span><span class="kv-value">{{ line.Activity.ActivityTypeId }}</span></div>
+            <div><span class="kv-label">Priority</span><span class="kv-value">{{ line.Activity.PriorityId }}</span></div>
+            <div><span class="kv-label">Due Date</span><span class="kv-value">{{ toDisplayFormat(line.Activity.DueDate) }}</span></div>
+            <div><span class="kv-label">Status</span><span class="kv-value">{{ line.Activity.Status }}</span></div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- CARDS VIEW -->
-    <div *ngIf="viewMode === 'cards'" class="cards-grid cards--fullrow">
-      <div class="sl-card" *ngFor="let line of serviceLines; let i = index; trackBy: trackByLine">
+    <!-- Right: Activity details with service lines -->
+    <div class="right-column">
+      <div class="sl-card" *ngFor="let activity of activities">
         <div class="sl-card-header">
-          <div class="sl-card-title">
-            <input type="checkbox"
-                   class="sl-select"
-                   [(ngModel)]="line.selected"
-                   [ngModelOptions]="{ standalone: true }"
-                   name="cardSelect{{i}}"
-                   [disabled]="isMdInProgress(line)" />
-
-            <strong>{{ line.serviceCode }}</strong>
-            <span class="muted">• {{ line.description }}</span>
-          </div>
-          <span class="mdr-badge" [ngClass]="mdStatusClass(getMdStatus(line))">
-            {{ getMdStatus(line) }}
+          <!--<strong>Activity #{{ activity.Activity.AuthActivityId }}</strong>-->
+          <span class="mdr-badge" [ngClass]="mdStatusClass(activity.Activity.MdReviewStatus)">
+            {{ activity.Activity.MdReviewStatus }}
           </span>
         </div>
 
-
-        <div class="kv-row">
-          <div class="kv-inline"><span class="kv-label">From Date</span><span class="kv-value">{{ toDisplayFormat(line.fromDate) }}</span></div>
-          <div class="kv-inline"><span class="kv-label">To Date</span><span class="kv-value">{{ toDisplayFormat(line.toDate) }}</span></div>
-          <div class="kv-inline"><span class="kv-label">Requested</span><span class="kv-value">{{ line.requested }}</span></div>
-          <div class="kv-inline"><span class="kv-label">Approved</span><span class="kv-value">{{ line.approved }}</span></div>
-          <div class="kv-inline"><span class="kv-label">Denied</span><span class="kv-value">{{ line.denied }}</span></div>
-          <div class="kv-inline">
-            <span class="kv-label">Initial Recommendation</span>
-            <span class="kv-value">
-              <button [ngClass]="getRecommendationClass(line.recommendation)">
-                {{ line.recommendation || line.recommendation }}
-              </button>
-            </span>
+        <div class="sl-card-body" *ngFor="let line of activity.Lines">
+          <div class="kv-row">
+            <div><span class="kv-label">Service Code</span><span class="kv-value">{{ line.ServiceCode }}</span></div>
+            <div><span class="kv-label">From</span><span class="kv-value">{{ toDisplayFormat(line.FromDate) }}</span></div>
+            <div><span class="kv-label">To</span><span class="kv-value">{{ toDisplayFormat(line.ToDate) }}</span></div>
+            <div><span class="kv-label">Requested</span><span class="kv-value">{{ line.Requested }}</span></div>
+            <div><span class="kv-label">Approved</span><span class="kv-value">{{ line.Approved }}</span></div>
+            <div><span class="kv-label">Denied</span><span class="kv-value">{{ line.Denied }}</span></div>
+            <div><span class="kv-label">Initial Recommendation</span><span class="kv-value">{{ line.InitialRecommendation }}</span></div>
           </div>
         </div>
       </div>
     </div>
-
-    <!-- Actions (unchanged) -->
-    <div class="button-group">
-      <button type="button" (click)="submitReview()" [disabled]="!hasSelection() || noSelectableLines()">
-        Submit for Medical Director Review
-      </button>
-      <button type="button" (click)="cancelReview()" [disabled]="!hasSelection() || noSelectableLines()">Cancel</button>
-    </div>
-
-  </form>
-</div>
+  </div>
+  </ng-container>

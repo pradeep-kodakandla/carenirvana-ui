@@ -78,10 +78,10 @@ tr.example-element-row:not(.example-expanded-row):active {
   opacity: 0.5;
 }
 
-.div-secondary {
+/*.div-secondary {
   color: #fff;
   font-weight: bold;
-}
+}*/
 
 .label-primary {
   color: #fff;
@@ -111,17 +111,17 @@ tr.example-element-row:not(.example-expanded-row):active {
   min-width: 500px;
 }
 
-.rounded-box {
-  width: 200px; /* Set the width of the div */
+/*.rounded-box {
+  width: 200px;*/ /* Set the width of the div */
   /*height: 80px;  Set the height of the div */
-  background-color: #007BFF; /* Add a background color */
-  color: white; /* Text color */
+  /*background-color: #007BFF;*/ /* Add a background color */
+  /*color: white;*/ /* Text color */
   /* Padding inside the div */
-  border-radius: 5px; /* This creates rounded corners */
+  /*border-radius: 5px;*/ /* This creates rounded corners */
   /*box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);*/ /* Optional: add a shadow */
-  transition: background-color 0.3s ease; /* Smooth transition */
-  cursor: pointer;
-}
+  /*transition: background-color 0.3s ease;*/ /* Smooth transition */
+  /*cursor: pointer;
+}*/
 
 .selectedBox {
   visibility: collapse;
@@ -198,14 +198,14 @@ mat-card-title {
 
 
 
-.dashboard-container {
+/*.dashboard-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 16px;*/
 /*  justify-content: space-between;*/
 /*  padding: 10px;
-*/  background-color: #f8f9fa;
-}
+*/  /*background-color: #f8f9fa;*/
+/*}*/
 
 .selected-divider {
   border-top: 4px solid orange !important;
@@ -220,3 +220,56 @@ mat-card-title {
 .selected-divider {
   border-top: 4px solid orange !important;
 }
+
+
+
+.dashboard-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 5px;
+  justify-content: flex-start;
+}
+
+.rounded-box {
+  flex: 1 1 250px;
+  /*  min-width: 220px;*/
+  max-width: 200px;
+  padding: 8px;
+  background: #fff;
+  color: rgba(98, 108, 113, 1);
+  border-radius: 10px;
+  border: 1px solid #ddd; /* subtle border */
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+  .rounded-box:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    transform: translateY(-2px);
+    border-top: 3px solid #007BFF;
+  }
+
+  .rounded-box.selected {
+    border: 1px solid #007BFF;
+    border-top: 5px solid #007BFF; /* highlight top border */
+    background: #f0f7ff; /* light blue shade */
+    box-shadow: 0 6px 14px rgba(0,123,255,0.25);
+  }
+
+  
+
+  .rounded-box h1 {
+    font-size: 28px;
+    font-weight: bold;
+    margin: 0;
+    color: #007BFF;
+  }
+
+  .rounded-box .div-secondary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+  }

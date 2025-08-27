@@ -8,9 +8,10 @@ import { map } from 'rxjs/operators';
 import { DatePipe } from '@angular/common';
 
 interface MdReviewActivityDto {
-  activity: any;   // or your AuthActivity model
-  lines: any[];    // or your AuthActivityLine model
+  Activity: any;
+  Lines: any[];
 }
+
 
 type MdActivityLine = {
   serviceCode?: string;
@@ -60,8 +61,9 @@ export class MdreviewComponent implements OnInit, OnChanges {
   activityTypes: { value: string, label: string }[] = [{ value: '', label: 'Select' }];
 
   activities: MdReviewActivityDto[] = [];
-
+  globalInitialRecommendation: string = '';
   // Optional: constants to avoid typos
+  showMdReview = false;
 
   private readonly ASSIGNMENT_WORK_BASKET = 'Work Basket Assignment';
 
@@ -100,7 +102,6 @@ export class MdreviewComponent implements OnInit, OnChanges {
 
   ngOnInit(): void {
 
-
     // Initialize form with default values
     this.mdrForm = this.fb.group({
       assignmentType: ['', Validators.required],
@@ -121,11 +122,17 @@ export class MdreviewComponent implements OnInit, OnChanges {
     this.applyAssignmentTypeSideEffects(this.assignmentTypeDisplay);
     this.loadActivityTypes();
     this.loadUsers();
-
+    console.log('NGONIT AuthDetailId:', this.authDetailId);
+    this.loadMdReviewActivities(this.authDetailId || undefined);
     // Default Priority to ID=2 (Routine) and reflect label in the input
     this.mdrForm.get('priority')?.setValue(2);
     const defP = this.priorities.find(p => p.id === 2);
     this.priorityDisplay = defP?.label ?? '';
+
+    this.serviceLines = this.serviceLines.map(line => ({
+      ...line,
+      initialRecommendation: line.initialRecommendation || ''
+    }));
   }
 
   loadActivityTypes() {
@@ -194,13 +201,18 @@ export class MdreviewComponent implements OnInit, OnChanges {
       this.serviceLines = incoming.map((l) => {
         const copy: MdReviewLine = { ...l }; // 1) spread once
         if (copy.selected === undefined) copy.selected = false;           // 2) fill defaults
-        if (copy.recommendation === undefined) copy.recommendation = 'Pending';
+        if (copy.currentStatus === undefined) copy.currentStatus = 'Pending';
         return copy;
       });
     }
+    this.serviceLines = this.serviceLines.map(line => ({
+      ...line,
+      initialRecommendation: line.initialRecommendation || ''
+    }));
     if (this.serviceLines.length > 0) {
       this.serviceLines.forEach(row => row.selected = true);
     }
+
   }
 
 
@@ -407,6 +419,17 @@ export class MdreviewComponent implements OnInit, OnChanges {
 
   // Submit new MD Review activity with selected lines
 
+  applyGlobalRecommendation(): void {
+    if (!this.globalInitialRecommendation) return;
+
+    this.serviceLines.forEach(line => {
+      if (line.selected && !this.isMdInProgress(line)) {
+        line.initialRecommendation = this.globalInitialRecommendation;
+      }
+    });
+  }
+
+
   private numOrNull(v: any): number | null {
     if (v === '' || v === undefined || v === null) return null;
     const n = Number((v as any)?.value ?? v);
@@ -564,30 +587,56 @@ export class MdreviewComponent implements OnInit, OnChanges {
   // Optional: stable trackBy if you have an id; else fall back to index
   trackByLine = (_: number, line: any) => line?.id ?? line?.decisionLineId ?? _;
 
-  // Compute MD status from line data or activity joins
-  getMdStatus(line: any): string {
-    // Prefer explicit flags coming from your API if present.
-    // Fallbacks keep it robust without changing your payload shape.
-    //console.log('Computing MD status for line', line);
-    if (line?.mdrStatus) {
-      // normalize to a friendly label if backend sends enums/codes
-      const s = String(line.mdrStatus).toLowerCase();
-      if (s.includes('in') && s.includes('progress')) return 'MD Review in progress';
-      if (s.includes('complete') || s.includes('done')) return 'MD Review completed';
-      if (s.includes('pending')) return 'MD Review in progress';
+  
+  getMdStatus(serviceObject: any): string {
+    const serviceCode = serviceObject?.serviceCode;
+
+    if (!serviceCode || !this.activities?.length) {
+      return 'Not Requested';
     }
-    if (line?.mdReviewRequested || line?.mdRequested || line?.isMdReviewRequested) {
-      return 'MD Review in progress';
+
+    // Loop through displayLines to find a matching line
+    for (const item of this.activities) {
+      const matchingLine = item.Lines?.find(
+        (line: any) => String(line.ServiceCode).trim() === String(serviceCode).trim()
+      );
+
+      if (matchingLine) {
+
+        // Fallback: check Activity.MdReviewStatus
+        if (item?.Activity?.MdReviewStatus) {
+          const s = String(item.Activity.MdReviewStatus).toLowerCase();
+          if (s.includes('in') && s.includes('progress')) return 'MD Review in progress';
+          if (s.includes('complete') || s.includes('done')) return 'MD Review completed';
+          if (s.includes('pending')) return 'MD Review in progress';
+        }
+
+        // Optional fallback flags on the line
+        if (
+          matchingLine.mdReviewRequested ||
+          matchingLine.mdRequested ||
+          matchingLine.isMdReviewRequested
+        ) {
+          return 'MD Review in progress';
+        }
+
+        // If a match was found but no status info
+        return 'Not Requested';
+      }
     }
-    return 'MD Review in progress';
+
+    // If no matching line is found
+    return 'Not Requested';
   }
 
+
+
   // Map status to badge class
-  mdStatusClass(status: string): string {
-    const s = status.toLowerCase();
-    if (s.includes('in progress') || s.includes('pending')) return 'mdr-in-progress';
-    if (s.includes('completed')) return 'mdr-completed';
-    return 'mdr-not-requested';
+  mdStatusClass(status: string) {
+    const s = (status || '').toLowerCase();
+    if (s.includes('progress') || s.includes('pending')) return 'is-inprogress';
+    if (s.includes('completed') || s.includes('complete') || s.includes('done')) return 'is-completed';
+    return 'is-notrequested';
   }
 
   ///********Load Activities**********///
@@ -596,34 +645,19 @@ export class MdreviewComponent implements OnInit, OnChanges {
 
   // Load activities for given authDetailId
   loadMdReviewActivities(authDetailId?: number) {
-    this.activityService.getMdReviewActivities(undefined, authDetailId ?? (this.authDetailId || undefined)) // your value
-      .pipe(
-        map((res: any[]) =>
-          (res || []).map(x => ({
-            activity: x.activity ?? x.item1 ?? x.Item1,
-            lines: x.lines ?? x.item2 ?? x.Item2
-          }))
-        )
-      )
-      .subscribe({
-        next: (data: MdReviewActivityDto[]) => {
-          this.activities = data;
-
-          // 1) Build an index by Service Code
-          this.rebuildMdStatusIndex();
-
-          // 2) Enrich the existing serviceLines with mdrStatus
-          this.enrichServiceLinesWithMdPerLineStatus();
-        },
-        error: err => console.error('Error fetching MD Review activities', err)
-      });
+    this.activityService.getMdReviewActivities(undefined, authDetailId ?? undefined).subscribe(res => {
+      console.log('Response Activities loaded:', res);
+      this.activities = res;
+      this.rebuildMdStatusIndex();
+      this.enrichServiceLinesWithMdPerLineStatus();
+    });
   }
 
   private rebuildMdStatusIndex(): void {
     this.mdIndexByServiceCode.clear();
 
     for (const a of (this.activities ?? [])) {
-      const act = a?.activity ?? {};
+      const act = a?.Activity ?? {};
       const mdStatusCandidates = [
         act?.MDStatus, act?.MdStatus, act?.mdStatus,
         act?.MDAgg, act?.MDAggregate, act?.mdAgg,
@@ -633,7 +667,7 @@ export class MdreviewComponent implements OnInit, OnChanges {
       const hasPending = mdStatusCandidates.some(this.isPendingLike.bind(this));
       const hasCompleted = mdStatusCandidates.some(this.isCompletedLike.bind(this));
 
-      const lines = a?.lines ?? [];
+      const lines = a?.Lines ?? [];
       for (const ln of lines) {
         const code = this.getLineServiceCode(ln);
         if (!code) continue;
@@ -718,17 +752,17 @@ export class MdreviewComponent implements OnInit, OnChanges {
     const enriched = source.map(line => {
       const codeKey = this.getLineServiceCode(line);
       const idKey = this.getLineDecisionLineId(line);
-      const mdrStatus = this.statusLabelForKey(codeKey, idKey);
+      const mdrStatus = line?.Activity?.MdReviewStatus;// this.statusLabelForKey(codeKey, idKey);
       return { ...line, mdrStatus };
     });
-
+    
     // Write back to the collection you bind in the template (displayLines)
     this.displayLines = enriched;
 
     this.displayLines = (source || []).map(line => {
       const codeKey = this.getLineServiceCode(line);
       const idKey = this.getLineDecisionLineId(line);
-      const mdrStatus = this.statusLabelForKey(codeKey, idKey); // 'MD Review in progress' | 'completed' | 'Not requested'
+      const mdrStatus = line?.Activity?.MdReviewStatus; //this.statusLabelForKey(codeKey, idKey); // 'MD Review in progress' | 'completed' | 'Not requested'
       const locked = /in progress|pending/i.test(mdrStatus);
       return {
         ...line,
@@ -737,7 +771,6 @@ export class MdreviewComponent implements OnInit, OnChanges {
       };
     });
   }
-
 
 
   // --- Normalizers ---
@@ -793,7 +826,7 @@ export class MdreviewComponent implements OnInit, OnChanges {
   private buildDisplayLines(): void {
     const hasActivityLines =
       Array.isArray(this.activities) &&
-      this.activities.some(a => Array.isArray(a?.lines) && a.lines.length);
+      this.activities.some(a => Array.isArray(a?.Lines) && a.Lines.length);
 
     if (hasActivityLines) {
       this.rebuildMdStatusIndex();
@@ -802,7 +835,7 @@ export class MdreviewComponent implements OnInit, OnChanges {
       const seen = new Set<string>();
 
       for (const a of this.activities) {
-        for (const ln of (a.lines || [])) {
+        for (const ln of (a.Lines || [])) {
           const code = this.getLineServiceCode(ln);
           if (!code) continue;
           if (seen.has(code)) continue; // dedupe by Service Code (adjust if you need per-line duplicates)
@@ -840,10 +873,10 @@ export class MdreviewComponent implements OnInit, OnChanges {
     for (const a of (this.activities ?? [])) {
       // Optional: activity-level hint (used only when line has no own status)
       const actPendingHint =
-        this.isPendingLike(a?.activity?.MdReviewStatus) ||
-        this.isPendingLike(a?.activity?.MdAggregateDecision);
+        this.isPendingLike(a?.Activity?.MdReviewStatus) ||
+        this.isPendingLike(a?.Activity?.MdAggregateDecision);
 
-      for (const ln of (a?.lines ?? [])) {
+      for (const ln of (a?.Lines ?? [])) {
         const code = this.getLineServiceCode(ln);
         const dlnId = this.getLineDecisionLineId(ln);
 
@@ -874,9 +907,20 @@ export class MdreviewComponent implements OnInit, OnChanges {
     }
   }
 
-
-
-
-
   ///********Load Activities**********///
+
+  hasAnyActivity(): boolean {
+    const source = (this.activities) as any[];
+    const hasActivity = source.some(line => !!line?.Activity);
+    return hasActivity;
+  }
+
+  openMdReview(): void {
+    // (Optional) preload anything you need here
+    this.showMdReview = true;
+  }
+
+  closeMdReview(): void {
+    this.showMdReview = false;
+  }
 }

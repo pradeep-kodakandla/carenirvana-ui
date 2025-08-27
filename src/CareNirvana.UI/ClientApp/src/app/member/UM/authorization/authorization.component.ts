@@ -1852,13 +1852,11 @@ export class AuthorizationComponent {
   }
 
   private loadMdReviewActivities(id: number) {
-    console.log('Loading MD Review activities for authDetailId:', id);
+
     this.authService.getMdReviewActivities(undefined, id).subscribe({
       next: (res) => {
-        console.log('MD Review Activities Response:', res);
         this.mdReviewHasActivities = Array.isArray(res) && res.length > 0;
         this.mdReviewLines = Array.isArray(res) ? (res as MdReviewLine[]) : [];
-        console.log('MD Review Has Activity', this.mdReviewHasActivities);
       },
       error: () => {
         this.mdReviewHasActivities = false;

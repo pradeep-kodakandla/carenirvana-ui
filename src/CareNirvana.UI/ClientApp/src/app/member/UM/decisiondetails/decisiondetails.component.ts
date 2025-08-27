@@ -46,7 +46,8 @@ export interface MdReviewLine {
   approved: number | string;
   denied: number | string;
   selected: boolean;
-  recommendation: string;
+  currentStatus: string;
+  initialRecommendation?: string;
 }
 
 @Component({
@@ -823,7 +824,7 @@ export class DecisiondetailsComponent implements OnChanges, OnInit {
         approved,
         denied,
         selected: false, // keep existing default selection behavior
-        recommendation: mapDecisionStatus(decisionStatus, approved, denied)
+        currentStatus: mapDecisionStatus(decisionStatus, approved, denied)
       });
     }
 

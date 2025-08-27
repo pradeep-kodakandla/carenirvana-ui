@@ -53,8 +53,13 @@
           <p>ID: {{ member.memberId }}</p>
         </div>
         <div class="header-metrics">
-          <span class="risk-label" [ngClass]="getRiskClass(member.risk)">
+          <!--<span class="risk-label" [ngClass]="getRiskClass(member.risk)">
             {{ getRiskEmoji(member.risk) }} {{ getRiskLabel(member.risk) }}
+          </span>-->
+          <span class="risk-chip"
+                [ngClass]="(member.risk || '').toLowerCase()"
+                [attr.aria-label]="'Risk ' + member.risk">
+            {{ member.risk }}
           </span>
 
           <mat-chip color="primary">Open Auth: {{ member.authCount }}</mat-chip>
@@ -68,7 +73,7 @@
 
       </div>
 
-      <div class="card-body-row">
+      <div class="card-body-row" style="padding-left:55px;">
         <p><strong>Program:</strong> {{ member.programName }}</p>
         <p><strong>Next Contact:</strong> {{ member.nextContact }}</p>
         <p><strong>Assigned:</strong> {{ member.assignedDate }}</p>
@@ -84,7 +89,7 @@
   </div>
 
   <div class="table-wrapper" *ngIf="viewMode === 'table'">
-    <table mat-table [dataSource]="dataSource" matSort class="mat-elevation-z1 full-width-table">
+    <table mat-table [dataSource]="dataSource" matSort class="mat-elevation-z1 full-width-table pro-table">
 
       <!-- Name Column -->
       <ng-container matColumnDef="name">

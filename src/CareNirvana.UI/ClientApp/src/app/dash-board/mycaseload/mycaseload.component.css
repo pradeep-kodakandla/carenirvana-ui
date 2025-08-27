@@ -89,8 +89,8 @@
 }
 
 .avatar {
-  background: #007bff;
-  color: white;
+  background: lightblue;
+  color:#007bff;
   border-radius: 50%;
   padding: 0.5rem;
   display: flex;
@@ -138,10 +138,10 @@
 
 .card-body-row {
   display: flex;
-  justify-content: space-between;
-  flex-wrap: wrap;
+/*  justify-content: space-between;
+*/  flex-wrap: wrap;
 /*  margin-top: 1rem;
-*/  gap: 1rem;
+*/  gap: 2rem;
 }
 
   .card-body-row p {
@@ -241,3 +241,138 @@ mat-paginator {
 
 
 
+
+
+
+
+
+
+
+
+
+
+.table-wrapper {
+  margin-top: 16px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-s);
+  overflow: hidden;
+}
+
+/* Header */
+.mat-mdc-table .mat-mdc-header-row {
+  background: linear-gradient(180deg, #e8f0ff 0%, #dbe7ff 100%);
+  height: 48px;
+}
+
+.mat-mdc-table .mat-mdc-header-cell {
+  color: #0f172a;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: .76rem;
+  letter-spacing: .6px;
+  border-bottom: 1px solid #cbd5e1;
+}
+
+
+
+
+
+
+/* Put avatar on the far right, vertically centered */
+.card-header {
+  display: flex;
+  align-items: center; /* vertical centering */
+  gap: 1rem;
+}
+
+/* Keep info + metrics flow as-is on the left */
+.info {
+  order: 1;
+  flex: 1 1 auto; /* takes remaining space */
+  min-width: 200px;
+}
+
+/* Metrics stay after info; pushes right-side items away */
+.header-metrics {
+  order: 2;
+  margin-left: 0; /* keep as-is; or keep your existing margin-left:auto if you prefer */
+}
+
+/* Action button before avatar (optional) */
+.action-button {
+  order: 3;
+  margin-left: .5rem;
+}
+
+/* Avatar becomes the rightmost item, centered vertically */
+.avatar {
+  order:1; /* last = right side */
+  align-self: center; /* vertical center */
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+
+/* ==== Risk Pill Chips ==== */
+.risk-chip {
+  --bg: #f6f7fb;
+  --fg: #1f2937;
+  --dot: #9aa4b2;
+  --bd: #e5e7eb;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--bd);
+  font-weight: 600;
+  font-size: 0.875rem; /* 14px */
+  line-height: 1;
+  white-space: nowrap;
+}
+
+  .risk-chip::before {
+    content: "";
+    width: 10px;
+    height: 10px;
+    border-radius: 9999px;
+    background: var(--dot);
+    box-shadow: 0 0 0 2px rgba(255,255,255,.8) inset;
+  }
+
+  /* Variants */
+  .risk-chip.low {
+    --bg: #ecfdf5; /* mint */
+    --fg: #065f46;
+    --dot: #10b981;
+    --bd: #a7f3d0;
+  }
+
+  .risk-chip.medium {
+    --bg: #fffbeb; /* amber */
+    --fg: #92400e;
+    --dot: #f59e0b;
+    --bd: #fde68a;
+  }
+
+  .risk-chip.high {
+    --bg: #fef2f2; /* red */
+    --fg: #991b1b;
+    --dot: #ef4444;
+    --bd: #fecaca;
+  }
+
+  /* Compact for table cells */
+  .risk-chip.compact {
+    padding: 4px 10px;
+    font-size: 12px;
+    gap: 6px;
+  }

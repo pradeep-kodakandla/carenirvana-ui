@@ -367,7 +367,219 @@
   text-overflow: ellipsis;
 }
 
-/* Keep your existing badge styles (mdr-in-progress, etc.) */
+.view-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+  .view-toolbar .segmented {
+    margin-left: auto; /* pushes the toggle to the far right */
+  }
 
 
-/* Reuse your existing table + buttons styling unchanged */
+
+/* Base pill */
+.mdr-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-weight: 700; /* <-- “highlight” the text */
+  font-size: 12px;
+  line-height: 1.6;
+  border: 1px solid currentColor;
+  letter-spacing: .2px;
+  user-select: text;
+}
+
+  /* States (adjust colors to your theme tokens if you have them) */
+  .mdr-badge.inprogress,
+  .mdr-badge.is-inprogress {
+    color: #8a5a00;
+    background: #fff7e6;
+    border-color: #f1c27d;
+  }
+
+  .mdr-badge.completed,
+  .mdr-badge.is-completed {
+    color: #0f5132;
+    background: #d1e7dd;
+    border-color: #a3cfbb;
+  }
+
+  .mdr-badge.notrequested,
+  .mdr-badge.is-notrequested {
+    color: #41464b;
+    background: #e2e3e5;
+    border-color: #c4c8cb;
+  }
+
+
+/* Highlight row if MD Review in Progress */
+.row-in-progress {
+  background-color: #fff3cd !important; /* soft amber */
+}
+
+/* Default row style */
+.row-default {
+  background-color: #ffffff;
+}
+
+/* Denied status red */
+.status-denied {
+  color: #dc3545; /* Bootstrap red */
+  font-weight: bold;
+}
+
+.kv-value select.form-control {
+  font-size: 13px;
+  padding: 2px 6px;
+}
+
+select.form-control {
+  appearance: auto; /* Ensure native dropdown arrow */
+  -webkit-appearance: auto;
+  -moz-appearance: auto;
+  padding: 4px 8px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+
+
+/* --- Activity layout: responsive two-panel grid --- */
+.activity-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) 2fr; /* summary | details */
+  gap: 16px;
+  align-items: start;
+  margin-top: 1rem;
+}
+
+/* Collapse to single column on narrower screens */
+@media (max-width: 1100px) {
+  .activity-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Left & right columns use full width of their grid cell */
+.activity-layout .left-column,
+.activity-layout .right-column {
+  min-width: 0;
+}
+
+/* Make each activity/service card consistent and airy */
+.activity-layout .sl-card {
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.05);
+}
+
+/* Optional: keep the left summary visible while scrolling details */
+@media (min-width: 1101px) {
+  .activity-layout .left-column {
+    position: sticky;
+    top: 12px;
+    height: max-content;
+  }
+}
+
+/* --- Field grid that auto-wraps “label : value” pairs --- */
+.kv-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px 20px;
+  padding-top: 6px;
+  align-items: start;
+  /* Allows denser packing when widths vary */
+  grid-auto-flow: dense;
+}
+
+  /* Tighter inline label/value presentation */
+  .kv-inline, .kv-row > div {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0; /* prevent overflow */
+    white-space: nowrap;
+  }
+
+.kv-label {
+  color: #1976d2;
+  font-weight: 600;
+}
+
+  .kv-label::after {
+    content: ':';
+    margin-left: 2px;
+  }
+
+.kv-value {
+  color: #212529;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Small refinements for badges and headers inside cards */
+.sl-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.mdr-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1.6;
+  border: 1px solid currentColor;
+  letter-spacing: .2px;
+}
+
+
+/* mdreview.component.css */
+
+/* Header layout */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* pushes button to the right */
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+/* Optional: make the button visually consistent */
+.mdreview-btn {
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+/* If your page header has to stick while scrolling, you can pin it: */
+.sticky-header .page-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface, #fff);
+  padding-top: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eee;
+}
+
