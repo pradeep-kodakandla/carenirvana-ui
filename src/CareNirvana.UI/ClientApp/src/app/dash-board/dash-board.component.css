@@ -254,9 +254,9 @@ mat-card-title {
   .rounded-box.selected {
     border: 1px solid #007BFF;
     border-top: 5px solid #007BFF; /* highlight top border */
-    background: #f0f7ff; /* light blue shade */
-    box-shadow: 0 6px 14px rgba(0,123,255,0.25);
-  }
+    /*background: #f0f7ff;*/ /* light blue shade */
+/*    box-shadow: 0 6px 14px rgba(0,123,255,0.25);
+*/  }
 
   
 
@@ -271,5 +271,5 @@ mat-card-title {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-weight: bold;
-  }
+/*    font-weight: bold;
+*/  }

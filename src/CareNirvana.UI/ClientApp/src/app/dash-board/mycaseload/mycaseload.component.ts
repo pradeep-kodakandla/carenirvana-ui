@@ -15,7 +15,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
   constructor(private headerService: HeaderService, private router: Router) { }
 
   // View mode toggle
-  viewMode: 'card' | 'table' = 'card';
+  viewMode: 'card' | 'table' = 'table';
 
   // Full member list
   members: any[] = [];
@@ -41,15 +41,9 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
   ];
 
   // Table columns
-  displayedColumns: string[] = [
-    'name',
-    'memberId',
-    'risk',
-    'program',
-    'nextContact',
-    'assignedDate',
-    'actions'
-  ];
+  displayedColumns = ['name', 'program', 'risk', 'lastContact', 'nextContact', 'inlineCounts', 'expand'];
+  expandedElement: any | null = null;
+  expandedRowId: number | string | null = null;
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -189,4 +183,17 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
       default: return '';
     }
   }
+
+  private getRowId(row: any): number | string | null {
+    return row?.memberId ?? row?.id ?? row?.MemberId ?? null;
+  }
+
+  toggleRow(row: any) {
+    const id = this.getRowId(row);
+    this.expandedRowId = (this.expandedRowId === id ? null : id);
+  }
+
+  // Predicate used by the detail-row "when:" to decide which row to show
+  isDetailRow = (_index: number, row: any) => this.expandedRowId === this.getRowId(row);
+ 
 }

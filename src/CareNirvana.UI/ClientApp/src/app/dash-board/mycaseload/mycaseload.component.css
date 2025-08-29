@@ -1,7 +1,7 @@
 .dashboard-wrapper {
   padding: 0.3rem;
-  background-color: #f4f7fb;
-}
+/*  background-color: #f4f7fb;
+*/}
 
 /* Layout: Search and Summary in One Row */
 .top-bar {
@@ -376,3 +376,151 @@ mat-paginator {
     font-size: 12px;
     gap: 6px;
   }
+
+
+
+  /***** Table *******/
+/* Base font & spacing */
+.mng-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+}
+
+/* Header: soft blue + strong label (you already had a gradient; keep it consistent) */
+.mat-mdc-table .mat-mdc-header-row {
+  background: linear-gradient(180deg, #eef5ff 0%, #e3edff 100%);
+  height: 48px;
+}
+
+.mat-mdc-table .mat-mdc-header-cell {
+  color: #0f1e3a;
+  font-weight: 700;
+  text-transform: none;
+  font-size: .86rem;
+  letter-spacing: .2px;
+  border-bottom: 1px solid #d6e0f0;
+}
+
+/* Cells: borders like the screenshot */
+.mng-table .mat-mdc-cell {
+  border-bottom: 1px solid #e6ebf2;
+  padding: 12px 16px;
+  vertical-align: middle;
+  color: #1f2937;
+}
+
+/* Zebra hover */
+.mng-table .data-row:hover {
+  background: #f8fbff;
+}
+
+/* Left “Member + ID” look */
+.sub-id {
+  color: #6b7280;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+/* Inline compact counts */
+.counts-inline {
+  display: inline-flex;
+  gap: 10px;
+}
+
+.count-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fafbff;
+  line-height: 1;
+}
+
+  .count-pill strong {
+    font-weight: 700;
+  }
+
+  .count-pill em {
+    font-style: normal;
+    color: #6b7280;
+  }
+
+/* Centered expand col */
+.is-center {
+  text-align: center;
+  width: 48px;
+}
+
+/* Chevron rotation */
+.chev-btn {
+  line-height: 0;
+}
+
+.chev {
+  transition: transform .18s ease;
+}
+
+  .chev.rot {
+    transform: rotate(180deg);
+  }
+
+/* Detail row (expands under the row, same borders) */
+.detail-row .detail-cell {
+  padding: 0;
+  border-bottom: 1px solid #e6ebf2;
+  background: #fbfdff;
+}
+
+.detail-wrap {
+  display: flex;
+  gap: 16px;
+  padding: 12px 16px 16px;
+}
+
+.detail-card {
+  background: #fff;
+  border: 1px solid #e6ebf2;
+  border-radius: 10px;
+  padding: 10px 14px;
+  min-width: 110px;
+  box-shadow: 0 1px 2px rgba(16,24,40,.04);
+}
+
+  .detail-card .badge {
+    display: inline-block;
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 6px;
+  }
+
+  .detail-card .num {
+    font-size: 18px;
+    font-weight: 800;
+    color: #0f172a;
+  }
+
+  .detail-card.warn .num {
+    color: #b91c1c;
+  }
+
+/* Risk chips you already have; ensure compact works in table */
+.risk-chip.compact {
+  padding: 4px 10px;
+  font-size: 12px;
+  gap: 6px;
+}
+
+/* Table wrapper border radius and outline like screenshot */
+.table-wrapper {
+  margin-top: 16px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(16,24,40,.06);
+  border: 1px solid #e6ebf2;
+  overflow: hidden;
+}
