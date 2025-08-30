@@ -263,9 +263,9 @@
       </tr>
 
       <!-- Detail Row -->
-      <tr  mat-row class="detail-row"
-          *matRowDef="let row; columns: ['detail']; ">
-        <td class="detail-cell" [attr.colspan]="displayedColumns.length" >
+      <tr mat-row class="detail-row"
+          *matRowDef="let row; columns: ['detail']; when: isDetailRow">
+        <td class="detail-cell" [attr.colspan]="displayedColumns.length">
           <div class="profile-expand">
             <!-- Header -->
             <div class="pe-header">
