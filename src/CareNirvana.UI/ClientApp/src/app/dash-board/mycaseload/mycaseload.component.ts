@@ -211,9 +211,9 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     }
   }
 
-  private getRowId(row: any): number | string | null {
-    return row?.memberId ?? row?.id ?? row?.MemberId ?? null;
-  }
+  //private getRowId(row: any): number | string | null {
+  //  return row?.memberId ?? row?.id ?? row?.MemberId ?? null;
+  //}
 
   //toggleRow(row: any) {
   //  const id = this.getRowId(row);
@@ -250,11 +250,14 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     this.filters.quality = Object.keys(this.qualitySelection).filter(k => this.qualitySelection[k]);
   }
 
-  isDetailRow = (_index: number, row: any): boolean => this.expandedElement === row;
-
-  toggleRow(row: any): void {
-    this.expandedElement = (this.expandedElement === row) ? null : row;
-    // if you have @ViewChild(MatTable) table!: MatTable<any>; you may optionally call:
-    // this.table.renderRows();
+  private getRowId(row: any): number | string | null {
+    return row?.memberId ?? row?.id ?? row?.MemberId ?? null;
   }
+
+  toggleRow(row: any) {
+    const id = this.getRowId(row);
+    this.expandedRowId = (this.expandedRowId === id ? null : id);
+  }
+
+  isDetailRow = (_index: number, row: any) => this.expandedRowId === this.getRowId(row);
 }
