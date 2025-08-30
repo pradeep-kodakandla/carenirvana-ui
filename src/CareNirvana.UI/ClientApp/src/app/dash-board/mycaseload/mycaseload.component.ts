@@ -41,30 +41,57 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
   ];
 
   // Table columns
-  displayedColumns = ['name', 'program', 'risk', 'lastContact', 'nextContact', 'inlineCounts', 'expand'];
+  displayedColumns = ['name', 'program', 'dob', 'risk', 'lastContact', 'nextContact', 'inlineCounts', 'expand'];
   expandedElement: any | null = null;
   expandedRowId: number | string | null = null;
+
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
+
+  //Filter settings
+  showFilters = false; // start open (set to false if you want it hidden by default)
+
+  filters = {
+    risks: new Set<string>(),
+    enroll: new Set<string>(),
+    diagnoses: [] as string[],
+    quality: [] as string[],
+  };
+
+  // bind checkboxes using maps for easy (de)serialization
+  diagnosisOptions = ['Diabetes', 'Hypertension', 'COPD', 'Heart Disease'];
+  qualityOptions = ['HbA1c Control', 'BP Control', 'Medication Adherence'];
+  diagnosisSelection: Record<string, boolean> = {};
+  qualitySelection: Record<string, boolean> = {};
+
+  counts = {
+    risk: { high: 2, medium: 2, low: 2 },
+    enroll: { active: 4, inactive: 1, soonEnding: 1 }
+  };
+
   ngOnInit(): void {
     // Load data (replace this with API call in real scenario)
+    
     const testMembers = Array.from({ length: 50 }).map((_, i) => ({
       memberId: (10000 + i).toString(),
       firstName: 'Test',
       lastName: 'User ' + (i + 1),
+      dob: `01-0${((i % 9) + 1)}-198${i % 10}`,
       risk: ['Low', 'Medium', 'High'][i % 3],
       authCount: i % 5,
       activityCount: i % 7,
       carePlanCount: i % 4,
       contactOverdue: i % 6 === 0,
       programName: 'Program ' + (i % 4),
-      nextContact: '2025-06-0' + ((i % 9) + 1),
-      assignedDate: '2025-05-0' + ((i % 9) + 1)
+      nextContact: `06-0${((i % 9) + 1)}-2025`,
+      lastContact: `05-0${((i % 9) + 1)}-2025`
     }));
 
     this.loadMembers(testMembers);
+    this.diagnosisOptions.forEach(d => this.diagnosisSelection[d] = false);
+    this.qualityOptions.forEach(q => this.qualitySelection[q] = false);
   }
 
   ngAfterViewInit(): void {
@@ -188,12 +215,46 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     return row?.memberId ?? row?.id ?? row?.MemberId ?? null;
   }
 
-  toggleRow(row: any) {
-    const id = this.getRowId(row);
-    this.expandedRowId = (this.expandedRowId === id ? null : id);
-  }
+  //toggleRow(row: any) {
+  //  const id = this.getRowId(row);
+  //  this.expandedRowId = (this.expandedRowId === id ? null : id);
+  //}
 
   // Predicate used by the detail-row "when:" to decide which row to show
-  isDetailRow = (_index: number, row: any) => this.expandedRowId === this.getRowId(row);
- 
+
+
+  //Filter methods
+  toggleFilters() {
+    this.showFilters = !this.showFilters;
+  }
+
+  resetFilters() {
+    this.filters.risks.clear();
+    this.filters.enroll.clear();
+    Object.keys(this.diagnosisSelection).forEach(k => this.diagnosisSelection[k] = false);
+    Object.keys(this.qualitySelection).forEach(k => this.qualitySelection[k] = false);
+    this.applyFilters();
+  }
+
+  toggleRisk(r: string) {
+    this.filters.risks.has(r) ? this.filters.risks.delete(r) : this.filters.risks.add(r);
+  }
+
+  toggleEnroll(s: string) {
+    this.filters.enroll.has(s) ? this.filters.enroll.delete(s) : this.filters.enroll.add(s);
+  }
+
+  applyFilters() {
+    // Flatten checkbox maps to arrays
+    this.filters.diagnoses = Object.keys(this.diagnosisSelection).filter(k => this.diagnosisSelection[k]);
+    this.filters.quality = Object.keys(this.qualitySelection).filter(k => this.qualitySelection[k]);
+  }
+
+  isDetailRow = (_index: number, row: any): boolean => this.expandedElement === row;
+
+  toggleRow(row: any): void {
+    this.expandedElement = (this.expandedElement === row) ? null : row;
+    // if you have @ViewChild(MatTable) table!: MatTable<any>; you may optionally call:
+    // this.table.renderRows();
+  }
 }
