@@ -1,7 +1,5 @@
 .dashboard-wrapper {
   padding: 0.3rem;
-  /*  background-color: #f4f7fb;
-*/
 }
 
 /* Layout: Search and Summary in One Row */
@@ -18,19 +16,31 @@
   align-items: center;
   gap: 8px;
   flex: 1 1 auto;
-  flex-wrap: nowrap; /* <-- stops the button dropping below */
+  flex-wrap: nowrap;
 }
 
-/* let the input grow but not force full width */
 .search-input {
-  flex: 1 1 auto; /* grows to fill */
-  min-width: 0; /* <-- key: allows shrinking in flex row */
-  width: auto; /* override any 100% width */
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  height: 40px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
 }
 
-.search-bar {
-  width: 100%;
-  height: 100%;
+.filter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  fill: #007BFF;
 }
 
 .summary-container {
@@ -94,24 +104,26 @@
 
 .card-header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 1rem;
 }
 
 .avatar {
-  background: lightblue;
-  color: #007bff;
+  order: 1;
+  align-self: center;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  padding: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: lightblue;
+  color: #007bff;
 }
 
 .info {
-  flex-grow: 1;
+  order: 1;
+  flex: 1 1 auto;
   min-width: 200px;
 }
 
@@ -136,6 +148,7 @@
   }
 
 .header-metrics {
+  order: 2;
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
@@ -145,15 +158,14 @@
 }
 
 .action-button {
+  order: 3;
   margin-left: 0.5rem;
 }
 
 .card-body-row {
   display: flex;
-  /*  justify-content: space-between;
-*/ flex-wrap: wrap;
-  /*  margin-top: 1rem;
-*/ gap: 2rem;
+  flex-wrap: wrap;
+  gap: 2rem;
 }
 
   .card-body-row p {
@@ -161,7 +173,6 @@
     font-size: 0.9rem;
   }
 
-/* Expanded section (initially empty) */
 .card-expand {
   margin-top: 1rem;
 }
@@ -182,156 +193,6 @@ mat-chip.low {
   color: white;
 }
 
-/* Responsive Adjustments */
-@media screen and (max-width: 768px) {
-  .top-bar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .summary-container {
-    flex-wrap: wrap;
-  }
-
-  .card-body-row {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .header-metrics {
-    justify-content: flex-start;
-  }
-}
-
-/*.search-input {
-  flex: 1;
-  height: 40px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  font-size: 14px;
-  min-width: -webkit-fill-available;
-}*/
-
-.view-toggle {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.table-wrapper {
-  margin-top: 15px;
-}
-
-.mat-column-actions {
-  width: 50px;
-  text-align: center;
-}
-
-mat-paginator {
-  margin-top: 16px;
-  justify-content: center;
-}
-
-.risk-label {
-  font-weight: 600;
-  font-size: 14px;
-  display: inline-block;
-  margin-top: 4px;
-}
-
-.high-risk-text {
-  color: #f44336;
-}
-
-.medium-risk-text {
-  color: #ff9800;
-}
-
-.low-risk-text {
-  color: #4caf50;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-.table-wrapper {
-  margin-top: 16px;
-  background: var(--surface);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-s);
-  overflow: hidden;
-}
-
-/* Header */
-.mat-mdc-table .mat-mdc-header-row {
-  background: linear-gradient(180deg, #e8f0ff 0%, #dbe7ff 100%);
-  height: 48px;
-}
-
-.mat-mdc-table .mat-mdc-header-cell {
-  color: #0f172a;
-  font-weight: 700;
-  text-transform: uppercase;
-  font-size: .76rem;
-  letter-spacing: .6px;
-  border-bottom: 1px solid #cbd5e1;
-}
-
-
-
-
-
-
-/* Put avatar on the far right, vertically centered */
-.card-header {
-  display: flex;
-  align-items: center; /* vertical centering */
-  gap: 1rem;
-}
-
-/* Keep info + metrics flow as-is on the left */
-.info {
-  order: 1;
-  flex: 1 1 auto; /* takes remaining space */
-  min-width: 200px;
-}
-
-/* Metrics stay after info; pushes right-side items away */
-.header-metrics {
-  order: 2;
-  margin-left: 0; /* keep as-is; or keep your existing margin-left:auto if you prefer */
-}
-
-/* Action button before avatar (optional) */
-.action-button {
-  order: 3;
-  margin-left: .5rem;
-}
-
-/* Avatar becomes the rightmost item, centered vertically */
-.avatar {
-  order: 1; /* last = right side */
-  align-self: center; /* vertical center */
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-
-
-/* ==== Risk Pill Chips ==== */
 .risk-chip {
   --bg: #f6f7fb;
   --fg: #1f2937;
@@ -346,53 +207,76 @@ mat-paginator {
   color: var(--fg);
   border: 1px solid var(--bd);
   font-weight: 600;
-  font-size: 0.875rem; /* 14px */
+  font-size: 0.875rem;
   line-height: 1;
   white-space: nowrap;
 }
 
-/*  .risk-chip::before {
-    content: "";
-    width: 10px;
-    height: 10px;
-    border-radius: 9999px;
-    background: var(--dot);
-    box-shadow: 0 0 0 2px rgba(255,255,255,.8) inset;
-  }*/
-
-  /* Variants */
   .risk-chip.low {
-    --bg: #ecfdf5; /* mint */
+    --bg: #ecfdf5;
     --fg: #065f46;
     --dot: #10b981;
     --bd: #a7f3d0;
   }
 
   .risk-chip.medium {
-    --bg: #fffbeb; /* amber */
+    --bg: #fffbeb;
     --fg: #92400e;
     --dot: #f59e0b;
     --bd: #fde68a;
   }
 
   .risk-chip.high {
-    --bg: #fef2f2; /* red */
+    --bg: #fef2f2;
     --fg: #991b1b;
     --dot: #ef4444;
     --bd: #fecaca;
   }
 
-  /* Compact for table cells */
   .risk-chip.compact {
     padding: 4px 10px;
     font-size: 12px;
     gap: 6px;
   }
 
+/* Counts Chips */
+.counts-inline {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
 
+.count-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1;
+}
 
-/***** Table *******/
-/* Base font & spacing */
+  .count-chip.auth {
+    background: #3b82f6; /* Blue for Authorizations */
+  }
+
+  .count-chip.activity {
+    background: #10b981; /* Green for Activities */
+  }
+
+  .count-chip.care {
+    background: #f59e0b; /* Amber for Care Plans */
+  }
+
+  .count-chip.overdue {
+    background: #dc3545; /* Red for Overdue */
+  }
+
+/* Table Styles */
 .mng-table {
   width: 100%;
   border-collapse: separate;
@@ -401,11 +285,9 @@ mat-paginator {
   font-size: 14px;
 }
 
-/* Header: soft blue + strong label (you already had a gradient; keep it consistent) */
 .mat-mdc-table .mat-mdc-header-row {
   background: linear-gradient(180deg, #eef5ff 0%, #e3edff 100%);
   height: 48px;
-  font-size: 12px;
 }
 
 .mat-mdc-table .mat-mdc-header-cell {
@@ -415,64 +297,30 @@ mat-paginator {
   font-size: .86rem;
   letter-spacing: .2px;
   border-bottom: 1px solid #d6e0f0;
-  font-size: 12px;
 }
 
-/* Cells: borders like the screenshot */
 .mng-table .mat-mdc-cell {
   border-bottom: 1px solid #e6ebf2;
-/*  padding: 8px 12px;
-*/  vertical-align: middle;
+  vertical-align: middle;
   color: #1f2937;
   font-size: 12px;
 }
 
-/* Zebra hover */
 .mng-table .data-row:hover {
   background: #f8fbff;
 }
 
-/* Left “Member + ID” look */
 .sub-id {
   color: #6b7280;
   font-size: 12px;
   margin-top: 2px;
 }
 
-/* Inline compact counts */
-.counts-inline {
-  display: inline-flex;
-  gap: 10px;
-}
-
-.count-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  /*border: 1px solid #e5e7eb;*/
-  border-radius: 10px;
-/*  background: #fafbff;
-*/  line-height: 1;
-}
-
-  .count-pill strong {
-    font-weight: 700;
-    color: #007BFF;
-  }
-
-  .count-pill em {
-    font-style: normal;
-    color: #6b7280;
-  }
-
-/* Centered expand col */
 .is-center {
   text-align: center;
   width: 48px;
 }
 
-/* Chevron rotation */
 .chev-btn {
   line-height: 0;
 }
@@ -485,53 +333,6 @@ mat-paginator {
     transform: rotate(180deg);
   }
 
-/* Detail row (expands under the row, same borders) */
-.detail-row .detail-cell {
-  padding: 0;
-  border-bottom: 1px solid #e6ebf2;
-  background: #fbfdff;
-}
-
-.detail-wrap {
-  display: flex;
-  gap: 16px;
-  padding: 12px 16px 16px;
-}
-
-.detail-card {
-  background: #fff;
-  border: 1px solid #e6ebf2;
-  border-radius: 10px;
-  padding: 10px 14px;
-  min-width: 110px;
-  box-shadow: 0 1px 2px rgba(16,24,40,.04);
-}
-
-  .detail-card .badge {
-    display: inline-block;
-    font-size: 12px;
-    color: #6b7280;
-    margin-bottom: 6px;
-  }
-
-  .detail-card .num {
-    font-size: 18px;
-    font-weight: 800;
-    color: #0f172a;
-  }
-
-  .detail-card.warn .num {
-    color: #b91c1c;
-  }
-
-/* Risk chips you already have; ensure compact works in table */
-.risk-chip.compact {
-  padding: 4px 10px;
-  font-size: 12px;
-  gap: 6px;
-}
-
-/* Table wrapper border radius and outline like screenshot */
 .table-wrapper {
   margin-top: 16px;
   background: #fff;
@@ -541,39 +342,7 @@ mat-paginator {
   overflow: hidden;
 }
 
-
-
-/*filter styles*/
-/* Search row */
-.search-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.search-input {
-  flex: 1; /* expand inside the row */
-  height: 40px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  font-size: 14px;
-}
-
-.filter-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: 1px solid #d1d5db;
-  background: #fff;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-
-/* Inline Filters */
+/* Filter Styles */
 .filters-wrapper {
   margin: 12px 0 10px;
 }
@@ -590,7 +359,6 @@ mat-paginator {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 12px;
-  
 }
 
   .filters-header h3 {
@@ -605,8 +373,7 @@ mat-paginator {
   border: 1px solid #d1d5db;
   background: #f9fafb;
   border-radius: 8px;
-/*  font-weight: 600;
-*/  cursor: pointer;
+  cursor: pointer;
 }
 
 .reset-icon {
@@ -618,8 +385,6 @@ mat-paginator {
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   padding: 5px 0 3px;
-/*  border-top: 1px solid #e5e7eb;
-  border-bottom: 1px solid #e5e7eb;*/
 }
 
 .filters-col .filters-title {
@@ -628,10 +393,7 @@ mat-paginator {
   margin-bottom: 8px;
 }
 
-/* Pills */
 .chip-list {
-/*  display: flex;
-  flex-direction: column;*/
   gap: 8px;
 }
 
@@ -645,8 +407,7 @@ mat-paginator {
   background: #fff;
   padding: 5px;
   line-height: 1;
-/*  font-weight: 600;
-*/  color: #374151;
+  color: #374151;
   cursor: pointer;
 }
 
@@ -663,7 +424,6 @@ mat-paginator {
     color: #111827;
   }
 
-/* Dots */
 .dot {
   width: 10px;
   height: 10px;
@@ -682,14 +442,12 @@ mat-paginator {
     background: #10b981;
   }
 
-/* Listbox */
 .listbox {
   max-height: 160px;
   overflow: auto;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-/*  padding: 6px;
-*/}
+}
 
 .listbox-row {
   display: flex;
@@ -704,7 +462,6 @@ mat-paginator {
     background: #f9fafb;
   }
 
-/* Footer */
 .filters-footer {
   display: flex;
   justify-content: flex-end;
@@ -730,43 +487,13 @@ mat-paginator {
   background: #fff;
 }
 
-/* Responsive */
-@media (max-width: 1024px) {
-  .filters-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-@media (max-width: 640px) {
-  .filters-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* ===== Expanded Profile (detail row) ===== */
+/* Expanded Profile */
 .profile-expand {
   padding: 12px 14px 16px;
   background: #f7fafc;
   border-top: 1px solid #e6ebf2;
 }
 
-/* Header strip like the screenshot */
 .pe-header {
   display: grid;
   grid-template-columns: auto 1fr auto;
@@ -807,7 +534,6 @@ mat-paginator {
   margin-left: 6px;
 }
 
-/* Three info cards */
 .overview-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -835,7 +561,6 @@ mat-paginator {
   margin: 4px 0;
 }
 
-/* subtle tinted variants to match your screenshot */
 .panel--blue {
   background: #eef5ff;
 }
@@ -848,7 +573,6 @@ mat-paginator {
   background: #eaf7ef;
 }
 
-/* Notes full width */
 .notes-panel {
   background: #ffecec;
   border: 1px solid #e6ebf2;
@@ -862,14 +586,40 @@ mat-paginator {
     font-size: 14px;
   }
 
-/* Responsive */
-@media (max-width: 1024px) {
+/* Responsive Adjustments */
+@media screen and (max-width: 768px) {
+  .top-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .summary-container {
+    flex-wrap: wrap;
+  }
+
+  .card-body-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-metrics {
+    justify-content: flex-start;
+  }
+
+  .filters-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .overview-grid {
     grid-template-columns: 1fr 1fr;
   }
 }
 
 @media (max-width: 640px) {
+  .filters-grid {
+    grid-template-columns: 1fr;
+  }
+
   .pe-header {
     grid-template-columns: auto 1fr;
   }
@@ -878,3 +628,51 @@ mat-paginator {
     grid-template-columns: 1fr;
   }
 }
+
+.member-row:not(.expanded-row):hover {
+  background: #f5f5f5;
+}
+
+.member-row.expanded-row {
+  background: #f7fafc;
+  border-bottom: none;
+}
+
+.detail-row {
+  transition: height 0.2s ease-in-out;
+}
+
+.detail-cell {
+  padding: 0 !important;
+  background: #fbfdff !important;
+  border-bottom: 1px solid #e6ebf2;
+}
+
+
+
+/* Inline compact counts */
+.counts-inline {
+  display: inline-flex;
+  gap: 10px;
+}
+
+.count-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  /*border: 1px solid #e5e7eb;*/
+  border-radius: 10px;
+  /*  background: #fafbff;
+*/ line-height: 1;
+}
+
+  .count-pill strong {
+    font-weight: 700;
+    color: #007BFF;
+  }
+
+  .count-pill em {
+    font-style: normal;
+    color: #6b7280;
+  }

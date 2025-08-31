@@ -23,14 +23,31 @@
     </div>
 
     <!-- Summary Cards -->
-    <div class="summary-container" style="padding-left:10px;" *ngIf="!showFilters">
-      <mat-card class="summary-card" *ngFor="let item of summaryStats">
+    <div class="summary-container" style="padding-left:10px;align-self:center;" *ngIf="!showFilters">
+      <!--<mat-card class="summary-card" *ngFor="let item of summaryStats">
         <div class="summary-row">
           <mat-icon>{{ item.icon }}</mat-icon>
           <span class="stat-label">{{ item.label }}:</span>
           <span class="stat-value">{{ item.value }}</span>
         </div>
-      </mat-card>
+      </mat-card>-->
+      <div class="filters-col">
+        <!--<div class="filters-title">Risk Level</div>-->
+        <div class="chip-list">
+          <button type="button" class="pill red" [class.active]="filters.risks.has('High')" (click)="toggleRisk('High')">
+            <span class="dot red"></span> High Risk
+            <span class="count">{{ counts.risk.high }}</span>
+          </button>
+          <button type="button" class="pill amber" [class.active]="filters.risks.has('Medium')" (click)="toggleRisk('Medium')">
+            <span class="dot amber"></span> Medium Risk
+            <span class="count">{{ counts.risk.medium }}</span>
+          </button>
+          <button type="button" class="pill green" [class.active]="filters.risks.has('Low')" (click)="toggleRisk('Low')">
+            <span class="dot green"></span> Low Risk
+            <span class="count">{{ counts.risk.low }}</span>
+          </button>
+        </div>
+      </div>
     </div>
     <!-- View Mode Toggle Button -->
     <div class="view-toggle">
@@ -101,111 +118,97 @@
               <span class="dot green"></span> Active
               <span class="count">{{ counts.enroll.active }}</span>
             </button>
-            <button type="button" class="pill red" [class.active]="filters.enroll.has('Inactive')" (click)="toggleEnroll('Inactive')">
-              <span class="dot red"></span> Inactive
-              <span class="count">{{ counts.enroll.inactive }}</span>
-            </button>
             <button type="button" class="pill amber" [class.active]="filters.enroll.has('Soon Ending')" (click)="toggleEnroll('Soon Ending')">
               <span class="dot amber"></span> Soon Ending
               <span class="count">{{ counts.enroll.soonEnding }}</span>
+            </button>
+            <button type="button" class="pill red" [class.active]="filters.enroll.has('Inactive')" (click)="toggleEnroll('Inactive')">
+              <span class="dot red"></span> Inactive
+              <span class="count">{{ counts.enroll.inactive }}</span>
             </button>
           </div>
         </div>
       </div>
 
-      <!--<div class="filters-footer">
-        <button type="button" class="apply-btn" (click)="applyFilters()">Apply Filters</button>
-        <button type="button" class="close-btn" (click)="toggleFilters()">Hide</button>
-      </div>-->
+      <div class="filters-footer">
+        <button class="close-btn" type="button" (click)="toggleFilters()">Close</button>
+        <button class="apply-btn" type="button" (click)="applyFilters(); toggleFilters()">Apply Filters</button>
+      </div>
     </div>
   </section>
 
-
-  <mat-menu #menu="matMenu">
-    <button mat-menu-item>📄 Add Activity</button>
-    <button mat-menu-item>📝 Add Notes</button>
-    <button mat-menu-item>📨 Send Letter</button>
-    <button mat-menu-item>👤 Unassign</button>
-  </mat-menu>
-  <!-- Member Card List (One per Row) -->
+  <!-- Card View: Column Layout -->
   <div class="card-grid column" *ngIf="viewMode === 'card'">
-    <mat-card class="member-card" *ngFor="let member of pagedMembers" (click)="toggleExpand(member)">
+    <div class="member-card" *ngFor="let member of pagedMembers" (click)="toggleExpand(member)">
       <div class="card-header">
-        <div class="avatar">
-          <mat-icon>person</mat-icon>
-        </div>
+        <div class="avatar"><mat-icon>person</mat-icon></div>
         <div class="info">
-          <h3>
-            <a href="javascript:void(0)" (click)="onMemberClick(member.memberId, member.firstName + ' ' + member.lastName); $event.stopPropagation();">
-              {{ member.firstName }} {{ member.lastName }}
-            </a>
-          </h3>
-          <p>ID: {{ member.memberId }}</p>
+          <h3><a href="#" (click)="onMemberClick(member.memberId, member.firstName + ' ' + member.lastName); $event.preventDefault()">{{ member.firstName }} {{ member.lastName }}</a></h3>
+          <p>ID: {{ member.memberId }} • DOB: {{ member.dob }}</p>
         </div>
+        <span class="risk-chip" [ngClass]="(member.risk || '').toLowerCase()">{{ member.risk || 'LOW' }}</span>
         <div class="header-metrics">
-          <!--<span class="risk-label" [ngClass]="getRiskClass(member.risk)">
-            {{ getRiskEmoji(member.risk) }} {{ getRiskLabel(member.risk) }}
-          </span>-->
-          <span class="risk-chip"
-                [ngClass]="(member.risk || '').toLowerCase()"
-                [attr.aria-label]="'Risk ' + member.risk">
-            {{ member.risk }}
-          </span>
-
-          <mat-chip color="primary">Open Auth: {{ member.authCount }}</mat-chip>
-          <mat-chip color="accent">Open Activities: {{ member.activityCount }}</mat-chip>
-          <mat-chip color="warn">Care Plans: {{ member.carePlanCount }}</mat-chip>
-          <mat-chip *ngIf="member.contactOverdue" color="warn">Overdue</mat-chip>
+          <mat-chip color="primary">Auth: {{ member.authCount || 0 }}</mat-chip>
+          <mat-chip color="accent">Act: {{ member.activityCount || 0 }}</mat-chip>
+          <mat-chip color="warn">Care: {{ member.carePlanCount || 0 }}</mat-chip>
+          <mat-chip *ngIf="member.overdueCount>0" color="warn">Over: {{ member.overdueCount }}</mat-chip>
         </div>
-        <button mat-icon-button class="action-button" [matMenuTriggerFor]="menu" (click)="$event.stopPropagation()">
+        <button mat-icon-button [matMenuTriggerFor]="memberMenu" class="action-button">
           <mat-icon>more_vert</mat-icon>
         </button>
-
+        <mat-menu #memberMenu="matMenu">
+          <!--<button mat-menu-item (click)="addActivity(member)">Add Activity</button>
+          <button mat-menu-item (click)="addNotes(member)">Add Notes</button>
+          <button mat-menu-item (click)="sendLetter(member)">Send Letter</button>
+          <button mat-menu-item (click)="unassign(member)">Unassign Member</button>-->
+        </mat-menu>
       </div>
-
-      <div class="card-body-row" style="padding-left:55px;">
+      <div class="card-body-row">
         <p><strong>Program:</strong> {{ member.programName }}</p>
+        <p><strong>Last Contact:</strong> {{ member.lastContact }}</p>
         <p><strong>Next Contact:</strong> {{ member.nextContact }}</p>
-        <p><strong>Assigned:</strong> {{ member.assignedDate }}</p>
-        <p><strong>Program:</strong> {{ member.programName }}</p>
-        <p><strong>Next Contact:</strong> {{ member.nextContact }}</p>
-        <p><strong>Assigned:</strong> {{ member.assignedDate }}</p>
       </div>
-
       <div class="card-expand" *ngIf="expandedMember === member">
-        <p>Additional details to add</p>
+        <!-- Expanded content, e.g., detailed info, notes, etc. -->
       </div>
-    </mat-card>
+    </div>
   </div>
 
+  <!-- Table View -->
   <div class="table-wrapper" *ngIf="viewMode === 'table'">
+    <!--Debug: Expanded Row ID = {{ expandedRow ? expandedRow.memberId : 'null' }}-->
     <table mat-table [dataSource]="dataSource"
            matSort
            multiTemplateDataRows
+           [trackBy]="trackById"
            class="mat-elevation-z1 full-width-table pro-table mng-table">
 
-      <!-- Name -->
+      <!-- Name Column -->
       <ng-container matColumnDef="name">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header> Member </th>
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Member</th>
         <td mat-cell *matCellDef="let m">
-          <a href="javascript:void(0)" (click)="onMemberClick(m.memberId, m.firstName + ' ' + m.lastName)">
-            {{ m.firstName }} {{ m.lastName }}
-          </a>
-          <div class="sub-id">ID: {{ m.memberId }}</div>
+          <div class="name-cell">
+            <div class="sub-name">
+              <a href="#" (click)="onMemberClick(m.memberId, m.firstName + ' ' + m.lastName); $event.preventDefault()">{{ m.firstName }} {{ m.lastName }}</a>
+            </div>
+            <div class="sub-id">ID: {{ m.memberId }}</div>
+          </div>
         </td>
       </ng-container>
 
-      <!-- Program -->
+      <!-- Program Column -->
       <ng-container matColumnDef="program">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header> Program </th>
-        <td mat-cell *matCellDef="let m"> {{ m.programName }} </td>
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Program</th>
+        <td mat-cell *matCellDef="let m">{{ m.programName }}</td>
       </ng-container>
 
+      <!-- DOB Column -->
       <ng-container matColumnDef="dob">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header> DOB </th>
-        <td mat-cell *matCellDef="let m"> {{ m.dob }} </td>
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>DOB</th>
+        <td mat-cell *matCellDef="let m">{{ m.dob }}</td>
       </ng-container>
-      <!-- Risk -->
+
+      <!-- Risk Column -->
       <ng-container matColumnDef="risk">
         <th mat-header-cell *matHeaderCellDef mat-sort-header> Risk Level </th>
         <td mat-cell *matCellDef="let m">
@@ -213,21 +216,21 @@
         </td>
       </ng-container>
 
-      <!-- Last Contacted -->
+      <!-- Last Contact Column -->
       <ng-container matColumnDef="lastContact">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header> Last Contacted </th>
-        <td mat-cell *matCellDef="let m"> {{ m.lastContact || '-' }} </td>
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Last Contact</th>
+        <td mat-cell *matCellDef="let m">{{ m.lastContact }}</td>
       </ng-container>
 
-      <!-- Next Contact -->
+      <!-- Next Contact Column -->
       <ng-container matColumnDef="nextContact">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header> Next Contact </th>
-        <td mat-cell *matCellDef="let m"> {{ m.nextContact }} </td>
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Next Contact</th>
+        <td mat-cell *matCellDef="let m">{{ m.nextContact }}</td>
       </ng-container>
 
-      <!-- Inline Counts (compact summary, optional) -->
+      <!-- Inline Counts Column -->
       <ng-container matColumnDef="inlineCounts">
-        <th mat-header-cell *matHeaderCellDef> Inline Counts </th>
+        <th mat-header-cell *matHeaderCellDef>Counts</th>
         <td mat-cell *matCellDef="let m">
           <div class="counts-inline">
             <span class="count-pill"><em>Auth:</em><strong>{{ m.authCount || 0 }}</strong></span>
@@ -238,35 +241,42 @@
         </td>
       </ng-container>
 
-      <!-- Expand/Collapse -->
+      <!--<ng-container matColumnDef="inlineCounts">
+        <th mat-header-cell *matHeaderCellDef>Counts</th>
+        <td mat-cell *matCellDef="let m">
+          <div class="counts-inline">
+            <span class="count-chip auth" matTooltip="Authorizations">{{ m.authCount || 0 }}</span>
+            <span class="count-chip activity" matTooltip="Activities">{{ m.activityCount || 0 }}</span>
+            <span class="count-chip care" matTooltip="Care Plans">{{ m.carePlanCount || 0 }}</span>
+            <span class="count-chip overdue" matTooltip="Overdue Items" *ngIf="m.overdueCount > 0">{{ m.overdueCount }}</span>
+          </div>
+        </td>
+      </ng-container>-->
+
+      <!-- Expand Column -->
       <ng-container matColumnDef="expand">
         <th mat-header-cell *matHeaderCellDef class="is-center"></th>
         <td mat-cell *matCellDef="let m" class="is-center">
           <button mat-icon-button class="chev-btn"
                   (click)="toggleRow(m); $event.stopPropagation()"
-                  [attr.aria-label]="expandedRowId === (m.memberId || m.id || m.MemberId) ? 'Collapse' : 'Expand'">
-            <mat-icon class="chev" [class.rot]="expandedRowId === (m.memberId || m.id || m.MemberId)">
+                  [attr.aria-label]="expandedRow === m ? 'Collapse' : 'Expand'">
+            <mat-icon class="chev" [ngClass]="{'rot': expandedRow === m}">
               keyboard_arrow_down
             </mat-icon>
           </button>
-
         </td>
-
       </ng-container>
 
-      <!-- Rows -->
-      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;"
-          (click)="toggleRow(row); $event.stopPropagation()"></tr>
-
-
-      <!-- Detail Row -->
-      <tr mat-row class="detail-row"
-          *matRowDef="let row; columns: ['detail']; when: isDetailRow">
-        <td class="detail-cell" [attr.colspan]="displayedColumns.length">
-          <span>Pradeep added this</span>
+      <!-- Expanded Detail Column (custom content) -->
+      <ng-container matColumnDef="expandedDetail">
+        <td mat-cell *matCellDef="let row" class="detail-cell" [attr.colspan]="displayedColumns.length">
           <div class="profile-expand">
-            <!-- Header -->
+            <!-- Test Content -->
+            <!--<div style="border: 2px solid red; padding: 10px;">
+              Test Expand: {{ row.firstName }} {{ row.lastName }} (ID: {{ row.memberId }})
+            </div>-->
+            <!-- Full Detail Content (uncomment when tested) -->
+
             <div class="pe-header">
               <div class="pe-avatar"><mat-icon>person</mat-icon></div>
               <div class="pe-id">
@@ -274,7 +284,6 @@
                 <div class="pe-sub">ID: {{ row.memberId }} • DOB: {{ row.dob }}</div>
                 <span class="risk-chip" [ngClass]="(row.risk || '').toLowerCase()">{{ row.risk || 'LOW' }}</span>
               </div>
-
               <div class="pe-actions">
                 <mat-chip color="primary">Auth: {{ row.authCount || 0 }}</mat-chip>
                 <mat-chip color="accent">Act: {{ row.activityCount || 0 }}</mat-chip>
@@ -282,8 +291,6 @@
                 <mat-chip *ngIf="row.overdueCount>0" color="warn">Over: {{ row.overdueCount }}</mat-chip>
               </div>
             </div>
-
-            <!-- Overview cards -->
             <div class="overview-grid">
               <div class="panel panel--blue">
                 <div class="panel-title">Program Information</div>
@@ -291,13 +298,11 @@
                 <div class="panel-line"><strong>Enrollment:</strong> {{ row.enrollment || 'Active' }}</div>
                 <div class="panel-line"><strong>Diagnosis:</strong> {{ row.diagnosis || 'Diabetes' }}</div>
               </div>
-
               <div class="panel panel--amber">
                 <div class="panel-title">Contact Information</div>
                 <div class="panel-line"><strong>Last Contacted:</strong> {{ row.lastContact || '-' }}</div>
                 <div class="panel-line"><strong>Next Contact:</strong> {{ row.nextContact || '-' }}</div>
               </div>
-
               <div class="panel panel--green">
                 <div class="panel-title">Activity Summary</div>
                 <div class="panel-line"><strong>Open Authorizations:</strong> {{ row.authCount || 0 }}</div>
@@ -306,30 +311,26 @@
                 <div class="panel-line"><strong>Overdue Items:</strong> {{ row.overdueCount || 0 }}</div>
               </div>
             </div>
-
-            <!-- Recent Notes -->
             <div class="notes-panel">
               <div class="panel-title">Recent Notes</div>
               <div class="note-text">{{ row.recentNote || 'Patient doing well with medication compliance' }}</div>
             </div>
+
           </div>
         </td>
-
-      </tr>
-
-      <!-- The “detail” column definition (for Angular Material) -->
-      <ng-container matColumnDef="detail">
-        <td mat-cell *matCellDef="let row"></td>
       </ng-container>
+
+      <!-- Header and main rows first -->
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+          class="member-row" [class.expanded-row]="expandedRow === row"></tr>
+
+      <!-- Detail Row -->
+      <tr mat-row class="detail-row" *matRowDef="let row; columns: ['expandedDetail']; when: isDetailRow"></tr>
 
     </table>
   </div>
 
   <!-- Paginator Always at Bottom -->
   <mat-paginator [pageSize]="10" [pageSizeOptions]="[5, 10, 20]" showFirstLastButtons></mat-paginator>
-
-
-
-
-
 </div>

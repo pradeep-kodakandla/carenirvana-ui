@@ -1,7 +1,8 @@
-import { Component, OnInit, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, OnInit, ViewChild, AfterViewInit, ChangeDetectorRef } from '@angular/core';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
+import { MatTable } from '@angular/material/table';
 import { HeaderService } from 'src/app/service/header.service';
 import { Router } from '@angular/router';
 
@@ -11,8 +12,11 @@ import { Router } from '@angular/router';
   styleUrls: ['./mycaseload.component.css']
 })
 export class MycaseloadComponent implements OnInit, AfterViewInit {
-
-  constructor(private headerService: HeaderService, private router: Router) { }
+  constructor(
+    private headerService: HeaderService,
+    private router: Router,
+    private cdr: ChangeDetectorRef
+  ) { }
 
   // View mode toggle
   viewMode: 'card' | 'table' = 'table';
@@ -29,29 +33,28 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
   // Expanded card tracking
   expandedMember: any = null;
 
-  // Currently selected for menu
-  selectedMember: any;
+  // Expanded row for table (use object reference)
+  expandedRow: any | null = null;
 
   // Summary widgets
   summaryStats = [
-    { label: 'Total Assigned', value: 65, icon: 'assignment_ind' },
+    //{ label: 'Total Assigned', value: 65, icon: 'assignment_ind' },
     { label: 'High Risk', value: 20, icon: 'priority_high' },
     { label: 'Medium Risk', value: 5, icon: 'report_problem' },
     { label: 'Low Risk', value: 40, icon: 'check_circle' }
   ];
 
   // Table columns
-  displayedColumns = ['name', 'program', 'dob', 'risk', 'lastContact', 'nextContact', 'inlineCounts', 'expand'];
-  expandedElement: any | null = null;
-  expandedRowId: number | string | null = null;
-
+  displayedColumns: string[] = [
+    'name', 'program', 'dob', 'risk', 'lastContact', 'nextContact', 'inlineCounts', 'expand'
+  ];
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
+  @ViewChild(MatTable) table!: MatTable<any>;
 
-
-  //Filter settings
-  showFilters = false; // start open (set to false if you want it hidden by default)
+  // Filter settings
+  showFilters = false;
 
   filters = {
     risks: new Set<string>(),
@@ -60,7 +63,6 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     quality: [] as string[],
   };
 
-  // bind checkboxes using maps for easy (de)serialization
   diagnosisOptions = ['Diabetes', 'Hypertension', 'COPD', 'Heart Disease'];
   qualityOptions = ['HbA1c Control', 'BP Control', 'Medication Adherence'];
   diagnosisSelection: Record<string, boolean> = {};
@@ -72,8 +74,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
   };
 
   ngOnInit(): void {
-    // Load data (replace this with API call in real scenario)
-    
+
     const testMembers = Array.from({ length: 50 }).map((_, i) => ({
       memberId: (10000 + i).toString(),
       firstName: 'Test',
@@ -88,6 +89,50 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
       nextContact: `06-0${((i % 9) + 1)}-2025`,
       lastContact: `05-0${((i % 9) + 1)}-2025`
     }));
+    //const testMembers = [
+    //  {
+    //    memberId: '10000',
+    //    firstName: 'Test',
+    //    lastName: 'User 0',
+    //    dob: '01-01-1980',
+    //    risk: 'High',
+    //    authCount: 2,
+    //    activityCount: 3,
+    //    carePlanCount: 1,
+    //    contactOverdue: false,
+    //    programName: 'Program A',
+    //    nextContact: '06-01-2025',
+    //    lastContact: '05-01-2025'
+    //  },
+    //  {
+    //    memberId: '10001',
+    //    firstName: 'Test',
+    //    lastName: 'User 1',
+    //    dob: '01-01-1980',
+    //    risk: 'High',
+    //    authCount: 2,
+    //    activityCount: 3,
+    //    carePlanCount: 1,
+    //    contactOverdue: false,
+    //    programName: 'Program A',
+    //    nextContact: '06-01-2025',
+    //    lastContact: '05-01-2025'
+    //  },
+    //  {
+    //    memberId: '10002',
+    //    firstName: 'Test',
+    //    lastName: 'User 2',
+    //    dob: '02-02-1985',
+    //    risk: 'Low',
+    //    authCount: 1,
+    //    activityCount: 2,
+    //    carePlanCount: 0,
+    //    contactOverdue: true,
+    //    programName: 'Program B',
+    //    nextContact: '06-02-2025',
+    //    lastContact: '05-02-2025'
+    //  }
+    //];
 
     this.loadMembers(testMembers);
     this.diagnosisOptions.forEach(d => this.diagnosisSelection[d] = false);
@@ -104,6 +149,12 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     };
 
     this.paginator.page.subscribe(() => {
+      this.expandedRow = null;
+      this.updatePagedMembers();
+    });
+
+    this.sort.sortChange.subscribe(() => {
+      this.expandedRow = null;
       this.updatePagedMembers();
     });
   }
@@ -116,16 +167,13 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     this.summaryStats[1].value = data.reduce((sum, m) => sum + (m.authCount || 0), 0);
     this.summaryStats[2].value = data.reduce((sum, m) => sum + (m.activityCount || 0), 0);
 
-    // Defer paging if paginator is not yet ready
     if (this.paginator) {
       this.paginator.firstPage();
       this.updatePagedMembers();
     } else {
-      // Defer paged update until ngAfterViewInit
       setTimeout(() => this.updatePagedMembers(), 0);
     }
   }
-
 
   updatePagedMembers(): void {
     const start = this.paginator.pageIndex * this.paginator.pageSize;
@@ -154,39 +202,19 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     const tabLabel = `Member: ${memberName}`;
     const tabRoute = `/member-info/${memberId}`;
 
-    // Check if tab already exists
     const existingTab = this.headerService.getTabs().find(tab => tab.route === tabRoute);
 
     if (existingTab) {
-      // Select the existing tab instead of creating a new one
       this.headerService.selectTab(tabRoute);
       this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
         this.router.navigate([tabRoute]);
       });
     } else {
-      // reate and select the new tab
       this.headerService.addTab(tabLabel, tabRoute, memberId);
       this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
         this.router.navigate([tabRoute]);
       });
     }
-  }
-
-  // Menu Actions
-  addActivity(member: any): void {
-    console.log('Add activity for', member);
-  }
-
-  addNotes(member: any): void {
-    console.log('Add notes for', member);
-  }
-
-  sendLetter(member: any): void {
-    console.log('Send letter to', member);
-  }
-
-  unassign(member: any): void {
-    console.log('Unassign member', member);
   }
 
   getRiskEmoji(risk: string): string {
@@ -211,19 +239,27 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     }
   }
 
-  //private getRowId(row: any): number | string | null {
-  //  return row?.memberId ?? row?.id ?? row?.MemberId ?? null;
-  //}
+  // Toggle row using object reference
+  toggleRow(row: any): void {
+    this.expandedRow = this.expandedRow === row ? null : row;
+    setTimeout(() => {
+      if (this.table) {
+        this.table.renderRows();
+      }
+      this.cdr.detectChanges();
+    }, 0);
+  }
 
-  //toggleRow(row: any) {
-  //  const id = this.getRowId(row);
-  //  this.expandedRowId = (this.expandedRowId === id ? null : id);
-  //}
+  // Predicate for detail row
+  isDetailRow = (index: number, row: any): boolean => {
+    const isExpanded = row === this.expandedRow;
+    return isExpanded;
+  };
 
-  // Predicate used by the detail-row "when:" to decide which row to show
+  // Track by memberId for performance
+  trackById = (_: number, row: any) => row.memberId;
 
-
-  //Filter methods
+  // Filter methods
   toggleFilters() {
     this.showFilters = !this.showFilters;
   }
@@ -245,19 +281,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
   }
 
   applyFilters() {
-    // Flatten checkbox maps to arrays
     this.filters.diagnoses = Object.keys(this.diagnosisSelection).filter(k => this.diagnosisSelection[k]);
     this.filters.quality = Object.keys(this.qualitySelection).filter(k => this.qualitySelection[k]);
   }
-
-  private getRowId(row: any): number | string | null {
-    return row?.memberId ?? row?.id ?? row?.MemberId ?? null;
-  }
-
-  toggleRow(row: any) {
-    const id = this.getRowId(row);
-    this.expandedRowId = (this.expandedRowId === id ? null : id);
-  }
-
-  isDetailRow = (_index: number, row: any) => this.expandedRowId === this.getRowId(row);
 }
