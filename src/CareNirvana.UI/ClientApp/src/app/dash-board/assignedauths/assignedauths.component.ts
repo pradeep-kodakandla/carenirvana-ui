@@ -86,6 +86,7 @@ export class AssignedauthsComponent {
     alert(`Click on Action 2 for ${item.enrollmentStatus}`);
   }
 
+
   items = [
     {
       photo: 'assets/item1.jpg',

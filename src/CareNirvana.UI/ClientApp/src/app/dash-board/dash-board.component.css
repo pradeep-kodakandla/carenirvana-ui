@@ -128,12 +128,12 @@ tr.example-element-row:not(.example-expanded-row):active {
 }
 
 
-.selectedBox.selected {
+/*.selectedBox.selected {
   border-bottom: 6px solid orange;
-  background-color: #ff9800; /* Highlight color for divider */
-  height: 3px; /* Optional: make the divider thicker */
-  visibility:visible;
-}
+  background-color: #ff9800;*/ /* Highlight color for divider */
+  /*height: 3px;*/ /* Optional: make the divider thicker */
+  /*visibility:visible;
+}*/
 
 .sidenav-container {
   width: auto;
@@ -207,19 +207,19 @@ mat-card-title {
 */  /*background-color: #f8f9fa;*/
 /*}*/
 
-.selected-divider {
+/*.selected-divider {
   border-top: 4px solid orange !important;
   width: 100%;
   margin-top: 4px;
-}
+}*/
 
 .divider {
   border-top: 2px solid transparent;
 }
 
-.selected-divider {
+/*.selected-divider {
   border-top: 4px solid orange !important;
-}
+}*/
 
 
 
@@ -255,9 +255,11 @@ mat-card-title {
   .rounded-box.selected {
     border: 1px solid #007BFF;
     border-top: 5px solid #007BFF; /* highlight top border */
+    border-bottom: 3px solid #007BFF;
     background: #f0f7ff; /* light blue shade */
-/*    box-shadow: 0 6px 14px rgba(0,123,255,0.25);
-*/  }
+    /*    box-shadow: 0 6px 14px rgba(0,123,255,0.25);
+*/
+  }
 
   
 

@@ -21,160 +21,86 @@
     </div>
 
     <div class="sidebar-content" *ngIf="!isCollapse">
-      <mat-card class="patient-card">
-        <mat-card-header class="patient-header">
-          <mat-icon class="warning-icon">warning</mat-icon>
-          <div>
-            <mat-card-title class="patient-title">John Smith</mat-card-title>
-            <mat-card-subtitle class="patient-subtitle">
-              11/19/1983 (42 Yrs) - Male
-            </mat-card-subtitle>
-          </div>
-        </mat-card-header>
-      </mat-card>
-      <mat-divider style="border-top-color: #007BFF; "></mat-divider>
-      <div>
-        <table>
-          <tr>
-            <td>
-              <mat-label class="mat-label-header">MemberID</mat-label>
-            </td>
-            <td>
-              <mat-label class="mat-label-header">Phone</mat-label>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <mat-label>123456789</mat-label>
-            </td>
-            <td>
-              <mat-label>123-456-7890</mat-label>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <mat-label class="mat-label-header">Enrollment</mat-label>
-            </td>
-            <td>
-              <mat-label class="mat-label-header">Risk</mat-label>
-            </td>
-          </tr>
+      <!-- Header -->
+      <div class="member-card">
+        <div class="member-avatar">JS</div>
+        <div>
+          <div class="member-name">John Smith</div>
+          <div class="member-sub">ID: 123456789 · DOB: 12/10/1983 (42 Yrs), Male</div>
+        </div>
+      </div>
 
+      <!-- Enrollment & Risk -->
+      <div class="section m-top-6">
+        <div class="section-title">Enrollment</div>
+        <div><span class="badge-green">Medicaid (Active)</span></div>
+      </div>
 
-          <tr>
-            <td>
-              <mat-label>Medicaid</mat-label>
-            </td>
-            <td>
-              <mat-label>High</mat-label>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <mat-label>(Active)</mat-label>
-            </td>
-            <td>
-              <mat-label></mat-label>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <mat-label class="mat-label-header">Program</mat-label>
-            </td>
-            <td>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <mat-label>Diabetes Management</mat-label>
-            </td>
-            <td>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <mat-label>Disease Management</mat-label>
-            </td>
-            <td>
-            </td>
-          </tr>
+      <div class="section m-top-6">
+        <div class="section-title">Risk Level</div>
+        <div><span class="pill-red">HIGH</span></div>
+      </div>
 
-          <tr>
-            <td>
-              <mat-label class="mat-label-header">Address</mat-label>
-            </td>
-            <td>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <mat-label>12345 Example Way</mat-label>
-            </td>
-            <td>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <mat-label>Sanfrancisco, CA 17050</mat-label>
-            </td>
-          </tr>
+      <!-- Programs -->
+      <div class="section m-top-6">
+        <div class="section-title">Programs</div>
+        <div>
+          <span class="chip">Diabetes Management</span>
+          <span class="chip">Disease Management</span>
+        </div>
+      </div>
 
-          <tr>
-            <td>
-              <mat-label class="mat-label-header">Care Manager</mat-label>
-            </td>
-            <td>
-              <mat-label></mat-label>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <mat-label>John Smith</mat-label>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <mat-label class="mat-label-header">PCP</mat-label>
-            </td>
-            <td>
-              <mat-label class="mat-label-header">PBP</mat-label>
+      <!-- Contact Information -->
+      <div class="section m-top-6">
+        <div class="section-title">Contact Information</div>
 
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <mat-label>John Smith</mat-label>
-            </td>
-            <td>
-              <mat-label>N/A</mat-label>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <mat-label class="mat-label-header">Communication </mat-label>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <mat-label>Phone and Email</mat-label>
-            </td>
+        <div class="row">
+          <mat-icon>call</mat-icon>
+          <div>123-456-7890</div>
+        </div>
 
-          </tr>
-          <tr>
-            <td>
-              <mat-label class="mat-label-header">Preferred Language</mat-label>
-            </td>
+        <div class="row">
+          <mat-icon>mail</mat-icon>
+          <div>test&#64;yahoo.com</div>
+        </div>
 
-          </tr>
-          <tr>
-            <td>
-              <mat-label>English</mat-label>
-            </td>
+        <div class="row">
+          <mat-icon>location_on</mat-icon>
+          <div>12345 Example Way<br />Sanfrancisco, CA 17050</div>
+        </div>
+      </div>
 
-          </tr>
-        </table>
+      <!-- Care Team -->
+      <div class="section m-top-6">
+        <div class="section-title">Care Team</div>
+
+        <div class="team-row">
+          <div class="team-role">Care Manager</div>
+          <div class="team-name">John Smith</div>
+        </div>
+
+        <div class="team-row">
+          <div class="team-role">PCP</div>
+          <div class="team-name">John Smith (PBP)</div>
+        </div>
+      </div>
+
+      <!-- Communication -->
+      <div class="section m-top-6">
+        <div class="section-title">Communication</div>
+
+        <div class="team-row">
+          <div class="team-role">Preferences</div>
+          <div class="team-name">Phone and Email</div>
+        </div>
+
+        <div class="team-row">
+          <div class="team-role">Language</div>
+          <div class="team-name">English</div>
+        </div>
       </div>
     </div>
+
 
     <!-- Show 'People' Icon when Collapsed -->
     <div class="collapsed-icon" *ngIf="isCollapse">

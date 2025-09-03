@@ -28,22 +28,27 @@
 <mat-drawer-container class="sidenav-container" autosize>
   <mat-drawer-content mode="side" opened>
 
-    <div class="d-flex justify-content-between align-items-center " style="background: whitesmoke; width: 100%;  ">
-      <div class="d-flex justify-content-between align-items-center" style="width:70%;">
-        <div class="search-bar-container-table">
-          <button mat-icon-button>
-            <mat-icon>search</mat-icon>
-          </button>
-          <input class="input" matInput (keyup)="applyFilter($event)" placeholder="Start typing to search Requests " #input>
-        </div>
+    <!--<div class="d-flex justify-content-between align-items-center " style="background: whitesmoke; width: 100%;  ">
+    <div class="d-flex justify-content-between align-items-center" style="width:70%;">
+      <div class="search-bar-container-table">
+        <button mat-icon-button>
+          <mat-icon>search</mat-icon>
+        </button>
+        <input class="input" matInput (keyup)="applyFilter($event)" placeholder="Start typing to search Requests " #input>
       </div>
+    </div>
+  </div>-->
+    <div class="search-section">
+      <input type="text" placeholder="🔍 Search..." (input)="applyFilter($event)" class="search-input" #input />
     </div>
 
 
     <mat-drawer-container class="sidenav-container" autosize>
       <mat-drawer-content mode="side" opened>
-        <div class="table-container">
-          <table class="responsive-table" mat-table [dataSource]="dataSource" multiTemplateDataRows matSort>
+        <div class="table-wrapper">
+          <table mat-table [dataSource]="dataSource" matSort
+                 multiTemplateDataRows
+                 class="mat-elevation-z1 full-width-table pro-table mng-table">
             <ng-container matColumnDef="enrollmentStatus">
               <th mat-header-cell *matHeaderCellDef mat-sort-header> Module  </th>
               <td mat-cell *matCellDef="let row">
