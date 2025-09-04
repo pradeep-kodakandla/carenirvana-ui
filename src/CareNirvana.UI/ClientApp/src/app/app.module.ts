@@ -194,7 +194,14 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
       { path: 'dash-board', component: DashBoardComponent },
       { path: 'header', component: HeaderComponent },
       { path: 'footer', component: FooterComponent },
-      { path: 'member-info/:id', component: MemberDetailsComponent },
+      {
+        path: 'member-info/:id',
+        component: MemberDetailsComponent,           // shell with sidebar
+        children: [
+          { path: '', pathMatch: 'full', component: MemberComponent, runGuardsAndResolvers: 'always' },        // tabs page
+          { path: 'member-auth/:authNo', component: AuthorizationComponent, runGuardsAndResolvers: 'always' }  // full-page auth inside shell
+        ]
+      },
       { path: 'dash-mycase', component: MycaseloadComponent },
       { path: 'dash-assignauth', component: AssignedauthsComponent },
       { path: 'dash-requests', component: RequestsComponent },
@@ -218,7 +225,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
       { path: 'member-authdetails', component: AuthdetailsComponent },
       { path: 'member-um-validation', component: ValidationErrorDialogComponent },
       { path: 'member-decisionbulk', component: DecisionbulkdialogComponent },
-      { path: 'member-mdreview', component: MdreviewComponent }, 
+      { path: 'member-mdreview', component: MdreviewComponent },
 
 
 

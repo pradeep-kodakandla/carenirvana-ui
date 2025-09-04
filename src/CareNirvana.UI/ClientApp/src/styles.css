@@ -21,6 +21,7 @@ html, body {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
+  height: 100%;
   /*  overflow-y:  unset;
 */
 }
@@ -28,6 +29,34 @@ html, body {
 main {
   /* min-height: 100vh;*/ /* Ensures content fills the screen */
   padding-bottom: 25px; /* This ensures space for the footer */
+}
+
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh; /* full viewport */
+}
+
+.app-header {
+  flex: 0 0 auto; /* fixed height content */
+  position: sticky;
+  top: 0;
+  z-index: 1000; /* keep above scrolling content */
+  background: white; /* prevent transparency */
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+.app-main {
+  flex: 1 1 auto;
+  overflow-y: auto; /* scroll only here */
+  /*padding: 10px;*/
+}
+
+.app-footer {
+  flex: 0 0 auto;
+  padding-left: 5px;
+  padding-right: 5px;
 }
 
 .container {
@@ -71,42 +100,6 @@ body {
   background-color: #007BFF;
   border-color: #1861ac;
 }
-
-/*.mat-mdc-header-row {
-  font-family: 'Open Sans', sans-serif;
-  height: 40px;
-}
-
-.mat-mdc-row {
-  font-family: 'Open Sans', sans-serif;
-  height: 40px;
-}
-
-
-.mat-mdc-table {
-  background-color: transparent !important;
-}
-
-.mat-mdc-header-cell {
-  justify-content: left;
-  color: white;
-  font-weight: bold !important;
-  padding: 0px 0px 0px 15px;
-  background-color: #007BFF !important;
-  font-family: 'Open Sans', sans-serif;
-  border-right-color: white;
-  border-right-width: thin;
-}
-
-.mat-mdc-header-row {
-  font-family: 'Open Sans', sans-serif;
-  height: 40px !important;
-}
-
-.mat-mdc-row {
-  font-family: 'Open Sans', sans-serif;
-  height: auto;
-}*/
 
 
 /* Table Styles */
@@ -398,7 +391,7 @@ icon-admin {
 }
 
   .mat-horizontal-stepper-header[aria-selected='true'] {
-    background-color: #1b6ec2 !important; 
+    background-color: #1b6ec2 !important;
     transform: scale(1.05);
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
     color: white !important;

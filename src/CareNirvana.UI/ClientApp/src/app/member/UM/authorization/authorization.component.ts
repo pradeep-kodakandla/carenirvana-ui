@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Output, Input, QueryList, ElementRef, ViewChildren, AfterViewInit, ChangeDetectorRef, ViewChild } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { NgForm } from '@angular/forms';
 import { MemberService } from 'src/app/service/shared-member.service';
 import { AuthService } from 'src/app/service/auth.service';
@@ -39,7 +39,8 @@ export class AuthorizationComponent {
     private snackBar: MatSnackBar,
     private route: ActivatedRoute,
     private headerService: HeaderService,
-    private authenticateService: AuthenticateService
+    private authenticateService: AuthenticateService,
+    private router: Router
   ) { }
 
   highlightedSection: string | null = null;
@@ -372,18 +373,44 @@ export class AuthorizationComponent {
     this.cancel.emit();
     this.memberService.setIsCollapse(false);
     this.showAuthorizationComponent = true;
+    
+    this.memberService.setShowAuthorization(false);
+    //this.router.navigate(['/member-info', Number(id)]);
+  }
+
+  ngOnDestroy() {
+    // Safety reset if the component is torn down
+    this.memberService.setShowAuthorization(false);
   }
 
   formData: any = {};
   config: any; // JSON configuration loaded dynamically
 
+  private getParamFromAncestors(r: ActivatedRoute, key: string): string | null {
+    let cur: ActivatedRoute | null = r;
+    while (cur) {
+      const v = cur.snapshot.paramMap.get(key);
+      if (v) return v;
+      cur = cur.parent!;
+    }
+    return null;
+  }
+
   ngOnInit(): void {
 
     this.loadPermissionsForAuthorization();
+    
     this.route.paramMap.subscribe(params => {
       this.newAuthNumber = params.get('authNo'); // Extract authNumber
       this.memberId = Number(params.get('memberId'));
     });
+
+    const idStr = this.getParamFromAncestors(this.route, 'id');
+    if (!idStr) {
+      console.error('Member id missing in route');
+      return;
+    }
+    this.memberId = Number(idStr);   // DO NOT default to 0
 
     if (!this.newAuthNumber || this.newAuthNumber === 'DRAFT') {
       this.selectDiv(1);

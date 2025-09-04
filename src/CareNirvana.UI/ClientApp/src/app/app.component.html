@@ -1,10 +1,19 @@
 <body>
-  <div style="padding:0px 5px;" *ngIf="shouldDisplayHeaderAndFooter()">
-    <app-header></app-header>
+  <div class="app-layout">
+    <!-- Fixed Header -->
+    <header class="app-header" *ngIf="shouldDisplayHeaderAndFooter()">
+      <app-header></app-header>
+    </header>
+
+    <!-- Scrollable Main Content -->
+    <main class="app-main">
+      <router-outlet></router-outlet>
+    </main>
+
+    <!-- Footer (optional sticky at bottom) -->
+    <footer class="app-footer" *ngIf="shouldDisplayHeaderAndFooter()">
+      <app-footer></app-footer>
+    </footer>
   </div>
-  <main>
-    <router-outlet></router-outlet>
-  </main>
-  <app-footer></app-footer>
 </body>
 

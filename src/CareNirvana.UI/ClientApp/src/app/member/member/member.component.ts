@@ -1,6 +1,7 @@
 import { Component, Input, ViewEncapsulation } from '@angular/core';
 import { RolepermissionService, CfgRole } from 'src/app/service/rolepermission.service';
-
+import { ActivatedRoute, Router } from '@angular/router';
+import { MemberService } from 'src/app/service/shared-member.service';
 
 interface DashboardWidget {
   key: string;
@@ -29,10 +30,26 @@ export class MemberComponent {
   currentStep = 1;
   roleConfig: PermissionConfig = {};
   mainTabs: any[] = [];
-  constructor(private roleService: RolepermissionService) { }
+  showAuthorizationComponent = false;
+  constructor(private roleService: RolepermissionService, private route: ActivatedRoute, private router: Router, private shared: MemberService) { }
 
   ngOnInit(): void {
     this.fetchRoleData(4); // ⬅️ Hardcoded roleId = 1 for now
+    this.route.parent?.paramMap.subscribe(params => {
+      console.log('Route Params:', params); // ✅ Debugging log
+      this.memberId = Number(params.get('id')!);
+      console.log('Loaded Member ID:', this.memberId);
+    });
+
+    this.shared.showAuthorization$.subscribe(v => this.showAuthorizationComponent = v);
+
+    // Ensure reset when we land on the tabs route
+    this.router.events.subscribe(() => {
+      const child = this.route.firstChild;
+      const isAuthPage = child?.snapshot?.url?.[0]?.path === 'member-auth';
+      // render list on default child, not on auth
+      this.shared.setShowAuthorization(!!isAuthPage);
+    });
   }
 
   fetchRoleData(roleId: number) {
@@ -69,7 +86,7 @@ export class MemberComponent {
     this.currentStep = step;
   }
 
-  showAuthorizationComponent = false;
+
 
   onAddClick(authNumber: string) {
     console.log('Parent Received Auth Number:', authNumber); // ✅ Debugging log
@@ -77,11 +94,12 @@ export class MemberComponent {
     if (authNumber) {
       this.authNumber = authNumber;  // Store it
     }
-
-    this.showAuthorizationComponent = true;
+    this.shared.setShowAuthorization(true);
+    this.showAuthorizationComponent = false;
   }
 
   onCancel() {
+    this.shared.setShowAuthorization(false);
     this.showAuthorizationComponent = false;
   }
 

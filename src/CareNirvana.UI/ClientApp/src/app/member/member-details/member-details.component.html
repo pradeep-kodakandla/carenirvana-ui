@@ -1,24 +1,25 @@
 <div style="display:flex;">
   <div class="sidebar" [class.collapsed]="isCollapse">
     <!-- Expand/Collapse Button -->
-    <div style="display: flex; align-items: center; width: 100%; background: #007BFF; margin-left:5px;">
+    <div class="sidebar-toolbar">
       <!-- Left-aligned button -->
       <button class="toggle-button" *ngIf="!isCollapse">
         <mat-icon>menu</mat-icon>
       </button>
 
       <button mat-icon-button class="toggle-button" *ngIf="!isCollapse">
-        <mat-icon style="color:white;" aria-hidden="false" matBadge="20">notifications</mat-icon>
+        <mat-icon aria-hidden="false" matBadge="20">notifications</mat-icon>
       </button>
-      <!-- Spacer to push the next buttons to the right -->
-      <div style="flex-grow: 1;"></div>
+
+      <!-- Spacer -->
+      <div class="flex-spacer"></div>
 
       <!-- Right-aligned buttons -->
       <button class="toggle-button" (click)="toggleSidebar()">
         <mat-icon>{{ isCollapse ? 'people' : 'push_pin' }}</mat-icon>
       </button>
-
     </div>
+
 
     <div class="sidebar-content" *ngIf="!isCollapse">
       <!-- Header -->
@@ -109,7 +110,8 @@
   </div>
   <div class="main-content">
     <div class="sidenav-content" style="padding-right:5px;">
-      <app-member [memberId]="memberId"></app-member>
+      <!--<app-member [memberId]="memberId"></app-member>-->
+      <router-outlet></router-outlet>
     </div>
   </div>
 </div>
