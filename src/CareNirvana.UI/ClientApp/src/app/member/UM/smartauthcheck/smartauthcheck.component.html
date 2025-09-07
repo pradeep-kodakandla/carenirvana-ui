@@ -1,0 +1,224 @@
+<!-- smartauthcheck.component.html -->
+<mat-card class="page-shell">
+
+  <!-- Top Bar / Title -->
+  <header class="page-header">
+    <div class="title-wrap">
+      <h2 class="page-title">Smart Authorization</h2>
+      <p class="page-subtitle">Select an LOB & fill service details to continue.</p>
+    </div>
+
+    <!-- lightweight step indicator -->
+    <div class="stepper-mini" aria-label="Progress">
+      <span class="step active">1</span>
+      <span class="line"></span>
+      <span class="step">2</span>
+      <span class="line"></span>
+      <span class="step">3</span>
+    </div>
+  </header>
+
+  <mat-divider></mat-divider>
+
+  <!-- Context / Selection Cards -->
+  <section class="section">
+    <div class="section-head">
+      <h3 class="section-title">Choose Coverage Context</h3>
+      <span class="section-help">Pick the applicable LOB/account period.</span>
+    </div>
+
+    <div class="selection-container">
+      <!-- Reusing your rounded boxes -->
+      <div class="rounded-box tooltip-wrapper"
+           (click)="selectDiv(1)"
+           [ngClass]="{ 'selected': selectedDiv === 1 }">
+        <div class="d-flex justify-content-between div-secondary">
+          <div>
+            <label class="label">LOB</label>
+            <label class="label">Account</label>
+            <label class="label">Start Date</label>
+            <label class="label">End Date</label>
+          </div>
+          <div>
+            <label class="label">Medicare</label>
+            <label class="label">Microsoft</label>
+            <label class="label">01/01/2024</label>
+            <label class="label">12/31/2024</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-box tooltip-wrapper"
+           (click)="selectDiv(2)"
+           [ngClass]="{ 'selected': selectedDiv === 2 }">
+        <div class="d-flex justify-content-between div-secondary">
+          <div>
+            <label class="label">LOB</label>
+            <label class="label">Account</label>
+            <label class="label">Start Date</label>
+            <label class="label">End Date</label>
+          </div>
+          <div>
+            <label class="label">Medicaid</label>
+            <label class="label">Contoso</label>
+            <label class="label">01/01/2024</label>
+            <label class="label">12/31/2024</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-box tooltip-wrapper"
+           (click)="selectDiv(3)"
+           [ngClass]="{ 'selected': selectedDiv === 3 }">
+        <div class="d-flex justify-content-between div-secondary">
+          <div>
+            <label class="label">LOB</label>
+            <label class="label">Account</label>
+            <label class="label">Start Date</label>
+            <label class="label">End Date</label>
+          </div>
+          <div>
+            <label class="label">TX Medicaid</label>
+            <label class="label">Fabrikam</label>
+            <label class="label">01/01/2024</label>
+            <label class="label">12/31/2024</label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <mat-divider></mat-divider>
+
+  <!-- Form -->
+  <section class="section">
+    <div class="section-head">
+      <h3 class="section-title">Service Details</h3>
+      <span class="section-help">Dates accept <code>D</code>, <code>D+1</code>, <code>D-1</code> or use the picker.</span>
+    </div>
+
+    <form [formGroup]="smartAuthCheckForm" class="form-surface">
+
+      <!-- top row selects -->
+      <div class="form-grid">
+        <!-- Auth Case -->
+        <div class="form-field">
+          <label class="floating-label">Auth Case</label>
+          <select class="form-select"
+                  [(ngModel)]="selectedAuthClassId"
+                  [ngModelOptions]="{ standalone: true }"
+                  (change)="onAuthClassChange(); $event.stopPropagation();">
+            <!--<option [ngValue]="null" disabled>Select Auth Case</option>-->
+            <option *ngFor="let item of authClass" [value]="item.id">
+              {{ item.authClass }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Auth Type -->
+        <div class="form-field">
+          <label class="floating-label">Auth Type</label>
+          <select class="form-select"
+                  [(ngModel)]="selectedTemplateId"
+                  [ngModelOptions]="{ standalone: true }"
+                  [disabled]="!selectedAuthClassId || selectedAuthClassId === 0"
+                  (change)="$event.stopPropagation();">
+            <option *ngFor="let template of authTemplates" [value]="template.Id">
+              {{ template.TemplateName }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Service From -->
+        <div class="form-field">
+          <label class="floating-label">Service From Date <span class="req">*</span></label>
+          <div class="input-with-icon">
+            <input type="text"
+                   class="form-control"
+                   formControlName="scheduledDateTime"
+                   [value]="scheduledDateText"
+                   (input)="onScheduledTextChange($event)"
+                   (blur)="handleDateTimeBlur('scheduledDateText', 'scheduledDateTime')"
+                   [ngClass]="{'is-invalid': smartAuthCheckForm.get('scheduledDateTime')?.touched && smartAuthCheckForm.get('scheduledDateTime')?.invalid}"
+                   placeholder="Enter D, D+1, D-1 or select" />
+            <button type="button" class="calendar-icon-btn" (click)="triggerCalendar('scheduled')" tabindex="0">📅</button>
+            <input type="datetime-local" #scheduledPicker class="sr-only" (change)="handleCalendarChange($event, 'scheduledDateTime')">
+          </div>
+          <div *ngIf="smartAuthCheckForm.get('scheduledDateTime')?.touched && smartAuthCheckForm.get('scheduledDateTime')?.invalid" class="field-error">
+            Scheduled date is required.
+          </div>
+        </div>
+
+        <!-- Service To -->
+        <div class="form-field">
+          <label class="floating-label">Service To Date <span class="req">*</span></label>
+          <div class="input-with-icon">
+            <input type="text"
+                   class="form-control"
+                   formControlName="dueDateTime"
+                   [value]="dueDateText"
+                   (input)="onDueTextChange($event)"
+                   (blur)="handleDateTimeBlur('dueDateText', 'dueDateTime')"
+                   [ngClass]="{'is-invalid': smartAuthCheckForm.get('dueDateTime')?.touched && smartAuthCheckForm.get('dueDateTime')?.invalid}"
+                   placeholder="Enter D, D+1, D-1 or select" />
+            <button type="button" class="calendar-icon-btn" (click)="triggerCalendar('due')">📅</button>
+            <input type="datetime-local" #duePicker class="sr-only" (change)="handleCalendarChange($event, 'dueDateTime')">
+          </div>
+          <div *ngIf="smartAuthCheckForm.get('dueDateTime')?.touched && smartAuthCheckForm.get('dueDateTime')?.invalid" class="field-error">
+            Due date is required.
+          </div>
+        </div>
+
+        <!-- ICD 10 -->
+        <div class="form-field">
+          <label class="floating-label">ICD-10</label>
+          <input type="text" class="form-control" formControlName="icd10">
+        </div>
+
+        <!-- ICD 10 Desc -->
+        <div class="form-field">
+          <label class="floating-label">ICD-10 Description</label>
+          <input type="text" class="form-control" formControlName="icd10Desc">
+        </div>
+
+        <!-- Service Code -->
+        <div class="form-field">
+          <label class="floating-label">Service Code</label>
+          <input type="text" class="form-control" formControlName="serviceCode">
+        </div>
+
+        <!-- Service Desc -->
+        <div class="form-field">
+          <label class="floating-label">Service Description</label>
+          <input type="text" class="form-control" formControlName="serviceDesc">
+        </div>
+      </div>
+
+      <!-- Validation summary -->
+      <div class="validation-banner" *ngIf="smartAuthCheckForm.invalid && smartAuthCheckForm.touched">
+        Please resolve the highlighted fields before continuing.
+      </div>
+
+    </form>
+  </section>
+
+  <!-- Sticky Action Bar -->
+  <footer class="action-bar">
+    <div class="bar-left">
+      <button mat-stroked-button class="btn-ghost" type="button" (click)="onCancel()">Cancel</button>
+    </div>
+    <div class="bar-right">
+      <button mat-button class="btn-secondary" type="button" (click)="onSaveDraft()">Save Draft</button>
+      <button mat-raised-button color="primary" class="btn-primary" type="button"
+              [disabled]="smartAuthCheckForm.invalid"
+              (click)="onNextContinue()">
+        Next / Continue
+      </button>
+      <button mat-raised-button color="accent" class="btn-accent" type="button"
+              [disabled]="smartAuthCheckForm.invalid"
+              (click)="onCompleteAuth()">
+        Complete Auth
+      </button>
+    </div>
+  </footer>
+</mat-card>

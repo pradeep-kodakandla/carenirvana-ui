@@ -41,14 +41,14 @@ export class MemberComponent {
       console.log('Loaded Member ID:', this.memberId);
     });
 
-    this.shared.showAuthorization$.subscribe(v => this.showAuthorizationComponent = v);
+   // this.shared.showAuthorization$.subscribe(v => this.showAuthorizationComponent = v);
 
     // Ensure reset when we land on the tabs route
     this.router.events.subscribe(() => {
       const child = this.route.firstChild;
       const isAuthPage = child?.snapshot?.url?.[0]?.path === 'member-auth';
       // render list on default child, not on auth
-      this.shared.setShowAuthorization(!!isAuthPage);
+     // this.shared.setShowAuthorization(!!isAuthPage);
     });
   }
 
@@ -94,12 +94,12 @@ export class MemberComponent {
     if (authNumber) {
       this.authNumber = authNumber;  // Store it
     }
-    this.shared.setShowAuthorization(true);
+   // this.shared.setShowAuthorization(true);
     this.showAuthorizationComponent = false;
   }
 
   onCancel() {
-    this.shared.setShowAuthorization(false);
+   // this.shared.setShowAuthorization(false);
     this.showAuthorizationComponent = false;
   }
 
@@ -110,6 +110,4 @@ export class MemberComponent {
   getSafeId(name: string): string {
     return name.replace(/\s+/g, '-').toLowerCase();
   }
-
-
 }

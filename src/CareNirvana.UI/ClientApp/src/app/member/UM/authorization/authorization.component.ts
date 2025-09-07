@@ -374,13 +374,13 @@ export class AuthorizationComponent {
     this.memberService.setIsCollapse(false);
     this.showAuthorizationComponent = true;
     
-    this.memberService.setShowAuthorization(false);
+    //this.memberService.setShowAuthorization(false);
     //this.router.navigate(['/member-info', Number(id)]);
   }
 
   ngOnDestroy() {
     // Safety reset if the component is torn down
-    this.memberService.setShowAuthorization(false);
+    //this.memberService.setShowAuthorization(false);
   }
 
   formData: any = {};

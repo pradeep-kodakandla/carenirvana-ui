@@ -60,10 +60,8 @@ body {
   }
 
   .rounded-box.selected {
-    border: 2px solid #007BFF;
-    background-color: #007BFF;
-    color: white;
-    box-shadow: 0 4px 10px rgba(0, 123, 255, 0.2);
+    border-top: 5px solid #007BFF; /* highlight top border */
+    background: #f0f7ff; /* light blue shade */
   }
 
 label {

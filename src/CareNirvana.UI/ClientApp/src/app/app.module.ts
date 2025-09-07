@@ -47,6 +47,7 @@ import { UmauthdocumentsComponent } from './member/UM/umauthdocuments/umauthdocu
 import { UmauthactivityComponent } from './member/UM/umauthactivity/umauthactivity.component';
 import { ValidationErrorDialogComponent } from './member/validation-error-dialog/validation-error-dialog.component';
 import { MdreviewComponent } from './member/UM/mdreview/mdreview.component';
+import { SmartauthcheckComponent } from './member/UM/smartauthcheck/smartauthcheck.component';
 
 import { ConfigurationComponent } from './admin/configuration/configuration.component';
 import { UsermanagementComponent } from './admin/usermanagement/usermanagement.component';
@@ -162,7 +163,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
     MemberTasksummaryComponent,
     MemberInfoComponent, AuthorizationComponent, DecisiondetailsComponent, AuthdetailsComponent, AuthdynamicComponent, ProviderSearchComponent,
     UmauthnotesComponent, UmauthdocumentsComponent, UmauthactivityComponent, ValidationErrorDialogComponent, MdreviewComponent,
-    NewDashBoardComponent, NewDashboard2Component, MdreviewdashboardComponent,
+    NewDashBoardComponent, NewDashboard2Component, MdreviewdashboardComponent, SmartauthcheckComponent,
     ConfigurationComponent, UsermanagementComponent, RolemanagementComponent, ProfilemanagementComponent, AppfeaturesetupComponent, PermissionManagerComponent,
     UmdocumenttypeComponent, SettingsDialogComponent, UmactivitytypeComponent, DecisionbulkdialogComponent, DialogContentComponent, UmnotetypeComponent, ExternallinksComponent,
     UmclaimtypeComponent, UmactivitypriorityComponent, UmadmissionlevelComponent, UmadmissiontypeComponent, UmadmitreasonComponent,
@@ -226,7 +227,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
       { path: 'member-um-validation', component: ValidationErrorDialogComponent },
       { path: 'member-decisionbulk', component: DecisionbulkdialogComponent },
       { path: 'member-mdreview', component: MdreviewComponent },
-
+      { path: 'member-smartauthcheck', component: SmartauthcheckComponent },
 
 
 
