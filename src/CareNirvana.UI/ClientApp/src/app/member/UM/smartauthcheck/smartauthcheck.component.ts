@@ -230,27 +230,56 @@ export class SmartauthcheckComponent implements OnInit {
 
   onNextContinue(): void {
     /*const headers = { 'Content-Type': 'application/json' };*/
+    //const body = {
+    //  "Service Code": "11920",//this.smartAuthCheckForm.get('serviceCode')?.value,
+    //  "Service Type": "CPT Code",
+    //  "LOB": "TX Medicaid"   // replace with selected LOB if dynamic
+    //};
+
+    //this.http.post('https://carenirvanabre-b2ananexbwedbfes.eastus2-01.azurewebsites.net/api/DecisionTable/rundecision?decisionTableName=PayorCatalogueSpec', body)
+    //  .subscribe({
+    //    next: (response) => {
+    //      const res: any = JSON.parse(response.toString());
+    //      console.log('Decision Table Response:', res);
+    //      // TODO: handle navigation / UI updates
+    //    },
+    //    error: (error) => {
+    //      console.error('Error calling Decision Table:', error);
+    //    }
+    //  });
+    //if (this.smartAuthCheckForm.invalid) {
+    //  this.smartAuthCheckForm.markAllAsTouched();
+    //  return;
+    //}
+    // route to next step or show additional section
+
+    const url = 'https://carenirvanabre-b2ananexbwedbfes.eastus2-01.azurewebsites.net/api/DecisionTable/rundecision?decisionTableName=PayorCatalogueSpec';
+
     const body = {
-      "Service Code": this.smartAuthCheckForm.get('serviceCode')?.value,
-      "Service Type": "CPT Code",
-      "LOB": "TX Medicaid"   // replace with selected LOB if dynamic
+      'Service Code': "11920",//this.smartAuthCheckForm.get('serviceCode')?.value,
+      'Service Type': 'CPT Code',
+      'LOB': 'TX Medicaid'
     };
 
-    this.http.post('https://carenirvanabre-b2ananexbwedbfes.eastus2-01.azurewebsites.net/api/DecisionTable/rundecision?decisionTableName=PayorCatalogueSpec', body )
-      .subscribe({
-        next: (response) => {
-          console.log('Decision Table Response:', response);
-          // TODO: handle navigation / UI updates
-        },
-        error: (error) => {
-          console.error('Error calling Decision Table:', error);
+    this.http.post(url, body, { responseType: 'text' }).subscribe({
+      next: (text: string) => {
+        console.log('Raw response:', text);
+
+        // Optional: try to parse if it sometimes sends JSON
+        let data: any = text;
+        try { data = JSON.parse(text); } catch { /* keep as plain text */ }
+
+        // Example: handle simple “Y/N” contract
+        if (typeof data === 'string' && data.trim() === 'Y') {
+          // success path
+        } else {
+          // handle other values or parsed JSON object
         }
-      });
-    if (this.smartAuthCheckForm.invalid) {
-      this.smartAuthCheckForm.markAllAsTouched();
-      return;
-    }
-    // route to next step or show additional section
+      },
+      error: (err) => {
+        console.error('Decision Table call failed:', err);
+      }
+    });
   }
 
   onCompleteAuth(): void {
