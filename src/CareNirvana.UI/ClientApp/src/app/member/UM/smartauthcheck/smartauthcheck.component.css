@@ -5,6 +5,7 @@
   gap: 16px;
   padding: 16px 20px;
   border-radius: 14px;
+  background: none !important;
 }
 
 /* ---------- Header ---------- */
@@ -267,4 +268,104 @@
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+
+/* Two-up rows */
+.row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 16px;
+  row-gap: 14px;
+  margin-bottom: 12px;
+}
+
+/* Stack multiple dynamic rows with spacing */
+.stacked-rows {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+/* Row section header with inline add button */
+.row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 8px 0 6px;
+}
+
+  .row-header h4 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+/* Small action buttons */
+.add-btn,
+.icon-btn {
+  border: 1px solid #cfcfcf;
+  background: #fff;
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.icon-btn {
+  padding: 2px 8px;
+}
+
+  .icon-btn.danger {
+    border-color: #f2b6b6;
+    color: #b00020;
+  }
+
+
+/* Put description input and +/− buttons on the same line */
+.with-actions {
+  padding-right: 0;
+}
+/* remove the right padding used for absolute buttons */
+.inline-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+  .inline-field .form-control {
+    flex: 1 1 auto; /* input grows to fill */
+  }
+
+/* Make the buttons inline (no absolute positioning) */
+.row-actions {
+  position: static; /* override any absolute */
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0; /* ensure no weird offsets */
+}
+
+/* (Optional) tighten button height to match input nicely */
+.icon-btn {
+  height: 36px; /* match your input height */
+  line-height: 1;
+  padding: 0 10px;
+}
+
+
+/* Responsive: stack to single column on small screens */
+@media (max-width: 768px) {
+  .row-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .with-actions {
+    padding-right: 0;
+  }
+
+  .row-actions {
+    position: static;
+    margin-top: 6px;
+  }
 }

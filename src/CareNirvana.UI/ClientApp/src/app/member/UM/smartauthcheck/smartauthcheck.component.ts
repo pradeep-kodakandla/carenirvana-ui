@@ -1,5 +1,5 @@
 import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
 import { AuthService } from 'src/app/service/auth.service';
 import { CrudService } from 'src/app/service/crud.service';
 import { HttpClient } from '@angular/common/http';
@@ -29,14 +29,9 @@ export class SmartauthcheckComponent implements OnInit {
     private http: HttpClient
   ) { }
 
-  smartAuthCheckForm: FormGroup = this.fb.group({
-    scheduledDateTime: ['', Validators.required],
-    dueDateTime: ['', Validators.required],
-    icd10: [''],
-    icd10Desc: [''],
-    serviceCode: [''],
-    serviceDesc: [''],
-  });
+  smartAuthCheckForm!: FormGroup;
+
+
 
 
   selectedDiv: number | null = null;
@@ -56,8 +51,25 @@ export class SmartauthcheckComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadAuthClass();
+    this.smartAuthCheckForm = this.fb.group({
+      scheduledDateTime: ['', Validators.required],
+      dueDateTime: ['', Validators.required],
+      icds: this.fb.array([this.newIcdGroup()]),
+      services: this.fb.array([this.newServiceGroup()])
+    });
+
 
   }
+
+  get icds(): FormArray { return this.smartAuthCheckForm.get('icds') as FormArray; }
+  newIcdGroup(): FormGroup { return this.fb.group({ icd10: [''], icd10Desc: [''] }); }
+  addIcdRow(): void { this.icds.push(this.newIcdGroup()); }
+  removeIcdRow(i: number): void { if (this.icds.length > 1) this.icds.removeAt(i); }
+
+  get services(): FormArray { return this.smartAuthCheckForm.get('services') as FormArray; }
+  newServiceGroup(): FormGroup { return this.fb.group({ serviceCode: [''], serviceDesc: [''] }); }
+  addServiceRow(): void { this.services.push(this.newServiceGroup()); }
+  removeServiceRow(i: number): void { if (this.services.length > 1) this.services.removeAt(i); }
 
   selectDiv(index: number): void {
     this.selectedDiv = index;
@@ -252,6 +264,7 @@ export class SmartauthcheckComponent implements OnInit {
     //  return;
     //}
     // route to next step or show additional section
+
 
     const url = 'https://carenirvanabre-b2ananexbwedbfes.eastus2-01.azurewebsites.net/api/DecisionTable/rundecision?decisionTableName=PayorCatalogueSpec';
 

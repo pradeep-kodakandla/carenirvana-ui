@@ -99,8 +99,8 @@
 
     <form [formGroup]="smartAuthCheckForm" class="form-surface">
 
-      <!-- top row selects -->
-      <div class="form-grid">
+      <!-- Row 1: Auth Case + Auth Type -->
+      <div class="row-2">
         <!-- Auth Case -->
         <div class="form-field">
           <label class="floating-label">Auth Case</label>
@@ -108,7 +108,6 @@
                   [(ngModel)]="selectedAuthClassId"
                   [ngModelOptions]="{ standalone: true }"
                   (change)="onAuthClassChange(); $event.stopPropagation();">
-            <!--<option [ngValue]="null" disabled>Select Auth Case</option>-->
             <option *ngFor="let item of authClass" [value]="item.id">
               {{ item.authClass }}
             </option>
@@ -128,10 +127,13 @@
             </option>
           </select>
         </div>
+      </div>
 
-        <!-- Service From -->
+      <!-- Row 2: From + To -->
+      <div class="row-2">
+        <!-- From -->
         <div class="form-field">
-          <label class="floating-label">Service From Date <span class="req">*</span></label>
+          <label class="floating-label">From Date <span class="req">*</span></label>
           <div class="input-with-icon">
             <input type="text"
                    class="form-control"
@@ -149,9 +151,9 @@
           </div>
         </div>
 
-        <!-- Service To -->
+        <!-- To -->
         <div class="form-field">
-          <label class="floating-label">Service To Date <span class="req">*</span></label>
+          <label class="floating-label">To Date <span class="req">*</span></label>
           <div class="input-with-icon">
             <input type="text"
                    class="form-control"
@@ -168,29 +170,56 @@
             Due date is required.
           </div>
         </div>
+      </div>
 
-        <!-- ICD 10 -->
-        <div class="form-field">
-          <label class="floating-label">ICD-10</label>
-          <input type="text" class="form-control" formControlName="icd10">
+      <!-- Row 3+: ICD-10 rows (ICD-10 + Description) -->
+      <div class="row-header">
+        <!--<h4>ICD-10</h4>-->
+        <!--<button type="button" class="add-btn" (click)="addIcdRow()" aria-label="Add ICD">＋</button>-->
+      </div>
+      <div formArrayName="icds" class="stacked-rows">
+        <div class="row-2" *ngFor="let g of icds.controls; let i = index" [formGroupName]="i">
+          <div class="form-field">
+            <label class="floating-label">ICD-10</label>
+            <input type="text" class="form-control" formControlName="icd10">
+          </div>
+          <div class="form-field with-actions">
+            <label class="floating-label">ICD-10 Description</label>
+            <div class="inline-field">
+              <input type="text" class="form-control" formControlName="icd10Desc">
+              <div class="row-actions">
+                <button type="button" class="icon-btn" (click)="addIcdRow()" title="Add another ICD">＋</button>
+                <button type="button" class="icon-btn danger" (click)="removeIcdRow(i)" [disabled]="icds.length === 1" title="Remove">−</button>
+              </div>
+            </div>
+
+          </div>
         </div>
+      </div>
 
-        <!-- ICD 10 Desc -->
-        <div class="form-field">
-          <label class="floating-label">ICD-10 Description</label>
-          <input type="text" class="form-control" formControlName="icd10Desc">
-        </div>
+      <!-- Row 4+: Service rows (Service Code + Description) -->
+      <div class="row-header">
+        <!--<h4>Service</h4>-->
+        <!--<button type="button" class="add-btn" (click)="addServiceRow()" aria-label="Add Service">＋</button>-->
+      </div>
+      <div formArrayName="services" class="stacked-rows">
+        <div class="row-2" *ngFor="let g of services.controls; let i = index" [formGroupName]="i">
+          <div class="form-field">
+            <label class="floating-label">Service Code</label>
+            <input type="text" class="form-control" formControlName="serviceCode">
+          </div>
+          <div class="form-field with-actions">
+            <label class="floating-label">Service Description</label>
+            <div class="inline-field">
+              <input type="text" class="form-control" formControlName="serviceDesc">
+              <div class="row-actions">
+                <button type="button" class="icon-btn" (click)="addServiceRow()" title="Add another Service">＋</button>
+                <button type="button" class="icon-btn danger" (click)="removeServiceRow(i)" [disabled]="services.length === 1" title="Remove">−</button>
+              </div>
+            </div>
 
-        <!-- Service Code -->
-        <div class="form-field">
-          <label class="floating-label">Service Code</label>
-          <input type="text" class="form-control" formControlName="serviceCode">
-        </div>
 
-        <!-- Service Desc -->
-        <div class="form-field">
-          <label class="floating-label">Service Description</label>
-          <input type="text" class="form-control" formControlName="serviceDesc">
+          </div>
         </div>
       </div>
 
@@ -198,8 +227,8 @@
       <div class="validation-banner" *ngIf="smartAuthCheckForm.invalid && smartAuthCheckForm.touched">
         Please resolve the highlighted fields before continuing.
       </div>
-
     </form>
+
   </section>
 
   <!-- Sticky Action Bar -->
