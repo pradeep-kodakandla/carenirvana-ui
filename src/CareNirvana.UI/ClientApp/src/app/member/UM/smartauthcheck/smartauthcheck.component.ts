@@ -3,7 +3,27 @@ import { FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
 import { AuthService } from 'src/app/service/auth.service';
 import { CrudService } from 'src/app/service/crud.service';
 import { HttpClient } from '@angular/common/http';
+import { MemberenrollmentService } from 'src/app/service/memberenrollment.service';
 
+interface LevelItem {
+  levelcode: string;
+  levelname: string;
+  levelsequence: number;
+  level_value_id: number;
+  level_value_code: string;
+  level_value_name: string;
+}
+
+interface MemberEnrollment {
+  MemberEnrollmentId: number;
+  MemberDetailsId: number;
+  StartDate: string; // ISO
+  EndDate: string;   // ISO
+  Status: boolean;
+  HierarchyPath: string;
+  LevelMap: string;  // JSON string
+  Levels: string;    // JSON string
+}
 interface LobCard {
   id: number;
   lob: string;
@@ -18,21 +38,17 @@ interface LobCard {
   styleUrl: './smartauthcheck.component.css'
 })
 
-
-
 export class SmartauthcheckComponent implements OnInit {
 
   constructor(
     private crudService: CrudService,
     private authService: AuthService,
     private fb: FormBuilder,
-    private http: HttpClient
+    private http: HttpClient,
+    private memberEnrollment: MemberenrollmentService
   ) { }
 
   smartAuthCheckForm!: FormGroup;
-
-
-
 
   selectedDiv: number | null = null;
   enrollmentSelect: boolean = false;
@@ -42,6 +58,7 @@ export class SmartauthcheckComponent implements OnInit {
   authClass: any[] = [];
   scheduledDateText: string = '';
   dueDateText: string = '';
+  memberEnrollments: MemberEnrollment[] = [];
 
   lobOptions: LobCard[] = [
     { id: 1, lob: 'Medicare', account: 'Microsoft', start: '01/01/2024', end: '12/31/2024' },
@@ -57,8 +74,7 @@ export class SmartauthcheckComponent implements OnInit {
       icds: this.fb.array([this.newIcdGroup()]),
       services: this.fb.array([this.newServiceGroup()])
     });
-
-
+    this.loadMemberEnrollment();
   }
 
   get icds(): FormArray { return this.smartAuthCheckForm.get('icds') as FormArray; }
@@ -75,7 +91,6 @@ export class SmartauthcheckComponent implements OnInit {
     this.selectedDiv = index;
     this.enrollmentSelect = true;
   }
-
 
   loadAuthClass(): void {
     this.crudService.getData('um', 'authclass').subscribe({
@@ -116,13 +131,9 @@ export class SmartauthcheckComponent implements OnInit {
     });
   }
 
-
-
   /******Date time field******/
   @ViewChild('scheduledPicker') scheduledPicker!: ElementRef<HTMLInputElement>;
   @ViewChild('duePicker') duePicker!: ElementRef<HTMLInputElement>;
-
-
 
   handleDateTimeBlur(inputModel: string, controlName: string): void {
     let input = (this as any)[inputModel]?.trim().toUpperCase();
@@ -159,7 +170,6 @@ export class SmartauthcheckComponent implements OnInit {
       }
     }
   }
-
 
   formatForDisplay(date: Date): string {
     return new Intl.DateTimeFormat('en-US', {
@@ -203,7 +213,6 @@ export class SmartauthcheckComponent implements OnInit {
   }
 
 
-
   triggerCalendar(pickerType: 'scheduled' | 'due'): void {
     const picker = pickerType === 'scheduled' ? this.scheduledPicker?.nativeElement : this.duePicker?.nativeElement;
     picker?.showPicker?.();
@@ -235,36 +244,9 @@ export class SmartauthcheckComponent implements OnInit {
       hour12: false
     }).format(parsedDate).replace(',', '');
   }
-
-
   /******Date time field******/
 
-
   onNextContinue(): void {
-    /*const headers = { 'Content-Type': 'application/json' };*/
-    //const body = {
-    //  "Service Code": "11920",//this.smartAuthCheckForm.get('serviceCode')?.value,
-    //  "Service Type": "CPT Code",
-    //  "LOB": "TX Medicaid"   // replace with selected LOB if dynamic
-    //};
-
-    //this.http.post('https://carenirvanabre-b2ananexbwedbfes.eastus2-01.azurewebsites.net/api/DecisionTable/rundecision?decisionTableName=PayorCatalogueSpec', body)
-    //  .subscribe({
-    //    next: (response) => {
-    //      const res: any = JSON.parse(response.toString());
-    //      console.log('Decision Table Response:', res);
-    //      // TODO: handle navigation / UI updates
-    //    },
-    //    error: (error) => {
-    //      console.error('Error calling Decision Table:', error);
-    //    }
-    //  });
-    //if (this.smartAuthCheckForm.invalid) {
-    //  this.smartAuthCheckForm.markAllAsTouched();
-    //  return;
-    //}
-    // route to next step or show additional section
-
 
     const url = 'https://carenirvanabre-b2ananexbwedbfes.eastus2-01.azurewebsites.net/api/DecisionTable/rundecision?decisionTableName=PayorCatalogueSpec';
 
@@ -305,4 +287,103 @@ export class SmartauthcheckComponent implements OnInit {
 
   onCancel(): void { /* navigate back or clear */ }
   onSaveDraft(): void { /* persist partial */ }
+
+
+  loadMemberEnrollment(): void {
+    this.memberEnrollment.getMemberEnrollment(2).subscribe(
+      (data) => {
+        console.log('Member Enrollment Data:', data);
+        if (data) {
+          this.setMemberEnrollments(data);
+        }
+      },
+      (error) => {
+        console.error('Error fetching member enrollment data:', error);
+      }
+    );
+  }
+
+  private setMemberEnrollments(data: MemberEnrollment[]) {
+    this.memberEnrollments = (data ?? []).map(d => ({
+      ...d,
+      // leave strings as-is; we'll parse on demand for safety
+    }));
+
+    // Default selection if any rows exist
+    if (this.memberEnrollments.length > 0) {
+      this.selectedDiv = 1;
+      this.enrollmentSelect = true; // you already condition on this in the rest of the page
+    }
+  }
+
+  /** Keep the selection behavior identical to your old selectDiv(n) */
+  selectEnrollment(i: number) {
+    this.selectedDiv = i + 1;
+    this.enrollmentSelect = true;
+
+    // If you need to stash the chosen enrollment for later sections, do it here:
+    // const chosen = this.memberEnrollments[i];
+    // this.selectedEnrollment = chosen;
+    // (Optionally) propagate LOB/Product/etc. downstream if needed.
+  }
+
+  /** Safely parse JSON fields and return ordered levels + dates for display */
+  getEnrollmentDisplayPairs(enr: MemberEnrollment): Array<{ label: string; value: string }> {
+    let levelMap: Record<string, string> = {};
+    let levels: LevelItem[] = [];
+
+    try {
+      levelMap = JSON.parse(enr.LevelMap || '{}');
+    } catch { levelMap = {}; }
+
+    try {
+      levels = JSON.parse(enr.Levels || '[]') as LevelItem[];
+    } catch { levels = []; }
+
+    // Sort by levelsequence if present; otherwise fall back to as-is
+    const orderedLevels = [...levels].sort((a, b) => {
+      const sa = (a?.levelsequence ?? 0);
+      const sb = (b?.levelsequence ?? 0);
+      return sa - sb;
+    });
+
+    // Build label/value pairs from ordered levels
+    const pairs: Array<{ label: string; value: string }> = [];
+
+    for (const lvl of orderedLevels) {
+      const code = (lvl.levelcode || '').trim();
+      // Prefer the friendly levelname for the label (e.g., "Product") but keep your compact style if you want:
+      const label = code || lvl.levelname || 'Level';
+
+      // Prefer the friendly level_value_name; fall back to LevelMap value, then code
+      const value =
+        (lvl.level_value_name?.trim?.() || '') ||
+        (levelMap[code] ?? '') ||
+        (lvl.level_value_code ?? '') ||
+        '';
+
+      if (label && value) {
+        pairs.push({ label, value });
+      }
+    }
+
+    // Dates (always last two lines, matching your layout)
+    const start = enr.StartDate ? this.formatDateMMDDYYYY(enr.StartDate) : '';
+    const end = enr.EndDate ? this.formatDateMMDDYYYY(enr.EndDate) : '';
+
+    if (start) pairs.push({ label: 'Start Date', value: start });
+    if (end) pairs.push({ label: 'End Date', value: end });
+
+    return pairs;
+  }
+
+  private formatDateMMDDYYYY(iso: string): string {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${mm}/${dd}/${yyyy}`;
+  }
+
 }

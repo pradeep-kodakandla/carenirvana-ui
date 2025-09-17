@@ -10,6 +10,7 @@ import { HeaderService } from 'src/app/service/header.service';
 import { CrudService } from 'src/app/service/crud.service';
 
 
+
 @Component({
   selector: 'app-authdetails',
   templateUrl: './authdetails.component.html',
@@ -56,7 +57,6 @@ export class AuthdetailsComponent implements OnInit {
   ngOnInit(): void {
     this.getAuthDetails();
     this.loadPermissionsForAuthorizationActions();
-
   }
 
   getAuthDetails(): void {

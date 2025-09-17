@@ -27,61 +27,23 @@
       <span class="section-help">Pick the applicable LOB/account period.</span>
     </div>
 
-    <div class="selection-container">
-      <!-- Reusing your rounded boxes -->
+    <div class="selection-container" >
       <div class="rounded-box tooltip-wrapper"
-           (click)="selectDiv(1)"
-           [ngClass]="{ 'selected': selectedDiv === 1 }">
+           *ngFor="let enr of memberEnrollments; let i = index"
+           (click)="selectEnrollment(i)"
+           [ngClass]="{ 'selected': selectedDiv === i + 1 }">
         <div class="d-flex justify-content-between div-secondary">
           <div>
-            <label class="label">LOB</label>
-            <label class="label">Account</label>
-            <label class="label">Start Date</label>
-            <label class="label">End Date</label>
+            <!-- Left side labels -->
+            <label class="label" *ngFor="let pair of getEnrollmentDisplayPairs(enr)">
+              {{ pair.label }}
+            </label>
           </div>
           <div>
-            <label class="label">Medicare</label>
-            <label class="label">Microsoft</label>
-            <label class="label">01/01/2024</label>
-            <label class="label">12/31/2024</label>
-          </div>
-        </div>
-      </div>
-
-      <div class="rounded-box tooltip-wrapper"
-           (click)="selectDiv(2)"
-           [ngClass]="{ 'selected': selectedDiv === 2 }">
-        <div class="d-flex justify-content-between div-secondary">
-          <div>
-            <label class="label">LOB</label>
-            <label class="label">Account</label>
-            <label class="label">Start Date</label>
-            <label class="label">End Date</label>
-          </div>
-          <div>
-            <label class="label">Medicaid</label>
-            <label class="label">Contoso</label>
-            <label class="label">01/01/2024</label>
-            <label class="label">12/31/2024</label>
-          </div>
-        </div>
-      </div>
-
-      <div class="rounded-box tooltip-wrapper"
-           (click)="selectDiv(3)"
-           [ngClass]="{ 'selected': selectedDiv === 3 }">
-        <div class="d-flex justify-content-between div-secondary">
-          <div>
-            <label class="label">LOB</label>
-            <label class="label">Account</label>
-            <label class="label">Start Date</label>
-            <label class="label">End Date</label>
-          </div>
-          <div>
-            <label class="label">TX Medicaid</label>
-            <label class="label">Fabrikam</label>
-            <label class="label">01/01/2024</label>
-            <label class="label">12/31/2024</label>
+            <!-- Right side values -->
+            <label class="label" *ngFor="let pair of getEnrollmentDisplayPairs(enr)">
+              {{ pair.value }}
+            </label>
           </div>
         </div>
       </div>

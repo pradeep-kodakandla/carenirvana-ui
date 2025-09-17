@@ -70,30 +70,29 @@
                 </div>
                 <div class="selection-container" *ngIf="isExpanded">
                   <!-- Rounded selection boxes -->
-                  <div class="rounded-box tooltip-wrapper" (click)="selectDiv(1)" [ngClass]="{ 'selected': selectedDiv === 1 }">
-                    <!--<div class="tooltip-panel">
-                      <div class="tooltip-row"><label class="tooltip-label">LOB:</label><span>Medicare</span></div>
-                      <div class="tooltip-row"><label class="tooltip-label">Account:</label><span>Microsoft</span></div>
-                      <div class="tooltip-row"><label class="tooltip-label">Start Date:</label><span>01/01/2024</span></div>
-                      <div class="tooltip-row"><label class="tooltip-label">End Date:</label><span>12/31/2024</span></div>
-                    </div>-->
-
-                    <div class="d-flex justify-content-between div-secondary">
-                      <div>
-                        <label class="label">LOB</label>
-                        <label class="label">Account</label>
-                        <label class="label">Start Date</label>
-                        <label class="label">End Date</label>
-                      </div>
-                      <div>
-                        <label class="label">Medicare</label>
-                        <label class="label">Microsoft</label>
-                        <label class="label">01/01/2024</label>
-                        <label class="label">12/31/2024</label>
-                      </div>
+                  <!--<div class="rounded-box tooltip-wrapper" (click)="selectDiv(1)" [ngClass]="{ 'selected': selectedDiv === 1 }">-->
+                  <!--<div class="tooltip-panel">
+                    <div class="tooltip-row"><label class="tooltip-label">LOB:</label><span>Medicare</span></div>
+                    <div class="tooltip-row"><label class="tooltip-label">Account:</label><span>Microsoft</span></div>
+                    <div class="tooltip-row"><label class="tooltip-label">Start Date:</label><span>01/01/2024</span></div>
+                    <div class="tooltip-row"><label class="tooltip-label">End Date:</label><span>12/31/2024</span></div>
+                  </div>-->
+                  <!--<div class="d-flex justify-content-between div-secondary">
+                    <div>
+                      <label class="label">LOB</label>
+                      <label class="label">Account</label>
+                      <label class="label">Start Date</label>
+                      <label class="label">End Date</label>
                     </div>
-                    <!--<div class="selectedBox"></div>-->
-                  </div>
+                    <div>
+                      <label class="label">Medicare</label>
+                      <label class="label">Microsoft</label>
+                      <label class="label">01/01/2024</label>
+                      <label class="label">12/31/2024</label>
+                    </div>
+                  </div>-->
+                  <!--<div class="selectedBox"></div>-->
+                  <!--</div>
                   <div class="rounded-box tooltip-wrapper" (click)="selectDiv(2)" [ngClass]="{ 'selected': selectedDiv === 2 }">
                     <div class="d-flex justify-content-between div-secondary">
                       <div>
@@ -125,7 +124,30 @@
                         <label class="label">12/31/2024</label>
                       </div>
                     </div>
+                  </div>-->
+
+                  <div class="selection-container" *ngIf="isExpanded">
+                    <div class="rounded-box tooltip-wrapper"
+                         *ngFor="let enr of memberEnrollments; let i = index"
+                         (click)="selectEnrollment(i)"
+                         [ngClass]="{ 'selected': selectedDiv === i + 1 }">
+                      <div class="d-flex justify-content-between div-secondary">
+                        <div>
+                          <!-- Left side labels -->
+                          <label class="label" *ngFor="let pair of getEnrollmentDisplayPairs(enr)">
+                            {{ pair.label }}
+                          </label>
+                        </div>
+                        <div>
+                          <!-- Right side values -->
+                          <label class="label" *ngFor="let pair of getEnrollmentDisplayPairs(enr)">
+                            {{ pair.value }}
+                          </label>
+                        </div>
+                      </div>
+                    </div>
                   </div>
+
                 </div>
               </mat-card>
 

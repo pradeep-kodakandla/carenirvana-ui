@@ -14,10 +14,30 @@ import { AuthenticateService } from 'src/app/service/authentication.service';
 import { StepperSelectionEvent } from '@angular/cdk/stepper';
 import { MdreviewComponent } from 'src/app/member/UM/mdreview/mdreview.component';
 import { DecisiondetailsComponent, MdReviewLine } from 'src/app/member/UM/decisiondetails/decisiondetails.component';
-import { map } from 'rxjs/operators';    
+import { map } from 'rxjs/operators';
+import { MemberenrollmentService } from 'src/app/service/memberenrollment.service';
 
 const DECISION_STEP_INDEX = 1;
 const MD_REVIEW_STEP_INDEX = 2;
+interface LevelItem {
+  levelcode: string;
+  levelname: string;
+  levelsequence: number;
+  level_value_id: number;
+  level_value_code: string;
+  level_value_name: string;
+}
+
+interface MemberEnrollment {
+  MemberEnrollmentId: number;
+  MemberDetailsId: number;
+  StartDate: string; // ISO
+  EndDate: string;   // ISO
+  Status: boolean;
+  HierarchyPath: string;
+  LevelMap: string;  // JSON string
+  Levels: string;    // JSON string
+}
 
 @Component({
   selector: 'app-authorization',
@@ -40,7 +60,8 @@ export class AuthorizationComponent {
     private route: ActivatedRoute,
     private headerService: HeaderService,
     private authenticateService: AuthenticateService,
-    private router: Router
+    private router: Router,
+    private memberEnrollment: MemberenrollmentService
   ) { }
 
   highlightedSection: string | null = null;
@@ -101,6 +122,8 @@ export class AuthorizationComponent {
   dropdownPosition: { [key: string]: 'up' | 'down' } = {};
 
   decisionEnsureSignal = 0;
+  memberEnrollments: MemberEnrollment[] = [];
+
 
   //********** Method MD Review ************//
   mdReviewLines: MdReviewLine[] = [];
@@ -373,7 +396,7 @@ export class AuthorizationComponent {
     this.cancel.emit();
     this.memberService.setIsCollapse(false);
     this.showAuthorizationComponent = true;
-    
+
     //this.memberService.setShowAuthorization(false);
     //this.router.navigate(['/member-info', Number(id)]);
   }
@@ -399,7 +422,7 @@ export class AuthorizationComponent {
   ngOnInit(): void {
 
     this.loadPermissionsForAuthorization();
-    
+
     this.route.paramMap.subscribe(params => {
       this.newAuthNumber = params.get('authNo'); // Extract authNumber
       this.memberId = Number(params.get('memberId'));
@@ -429,7 +452,104 @@ export class AuthorizationComponent {
 
     this.loadAllUsers();
 
+    this.loadMemberEnrollment();
+  }
 
+  loadMemberEnrollment(): void {
+    this.memberEnrollment.getMemberEnrollment(2).subscribe(
+      (data) => {
+        console.log('Member Enrollment Data:', data);
+        if (data) {
+          this.setMemberEnrollments(data);
+        }
+      },
+      (error) => {
+        console.error('Error fetching member enrollment data:', error);
+      }
+    );
+  }
+
+  private setMemberEnrollments(data: MemberEnrollment[]) {
+    this.memberEnrollments = (data ?? []).map(d => ({
+      ...d,
+      // leave strings as-is; we'll parse on demand for safety
+    }));
+
+    // Default selection if any rows exist
+    if (this.memberEnrollments.length > 0) {
+      this.selectedDiv = 1;
+      this.enrollmentSelect = true; // you already condition on this in the rest of the page
+    }
+  }
+
+  /** Keep the selection behavior identical to your old selectDiv(n) */
+  selectEnrollment(i: number) {
+    this.selectedDiv = i + 1;
+    this.enrollmentSelect = true;
+
+    // If you need to stash the chosen enrollment for later sections, do it here:
+    // const chosen = this.memberEnrollments[i];
+    // this.selectedEnrollment = chosen;
+    // (Optionally) propagate LOB/Product/etc. downstream if needed.
+  }
+
+  /** Safely parse JSON fields and return ordered levels + dates for display */
+  getEnrollmentDisplayPairs(enr: MemberEnrollment): Array<{ label: string; value: string }> {
+    let levelMap: Record<string, string> = {};
+    let levels: LevelItem[] = [];
+
+    try {
+      levelMap = JSON.parse(enr.LevelMap || '{}');
+    } catch { levelMap = {}; }
+
+    try {
+      levels = JSON.parse(enr.Levels || '[]') as LevelItem[];
+    } catch { levels = []; }
+
+    // Sort by levelsequence if present; otherwise fall back to as-is
+    const orderedLevels = [...levels].sort((a, b) => {
+      const sa = (a?.levelsequence ?? 0);
+      const sb = (b?.levelsequence ?? 0);
+      return sa - sb;
+    });
+
+    // Build label/value pairs from ordered levels
+    const pairs: Array<{ label: string; value: string }> = [];
+
+    for (const lvl of orderedLevels) {
+      const code = (lvl.levelcode || '').trim();
+      // Prefer the friendly levelname for the label (e.g., "Product") but keep your compact style if you want:
+      const label = code || lvl.levelname || 'Level';
+
+      // Prefer the friendly level_value_name; fall back to LevelMap value, then code
+      const value =
+        (lvl.level_value_name?.trim?.() || '') ||
+        (levelMap[code] ?? '') ||
+        (lvl.level_value_code ?? '') ||
+        '';
+
+      if (label && value) {
+        pairs.push({ label, value });
+      }
+    }
+
+    // Dates (always last two lines, matching your layout)
+    const start = enr.StartDate ? this.formatDateMMDDYYYY(enr.StartDate) : '';
+    const end = enr.EndDate ? this.formatDateMMDDYYYY(enr.EndDate) : '';
+
+    if (start) pairs.push({ label: 'Start Date', value: start });
+    if (end) pairs.push({ label: 'End Date', value: end });
+
+    return pairs;
+  }
+
+  private formatDateMMDDYYYY(iso: string): string {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${mm}/${dd}/${yyyy}`;
   }
 
   // --- Call once you have the needed context (e.g., ngOnInit or after auth load) ---
@@ -524,7 +644,7 @@ export class AuthorizationComponent {
           }
 
           if (this.authDetailId) { this.loadMdReviewActivities(this.authDetailId); }
-           // this.loadMdReviewAvailability();
+          // this.loadMdReviewAvailability();
 
           if (authTemplateId) {
 
