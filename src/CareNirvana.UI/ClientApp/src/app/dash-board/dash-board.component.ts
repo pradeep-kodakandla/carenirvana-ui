@@ -7,6 +7,7 @@ import { AssignedcomplaintsComponent } from './assignedcomplaints/assignedcompla
 import { FaxesComponent } from './faxes/faxes.component';
 import { RolepermissionService, CfgRole } from 'src/app/service/rolepermission.service';
 import { MdreviewdashboardComponent } from './mdreviewdashboard/mdreviewdashboard.component';
+import { DashboardServiceService } from 'src/app/service/dashboard.service.service';
 
 interface DashboardWidget {
   key: string;
@@ -23,6 +24,15 @@ interface PermissionConfig {
   };
 }
 
+interface DashboardCounts {
+  MyMemberCount: number;
+  AuthCount: number;
+  RequestCount: number;
+  ComplaintCount: number;
+  FaxCount: number;
+  WQCount: number;
+  ActivityCount: number;
+}
 
 @Component({
   selector: 'app-dash-board',
@@ -35,15 +45,18 @@ export class DashBoardComponent {
 
   dashboardWidgets: any[] = [];
   defaultWidget: string = '';
+  dashboardCounts?: DashboardCounts;
 
-  //dashboardItems = [
-  //  { number: 65, text: 'My Case Load', icon: 'group' },
-  //  { number: 15, text: 'Authorizations', icon: 'check_circle' },
-  //  { number: 150, text: 'Requests', icon: 'assignment' },
-  //  { number: 70, text: 'My Activities', icon: 'event' },
-  //  { number: 0, text: 'Complaints', icon: 'feedback' },
-  //  { number: 10, text: 'Faxes', icon: 'fax' }
-  //];
+  // Mapping of widget keys to DashboardCounts properties
+  private widgetToProp: Record<string, keyof DashboardCounts> = {
+    myCaseLoad: 'MyMemberCount',
+    assignedAuthorizations: 'AuthCount',
+    requests: 'RequestCount',
+    myActivities: 'ActivityCount',
+    assignedComplaints: 'ComplaintCount',
+    faxes: 'FaxCount',
+    mdReview: 'WQCount'         // or change if MD Review should map differently
+  };
 
   /*Div Selection Style change logic*/
   selectedDiv: number | null = 1; // Track the selected div
@@ -53,7 +66,8 @@ export class DashBoardComponent {
     this.selectedDiv = index; // Set the selected div index
   }
 
-  constructor(private componentFactoryResolver: ComponentFactoryResolver, private roleService: RolepermissionService) {
+  constructor(private componentFactoryResolver: ComponentFactoryResolver, private roleService: RolepermissionService,
+    private dashboard: DashboardServiceService) {
   }
 
   @ViewChild('dynamicContainer', { read: ViewContainerRef }) dynamicContainer!: ViewContainerRef;
@@ -68,8 +82,27 @@ export class DashBoardComponent {
 
   ngOnInit(): void {
     // Replace with your actual source (from API/session storage etc.)
+    this.loadCounts();
     this.fetchRoleData(4);
+    //this.dashboard.getdashboardCounts(1).subscribe((data) => {
+    //  console.log('Counts', data);
+    //});
   }
+
+  private loadCounts(): void {
+    this.dashboard.getdashboardCounts(1)
+      .subscribe({
+        next: (res: DashboardCounts) => { this.dashboardCounts = res; },
+        error: (err) => { console.error('Failed to load dashboard counts', err); }
+      });
+  }
+
+  getCountForWidget(key: string): number {
+    if (!this.dashboardCounts) return 0;
+    const prop = this.widgetToProp[key];
+    return prop ? (this.dashboardCounts[prop] ?? 0) : 0;
+  }
+
 
   fetchRoleData(roleId: number) {
     this.roleService.getRoleById(roleId).subscribe((role: any) => {

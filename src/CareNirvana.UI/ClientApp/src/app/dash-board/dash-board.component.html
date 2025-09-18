@@ -8,13 +8,13 @@
            (click)="handleWidgetClick(i + 1, widget.key)">
         <div class="d-flex justify-content-between align-items-center div-secondary">
           <div style="padding-left:10px;">
-            <h1>0</h1> <!-- Replace 0 with actual dynamic count if needed -->
+            <h1>{{ getCountForWidget(widget.key) }}</h1> <!-- Replace 0 with actual dynamic count if needed -->
           </div>
           <div style="text-align:center;">
             {{ widget.customLabel }}
           </div>
           <div style="padding-right:10px;">
-            <mat-icon style="color: #007BFF;vertical-align:middle;" >{{ getIconForWidget(widget.key) }}</mat-icon>
+            <mat-icon style="color: #007BFF;vertical-align:middle;">{{ getIconForWidget(widget.key) }}</mat-icon>
           </div>
         </div>
         <!--<mat-divider class="divider" [class.selected-divider]="defaultWidget === widget.key"></mat-divider>-->
