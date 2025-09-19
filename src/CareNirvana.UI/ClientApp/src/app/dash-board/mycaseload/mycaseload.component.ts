@@ -5,6 +5,7 @@ import { MatTableDataSource } from '@angular/material/table';
 import { MatTable } from '@angular/material/table';
 import { HeaderService } from 'src/app/service/header.service';
 import { Router } from '@angular/router';
+import { DashboardServiceService } from 'src/app/service/dashboard.service.service';
 
 @Component({
   selector: 'app-mycaseload',
@@ -15,7 +16,8 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
   constructor(
     private headerService: HeaderService,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private dashboard: DashboardServiceService
   ) { }
 
   // View mode toggle
@@ -75,68 +77,42 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
 
   ngOnInit(): void {
 
-    const testMembers = Array.from({ length: 50 }).map((_, i) => ({
-      memberId: (10000 + i).toString(),
-      firstName: 'Test',
-      lastName: 'User ' + (i + 1),
-      dob: `01-0${((i % 9) + 1)}-198${i % 10}`,
-      risk: ['Low', 'Medium', 'High'][i % 3],
-      authCount: i % 5,
-      activityCount: i % 7,
-      carePlanCount: i % 4,
-      contactOverdue: i % 6 === 0,
-      programName: 'Program ' + (i % 4),
-      nextContact: `06-0${((i % 9) + 1)}-2025`,
-      lastContact: `05-0${((i % 9) + 1)}-2025`
-    }));
-    //const testMembers = [
-    //  {
-    //    memberId: '10000',
-    //    firstName: 'Test',
-    //    lastName: 'User 0',
-    //    dob: '01-01-1980',
-    //    risk: 'High',
-    //    authCount: 2,
-    //    activityCount: 3,
-    //    carePlanCount: 1,
-    //    contactOverdue: false,
-    //    programName: 'Program A',
-    //    nextContact: '06-01-2025',
-    //    lastContact: '05-01-2025'
-    //  },
-    //  {
-    //    memberId: '10001',
-    //    firstName: 'Test',
-    //    lastName: 'User 1',
-    //    dob: '01-01-1980',
-    //    risk: 'High',
-    //    authCount: 2,
-    //    activityCount: 3,
-    //    carePlanCount: 1,
-    //    contactOverdue: false,
-    //    programName: 'Program A',
-    //    nextContact: '06-01-2025',
-    //    lastContact: '05-01-2025'
-    //  },
-    //  {
-    //    memberId: '10002',
-    //    firstName: 'Test',
-    //    lastName: 'User 2',
-    //    dob: '02-02-1985',
-    //    risk: 'Low',
-    //    authCount: 1,
-    //    activityCount: 2,
-    //    carePlanCount: 0,
-    //    contactOverdue: true,
-    //    programName: 'Program B',
-    //    nextContact: '06-02-2025',
-    //    lastContact: '05-02-2025'
-    //  }
-    //];
+    //const testMembers = Array.from({ length: 50 }).map((_, i) => ({
+    //  memberId: (10000 + i).toString(),
+    //  firstName: 'Test',
+    //  lastName: 'User ' + (i + 1),
+    //  dob: `01-0${((i % 9) + 1)}-198${i % 10}`,
+    //  risk: ['Low', 'Medium', 'High'][i % 3],
+    //  authCount: i % 5,
+    //  activityCount: i % 7,
+    //  carePlanCount: i % 4,
+    //  contactOverdue: i % 6 === 0,
+    //  programName: 'Program ' + (i % 4),
+    //  nextContact: `06-0${((i % 9) + 1)}-2025`,
+    //  lastContact: `05-0${((i % 9) + 1)}-2025`
+    //}));
 
-    this.loadMembers(testMembers);
+    
+  //  this.loadMembers(testMembers);
     this.diagnosisOptions.forEach(d => this.diagnosisSelection[d] = false);
     this.qualityOptions.forEach(q => this.qualitySelection[q] = false);
+    this.dashboard.getmembersummary(1).subscribe((data) => {
+      console.log('Member Summary', data);
+      if (data && Array.isArray(data)) {
+        
+        this.loadMembers(data);
+      } 
+    }, error => {
+      console.error('Error fetching member summary', error);
+    });
+  }
+
+  getProduct(levelMap: unknown): string {
+    if (!levelMap) return '';
+    try {
+      const obj = typeof levelMap === 'string' ? JSON.parse(levelMap) : levelMap as any;
+      return obj?.PRODUCT ?? '';
+    } catch { return ''; }
   }
 
   ngAfterViewInit(): void {
