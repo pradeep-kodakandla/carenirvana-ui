@@ -192,7 +192,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
 
       { path: 'counter', component: CounterComponent },
       { path: 'fetch-data', component: FetchDataComponent },
-      { path: 'dash-board', component: DashBoardComponent },
+      { path: 'dashboard', component: DashBoardComponent },
       { path: 'header', component: HeaderComponent },
       { path: 'footer', component: FooterComponent },
       {

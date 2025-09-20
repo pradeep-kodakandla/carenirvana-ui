@@ -175,3 +175,74 @@ tr.example-element-row:not(.example-expanded-row):active {
   border: 1px solid #e6ebf2;
   overflow: hidden;
 }
+
+
+
+.filter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  fill: #007BFF;
+}
+
+
+.filters-col .filters-title {
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.chip-list {
+  gap: 8px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  border-radius: 9999px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  padding: 5px;
+  line-height: 1;
+  color: #374151;
+  cursor: pointer;
+}
+
+  .pill.active {
+    box-shadow: 0 0 0 2px #c7d2fe inset;
+  }
+
+  .pill .count {
+    margin-left: 4px;
+    padding: 2px 8px;
+    background: #f3f4f6;
+    border-radius: 9999px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+}
+
+  .dot.red {
+    background: #dc3545;
+  }
+
+  .dot.amber {
+    background: #f59e0b;
+  }
+
+  .dot.green {
+    background: #10b981;
+  }

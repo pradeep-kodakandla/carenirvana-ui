@@ -23,7 +23,7 @@ export class HeaderService {
     // ✅ If no tabs remain, redirect to the dashboard
     if (this.dynamicTabs.length === 0) {
       this.selectedTabRoute = null;
-      this.router.navigate(['/dash-board']); // Redirect to dashboard
+      this.router.navigate(['/dashboard']); // Redirect to dashboard
     } else {
       // ✅ If tabs exist, select the first one
       this.selectedTabRoute = this.dynamicTabs[0].route;

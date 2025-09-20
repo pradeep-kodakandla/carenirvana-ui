@@ -1,9 +1,38 @@
-import { Component, ViewChild } from '@angular/core';
+import { Component, ViewChild, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
-import { MatMenuTrigger } from '@angular/material/menu';
+import { FormBuilder, FormGroup } from '@angular/forms';
+import { DashboardServiceService } from 'src/app/service/dashboard.service.service';
+
+type DueChip = 'OVERDUE' | 'TODAY' | 'FUTURE' | null;
+export interface AuthDetailRow {
+  authNumber: string;
+  authStatus?: number | string | null;
+  authStatusValue?: string | null;
+  templateName?: string | null;         // Auth Type
+  authClassValue?: string | null;
+  memberId: number;
+
+  nextReviewDate?: string | Date | null;
+  authDueDate?: string | Date | null;
+
+  createdOn?: string | Date;
+  createdBy?: number;
+  createdUser?: string | null;
+  updatedOn?: string | Date | null;
+  updatedBy?: number | null;
+
+  treatmentType?: string | null;        // raw id/text
+  treatmentTypeValue?: string | null;   // display
+  authPriority?: string | null;         // raw id/text
+  requestPriorityValue?: string | null; // display
+  serviceFromDate?: string | Date; // if you have
+  serviceToDate?: string | Date;   // if you have
+  provider?: string;               // if you have
+  providerSpecialty?: string;      // if you have
+}
 
 @Component({
   selector: 'app-assignedauths',
@@ -11,199 +40,289 @@ import { MatMenuTrigger } from '@angular/material/menu';
   templateUrl: './assignedauths.component.html',
   styleUrl: './assignedauths.component.css'
 })
-export class AssignedauthsComponent {
+export class AssignedauthsComponent implements OnInit {
 
-  selectedDiv: number | null = 1; // Track the selected div
+  filtersForm!: FormGroup;
+  showFilters = false;
+  dueChip: DueChip = null; // 'OVERDUE' | 'TODAY' | 'FUTURE'
+  quickSearch = '';
 
-  // Method to select a div and clear others
-  selectDiv(index: number) {
-    this.selectedDiv = index; // Set the selected div index
-  }
-  /*Div Selection Style change logic*/
-  displayedColumns: string[] = ['enrollmentStatus', 'memberId', 'firstName', 'lastName', 'DOB', 'risk', 'nextContact', 'assignedDate', 'programName', 'description'];
-  columnsToDisplayWithExpand = [...this.displayedColumns, 'expand'];
+  displayedColumns: string[] = [
+    'actions',
+    'memberId',
+    'authNumber',
+    'authType',
+    'authDueDate',
+    'nextReviewDate',
+    'treatmentType',
+    'priority',
+    // 'authStatusValue' // uncomment if you want to show status
+  ];
 
-
-  dataSource: MatTableDataSource<UserData>;
-  expandedElement!: UserData | null;
-
+  dataSource = new MatTableDataSource<AuthDetailRow>([]);
+  expandedElement: AuthDetailRow | null = null;
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
-  loadPage(page: string) {
-    // Use Angular Router to navigate based on the page selection
-    // Assuming router has been injected in constructor
-    this.router.navigate([page]);
+  constructor(
+    private authService: DashboardServiceService,
+    private router: Router,
+    private fb: FormBuilder
+  ) { }
+
+  ngOnInit(): void {
+    this.filtersForm = this.fb.group({
+      authType: [''],
+      treatmentType: [''],
+      authPriority: [''],
+      authStatus: [''],
+      serviceFromDate: [null],
+      serviceToDate: [null],
+      createdFrom: [null],
+      createdTo: [null],
+      provider: [''],
+      providerSpecialty: [''],
+      authDueFrom: [null],
+      authDueTo: [null]
+    });
+    this.loadData();
+    this.setupFilterPredicate();
   }
 
-  constructor(private router: Router) {
-    // Create 100 users
-    const users = Array.from({ length: 100 }, (_, k) => createNewUser(k + 1));
+  private loadData(): void {
+    this.authService.getauthdetails(1).subscribe({
+      next: (data: any[]) => {
+        const rows = (data ?? []).map(this.normalizeRow);
+        this.dataSource.data = rows;
+        // Hook up paginator/sort after data is set
+        Promise.resolve().then(() => {
+          this.dataSource.paginator = this.paginator;
+          this.dataSource.sort = this.sort;
+        });
+      },
+      error: (err) => {
+        console.error('Failed to load auth details', err);
+        this.dataSource.data = [];
+      }
+    });
 
-    // Assign the data to the data source for the table to render
-    this.dataSource = new MatTableDataSource(users);
+    // Powerful combined filtering
+    this.dataSource.filterPredicate = (row, filterJson) => {
+      const f = JSON.parse(filterJson) as {
+        q: string;
+        authType: string;
+        treatmentType: string;
+        authPriority: string;
+        authStatus: string;
+        serviceFromDate: string | null;
+        serviceToDate: string | null;
+        createdFrom: string | null;
+        createdTo: string | null;
+        provider: string;
+        providerSpecialty: string;
+        authDueFrom: string | null;
+        authDueTo: string | null;
+        dueChip: DueChip;
+      };
+
+      // 0) Normalize dates
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const dAuthDue = row.authDueDate ? new Date(row.authDueDate) : null;
+      if (dAuthDue) dAuthDue.setHours(0, 0, 0, 0);
+
+      // 1) Due chip logic (Auth Due Date)
+      if (f.dueChip) {
+        if (!dAuthDue) return false;
+        if (f.dueChip === 'OVERDUE' && !(dAuthDue.getTime() < today.getTime())) return false;
+        if (f.dueChip === 'TODAY' && !(dAuthDue.getTime() === today.getTime())) return false;
+        if (f.dueChip === 'FUTURE' && !(dAuthDue.getTime() > today.getTime())) return false;
+      }
+
+      // 2) Quick text search (auth #, member id, type, status, provider…)
+      const hay = [
+        row.authNumber, row.memberId?.toString(),
+        row.templateName, row.treatmentTypeValue, row.treatmentType,
+        row.requestPriorityValue, row.authPriority,
+        row.authStatusValue, row.authStatus,
+        row.provider, row.providerSpecialty
+      ].filter(Boolean).join(' ').toLowerCase();
+      if (f.q && !hay.includes(f.q.toLowerCase())) return false;
+
+      // 3) Exact/contains filters
+      const contains = (val: any, needle: string) =>
+        !needle || (val ?? '').toString().toLowerCase().includes(needle.toLowerCase());
+
+      if (!contains(row.templateName, f.authType)) return false;
+      if (!contains(row.treatmentTypeValue ?? row.treatmentType, f.treatmentType)) return false;
+      if (!contains(row.requestPriorityValue ?? row.authPriority, f.authPriority)) return false;
+      if (!contains(row.authStatusValue ?? row.authStatus, f.authStatus)) return false;
+      if (!contains(row.provider, f.provider)) return false;
+      if (!contains(row.providerSpecialty, f.providerSpecialty)) return false;
+
+      // 4) Date range filters
+      const inRange = (d: Date | null, fromStr: string | null, toStr: string | null) => {
+        if (!d) return true; // if row has no date, do not exclude on range
+        const dd = new Date(d); dd.setHours(0, 0, 0, 0);
+        if (fromStr) {
+          const from = new Date(fromStr); from.setHours(0, 0, 0, 0);
+          if (dd < from) return false;
+        }
+        if (toStr) {
+          const to = new Date(toStr); to.setHours(0, 0, 0, 0);
+          if (dd > to) return false;
+        }
+        return true;
+      };
+
+      // Service date range
+      const dSvcFrom = row.serviceFromDate ? new Date(row.serviceFromDate) : null;
+      const dSvcTo = row.serviceToDate ? new Date(row.serviceToDate) : null;
+      // For services we check both ends if you store them; otherwise omit
+      if (f.serviceFromDate || f.serviceToDate) {
+        // if you only have one service date, just pass that one to inRange
+        if (!inRange(dSvcFrom, f.serviceFromDate, f.serviceToDate)) return false;
+        if (!inRange(dSvcTo, f.serviceFromDate, f.serviceToDate)) return false;
+      }
+
+      // CreatedOn range
+      const dCreated = row.createdOn ? new Date(row.createdOn) : null;
+      if (!inRange(dCreated, f.createdFrom, f.createdTo)) return false;
+
+      // Auth Due range (explicit)
+      if (!inRange(dAuthDue, f.authDueFrom, f.authDueTo)) return false;
+
+      return true;
+    };
   }
 
-  ngAfterViewInit() {
-    this.dataSource.paginator = this.paginator;
-    this.dataSource.sort = this.sort;
+  // Normalize PascalCase or camelCase payloads to our interface
+  private normalizeRow = (r: any): AuthDetailRow => ({
+    authNumber: r.authNumber ?? r.AuthNumber ?? '',
+    authStatus: r.authStatus ?? r.AuthStatus ?? null,
+    authStatusValue: r.authStatusValue ?? r.AuthStatusValue ?? null,
+    templateName: r.templateName ?? r.TemplateName ?? null,
+    authClassValue: r.authClassValue ?? r.AuthClassValue ?? null,
+    memberId: r.memberId ?? r.MemberId ?? 0,
+
+    nextReviewDate: r.nextReviewDate ?? r.NextReviewDate ?? null,
+    authDueDate: r.authDueDate ?? r.AuthDueDate ?? null,
+
+    createdOn: r.createdOn ?? r.CreatedOn,
+    createdBy: r.createdBy ?? r.CreatedBy,
+    createdUser: r.createdUser ?? r.CreatedUser ?? null,
+    updatedOn: r.updatedOn ?? r.UpdatedOn ?? null,
+    updatedBy: r.updatedBy ?? r.UpdatedBy ?? null,
+
+    treatmentType: r.treatmentType ?? r.TreatmentType ?? null,
+    treatmentTypeValue: r.treatmentTypeValue ?? r.TreatmentTypeValue ?? null,
+    authPriority: r.authPriority ?? r.AuthPriority ?? null,
+    requestPriorityValue: r.requestPriorityValue ?? r.RequestPriorityValue ?? null
+  });
+
+  private setupFilterPredicate(): void {
+    this.dataSource.filterPredicate = (row: AuthDetailRow, term: string) => {
+      const t = (term || '').trim().toLowerCase();
+      if (!t) return true;
+      return [
+        row.authNumber,
+        row.templateName,
+        row.treatmentTypeValue,
+        row.requestPriorityValue,
+        row.authStatusValue,
+        row.memberId?.toString(),
+        this.toDateStr(row.authDueDate),
+        this.toDateStr(row.nextReviewDate),
+      ]
+        .filter(Boolean)
+        .some(v => (v + '').toLowerCase().includes(t));
+    };
   }
 
-  applyFilter(event: Event) {
-    const filterValue = (event.target as HTMLInputElement).value;
-    this.dataSource.filter = filterValue.trim().toLowerCase();
-
-    if (this.dataSource.paginator) {
-      this.dataSource.paginator.firstPage();
-    }
+  applyFilter(ev: Event): void {
+    const value = (ev.target as HTMLInputElement)?.value ?? '';
+    this.dataSource.filter = value.trim().toLowerCase();
+    if (this.dataSource.paginator) this.dataSource.paginator.firstPage();
   }
 
-  goToPage(memberId: string) {
+  goToPage(memberId: number): void {
+    if (!memberId) return;
+    // Adjust route as needed to open your Authorization view
     this.router.navigate(['/member-info', memberId]);
   }
 
-  /*Table Context Menu*/
-  @ViewChild(MatMenuTrigger)
-  contextMenu!: MatMenuTrigger;
-
-  contextMenuPosition = { x: '0px', y: '0px' };
-
-  onContextMenu(event: MouseEvent, item: UserData) {
-    event.preventDefault();
-    this.contextMenuPosition.x = event.clientX + 'px';
-    this.contextMenuPosition.y = event.clientY + 'px';
-    this.contextMenu.menuData = { 'item': item };
-    this.contextMenu.menu!.focusFirstItem('mouse');
-    this.contextMenu.openMenu();
+  private toDateStr(d?: string | Date | null): string {
+    if (!d) return '';
+    try {
+      const dt = typeof d === 'string' ? new Date(d) : d;
+      if (isNaN(dt as any)) return '';
+      // mm/dd/yyyy
+      return `${(dt.getMonth() + 1).toString().padStart(2, '0')}/` +
+        `${dt.getDate().toString().padStart(2, '0')}/` +
+        `${dt.getFullYear()}`;
+    } catch { return ''; }
   }
 
-  onContextMenuAction1(item: UserData) {
-    alert(`Click on Action 1 for ${item.enrollmentStatus}`);
+  // ——— UI actions ———
+  toggleFilters(): void {
+    this.showFilters = !this.showFilters;
   }
 
-  onContextMenuAction2(item: UserData) {
-    alert(`Click on Action 2 for ${item.enrollmentStatus}`);
+  onQuickSearch(ev: Event): void {
+    const val = (ev.target as HTMLInputElement).value || '';
+    this.quickSearch = val;
+    this.pushFilter();
   }
 
+  setDueChip(chip: DueChip): void {
+    this.dueChip = (this.dueChip === chip) ? null : chip; // toggle off if clicking again
+    this.pushFilter();
+  }
 
-  items = [
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    }
-  ];
+  resetFilters(): void {
+    this.filtersForm.reset({
+      authType: '',
+      treatmentType: '',
+      authPriority: '',
+      authStatus: '',
+      serviceFromDate: null,
+      serviceToDate: null,
+      createdFrom: null,
+      createdTo: null,
+      provider: '',
+      providerSpecialty: '',
+      authDueFrom: null,
+      authDueTo: null
+    });
+    this.dueChip = null;
+    this.quickSearch = '';
+    this.pushFilter();
+  }
 
+  applyAdvancedFilters(): void {
+    this.pushFilter();
+  }
+
+  // Push the aggregate filter model into MatTableDataSource
+  private pushFilter(): void {
+    const f = this.filtersForm.value;
+    const filterModel = {
+      q: this.quickSearch || '',
+      authType: f.authType || '',
+      treatmentType: f.treatmentType || '',
+      authPriority: f.authPriority || '',
+      authStatus: f.authStatus || '',
+      serviceFromDate: f.serviceFromDate ? new Date(f.serviceFromDate).toISOString() : null,
+      serviceToDate: f.serviceToDate ? new Date(f.serviceToDate).toISOString() : null,
+      createdFrom: f.createdFrom ? new Date(f.createdFrom).toISOString() : null,
+      createdTo: f.createdTo ? new Date(f.createdTo).toISOString() : null,
+      provider: f.provider || '',
+      providerSpecialty: f.providerSpecialty || '',
+      authDueFrom: f.authDueFrom ? new Date(f.authDueFrom).toISOString() : null,
+      authDueTo: f.authDueTo ? new Date(f.authDueTo).toISOString() : null,
+      dueChip: this.dueChip as DueChip
+    };
+    this.dataSource.filter = JSON.stringify(filterModel);
+    if (this.dataSource.paginator) this.dataSource.paginator.firstPage();
+  }
 }
-/** Builds and returns a new User. */
-export function createNewUser(id: number): UserData {
-  const name =
-    NAMES[Math.round(Math.random() * (NAMES.length - 1))];
-
-  return {
-    enrollmentStatus: 'Active',
-    firstName: name,
-    memberId: NUMS[Math.round(Math.random() * (NUMS.length - 1))], /*(100 * 100).toString(),*/
-    lastName: FRUITS[Math.round(Math.random() * (FRUITS.length - 1))],
-    DOB: '09/14/2024',
-    risk: 'Low',
-    nextContact: '09/14/2024',
-    assignedDate: '09/14/2024',
-    programName: 'Care Management',
-    description: 'I am a good boy - I dont have any health issues'
-  };
-}
-export interface UserData {
-  enrollmentStatus: string;
-  memberId: string;
-  firstName: string;
-  lastName: string;
-  DOB: string;
-  risk: string;
-  nextContact: string;
-  assignedDate: string;
-  programName: string;
-  description: string;
-}
-
-/** Constants used to fill up our data base. */
-const FRUITS: string[] = [
-  'blueberry',
-  'lychee',
-  'kiwi',
-  'mango',
-  'peach',
-  'lime',
-  'pomegranate',
-  'pineapple',
-];
-const NUMS: string[] = [
-  '10000',
-  '10001',
-  '10003',
-  '10004',
-  '10005',
-  '10006',
-  '10007',
-  '10008',
-  '10009',
-  '10010',
-];
-
-const NAMES: string[] = [
-  'Pradeep',
-  'Pawan',
-  'Sridhar',
-  'Rohitha',
-  'Paavana',
-  'Jack',
-  'Charlotte',
-  'Theodore',
-  'Isla',
-  'Oliver',
-  'Isabella',
-  'Jasper',
-  'Cora',
-  'Levi',
-  'Violet',
-  'Arthur',
-  'Mia',
-  'Thomas',
-  'Elizabeth',
-];

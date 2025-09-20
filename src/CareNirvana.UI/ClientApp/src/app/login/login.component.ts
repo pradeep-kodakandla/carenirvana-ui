@@ -42,7 +42,7 @@ export class LoginComponent implements OnInit {
       this.authService.login(username, encryptedPassword).subscribe({
         next: (response) => {
           sessionStorage.setItem('loggedInUsername', username);
-          this.router.navigate(['dash-board']);
+          this.router.navigate(['dashboard']);
         },
         error: (err) => {
           console.error('Login failed:', err);
