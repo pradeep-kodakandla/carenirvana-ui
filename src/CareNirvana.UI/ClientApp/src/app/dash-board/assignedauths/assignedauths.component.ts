@@ -5,6 +5,7 @@ import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { DashboardServiceService } from 'src/app/service/dashboard.service.service';
+import { HeaderService } from 'src/app/service/header.service';
 
 type DueChip = 'OVERDUE' | 'TODAY' | 'FUTURE' | null;
 export interface AuthDetailRow {
@@ -32,6 +33,7 @@ export interface AuthDetailRow {
   serviceToDate?: string | Date;   // if you have
   provider?: string;               // if you have
   providerSpecialty?: string;      // if you have
+  memberName?: string;          // if you have
 }
 
 @Component({
@@ -61,6 +63,11 @@ export class AssignedauthsComponent implements OnInit {
 
   dataSource = new MatTableDataSource<AuthDetailRow>([]);
   expandedElement: AuthDetailRow | null = null;
+  allRows: AuthDetailRow[] = [];
+
+  overdueCount = 0;
+  dueTodayCount = 0;
+  dueFutureCount = 0;
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -68,7 +75,8 @@ export class AssignedauthsComponent implements OnInit {
   constructor(
     private authService: DashboardServiceService,
     private router: Router,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    private headerService: HeaderService
   ) { }
 
   ngOnInit(): void {
@@ -94,7 +102,10 @@ export class AssignedauthsComponent implements OnInit {
     this.authService.getauthdetails(1).subscribe({
       next: (data: any[]) => {
         const rows = (data ?? []).map(this.normalizeRow);
+        console.log('Loaded auth details', rows);
         this.dataSource.data = rows;
+        this.allRows = rows;
+        this.recountDueBuckets(this.allRows);
         // Hook up paginator/sort after data is set
         Promise.resolve().then(() => {
           this.dataSource.paginator = this.paginator;
@@ -217,7 +228,8 @@ export class AssignedauthsComponent implements OnInit {
     treatmentType: r.treatmentType ?? r.TreatmentType ?? null,
     treatmentTypeValue: r.treatmentTypeValue ?? r.TreatmentTypeValue ?? null,
     authPriority: r.authPriority ?? r.AuthPriority ?? null,
-    requestPriorityValue: r.requestPriorityValue ?? r.RequestPriorityValue ?? null
+    requestPriorityValue: r.requestPriorityValue ?? r.RequestPriorityValue ?? null,
+    memberName: r.memberName ?? r.MemberName ?? null
   });
 
   private setupFilterPredicate(): void {
@@ -275,6 +287,7 @@ export class AssignedauthsComponent implements OnInit {
   }
 
   setDueChip(chip: DueChip): void {
+
     this.dueChip = (this.dueChip === chip) ? null : chip; // toggle off if clicking again
     this.pushFilter();
   }
@@ -325,4 +338,81 @@ export class AssignedauthsComponent implements OnInit {
     this.dataSource.filter = JSON.stringify(filterModel);
     if (this.dataSource.paginator) this.dataSource.paginator.firstPage();
   }
+
+  private recountDueBuckets(rows: AuthDetailRow[]): void {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+
+    let over = 0, todayCnt = 0, future = 0;
+
+    for (const r of rows) {
+      if (!r.authDueDate) continue;
+      const d = new Date(r.authDueDate);
+      d.setHours(0, 0, 0, 0);
+
+      if (d.getTime() < today.getTime()) over++;
+      else if (d.getTime() === today.getTime()) todayCnt++;
+      else future++;
+    }
+
+    this.overdueCount = over;
+    this.dueTodayCount = todayCnt;
+    this.dueFutureCount = future;
+  }
+
+  onMemberClick(memberId: string, memberName: string): void {
+    const tabLabel = `Member: ${memberName}`;
+    const tabRoute = `/member-info/${memberId}`;
+
+    const existingTab = this.headerService.getTabs().find(tab => tab.route === tabRoute);
+
+    if (existingTab) {
+      this.headerService.selectTab(tabRoute);
+      this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+        this.router.navigate([tabRoute]);
+      });
+    } else {
+      this.headerService.addTab(tabLabel, tabRoute, memberId);
+      this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+        this.router.navigate([tabRoute]);
+      });
+    }
+  }
+
+  getDueDateClass(dateValue: any): string {
+    if (!dateValue) return '';
+    const today = new Date();
+    const dueDate = new Date(dateValue);
+
+    // Normalize (ignore time part)
+    today.setHours(0, 0, 0, 0);
+    dueDate.setHours(0, 0, 0, 0);
+
+    if (dueDate.getTime() < today.getTime()) {
+      return 'due-red';     // overdue
+    } else if (dueDate.getTime() === today.getTime()) {
+      return 'due-orange';  // due today
+    } else {
+      return 'due-green';   // future
+    }
+  }
+
+  getDaysLeftLabel(dateValue: any): string {
+    if (!dateValue) return '';
+
+    const today = new Date();
+    const due = new Date(dateValue);
+
+    // Strip time parts to avoid off-by-one issues
+    today.setHours(0, 0, 0, 0);
+    due.setHours(0, 0, 0, 0);
+
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const diff = Math.round((due.getTime() - today.getTime()) / msPerDay); // positive = days left
+
+    if (diff === 0) return 'Due today';
+    if (diff > 0) return `${diff} day${diff === 1 ? '' : 's'} left`;
+    const overdue = Math.abs(diff);
+    return `${overdue} day${overdue === 1 ? '' : 's'} overdue`;
+  }
+
 }
