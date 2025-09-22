@@ -1,37 +1,70 @@
 <mat-menu #menu="matMenu">
-  <button mat-menu-item>
-    <span>Add Activity</span>
-  </button>
-  <button mat-menu-item disabled>
-    <span>Run Assessment</span>
-  </button>
-  <button mat-menu-item>
-    <!--<mat-icon>notifications_off</mat-icon>-->
-    <span>Messages</span>
-  </button>
-  <button mat-menu-item>
-    <span>Add Notes</span>
-  </button>
-  <button mat-menu-item disabled>
-    <span>Send Letter</span>
-  </button>
-  <button mat-menu-item>
-    <!--<mat-icon>notifications_off</mat-icon>-->
-    <span>Unassign</span>
-  </button>
-  <button mat-menu-item>
-    <!--<mat-icon>notifications_off</mat-icon>-->
-    <span>Summary</span>
-  </button>
+  <button mat-menu-item><span>Add Activity</span></button>
+  <button mat-menu-item disabled><span>Run Assessment</span></button>
+  <button mat-menu-item><span>Messages</span></button>
+  <button mat-menu-item><span>Add Notes</span></button>
+  <button mat-menu-item disabled><span>Send Letter</span></button>
+  <button mat-menu-item><span>Unassign</span></button>
+  <button mat-menu-item><span>Summary</span></button>
 </mat-menu>
 
 <mat-drawer-container class="sidenav-container" autosize>
   <mat-drawer-content mode="side" opened>
 
-    <div class="search-section">
-      <input type="text" placeholder="🔍 Search..." (input)="applyFilter($event)" class="search-input" #input />
+    <!-- Top bar: search + filter toggle + due chips (mirrors AssignedAuths) -->
+    <div class="top-bar" style="display:flex;align-items:center;gap:10px;margin:8px 0;">
+      <div class="search-section" style="display:flex;align-items:center;gap:8px;flex:1;">
+        <input type="text"
+               placeholder="🔍 Search activities…"
+               (input)="onQuickSearch($event)"
+               class="search-input"
+               style="flex:1; padding:10px 12px; border:1px solid #e1e5ea; border-radius:10px; outline:none;" />
+        <button class="filter-btn"
+                type="button"
+                (click)="toggleFilters()"
+                title="Filters">
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 5h18v2l-7 7v5l-4 2v-7L3 7z"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="filters-col">
+        <div class="chip-list">
+          <button type="button" class="pill red" [class.active]="dueChip==='OVERDUE'" (click)="setDueChip('OVERDUE')">
+            <span class="dot red"></span> Over Due
+            <span class="count">{{ overdueCount  }}</span>
+          </button>
+          <button type="button" class="pill amber" [class.active]="dueChip==='TODAY'" (click)="setDueChip('TODAY')">
+            <span class="dot amber"></span> Due today
+            <span class="count">{{ dueTodayCount  }}</span>
+          </button>
+          <button type="button" class="pill green" [class.active]="dueChip==='FUTURE'" (click)="setDueChip('FUTURE')">
+            <span class="dot green"></span> Due in future
+            <span class="count">{{ dueFutureCount }}</span>
+          </button>
+        </div>
+      </div>
     </div>
 
+    <!-- Filters panel (keep grid empty by request) -->
+    <section class="filters-wrapper" *ngIf="showFilters" style="margin:8px 0;">
+      <form [formGroup]="filtersForm" class="filters-panel"
+            style="border:1px solid #e1e5ea;border-radius:12px;padding:12px;background:#fff;">
+        <div class="filters-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <h3 style="margin:0;font-weight:600;">Filters</h3>
+          <div style="display:flex;gap:8px;">
+            <button type="button" (click)="toggleFilters()" class="close-btn"
+                    style="border:0;border-radius:10px;padding:6px 12px;background:#6b7280;color:#fff;cursor:pointer;">
+              Close
+            </button>
+          </div>
+        </div>
+
+        <!-- Empty grid placeholder to match layout patterns -->
+        <div class="filters-grid" style="min-height:24px;"></div>
+      </form>
+    </section>
 
     <mat-drawer-container class="sidenav-container" autosize>
       <mat-drawer-content mode="side" opened>
@@ -40,75 +73,80 @@
                  multiTemplateDataRows
                  class="mat-elevation-z1 full-width-table pro-table mng-table">
 
-            <ng-container matColumnDef="enrollmentStatus">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Module  </th>
+            <!-- Module -->
+            <ng-container matColumnDef="module">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Module</th>
               <td mat-cell *matCellDef="let row">
                 <div class="status-cell">
-                  <button mat-icon-button [matMenuTriggerFor]="menu">
-                    <mat-icon>list</mat-icon>
-                  </button>
-                  CM
+                  {{ row.Module || '-' }}
                 </div>
-
               </td>
             </ng-container>
 
-            <ng-container matColumnDef="memberId">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Member ID </th>
+            <!-- Member (FirstName LastName + ID) -->
+            <ng-container matColumnDef="member">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Member</th>
               <td mat-cell *matCellDef="let row">
-                <div class="example-element-weight">
-                  <a mat-button (click)="goToPage(row.memberId)">{{row.memberId}}</a>
+                <div class="name-cell">
+                  <div class="sub-name">
+                    <a href="#" (click)="onMemberClick(row.MemberId, (row.FirstName || '') + ' ' + (row.LastName || '')); $event.preventDefault()">
+                      {{ (row.FirstName || '') + ' ' + (row.LastName || '') }}
+                    </a>
+                  </div>
+                  <div class="sub-id">ID: {{ row.MemberId }}</div>
                 </div>
               </td>
             </ng-container>
 
-            <ng-container matColumnDef="firstName">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> First Name </th>
-              <td mat-cell *matCellDef="let row"> {{row.firstName}} </td>
+            <!-- Created On -->
+            <ng-container matColumnDef="createdOn">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Created On</th>
+              <td mat-cell *matCellDef="let row">{{ row.CreatedOn | date:'MM/dd/yyyy HH:mm:ss' }}</td>
             </ng-container>
 
-            <ng-container matColumnDef="lastName">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Last Name </th>
-              <td mat-cell *matCellDef="let row"> {{row.lastName}} </td>
+            <!-- Refer To (username + id) -->
+            <ng-container matColumnDef="referredTo">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Refer To</th>
+              <td mat-cell *matCellDef="let row">
+                <div>{{ row.UserName || '-' }}</div>
+                <!--<div style="font-size:12px;color:#6b7280;">ID: {{ row.ReferredTo }}</div>-->
+              </td>
             </ng-container>
 
-            <ng-container matColumnDef="DOB">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Refer Date </th>
-              <td mat-cell *matCellDef="let row"> {{row.DOB}} </td>
+            <!-- Activity Type -->
+            <ng-container matColumnDef="activityType">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Activity Type</th>
+              <td mat-cell *matCellDef="let row">{{ row.ActivityType || '-' }}</td>
             </ng-container>
 
-            <ng-container matColumnDef="risk">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Refer By </th>
-              <td mat-cell *matCellDef="let row"> {{row.risk}} </td>
+            <!-- Follow Up Date -->
+            <ng-container matColumnDef="followUpDate">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Follow Up Date</th>
+              <td mat-cell *matCellDef="let row">{{ row.FollowUpDateTime | date:'MM/dd/yyyy HH:mm:ss' }}</td>
             </ng-container>
 
-            <ng-container matColumnDef="nextContact">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Refer To </th>
-              <td mat-cell *matCellDef="let row"> {{row.nextContact}} </td>
+            <!-- Due Date with colors + days-left -->
+            <ng-container matColumnDef="dueDate">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Due Date</th>
+              <td mat-cell *matCellDef="let row">
+                <span class="risk-chip compact" [ngClass]="getDueDateClass(row.DueDate)">
+                  <div class="date-value">
+                    {{ row.DueDate | date:'MM/dd/yyyy HH:mm:ss' }}
+                  </div>
+                  <div class="days-left">
+                    {{ getDaysLeftLabel(row.DueDate) }}
+                  </div>
+                </span>
+              </td>
             </ng-container>
 
-            <ng-container matColumnDef="assignedDate">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Activity Type </th>
-              <td mat-cell *matCellDef="let row"> {{row.assignedDate}} </td>
+            <!-- Status -->
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+              <td mat-cell *matCellDef="let row">{{ row.Status || '-' }}</td>
             </ng-container>
 
-            <ng-container matColumnDef="programName">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Scheduled Date </th>
-              <td mat-cell *matCellDef="let row"> {{row.programName}} </td>
-            </ng-container>
-
-            <ng-container matColumnDef="description">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Status </th>
-              <td mat-cell *matCellDef="let row"> {{row.description}} </td>
-            </ng-container>
-
-            <ng-container matColumnDef="WQ">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> WQ </th>
-              <td mat-cell *matCellDef="let row"><a mat-button>{{row.WQ}}</a>  </td>
-            </ng-container>
-
-            <!-- Expanded Content Column - The detail row is made up of this one column that spans across all columns -->
-
+            <!-- Expanded placeholder (kept for parity) -->
             <ng-container matColumnDef="expandedDetail">
               <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns.length">
               </td>
@@ -122,37 +160,17 @@
             </tr>
             <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="example-detail-row"></tr>
 
-            <!--<tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;" (click)="expandedElement = expandedElement === row ? null : row"></tr>-->
-            <!-- Row shown when there is no matching data. -->
             <tr class="mat-row" *matNoDataRow>
-              <td class="mat-cell" colspan="9">No data matching the filter "{{input.value}}"</td>
+              <td class="mat-cell" [attr.colspan]="displayedColumns.length">No data</td>
             </tr>
           </table>
-          <mat-paginator [pageSizeOptions]="[10, 25, 100]" aria-label="Select page of users"></mat-paginator>
+
+          <mat-paginator [pageSizeOptions]="[10, 25, 100]" aria-label="Select page"></mat-paginator>
         </div>
       </mat-drawer-content>
-      <mat-drawer #drawer class="sidenav" style="width:22%;height:50%;align-content:center; " position="end" mode="side" opened="false">
 
+      <mat-drawer #drawer class="sidenav" style="width:22%;height:50%;align-content:center;" position="end" mode="side" opened="false">
       </mat-drawer>
     </mat-drawer-container>
   </mat-drawer-content>
-  <mat-drawer #mainDrawer class="sidenav" style="width:15%;" mode="side" opened="false">
-    <div>
-      <mat-card>
-        <mat-card-header style="background-color: #007BFF;">
-          <mat-card-title style="color: white;">PATIENTS LIST</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <mat-list>
-            <mat-list-item *ngFor="let item of items">
-              <!--<img mat-card-image [src]="item.photo" alt="{{ item.header }}">-->
-              <mat-card-title>{{ item.header }}</mat-card-title>
-              <p>{{ item.content }}</p>
-            </mat-list-item>
-          </mat-list>
-        </mat-card-content>
-      </mat-card>
-    </div>
-  </mat-drawer>
 </mat-drawer-container>

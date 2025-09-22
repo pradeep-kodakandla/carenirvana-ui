@@ -24,4 +24,10 @@ export class DashboardServiceService {
   getauthdetails(userId: any): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/authdetails/${userId}`);
   }
+  getpendingactivitydetails(userId: any): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/pendingauthactivities/${userId}`);
+  }
+  getpendingwqactivitydetails(userId: any): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/pendingwq/${userId}`);
+  }
 }

@@ -1,215 +1,227 @@
-import { Component, ViewChild } from '@angular/core';
-import { Router } from '@angular/router';
-import { animate, state, style, transition, trigger } from '@angular/animations';
-import { MatPaginatorModule } from '@angular/material/paginator';
-import { MatSortModule } from '@angular/material/sort';
-import { MatTableModule } from '@angular/material/table';
-import { MatMenu } from '@angular/material/menu';
+import { Component, OnInit, AfterViewInit, ViewChild } from '@angular/core';
+import { FormBuilder, FormGroup } from '@angular/forms';
+import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
-import { MatTableDataSource } from '@angular/material/table';
-import { MatMenuTrigger } from '@angular/material/menu';
-
+import { Observable, of } from 'rxjs';
+import { DashboardServiceService } from 'src/app/service/dashboard.service.service';
+import { HeaderService } from 'src/app/service/header.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-myactivities',
   templateUrl: './myactivities.component.html',
-  styleUrl: './myactivities.component.css'
+  styleUrls: ['./myactivities.component.css']
 })
-export class MyactivitiesComponent {
+export class MyactivitiesComponent implements OnInit, AfterViewInit {
 
-  selectedDiv: number | null = 1; // Track the selected div
+  /** Columns requested:
+   * Module | Member | Created On | Refer To | Activity Type | Follow Up Date | Due Date | Status
+   */
+  displayedColumns: string[] = [
+    'module',
+    'member',
+    'createdOn',
+    'referredTo',
+    'activityType',
+    'followUpDate',
+    'dueDate',
+    'status'
+  ];
 
-  // Method to select a div and clear others
-  selectDiv(index: number) {
-    this.selectedDiv = index; // Set the selected div index
-  }
-  /*Div Selection Style change logic*/
-  displayedColumns: string[] = ['enrollmentStatus', 'memberId', 'firstName', 'lastName', 'DOB', 'risk', 'nextContact', 'assignedDate', 'programName', 'description', 'WQ'];
-  columnsToDisplayWithExpand = [...this.displayedColumns, 'expand'];
+  dataSource = new MatTableDataSource<any>([]);
+  rawData: any[] = [];
 
+  // filter panel (keep grid empty for now)
+  showFilters = false;
+  filtersForm!: FormGroup;
 
-  dataSource: MatTableDataSource<UserData>;
-  expandedElement!: UserData | null;
+  // quick search
+  quickSearchTerm = '';
 
+  // due chips
+  dueChip: 'OVERDUE' | 'TODAY' | 'FUTURE' | null = null;
+  overdueCount = 0;
+  dueTodayCount = 0;
+  dueFutureCount = 0;
+
+  // expand placeholder (kept for parity)
+  expandedElement: any | null = null;
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
-  loadPage(page: string) {
-    // Use Angular Router to navigate based on the page selection
-    // Assuming router has been injected in constructor
-    this.router.navigate([page]);
+  constructor(
+    private fb: FormBuilder,
+    private activtyService: DashboardServiceService,
+    private headerService: HeaderService,
+    private router: Router) { }
+
+  ngOnInit(): void {
+    this.filtersForm = this.fb.group({}); // empty grid per request
+    this.loadData();
   }
 
-  constructor(private router: Router) {
-    // Create 100 users
-    const users = Array.from({ length: 100 }, (_, k) => createNewUser(k + 1));
-
-    // Assign the data to the data source for the table to render
-    this.dataSource = new MatTableDataSource(users);
-  }
-
-  ngAfterViewInit() {
+  ngAfterViewInit(): void {
     this.dataSource.paginator = this.paginator;
     this.dataSource.sort = this.sort;
+
+    // quick search across a few fields (keep payload AS-IS / PascalCase)
+    this.dataSource.filterPredicate = (row: any, filter: string) => {
+      const q = (filter || '').trim().toLowerCase();
+      if (!q) return true;
+
+      const name = `${row?.FirstName ?? ''} ${row?.LastName ?? ''}`.trim();
+      const fields = [
+        row?.Module,
+        name,
+        row?.MemberId?.toString(),
+        row?.UserName,                 // Refer To (username)
+        row?.ActivityType,
+        row?.Status
+      ];
+
+      return fields.some(v => (v ?? '').toString().toLowerCase().includes(q));
+    };
   }
 
-  applyFilter(event: Event) {
-    const filterValue = (event.target as HTMLInputElement).value;
-    this.dataSource.filter = filterValue.trim().toLowerCase();
+  /** Wire your real service here (kept AS-IS). It should return rows with PascalCase keys:
+   * Module, FirstName, LastName, MemberId, CreatedOn, ReferredTo, UserName, ActivityType,
+   * FollowUpDateTime, DueDate, Status, (and optionally StatusId / ActivityTypeId).
+   */
+  private getMyActivities$(): Observable<any[]> {
+    return this.activtyService.getpendingactivitydetails(1);
+  }
 
-    if (this.dataSource.paginator) {
-      this.dataSource.paginator.firstPage();
+  private loadData(): void {
+    this.getMyActivities$().subscribe({
+      next: rows => {
+        this.rawData = Array.isArray(rows) ? rows : [];
+        this.recomputeAll();
+      },
+      error: () => {
+        this.rawData = [];
+        this.recomputeAll();
+      }
+    });
+  }
+
+  // UI events
+  toggleFilters(): void { this.showFilters = !this.showFilters; }
+
+  onQuickSearch(ev: Event): void {
+    const v = (ev.target as HTMLInputElement).value ?? '';
+    this.quickSearchTerm = v.trim().toLowerCase();
+    this.recomputeAll();
+  }
+
+  setDueChip(which: 'OVERDUE' | 'TODAY' | 'FUTURE'): void {
+    this.dueChip = which;
+    this.recomputeAll();
+  }
+
+  // ===== Pipeline =====
+  private recomputeAll(): void {
+    this.computeDueCounts();
+
+    let base = [...this.rawData];
+
+    // chip filter on DueDate
+    if (this.dueChip) {
+      base = base.filter(r => {
+        const d = this.toDate(r?.DueDate);
+        if (!d) return false;
+        const cmp = this.compareDateOnly(d, new Date());
+        if (this.dueChip === 'OVERDUE') return cmp < 0;
+        if (this.dueChip === 'TODAY') return cmp === 0;
+        return cmp > 0; // FUTURE
+      });
+    }
+
+    // quick search
+    this.dataSource.data = base;
+    this.dataSource.filter = this.quickSearchTerm;
+
+    if (this.paginator) this.paginator.firstPage();
+  }
+
+  private computeDueCounts(): void {
+    const today = new Date();
+    const counts = this.rawData.reduce((acc, r) => {
+      const d = this.toDate(r?.DueDate);
+      if (!d) return acc;
+      const cmp = this.compareDateOnly(d, today);
+      if (cmp < 0) acc.overdue++;
+      else if (cmp === 0) acc.today++;
+      else acc.future++;
+      return acc;
+    }, { overdue: 0, today: 0, future: 0 });
+
+    this.overdueCount = counts.overdue;
+    this.dueTodayCount = counts.today;
+    this.dueFutureCount = counts.future;
+  }
+
+  // ===== Date helpers =====
+  private toDate(v: any): Date | null {
+    if (!v) return null;
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  private compareDateOnly(a: Date, b: Date): number {
+    const aa = new Date(a.getFullYear(), a.getMonth(), a.getDate()).getTime();
+    const bb = new Date(b.getFullYear(), b.getMonth(), b.getDate()).getTime();
+    return aa === bb ? 0 : (aa < bb ? -1 : 1);
+  }
+
+  // ===== Template helpers =====
+  fullName(row: any): string {
+    const f = row?.FirstName ?? '';
+    const l = row?.LastName ?? '';
+    return `${f} ${l}`.trim();
+  }
+
+  getDueDateClass(dateVal: any): string {
+    const d = this.toDate(dateVal);
+    if (!d) return 'due-unknown';
+    const cmp = this.compareDateOnly(d, new Date());
+    if (cmp < 0) return 'due-red';
+    if (cmp === 0) return 'due-amber';
+    return 'due-green';
+  }
+
+  getDaysLeftLabel(dateVal: any): string {
+    const d = this.toDate(dateVal);
+    if (!d) return '';
+    const today = new Date();
+    const one = 24 * 60 * 60 * 1000;
+
+    const d0 = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+
+    const diff = Math.round((d0 - t0) / one);
+    if (diff < 0) return `Overdue by ${Math.abs(diff)}d`;
+    if (diff === 0) return 'Due today';
+    return `In ${diff}d`;
+  }
+
+  onMemberClick(memberId: string, memberName: string): void {
+    const tabLabel = `Member: ${memberName}`;
+    const tabRoute = `/member-info/${memberId}`;
+
+    const existingTab = this.headerService.getTabs().find(tab => tab.route === tabRoute);
+
+    if (existingTab) {
+      this.headerService.selectTab(tabRoute);
+      this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+        this.router.navigate([tabRoute]);
+      });
+    } else {
+      this.headerService.addTab(tabLabel, tabRoute, memberId);
+      this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+        this.router.navigate([tabRoute]);
+      });
     }
   }
-
-  goToPage(memberId: string) {
-    this.router.navigate(['/member-info', memberId]);
-  }
-
-  /*Table Context Menu*/
-  @ViewChild(MatMenuTrigger)
-  contextMenu!: MatMenuTrigger;
-
-  contextMenuPosition = { x: '0px', y: '0px' };
-
-  onContextMenu(event: MouseEvent, item: UserData) {
-    event.preventDefault();
-    this.contextMenuPosition.x = event.clientX + 'px';
-    this.contextMenuPosition.y = event.clientY + 'px';
-    this.contextMenu.menuData = { 'item': item };
-    this.contextMenu.menu!.focusFirstItem('mouse');
-    this.contextMenu.openMenu();
-  }
-
-  onContextMenuAction1(item: UserData) {
-    alert(`Click on Action 1 for ${item.enrollmentStatus}`);
-  }
-
-  onContextMenuAction2(item: UserData) {
-    alert(`Click on Action 2 for ${item.enrollmentStatus}`);
-  }
-
-  items = [
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    }
-  ];
-
 }
-/** Builds and returns a new User. */
-export function createNewUser(id: number): UserData {
-  const name =
-    NAMES[Math.round(Math.random() * (NAMES.length - 1))];
-
-  return {
-    enrollmentStatus: 'Active',
-    firstName: name,
-    memberId: NUMS[Math.round(Math.random() * (NUMS.length - 1))], /*(100 * 100).toString(),*/
-    lastName: FRUITS[Math.round(Math.random() * (FRUITS.length - 1))],
-    DOB: '09/14/2024',
-    risk: 'Low',
-    nextContact: '09/14/2024',
-    assignedDate: '09/14/2024',
-    programName: 'Care Management',
-    description: 'Pending Acceptance',
-    WQ: 'Medical'
-  };
-}
-export interface UserData {
-  enrollmentStatus: string;
-  memberId: string;
-  firstName: string;
-  lastName: string;
-  DOB: string;
-  risk: string;
-  nextContact: string;
-  assignedDate: string;
-  programName: string;
-  description: string;
-  WQ: string;
-}
-
-/** Constants used to fill up our data base. */
-const FRUITS: string[] = [
-  'blueberry',
-  'lychee',
-  'kiwi',
-  'mango',
-  'peach',
-  'lime',
-  'pomegranate',
-  'pineapple',
-];
-const NUMS: string[] = [
-  '10000',
-  '10001',
-  '10003',
-  '10004',
-  '10005',
-  '10006',
-  '10007',
-  '10008',
-  '10009',
-  '10010',
-];
-
-const NAMES: string[] = [
-  'Pradeep',
-  'Pawan',
-  'Sridhar',
-  'Rohitha',
-  'Paavana',
-  'Jack',
-  'Charlotte',
-  'Theodore',
-  'Isla',
-  'Oliver',
-  'Isabella',
-  'Jasper',
-  'Cora',
-  'Levi',
-  'Violet',
-  'Arthur',
-  'Mia',
-  'Thomas',
-  'Elizabeth',
-];

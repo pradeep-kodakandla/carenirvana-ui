@@ -55,7 +55,7 @@ export class DashBoardComponent {
     myActivities: 'ActivityCount',
     assignedComplaints: 'ComplaintCount',
     faxes: 'FaxCount',
-    mdReview: 'WQCount'         // or change if MD Review should map differently
+    mdreview: 'WQCount'         // or change if MD Review should map differently
   };
 
   /*Div Selection Style change logic*/
@@ -73,20 +73,15 @@ export class DashBoardComponent {
   @ViewChild('dynamicContainer', { read: ViewContainerRef }) dynamicContainer!: ViewContainerRef;
 
   handleWidgetClick(index: number, key: string): void {
-
     this.selectDiv(index);
     this.onSelect(key);
     this.defaultWidget = key;
   }
 
-
   ngOnInit(): void {
     // Replace with your actual source (from API/session storage etc.)
     this.loadCounts();
     this.fetchRoleData(4);
-    //this.dashboard.getdashboardCounts(1).subscribe((data) => {
-    //  console.log('Counts', data);
-    //});
   }
 
   private loadCounts(): void {
@@ -95,6 +90,7 @@ export class DashBoardComponent {
         next: (res: DashboardCounts) => { this.dashboardCounts = res; },
         error: (err) => { console.error('Failed to load dashboard counts', err); }
       });
+    console.log('Counts', this.dashboardCounts);
   }
 
   getCountForWidget(key: string): number {
@@ -102,7 +98,6 @@ export class DashBoardComponent {
     const prop = this.widgetToProp[key];
     return prop ? (this.dashboardCounts[prop] ?? 0) : 0;
   }
-
 
   fetchRoleData(roleId: number) {
     this.roleService.getRoleById(roleId).subscribe((role: any) => {
@@ -129,8 +124,6 @@ export class DashBoardComponent {
       }
     });
   }
-
-
 
   getIconForWidget(key: string): string {
     const iconMap: any = {
@@ -179,52 +172,4 @@ export class DashBoardComponent {
         break;
     }
   }
-
-  //ngAfterViewInit() {
-  //  this.loadComponent(MycaseloadComponent); // Load the component after the view initializes
-  //}
-
-  items = [
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    }
-  ];
-
 }

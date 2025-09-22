@@ -1,15 +1,14 @@
 
 <div class="main-wrapper">
-  <div class="container">
+  <div class="container" style="margin:0px !important;">
     <!-- LEFT COLUMN (20%) -->
     <div class="col-left" [ngClass]="{ 'full-width': !selectedAuth }">
-      <div class="top-bar">
+      <!--<div class="top-bar">
         <div class="search-section">
           <input type="text" placeholder="🔍 Search..." (input)="onSearch($event)" class="search-input" />
-        </div>
-
-        <!-- Summary Cards -->
-        <div class="summary-container" style="padding-left:10px;" *ngIf="!selectedAuth">
+        </div>-->
+      <!-- Summary Cards -->
+      <!--<div class="summary-container" style="padding-left:10px;" *ngIf="!selectedAuth">
           <mat-card class="summary-card" *ngFor="let item of summaryStats">
             <div class="summary-row">
               <mat-icon>{{ item.icon }}</mat-icon>
@@ -18,61 +17,148 @@
             </div>
           </mat-card>
         </div>
-      </div>
-      <div class="card-list">
-        <div *ngFor="let auth of auths; let i = index"
-             class="card"
-             [class.selected]="isSelected(i)"
-             (click)="onReviewClick(i)">
-          <div class="card-header">
-            <strong>{{ auth.firstName }} {{ auth.lastName }}</strong>
-            <button class="review-btn" (click)="onReviewClick(i); $event.stopPropagation()">Review</button>
-          </div>
-          <div class="card-fields">
-            <div class="field">
-              <label>Auth #:</label>
-              <span>{{ auth.authNumber }}</span>
-            </div>
-            <div class="field">
-              <label>Auth Type:</label>
-              <span>{{ auth.authType }}</span>
-            </div>
-            <div class="field" *ngIf="!selectedAuth">
-              <label>Review Due Date:</label>
-              <span>{{ auth.dueDate }}</span>
-            </div>
-            <div class="field">
-              <label>Review Priority:</label>
-              <span>{{ auth.priority }}</span>
-            </div>
-            <div class="field" *ngIf="!selectedAuth">
-              <label>Member ID:</label>
-              <span>{{ auth.authType }}</span>
-            </div>
-            <div class="field" *ngIf="!selectedAuth">
-              <label>Member Name:</label>
-              <span>{{ auth.authType }}</span>
-            </div>
-            <div class="field" *ngIf="!selectedAuth">
-              <label>Eligibility:</label>
-              <span>{{  auth.authType}}</span>
-            </div>
-            <div class="field" *ngIf="!selectedAuth">
-              <label>Treatment Type:</label>
-              <span>{{ auth.authType }}</span>
-            </div>
-            <div class="field" *ngIf="!selectedAuth">
-              <label>Provider ID:</label>
-              <span>{{ auth.authType }}</span>
-            </div>
-            <div class="field" *ngIf="!selectedAuth">
-              <label>Auth Due Date:</label>
-              <span>{{ auth.authType }}</span>
-            </div>
-          </div>
+      </div>-->
 
-
+      <div class="top-bar" style="display:flex;align-items:center;gap:10px;margin:8px 0;">
+        <div class="search-section" style="display:flex;align-items:center;gap:8px;flex:1;">
+          <input type="text"
+                 placeholder="🔍 Search activities…"
+                 (input)="onQuickSearch($event)"
+                 class="search-input"
+                 style="flex:1; padding:10px 12px; border:1px solid #e1e5ea; border-radius:10px; outline:none;" />
+          <button class="filter-btn"
+                  type="button"
+                  (click)="toggleFilters()"
+                  title="Filters">
+            <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 5h18v2l-7 7v5l-4 2v-7L3 7z"></path>
+            </svg>
+          </button>
         </div>
+
+        <div class="filters-col" *ngIf="!selectedAuth">
+          <div class="chip-list">
+            <button type="button" class="pill red" [class.active]="dueChip==='OVERDUE'" (click)="setDueChip('OVERDUE')">
+              <span class="dot red"></span> Over Due
+              <span class="count">{{ overdueCount  }}</span>
+            </button>
+            <button type="button" class="pill amber" [class.active]="dueChip==='TODAY'" (click)="setDueChip('TODAY')">
+              <span class="dot amber"></span> Due today
+              <span class="count">{{ dueTodayCount  }}</span>
+            </button>
+            <button type="button" class="pill green" [class.active]="dueChip==='FUTURE'" (click)="setDueChip('FUTURE')">
+              <span class="dot green"></span> Due in future
+              <span class="count">{{ dueFutureCount }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+
+      <div class="table-wrapper">
+        <table mat-table [dataSource]="dataSource" matSort
+               multiTemplateDataRows
+               class="mat-elevation-z1 full-width-table pro-table mng-table">
+
+          <!-- Module -->
+          <ng-container matColumnDef="module">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Module</th>
+            <td mat-cell *matCellDef="let row">
+              <div class="status-cell">
+                {{ row.Module || '-' }}
+              </div>
+            </td>
+          </ng-container>
+
+          <!-- Member (FirstName LastName + ID) -->
+          <ng-container matColumnDef="member">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Member</th>
+            <td mat-cell *matCellDef="let row">
+              <div class="name-cell">
+                <div class="sub-name">
+                  <a href="#" (click)="onMemberClick(row.MemberId, (row.FirstName || '') + ' ' + (row.LastName || '')); $event.preventDefault()">
+                    {{ (row.FirstName || '') + ' ' + (row.LastName || '') }}
+                  </a>
+                </div>
+                <div class="sub-id">ID: {{ row.MemberId }}</div>
+              </div>
+            </td>
+          </ng-container>
+
+          <!-- Auth Number -->
+          <ng-container matColumnDef="authNumber">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Auth #</th>
+            <td mat-cell *matCellDef="let row">{{ row.AuthNumber }}</td>
+          </ng-container>
+
+          <!-- Created On -->
+          <ng-container matColumnDef="createdOn">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Created On</th>
+            <td mat-cell *matCellDef="let row">{{ row.CreatedOn | date:'MM/dd/yyyy HH:mm:ss' }}</td>
+          </ng-container>
+
+          <!-- Refer To (username + id) -->
+          <ng-container matColumnDef="referredTo">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Refer To</th>
+            <td mat-cell *matCellDef="let row">
+              <div>{{ row.UserName || '-' }}</div>
+              <!--<div style="font-size:12px;color:#6b7280;">ID: {{ row.ReferredTo }}</div>-->
+            </td>
+          </ng-container>
+
+          <!-- Activity Type -->
+          <ng-container matColumnDef="activityType">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Activity Type</th>
+            <td mat-cell *matCellDef="let row">{{ row.ActivityType || '-' }}</td>
+          </ng-container>
+
+          <!-- Follow Up Date -->
+          <ng-container matColumnDef="followUpDate">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Follow Up Date</th>
+            <td mat-cell *matCellDef="let row">{{ row.FollowUpDateTime | date:'MM/dd/yyyy HH:mm:ss' }}</td>
+          </ng-container>
+
+          <!-- Due Date with colors + days-left -->
+          <ng-container matColumnDef="dueDate">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Due Date</th>
+            <td mat-cell *matCellDef="let row">
+              <span class="risk-chip compact" [ngClass]="getDueDateClass(row.DueDate)">
+                <div class="date-value">
+                  {{ row.DueDate | date:'MM/dd/yyyy HH:mm:ss' }}
+                </div>
+                <div class="days-left">
+                  {{ getDaysLeftLabel(row.DueDate) }}
+                </div>
+              </span>
+            </td>
+          </ng-container>
+
+          <!-- Status -->
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+            <td mat-cell *matCellDef="let row">{{ row.Status || '-' }}</td>
+          </ng-container>
+
+          <!-- Expanded placeholder (kept for parity) -->
+          <ng-container matColumnDef="expandedDetail">
+            <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns.length">
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+              class="example-element-row"
+              [class.example-expanded-row]="expandedElement === row"
+              (click)="expandedElement = expandedElement === row ? null : row">
+          </tr>
+          <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="example-detail-row"></tr>
+
+          <tr class="mat-row" *matNoDataRow>
+            <td class="mat-cell" [attr.colspan]="displayedColumns.length">No data</td>
+          </tr>
+        </table>
+
+        <mat-paginator [pageSizeOptions]="[10, 25, 100]" aria-label="Select page"></mat-paginator>
       </div>
     </div>
 

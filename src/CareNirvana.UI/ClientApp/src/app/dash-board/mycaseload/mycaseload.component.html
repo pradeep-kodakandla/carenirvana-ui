@@ -4,11 +4,6 @@
   <div class="top-bar">
     <!-- Search -->
     <div class="search-section">
-      <!--<mat-form-field appearance="outline" class="search-bar">
-        <mat-label>Search Caseload</mat-label>
-        <input matInput (input)="onSearch($event)" placeholder="Enter name, ID, etc." />
-        <button mat-icon-button matSuffix><mat-icon>search</mat-icon></button>
-      </mat-form-field>-->
       <input type="text" placeholder="🔍 Search..." (input)="onSearch($event)" class="search-input" />
       <button class="filter-btn"
               type="button"
@@ -24,13 +19,7 @@
 
     <!-- Summary Cards -->
     <div class="summary-container" style="padding-left:10px;align-self:center;" *ngIf="!showFilters">
-      <!--<mat-card class="summary-card" *ngFor="let item of summaryStats">
-        <div class="summary-row">
-          <mat-icon>{{ item.icon }}</mat-icon>
-          <span class="stat-label">{{ item.label }}:</span>
-          <span class="stat-value">{{ item.value }}</span>
-        </div>
-      </mat-card>-->
+
       <div class="filters-col">
         <!--<div class="filters-title">Risk Level</div>-->
         <div class="chip-list">
@@ -63,8 +52,33 @@
     <div class="filters-panel">
       <div class="filters-header">
         <h3>Member Filters &amp; Analytics</h3>
-        <button class="reset-btn" type="button" (click)="resetFilters(); toggleFilters()">
+        <!--<button class="reset-btn" type="button" (click)="resetFilters(); toggleFilters()">
           <span class="reset-icon">↺</span> Reset All Filters
+        </button>-->
+        <div class="filters-footer">
+          <button class="close-btn" type="button" (click)="toggleFilters()">Close</button>
+          <button class="apply-btn" type="button" (click)="applyFilters(); toggleFilters()">Apply Filters</button>
+        </div>
+      </div>
+
+      <!-- Selected Filters Breadcrumb Bar -->
+      <div class="selected-bar" *ngIf="selectedFilters.length > 0">
+        <div class="selected-title">Selected:</div>
+
+        <div class="selected-list">
+          <button class="sel-pill"
+                  *ngFor="let f of selectedFilters"
+                  (click)="removeSelectedFilter(f)"
+                  [attr.aria-label]="'Remove ' + f.group + ': ' + f.label"
+                  type="button">
+            <span class="group">{{ f.group }}:</span>
+            <span class="label">{{ f.label }}</span>
+            <span class="close">×</span>
+          </button>
+        </div>
+
+        <button class="clear-all" type="button" (click)="clearAllSelected()">
+          Clear all
         </button>
       </div>
 
@@ -130,10 +144,7 @@
         </div>
       </div>
 
-      <div class="filters-footer">
-        <button class="close-btn" type="button" (click)="toggleFilters()">Close</button>
-        <button class="apply-btn" type="button" (click)="applyFilters(); toggleFilters()">Apply Filters</button>
-      </div>
+
     </div>
   </section>
 
@@ -253,7 +264,6 @@
           </div>
         </td>
       </ng-container>-->
-
       <!-- Expand Column -->
       <ng-container matColumnDef="expand">
         <th mat-header-cell *matHeaderCellDef class="is-center"></th>

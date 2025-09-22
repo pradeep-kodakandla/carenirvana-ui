@@ -7,11 +7,18 @@ import { HeaderService } from 'src/app/service/header.service';
 import { Router } from '@angular/router';
 import { DashboardServiceService } from 'src/app/service/dashboard.service.service';
 
+type SelectedFilter =
+  | { group: 'Risk'; label: string; key: 'High' | 'Medium' | 'Low' }
+  | { group: 'Enrollment'; label: string; key: 'Active' | 'Soon Ending' | 'Inactive' }
+  | { group: 'Diagnosis'; label: string; key: string }
+  | { group: 'Quality'; label: string; key: string };
+
 @Component({
   selector: 'app-mycaseload',
   templateUrl: './mycaseload.component.html',
   styleUrls: ['./mycaseload.component.css']
 })
+
 export class MycaseloadComponent implements OnInit, AfterViewInit {
   constructor(
     private headerService: HeaderService,
@@ -23,9 +30,10 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
   // View mode toggle
   viewMode: 'card' | 'table' = 'table';
 
+
   // Full member list
   members: any[] = [];
-
+  filtered: any[] = [];
   // DataSource for table
   dataSource = new MatTableDataSource<any>();
 
@@ -37,6 +45,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
 
   // Expanded row for table (use object reference)
   expandedRow: any | null = null;
+
 
   // Summary widgets
   summaryStats = [
@@ -71,37 +80,20 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
   qualitySelection: Record<string, boolean> = {};
 
   counts = {
-    risk: { high: 2, medium: 2, low: 2 },
-    enroll: { active: 4, inactive: 1, soonEnding: 1 }
+    risk: { high: 0, medium: 0, low: 0 },
+    enroll: { active: 0, inactive: 0, soonEnding: 0 }
   };
 
   ngOnInit(): void {
 
-    //const testMembers = Array.from({ length: 50 }).map((_, i) => ({
-    //  memberId: (10000 + i).toString(),
-    //  firstName: 'Test',
-    //  lastName: 'User ' + (i + 1),
-    //  dob: `01-0${((i % 9) + 1)}-198${i % 10}`,
-    //  risk: ['Low', 'Medium', 'High'][i % 3],
-    //  authCount: i % 5,
-    //  activityCount: i % 7,
-    //  carePlanCount: i % 4,
-    //  contactOverdue: i % 6 === 0,
-    //  programName: 'Program ' + (i % 4),
-    //  nextContact: `06-0${((i % 9) + 1)}-2025`,
-    //  lastContact: `05-0${((i % 9) + 1)}-2025`
-    //}));
-
-    
-  //  this.loadMembers(testMembers);
+    //  this.loadMembers(testMembers);
     this.diagnosisOptions.forEach(d => this.diagnosisSelection[d] = false);
     this.qualityOptions.forEach(q => this.qualitySelection[q] = false);
     this.dashboard.getmembersummary(1).subscribe((data) => {
       console.log('Member Summary', data);
       if (data && Array.isArray(data)) {
-        
         this.loadMembers(data);
-      } 
+      }
     }, error => {
       console.error('Error fetching member summary', error);
     });
@@ -137,25 +129,42 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
 
   loadMembers(data: any[]): void {
     this.members = data;
-    this.dataSource.data = data;
+    this.calculateRiskCounts(this.members);
+    this.calculateEnrollmentCounts(this.members);
+    /*    this.dataSource.data = data;*/
 
     this.summaryStats[0].value = data.length;
     this.summaryStats[1].value = data.reduce((sum, m) => sum + (m.authCount || 0), 0);
     this.summaryStats[2].value = data.reduce((sum, m) => sum + (m.activityCount || 0), 0);
 
-    if (this.paginator) {
-      this.paginator.firstPage();
+    //if (this.paginator) {
+    //  this.paginator.firstPage();
+    //  this.updatePagedMembers();
+    //} else {
+    //  setTimeout(() => this.updatePagedMembers(), 0);
+    //}
+    this.filtered = [...this.members];
+    this.dataSource.data = this.members;
+    setTimeout(() => {  // ensures paginator is ready
       this.updatePagedMembers();
-    } else {
-      setTimeout(() => this.updatePagedMembers(), 0);
-    }
+    }, 0);
   }
 
-  updatePagedMembers(): void {
+  //updatePagedMembers(): void {
+  //  const start = this.paginator.pageIndex * this.paginator.pageSize;
+  //  const end = start + this.paginator.pageSize;
+  //  const filtered = this.dataSource.filteredData;
+  //  this.pagedMembers = filtered.slice(start, end);
+  //}
+
+  private updatePagedMembers(): void {
+    if (!this.paginator) {
+      this.pagedMembers = this.filtered;
+      return;
+    }
     const start = this.paginator.pageIndex * this.paginator.pageSize;
     const end = start + this.paginator.pageSize;
-    const filtered = this.dataSource.filteredData;
-    this.pagedMembers = filtered.slice(start, end);
+    this.pagedMembers = (this.filtered || []).slice(start, end);
   }
 
   toggleViewMode(): void {
@@ -240,24 +249,139 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     this.showFilters = !this.showFilters;
   }
 
-  resetFilters() {
-    this.filters.risks.clear();
-    this.filters.enroll.clear();
-    Object.keys(this.diagnosisSelection).forEach(k => this.diagnosisSelection[k] = false);
-    Object.keys(this.qualitySelection).forEach(k => this.qualitySelection[k] = false);
+  toggleRisk(level: 'High' | 'Medium' | 'Low'): void {
+    this.filters.risks.has(level) ? this.filters.risks.delete(level) : this.filters.risks.add(level);
     this.applyFilters();
   }
 
-  toggleRisk(r: string) {
-    this.filters.risks.has(r) ? this.filters.risks.delete(r) : this.filters.risks.add(r);
+  toggleEnroll(state: 'Active' | 'Soon Ending' | 'Inactive'): void {
+    this.filters.enroll.has(state) ? this.filters.enroll.delete(state) : this.filters.enroll.add(state);
+    this.applyFilters();
   }
 
-  toggleEnroll(s: string) {
-    this.filters.enroll.has(s) ? this.filters.enroll.delete(s) : this.filters.enroll.add(s);
+  resetFilters(): void {
+    this.filters.risks.clear();
+    this.filters.enroll.clear();
+    this.applyFilters();
   }
 
-  applyFilters() {
-    this.filters.diagnoses = Object.keys(this.diagnosisSelection).filter(k => this.diagnosisSelection[k]);
-    this.filters.quality = Object.keys(this.qualitySelection).filter(k => this.qualitySelection[k]);
+  applyFilters(): void {
+    let arr = [...this.members];
+
+    // Risk filter
+    if (this.filters.risks.size) {
+      arr = arr.filter(m => {
+        const val = (m.RiskLevelCode || '').toLowerCase();
+        return (this.filters.risks.has('High') && val === 'high') ||
+          (this.filters.risks.has('Medium') && val === 'medium') ||
+          (this.filters.risks.has('Low') && (val === 'low' || val === ''));
+      });
+    }
+
+    // Enrollment filter
+    if (this.filters.enroll.size) {
+      arr = arr.filter(m => this.filters.enroll.has(this.getEnrollStatus(m)));
+    }
+
+    this.filtered = arr;
+    this.dataSource.data = arr;
+
+    // keep card view in sync with paginator
+    this.updatePagedMembers();
   }
+
+  // --- Enrollment classifier reused by counts + filtering ---
+  private getEnrollStatus(m: any): 'Active' | 'Soon Ending' | 'Inactive' {
+    const today = new Date();
+    const start = new Date(m.StartDate);
+    const end = new Date(m.EndDate);
+    if (!(start <= today && end >= today)) return 'Inactive';
+    const daysLeft = Math.floor((end.getTime() - today.getTime()) / 86400000);
+    return daysLeft <= 30 ? 'Soon Ending' : 'Active';
+  }
+
+  // --- Calculate counts after you set this.members from API ---
+  private calculateRiskCounts(list: any[]): void {
+    this.counts.risk = { high: 0, medium: 0, low: 0 };
+    list.forEach(m => {
+      const code = (m.RiskLevelCode || '').toLowerCase();
+      if (code === 'high') this.counts.risk.high++;
+      else if (code === 'medium') this.counts.risk.medium++;
+      else this.counts.risk.low++;
+    });
+  }
+
+  private calculateEnrollmentCounts(list: any[]): void {
+    this.counts.enroll = { active: 0, soonEnding: 0, inactive: 0 };
+    list.forEach(m => {
+      const s = this.getEnrollStatus(m);
+      if (s === 'Active') this.counts.enroll.active++;
+      else if (s === 'Soon Ending') this.counts.enroll.soonEnding++;
+      else this.counts.enroll.inactive++;
+    });
+  }
+
+  /*Filter Selection Logic - Start*/
+
+
+
+  // Build the current selection list (computed on each change)
+  get selectedFilters(): SelectedFilter[] {
+    const out: SelectedFilter[] = [];
+
+    // Risk chips
+    this.filters.risks.forEach(r =>
+      out.push({ group: 'Risk', label: r, key: r as 'High' | 'Medium' | 'Low' })
+    );
+
+    // Enrollment chips
+    this.filters.enroll.forEach(e =>
+      out.push({
+        group: 'Enrollment',
+        label: e,
+        key: e as 'Active' | 'Soon Ending' | 'Inactive'
+      })
+    );
+
+    // Diagnosis (checkbox list via ngModel map)
+    Object.entries(this.diagnosisSelection || {}).forEach(([k, v]) => {
+      if (v) out.push({ group: 'Diagnosis', label: k, key: k });
+    });
+
+    // Quality (checkbox list via ngModel map)
+    Object.entries(this.qualitySelection || {}).forEach(([k, v]) => {
+      if (v) out.push({ group: 'Quality', label: k, key: k });
+    });
+
+    return out;
+  }
+
+  // Remove a single pill from the selection bar
+  removeSelectedFilter(f: SelectedFilter): void {
+    switch (f.group) {
+      case 'Risk':
+        this.filters.risks.delete(f.key as 'High' | 'Medium' | 'Low');
+        break;
+      case 'Enrollment':
+        this.filters.enroll.delete(f.key as 'Active' | 'Soon Ending' | 'Inactive');
+        break;
+      case 'Diagnosis':
+        if (this.diagnosisSelection) this.diagnosisSelection[f.key] = false;
+        break;
+      case 'Quality':
+        if (this.qualitySelection) this.qualitySelection[f.key] = false;
+        break;
+    }
+    this.applyFilters();
+  }
+
+  // Clear all selections at once
+  clearAllSelected(): void {
+    this.filters.risks.clear();
+    this.filters.enroll.clear();
+    Object.keys(this.diagnosisSelection || {}).forEach(k => (this.diagnosisSelection[k] = false));
+    Object.keys(this.qualitySelection || {}).forEach(k => (this.qualitySelection[k] = false));
+    this.applyFilters();
+  }
+  /*Filter Selection Logic - End*/
 }
