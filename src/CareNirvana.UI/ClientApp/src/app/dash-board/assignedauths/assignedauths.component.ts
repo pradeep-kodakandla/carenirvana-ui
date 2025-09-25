@@ -1,12 +1,12 @@
-import { Component, ViewChild, OnInit, AfterViewInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, ViewChild, OnInit, AfterViewInit, EventEmitter, Output, } from '@angular/core';
+import { Router, ActivatedRoute } from '@angular/router';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { DashboardServiceService } from 'src/app/service/dashboard.service.service';
 import { HeaderService } from 'src/app/service/header.service';
-
+import { MemberService } from 'src/app/service/shared-member.service';
 import { Observable, of } from 'rxjs';
 
 @Component({
@@ -55,7 +55,9 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
     private fb: FormBuilder,
     private router: Router,
     private assignedAuthsService: DashboardServiceService,
-    private headerService: HeaderService
+    private headerService: HeaderService,
+    private memberService: MemberService,
+    private route: ActivatedRoute
   ) { }
 
   ngOnInit(): void {
@@ -101,8 +103,8 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
   /** Replace with your real service call (kept AS-IS) */
   private getAuthDetails$(): Observable<any[]> {
     // Example stub; wire your existing service here:
-     return this.assignedAuthsService.getauthdetails(1);
-   // return of([]);
+    return this.assignedAuthsService.getauthdetails(1);
+    // return of([]);
   }
 
   private loadData(): void {
@@ -327,5 +329,34 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
     if (diffDays < 0) return `Overdue by ${Math.abs(diffDays)}d`;
     if (diffDays === 0) return 'Due today';
     return `In ${diffDays}d`;
+  }
+
+  @Output() addClicked = new EventEmitter<string>();
+
+  onAuthClick(authNumber: string = '', memId: string = '') {
+    this.addClicked.emit(authNumber);
+    this.memberService.setIsCollapse(true);
+
+    if (!authNumber) authNumber = 'DRAFT';
+
+    // read member id once (prefer your own field; fall back to route)
+    const memberId = memId ?? Number(this.route.parent?.snapshot.paramMap.get('id'));
+
+    // ✅ point tab to the CHILD route under the shell
+    const tabRoute = `/member-info/${memberId}/member-auth/${authNumber}`;
+    const tabLabel = `Auth No ${authNumber}`;
+
+    const existingTab = this.headerService.getTabs().find(t => t.route === tabRoute);
+
+    if (existingTab) {
+      this.headerService.selectTab(tabRoute);
+
+    } else {
+      this.headerService.addTab(tabLabel, tabRoute, String(memberId));
+
+    }
+    this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+      this.router.navigate([tabRoute]);
+    });
   }
 }

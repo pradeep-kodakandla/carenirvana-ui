@@ -2,11 +2,11 @@
 <div class="main-wrapper">
   <div class="container" style="margin:0px !important;">
     <!-- LEFT COLUMN (20%) -->
-    <div class="col-left" [ngClass]="{ 'full-width': !selectedAuth }">
+    <div class="col-left" [ngClass]="{ 'full-width': !selectedAuth, 'minimized': !!selectedAuth }">
       <!--<div class="top-bar">
-        <div class="search-section">
-          <input type="text" placeholder="🔍 Search..." (input)="onSearch($event)" class="search-input" />
-        </div>-->
+      <div class="search-section">
+        <input type="text" placeholder="🔍 Search..." (input)="onSearch($event)" class="search-input" />
+      </div>-->
       <!-- Summary Cards -->
       <!--<div class="summary-container" style="padding-left:10px;" *ngIf="!selectedAuth">
           <mat-card class="summary-card" *ngFor="let item of summaryStats">
@@ -54,122 +54,156 @@
         </div>
       </div>
 
+      <div *ngIf="!selectedAuth">
+        <div class="table-wrapper">
+          <table mat-table [dataSource]="dataSource" matSort
+                 multiTemplateDataRows
+                 class="mat-elevation-z1 full-width-table pro-table mng-table">
 
-      <div class="table-wrapper">
-        <table mat-table [dataSource]="dataSource" matSort
-               multiTemplateDataRows
-               class="mat-elevation-z1 full-width-table pro-table mng-table">
-
-          <!-- Module -->
-          <ng-container matColumnDef="module">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Module</th>
-            <td mat-cell *matCellDef="let row">
-              <div class="status-cell">
-                {{ row.Module || '-' }}
-              </div>
-            </td>
-          </ng-container>
-
-          <!-- Member (FirstName LastName + ID) -->
-          <ng-container matColumnDef="member">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Member</th>
-            <td mat-cell *matCellDef="let row">
-              <div class="name-cell">
-                <div class="sub-name">
-                  <a href="#" (click)="onMemberClick(row.MemberId, (row.FirstName || '') + ' ' + (row.LastName || '')); $event.preventDefault()">
-                    {{ (row.FirstName || '') + ' ' + (row.LastName || '') }}
-                  </a>
+            <!-- Module -->
+            <ng-container matColumnDef="module">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Module</th>
+              <td mat-cell *matCellDef="let row">
+                <div class="status-cell">
+                  {{ row.Module || '-' }}
                 </div>
-                <div class="sub-id">ID: {{ row.MemberId }}</div>
-              </div>
-            </td>
-          </ng-container>
+              </td>
+            </ng-container>
 
-          <!-- Auth Number -->
-          <ng-container matColumnDef="authNumber">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Auth #</th>
-            <td mat-cell *matCellDef="let row">{{ row.AuthNumber }}</td>
-          </ng-container>
-
-          <!-- Created On -->
-          <ng-container matColumnDef="createdOn">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Created On</th>
-            <td mat-cell *matCellDef="let row">{{ row.CreatedOn | date:'MM/dd/yyyy HH:mm:ss' }}</td>
-          </ng-container>
-
-          <!-- Refer To (username + id) -->
-          <ng-container matColumnDef="referredTo">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Refer To</th>
-            <td mat-cell *matCellDef="let row">
-              <div>{{ row.UserName || '-' }}</div>
-              <!--<div style="font-size:12px;color:#6b7280;">ID: {{ row.ReferredTo }}</div>-->
-            </td>
-          </ng-container>
-
-          <!-- Activity Type -->
-          <ng-container matColumnDef="activityType">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Activity Type</th>
-            <td mat-cell *matCellDef="let row">{{ row.ActivityType || '-' }}</td>
-          </ng-container>
-
-          <!-- Follow Up Date -->
-          <ng-container matColumnDef="followUpDate">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Follow Up Date</th>
-            <td mat-cell *matCellDef="let row">{{ row.FollowUpDateTime | date:'MM/dd/yyyy HH:mm:ss' }}</td>
-          </ng-container>
-
-          <!-- Due Date with colors + days-left -->
-          <ng-container matColumnDef="dueDate">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Due Date</th>
-            <td mat-cell *matCellDef="let row">
-              <span class="risk-chip compact" [ngClass]="getDueDateClass(row.DueDate)">
-                <div class="date-value">
-                  {{ row.DueDate | date:'MM/dd/yyyy HH:mm:ss' }}
+            <!-- Member (FirstName LastName + ID) -->
+            <ng-container matColumnDef="member">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Member</th>
+              <td mat-cell *matCellDef="let row">
+                <div class="name-cell">
+                  <div class="sub-name">
+                    <a href="#" (click)="onMemberClick(row.MemberId, (row.FirstName || '') + ' ' + (row.LastName || '')); $event.preventDefault()">
+                      {{ (row.FirstName || '') + ' ' + (row.LastName || '') }}
+                    </a>
+                  </div>
+                  <div class="sub-id">ID: {{ row.MemberId }}</div>
                 </div>
-                <div class="days-left">
-                  {{ getDaysLeftLabel(row.DueDate) }}
-                </div>
-              </span>
-            </td>
-          </ng-container>
+              </td>
+            </ng-container>
 
-          <!-- Status -->
-          <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
-            <td mat-cell *matCellDef="let row">{{ row.Status || '-' }}</td>
-          </ng-container>
+            <!-- Auth Number -->
+            <ng-container matColumnDef="authNumber">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Auth #</th>
+              <td mat-cell *matCellDef="let row">
+                <a href="#" (click)="onAuthClick(row.AuthNumber, row.MemberId); $event.preventDefault()">
+                  {{ row.AuthNumber }}
+                </a>
+              </td>
+            </ng-container>
 
-          <!-- Expanded placeholder (kept for parity) -->
-          <ng-container matColumnDef="expandedDetail">
-            <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns.length">
-            </td>
-          </ng-container>
+            <!-- Created On -->
+            <ng-container matColumnDef="createdOn">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Created On</th>
+              <td mat-cell *matCellDef="let row">{{ row.CreatedOn | date:'MM/dd/yyyy HH:mm:ss' }}</td>
+            </ng-container>
 
-          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns;"
-              class="example-element-row"
-              [class.example-expanded-row]="expandedElement === row"
-              (click)="expandedElement = expandedElement === row ? null : row">
-          </tr>
-          <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="example-detail-row"></tr>
+            <!-- Refer To (username + id) -->
+            <ng-container matColumnDef="referredTo">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Refer To</th>
+              <td mat-cell *matCellDef="let row">
+                <div>{{ row.UserName || '-' }}</div>
+                <!--<div style="font-size:12px;color:#6b7280;">ID: {{ row.ReferredTo }}</div>-->
+              </td>
+            </ng-container>
 
-          <tr class="mat-row" *matNoDataRow>
-            <td class="mat-cell" [attr.colspan]="displayedColumns.length">No data</td>
-          </tr>
-        </table>
+            <!-- Activity Type -->
+            <ng-container matColumnDef="activityType">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Activity Type</th>
+              <td mat-cell *matCellDef="let row">{{ row.ActivityType || '-' }}</td>
+            </ng-container>
 
-        <mat-paginator [pageSizeOptions]="[10, 25, 100]" aria-label="Select page"></mat-paginator>
+            <!-- Follow Up Date -->
+            <ng-container matColumnDef="followUpDate">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Follow Up Date</th>
+              <td mat-cell *matCellDef="let row">{{ row.FollowUpDateTime | date:'MM/dd/yyyy HH:mm:ss' }}</td>
+            </ng-container>
+
+            <!-- Due Date with colors + days-left -->
+            <ng-container matColumnDef="dueDate">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Due Date</th>
+              <td mat-cell *matCellDef="let row">
+                <span class="risk-chip compact" [ngClass]="getDueDateClass(row.DueDate)">
+                  <div class="date-value">
+                    {{ row.DueDate | date:'MM/dd/yyyy HH:mm:ss' }}
+                  </div>
+                  <div class="days-left">
+                    {{ getDaysLeftLabel(row.DueDate) }}
+                  </div>
+                </span>
+              </td>
+            </ng-container>
+
+            <!-- Status -->
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+              <td mat-cell *matCellDef="let row">{{ row.Status || '-' }}</td>
+            </ng-container>
+            <ng-container matColumnDef="review">
+              <th mat-header-cell *matHeaderCellDef>Review</th>
+              <td mat-cell *matCellDef="let row">
+                <button mat-stroked-button color="primary"
+                        (click)="onReviewClick(row); $event.stopPropagation()">
+                  Review
+                </button>
+              </td>
+            </ng-container>
+            <!-- Expanded placeholder (kept for parity) -->
+            <ng-container matColumnDef="expandedDetail">
+              <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns.length">
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+                class="example-element-row"
+                [class.example-expanded-row]="expandedElement === row"
+                (click)="expandedElement = expandedElement === row ? null : row">
+            </tr>
+            <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="example-detail-row"></tr>
+
+            <tr class="mat-row" *matNoDataRow>
+              <td class="mat-cell" [attr.colspan]="displayedColumns.length">No data</td>
+            </tr>
+          </table>
+
+          <mat-paginator [pageSizeOptions]="[10, 25, 100]" aria-label="Select page"></mat-paginator>
+        </div>
       </div>
+      <!-- CARD LIST VIEW (when reviewing) -->
+      <div class="card-list" *ngIf="selectedAuth">
+        <div class="mini-card"
+             *ngFor="let row of navList; let i = index; trackBy: trackByAuth"
+             [class.selected]="isSame(row, selectedAuthRaw)"
+             (click)="onCardSelect(row, i)">
+          <div class="mini-card-title">
+            {{ row.AuthNumber || row.authNumber || '—' }}
+          </div>
+          <div class="mini-card-sub">
+            {{ (row.FirstName || '') + ' ' + (row.LastName || '') }}
+          </div>
+          <div class="mini-card-meta">
+            <span class="chip" [ngClass]="dueChipClass(row)">{{ dueChipText(row) }}</span>
+            <span class="dim">Due: {{ getDate(row?.AuthDueDate || row?.DueDate) }}</span>
+            <span class="dim">Activty Type: {{ (row?.ActivityType || row?.ActivityType) }}</span>
+          </div>
+        </div>
+      </div>
+
+
     </div>
 
     <!-- MIDDLE COLUMN (40%) -->
     <div class="col-middle" *ngIf="selectedAuth">
-      <div class="review-header-bar">
+      <div class="review-header-bar" *ngIf="selectedAuth">
         <h2>Authorization Review</h2>
         <div class="review-controls">
-          <button (click)="onPrevious()" [disabled]="selectedIndex === 0">&lt; Previous</button>
-          <span>Review {{ selectedIndex! + 1 }} of {{ auths.length }}</span>
-          <button (click)="onNext()" [disabled]="selectedIndex === auths.length - 1">Next &gt;</button>
+          <button (click)="onPrevious()" [disabled]="!canPrev">&lt; Previous</button>
+          <span>Review {{ (selectedIndex + 1) }} of {{ navList.length }}</span>
+          <button (click)="onNext()" [disabled]="!canNext">Next &gt;</button>
         </div>
       </div>
 
@@ -189,7 +223,7 @@
 
           <div class="field">
             <label>Member Name:</label>
-            <span>{{ selectedAuth.memberId }}</span>
+            <span>{{ selectedAuth.memberName }}</span>
           </div>
           <div class="field">
             <label>Auth #:</label>
@@ -211,34 +245,84 @@
 
 
         <h6>Service Lines</h6>
-        <table class="service-table">
-          <thead>
-            <tr>
-              <th>Code</th>
-              <th>Description</th>
-              <th>From</th>
-              <th>To</th>
-              <th>Req.</th>
-              <th>Appr.</th>
-              <th>Denied</th>
-              <th>Initial Recommendation</th>
-              <th>MD's Recommendation</th>
+        <div class="table-wrapper">
+          <table mat-table
+                 [dataSource]="serviceLinesDS"
+                 class="mat-elevation-z1 full-width-table pro-table mng-table">
+
+            <!-- Service Code -->
+            <ng-container matColumnDef="serviceCode">
+              <th mat-header-cell *matHeaderCellDef>Service Code</th>
+              <td mat-cell *matCellDef="let line">{{ line.ServiceCode || '—' }}</td>
+            </ng-container>
+
+            <!-- Description -->
+            <ng-container matColumnDef="description">
+              <th mat-header-cell *matHeaderCellDef>Description</th>
+              <td mat-cell *matCellDef="let line">{{ line.Description || '—' }}</td>
+            </ng-container>
+
+            <!-- From -->
+            <ng-container matColumnDef="fromDate">
+              <th mat-header-cell *matHeaderCellDef>From</th>
+              <td mat-cell *matCellDef="let line">{{ line.FromDate | date:'MM/dd/yyyy' }}</td>
+            </ng-container>
+
+            <!-- To -->
+            <ng-container matColumnDef="toDate">
+              <th mat-header-cell *matHeaderCellDef>To</th>
+              <td mat-cell *matCellDef="let line">{{ line.ToDate | date:'MM/dd/yyyy' }}</td>
+            </ng-container>
+
+            <!-- Requested -->
+            <ng-container matColumnDef="requested">
+              <th mat-header-cell *matHeaderCellDef>Requested</th>
+              <td mat-cell *matCellDef="let line">{{ line.Requested }}</td>
+            </ng-container>
+
+            <!-- Approved -->
+            <ng-container matColumnDef="approved">
+              <th mat-header-cell *matHeaderCellDef>Approved</th>
+              <td mat-cell *matCellDef="let line">{{ line.Approved }}</td>
+            </ng-container>
+
+            <!-- Denied -->
+            <ng-container matColumnDef="denied">
+              <th mat-header-cell *matHeaderCellDef>Denied</th>
+              <td mat-cell *matCellDef="let line">{{ line.Denied }}</td>
+            </ng-container>
+
+            <!-- Initial Recommendation -->
+            <ng-container matColumnDef="initial">
+              <th mat-header-cell *matHeaderCellDef>Initial Recommendation</th>
+              <td mat-cell *matCellDef="let line">{{ line.InitialRecommendation || '—' }}</td>
+            </ng-container>
+
+            <!-- MD Decision -->
+            <ng-container matColumnDef="mdDecision">
+              <th mat-header-cell *matHeaderCellDef>MD Decision</th>
+              <td mat-cell *matCellDef="let line">{{ line.MdDecision || 'NotReviewed' }}</td>
+            </ng-container>
+
+            <!-- MD Notes -->
+            <ng-container matColumnDef="mdNotes">
+              <th mat-header-cell *matHeaderCellDef>MD Notes</th>
+              <td mat-cell *matCellDef="let line">{{ line.MdNotes || '—' }}</td>
+            </ng-container>
+
+            <!-- Header / Rows -->
+            <tr mat-header-row *matHeaderRowDef="displayedServiceColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedServiceColumns;"></tr>
+
+            <!-- Empty state -->
+            <tr class="mat-row" *matNoDataRow>
+              <td class="mat-cell dim" [attr.colspan]="displayedServiceColumns.length">
+                No service lines found.
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let line of selectedAuth.serviceLines">
-              <td><a href="#">{{ line.code }}</a></td>
-              <td>{{ line.desc }}</td>
-              <td>{{ line.from }}</td>
-              <td>{{ line.to }}</td>
-              <td>{{ line.req }}</td>
-              <td>{{ line.appr }}</td>
-              <td>{{ line.denied }}</td>
-              <td>{{ line.initial }}</td>
-              <td>{{ line.director }}</td>
-            </tr>
-          </tbody>
-        </table>
+          </table>
+        </div>
+
 
         <h6>Medical Director's Decision</h6>
         <div class="decision-options">

@@ -25,7 +25,7 @@ import { AssignedcomplaintsComponent } from './dash-board/assignedcomplaints/ass
 import { FaxesComponent } from './dash-board/faxes/faxes.component';
 import { NewDashBoardComponent } from './dash-board/new-dash-board/new-dash-board.component';
 import { NewDashboard2Component } from './dash-board/new-dashboard2/new-dashboard2.component';
-import { MdreviewdashboardComponent } from './dash-board/mdreviewdashboard/mdreviewdashboard.component';
+import { MdreviewdashboardComponent } from './dash-board/mdreviewdashboard/MdreviewdashboardComponent';
 
 import { MemberAlertsComponent } from './member/member-alerts/member-alerts.component';
 import { MemberCareplanComponent } from './member/member-careplan/member-careplan.component';

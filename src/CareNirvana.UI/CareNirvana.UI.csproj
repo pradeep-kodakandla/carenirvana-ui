@@ -8,6 +8,10 @@
     <SpaProxyServerUrl>https://localhost:44404</SpaProxyServerUrl>
     <SpaProxyLaunchCommand>npm start</SpaProxyLaunchCommand>
     <ImplicitUsings>enable</ImplicitUsings>
+	  <TypeScriptCompileBlocked>true</TypeScriptCompileBlocked>
+	  <AngularCliServerUrl>http://localhost:4200</AngularCliServerUrl>
+	  <DefaultItemExcludes>$(DefaultItemExcludes);$(SpaRoot)node_modules\**</DefaultItemExcludes>
+
   </PropertyGroup>
 
   <ItemGroup>

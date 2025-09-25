@@ -6,7 +6,7 @@ import { MyactivitiesComponent } from './myactivities/myactivities.component';
 import { AssignedcomplaintsComponent } from './assignedcomplaints/assignedcomplaints.component';
 import { FaxesComponent } from './faxes/faxes.component';
 import { RolepermissionService, CfgRole } from 'src/app/service/rolepermission.service';
-import { MdreviewdashboardComponent } from './mdreviewdashboard/mdreviewdashboard.component';
+import { MdreviewdashboardComponent } from './mdreviewdashboard/MdreviewdashboardComponent';
 import { DashboardServiceService } from 'src/app/service/dashboard.service.service';
 
 interface DashboardWidget {

@@ -13,7 +13,6 @@ table {
   width: 100%;
 }
 
-
 tr.example-detail-row {
   height: 0;
 }
@@ -85,14 +84,13 @@ tr.example-element-row:not(.example-expanded-row):active {
   --dot: #9aa4b2;
   --bd: #e5e7eb;
   display: inline-flex;
-  align-items: center;
+
   gap: 8px;
-  padding: 6px 12px;
   border-radius: 9999px;
-  background: var(--bg);
-  color: var(--fg);
-  border: 1px solid var(--bd);
-  font-weight: 600;
+  /*  background: var(--bg);
+*/ color: var(--fg);
+  /*  border: 1px solid var(--bd);
+*/ font-weight: 600;
   font-size: 0.875rem;
   line-height: 1;
   white-space: nowrap;
@@ -120,7 +118,7 @@ tr.example-element-row:not(.example-expanded-row):active {
   }
 
   .risk-chip.compact {
-    padding: 4px 10px;
+
     font-size: 12px;
     gap: 6px;
   }
@@ -300,27 +298,29 @@ tr.example-element-row:not(.example-expanded-row):active {
 
 /* Color mappings already applied via [ngClass] on the chip */
 .due-red {
-  background: #fef2f2 !important;
-  color: #991b1b !important;
-  border: 1px solid #fecaca !important;
+  /*  background: #fef2f2 !important;
+*/ color: #991b1b !important;
+  /*  border: 1px solid #fecaca !important;
+*/
 }
 
 .due-orange {
-  background: #fffbeb !important;
-  color: #92400e !important;
-  border: 1px solid #fde68a !important;
+  /*  background: #fffbeb !important;
+*/ color: #92400e !important;
+  /*  border: 1px solid #fde68a !important;
+*/
 }
 
 .due-green {
-  background: #ecfdf5 !important;
-  color: #065f46 !important;
-  border: 1px solid #a7f3d0 !important;
+  /*  background: #ecfdf5 !important;
+*/ color: #065f46 !important;
+  /*  border: 1px solid #a7f3d0 !important;
+*/
 }
 
 .risk-chip.compact {
   flex-direction: column; /* stack date and days-left */
   /*--align-items: center;*/ /* center align inside chip */
-  padding: 6px 10px;
   min-width: 110px;
 }
 

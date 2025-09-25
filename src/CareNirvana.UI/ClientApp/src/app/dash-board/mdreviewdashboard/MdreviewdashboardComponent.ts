@@ -3,12 +3,12 @@ import { FormBuilder, FormGroup } from '@angular/forms';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
-import { Observable } from 'rxjs';
 import { DashboardServiceService } from 'src/app/service/dashboard.service.service';
 import { HeaderService } from 'src/app/service/header.service';
 import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from 'src/app/service/auth.service';
 import { MemberService } from 'src/app/service/shared-member.service';
+import { Observable, Subscription } from 'rxjs';
 
 type Row = any;
 
@@ -24,6 +24,19 @@ export class MdreviewdashboardComponent {
   selectedIndex: number = 0;
   selectedAuth: any | null = null;
   selectedAuthRaw: Row | null = null;
+  serviceLinesDS = new MatTableDataSource<any>([]);
+  displayedServiceColumns: string[] = [
+    'serviceCode',
+    'description',
+    'fromDate',
+    'toDate',
+    'requested',
+    'approved',
+    'denied',
+    'initial',
+    'mdDecision',
+    'mdNotes'
+  ];
 
   constructor(
     private fb: FormBuilder,
@@ -52,43 +65,6 @@ export class MdreviewdashboardComponent {
     { label: 'Over Due', value: 40, icon: 'check_circle' }
   ];
 
-
-  //auths = [
-  //  {
-  //    memberId: '123456789',
-  //    firstName: 'John',
-  //    lastName: 'Smith',
-  //    authNumber: '0208TSB1N',
-  //    authType: 'Acute',
-  //    facility: 'Hospital Care',
-  //    networkStatus: 'Par',
-  //    dueDate: '08/01/2025 6:00 PM',
-  //    priority: 'High',
-  //    serviceLines: [
-  //      { code: '99213', desc: 'Office Visit', from: '01-01-2025', to: '01-02-2025', req: 4, appr: 0, denied: 0, initial: 'Approved', director: '' }
-  //    ],
-  //    recommendation: 'Approved'
-  //  },
-  //  {
-  //    memberId: '123456788',
-  //    firstName: 'Henry',
-  //    lastName: 'Garcia',
-  //    authNumber: '1209TZBSX',
-  //    authType: 'Hospitalization',
-  //    facility: 'Clinic',
-  //    networkStatus: 'Non-Par',
-  //    dueDate: '08/03/2025 12:00 PM',
-  //    priority: 'Medium',
-  //    serviceLines: [
-  //      { code: '99214', desc: 'Consultation Visit', from: '01-01-2025', to: '01-05-2025', req: 2, appr: 0, denied: 2, initial: 'Denied', director: '' }
-  //    ],
-  //    recommendation: 'Denied'
-  //  }
-  //];
-  //selectedIndex: number | null = null;
-  //get selectedAuth() {
-  //  return this.selectedIndex !== null ? this.auths[this.selectedIndex] : null;
-  //}
   onReviewClick(row: Row): void {
     const k = this.keyOf(row);
     const idx = this.navList.findIndex(r => this.keyOf(r) === k);
@@ -102,7 +78,50 @@ export class MdreviewdashboardComponent {
       const el = document.querySelector('.col-middle') as HTMLElement | null;
       el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 0);
+
+    //this.activtyService.getwqactivitylinedetails(row?.AuthActivityId).subscribe(
+    //  (data) => {
+    //    console.log('Fetched activity lines:', data);
+    //  });
+    const actId = Number(row.AuthActivityId ?? row.ActivityId ?? 0);
+    this.loadServiceLinesFor(actId);
   }
+
+  // Keep exactly what your service returns (no mapping/types)
+  serviceLinesLoading = false;
+  private serviceLinesSub?: Subscription;
+
+  private loadServiceLinesFor(activityId: number): void {
+    if (!this.selectedAuth) return;
+
+    // cancel any in-flight request when switching rows quickly
+    this.serviceLinesSub?.unsubscribe();
+
+    this.serviceLinesLoading = true;
+
+    const obs = this.activtyService.getwqactivitylinedetails(activityId) as Observable<any[]>;
+    this.serviceLinesSub = obs.subscribe({
+      next: (rows) => {
+        const data = Array.isArray(rows) ? rows : [];
+        // keep raw for any other logic you have
+        this.selectedAuth.serviceLines = data;
+        // feed the Material table so it matches your main table design
+        this.serviceLinesDS.data = data;
+      },
+      error: () => {
+        this.selectedAuth.serviceLines = [];
+        this.serviceLinesDS.data = [];
+      }
+    });
+
+    // stop the spinner regardless of outcome
+    this.serviceLinesSub.add(() => (this.serviceLinesLoading = false));
+  }
+
+
+
+
+
 
   private mapRowToSelected(row: Row) {
     return {
@@ -121,15 +140,24 @@ export class MdreviewdashboardComponent {
 
   // -------- Utilities ----------
   trackByAuth = (_: number, item: Row) => this.keyOf(item) ?? _;
+  trackByLine = (_: number, l: any) => l?.Id ?? l?.ServiceCode ?? _;
 
   isSame(a: Row, b: Row): boolean {
     if (!a || !b) return false;
     return this.keyOf(a) === this.keyOf(b);
   }
-  keyOf(r: Row): string | number | undefined {
-    return r?.AuthNumber ?? r?.authNumber ?? r?.id ?? r?.AuthNo ?? r?.authNo;
+  private normId(v: any): string | undefined {
+    return v === null || v === undefined ? undefined : String(v).trim();
   }
 
+  keyOf(r: any): string | number | undefined {
+    // Prefer AuthActivityId first (new unique id), then fall back to older keys
+    return this.normId(
+      r?.AuthActivityId ?? r?.authActivityId ??
+      r?.AuthNumber ?? r?.authNumber ??
+      r?.id ?? r?.AuthNo ?? r?.authNo
+    );
+  }
   getDate(val: any): string {
     const d = this.normalizeDate(val);
     return d ? d.toLocaleDateString() : '—';
@@ -154,6 +182,8 @@ export class MdreviewdashboardComponent {
     this.selectedIndex = i;
     this.selectedAuthRaw = row;
     this.selectedAuth = this.mapRowToSelected(row);
+    const actId = Number(row.AuthActivityId ?? row.ActivityId ?? 0);
+    this.loadServiceLinesFor(actId);
   }
   // date helpers
   private normalizeDate(val: any): Date | null {
@@ -181,6 +211,8 @@ export class MdreviewdashboardComponent {
     const row = this.auths[this.selectedIndex];
     this.selectedAuth = this.mapRowToSelectedAuth(row);
     this.selectedAuthData = this.mapRowToSelectedAuthData(row);
+    const actId = Number(row.AuthActivityId ?? row.ActivityId ?? 0);
+    this.loadServiceLinesFor(actId);
   }
 
   onNext(): void {
@@ -189,6 +221,8 @@ export class MdreviewdashboardComponent {
     const row = this.auths[this.selectedIndex];
     this.selectedAuth = this.mapRowToSelectedAuth(row);
     this.selectedAuthData = this.mapRowToSelectedAuthData(row);
+    const actId = Number(row.AuthActivityId ?? row.ActivityId ?? 0);
+    this.loadServiceLinesFor(actId);
   }
 
   closeReview(): void {
@@ -282,10 +316,6 @@ export class MdreviewdashboardComponent {
     };
   }
 
-  /** Wire your real service here (kept AS-IS). It should return rows with PascalCase keys:
-   * Module, FirstName, LastName, MemberId, CreatedOn, ReferredTo, UserName, ActivityType,
-   * FollowUpDateTime, DueDate, Status, (and optionally StatusId / ActivityTypeId).
-   */
   private getMyActivities$(): Observable<any[]> {
     return this.activtyService.getpendingwqactivitydetails(1);
   }
@@ -334,7 +364,6 @@ export class MdreviewdashboardComponent {
         return cmp > 0; // FUTURE
       });
     }
-
     // quick search
     this.dataSource.data = base;
     this.dataSource.filter = this.quickSearchTerm;
@@ -460,7 +489,8 @@ export class MdreviewdashboardComponent {
       authType: row.AuthType || '-',
       facility: row.Facility || '-',
       networkStatus: row.NetworkStatus || '-',
-      serviceLines: row.ServiceLines || [] // supply from your service if needed
+      serviceLines: row.ServiceLines || [], // supply from your service if needed
+      authActivityId: row.AuthActivityId
     };
   }
 

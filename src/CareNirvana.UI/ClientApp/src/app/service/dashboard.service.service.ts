@@ -8,7 +8,7 @@ import { Observable } from 'rxjs';
 export class DashboardServiceService {
 
   private apiUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/dashboard';
-  //private apiUrl = 'https://localhost:51346/api/dashboard';
+ // private apiUrl = 'https://localhost:51346/api/dashboard';
   constructor(private http: HttpClient) { }
 
   // Fetch Member Enrollment from API
@@ -30,4 +30,8 @@ export class DashboardServiceService {
   getpendingwqactivitydetails(userId: any): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/pendingwq/${userId}`);
   }
+  getwqactivitylinedetails(activityid: any): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/wqactivitylines/${activityid}`);
+  }
+  
 }

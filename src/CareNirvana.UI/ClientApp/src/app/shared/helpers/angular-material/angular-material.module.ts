@@ -1,6 +1,5 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FlexLayoutModule } from '@angular/flex-layout';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -57,7 +56,6 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
   declarations: [],
   imports: [
     CommonModule, MatFormFieldModule,
-    FlexLayoutModule,
     FormsModule,
     MatToolbarModule,
     MatInputModule,
@@ -83,7 +81,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
     BaseChartDirective, MatBadgeModule, MatButtonToggleModule, MatAutocompleteModule, MatCheckboxModule, MatStepperModule, MatTooltipModule, MatDialogModule,
     MatSnackBarModule, MatDatepickerModule, MatNativeDateModule, MatRadioModule, BrowserModule, DragDropModule, MatAccordion, MatProgressSpinnerModule, 
   ],
-  exports: [MatFormFieldModule, FlexLayoutModule,
+  exports: [MatFormFieldModule, 
     FormsModule,
     MatToolbarModule,
     MatInputModule,
