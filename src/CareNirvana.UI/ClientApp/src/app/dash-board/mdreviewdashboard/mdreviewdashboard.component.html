@@ -1,6 +1,6 @@
 
 <div class="main-wrapper">
-  <div class="container" style="margin:0px !important;">
+  <div class="container" style="margin:0px !important;" [ngClass]="{ 'summary-on': showSummary, 'summary-off': !showSummary }">
     <!-- LEFT COLUMN (20%) -->
     <div class="col-left" [ngClass]="{ 'full-width': !selectedAuth, 'minimized': !!selectedAuth }">
       <!--<div class="top-bar">
@@ -181,6 +181,7 @@
              (click)="onCardSelect(row, i)">
           <div class="mini-card-title">
             {{ row.AuthNumber || row.authNumber || '—' }}
+
           </div>
           <div class="mini-card-sub">
             {{ (row.FirstName || '') + ' ' + (row.LastName || '') }}
@@ -204,12 +205,18 @@
           <button (click)="onPrevious()" [disabled]="!canPrev">&lt; Previous</button>
           <span>Review {{ (selectedIndex + 1) }} of {{ navList.length }}</span>
           <button (click)="onNext()" [disabled]="!canNext">Next &gt;</button>
+          <button type="button" (click)="toggleSummary()">
+            {{ showSummary ? 'Hide Summary' : 'Show Summary' }}
+          </button>
         </div>
       </div>
 
       <div class="review-header">
         <p>Review Due Date: {{ selectedAuth.dueDate }} | Review Priority: {{ selectedAuth.priority }}</p>
-        <p style="color:green;"><strong>Overall Initial Recommendation:</strong> {{ selectedAuth.recommendation }}</p>
+        <!--<p style="color:green;"><strong>Overall Initial Recommendation:</strong> {{ selectedAuth.recommendation }}</p>-->
+        <p class="overall-ir">
+          <strong>Overall Initial Recommendation:</strong> {{ overallInitialRecommendation }}
+        </p>
       </div>
 
       <div class="review-content">
@@ -250,6 +257,24 @@
                  [dataSource]="serviceLinesDS"
                  class="mat-elevation-z1 full-width-table pro-table mng-table">
 
+            <ng-container matColumnDef="select">
+              <th mat-header-cell *matHeaderCellDef class="col-select">
+                <mat-checkbox (change)="masterToggle()"
+                              [checked]="isAllSelected()"
+                              [indeterminate]="selection.hasValue() && !isAllSelected()"
+                              [disabled]="!hasSelectableRows()"
+                              [aria-label]="checkboxLabel()">
+                </mat-checkbox>
+              </th>
+              <td mat-cell *matCellDef="let line" class="col-select">
+                <mat-checkbox (click)="$event.stopPropagation()"
+                              (change)="$event ? selection.toggle(line) : null"
+                              [checked]="selection.isSelected(line)"
+                              [disabled]="!isLineSelectable(line)"
+                              [aria-label]="checkboxLabel(line)">
+                </mat-checkbox>
+              </td>
+            </ng-container>
             <!-- Service Code -->
             <ng-container matColumnDef="serviceCode">
               <th mat-header-cell *matHeaderCellDef>Service Code</th>
@@ -276,19 +301,19 @@
 
             <!-- Requested -->
             <ng-container matColumnDef="requested">
-              <th mat-header-cell *matHeaderCellDef>Requested</th>
+              <th mat-header-cell *matHeaderCellDef>Req.</th>
               <td mat-cell *matCellDef="let line">{{ line.Requested }}</td>
             </ng-container>
 
             <!-- Approved -->
             <ng-container matColumnDef="approved">
-              <th mat-header-cell *matHeaderCellDef>Approved</th>
+              <th mat-header-cell *matHeaderCellDef>Appr.</th>
               <td mat-cell *matCellDef="let line">{{ line.Approved }}</td>
             </ng-container>
 
             <!-- Denied -->
             <ng-container matColumnDef="denied">
-              <th mat-header-cell *matHeaderCellDef>Denied</th>
+              <th mat-header-cell *matHeaderCellDef>Den.</th>
               <td mat-cell *matCellDef="let line">{{ line.Denied }}</td>
             </ng-container>
 
@@ -301,7 +326,12 @@
             <!-- MD Decision -->
             <ng-container matColumnDef="mdDecision">
               <th mat-header-cell *matHeaderCellDef>MD Decision</th>
-              <td mat-cell *matCellDef="let line">{{ line.MdDecision || 'NotReviewed' }}</td>
+              <!--<td mat-cell *matCellDef="let line">{{ line.MdDecision || 'Not Reviewed' }}</td>-->
+              <td mat-cell *matCellDef="let line">
+                <span class="md-badge" [ngClass]="mdDecisionClass(line.MdDecision)">
+                  {{ line.MdDecision || 'Not Reviewed' }}
+                </span>
+              </td>
             </ng-container>
 
             <!-- MD Notes -->
@@ -326,16 +356,46 @@
 
         <h6>Medical Director's Decision</h6>
         <div class="decision-options">
-          <label><input type="radio" name="decision"> <span class="green">Approve</span></label><br />
-          <label><input type="radio" name="decision"> <span class="red">Deny</span></label><br />
+          <div class="form-outline dropdown-container">
+            <label class="floating-label">Decision Status <span class="text-danger">*</span></label>
+
+            <div class="input-with-icon">
+              <input type="text"
+                     class="form-control"
+                     [value]="DecisionStatusDisplay"
+                     (input)="onTypeaheadInput($event)"
+                     (keydown)="handleDropdownKeydown($event, 'DecisionStatus')"
+                     (focus)="openDropdown('DecisionStatus')"
+                     (focusout)="closeDropdown('DecisionStatus')">
+              <!--[ngClass]="{'is-invalid': activityForm.get('DecisionStatus')?.touched && activityForm.get('DecisionStatus')?.invalid}"-->
+
+              <span class="dropdown-arrow">&#9662;</span>
+
+              <div class="autocomplete-dropdown" *ngIf="showDropdowns.DecisionStatus && filteredDecisionStatus?.length">
+                <div class="autocomplete-option"
+                     *ngFor="let option of filteredDecisionStatus; let i = index"
+                     [ngClass]="{'highlighted': i === highlightedIndex}"
+                     (mousedown)="selectDropdownOption('DecisionStatus', option)">
+                  {{ option.label }}
+                </div>
+
+              </div>
+            </div>
+
+            <!--<div *ngIf="activityForm.get('DecisionStatus')?.touched && activityForm.get('DecisionStatus')?.invalid" class="text-danger">
+              Activity Type is required.
+            </div>-->
+          </div>
+          <!--<label><input type="radio" name="decision"> <span class="green">Approve</span></label><br />-->
+          <!--<label><input type="radio" name="decision"> <span class="red">Deny</span></label><br />-->
           <label><input type="radio" name="decision"> <span class="blue">Request more information</span></label>
         </div>
 
-        <textarea rows="4" placeholder="Comments and Recommendations"></textarea>
+        <textarea rows="4" placeholder="Comments and Recommendations" [(ngModel)]="mdNotesText"></textarea>
 
         <div class="action-buttons">
-          <button class="submit">Submit Decision</button>
-          <button class="save">Save & Continue</button>
+          <button class="submit" (click)="onSaveSelection()">Submit Decision</button>
+          <button class="save" (click)="onSaveSelection()">Save & Continue</button>
           <button class="close" (click)="closeReview()">Close</button>
         </div>
       </div>
@@ -343,7 +403,7 @@
 
 
     <!-- RIGHT COLUMN (40%) -->
-    <div class="col-summary" *ngIf="selectedAuth">
+    <div class="col-summary" *ngIf="selectedAuth && showSummary">
       <h3>Auth Summary</h3>
       <p><strong>Member ID:</strong> {{ selectedAuthData.memberId }}</p>
       <p><strong>Member Name:</strong> {{ selectedAuthData.memberName }}</p>
@@ -368,4 +428,3 @@
     </div>
   </div>
 </div>
-

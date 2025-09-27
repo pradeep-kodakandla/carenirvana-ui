@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { FormControl, FormGroup, Validators } from '@angular/forms';
+import { FormControl, FormGroup, Validators, FormBuilder } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthenticateService } from 'src/app/service/authentication.service';
 import * as CryptoJS from 'crypto-js';
@@ -20,7 +20,7 @@ export class LoginComponent implements OnInit {
   errorMessage: string = '';
   isSubmitting = false;
 
-  constructor(private router: Router, private authService: AuthenticateService) {
+  constructor(private router: Router, private authService: AuthenticateService, private fb: FormBuilder) {
     this.login = new FormGroup({
       username: new FormControl(null, [Validators.required, Validators.minLength(6)]),
       password: new FormControl(null, [Validators.required, Validators.minLength(6)])
@@ -39,13 +39,18 @@ export class LoginComponent implements OnInit {
       const encrypted = CryptoJS.AES.encrypt(password, CryptoJS.enc.Utf8.parse(secretKey), { iv: iv });
       const encryptedPassword = encrypted.toString();
 
+
+
       this.authService.login(username, encryptedPassword).subscribe({
         next: (response) => {
           sessionStorage.setItem('loggedInUsername', username);
+          
           this.router.navigate(['dashboard']);
+          
         },
         error: (err) => {
           console.error('Login failed:', err);
+          this.isSubmitting = false;
           this.errorMessage = 'Invalid username or password';
         },
         complete: () => {

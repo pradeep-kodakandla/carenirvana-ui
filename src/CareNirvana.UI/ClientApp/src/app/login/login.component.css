@@ -36,7 +36,6 @@
 */}
 
 h2 {
-  margin-top: 20px;
   color: #333333;
   font-family: Arial, sans-serif;
 }
@@ -75,7 +74,14 @@ h2 {
   color: white !important;
 }
 
+  /* Center spinner inside button */
   .login-button mat-spinner {
-    position: absolute;
-    color: white !important;
+    margin: 0 auto;
+    display: flex;
   }
+
+    /* Force spinner stroke color to white */
+    .login-button mat-spinner ::ng-deep circle {
+      stroke: white !important;
+    }
+

@@ -40,9 +40,10 @@
       <button mat-raised-button class="login-button"
               type="submit"
               [disabled]="isSubmitting">
-        <mat-spinner *ngIf="isSubmitting" diameter="20" color="accent"></mat-spinner>
+        <mat-spinner *ngIf="isSubmitting" diameter="20"></mat-spinner>
         <span *ngIf="!isSubmitting">Login</span>
       </button>
+
 
       <!-- Show error message -->
       <div *ngIf="errorMessage" class="error-message">{{ errorMessage }}</div>

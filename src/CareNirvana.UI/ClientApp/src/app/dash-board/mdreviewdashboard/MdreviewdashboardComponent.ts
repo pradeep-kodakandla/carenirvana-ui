@@ -3,12 +3,14 @@ import { FormBuilder, FormGroup } from '@angular/forms';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
-import { DashboardServiceService } from 'src/app/service/dashboard.service.service';
+import { DashboardServiceService, UpdateActivityLinesRequest } from 'src/app/service/dashboard.service.service';
 import { HeaderService } from 'src/app/service/header.service';
 import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from 'src/app/service/auth.service';
 import { MemberService } from 'src/app/service/shared-member.service';
 import { Observable, Subscription } from 'rxjs';
+import { CrudService } from 'src/app/service/crud.service';
+import { SelectionModel } from '@angular/cdk/collections';
 
 type Row = any;
 
@@ -26,6 +28,7 @@ export class MdreviewdashboardComponent {
   selectedAuthRaw: Row | null = null;
   serviceLinesDS = new MatTableDataSource<any>([]);
   displayedServiceColumns: string[] = [
+    'select',
     'serviceCode',
     'description',
     'fromDate',
@@ -37,6 +40,22 @@ export class MdreviewdashboardComponent {
     'mdDecision',
     'mdNotes'
   ];
+  showSummary = false;
+  DecisionStatus: { value: string, label: string }[] = [{ value: '', label: 'Select' }];
+  DecisionStatusDisplay: string = 'Select';
+  filteredDecisionStatus: { value: string, label: string }[] = [];
+  selection = new SelectionModel<any>(true, []);
+  overallInitialRecommendation: string = '-';
+  selectedRowforRefresh: number = 0;
+
+  showDropdowns: { [key: string]: boolean } = {
+    DecisionStatus: false,
+    priority: false,
+    workBasket: false,
+    assignTo: false,
+    workBasketUser: false
+  };
+  highlightedIndex: number = -1;
 
   constructor(
     private fb: FormBuilder,
@@ -45,17 +64,9 @@ export class MdreviewdashboardComponent {
     private router: Router,
     private authService: AuthService,
     private memberService: MemberService,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private crudService: CrudService
   ) { }
-
-  ngonInit(): void {
-    this.authService.getAuthDataByAuthNumber('TCZBGT7Y3').subscribe(
-      (data) => {
-        this.auths = data;
-        this.selectedAuthData = data[0]?.responseData; // default selection
-      });
-  }
-
 
   // Summary widgets
   summaryStats = [
@@ -78,13 +89,14 @@ export class MdreviewdashboardComponent {
       const el = document.querySelector('.col-middle') as HTMLElement | null;
       el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 0);
-
+    this.showSummary = false;
     //this.activtyService.getwqactivitylinedetails(row?.AuthActivityId).subscribe(
     //  (data) => {
     //    console.log('Fetched activity lines:', data);
     //  });
     const actId = Number(row.AuthActivityId ?? row.ActivityId ?? 0);
-    this.loadServiceLinesFor(actId);
+    this.selectedRowforRefresh = actId;
+    this.loadServiceLinesFor(this.selectedRowforRefresh);
   }
 
   // Keep exactly what your service returns (no mapping/types)
@@ -117,11 +129,6 @@ export class MdreviewdashboardComponent {
     // stop the spinner regardless of outcome
     this.serviceLinesSub.add(() => (this.serviceLinesLoading = false));
   }
-
-
-
-
-
 
   private mapRowToSelected(row: Row) {
     return {
@@ -291,6 +298,15 @@ export class MdreviewdashboardComponent {
   ngOnInit(): void {
     this.filtersForm = this.fb.group({}); // empty grid per request
     this.loadData();
+    this.crudService.getData('um', 'decisionstatus').subscribe((response) => {
+      const options = response.map(item => ({
+        value: item.code || item.id || item.id,
+        label: item.label || item.decisionStatus || item.display
+      }));
+
+      this.DecisionStatus = [{ value: '', label: 'Select' }, ...options];
+      this.filteredDecisionStatus = [...this.DecisionStatus];
+    });
   }
 
   ngAfterViewInit(): void {
@@ -520,5 +536,238 @@ export class MdreviewdashboardComponent {
   }
   get canNext(): boolean {
     return !!this.selectedAuth && this.selectedIndex < this.navList.length - 1;
+  }
+
+  toggleSummary() {
+    this.showSummary = !this.showSummary;
+  }
+
+  /******Select field******/
+
+
+  onTypeaheadInput(event: Event): void {
+    const input = (event.target as HTMLInputElement).value;
+    this.DecisionStatusDisplay = input;
+    this.filterDropdown('DecisionStatus');
+  }
+
+  filterDropdown(field: 'DecisionStatus'): void {
+    const search = this.DecisionStatusDisplay?.toLowerCase() || '';
+    this.filteredDecisionStatus = this.DecisionStatus.filter(opt =>
+      opt.label.toLowerCase().includes(search)
+    );
+  }
+
+  selectDropdownOption(field: string, option: { value: string, label: string }) {
+    // this.activityForm.get(field)?.setValue(option.value);
+
+    const displayMap: any = {
+      DecisionStatus: 'DecisionStatusDisplay',
+      priority: 'priorityDisplay',
+      workBasket: 'workBasketDisplay',
+      assignTo: 'assignToDisplay',
+      workBasketUser: 'workBasketUserDisplay'
+    };
+
+    if (displayMap[field]) {
+      (this as any)[displayMap[field]] = option.label;
+    }
+
+    this.showDropdowns[field] = false;
+    this.highlightedIndex = -1;
+  }
+
+
+
+  openDropdown(field: string): void {
+    this.showDropdowns[field] = true;
+    //  this.activeDropdown = field;
+
+  }
+
+  //closeDropdown(field: string): void {
+  //  setTimeout(() => this.showDropdowns[field] = false, 200);
+  //}
+  closeDropdown(field: string): void {
+    this.showDropdowns[field] = false;
+  }
+
+
+
+  handleDropdownKeydown(event: KeyboardEvent, field: string) {
+    const list = field === 'DecisionStatus' ? this.filteredDecisionStatus : [];
+
+    if (!list.length) return;
+
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        this.highlightedIndex = (this.highlightedIndex + 1) % list.length;
+        this.scrollHighlightedIntoView(field);
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        this.highlightedIndex = (this.highlightedIndex - 1 + list.length) % list.length;
+        this.scrollHighlightedIntoView(field);
+        break;
+      case 'Enter':
+        if (this.highlightedIndex >= 0 && this.highlightedIndex < list.length) {
+          this.selectDropdownOption(field, list[this.highlightedIndex]);
+          this.highlightedIndex = -1;
+          event.preventDefault();
+        }
+        break;
+      case 'Escape':
+        this.showDropdowns[field] = false;
+        this.highlightedIndex = -1;
+        break;
+    }
+  }
+
+  scrollHighlightedIntoView(field: string) {
+    setTimeout(() => {
+      const container = document.querySelector(`.autocomplete-dropdown`);
+      if (!container) return;
+      const options = container.querySelectorAll('.autocomplete-option');
+      if (this.highlightedIndex >= 0 && this.highlightedIndex < options.length) {
+        const selected = options[this.highlightedIndex] as HTMLElement;
+        selected.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }, 50);
+  }
+
+  // Convenience to extract the line id (use whatever your API returns)
+  private getLineId(line: any) {
+    return line?.ServiceLineId ?? line?.serviceLineId ?? line?.Id ?? line?.id;
+  }
+
+  // Master toggle helpers (used by header checkbox)
+  isAllSelected(): boolean {
+    const numSelected = this.selection.selected.length;
+    const numRows = this.serviceLinesDS?.data?.length ?? 0;
+    return numSelected === numRows && numRows > 0;
+  }
+
+
+
+  checkboxLabel(row?: any): string {
+    if (!row) {
+      return `${this.isAllSelected() ? 'deselect' : 'select'} all`;
+    }
+    const id = this.getLineId(row);
+    return `${this.selection.isSelected(row) ? 'deselect' : 'select'} row ${id}`;
+  }
+
+  // Call this on save to get only the selected IDs
+  //onSaveSelection(): void {
+  //  const selectedIds = this.selection.selected
+  //    .map(line => this.getLineId(line))
+  //    .filter(id => id != null);
+
+  //  // TODO: send selectedIds to your API / parent component
+  //  console.log('Selected ServiceLine IDs:', selectedIds);
+  //}
+  mdNotesText: string = '';
+
+  onSaveSelection(): void {
+    const selectedIds = this.selection.selected
+      .map(l => this.getLineId(l))
+      .filter((id: number | null | undefined) => id != null) as number[];
+
+    if (!selectedIds.length) {
+      // show toast/snackbar as you like
+      console.warn('No service lines selected.');
+      return;
+    }
+
+    // Map DecisionStatusDisplay (label) to the value you want to persist.
+    // If your BE expects the label itself, send it as-is.
+    const statusToSave = this.DecisionStatusDisplay && this.DecisionStatusDisplay !== 'Select'
+      ? this.DecisionStatusDisplay
+      : 'Reviewed'; // fallback if nothing chosen
+
+    const payload: UpdateActivityLinesRequest = {
+      lineIds: selectedIds,
+      status: statusToSave,       // e.g., "Approved" / "Denied" / etc.
+      mdDecision: statusToSave,   // or map separately if they differ
+      mdNotes: this.mdNotesText || '',
+      reviewedByUserId: 1         // TODO: plug in real current user id
+    };
+
+    this.activtyService.updateActivityLines(payload).subscribe({
+      next: (res) => {
+        // success UI: toast/snackbar, then refresh lines if desired
+        this.loadServiceLinesFor(this.selectedRowforRefresh);
+        // e.g., reload service lines:
+        // this.loadServiceLinesFor(this.selectedAuth?.authActivityId);
+      },
+      error: (err) => {
+        console.error('Update failed', err);
+      }
+    });
+  }
+
+  isLineSelectable(line: any): boolean {
+    const v = (line?.MdDecision ?? '').toString().trim().toLowerCase();
+    return v === '' || v === 'not reviewed' || v === 'notreviewed' || v === 'pending';
+  }
+
+  // If none of the rows are selectable, disable the master checkbox
+  hasSelectableRows(): boolean {
+    const rows: any[] = this.serviceLinesDS?.data ?? [];
+    return rows.some(r => this.isLineSelectable(r));
+  }
+
+  // Master toggle should only select selectable rows
+  masterToggle(): void {
+
+    //if (!this.serviceLinesDS?.data) return;
+    //this.isAllSelected()
+    //  ? this.selection.clear()
+    //  : this.serviceLinesDS.data.forEach(row => this.selection.select(row));
+
+    const rows: any[] = this.serviceLinesDS?.data ?? [];
+    if (!rows.length) return;
+
+    const selectable = rows.filter(r => this.isLineSelectable(r));
+    if (!selectable.length) return;
+
+    if (selectable.every(r => this.selection.isSelected(r))) {
+      selectable.forEach(r => this.selection.deselect(r));
+    } else {
+      selectable.forEach(r => this.selection.select(r));
+    }
+  }
+
+  // Label classes for MD Decision badge
+  mdDecisionClass(decision: string | null | undefined): string {
+    const v = (decision ?? '').toString().trim().toLowerCase();
+    if (v === '' || v === 'not reviewed' || v === 'notreviewed') return 'md-notreviewed';
+    if (v === 'pending') return 'md-pending';
+    if (v === 'approved' || v === 'partially approved' || v === 'partiallyapproved') return 'md-approved';
+    if (v === 'denied' || v === 'rejected') return 'md-denied';
+    if (v === 'rfi' || v === 'request more information' || v === 'requestmoreinformation') return 'md-rfi';
+    return 'md-neutral';
+  }
+
+  // Compute overall initial recommendation from the service lines
+  private computeOverallInitialRecommendation(): void {
+    const rows: any[] = this.serviceLinesDS?.data ?? [];
+    if (!rows.length) {
+      this.overallInitialRecommendation = '-';
+      return;
+    }
+    const values = rows
+      .map(r => (r?.InitialRecommendation ?? '').toString().trim())
+      .filter(v => v.length > 0);
+
+    if (!values.length) {
+      this.overallInitialRecommendation = '-';
+      return;
+    }
+
+    const first = values[0];
+    const allSame = values.every(v => v.toLowerCase() === first.toLowerCase());
+    this.overallInitialRecommendation = allSame ? first : 'Mixed';
   }
 }

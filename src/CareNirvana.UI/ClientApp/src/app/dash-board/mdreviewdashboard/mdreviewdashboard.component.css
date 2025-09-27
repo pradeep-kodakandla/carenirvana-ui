@@ -1,146 +1,67 @@
-/* ----- Global Layout ----- */
-html, body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: auto;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
 .main-wrapper {
-  /*  height: 100vh;
-  width: 100vw;*/
   display: flex;
   flex-direction: row;
 }
 
 .container {
   display: flex;
-/*  width: 100%;
-  height: 100%;*/
   transition: all 0.3s ease;
   max-width: 100%;
 }
 
-/* ----- Left Side: Cards ----- */
-.left-pane {
-  width: 100%;
-  transition: width 0.3s ease;
-/*  padding: 8px 12px;*/
-  overflow-y: auto;
-  background: linear-gradient(to right, #eef4f8, #f8fcff);
-}
+  .container.review-mode .left-pane {
+    width: 25%;
+    backdrop-filter: blur(10px);
+    border-right: 1px solid rgba(255, 255, 255, 0.4);
+  }
 
-.container.review-mode .left-pane {
-  width: 25%;
-  backdrop-filter: blur(10px);
-/*  background: rgba(255, 255, 255, 0.4);*/
-  border-right: 1px solid rgba(255, 255, 255, 0.4);
-}
+  .container.review-mode .right-pane {
+    display: block;
+    width: 75%;
+    padding: 16px 20px;
+    overflow-y: auto;
+    backdrop-filter: blur(14px);
+    background: rgba(255, 255, 255, 0.6);
+    border-left: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.05);
+  }
 
-/* ----- Right Side: Review ----- */
-.right-pane {
-  display: none;
-}
-
-.container.review-mode .right-pane {
-  display: block;
-  width: 75%;
-  padding: 16px 20px;
-  overflow-y: auto;
-  backdrop-filter: blur(14px);
-  background: rgba(255, 255, 255, 0.6);
-  border-left: 1px solid rgba(255, 255, 255, 0.4);
-  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.05);
-}
-
-/* ----- Cards ----- */
 .card-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  padding-right: 8px;
+  overflow: auto;
+  max-height: calc(100vh - 160px);
 }
 
-.card {
-  background: rgba(255, 255, 255, 0.7);
-  border-radius: 10px;
-  padding: 12px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
-  border-left: 4px solid transparent;
-  cursor: pointer;
-  transition: all 0.3s ease;
+.card.selected {
+  border-left-color: #32b3a3;
+  background: rgba(255, 255, 255, 0.9);
 }
 
-  .card:hover {
-    transform: translateY(-1px);
-    border-left-color: #007BFF;
-  }
-
-  .card.selected {
-    border-left-color: #32b3a3;
-    background: rgba(255, 255, 255, 0.9);
-  }
-
-  .card p {
-    margin: 0; /* remove space between fields */
-    padding: 2px 0; /* optional: minimal vertical breathing room */
-    font-size: 13px;
-    color: #333;
-    line-height: 1.3;
-  }
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 4px;
-  font-weight: bold;
-  color: #007BFF;
+.card p {
+  margin: 0;
+  padding: 2px 0;
+  font-size: 13px;
+  color: #333;
+  line-height: 1.3;
 }
 
-.review-btn {
+.top-controls button {
   background: #007BFF;
   color: white;
   border: none;
+  padding: 5px 14px;
   border-radius: 20px;
-  font-size: 12px;
-  padding: 4px 10px;
   cursor: pointer;
-  transition: 0.2s ease;
+  font-size: 13px;
 }
 
-  .review-btn:hover {
-    background: #005e8c;
+  .top-controls button:disabled {
+    background: #cccccc;
+    cursor: not-allowed;
   }
-
-/* ----- Top Controls (Next/Previous) ----- */
-.top-controls {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-  .top-controls button {
-    background: #007BFF;
-    color: white;
-    border: none;
-    padding: 5px 14px;
-    border-radius: 20px;
-    cursor: pointer;
-    font-size: 13px;
-  }
-
-    .top-controls button:disabled {
-      background: #cccccc;
-      cursor: not-allowed;
-    }
-
-/* ----- Review Content ----- */
-/*.review-header h2 {
-  margin: 0;
-  color: #333;
-}*/
 
 .review-header p {
   margin: 2px 0;
@@ -148,7 +69,13 @@ html, body {
   font-size: 13px;
 }
 
-.review-content h2,
+.review-content h2 {
+  margin: 12px 0 4px;
+  color: #007BFF;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 3px;
+}
+
 .review-content h6 {
   margin: 12px 0 4px;
   color: #007BFF;
@@ -162,30 +89,17 @@ html, body {
   color: #444;
 }
 
-/* ----- Table ----- */
-.service-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12.5px;
-  margin-top: 6px;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 5px;
-  overflow: hidden;
+.service-table th {
+  background-color: #eaf3f8;
+  color: #007BFF;
 }
 
-  .service-table th,
-  .service-table td {
-    border: 1px solid #ddd;
-    padding: 4px 6px;
-    text-align: left;
-  }
+.service-table td {
+  border: 1px solid #ddd;
+  padding: 4px 6px;
+  text-align: left;
+}
 
-  .service-table th {
-    background-color: #eaf3f8;
-    color: #007BFF;
-  }
-
-/* ----- Decision Section ----- */
 .decision-options {
   display: flex;
   gap: 20px;
@@ -203,7 +117,6 @@ html, body {
     cursor: pointer;
   }
 
-
 .green {
   color: #2E7D32;
 }
@@ -216,7 +129,6 @@ html, body {
   color: #1565C0;
 }
 
-/* ----- Textarea ----- */
 textarea {
   width: 100%;
   padding: 8px;
@@ -228,14 +140,12 @@ textarea {
   margin-top: 6px;
 }
 
-/* ----- Action Buttons (Sticky Footer) ----- */
 .action-buttons {
   margin-top: 16px;
   display: flex;
   gap: 10px;
   justify-content: flex-end;
   padding-top: 8px;
-  /*border-top: 1px solid #ccc;*/
   background: rgba(255, 255, 255, 0.9);
   position: sticky;
   bottom: 0;
@@ -266,7 +176,6 @@ textarea {
   background-color: #f44336;
   color: white;
 }
-
 
 .review-header-bar {
   display: flex;
@@ -308,7 +217,6 @@ textarea {
     color: #444;
   }
 
-
 .clinical-documents {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -330,72 +238,66 @@ textarea {
       min-width: 100px;
     }
 
-/* ----- 3 Column Layout ----- */
-.container-3col {
-  display: flex;
-  /*  width: 100%;
-  height: 100%;*/
-  transition: all 0.3s ease;
-  background: linear-gradient(to right, #e0f7fa, #f9fbfd);
-  max-width: 100%;
+.col-left {
+  transition: flex-basis .25s ease, width .25s ease;
+  flex: 0 0 100%;
 }
 
-.col-left, .col-middle, .col-summary {
+.col-middle {
   height: 100%;
   overflow-y: auto;
-/*  padding: 12px 16px;*/
   box-sizing: border-box;
 }
 
-/* Left Column */
-.col-left {
-  width: 20%;
-  border-right: 1px solid rgba(255, 255, 255, 0.4);
-}
-
-/* Middle Column */
-.col-middle {
-  width: 50%;
-  background: rgba(255, 255, 255, 0.6);
-  border-right: 1px solid rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(10px);
-}
-
-/* Right Column (Summary) */
 .col-summary {
-  width: 30%;
-  background: rgba(255, 255, 255, 0.85);
-  border-left: 1px solid rgba(255, 255, 255, 0.4);
-  padding: 16px;
-  font-size: 13px;
-  line-height: 1.4;
+  height: 100%;
+  overflow-y: auto;
+  box-sizing: border-box;
 }
 
-  .col-summary h3 {
-    margin-top: 0;
-    color: #007BFF;
-  }
+.container.summary-on .col-left {
+  width: 20%;
+}
 
-  .col-summary h4 {
-    margin-top: 16px;
-    color: #007BFF;
-    border-bottom: 1px solid #ccc;
-    padding-bottom: 4px;
-  }
+.container.summary-on .col-middle {
+  width: 50%;
+}
 
+.container.summary-on .col-summary {
+  width: 30%;
+  display: block;
+}
+
+.container.summary-off .col-summary {
+  display: none;
+}
+
+.container.summary-off .col-left {
+  width: 20%;
+}
+
+.container.summary-off .col-middle {
+  width: 80%;
+}
+
+.col-summary h3 {
+  margin-top: 0;
+  color: #007BFF;
+}
+
+.col-summary h4 {
+  margin-top: 16px;
+  color: #007BFF;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 4px;
+}
 
 .full-width {
   width: 100% !important;
 }
 
-
 .search-section {
   flex: 1 1 300px;
-}
-
-.search-bar {
-  width: 100%;
-  height: 100%;
 }
 
 .summary-container {
@@ -445,34 +347,16 @@ textarea {
   margin-bottom: 0.3rem;
 }
 
-
-.card-fields {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 8px 16px; /* row gap / column gap */
+.card-fields p {
+  margin: 0;
+  font-size: 12px;
 }
 
-  .card-fields p {
-    margin: 0;
-    font-size: 12px;
-  }
-
-  .card-fields .field label {
-    font-weight: 600;
-    color: #007BFF;
-    min-width: 100px;
-  }
-
-
-
-
-
-
-
-
-
-
-
+.card-fields .field label {
+  font-weight: 600;
+  color: #007BFF;
+  min-width: 100px;
+}
 
 table {
   width: 100%;
@@ -482,12 +366,10 @@ table {
   display: inline;
 }
 
-
 .mat-mdc-form-field {
   font-size: 14px;
   width: 100%;
 }
-
 
 tr.example-detail-row {
   height: 0;
@@ -505,54 +387,9 @@ tr.example-element-row:not(.example-expanded-row):active {
   border-bottom-width: 0;
 }
 
-.example-element-detail {
-  overflow: hidden;
-  display: flex;
+.rounded-box.selected {
+  border-bottom: 6px solid orange;
 }
-
-.div-secondary {
-  color: #fff;
-  font-weight: bold;
-}
-
-.label-primary {
-  color: #fff;
-  font-weight: bold;
-  font-size: 13px;
-  font-family: 'Open Sans', sans-serif;
-}
-
-.search-bar-container-table {
-  padding: 0px 56px 0px 8px;
-  background: #eaf1fb;
-  border-radius: 5px;
-  display: flex;
-  align-items: center;
-}
-
-.input {
-  font-size: 1.1rem;
-  outline: none;
-  border: none;
-  background: inherit;
-  min-width: 500px;
-}
-
-.rounded-box {
-  width: 200px; /* Set the width of the div */
-  height: 80px; /* Set the height of the div */
-  background-color: #007BFF; /* Add a background color */
-  color: white; /* Text color */
-  /* Padding inside the div */
-  border-radius: 5px; /* This creates rounded corners */
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Optional: add a shadow */
-  transition: background-color 0.3s ease; /* Smooth transition */
-  cursor: pointer;
-}
-
-  .rounded-box.selected {
-    border-bottom: 6px solid orange;
-  }
 
 .risk-chip {
   --bg: #f6f7fb;
@@ -562,10 +399,8 @@ tr.example-element-row:not(.example-expanded-row):active {
   display: inline-flex;
   gap: 8px;
   border-radius: 9999px;
-  /*  background: var(--bg);
-*/ color: var(--fg);
-  /*  border: 1px solid var(--bd);
-*/ font-weight: 600;
+  color: var(--fg);
+  font-weight: 600;
   font-size: 0.875rem;
   line-height: 1;
   white-space: nowrap;
@@ -593,38 +428,15 @@ tr.example-element-row:not(.example-expanded-row):active {
   }
 
   .risk-chip.compact {
-    font-size: 12px;
-    gap: 6px;
+    flex-direction: column;
+    min-width: 110px;
   }
 
-/* Mobile Responsive Adjustments */
-@media (max-width: 768px) {
-  .responsive-table {
-    font-size: 14px;
-  }
-
-  button {
-    padding: 1px;
-    font-size: 12px;
-  }
+button {
+  font-size: 10px;
+  padding: 4px;
 }
 
-@media (max-width: 480px) {
-  .responsive-table th,
-  .responsive-table td {
-    padding: 8px;
-    font-size: 12px;
-  }
-
-  button {
-    font-size: 10px;
-    padding: 4px;
-  }
-}
-
-
-
-/* Table Styles */
 .mng-table {
   width: 100%;
   border-collapse: separate;
@@ -664,23 +476,6 @@ tr.example-element-row:not(.example-expanded-row):active {
   margin-top: 2px;
 }
 
-.is-center {
-  text-align: center;
-  width: 48px;
-}
-
-.chev-btn {
-  line-height: 0;
-}
-
-.chev {
-  transition: transform .18s ease;
-}
-
-  .chev.rot {
-    transform: rotate(180deg);
-  }
-
 .table-wrapper {
   margin-top: 16px;
   background: #fff;
@@ -689,8 +484,6 @@ tr.example-element-row:not(.example-expanded-row):active {
   border: 1px solid #e6ebf2;
   overflow: hidden;
 }
-
-
 
 .filter-btn {
   display: inline-flex;
@@ -704,7 +497,6 @@ tr.example-element-row:not(.example-expanded-row):active {
   cursor: pointer;
   fill: #007BFF;
 }
-
 
 .filters-col .filters-title {
   font-weight: 600;
@@ -761,48 +553,6 @@ tr.example-element-row:not(.example-expanded-row):active {
     background: #10b981;
   }
 
-/* Second line under the date */
-.days-left {
-  display: block;
-  margin-top: 2px;
-  font-size: 11px;
-  line-height: 1.1;
-  opacity: 0.9;
-}
-
-/* Color mappings already applied via [ngClass] on the chip */
-.due-red {
-  /*  background: #fef2f2 !important;
-*/ color: #991b1b !important;
-  /*  border: 1px solid #fecaca !important;
-*/
-}
-
-.due-orange {
-  /*  background: #fffbeb !important;
-*/ color: #92400e !important;
-  /*  border: 1px solid #fde68a !important;
-*/
-}
-
-.due-green {
-  /*  background: #ecfdf5 !important;
-*/ color: #065f46 !important;
-  /*  border: 1px solid #a7f3d0 !important;
-*/
-}
-
-.risk-chip.compact {
-  flex-direction: column; /* stack date and days-left */
-  /*--align-items: center;*/ /* center align inside chip */
-  min-width: 110px;
-}
-
-.risk-chip .date-value {
-  font-weight: 600;
-  font-size: 12px;
-}
-
 .days-left {
   margin-top: 2px;
   font-size: 11px;
@@ -810,40 +560,31 @@ tr.example-element-row:not(.example-expanded-row):active {
   opacity: 0.9;
 }
 
-
-.col-left {
-  transition: flex-basis .25s ease, width .25s ease;
-  flex: 0 0 100%;
+.risk-chip .date-value {
+  font-weight: 600;
+  font-size: 12px;
 }
 
-  .col-left.full-width {
-    flex-basis: 100%;
-  }
-
-  .col-left.minimized {
-    flex-basis: 20%;
-/*    // tweak: 20–32% depending on your layout
-*/  }
-
-.pro-table td:last-child,
-.pro-table th:last-child {
-  text-align: right; /* nice alignment for the Review button */
+.col-left.full-width {
+  flex-basis: 100%;
 }
+
+.col-left.minimized {
+  flex-basis: 20%;
+  max-width: 25%;
+}
+
+/*.pro-table td:last-child {
+  text-align: right;
+}*/
+
+/*.pro-table th:last-child {
+  text-align: right;
+}*/
 
 button.mat-stroked-button {
   line-height: 28px;
   padding: 0 12px;
-}
-
-
-/* --- Card list used when reviewing (aliases & extras) --- */
-.card-list {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
-  padding: 8px;
-  overflow: auto;
-  max-height: calc(100vh - 160px); /* keeps the list scrollable */
 }
 
 .mini-card {
@@ -883,7 +624,6 @@ button.mat-stroked-button {
   margin-top: 6px;
 }
 
-/* Simple chips for due state */
 .chip {
   display: inline-block;
   border-radius: 999px;
@@ -921,8 +661,111 @@ button.mat-stroked-button {
   font-size: 11px;
 }
 
-/* Left column width behavior is already defined; assure minimized width is comfy */
-.col-left.minimized {
-  flex-basis: 20%;
-  max-width: 25%;
+.form-grid .form-outline,
+.form-grid .dropdown-container {
+  margin-bottom: 15px !important;
+  padding-bottom: 0 !important;
+}
+
+.dropdown-container {
+  position: relative;
+}
+
+.autocomplete-dropdown {
+  position: absolute;
+  background: #fff;
+  z-index: 1000;
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.autocomplete-option {
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+  .autocomplete-option:hover {
+    background-color: #f1f1f1;
+  }
+
+.form-outline {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.dropdown-arrow {
+  position: absolute;
+  right: 10px;
+  top: 30px;
+  pointer-events: none;
+  font-size: 0.85rem;
+  color: #777;
+}
+
+.autocomplete-option.highlighted {
+  background-color: #007BFF;
+  color: white;
+}
+
+.col-select {
+  width: 30px;
+  text-align: center;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+
+/* overall header color is subtle and consistent */
+.overall-ir {
+  color: #2e7d32;
+}
+
+/* MD Decision pill */
+.md-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+/* color variants */
+.md-notreviewed {
+  background: #f3f4f6; /* gray-100 */
+  color: #374151; /* gray-700 */
+  border-color: #e5e7eb;
+}
+
+.md-pending {
+  background: #fff7ed; /* amber-50 */
+  color: #92400e; /* amber-800 */
+  border-color: #fde68a;
+}
+
+.md-approved {
+  background: #ecfdf5; /* emerald-50 */
+  color: #065f46; /* emerald-800 */
+  border-color: #a7f3d0;
+}
+
+.md-denied {
+  background: #fef2f2; /* rose-50 */
+  color: #991b1b; /* red-800 */
+  border-color: #fecaca;
+}
+
+.md-rfi {
+  background: #eff6ff; /* blue-50 */
+  color: #1e40af; /* blue-800 */
+  border-color: #bfdbfe;
+}
+
+.md-neutral {
+  background: #f5f5f5;
+  color: #424242;
+  border-color: #e0e0e0;
 }
