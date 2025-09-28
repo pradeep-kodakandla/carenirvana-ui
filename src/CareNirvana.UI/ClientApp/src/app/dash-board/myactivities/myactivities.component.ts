@@ -90,7 +90,7 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
    * FollowUpDateTime, DueDate, Status, (and optionally StatusId / ActivityTypeId).
    */
   private getMyActivities$(): Observable<any[]> {
-    return this.activtyService.getpendingactivitydetails(1);
+    return this.activtyService.getpendingactivitydetails(sessionStorage.getItem('loggedInUserid'));
   }
 
   private loadData(): void {

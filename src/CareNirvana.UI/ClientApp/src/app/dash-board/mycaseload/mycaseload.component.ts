@@ -89,7 +89,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     //  this.loadMembers(testMembers);
     this.diagnosisOptions.forEach(d => this.diagnosisSelection[d] = false);
     this.qualityOptions.forEach(q => this.qualitySelection[q] = false);
-    this.dashboard.getmembersummary(1).subscribe((data) => {
+    this.dashboard.getmembersummary(sessionStorage.getItem('loggedInUserid')).subscribe((data) => {
       console.log('Member Summary', data);
       if (data && Array.isArray(data)) {
         this.loadMembers(data);

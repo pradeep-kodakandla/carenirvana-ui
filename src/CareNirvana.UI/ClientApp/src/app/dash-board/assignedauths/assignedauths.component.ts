@@ -103,7 +103,7 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
   /** Replace with your real service call (kept AS-IS) */
   private getAuthDetails$(): Observable<any[]> {
     // Example stub; wire your existing service here:
-    return this.assignedAuthsService.getauthdetails(1);
+    return this.assignedAuthsService.getauthdetails(sessionStorage.getItem('loggedInUserid'));
     // return of([]);
   }
 

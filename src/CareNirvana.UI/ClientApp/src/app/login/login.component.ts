@@ -43,8 +43,9 @@ export class LoginComponent implements OnInit {
 
       this.authService.login(username, encryptedPassword).subscribe({
         next: (response) => {
-          sessionStorage.setItem('loggedInUsername', username);
-          
+          sessionStorage.setItem('loggedInUsername', response.UserName);
+          sessionStorage.setItem('loggedInUserid', response.UserId.toString());
+          sessionStorage.setItem('authToken', response.Token); 
           this.router.navigate(['dashboard']);
           
         },

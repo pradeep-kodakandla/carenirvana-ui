@@ -85,7 +85,7 @@ export class DashBoardComponent {
   }
 
   private loadCounts(): void {
-    this.dashboard.getdashboardCounts(1)
+    this.dashboard.getdashboardCounts(sessionStorage.getItem('loggedInUserid'))
       .subscribe({
         next: (res: DashboardCounts) => { this.dashboardCounts = res; },
         error: (err) => { console.error('Failed to load dashboard counts', err); }

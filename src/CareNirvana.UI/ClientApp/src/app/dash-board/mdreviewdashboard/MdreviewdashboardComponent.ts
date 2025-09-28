@@ -333,7 +333,7 @@ export class MdreviewdashboardComponent {
   }
 
   private getMyActivities$(): Observable<any[]> {
-    return this.activtyService.getpendingwqactivitydetails(1);
+    return this.activtyService.getpendingwqactivitydetails(sessionStorage.getItem('loggedInUserid'));
   }
 
   private loadData(): void {
