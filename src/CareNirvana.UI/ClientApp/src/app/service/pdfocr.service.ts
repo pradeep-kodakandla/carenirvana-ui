@@ -1,149 +1,173 @@
-import { Injectable } from '@angular/core';
-import { createWorker, PSM } from 'tesseract.js';
-import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist/legacy/build/pdf.mjs';
 
-export interface StudentInfo {
-  name?: string;
-  studentNumber?: string;
-  address?: string;
+import { Injectable } from '@angular/core';
+import { createWorker } from 'tesseract.js';
+import { getDocument, GlobalWorkerOptions, PDFDocumentProxy } from 'pdfjs-dist/legacy/build/pdf.mjs';
+
+export interface OcrByPage {
+  page: number;
+  text: string;
+  method: 'text-extract' | 'ocr';
 }
 
 export interface OcrResult {
   text: string;
-  byPage: { page: number; text: string; method: 'text-extract' | 'ocr' }[];
-  fields?: StudentInfo;
+  byPage: OcrByPage[];
 }
 
-function parseStudentInfo(text: string): StudentInfo {
-  const lines = text.split(/\r?\n/).map(l => l.trim());
-  const nonEmpty = lines.filter(Boolean);
-  const joined = nonEmpty.join(' ');
-
-  const studentNumber =
-    joined.match(/\bStudent\s*Number\s*[:\-]?\s*([A-Za-z0-9\-]+)/i)?.[1] ??
-    joined.match(/\bStudent\s*ID\s*[:\-]?\s*([A-Za-z0-9\-]+)/i)?.[1] ??
-    joined.match(/\bID\s*[:\-]?\s*([A-Za-z0-9\-]+)/i)?.[1];
-
-  const address =
-    joined.match(/\bAddress\s*[:\-]?\s*(.+?)(?=\s{2,}|\bSCHEDULE\b|$)/i)?.[1]?.trim();
-
-  let name =
-    joined.match(/\bName\s*[:\-]?\s*([A-Za-z ,.'\-]+)/i)?.[1]?.trim();
-
-  if (!name) {
-    const idxSN = lines.findIndex(l => /student\s*number|student\s*id/i.test(l));
-    if (idxSN > 0) {
-      for (let i = idxSN - 1; i >= 0; i--) {
-        const cand = lines[i];
-        if (
-          cand &&
-          !/^\s*(student\s*number|student\s*id|address|schedule)\b/i.test(cand) &&
-          !/^\d{1,2}\/\d{1,2}\/\d{2,4}/.test(cand)
-        ) {
-          name = cand.trim();
-          break;
-        }
-      }
-    }
-  }
-
-  return { name, studentNumber, address };
+export interface OcrWord {
+  text: string;
+  x0: number; y0: number; x1: number; y1: number;
+  line: number;
 }
+
+export type ProgressFn = (p: { phase: 'pdf-text' | 'ocr' | 'done'; progress: number; page?: number; pages?: number }) => void;
 
 @Injectable({ providedIn: 'root' })
 export class PdfOcrService {
-  async extract(file: File, opts?: { lang?: string; dpi?: number; ocrAllPages?: boolean; onProgress?: (p: number) => void }): Promise<OcrResult> {
-    const lang = opts?.lang ?? 'eng';
-    const dpi = opts?.dpi ?? 144;
-    const report = opts?.onProgress ?? (() => { });
+  private tessWorker: any = null;
+  private pdfWorkerSet = false;
 
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await getDocument({ data: arrayBuffer }).promise;
+  constructor() {
+    if (!this.pdfWorkerSet) {
+      try {
+        // If you host pdf.worker.js yourself, set it here (optional)
+        // GlobalWorkerOptions.workerSrc = 'assets/pdfjs/pdf.worker.min.js';
+        this.pdfWorkerSet = true;
+      } catch { }
+    }
+  }
 
-    // Prepare Tesseract worker lazily (only if needed)
-    let worker: any | null = null;
-    const ensureWorker = async () => {
-      if (worker) return worker;
-      worker = await createWorker(lang, 1, {
-        logger: m => {
-          // m.progress is 0..1 during OCR. We'll map it per-page below.
-        }
-      });
-      await worker.setParameters({
-        tessedit_pageseg_mode: PSM.AUTO, // good general default
-      });
-      return worker;
-    };
+  /** Public: extract best-effort text from a PDF (text layer first, then OCR fallback) */
+  async extract(file: File, onProgress?: ProgressFn): Promise<OcrResult> {
+    const textResult = await this.tryPdfText(file, onProgress);
+    const combined = textResult.byPage.map(p => p.text).join('\\n\\n');
+    const needsOcr = combined.trim().length < 200;
 
-    const pages = pdf.numPages;
-    const byPage: OcrResult['byPage'] = [];
-    const perPageWeight = 1 / pages; // for progress
+    if (!needsOcr) {
+      const normalized = this.normalize(combined);
+      return { text: normalized, byPage: textResult.byPage.map(p => ({ ...p, text: this.normalize(p.text) })) };
+    }
 
-    for (let p = 1; p <= pages; p++) {
-      // 1) Try text extraction first
+    const ocrResult = await this.ocrAllPages(file, onProgress);
+    const normalized = this.normalize(ocrResult.byPage.map(p => p.text).join('\\n\\n'));
+    return { text: normalized, byPage: ocrResult.byPage.map(p => ({ ...p, text: this.normalize(p.text) })) };
+  }
+
+  // ---------------- Internals ----------------
+
+  private normalize(s: string): string {
+    return (s || '')
+      .replace(/\\r/g, '\\n')
+      .replace(/[ \\t]+\\n/g, '\\n')
+      .replace(/\\u00A0/g, ' ')
+      .replace(/-\\n(?=\\w)/g, '')
+      .replace(/\\n{3,}/g, '\\n\\n')
+      .trim();
+  }
+
+  private async ensureTessWorker(): Promise<any> {
+    if (this.tessWorker) return this.tessWorker;
+    const w: any = await (createWorker as any)(); // keep typings loose for wider version compatibility
+    await w.load();
+    // Some tesseract.js type defs expose `reinitialize` instead of `initialize`
+    if (typeof w.reinitialize === 'function') {
+      await w.reinitialize('eng');
+    } else if (typeof w.initialize === 'function') {
+      await w.initialize('eng');
+    }
+    this.tessWorker = w;
+    return this.tessWorker;
+  }
+
+  private async tryPdfText(file: File, onProgress?: ProgressFn): Promise<{ byPage: OcrByPage[] }> {
+    const data = await file.arrayBuffer();
+    const pdf: PDFDocumentProxy = await getDocument({ data }).promise;
+    const byPage: OcrByPage[] = [];
+    const total = pdf.numPages;
+
+    for (let p = 1; p <= total; p++) {
+      onProgress?.({ phase: 'pdf-text', progress: p / total, page: p, pages: total });
       const page = await pdf.getPage(p);
-      const textContent = await page.getTextContent();
-      const extracted = (textContent.items ?? [])
-        .map((it: any) => (it.str ?? '').trim())
-        .join(' ')
-        .replace(/\s+/g, ' ')
-        .trim();
+      const content = await page.getTextContent();
+      const pageText = (content.items as any[]).map((i: any) => (i.str ?? '')).join(' ').replace(/\\s+/g, ' ').trim();
+      byPage.push({ page: p, text: pageText, method: 'text-extract' });
+    }
+    return { byPage };
+  }
 
-      if (extracted && !opts?.ocrAllPages) {
-        byPage.push({ page: p, text: extracted, method: 'text-extract' });
-        report(perPageWeight * p);
-        continue;
-      }
+  private async ocrAllPages(file: File, onProgress?: ProgressFn): Promise<{ byPage: OcrByPage[] }> {
+    const data = await file.arrayBuffer();
+    const pdf: PDFDocumentProxy = await getDocument({ data }).promise;
+    const total = pdf.numPages;
+    const byPage: OcrByPage[] = [];
+    const worker = await this.ensureTessWorker();
 
-      // 2) No selectable text (or ocrAllPages=true) => rasterize & OCR
-      const viewport = page.getViewport({ scale: dpi / 72 }); // 72 user units per inch
+    for (let p = 1; p <= total; p++) {
+      const page = await pdf.getPage(p);
+      const viewport = page.getViewport({ scale: 2 });
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d')!;
       canvas.width = Math.ceil(viewport.width);
       canvas.height = Math.ceil(viewport.height);
-
-      // Render the page into canvas
       await page.render({ canvasContext: ctx, viewport, canvas }).promise;
 
-      // Ensure worker is ready
-      const w = await ensureWorker();
-
-      // Let’s hook per-page OCR progress into overall progress
-      let lastProgress = 0;
-      const localWorkerLogger = (m: any) => {
-        if (m.status === 'recognizing text' && typeof m.progress === 'number') {
-          // progress within this page from 0..1
-          const overall = perPageWeight * (p - 1) + perPageWeight * m.progress;
-          if (overall - lastProgress >= 0.01) { // throttle a bit
-            report(overall);
-            lastProgress = overall;
-          }
-        }
-      };
-      w.setLogger(localWorkerLogger);
-
-      const { data } = await w.recognize(canvas);
-      byPage.push({ page: p, text: (data?.text ?? '').trim(), method: 'ocr' });
-
-      // Finalize this page progress
-      report(perPageWeight * p);
-      // Clean up big canvas memory
-      canvas.width = 0; canvas.height = 0;
+      onProgress?.({ phase: 'ocr', progress: (p - 1) / total, page: p, pages: total });
+      const { data: { text } } = await worker.recognize(canvas);
+      byPage.push({ page: p, text: text || '', method: 'ocr' });
+      onProgress?.({ phase: 'ocr', progress: p / total, page: p, pages: total });
     }
+    onProgress?.({ phase: 'done', progress: 1, page: total, pages: total });
+    return { byPage };
+  }
 
-    if (worker) await worker.terminate();
+  async ocrWords(file: File, pageNumber = 1, onProgress?: ProgressFn): Promise<OcrWord[]> {
+    const data = await file.arrayBuffer();
+    const pdf = await (getDocument({ data }).promise);
+    const page = await pdf.getPage(pageNumber);
+    const viewport = page.getViewport({ scale: 2.25 }); // high DPI for better line fidelity
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d')!;
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    await page.render({ canvasContext: ctx, viewport, canvas }).promise;
 
-    const combinedText = byPage.map(b => b.text).join('\n\n').trim();
+    const worker = await this.ensureTessWorker();
+    onProgress?.({ phase: 'ocr', progress: 0, page: pageNumber, pages: pdf.numPages });
+    const result: any = await worker.recognize(canvas);
+    onProgress?.({ phase: 'ocr', progress: 1, page: pageNumber, pages: pdf.numPages });
 
-    // ✅ parse the fields
-    const fields = parseStudentInfo(combinedText);
+    const words = (result?.data?.words ?? []) as Array<{
+      text: string;
+      bbox: { x0: number; x1: number; y0: number; y1: number };
+      line: number;
+    }>;
 
-    // ✅ return fields along with text/byPage
-    return { text: combinedText, byPage, fields };
+    // normalize to our shape
+    return words.map(w => ({
+      text: (w.text || '').trim(),
+      x0: w.bbox?.x0 ?? 0,
+      x1: w.bbox?.x1 ?? 0,
+      y0: w.bbox?.y0 ?? 0,
+      y1: w.bbox?.y1 ?? 0,
+      line: (w as any).line ?? 0
+    })).filter(w => w.text.length > 0);
+  }
 
-    //return {
-    //  text: byPage.map(b => b.text).join('\n\n').trim(),
-    //  byPage
-    //};
+  async ocrPageText(file: File, pageNumber = 1, onProgress?: ProgressFn): Promise<string> {
+    const data = await file.arrayBuffer();
+    const pdf = await (getDocument({ data }).promise);
+    const page = await pdf.getPage(pageNumber);
+    const viewport = page.getViewport({ scale: 2.25 }); // higher DPI improves OCR
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d')!;
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    await page.render({ canvasContext: ctx, viewport, canvas }).promise;
+
+    const worker = await this.ensureTessWorker();
+    onProgress?.({ phase: 'ocr', progress: 0, page: pageNumber, pages: pdf.numPages });
+    const { data: { text } } = await worker.recognize(canvas);
+    onProgress?.({ phase: 'ocr', progress: 1, page: pageNumber, pages: pdf.numPages });
+    return (text || '').replace(/\r/g, '\n');
   }
 }
