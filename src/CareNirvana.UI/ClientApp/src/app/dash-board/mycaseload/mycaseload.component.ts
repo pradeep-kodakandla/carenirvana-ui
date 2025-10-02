@@ -80,7 +80,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
   qualitySelection: Record<string, boolean> = {};
 
   counts = {
-    risk: { high: 0, medium: 0, low: 0 },
+    risk: { high: 0, medium: 0, low: 0, norisk: 0 },
     enroll: { active: 0, inactive: 0, soonEnding: 0 }
   };
 
@@ -112,8 +112,17 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     this.dataSource.sort = this.sort;
 
     this.dataSource.filterPredicate = (data, filter) => {
-      const fullName = `${data.firstName} ${data.lastName} ${data.memberId}`.toLowerCase();
-      return fullName.includes(filter);
+      const haystack = [
+        data.FirstName,
+        data.LastName,
+        data.MemberId,
+        this.getProduct?.(data.LevelMap),
+        data.RiskLevelCode
+      ]
+        .map(x => (x ?? '').toString().toLowerCase())
+        .join(' ');
+
+      return haystack.includes((filter || '').toLowerCase());
     };
 
     this.paginator.page.subscribe(() => {
@@ -137,25 +146,12 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     this.summaryStats[1].value = data.reduce((sum, m) => sum + (m.authCount || 0), 0);
     this.summaryStats[2].value = data.reduce((sum, m) => sum + (m.activityCount || 0), 0);
 
-    //if (this.paginator) {
-    //  this.paginator.firstPage();
-    //  this.updatePagedMembers();
-    //} else {
-    //  setTimeout(() => this.updatePagedMembers(), 0);
-    //}
     this.filtered = [...this.members];
     this.dataSource.data = this.members;
     setTimeout(() => {  // ensures paginator is ready
       this.updatePagedMembers();
     }, 0);
   }
-
-  //updatePagedMembers(): void {
-  //  const start = this.paginator.pageIndex * this.paginator.pageSize;
-  //  const end = start + this.paginator.pageSize;
-  //  const filtered = this.dataSource.filteredData;
-  //  this.pagedMembers = filtered.slice(start, end);
-  //}
 
   private updatePagedMembers(): void {
     if (!this.paginator) {
@@ -249,7 +245,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     this.showFilters = !this.showFilters;
   }
 
-  toggleRisk(level: 'High' | 'Medium' | 'Low'): void {
+  toggleRisk(level: 'High' | 'Medium' | 'Low' | 'Norisk'): void {
     this.filters.risks.has(level) ? this.filters.risks.delete(level) : this.filters.risks.add(level);
     this.applyFilters();
   }
@@ -274,7 +270,8 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
         const val = (m.RiskLevelCode || '').toLowerCase();
         return (this.filters.risks.has('High') && val === 'high') ||
           (this.filters.risks.has('Medium') && val === 'medium') ||
-          (this.filters.risks.has('Low') && (val === 'low' || val === ''));
+          (this.filters.risks.has('Low') && (val === 'low' )) ||
+          (this.filters.risks.has('Norisk') && (val === '' ));
       });
     }
 
@@ -302,12 +299,13 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
 
   // --- Calculate counts after you set this.members from API ---
   private calculateRiskCounts(list: any[]): void {
-    this.counts.risk = { high: 0, medium: 0, low: 0 };
+    this.counts.risk = { high: 0, medium: 0, low: 0, norisk: 0 };
     list.forEach(m => {
       const code = (m.RiskLevelCode || '').toLowerCase();
       if (code === 'high') this.counts.risk.high++;
       else if (code === 'medium') this.counts.risk.medium++;
-      else this.counts.risk.low++;
+      else if (code === 'low') this.counts.risk.low++;
+      else this.counts.risk.norisk++;
     });
   }
 

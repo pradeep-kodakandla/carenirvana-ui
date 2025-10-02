@@ -193,6 +193,11 @@ mat-chip.low {
   color: white;
 }
 
+mat-chip.norisk {
+  background: #007bff !important;
+  color: white;
+}
+
 .risk-chip {
   --bg: #f6f7fb;
   --fg: #1f2937;
@@ -213,6 +218,12 @@ mat-chip.low {
 }
 
   .risk-chip.low {
+    --bg: #ecfdf5;
+    --fg: #065f46;
+    --dot: #10b981;
+    --bd: #a7f3d0;
+  }
+  .risk-chip.norisk {
     --bg: #ecfdf5;
     --fg: #065f46;
     --dot: #10b981;
