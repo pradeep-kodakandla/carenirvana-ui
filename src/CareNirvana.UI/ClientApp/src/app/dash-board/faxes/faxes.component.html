@@ -1,5 +1,5 @@
 <!-- Header: search + Add -->
-<div class="top-bar" style="display:flex;align-items:center;gap:10px;margin:8px 0;">
+<div class="top-bar" style="display:flex;align-items:center;gap:10px;margin:8px 0; padding:5px;">
   <div class="search-section" style="display:flex;align-items:center;gap:8px;flex:1;">
     <input type="text"
            placeholder="🔍 Search faxes…"
@@ -36,7 +36,7 @@
 </div>
 
 <!-- Table -->
-<div class="table-wrapper" *ngIf="!showPreview">
+<div class="table-wrapper" *ngIf="!showPreview" style="padding:5px;">
   <table mat-table [dataSource]="dataSource" class="mat-elevation-z0 mng-table responsive-table">
 
     <!-- Fax File Name -->
@@ -101,7 +101,7 @@
 </div>
 
 <!-- Split preview panel (shows when selectedFax is set) -->
-<div *ngIf="showPreview" class="split3 mt-4">
+<div *ngIf="showPreview" class="split3 mt-4" style="padding:5px;">
   <!-- Left: cards list -->
   <div class="pane pane-left">
     <div class="pane-header">

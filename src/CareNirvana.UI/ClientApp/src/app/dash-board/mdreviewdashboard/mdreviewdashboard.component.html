@@ -1,24 +1,7 @@
-
 <div class="main-wrapper">
   <div class="container" style="margin:0px !important;" [ngClass]="{ 'summary-on': showSummary, 'summary-off': !showSummary }">
     <!-- LEFT COLUMN (20%) -->
     <div class="col-left" [ngClass]="{ 'full-width': !selectedAuth, 'minimized': !!selectedAuth }">
-      <!--<div class="top-bar">
-      <div class="search-section">
-        <input type="text" placeholder="🔍 Search..." (input)="onSearch($event)" class="search-input" />
-      </div>-->
-      <!-- Summary Cards -->
-      <!--<div class="summary-container" style="padding-left:10px;" *ngIf="!selectedAuth">
-          <mat-card class="summary-card" *ngFor="let item of summaryStats">
-            <div class="summary-row">
-              <mat-icon>{{ item.icon }}</mat-icon>
-              <span class="stat-label">{{ item.label }}:</span>
-              <span class="stat-value">{{ item.value }}</span>
-            </div>
-          </mat-card>
-        </div>
-      </div>-->
-
       <div class="top-bar" style="display:flex;align-items:center;gap:10px;margin:8px 0;">
         <div class="search-section" style="display:flex;align-items:center;gap:8px;flex:1;">
           <input type="text"

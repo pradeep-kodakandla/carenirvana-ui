@@ -1,168 +1,483 @@
-import { Component, ViewChild } from '@angular/core';
-import { MatPaginatorModule } from '@angular/material/paginator';
-import { MatSortModule } from '@angular/material/sort';
-import { MatTableModule } from '@angular/material/table';
-import { MatMenu } from '@angular/material/menu';
-import { Router } from '@angular/router';
-import { animate, state, style, transition, trigger } from '@angular/animations';
-import { MatPaginator } from '@angular/material/paginator';
-import { MatSort } from '@angular/material/sort';
+import {
+  Component, OnInit, Input, Output, EventEmitter, OnChanges, SimpleChanges,
+  ViewChild
+} from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
-import { MatMenuTrigger } from '@angular/material/menu';
+import { CrudService } from 'src/app/service/crud.service';
+import { MembersummaryService  } from 'src/app/service/membersummary.service';
+import { ViewChildren, QueryList, ElementRef } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
+
+type DropdownOption = { id: number | null; label: string };
+
+type FieldType = 'select' | 'file' | 'textarea' | 'label' | 'text';
+
+interface MemberDocument {
+  memberDocumentId?: number;
+  memberId: number;
+  documentTypeId?: number | null;
+  documentName: string;
+  documentBytes?: string; // base64 (no data: prefix) for POST/PUT
+  createdOn?: string | null;
+  createdBy?: number | null;
+  updatedBy?: number | null;
+  updatedOn?: string | null;
+  deletedBy?: number | null;
+  deletedOn?: string | null;
+
+  // UI-only helpers
+  _documentTypeLabel?: string;
+  _createdOnDisplay?: string;
+}
+interface DocumentField {
+  id: string;
+  displayName: string;
+  type: FieldType;
+  required?: boolean;
+  requiredMsg?: string;
+  hidden?: boolean;
+
+  // values / UI
+  value?: any;
+  displayLabel?: string;
+
+  // for select
+  options?: DropdownOption[];
+  filteredOptions?: DropdownOption[];
+  showDropdown?: boolean;
+  highlightedIndex?: number;
+
+  // for label
+  info?: string;
+}
+
 
 @Component({
   selector: 'app-member-documents',
   templateUrl: './member-documents.component.html',
   styleUrl: './member-documents.component.css',
-  animations: [
-    trigger('detailExpand', [
-      state('collapsed,void', style({ height: '0px', minHeight: '0' })),
-      state('expanded', style({ height: '*' })),
-      transition('expanded <=> collapsed', animate('225ms cubic-bezier(0.4, 0.0, 0.2, 1)')),
-    ]),
-  ],
 })
-export class MemberDocumentsComponent {
+export class MemberDocumentsComponent implements OnInit, OnChanges {
+  @Input() memberId!: number;
 
-  selectedDiv: number | null = 1; // Track the selected div
+  // left side
+  searchTerm = '';
+  showSort = false;
 
-  // Method to select a div and clear others
-  selectDiv(index: number) {
-    this.selectedDiv = index; // Set the selected div index
+  // right side
+  isFormVisible = false;
+  canAdd = true;
+  canEdit = true;
+  showValidationErrors = false;
+  loading = false;
+
+  // table / paging
+  dataSource = new MatTableDataSource<MemberDocument>([]);
+  total = 0;
+  page = 1;
+  pageSize = 25;
+
+  // selection
+  selected?: MemberDocument;
+  selectedDocId?: number;
+
+  // summary (right side AI Summary)
+  summary = { total: 0, lastUploaded: '—' };
+
+  // dropdown: document type (replace with your backed master if available)
+  documentTypeOptions: DropdownOption[] = [];
+
+  // dynamic form model (driven by your HTML)
+  documentFields: DocumentField[] = [];
+
+  // files selected in the form
+  private selectedFiles: File[] = [];
+
+  // refs (kept if you later add native pickers)
+  @ViewChildren('hiddenPickers') hiddenPickers!: QueryList<ElementRef<HTMLInputElement>>;
+
+  constructor(private api: MembersummaryService, private crudService: CrudService) {
+    // filter predicate for search
+    this.dataSource.filterPredicate = (d: MemberDocument, filter: string) => {
+      const hay = `${d.documentName || ''} ${d._documentTypeLabel || ''} ${d._createdOnDisplay || ''}`.toLowerCase();
+      return hay.includes(filter);
+    };
   }
-  /*Div Selection Style change logic*/
-  displayedColumns: string[] = ['enrollmentStatus', 'memberId', 'firstName', 'lastName', 'DOB', 'risk', 'nextContact', 'assignedDate', 'programName', 'description'];
-  columnsToDisplayWithExpand = [...this.displayedColumns, 'expand'];
 
+  ngOnInit(): void {
 
-  dataSource: MatTableDataSource<UserData>;
-  expandedElement!: UserData | null;
+    this.crudService.getData('um', 'documenttype').subscribe({
+      next: (response: any[]) => {
+        // normalize into DropdownOption[]
+        this.documentTypeOptions = (response ?? []).map(opt => {
+          const idNum = Number(opt?.id);
+          return {
+            id: Number.isFinite(idNum) ? idNum : null,
+            // adjust the label fallback chain if your API uses a different prop
+            label: opt?.documentType ?? opt?.name ?? opt?.text ?? opt?.label ?? 'Unknown'
+          };
+        });
 
+        // push options into the Note Type field + refresh its filtered list
+        const f = this.getField('documentTypeId');
+        if (f) {
+          f.options = this.documentTypeOptions;
+          f.filteredOptions = [...this.documentTypeOptions]; // or: this.filterOptions(f);
+          // refresh display label if there was a preselected value
+          const sel = this.documentTypeOptions.find(o => o.id === f.value);
+          if (sel) f.displayLabel = sel.label;
+        }
 
-  @ViewChild(MatPaginator) paginator!: MatPaginator;
-  @ViewChild(MatSort) sort!: MatSort;
+        // if notes are already loaded, refresh their computed labels
+        this.dataSource.data.forEach(n => {
+          n._documentTypeLabel =
+            this.documentTypeOptions.find(o => o.id === (n.documentTypeId ?? null))?.label ?? '—';
+        });
+      },
+      error: _ => { this.documentTypeOptions = []; }
+    });
 
-  loadPage(page: string) {
-    // Use Angular Router to navigate based on the page selection
-    // Assuming router has been injected in constructor
-    this.router.navigate([page]);
+    this.configureFormFields();
+    if (this.memberId) this.reload();
   }
 
-  constructor(private router: Router) {
-    // Create 100 users
-    const users = Array.from({ length: 100 }, (_, k) => createNewUser(k + 1));
-
-    // Assign the data to the data source for the table to render
-    this.dataSource = new MatTableDataSource(users);
-  }
-
-  ngAfterViewInit() {
-    this.dataSource.paginator = this.paginator;
-    this.dataSource.sort = this.sort;
-  }
-
-  applyFilter(event: Event) {
-    const filterValue = (event.target as HTMLInputElement).value;
-    this.dataSource.filter = filterValue.trim().toLowerCase();
-
-    if (this.dataSource.paginator) {
-      this.dataSource.paginator.firstPage();
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['memberId'] && !changes['memberId'].firstChange) {
+      this.page = 1;
+      this.reload();
     }
   }
 
-  goToPage(memberId: string) {
-    this.router.navigate(['/member-info', memberId]);
+  // ---------------------------
+  // Form model (right panel)
+  // ---------------------------
+  private configureFormFields(): void {
+    this.documentFields = [
+      {
+        id: 'documentTypeId',
+        displayName: 'Document Type',
+        type: 'select',
+        required: true,
+        options: this.documentTypeOptions,
+        filteredOptions: [...this.documentTypeOptions],
+        showDropdown: false,
+        highlightedIndex: 0,
+        displayLabel: ''
+      },
+      {
+        id: 'documentName',
+        displayName: 'Document Name',
+        type: 'text',
+        required: true,
+        value: ''
+      },
+      {
+        id: 'uploadFiles',
+        displayName: 'Attach Files',
+        type: 'file'
+      },
+      {
+        id: 'info',
+        displayName: 'Tip',
+        type: 'label',
+        info: 'You can attach multiple files. File name will be used as default document name.'
+      }
+    ];
   }
 
-  /*Table Context Menu*/
-  @ViewChild(MatMenuTrigger)
-  contextMenu!: MatMenuTrigger;
+  // ---------------------------
+  // Load list
+  // ---------------------------
+  reload(): void {
+    this.loading = true;
+    this.api.listDocuments(this.memberId, this.page, this.pageSize, false).subscribe({
+      next: (res: any) => {
+        // coalesce both casing styles (Items vs items)
+        const raw = (res.items ?? res.Items ?? []) as any[];
+        const docs: MemberDocument[] = raw.map(it => ({
+          memberDocumentId: it.memberDocumentId ?? it.MemberDocumentId ?? it.memberdocumentid,
+          memberId: it.memberId ?? it.MemberId ?? it.memberid,
+          documentTypeId: it.documentTypeId ?? it.DocumentTypeId ?? it.documenttypeid ?? null,
+          documentName: it.documentName ?? it.DocumentName ?? it.documentname ?? '',
+          createdOn: it.createdOn ?? it.CreatedOn ?? it.createdon ?? null,
+          createdBy: it.createdBy ?? it.CreatedBy ?? it.createdby ?? null,
+          updatedBy: it.updatedBy ?? it.UpdatedBy ?? it.updatedby ?? null,
+          updatedOn: it.updatedOn ?? it.UpdatedOn ?? it.updatedon ?? null,
+          deletedBy: it.deletedBy ?? it.DeletedBy ?? it.deletedby ?? null,
+          deletedOn: it.deletedOn ?? it.DeletedOn ?? it.deletedon ?? null
+        }));
 
-  contextMenuPosition = { x: '0px', y: '0px' };
+        // decorate
+        docs.forEach(d => {
+          d._documentTypeLabel = this.documentTypeOptions.find(o => o.id === (d.documentTypeId ?? null))?.label ?? '—';
+          d._createdOnDisplay = d.createdOn ? new Date(d.createdOn).toLocaleString() : '';
+        });
 
-
-  onContextMenuAction1(item: UserData) {
-    alert(`Click on Action 1 for ${item.enrollmentStatus}`);
+        this.dataSource.data = docs;
+        this.total = res.total ?? res.Total ?? docs.length;
+        this.applyFilter(); // updates summary, too
+        this.loading = false;
+      },
+      error: _ => {
+        this.dataSource.data = [];
+        this.total = 0;
+        this.applyFilter();
+        this.loading = false;
+      }
+    });
   }
 
-  onContextMenuAction2(item: UserData) {
-    alert(`Click on Action 2 for ${item.enrollmentStatus}`);
+  // ---------------------------
+  // Search / Sort
+  // ---------------------------
+  applyFilter(_: any = null): void {
+    this.dataSource.filter = (this.searchTerm || '').trim().toLowerCase();
+    this.computeSummary(this.dataSource.filteredData);
   }
 
-}
-/** Builds and returns a new User. */
-export function createNewUser(id: number): UserData {
-  const name =
-    NAMES[Math.round(Math.random() * (NAMES.length - 1))];
+  applySort(key: 'authorizationDocumentTypeLabel_asc' | 'authorizationDocumentTypeLabel_desc' | 'createdOn_desc' | 'createdOn_asc'): void {
+    // keep keys as-is to match your HTML (can rename later)
+    const data = [...this.dataSource.filteredData];
+    switch (key) {
+      case 'authorizationDocumentTypeLabel_asc':
+        data.sort((a, b) => (a._documentTypeLabel ?? '').localeCompare(b._documentTypeLabel ?? ''));
+        break;
+      case 'authorizationDocumentTypeLabel_desc':
+        data.sort((a, b) => (b._documentTypeLabel ?? '').localeCompare(a._documentTypeLabel ?? ''));
+        break;
+      case 'createdOn_desc':
+        data.sort((a, b) => new Date(b.createdOn ?? 0).getTime() - new Date(a.createdOn ?? 0).getTime());
+        break;
+      case 'createdOn_asc':
+        data.sort((a, b) => new Date(a.createdOn ?? 0).getTime() - new Date(b.createdOn ?? 0).getTime());
+        break;
+    }
+    this.dataSource.data = data;
+    this.applyFilter();
+  }
 
-  return {
-    enrollmentStatus: 'Active',
-    firstName: name,
-    memberId: NUMS[Math.round(Math.random() * (NUMS.length - 1))], /*(100 * 100).toString(),*/
-    lastName: FRUITS[Math.round(Math.random() * (FRUITS.length - 1))],
-    DOB: '09/14/2024',
-    risk: 'Low',
-    nextContact: '09/14/2024',
-    assignedDate: '09/14/2024',
-    programName: 'Care Management',
-    description: 'Description'
-  };
-}
-export interface UserData {
-  enrollmentStatus: string;
-  memberId: string;
-  firstName: string;
-  lastName: string;
-  DOB: string;
-  risk: string;
-  nextContact: string;
-  assignedDate: string;
-  programName: string;
-  description: string;
-}
+  // ---------------------------
+  // Open / Edit / Delete
+  // ---------------------------
+  openForm(mode: 'add' | 'edit', doc?: MemberDocument): void {
+    this.isFormVisible = true;
+    this.showValidationErrors = false;
+    this.selectedFiles = [];
 
-/** Constants used to fill up our data base. */
-const FRUITS: string[] = [
-  'blueberry',
-  'lychee',
-  'kiwi',
-  'mango',
-  'peach',
-  'lime',
-  'pomegranate',
-  'pineapple',
-];
-const NUMS: string[] = [
-  '10000',
-  '10001',
-  '10003',
-  '10004',
-  '10005',
-  '10006',
-  '10007',
-  '10008',
-  '10009',
-  '10010',
-];
+    if (mode === 'add') {
+      this.selected = undefined;
+      this.selectedDocId = undefined;
+      this.setField('documentTypeId', null, '');
+      this.setField('documentName', '');
+    } else if (mode === 'edit' && doc) {
+      this.selected = doc;
+      this.selectedDocId = doc.memberDocumentId;
+      const label = this.documentTypeOptions.find(o => o.id === (doc.documentTypeId ?? null))?.label ?? '';
+      this.setField('documentTypeId', doc.documentTypeId ?? null, label);
+      this.setField('documentName', doc.documentName ?? '');
+    }
+  }
 
-const NAMES: string[] = [
-  'Pradeep',
-  'Pawan',
-  'Sridhar',
-  'Rohitha',
-  'Paavana',
-  'Jack',
-  'Charlotte',
-  'Theodore',
-  'Isla',
-  'Oliver',
-  'Isabella',
-  'Jasper',
-  'Cora',
-  'Levi',
-  'Violet',
-  'Arthur',
-  'Mia',
-  'Thomas',
-  'Elizabeth',
-];
+  cancelForm(): void {
+    this.isFormVisible = false;
+    this.selected = undefined;
+    this.selectedDocId = undefined;
+    this.selectedFiles = [];
+  }
+
+  onContentClick(_: MouseEvent, doc: MemberDocument): void {
+    // Optional: highlight selection
+    this.selectedDocId = doc.memberDocumentId;
+    this.selected = doc;
+  }
+
+  editDocument(doc: MemberDocument): void {
+    if (!this.canEdit) return;
+    this.openForm('edit', doc);
+  }
+
+  deleteDocument(doc: MemberDocument): void {
+    if (!this.canEdit || !doc.memberDocumentId) return;
+    const deletedBy = this.getUserIdOrNull() ?? 0;
+    if (!confirm('Delete this document?')) return;
+
+    this.api.deleteDocument(doc.memberDocumentId, deletedBy).subscribe({
+      next: () => this.reload(),
+      error: (err: HttpErrorResponse) => console.error('Delete failed', err)
+    });
+  }
+
+  // ---------------------------
+  // File handling
+  // ---------------------------
+  handleFileUpload(evt: Event): void {
+    const input = evt.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+    this.selectedFiles = files;
+
+    // If Document Name empty and single file picked, default it
+    const nameField = this.getField('documentName');
+    if (files.length === 1 && nameField && (!nameField.value || !String(nameField.value).trim())) {
+      nameField.value = files[0].name;
+    }
+  }
+
+  // ---------------------------
+  // Save (Create / Update)
+  // ---------------------------
+  async saveDocument(form: any): Promise<void> {
+
+    const nowIso = new Date().toISOString();
+
+    // validate requireds
+    const typeField = this.getField('documentTypeId');
+    const nameField = this.getField('documentName');
+    this.showValidationErrors = true;
+
+    const valid =
+      !!typeField && (typeField.value !== undefined) &&
+      !!nameField && !!(nameField.value && String(nameField.value).trim().length > 0);
+
+    if (!valid) return;
+
+    const documentTypeId: number | null = typeField.value ?? null;
+    const documentName: string = String(nameField.value).trim();
+    const userId = this.getUserIdOrNull();
+
+    try {
+      if (!this.selectedDocId) {
+        // CREATE: allow multiple files
+        if (this.selectedFiles.length === 0) {
+          alert('Please attach at least one file.'); return;
+        }
+
+        const tasks = this.selectedFiles.map(async (f) => {
+          const base64 = await this.api.fileToBase64(f);
+          const payload: MemberDocument = {
+            memberId: this.memberId,
+            documentTypeId,
+            documentName: documentName || f.name,
+            documentBytes: base64,
+            createdBy: userId ?? null,
+            createdOn: nowIso,        // <-- include timestamp here
+          };
+          return firstValueFrom(this.api.createDocument(payload as any)); // 
+        });
+
+        await Promise.all(tasks);
+
+      } else {
+        // UPDATE:
+        // Always send bytes (backend update expects it).
+        let base64: string | undefined;
+        if (this.selectedFiles.length > 0) {
+          base64 = await this.api.fileToBase64(this.selectedFiles[0]);
+        } else {
+          const current = await firstValueFrom(this.api.getDocumentById(this.selectedDocId));
+          base64 = current.documentBytes; // already base64 from API
+        }
+
+        const payload: MemberDocument = {
+          memberDocumentId: this.selectedDocId,
+          memberId: this.memberId,
+          documentTypeId,
+          documentName,
+          documentBytes: base64,
+          updatedBy: userId ?? null,
+          updatedOn: nowIso,
+        };
+
+        await firstValueFrom(this.api.updateDocument(this.selectedDocId, payload as any));
+      }
+
+      this.isFormVisible = false;
+      this.reload();
+
+    } catch (err) {
+      console.error('Save failed', err);
+    }
+  }
+
+  // ---------------------------
+  // Summary
+  // ---------------------------
+  private computeSummary(list: MemberDocument[]): void {
+    const total = list.length;
+
+    let lastTs = -Infinity;
+    for (const d of list) {
+      if (d.createdOn) {
+        const t = new Date(d.createdOn).getTime();
+        if (!Number.isNaN(t) && t > lastTs) lastTs = t;
+      }
+    }
+
+    this.summary = {
+      total,
+      lastUploaded: lastTs > 0 ? new Date(lastTs).toLocaleString() : '—'
+    };
+  }
+
+  // ---------------------------
+  // Select helpers (dropdown)
+  // ---------------------------
+  filterOptions(field: DocumentField): void {
+    const q = (field.displayLabel ?? '').toLowerCase();
+    const base = field.options ?? [];
+    field.filteredOptions = q ? base.filter(o => o.label.toLowerCase().includes(q)) : [...base];
+    field.highlightedIndex = 0;
+    field.showDropdown = (field.filteredOptions?.length ?? 0) > 0;
+  }
+
+  onFieldFocus(field: DocumentField): void {
+    field.showDropdown = (field.filteredOptions?.length ?? 0) > 0;
+  }
+
+  onSelectBlur(field: DocumentField): void {
+    setTimeout(() => (field.showDropdown = false), 150);
+  }
+
+  handleDropdownKeydown(evt: KeyboardEvent, field: DocumentField): void {
+    const len = field.filteredOptions?.length ?? 0;
+    if (!len) return;
+    if (evt.key === 'ArrowDown') {
+      evt.preventDefault();
+      field.highlightedIndex = Math.min((field.highlightedIndex ?? 0) + 1, len - 1);
+    } else if (evt.key === 'ArrowUp') {
+      evt.preventDefault();
+      field.highlightedIndex = Math.max((field.highlightedIndex ?? 0) - 1, 0);
+    } else if (evt.key === 'Enter') {
+      evt.preventDefault();
+      const opt = field.filteredOptions![field.highlightedIndex ?? 0];
+      this.selectDropdownOption(field, opt);
+    }
+  }
+
+  selectDropdownOption(field: DocumentField, opt: DropdownOption): void {
+    field.value = opt.id;
+    field.displayLabel = opt.label;
+    field.showDropdown = false;
+  }
+
+  // ---------------------------
+  // Utils
+  // ---------------------------
+  private getUserIdOrNull(): number | null {
+    const v = sessionStorage.getItem('loggedInUserid');
+    const n = v == null ? NaN : Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  private getField(id: string): DocumentField | undefined {
+    return this.documentFields.find(f => f.id === id);
+  }
+
+  private setField(id: string, value?: any, displayLabel?: string): void {
+    const f = this.getField(id);
+    if (!f) return;
+    f.value = value;
+    if (displayLabel !== undefined) f.displayLabel = displayLabel;
+    if (f.type === 'select') this.filterOptions(f);
+  }
+}

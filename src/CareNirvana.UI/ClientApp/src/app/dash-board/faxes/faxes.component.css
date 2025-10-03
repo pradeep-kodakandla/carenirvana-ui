@@ -383,11 +383,9 @@ tr.example-element-row:not(.example-expanded-row):active {
   }
 
 .table-wrapper {
-  margin-top: 16px;
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 1px 4px rgba(16,24,40,.06);
-  border: 1px solid #e6ebf2;
   overflow: hidden;
 }
 

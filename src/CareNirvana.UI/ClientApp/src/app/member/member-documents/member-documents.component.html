@@ -1,141 +1,143 @@
-<mat-menu #menu="matMenu">
-  <button mat-menu-item>
-    <span>Add Activity</span>
-  </button>
-  <button mat-menu-item disabled>
-    <span>Run Assessment</span>
-  </button>
-  <button mat-menu-item>
-    <!--<mat-icon>notifications_off</mat-icon>-->
-    <span>Messages</span>
-  </button>
-  <button mat-menu-item>
-    <span>Add Notes</span>
-  </button>
-  <button mat-menu-item disabled>
-    <span>Send Letter</span>
-  </button>
-  <button mat-menu-item>
-    <!--<mat-icon>notifications_off</mat-icon>-->
-    <span>Unassign</span>
-  </button>
-  <button mat-menu-item>
-    <!--<mat-icon>notifications_off</mat-icon>-->
-    <span>Summary</span>
-  </button>
-</mat-menu>
-
-<mat-drawer-container class="sidenav-container" autosize>
-  <mat-drawer-content mode="side" opened>
-
-    <div class="d-flex justify-content-between align-items-center " style="background: whitesmoke; width: 100%;  ">
-      <div class="search-section">
-        <input type="text" placeholder="🔍 Search..." (input)="applyFilter($event)" class="search-input" #input />
-      </div>
-      <div>
-        <div class="d-flex justify-content-between align-items-center" style="padding: 5px;">
-          <div class="search-bar-button-table">
-            <button mat-icon-button>
-              <mat-icon>add</mat-icon>
-            </button>
-            <a style="padding-right:10px;">Add</a>
+<div class="activity-container">
+  <!-- LEFT SIDE: Document Timeline -->
+  <div class="activity-left">
+    <div class="left-controls">
+      <input type="text" placeholder="🔍 Search..." [(ngModel)]="searchTerm" (input)="applyFilter($event)" class="search-input" />
+      <div class="right-actions">
+        <div class="sort-wrapper" (mouseenter)="showSort = true" (mouseleave)="showSort = false">
+          <button class="sort-icon">⇅</button>
+          <div class="sort-menu" *ngIf="showSort">
+            <div class="sort-option" (click)="applySort('authorizationDocumentTypeLabel_asc')">Doc Type (A–Z)</div>
+            <div class="sort-option" (click)="applySort('authorizationDocumentTypeLabel_desc')">Doc Type (Z–A)</div>
+            <div class="sort-option" (click)="applySort('createdOn_desc')">Recent First</div>
+            <div class="sort-option" (click)="applySort('createdOn_asc')">Oldest First</div>
           </div>
-          <a style="padding-right:10px;"><mat-icon>settings</mat-icon></a>
+        </div>
+        <button class="add-btn" (click)="openForm('add')" [disabled]="!canAdd">➕ Add Document</button>
+      </div>
+    </div>
+
+    <div class="timeline-list">
+      <div *ngFor="let doc of dataSource.filteredData" class="timeline-item" >
+        <div class="timeline-dot completed"></div>
+        <div class="timeline-content" (click)="onContentClick($event, doc)">
+          <div class="timeline-header">
+            <div class="timeline-title">{{ doc.documentName }}</div>
+            <div class="timeline-priority priority-default">{{ doc._createdOnDisplay || doc.createdOn }}</div>
+            <span class="activity-actions">
+              <button type="button" class="icon-btn" title="Edit" [disabled]="!canEdit" (click)="editDocument(doc)">✏️</button>
+              <button type="button" class="icon-btn" title="Delete" [disabled]="!canEdit" (click)="deleteDocument(doc)">🗑️</button>
+            </span>
+          </div>
+          <div class="timeline-summary">
+            <strong>Type:</strong> {{ doc._documentTypeLabel }}<br />
+          </div>
         </div>
       </div>
     </div>
+  </div>
 
-    <div class="table-wrapper">
-      <table mat-table [dataSource]="dataSource" matSort
-             multiTemplateDataRows
-             class="mat-elevation-z1 full-width-table pro-table mng-table">
+  <!-- RIGHT SIDE: Document Form -->
+  <div class="activity-right">
+    <ng-container *ngIf="isFormVisible">
+      <div class="auth-form">
+        <form #docForm="ngForm" novalidate>
 
-        <ng-container matColumnDef="enrollmentStatus">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Enrollment Status </th>
-          <td mat-cell *matCellDef="let row">
-            <div class="status-cell">
-              <button mat-icon-button [matMenuTriggerFor]="menu">
-                <mat-icon>list</mat-icon>
-              </button>
-              <a mat-button>{{row.enrollmentStatus}}</a>
-            </div>
-          </td>
-        </ng-container>
+          <div class="form-grid">
+            <ng-container *ngFor="let field of documentFields; let i = index">
+              <ng-container *ngIf="field.id !== 'authorizationDocumentsGrid'">
+                <div [class.full-width]="field.type === 'textarea' || field.type === 'label'" class="form-outline dropdown-container" [ngClass]="{ 'hidden': field.hidden }">
+                  <ng-container [ngSwitch]="field.type">
 
-        <ng-container matColumnDef="memberId">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Member ID </th>
-          <td mat-cell *matCellDef="let row">
-            <div class="element-weight">
-              <a mat-button (click)="goToPage(row.memberId)">{{row.memberId}}</a>
-            </div>
-          </td>
-        </ng-container>
+                    <!-- Dropdown -->
+                    <ng-container *ngSwitchCase="'select'">
+                      <label class="floating-label">{{ field.displayName }} <span *ngIf="field.required" class="text-danger">*</span></label>
+                      <div class="input-with-icon">
+                        <input class="form-control"
+                               type="text"
+                               [(ngModel)]="field.displayLabel"
+                               (input)="filterOptions(field)"
+                               (keydown)="handleDropdownKeydown($event, field)"
+                               (focus)="onFieldFocus(field)"
+                               (blur)="onSelectBlur(field)"
+                               [name]="field.id"
+                               autocomplete="off"
+                               #fieldModel="ngModel">
+                        <span class="dropdown-arrow">&#9662;</span>
+                        <div class="autocomplete-dropdown" *ngIf="field.showDropdown && field.filteredOptions?.length" [attr.data-field-id]="field.id">
+                          <div class="autocomplete-option"
+                               *ngFor="let option of field.filteredOptions; let i = index"
+                               [class.highlighted]="i === field.highlightedIndex"
+                               (mousedown)="selectDropdownOption(field, option)">
+                            {{ option.label }}
+                          </div>
+                        </div>
 
-        <ng-container matColumnDef="firstName">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> First Name </th>
-          <td mat-cell *matCellDef="let row"> {{row.firstName}} </td>
-        </ng-container>
+                      </div>
+                      <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched || showValidationErrors)" class="text-danger">
+                        {{ field.requiredMsg || (field.displayName + ' is required.') }}
+                      </div>
+                    </ng-container>
 
-        <ng-container matColumnDef="lastName">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Last Name </th>
-          <td mat-cell *matCellDef="let row"> {{row.lastName}} </td>
-        </ng-container>
+                    <!-- File Upload -->
+                    <ng-container *ngSwitchCase="'file'">
+                      <label class="floating-label">{{ field.displayName }}</label>
+                      <input type="file" multiple (change)="handleFileUpload($event)" class="form-control">
+                    </ng-container>
 
-        <ng-container matColumnDef="DOB">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> DOB </th>
-          <td mat-cell *matCellDef="let row"> {{row.DOB}} </td>
-        </ng-container>
+                    <!-- Textarea -->
+                    <ng-container *ngSwitchCase="'textarea'">
+                      <label class="floating-label">{{ field.displayName }}</label>
+                      <textarea [(ngModel)]="field.value" class="form-control" [name]="field.id" rows="3"></textarea>
+                    </ng-container>
 
-        <ng-container matColumnDef="risk">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Risk </th>
-          <td mat-cell *matCellDef="let row"> {{row.risk}} </td>
-        </ng-container>
+                    <!-- Static Label (Information Note) -->
+                    <ng-container *ngSwitchCase="'label'">
+                      <div class="info-note">
+                        <strong>{{ field.displayName }}:</strong>
+                        <div>{{ field.info }}</div>
+                      </div>
+                    </ng-container>
 
-        <ng-container matColumnDef="nextContact">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Next Contact </th>
-          <td mat-cell *matCellDef="let row"> {{row.nextContact}} </td>
-        </ng-container>
+                    <!-- Default Input -->
+                    <ng-container *ngSwitchDefault>
+                      <label class="floating-label">{{ field.displayName }} <span *ngIf="field.required" class="text-danger">*</span></label>
+                      <input class="form-control"
+                             type="text"
+                             [(ngModel)]="field.value"
+                             [name]="field.id"
+                             #fieldModel="ngModel" />
+                      <div *ngIf="field.required && fieldModel.invalid && (fieldModel.touched || fieldModel.dirty || showValidationErrors)" class="text-danger">
+                        {{ field.requiredMsg || (field.displayName + ' is required.') }}
+                      </div>
+                    </ng-container>
 
-        <ng-container matColumnDef="assignedDate">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Assigned Date </th>
-          <td mat-cell *matCellDef="let row"> {{row.assignedDate}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="programName">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Programe Name </th>
-          <td mat-cell *matCellDef="let row"> {{row.programName}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="description">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Status </th>
-          <td mat-cell *matCellDef="let row"> {{row.description}} </td>
-        </ng-container>
+                  </ng-container>
+                </div>
+              </ng-container>
+            </ng-container>
+          </div>
 
 
-        <!-- Expanded Content Column - The detail row is made up of this one column that spans across all columns -->
+          <div class="button-group">
+            <button type="button" (click)="saveDocument(docForm)" [disabled]="!canAdd">Save</button>
+            <button type="button" (click)="cancelForm()">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </ng-container>
 
-        <ng-container matColumnDef="expandedDetail">
-          <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns.length">
-          </td>
-        </ng-container>
+    <!-- AI Summary -->
+    <ng-template #aiSummary>
+      <div class="ai-summary">
+        <h3>📄 Document Summary</h3>
+        <p><strong>Total Documents:</strong> {{ summary.total }}</p>
+        <p><strong>Last Uploaded:</strong> {{ summary.lastUploaded }}</p>
+      </div>
+    </ng-template>
 
-        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns;"
-            class="element-row"
-            [class.expanded-row]="expandedElement === row"
-            (click)="expandedElement = expandedElement === row ? null : row">
-        </tr>
-        <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="detail-row"></tr>
-
-        <!--<tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;" (click)="expandedElement = expandedElement === row ? null : row"></tr>-->
-        <!-- Row shown when there is no matching data. -->
-        <tr class="mat-row" *matNoDataRow>
-          <td class="mat-cell" colspan="9">No data matching the filter "{{input.value}}"</td>
-        </tr>
-      </table>
-      <mat-paginator [pageSizeOptions]="[10, 25, 100]" aria-label="Select page of users"></mat-paginator>
-    </div>
-
-  </mat-drawer-content>
-</mat-drawer-container>
+    <ng-container *ngIf="!isFormVisible">
+      <ng-container *ngTemplateOutlet="aiSummary"></ng-container>
+    </ng-container>
+  </div>
+</div>

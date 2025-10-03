@@ -1,141 +1,191 @@
-<mat-menu #menu="matMenu">
-  <button mat-menu-item>
-    <span>Add Activity</span>
-  </button>
-  <button mat-menu-item disabled>
-    <span>Run Assessment</span>
-  </button>
-  <button mat-menu-item>
-    <!--<mat-icon>notifications_off</mat-icon>-->
-    <span>Messages</span>
-  </button>
-  <button mat-menu-item>
-    <span>Add Notes</span>
-  </button>
-  <button mat-menu-item disabled>
-    <span>Send Letter</span>
-  </button>
-  <button mat-menu-item>
-    <!--<mat-icon>notifications_off</mat-icon>-->
-    <span>Unassign</span>
-  </button>
-  <button mat-menu-item>
-    <!--<mat-icon>notifications_off</mat-icon>-->
-    <span>Summary</span>
-  </button>
-</mat-menu>
-
-<mat-drawer-container class="sidenav-container" autosize>
-  <mat-drawer-content mode="side" opened>
-
-    <div class="d-flex justify-content-between align-items-center " style="background: whitesmoke; width: 100%;  ">
-      <div class="search-section">
-        <input type="text" placeholder="🔍 Search..." (input)="applyFilter($event)" class="search-input" #input />
-      </div>
-      <div>
-        <div class="d-flex justify-content-between align-items-center" style="padding: 5px;">
-          <div class="search-bar-button-table">
-            <button mat-icon-button>
-              <mat-icon>add</mat-icon>
-            </button>
-            <a style="padding-right:10px;">Add</a>
+<div class="activity-container">
+  <!-- LEFT SIDE: Notes List -->
+  <div class="activity-left">
+    <div class="left-controls">
+      <input type="text" placeholder="🔍 Search..." [(ngModel)]="searchTerm" (input)="applyFilter($event)" class="search-input" />
+      <div class="right-actions">
+        <div class="sort-wrapper" (mouseenter)="showSort = true" (mouseleave)="showSort = false">
+          <button class="sort-icon">⇅</button>
+          <div class="sort-menu" *ngIf="showSort">
+            <div class="sort-option" (click)="applySort('authorizationNoteTypeLabel_asc')">Note Type (A–Z)</div>
+            <div class="sort-option" (click)="applySort('authorizationNoteTypeLabel_desc')">Note Type (Z–A)</div>
+            <div class="sort-option" (click)="applySort('createdOn_desc')">Recent First</div>
+            <div class="sort-option" (click)="applySort('createdOn_asc')">Oldest First</div>
           </div>
-          <a style="padding-right:10px;"><mat-icon>settings</mat-icon></a>
+        </div>
+        <button class="add-btn" (click)="openForm('add')" [disabled]="!canAdd">➕ Add Note</button>
+      </div>
+    </div>
+
+    <div class="timeline-list">
+      <div *ngFor="let note of dataSource.filteredData; let i = index" class="timeline-item">
+        <!--[class.selected]="note.id === selectedNoteId"-->
+        <div class="timeline-dot completed"></div>
+        <div class="timeline-content">
+          <!--(click)="editNote(note)"-->
+          <div class="timeline-header">
+            <div class="timeline-title">
+              {{ note._noteTypeLabel }}
+              <mat-icon *ngIf="note.isAlert" class="alert-bell-icon" title="Active Alert Note">notifications</mat-icon>
+            </div>
+            <div class="timeline-priority priority-default">{{ note._createdOnDisplay }}</div>
+            <span class="activity-actions">
+              <button type="button" class="icon-btn" title="Edit" [disabled]="!canEdit" (click)="editNote(note)">✏️</button>
+              <button type="button" class="icon-btn" title="Delete" [disabled]="!canEdit" (click)="deleteNote(note)">🗑️</button>
+            </span>
+          </div>
+          <div class="timeline-summary">
+            {{ note.notes }}
+          </div>
+          <div class="timeline-summary">
+            <!--{{ note.authorizationNotes }}-->
+          </div>
         </div>
       </div>
     </div>
+  </div>
 
-    <div class="table-wrapper">
-      <table mat-table [dataSource]="dataSource" matSort
-             multiTemplateDataRows
-             class="mat-elevation-z1 full-width-table pro-table mng-table">
+  <!-- RIGHT SIDE: Form -->
+  <div class="activity-right">
+    <ng-container *ngIf="isFormVisible">
+      <div class="auth-form">
+        <form #noteForm="ngForm">
+          <div class="form-grid">
+            <ng-container *ngFor="let field of notesFields; let i = index">
+              <ng-container *ngIf="field.type !== 'textarea' && field.id !== 'authorizationNotesGrid'">
+                <div class="form-outline dropdown-container" [ngClass]="{ 'hidden': field.hidden }">
+                  <ng-container [ngSwitch]="field.type">
+                    <!-- Select Dropdown -->
+                    <ng-container *ngSwitchCase="'select'">
+                      <label class="floating-label">{{ field.displayName }} <span *ngIf="field.required" class="text-danger">*</span></label>
+                      <div class="input-with-icon">
+                        <input class="form-control"
+                               type="text"
+                               [(ngModel)]="field.displayLabel"
+                               (input)="filterOptions(field)"
+                               (keydown)="handleDropdownKeydown($event, field)"
+                               (focus)="onFieldFocus(field)"
+                               (blur)="onSelectBlur(field)"
+                               [name]="field.id"
+                               autocomplete="off"
+                               #fieldModel="ngModel">
+                        <span class="dropdown-arrow">&#9662;</span>
+                        <div class="autocomplete-dropdown" *ngIf="field.showDropdown && field.filteredOptions?.length" [attr.data-field-id]="field.id">
+                          <div class="autocomplete-option"
+                               *ngFor="let option of field.filteredOptions; let i = index"
+                               [class.highlighted]="i === field.highlightedIndex"
+                               (mousedown)="selectDropdownOption(field, option)">
+                            {{ option.label }}
+                          </div>
+                        </div>
+                      </div>
+                      <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched || showValidationErrors)" class="text-danger">
+                        {{ field.requiredMsg || (field.displayName + ' is required.') }}
+                      </div>
+                    </ng-container>
 
-        <ng-container matColumnDef="enrollmentStatus">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Enrollment Status </th>
-          <td mat-cell *matCellDef="let row">
-            <div class="status-cell">
-              <button mat-icon-button [matMenuTriggerFor]="menu">
-                <mat-icon>list</mat-icon>
-              </button>
-              <a mat-button>{{row.enrollmentStatus}}</a>
+                    <!-- DateTime -->
+                    <ng-container *ngSwitchCase="'datetime-local'">
+                      <label class="floating-label">{{ field.displayName }} <span *ngIf="field.required" class="text-danger">*</span></label>
+                      <div class="input-with-icon">
+                        <input class="form-control"
+                               type="text"
+                               [(ngModel)]="field.value"
+                               [name]="field.id"
+                               (blur)="handleDateTimeBlur(field)"
+                               placeholder="Enter D, D+1, D-1 or select">
+                        <button type="button" class="calendar-icon-btn" (click)="triggerCalendar(i)">📅</button>
+                        <input type="datetime-local"
+                               #calendarPickers
+                               style="opacity: 0; position: absolute; pointer-events: none;"
+                               (change)="handleCalendarChange($event, field)">
+                      </div>
+                    </ng-container>
+
+                    <!-- Checkbox -->
+                    <ng-container *ngSwitchCase="'checkbox'">
+                      <div class="checkbox-inline">
+                        <input type="checkbox"
+                               class="me-2"
+                               [(ngModel)]="showEndDatetimeField"
+                               name="authorizationAlertNote">
+                        <label for="authorizationAlertNote">Alert Note</label>
+                      </div>
+                    </ng-container>
+
+                    <!-- Default Text Input -->
+                    <ng-container *ngSwitchDefault>
+                      <label class="floating-label">{{ field.displayName }} <span *ngIf="field.required" class="text-danger">*</span></label>
+                      <input class="form-control"
+                             type="text"
+                             [(ngModel)]="field.value"
+                             [required]="!!field.required"
+                             [name]="field.id"
+                             #fieldModel="ngModel">
+                      <div *ngIf="field.required && fieldModel.invalid && (fieldModel.touched || fieldModel.dirty || showValidationErrors)" class="text-danger">
+                        {{ field.requiredMsg || (field.displayName + ' is required.') }}
+                      </div>
+                    </ng-container>
+                  </ng-container>
+                </div>
+              </ng-container>
+            </ng-container>
+
+            <!-- End Datetime -->
+            <div class="form-outline" *ngIf="showEndDatetimeField">
+              <label class="floating-label">End Datetime</label>
+              <div class="input-with-icon">
+                <input class="form-control"
+                       type="text"
+                       [(ngModel)]="endDatetimeValue"
+                       name="endDatetimeValue"
+                       (blur)="handleEndDatetimeBlur()"
+                       placeholder="Enter D, D+1, D-1 or select">
+                <button type="button" class="calendar-icon-btn" (click)="triggerNativePicker()">📅</button>
+                <input type="datetime-local"
+                       #hiddenEndDatetimePicker
+                       style="opacity: 0; position: absolute; pointer-events: none;"
+                       (change)="handleNativePickerForEndDatetime($event)" />
+              </div>
             </div>
-          </td>
-        </ng-container>
 
-        <ng-container matColumnDef="memberId">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Member ID </th>
-          <td mat-cell *matCellDef="let row">
-            <div class="element-weight">
-              <a mat-button (click)="goToPage(row.memberId)">{{row.memberId}}</a>
-            </div>
-          </td>
-        </ng-container>
+            <!-- Textarea Field -->
+            <ng-container *ngFor="let field of notesFields">
+              <div *ngIf="field.type === 'textarea'" class="form-outline full-width" style="grid-column: span 2;">
+                <label class="floating-label">{{ field.displayName }} <span *ngIf="field.required" class="text-danger">*</span></label>
+                <textarea class="form-control"
+                          [(ngModel)]="field.value"
+                          [required]="!!field.required"
+                          [name]="field.id"
+                          rows="3"
+                          #fieldModel="ngModel"></textarea>
+                <div *ngIf="field.required && fieldModel.invalid && (fieldModel.touched || fieldModel.dirty || showValidationErrors)" class="text-danger">
+                  {{ field.requiredMsg || (field.displayName + ' is required.') }}
+                </div>
+              </div>
+            </ng-container>
+          </div>
 
-        <ng-container matColumnDef="firstName">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> First Name </th>
-          <td mat-cell *matCellDef="let row"> {{row.firstName}} </td>
-        </ng-container>
+          <div class="button-group">
+            <button type="button" (click)="saveNote()" [disabled]="!canAdd">Save</button>
+            <button type="button" (click)="cancelForm()">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </ng-container>
 
-        <ng-container matColumnDef="lastName">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Last Name </th>
-          <td mat-cell *matCellDef="let row"> {{row.lastName}} </td>
-        </ng-container>
+    <ng-template #aiSummary>
+      <div class="ai-summary">
+        <h3>📝 Notes Summary</h3>
+        <p><strong>Total Notes:</strong> {{ summary.total }}</p>
+        <p><strong>Alert Notes:</strong> {{ summary.alert }}</p>
+        <p><strong>Last Created:</strong> {{ summary.lastCreated }}</p>
+      </div>
+    </ng-template>
 
-        <ng-container matColumnDef="DOB">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> DOB </th>
-          <td mat-cell *matCellDef="let row"> {{row.DOB}} </td>
-        </ng-container>
+    <ng-container *ngIf="!isFormVisible">
+      <ng-container *ngTemplateOutlet="aiSummary"></ng-container>
+    </ng-container>
 
-        <ng-container matColumnDef="risk">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Risk </th>
-          <td mat-cell *matCellDef="let row"> {{row.risk}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="nextContact">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Next Contact </th>
-          <td mat-cell *matCellDef="let row"> {{row.nextContact}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="assignedDate">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Assigned Date </th>
-          <td mat-cell *matCellDef="let row"> {{row.assignedDate}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="programName">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Programe Name </th>
-          <td mat-cell *matCellDef="let row"> {{row.programName}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="description">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Status </th>
-          <td mat-cell *matCellDef="let row"> {{row.description}} </td>
-        </ng-container>
-
-
-        <!-- Expanded Content Column - The detail row is made up of this one column that spans across all columns -->
-
-        <ng-container matColumnDef="expandedDetail">
-          <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns.length">
-          </td>
-        </ng-container>
-
-        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns;"
-            class="element-row"
-            [class.expanded-row]="expandedElement === row"
-            (click)="expandedElement = expandedElement === row ? null : row">
-        </tr>
-        <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="detail-row"></tr>
-
-        <!--<tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;" (click)="expandedElement = expandedElement === row ? null : row"></tr>-->
-        <!-- Row shown when there is no matching data. -->
-        <tr class="mat-row" *matNoDataRow>
-          <td class="mat-cell" colspan="9">No data matching the filter "{{input.value}}"</td>
-        </tr>
-      </table>
-      <mat-paginator [pageSizeOptions]="[10, 25, 100]" aria-label="Select page of users"></mat-paginator>
-    </div>
-
-  </mat-drawer-content>
-</mat-drawer-container>
+  </div>
+</div>

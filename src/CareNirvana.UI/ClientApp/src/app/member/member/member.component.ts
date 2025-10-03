@@ -75,6 +75,7 @@ export class MemberComponent {
       (module.featureGroups || []).forEach((group: any) => {
         this.mainTabs.push({
           name: group.featureGroupName,
+          displayOrder: group.displayOrder,
           pages: group.pages || []
         });
       });
@@ -110,4 +111,35 @@ export class MemberComponent {
   getSafeId(name: string): string {
     return name.replace(/\s+/g, '-').toLowerCase();
   }
+
+
+
+
+  /** Generic ordering: first by displayOrder (if present), then by name (stable fallback). */
+  private orderByDisplayThenName<T extends { displayOrder?: number; name?: string }>(a: T, b: T): number {
+    const ao = (a.displayOrder ?? Number.POSITIVE_INFINITY);
+    const bo = (b.displayOrder ?? Number.POSITIVE_INFINITY);
+    if (ao !== bo) return ao - bo;
+
+    // Fallback if displayOrder is identical or absent for both:
+    const an = (a.name ?? '').toLocaleLowerCase();
+    const bn = (b.name ?? '').toLocaleLowerCase();
+    if (an && bn) return an.localeCompare(bn);
+
+    // Absolute fallback: keep as-is (no reordering)
+    return 0;
+  }
+
+  /** Ordered main tabs (feature groups) */
+  getOrderedMainTabs(): Array<{ name: string; pages: any[]; displayOrder?: number }> {
+    const arr = Array.isArray(this.mainTabs) ? [...this.mainTabs] : [];
+    return arr.sort((a, b) => this.orderByDisplayThenName(a, b));
+  }
+
+  /** Ordered pages for a given tab (feature group) */
+  getOrderedPages(tab: { pages?: Array<{ name: string; displayOrder?: number }> }): Array<{ name: string; displayOrder?: number }> {
+    const arr = Array.isArray(tab?.pages) ? [...tab.pages] : [];
+    return arr.sort((a, b) => this.orderByDisplayThenName(a, b));
+  }
+
 }
