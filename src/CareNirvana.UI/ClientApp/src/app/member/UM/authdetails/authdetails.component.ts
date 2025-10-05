@@ -185,7 +185,7 @@ export class AuthdetailsComponent implements OnInit {
 
     // read member id once (prefer your own field; fall back to route)
     const memberId = this.memberId ?? Number(this.route.parent?.snapshot.paramMap.get('id'));
-
+    const memberDetailsId = sessionStorage.getItem('selectedMemberDetailsId') || '0';
     // ✅ point tab to the CHILD route under the shell
     const tabRoute = `/member-info/${memberId}/member-auth/${authNumber}`;
     const tabLabel = `Auth No ${authNumber}`;
@@ -196,7 +196,8 @@ export class AuthdetailsComponent implements OnInit {
       this.headerService.selectTab(tabRoute);
 
     } else {
-      this.headerService.addTab(tabLabel, tabRoute, String(memberId));
+      console.log('Adding new tab:', { tabLabel, tabRoute, memberId, memberDetailsId });
+      this.headerService.addTab(tabLabel, tabRoute, String(memberId), memberDetailsId);
 
     }
     this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {

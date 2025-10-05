@@ -168,7 +168,7 @@
               <td mat-cell *matCellDef="let row">
                 <div class="name-cell">
                   <div class="sub-name">
-                    <a href="#" (click)="onMemberClick(row.MemberId, row.MemberName); $event.preventDefault()">
+                    <a href="#" (click)="onMemberClick(row.MemberId, row.MemberName, row.MemberDetailsId); $event.preventDefault()">
                       {{ row.MemberName }}
                     </a>
                   </div>
@@ -181,7 +181,7 @@
             <ng-container matColumnDef="authNumber">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Auth #</th>
               <td mat-cell *matCellDef="let row">
-                <a href="#" (click)="onAuthClick(row.AuthNumber, row.MemberId); $event.preventDefault()">
+                <a href="#" (click)="onAuthClick(row.AuthNumber, row.MemberId, row.MemberDetailsId); $event.preventDefault()">
                   {{ row.AuthNumber }}
                 </a>
                 <!--{{ row.AuthNumber || '-' }}-->

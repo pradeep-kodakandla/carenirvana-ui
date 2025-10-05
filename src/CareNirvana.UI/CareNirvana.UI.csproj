@@ -43,6 +43,7 @@
     <Folder Include="ClientApp\src\app\admin\AG\" />
     <Folder Include="ClientApp\src\app\admin\UM\" />
     <Folder Include="ClientApp\src\app\animations\" />
+    <Folder Include="ClientApp\src\app\member\member-caregiver\" />
     <Folder Include="ClientApp\src\app\Provider\" />
     <Folder Include="ClientApp\src\app\shared\" />
     <Folder Include="ClientApp\src\app\login\" />

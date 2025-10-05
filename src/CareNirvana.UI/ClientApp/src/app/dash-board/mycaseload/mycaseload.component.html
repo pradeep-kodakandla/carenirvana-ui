@@ -162,7 +162,7 @@
       <div class="card-header">
         <div class="avatar"><mat-icon>person</mat-icon></div>
         <div class="info">
-          <h3><a href="#" (click)="onMemberClick(member.MemberId, member.FirstName + ' ' + member.LastName); $event.preventDefault()">{{ member.FirstName }} {{ member.LastName }}</a></h3>
+          <h3><a href="#" (click)="onMemberClick(member.MemberId, member.FirstName + ' ' + member.LastName,member.MemberDetailsId); $event.preventDefault()">{{ member.FirstName }} {{ member.LastName }}</a></h3>
           <p>ID: {{ member.MemberId }} • DOB: {{ member.DOB }}</p>
         </div>
         <span class="risk-chip" [ngClass]="(member.risk || '').toLowerCase()">{{ member.risk || 'LOW' }}</span>
@@ -208,7 +208,7 @@
         <td mat-cell *matCellDef="let m">
           <div class="name-cell">
             <div class="sub-name">
-              <a href="#" (click)="onMemberClick(m.MemberId, m.FirstName + ' ' + m.LastName); $event.preventDefault()">{{ m.FirstName }} {{ m.LastName }}</a>
+              <a href="#" (click)="onMemberClick(m.MemberId, m.FirstName + ' ' + m.LastName,m.MemberDetailsId); $event.preventDefault()">{{ m.FirstName }} {{ m.LastName }}</a>
             </div>
             <div class="sub-id">ID: {{ m.MemberId }}</div>
           </div>

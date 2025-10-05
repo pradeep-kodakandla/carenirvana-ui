@@ -1,4 +1,3 @@
-/* Reuse your member-notes visual language for a consistent look & WOW factor */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 
 :host {
@@ -6,12 +5,6 @@
   font-family: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", system-ui, -apple-system, sans-serif;
 }
 
-/* Pulled from notes + your current program table styles, unified */
-.tr, .element-row, .detail-row {
-}
-/* noop placeholders to avoid conflicts */
-
-/* Left/Right split */
 .activity-container {
   display: flex;
   gap: 1rem;
@@ -30,7 +23,6 @@
   overflow-y: auto;
 }
 
-/* Top controls */
 .left-controls {
   display: flex;
   justify-content: space-between;
@@ -47,7 +39,6 @@
   font-size: 14px;
 }
 
-/* Sort dropdown */
 .sort-wrapper {
   position: relative;
   display: inline-block;
@@ -85,9 +76,8 @@
     background: #f0f0f0;
   }
 
-/* Add button */
 .add-btn {
-  background: #28a745;
+  background: #1f72ff;
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -96,7 +86,6 @@
   cursor: pointer;
 }
 
-/* Timeline list */
 .timeline-list {
   display: flex;
   flex-direction: column;
@@ -113,23 +102,6 @@
   .timeline-item.selected .timeline-content {
     border: 2px solid #007bff;
     background: #e9f5ff;
-  }
-
-.timeline-dot {
-  position: absolute;
-  left: 7px;
-  width: 16px;
-  height: 16px;
-  background: #007bff;
-  border-radius: 50%;
-  top: 10px;
-  border: 3px solid #fff;
-  z-index: 1;
-  visibility: hidden;
-}
-
-  .timeline-dot.completed {
-    background: #28a745;
   }
 
 .timeline-content {
@@ -181,8 +153,7 @@
     cursor: not-allowed;
   }
 
-/* Right form */
-.auth-form {
+.ct-form {
   padding: 1rem;
   border: 1px solid #e6ebf2;
   border-radius: 12px;
@@ -193,7 +164,7 @@
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   column-gap: 16px;
   row-gap: 12px;
 }
@@ -224,40 +195,6 @@
   font-size: 14px;
 }
 
-.dropdown-container {
-  position: relative;
-}
-
-.autocomplete-dropdown {
-  position: absolute;
-  background: #fff;
-  z-index: 1000;
-  width: 100%;
-  max-height: 220px;
-  overflow-y: auto;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  box-shadow: 0 6px 24px rgba(16,24,40,.12);
-}
-
-.autocomplete-option {
-  padding: 8px 12px;
-  cursor: pointer;
-}
-
-  .autocomplete-option:hover {
-    background: #f1f5f9;
-  }
-
-.dropdown-arrow {
-  position: absolute;
-  right: 10px;
-  top: 10px;
-  pointer-events: none;
-  font-size: .9rem;
-  color: #777;
-}
-
 .button-group {
   margin-top: 1rem;
   display: flex;
@@ -279,11 +216,6 @@
   margin-top: 4px;
 }
 
-.text-danger {
-  color: #dc3545;
-}
-
-/* AI box */
 .ai-summary {
   padding: 1.25rem;
   background: #f7f9fc;
@@ -292,7 +224,6 @@
   box-shadow: 0 1px 4px rgba(16,24,40,.06);
 }
 
-/* Responsive */
 @media (max-width: 992px) {
   .activity-container {
     flex-direction: column;

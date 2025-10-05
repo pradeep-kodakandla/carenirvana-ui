@@ -125,19 +125,22 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
   //  this.router.navigate(['/member', memberId]);
   //}
 
-  onMemberClick(memberId: string, memberName: string): void {
+  onMemberClick(memberId: string, memberName: string, memberDetailsId: string): void {
     const tabLabel = `Member: ${memberName}`;
     const tabRoute = `/member-info/${memberId}`;
-
+    console.log('Member Clicked:', memberId, memberName, memberDetailsId);
     const existingTab = this.headerService.getTabs().find(tab => tab.route === tabRoute);
 
     if (existingTab) {
       this.headerService.selectTab(tabRoute);
+      const mdId = existingTab.memberDetailsId ?? null;
+      if (mdId) sessionStorage.setItem('selectedMemberDetailsId', mdId);
       this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
         this.router.navigate([tabRoute]);
       });
     } else {
       this.headerService.addTab(tabLabel, tabRoute, memberId);
+      sessionStorage.setItem('selectedMemberDetailsId', memberDetailsId);
       this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
         this.router.navigate([tabRoute]);
       });
@@ -332,7 +335,7 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
 
   @Output() addClicked = new EventEmitter<string>();
 
-  onAuthClick(authNumber: string = '', memId: string = '') {
+  onAuthClick(authNumber: string = '', memId: string = '', memberDetailsId: string) {
     this.addClicked.emit(authNumber);
     this.memberService.setIsCollapse(true);
 
@@ -349,10 +352,12 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
 
     if (existingTab) {
       this.headerService.selectTab(tabRoute);
+      const mdId = existingTab.memberDetailsId ?? null;
+      if (mdId) sessionStorage.setItem('selectedMemberDetailsId', mdId);
 
     } else {
       this.headerService.addTab(tabLabel, tabRoute, String(memberId));
-
+      sessionStorage.setItem('selectedMemberDetailsId', memberDetailsId);
     }
     this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
       this.router.navigate([tabRoute]);

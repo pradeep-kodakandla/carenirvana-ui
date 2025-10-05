@@ -1,0 +1,153 @@
+<div class="activity-container">
+  <!-- LEFT: Caregivers list -->
+  <div class="activity-left">
+    <div class="left-controls">
+      <input type="text"
+             placeholder="🔍 Search by name/email..."
+             [(ngModel)]="searchTerm"
+             (input)="applyFilter()"
+             class="search-input" />
+
+      <div class="right-actions">
+        <div class="sort-wrapper" (mouseenter)="showSort = true" (mouseleave)="showSort = false">
+          <button class="sort-icon" type="button">⇅</button>
+          <div class="sort-menu" *ngIf="showSort">
+            <div class="sort-option" (click)="applySort('name_asc')">Name (A–Z)</div>
+            <div class="sort-option" (click)="applySort('name_desc')">Name (Z–A)</div>
+            <div class="sort-option" (click)="applySort('isPrimary_desc')">Primary First</div>
+            <div class="sort-option" (click)="applySort('active_desc')">Active First</div>
+          </div>
+        </div>
+
+        <button class="add-btn" type="button" (click)="openFormForAdd()" [disabled]="!canAdd">➕ Add Caregiver</button>
+      </div>
+    </div>
+
+    <div class="timeline-list">
+      <div *ngFor="let item of filtered; trackBy: trackById"
+           class="timeline-item"
+           [class.selected]="item.caregiver.memberCaregiverId === selectedId">
+        <div class="timeline-content" (click)="editItem(item)">
+          <div class="timeline-header">
+            <div class="timeline-title">
+              {{ fullName(item.caregiver) || ('Caregiver #' + item.caregiver.memberCaregiverId) }}
+              <ng-container *ngIf="item.caregiver.isPrimary"> • <strong>Primary</strong></ng-container>
+              <ng-container *ngIf="item.caregiver.isHealthcareProxy"> • <strong>HCP</strong></ng-container>
+              <ng-container *ngIf="item.caregiver.activeFlag === false"> • <em>Inactive</em></ng-container>
+            </div>
+
+            <span class="activity-actions" (click)="$event.stopPropagation()">
+              <button type="button" class="icon-btn" title="Edit" [disabled]="!canEdit" (click)="editItem(item)">✏️</button>
+              <button type="button" class="icon-btn" title="Delete" [disabled]="!canDelete" (click)="deleteItem(item)">🗑️</button>
+            </span>
+          </div>
+
+          <div class="timeline-summary">
+            <strong>Email:</strong> {{ item.caregiver.primaryEmail || '—' }}
+          <ng-container *ngIf="item.addresses?.length">
+            • <strong>City:</strong> {{ item.addresses?.[0]?.city ?? '—' }}
+          </ng-container>
+          <ng-container *ngIf="item.phones?.length">
+            • <strong>PhoneType:</strong> {{ item.phones?.[0]?.phoneTypeId ?? '—' }}
+          </ng-container>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="!loading && (filtered?.length || 0) === 0" class="timeline-item">
+        <div class="timeline-content">
+          <div class="timeline-header">
+            <div class="timeline-title">No caregivers found</div>
+          </div>
+          <div class="timeline-summary">Try a different search or click “Add Caregiver”.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGER -->
+    <div class="d-flex" style="gap:.5rem; margin-top:.5rem;">
+      <button class="icon-btn" type="button" (click)="prevPage()" [disabled]="page<=1">⬅️ Prev</button>
+      <div style="align-self:center;">Page {{ page }} • {{ total }} total</div>
+      <button class="icon-btn" type="button" (click)="nextPage()" [disabled]="page*pageSize >= total">Next ➡️</button>
+    </div>
+  </div>
+
+  <!-- RIGHT: Form / Summary -->
+  <div class="activity-right">
+    <ng-container *ngIf="isFormVisible; else summaryTpl">
+      <div class="ct-form">
+        <form #cgForm="ngForm" (ngSubmit)="saveItem()">
+          <div class="form-grid">
+            <div class="form-outline">
+              <label class="floating-label">First Name <span class="text-danger">*</span></label>
+              <input class="form-control" name="caregiverFirstName" [(ngModel)]="form.caregiverFirstName" required />
+              <div class="invalid-feedback" *ngIf="showValidationErrors && !form.caregiverFirstName">Required.</div>
+            </div>
+
+            <div class="form-outline">
+              <label class="floating-label">Last Name <span class="text-danger">*</span></label>
+              <input class="form-control" name="caregiverLastName" [(ngModel)]="form.caregiverLastName" required />
+              <div class="invalid-feedback" *ngIf="showValidationErrors && !form.caregiverLastName">Required.</div>
+            </div>
+
+            <div class="form-outline">
+              <label class="floating-label">Middle Name</label>
+              <input class="form-control" name="caregiverMiddleName" [(ngModel)]="form.caregiverMiddleName" />
+            </div>
+
+            <div class="form-outline">
+              <label class="floating-label">Email (Primary)</label>
+              <input class="form-control" name="primaryEmail" type="email" [(ngModel)]="form.primaryEmail" />
+            </div>
+
+            <div class="form-outline">
+              <label class="floating-label">Is Primary</label>
+              <select class="form-control" name="isPrimary" [(ngModel)]="form.isPrimary">
+                <option [ngValue]="true">Yes</option>
+                <option [ngValue]="false">No</option>
+              </select>
+            </div>
+
+            <div class="form-outline">
+              <label class="floating-label">Healthcare Proxy</label>
+              <select class="form-control" name="isHealthcareProxy" [(ngModel)]="form.isHealthcareProxy">
+                <option [ngValue]="true">Yes</option>
+                <option [ngValue]="false">No</option>
+              </select>
+            </div>
+
+            <div class="form-outline">
+              <label class="floating-label">Formal Caregiver</label>
+              <select class="form-control" name="isFormalCaregiver" [(ngModel)]="form.isFormalCaregiver">
+                <option [ngValue]="true">Yes</option>
+                <option [ngValue]="false">No</option>
+              </select>
+            </div>
+
+            <div class="form-outline">
+              <label class="floating-label">Active</label>
+              <select class="form-control" name="activeFlag" [(ngModel)]="form.activeFlag">
+                <option [ngValue]="true">Yes</option>
+                <option [ngValue]="false">No</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="button-group">
+            <button type="submit" [disabled]="saving">{{ form.memberCaregiverId ? 'Update' : 'Save' }}</button>
+            <button type="button" (click)="cancelForm()">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </ng-container>
+
+    <ng-template #summaryTpl>
+      <div class="ai-summary">
+        <h3>🧑‍⚕️ Caregiver Summary</h3>
+        <p><strong>Total:</strong> {{ total }}</p>
+        <p><strong>Primary Count:</strong> {{ summary.primary }}</p>
+        <p><strong>Active:</strong> {{ summary.active }}</p>
+      </div>
+    </ng-template>
+  </div>
+</div>

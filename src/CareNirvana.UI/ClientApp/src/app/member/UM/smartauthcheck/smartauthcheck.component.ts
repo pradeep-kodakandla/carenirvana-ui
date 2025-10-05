@@ -290,7 +290,8 @@ export class SmartauthcheckComponent implements OnInit {
 
 
   loadMemberEnrollment(): void {
-    this.memberEnrollment.getMemberEnrollment(2).subscribe(
+    console.log('Loading member enrollment for MemberDetailsId:', sessionStorage.getItem('selectedMemberDetailsId'));
+    this.memberEnrollment.getMemberEnrollment(sessionStorage.getItem('selectedMemberDetailsId')).subscribe(
       (data) => {
         console.log('Member Enrollment Data:', data);
         if (data) {

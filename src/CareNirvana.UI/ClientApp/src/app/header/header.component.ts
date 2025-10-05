@@ -57,6 +57,9 @@ export class HeaderComponent {
     const newTabLabel = `Member Info ${newTabIndex}`;
     const newTabRoute = `/member-info/${newTabIndex}`;
 
+    // For a blank page, clear the session key so downstream code can branch
+    sessionStorage.removeItem('selectedMemberDetailsId');
+
     this.headerService.addTab(newTabLabel, newTabRoute, '0');
     this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
       this.router.navigate([newTabRoute]);
@@ -65,6 +68,15 @@ export class HeaderComponent {
 
   onTabClick(route: string): void {
     this.headerService.selectTab(route);
+
+    const memberDetailsId = this.headerService.getMemberDetailsId(route);
+    console.log('MemberDetailsId for route', route, 'is', memberDetailsId);
+    if (memberDetailsId) {
+      sessionStorage.setItem('selectedMemberDetailsId', memberDetailsId);
+    } else {
+      sessionStorage.removeItem('selectedMemberDetailsId');
+    }
+
     const memberId = this.headerService.getMemberId(route) || '';
     this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
       this.router.navigate([route], { queryParams: { memberId } });

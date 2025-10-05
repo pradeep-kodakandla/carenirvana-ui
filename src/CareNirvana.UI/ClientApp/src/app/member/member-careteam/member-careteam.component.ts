@@ -1,168 +1,207 @@
-import { Component, ViewChild } from '@angular/core';
-import { MatPaginatorModule } from '@angular/material/paginator';
-import { MatSortModule } from '@angular/material/sort';
-import { MatTableModule } from '@angular/material/table';
-import { MatMenu } from '@angular/material/menu';
-import { Router } from '@angular/router';
-import { animate, state, style, transition, trigger } from '@angular/animations';
-import { MatPaginator } from '@angular/material/paginator';
-import { MatSort } from '@angular/material/sort';
-import { MatTableDataSource } from '@angular/material/table';
-import { MatMenuTrigger } from '@angular/material/menu';
+import { Component, Input, OnInit } from '@angular/core';
+import { MemberrelationService, MemberCareStaffView, MemberCareStaffCreateRequest, MemberCareStaffUpdateRequest, PagedResult } from 'src/app/service/memberrelation.service';
+import { finalize } from 'rxjs/operators';
 
 @Component({
   selector: 'app-member-careteam',
   templateUrl: './member-careteam.component.html',
-  styleUrl: './member-careteam.component.css',
-  animations: [
-    trigger('detailExpand', [
-      state('collapsed,void', style({ height: '0px', minHeight: '0' })),
-      state('expanded', style({ height: '*' })),
-      transition('expanded <=> collapsed', animate('225ms cubic-bezier(0.4, 0.0, 0.2, 1)')),
-    ]),
-  ],
+  styleUrls: ['./member-careteam.component.css']
 })
-export class MemberCareteamComponent {
+export class MemberCareteamComponent implements OnInit {
+  @Input() memberDetailsId!: number;    // pass from parent member shell
 
-  selectedDiv: number | null = 1; // Track the selected div
+  // list state
+  loading = false;
+  items: MemberCareStaffView[] = [];
+  filtered: MemberCareStaffView[] = [];
+  searchTerm = '';
+  sortKey: 'userName_asc' | 'userName_desc' | 'roleName_asc' | 'roleName_desc' | 'isPrimary_desc' = 'userName_asc';
+  showSort = false;
 
-  // Method to select a div and clear others
-  selectDiv(index: number) {
-    this.selectedDiv = index; // Set the selected div index
+  // paging
+  page = 1;
+  pageSize = 10;
+  total = 0;
+
+  // selection/edit state
+  selectedId: number | null = null;
+  isFormVisible = false;
+  saving = false;
+  showValidationErrors = false;
+
+  // permissions (wire to your auth as needed)
+  canAdd = true;
+  canEdit = true;
+  canDelete = true;
+
+  // form model (covers both create & update)
+  form: any = {
+    memberCareStaffId: null as number | null,
+    memberDetailsId: null as number | null,
+    userId: null as number | null,
+    roleId: null as number | null,
+    isPrimary: false as boolean,
+    activeFlag: true as boolean
+  };
+
+  summary = { primary: 0, active: 0 };
+
+  constructor(private api: MemberrelationService) { }
+
+  ngOnInit(): void {
+    if (!this.memberDetailsId) {
+      this.memberDetailsId = Number(sessionStorage.getItem("selectedMemberDetailsId"));
+    }
+    this.load();
   }
-  /*Div Selection Style change logic*/
-  displayedColumns: string[] = ['enrollmentStatus', 'memberId', 'firstName', 'lastName', 'DOB', 'risk', 'nextContact', 'assignedDate', 'programName', 'description'];
-  columnsToDisplayWithExpand = [...this.displayedColumns, 'expand'];
 
+  private load(): void {
+    this.loading = true;
+    this.api.listCareTeam({
+      memberDetailsId: this.memberDetailsId,
+      page: this.page,
+      pageSize: this.pageSize,
+      includeInactive: true
+    })
+      .pipe(finalize(() => this.loading = false))
+      .subscribe((res: any) => {
+        // 👇 normalize server vs client shapes
+        const items = res?.Items ?? res?.items ?? [];
+        const total = res?.Total ?? res?.totalCount ?? 0;
 
-  dataSource: MatTableDataSource<UserData>;
-  expandedElement!: UserData | null;
+        this.items = items;
+        this.total = total;
 
-
-  @ViewChild(MatPaginator) paginator!: MatPaginator;
-  @ViewChild(MatSort) sort!: MatSort;
-
-  loadPage(page: string) {
-    // Use Angular Router to navigate based on the page selection
-    // Assuming router has been injected in constructor
-    this.router.navigate([page]);
+        this.applyFilter();
+        this.computeSummary();
+      }, _ => {
+        this.items = [];
+        this.filtered = [];
+        this.total = 0;
+      });
   }
 
-  constructor(private router: Router) {
-    // Create 100 users
-    const users = Array.from({ length: 100 }, (_, k) => createNewUser(k + 1));
 
-    // Assign the data to the data source for the table to render
-    this.dataSource = new MatTableDataSource(users);
+  // ---------- list helpers ----------
+  applyFilter(): void {
+    const needle = (this.searchTerm || '').toLowerCase();
+    this.filtered = (this.items || []).filter(x => {
+      const name = (x.userName || '').toLowerCase();
+      const role = (x.roleName || '').toLowerCase();
+      return !needle || name.includes(needle) || role.includes(needle) || String(x.userId).includes(needle);
+    });
+    this.applySort(this.sortKey, /*skipAssign*/ true);
   }
 
-  ngAfterViewInit() {
-    this.dataSource.paginator = this.paginator;
-    this.dataSource.sort = this.sort;
+  applySort(key: typeof this.sortKey, skipAssign = false): void {
+    const arr = this.filtered || [];
+    const by = (k: keyof MemberCareStaffView) => (a: any, b: any) => (String(a[k] || '').localeCompare(String(b[k] || '')));
+    const byBoolDesc = (k: keyof MemberCareStaffView) => (a: any, b: any) => (Number(!!b[k]) - Number(!!a[k]));
+
+    switch (key) {
+      case 'userName_asc': arr.sort(by('userName')); break;
+      case 'userName_desc': arr.sort((a, b) => -by('userName')(a, b)); break;
+      case 'roleName_asc': arr.sort(by('roleName')); break;
+      case 'roleName_desc': arr.sort((a, b) => -by('roleName')(a, b)); break;
+      case 'isPrimary_desc': arr.sort(byBoolDesc('isPrimary')); break;
+    }
+    if (!skipAssign) this.sortKey = key;
   }
 
-  applyFilter(event: Event) {
-    const filterValue = (event.target as HTMLInputElement).value;
-    this.dataSource.filter = filterValue.trim().toLowerCase();
+  trackById = (_: number, x: MemberCareStaffView) => x.memberCareStaffId;
 
-    if (this.dataSource.paginator) {
-      this.dataSource.paginator.firstPage();
+  prevPage(): void { if (this.page > 1) { this.page--; this.load(); } }
+  nextPage(): void { if (this.page * this.pageSize < this.total) { this.page++; this.load(); } }
+
+  // ---------- CRUD ----------
+  openFormForAdd(): void {
+    this.isFormVisible = true;
+    this.showValidationErrors = false;
+    this.selectedId = null;
+    this.form = {
+      memberCareStaffId: null,
+      memberDetailsId: this.memberDetailsId,
+      userId: null,
+      roleId: null,
+      isPrimary: false,
+      activeFlag: true
+    };
+  }
+
+  editItem(row: MemberCareStaffView): void {
+    this.selectedId = row.memberCareStaffId;
+    this.isFormVisible = true;
+    this.showValidationErrors = false;
+    this.form = {
+      memberCareStaffId: row.memberCareStaffId,
+      memberDetailsId: row.memberDetailsId,
+      userId: row.userId,
+      roleId: (row as any).roleId ?? null,   // depends on your backend view; safe fallback
+      isPrimary: !!row.isPrimary,
+      activeFlag: row.activeFlag !== false
+    };
+  }
+
+  cancelForm(): void {
+    this.isFormVisible = false;
+    this.selectedId = null;
+  }
+
+  saveItem(): void {
+    this.showValidationErrors = true;
+    if (!this.form.userId || !this.memberDetailsId) return;
+
+    this.saving = true;
+
+    if (!this.form.memberCareStaffId) {
+      // CREATE
+      const req: MemberCareStaffCreateRequest = {
+        memberDetailsId: this.memberDetailsId,
+        userId: Number(this.form.userId),
+        roleId: this.form.roleId ? Number(this.form.roleId) : undefined,
+        isPrimary: !!this.form.isPrimary,
+        createdBy: this.getUserIdOrNull() ?? undefined,
+      };
+      this.api.createCareTeam(req)
+        .pipe(finalize(() => this.saving = false))
+        .subscribe(_ => {
+          this.isFormVisible = false;
+          this.load();
+        });
+    } else {
+      // UPDATE
+      const req: MemberCareStaffUpdateRequest = {
+        userId: this.form.userId ? Number(this.form.userId) : undefined,
+        roleId: this.form.roleId ? Number(this.form.roleId) : undefined,
+        isPrimary: this.form.isPrimary,
+        updatedBy: this.getUserIdOrNull() ?? undefined
+      };
+      this.api.updateCareTeam(this.form.memberCareStaffId, req)
+        .pipe(finalize(() => this.saving = false))
+        .subscribe(_ => {
+          this.isFormVisible = false;
+          this.load();
+        });
     }
   }
 
-  goToPage(memberId: string) {
-    this.router.navigate(['/member-info', memberId]);
+  deleteItem(row: MemberCareStaffView): void {
+    if (!row?.memberCareStaffId) return;
+    const deletedBy = this.getUserIdOrNull() ?? undefined;
+    this.api.deleteCareTeam(row.memberCareStaffId, deletedBy)
+      .subscribe(_ => this.load());
   }
 
-  /*Table Context Menu*/
-  @ViewChild(MatMenuTrigger)
-  contextMenu!: MatMenuTrigger;
-
-  contextMenuPosition = { x: '0px', y: '0px' };
-
-
-  onContextMenuAction1(item: UserData) {
-    alert(`Click on Action 1 for ${item.enrollmentStatus}`);
+  // ---------- misc ----------
+  private getUserIdOrNull(): number | null {
+    const v = sessionStorage.getItem('loggedInUserid');
+    const n = v ? Number(v) : NaN;
+    return Number.isFinite(n) ? n : null;
   }
 
-  onContextMenuAction2(item: UserData) {
-    alert(`Click on Action 2 for ${item.enrollmentStatus}`);
+  private computeSummary(): void {
+    const list = this.items || [];
+    this.summary.primary = list.filter(x => x.isPrimary).length;
+    this.summary.active = list.filter(x => x.activeFlag !== false).length;
   }
-
 }
-/** Builds and returns a new User. */
-export function createNewUser(id: number): UserData {
-  const name =
-    NAMES[Math.round(Math.random() * (NAMES.length - 1))];
-
-  return {
-    enrollmentStatus: 'Active',
-    firstName: name,
-    memberId: NUMS[Math.round(Math.random() * (NUMS.length - 1))], /*(100 * 100).toString(),*/
-    lastName: FRUITS[Math.round(Math.random() * (FRUITS.length - 1))],
-    DOB: '09/14/2024',
-    risk: 'Low',
-    nextContact: '09/14/2024',
-    assignedDate: '09/14/2024',
-    programName: 'Care Management',
-    description: 'Description'
-  };
-}
-export interface UserData {
-  enrollmentStatus: string;
-  memberId: string;
-  firstName: string;
-  lastName: string;
-  DOB: string;
-  risk: string;
-  nextContact: string;
-  assignedDate: string;
-  programName: string;
-  description: string;
-}
-
-/** Constants used to fill up our data base. */
-const FRUITS: string[] = [
-  'blueberry',
-  'lychee',
-  'kiwi',
-  'mango',
-  'peach',
-  'lime',
-  'pomegranate',
-  'pineapple',
-];
-const NUMS: string[] = [
-  '10000',
-  '10001',
-  '10003',
-  '10004',
-  '10005',
-  '10006',
-  '10007',
-  '10008',
-  '10009',
-  '10010',
-];
-
-const NAMES: string[] = [
-  'Pradeep',
-  'Pawan',
-  'Sridhar',
-  'Rohitha',
-  'Paavana',
-  'Jack',
-  'Charlotte',
-  'Theodore',
-  'Isla',
-  'Oliver',
-  'Isabella',
-  'Jasper',
-  'Cora',
-  'Levi',
-  'Violet',
-  'Arthur',
-  'Mia',
-  'Thomas',
-  'Elizabeth',
-];

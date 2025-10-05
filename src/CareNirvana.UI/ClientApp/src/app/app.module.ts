@@ -30,6 +30,7 @@ import { MdreviewdashboardComponent } from './dash-board/mdreviewdashboard/Mdrev
 import { MemberAlertsComponent } from './member/member-alerts/member-alerts.component';
 import { MemberCareplanComponent } from './member/member-careplan/member-careplan.component';
 import { MemberCareteamComponent } from './member/member-careteam/member-careteam.component';
+import { MemberCaregiverComponent } from './member/member-caregiver/member-caregiver.component';
 import { MemberDocumentsComponent } from './member/member-documents/member-documents.component';
 import { MemberEnrollmentComponent } from './member/member-enrollment/member-enrollment.component';
 import { MemberNotesComponent } from './member/member-notes/member-notes.component';
@@ -155,7 +156,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
     FaxesComponent,
     MemberAlertsComponent,
     MemberCareplanComponent,
-    MemberCareteamComponent,
+    MemberCareteamComponent, MemberCaregiverComponent,
     MemberDocumentsComponent,
     MemberEnrollmentComponent,
     MemberNotesComponent,
@@ -214,6 +215,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
       { path: 'member-alerts', component: MemberAlertsComponent },
       { path: 'member-careplan', component: MemberCareplanComponent },
       { path: 'member-careteam', component: MemberCareteamComponent },
+      { path: 'member-caregiver', component: MemberCaregiverComponent }, 
       { path: 'member-document', component: MemberDocumentsComponent },
       { path: 'member-enrollment', component: MemberEnrollmentComponent },
       { path: 'member-notes', component: MemberNotesComponent },

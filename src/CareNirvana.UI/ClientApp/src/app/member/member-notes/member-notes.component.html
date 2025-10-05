@@ -175,17 +175,35 @@
     </ng-container>
 
     <ng-template #aiSummary>
-      <div class="ai-summary">
+      <div class="ai-summary" *ngIf="summary as s">
         <h3>📝 Notes Summary</h3>
-        <p><strong>Total Notes:</strong> {{ summary.total }}</p>
-        <p><strong>Alert Notes:</strong> {{ summary.alert }}</p>
-        <p><strong>Last Created:</strong> {{ summary.lastCreated }}</p>
+
+        <div class="summary-line">
+          <strong>Total Notes:</strong> {{ s.total }}
+        </div>
+        <div class="summary-line">
+          <strong>Alert Notes:</strong>
+          <span [class.text-danger]="s.alerts > 0">{{ s.alerts }}</span>
+        </div>
+        <div class="summary-line" *ngIf="s.lastEnteredDisplay">
+          <strong>Last Entered:</strong> {{ s.lastEnteredDisplay }}
+        </div>
+
+        <!--<div class="summary-bytype" *ngIf="s.byType?.length">
+          <h4>By Note Type</h4>
+          <ul>
+            <li *ngFor="let t of s.byType; trackBy: trackByType">
+              {{ t.label }} — {{ t.count }}
+            </li>
+          </ul>
+        </div>-->
       </div>
     </ng-template>
 
     <ng-container *ngIf="!isFormVisible">
       <ng-container *ngTemplateOutlet="aiSummary"></ng-container>
     </ng-container>
+
 
   </div>
 </div>

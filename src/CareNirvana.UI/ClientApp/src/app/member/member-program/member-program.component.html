@@ -1,141 +1,251 @@
-<mat-menu #menu="matMenu">
-  <button mat-menu-item>
-    <span>Add Activity</span>
-  </button>
-  <button mat-menu-item disabled>
-    <span>Run Assessment</span>
-  </button>
-  <button mat-menu-item>
-    <!--<mat-icon>notifications_off</mat-icon>-->
-    <span>Messages</span>
-  </button>
-  <button mat-menu-item>
-    <span>Add Notes</span>
-  </button>
-  <button mat-menu-item disabled>
-    <span>Send Letter</span>
-  </button>
-  <button mat-menu-item>
-    <!--<mat-icon>notifications_off</mat-icon>-->
-    <span>Unassign</span>
-  </button>
-  <button mat-menu-item>
-    <!--<mat-icon>notifications_off</mat-icon>-->
-    <span>Summary</span>
-  </button>
-</mat-menu>
+<div class="activity-container">
+  <!-- LEFT: Program Timeline/List -->
+  <div class="activity-left">
+    <div class="left-controls">
+      <input type="text"
+             placeholder="🔍 Search..."
+             [(ngModel)]="searchTerm"
+             (input)="applyFilter()"
+             class="search-input" />
 
-<mat-drawer-container class="sidenav-container" autosize>
-  <mat-drawer-content mode="side" opened>
-
-    <div class="d-flex justify-content-between align-items-center " style="background: whitesmoke; width: 100%;  ">
-      <div class="search-section">
-        <input type="text" placeholder="🔍 Search..." (input)="applyFilter($event)" class="search-input" #input />
-      </div>
-      <div>
-        <div class="d-flex justify-content-between align-items-center" style="padding: 5px;">
-          <div class="search-bar-button-table">
-            <button mat-icon-button>
-              <mat-icon>add</mat-icon>
-            </button>
-            <a style="padding-right:10px;">Add</a>
+      <div class="right-actions">
+        <div class="sort-wrapper" (mouseenter)="showSort = true" (mouseleave)="showSort = false">
+          <button class="sort-icon" type="button">⇅</button>
+          <div class="sort-menu" *ngIf="showSort">
+            <div class="sort-option" (click)="applySort('startDate_desc')">Start Date (New → Old)</div>
+            <div class="sort-option" (click)="applySort('startDate_asc')">Start Date (Old → New)</div>
+            <div class="sort-option" (click)="applySort('programLabel_asc')">Program (A–Z)</div>
+            <div class="sort-option" (click)="applySort('programLabel_desc')">Program (Z–A)</div>
+            <div class="sort-option" (click)="applySort('statusLabel_asc')">Status (A–Z)</div>
+            <div class="sort-option" (click)="applySort('statusLabel_desc')">Status (Z–A)</div>
           </div>
-          <a style="padding-right:10px;"><mat-icon>settings</mat-icon></a>
+        </div>
+
+        <button class="add-btn" type="button" (click)="openFormForAdd()" [disabled]="!canAdd">➕ Add Program</button>
+      </div>
+    </div>
+
+    <div class="timeline-list">
+      <div *ngFor="let p of filtered; trackBy: trackById"
+           class="timeline-item"
+           [class.selected]="p.memberProgramId === selectedId">
+
+        <div class="timeline-dot" [class.completed]="isCompleted(p)"></div>
+
+        <div class="timeline-content" (click)="editProgram(p)">
+          <div class="timeline-header">
+            <div class="timeline-title">
+              {{ p._programLabel || ('Program #' + p.programId) }}
+            </div>
+            <div class="timeline-priority priority-default">
+              {{ p._startEndDisplay }}
+            </div>
+            <span class="activity-actions" (click)="$event.stopPropagation()">
+              <button type="button" class="icon-btn" title="Edit" [disabled]="!canEdit" (click)="editProgram(p)">✏️</button>
+              <button type="button" class="icon-btn" title="Delete" [disabled]="!canDelete" (click)="deleteProgram(p)">🗑️</button>
+            </span>
+          </div>
+
+          <div class="timeline-summary">
+            <strong>Status:</strong> {{ p._statusLabel || p.programStatusId }}
+            <ng-container *ngIf="p._statusReasonLabel"> • <strong>Reason:</strong> {{ p._statusReasonLabel }}</ng-container>
+            <ng-container *ngIf="p._referralSourceLabel"> • <strong>Referral:</strong> {{ p._referralSourceLabel }}</ng-container>
+            <ng-container *ngIf="p._assignedToLabel"> • <strong>Assigned:</strong> {{ p._assignedToLabel }}</ng-container>
+            <ng-container *ngIf="p.activeFlag === false"> • <em>Inactive</em></ng-container>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div *ngIf="!loading && filtered.length === 0" class="timeline-item">
+        <div class="timeline-content">
+          <div class="timeline-header">
+            <div class="timeline-title">No programs found</div>
+          </div>
+          <div class="timeline-summary">Try a different search or click “Add Program”.</div>
         </div>
       </div>
     </div>
 
-    <div class="table-wrapper">
-      <table mat-table [dataSource]="dataSource" matSort
-             multiTemplateDataRows
-             class="mat-elevation-z1 full-width-table pro-table mng-table">
-
-        <ng-container matColumnDef="enrollmentStatus">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Enrollment Status </th>
-          <td mat-cell *matCellDef="let row">
-            <div class="status-cell">
-              <button mat-icon-button [matMenuTriggerFor]="menu">
-                <mat-icon>list</mat-icon>
-              </button>
-              <a mat-button>{{row.enrollmentStatus}}</a>
-            </div>
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="memberId">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Member ID </th>
-          <td mat-cell *matCellDef="let row">
-            <div class="element-weight">
-              <a mat-button (click)="goToPage(row.memberId)">{{row.memberId}}</a>
-            </div>
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="firstName">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> First Name </th>
-          <td mat-cell *matCellDef="let row"> {{row.firstName}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="lastName">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Last Name </th>
-          <td mat-cell *matCellDef="let row"> {{row.lastName}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="DOB">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> DOB </th>
-          <td mat-cell *matCellDef="let row"> {{row.DOB}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="risk">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Risk </th>
-          <td mat-cell *matCellDef="let row"> {{row.risk}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="nextContact">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Next Contact </th>
-          <td mat-cell *matCellDef="let row"> {{row.nextContact}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="assignedDate">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Assigned Date </th>
-          <td mat-cell *matCellDef="let row"> {{row.assignedDate}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="programName">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Programe Name </th>
-          <td mat-cell *matCellDef="let row"> {{row.programName}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="description">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Status </th>
-          <td mat-cell *matCellDef="let row"> {{row.description}} </td>
-        </ng-container>
-
-
-        <!-- Expanded Content Column - The detail row is made up of this one column that spans across all columns -->
-
-        <ng-container matColumnDef="expandedDetail">
-          <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns.length">
-          </td>
-        </ng-container>
-
-        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns;"
-            class="element-row"
-            [class.expanded-row]="expandedElement === row"
-            (click)="expandedElement = expandedElement === row ? null : row">
-        </tr>
-        <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="detail-row"></tr>
-
-        <!--<tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;" (click)="expandedElement = expandedElement === row ? null : row"></tr>-->
-        <!-- Row shown when there is no matching data. -->
-        <tr class="mat-row" *matNoDataRow>
-          <td class="mat-cell" colspan="9">No data matching the filter "{{input.value}}"</td>
-        </tr>
-      </table>
-      <mat-paginator [pageSizeOptions]="[10, 25, 100]" aria-label="Select page of users"></mat-paginator>
+    <!-- PAGER -->
+    <div class="d-flex" style="gap:.5rem; margin-top: .5rem;">
+      <button class="icon-btn" type="button" (click)="prevPage()" [disabled]="page<=1">⬅️ Prev</button>
+      <div style="align-self:center;">Page {{ page }} • {{ total }} total</div>
+      <button class="icon-btn" type="button" (click)="nextPage()" [disabled]="page*pageSize >= total">Next ➡️</button>
     </div>
+  </div>
 
-  </mat-drawer-content>
-</mat-drawer-container>
+  <!-- RIGHT: Form / AI Summary -->
+  <div class="activity-right">
+    <ng-container *ngIf="isFormVisible; else summaryTpl">
+      <div class="auth-form">
+        <form #programForm="ngForm" (ngSubmit)="saveProgram()">
+          <div class="form-grid">
+            <!-- Program -->
+            <div class="form-outline dropdown-container">
+              <label class="floating-label">Program <span class="text-danger">*</span></label>
+              <div class="input-with-icon">
+                <input class="form-control"
+                       name="program"
+                       [(ngModel)]="form.programDisplay"
+                       (input)="filterOptions('program')"
+                       (focus)="openDropdown('program')"
+                       (blur)="onAutoBlur('program')"
+                       autocomplete="off"
+                       required />
+                <span class="dropdown-arrow">&#9662;</span>
+
+                <div class="autocomplete-dropdown" *ngIf="auto.program.open && auto.program.filtered.length">
+                  <div class="autocomplete-option"
+                       *ngFor="let opt of auto.program.filtered"
+                       (mousedown)="selectAuto('program', opt)">
+                    {{ opt.label }}
+                  </div>
+                </div>
+              </div>
+              <div class="invalid-feedback" *ngIf="showValidationErrors && !form.programId">Program is required.</div>
+            </div>
+
+            <!-- Status -->
+            <div class="form-outline dropdown-container">
+              <label class="floating-label">Status <span class="text-danger">*</span></label>
+              <div class="input-with-icon">
+                <input class="form-control"
+                       name="status"
+                       [(ngModel)]="form.statusDisplay"
+                       (input)="filterOptions('status')"
+                       (focus)="openDropdown('status')"
+                       (blur)="onAutoBlur('status')"
+                       autocomplete="off"
+                       required />
+                <span class="dropdown-arrow">&#9662;</span>
+
+                <div class="autocomplete-dropdown" *ngIf="auto.status.open && auto.status.filtered.length">
+                  <div class="autocomplete-option"
+                       *ngFor="let opt of auto.status.filtered"
+                       (mousedown)="selectAuto('status', opt)">
+                    {{ opt.label }}
+                  </div>
+                </div>
+              </div>
+              <div class="invalid-feedback" *ngIf="showValidationErrors && !form.programStatusId">Status is required.</div>
+            </div>
+
+            <!-- Reason -->
+            <div class="form-outline dropdown-container">
+              <label class="floating-label">Status Reason</label>
+              <div class="input-with-icon">
+                <input class="form-control"
+                       name="reason"
+                       [(ngModel)]="form.reasonDisplay"
+                       (input)="filterOptions('reason')"
+                       (focus)="openDropdown('reason')"
+                       (blur)="onAutoBlur('reason')"
+                       autocomplete="off" />
+                <span class="dropdown-arrow">&#9662;</span>
+
+                <div class="autocomplete-dropdown" *ngIf="auto.reason.open && auto.reason.filtered.length">
+                  <div class="autocomplete-option"
+                       *ngFor="let opt of auto.reason.filtered"
+                       (mousedown)="selectAuto('reason', opt)">
+                    {{ opt.label }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Referral Source -->
+            <div class="form-outline dropdown-container">
+              <label class="floating-label">Referral Source</label>
+              <div class="input-with-icon">
+                <input class="form-control"
+                       name="referral"
+                       [(ngModel)]="form.referralDisplay"
+                       (input)="filterOptions('referral')"
+                       (focus)="openDropdown('referral')"
+                       (blur)="onAutoBlur('referral')"
+                       autocomplete="off" />
+                <span class="dropdown-arrow">&#9662;</span>
+
+                <div class="autocomplete-dropdown" *ngIf="auto.referral.open && auto.referral.filtered.length">
+                  <div class="autocomplete-option"
+                       *ngFor="let opt of auto.referral.filtered"
+                       (mousedown)="selectAuto('referral', opt)">
+                    {{ opt.label }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Assigned To -->
+            <div class="form-outline dropdown-container">
+              <label class="floating-label">Assigned To</label>
+              <div class="input-with-icon">
+                <input class="form-control"
+                       name="assignedTo"
+                       [(ngModel)]="form.assignedToDisplay"
+                       (input)="filterOptions('assignedTo')"
+                       (focus)="openDropdown('assignedTo')"
+                       (blur)="onAutoBlur('assignedTo')"
+                       autocomplete="off" />
+                <span class="dropdown-arrow">&#9662;</span>
+
+                <div class="autocomplete-dropdown" *ngIf="auto.assignedTo.open && auto.assignedTo.filtered.length">
+                  <div class="autocomplete-option"
+                       *ngFor="let opt of auto.assignedTo.filtered"
+                       (mousedown)="selectAuto('assignedTo', opt)">
+                    {{ opt.label }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Start Date -->
+            <div class="form-outline">
+              <label class="floating-label">Start Date <span class="text-danger">*</span></label>
+              <input class="form-control"
+                     name="startDate"
+                     [(ngModel)]="form.startDate"
+                     type="date"
+                     required />
+              <div class="invalid-feedback" *ngIf="showValidationErrors && !form.startDate">Start Date is required.</div>
+            </div>
+
+            <!-- End Date -->
+            <div class="form-outline">
+              <label class="floating-label">End Date</label>
+              <input class="form-control"
+                     name="endDate"
+                     [(ngModel)]="form.endDate"
+                     type="date" />
+            </div>
+
+            <!-- Active -->
+            <div class="form-outline">
+              <label class="floating-label">Active</label>
+              <select class="form-control" name="activeFlag" [(ngModel)]="form.activeFlag">
+                <option [ngValue]="true">Yes</option>
+                <option [ngValue]="false">No</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="button-group">
+            <button type="submit" [disabled]="saving || !canAdd">{{ form.memberProgramId ? 'Update' : 'Save' }}</button>
+            <button type="button" (click)="cancelForm()">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </ng-container>
+
+    <ng-template #summaryTpl>
+      <div class="ai-summary">
+        <h3>📊 Programs Summary</h3>
+        <p><strong>Total:</strong> {{ total }}</p>
+        <p><strong>Active:</strong> {{ summary.active }}</p>
+        <p><strong>Most Recent Start:</strong> {{ summary.recentStart || '—' }}</p>
+        <p><strong>Assigned to Me:</strong> {{ summary.assignedToMe }}</p>
+      </div>
+    </ng-template>
+  </div>
+</div>
