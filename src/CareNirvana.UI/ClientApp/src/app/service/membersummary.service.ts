@@ -63,10 +63,10 @@ export interface MemberDocument {
 })
 export class MembersummaryService {
 
-  private apiNotesUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/MemberHealthNotes';
-  //private apiNotesUrl = 'https://localhost:51346/api/MemberHealthNotes';
-  private apiDocUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/MemberDocument';
-  //private apiDocUrl = 'https://localhost:51346/api/MemberDocument';
+  //private apiNotesUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/MemberHealthNotes';
+  private apiNotesUrl = 'https://localhost:51346/api/MemberHealthNotes';
+  //private apiDocUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/MemberDocument';
+  private apiDocUrl = 'https://localhost:51346/api/MemberDocument';
   constructor(private http: HttpClient) { }
 
   // Normalize server shapes into a UI-friendly dto

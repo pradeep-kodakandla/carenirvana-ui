@@ -1,6 +1,8 @@
 import { Component, Input, OnDestroy, OnInit } from '@angular/core';
 import { MemberProgram, MemberprogramService } from 'src/app/service/memberprogram.service';
 import { Subscription } from 'rxjs';
+import { CrudService } from 'src/app/service/crud.service';
+import { firstValueFrom } from 'rxjs';
 
 type AutoKey = 'program' | 'status' | 'reason' | 'referral' | 'assignedTo';
 
@@ -105,15 +107,21 @@ export class MemberProgramComponent implements OnInit, OnDestroy {
 
   private sub?: Subscription;
 
-  constructor(private svc: MemberprogramService) { }
+  constructor(private svc: MemberprogramService, private crud: CrudService) { }
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     if (!this.memberDetailsId) {
       this.memberDetailsId = Number(sessionStorage.getItem("selectedMemberDetailsId"));
     }
     this.ensureInputs();
-    this.loadLookups();
-    this.load();
+    //this.loadLookups();
+    //this.load();
+    try {
+      await this.loadLookups();  // Wait until done
+      this.load();
+    } catch (err) {
+      console.error('Failed to load lookups', err);
+    }
   }
 
   ngOnDestroy(): void {
@@ -128,32 +136,45 @@ export class MemberProgramComponent implements OnInit, OnDestroy {
     }
   }
 
-  private loadLookups() {
-    // TODO: Replace with real fetches from cfgadmindata endpoints
-    this.programs = [
-      { id: 1, label: 'Chronic Care Management' },
-      { id: 2, label: 'Diabetes Coaching' },
-      { id: 3, label: 'Behavioral Health' },
-    ];
-    this.statuses = [
-      { id: 1, label: 'Enrolled' },
-      { id: 2, label: 'Pending' },
-      { id: 3, label: 'Closed' },
-    ];
-    this.reasons = [
-      { id: 10, label: 'Completed', statusId: 3 },
-      { id: 11, label: 'Declined', statusId: 3 },
-      { id: 12, label: 'Unable to Contact', statusId: 3 },
-    ];
-    this.referrals = [
-      { id: 100, label: 'Provider' },
-      { id: 101, label: 'Claims Analytics' },
-      { id: 102, label: 'Case Manager' },
-    ];
+  private async loadLookups() {
+
+    const list = await firstValueFrom(this.crud.getData('cm', 'program'));
+    if (!list) return;
+    this.programs = list.map(item => ({
+      id: Number(item.id),          // convert string to number
+      label: item.programName       // map to label
+    }));
+
+
+    const listStatus = await firstValueFrom(this.crud.getData('cm', 'programstatus'));
+    if (!listStatus) return;
+    this.statuses = listStatus.map(item => ({
+      id: Number(item.id),          // convert string to number
+      label: item.programStatus       // map to label
+    }));
+
+
+
+    const listStatusReason = await firstValueFrom(this.crud.getData('cm', 'programstatusreason'));
+    if (!listStatusReason) return;
+    this.reasons = listStatusReason.map(item => ({
+      id: Number(item.id),          // convert string to number
+      label: item.programStatusReason       // map to label
+    }));
+
+
+    const listSource = await firstValueFrom(this.crud.getData('cm', 'programreferralsource'));
+    if (!listSource) return;
+    this.referrals = listSource.map(item => ({
+      id: Number(item.id),          // convert string to number
+      label: item.programReferralSource       // map to label
+    }));
+
+
     this.users = [
       { id: this.currentUserId || 1, label: 'Me' },
-      { id: 2001, label: 'Nurse A' },
-      { id: 2002, label: 'Nurse B' },
+      { id: 2, label: 'Nurse A' },
+      { id: 3, label: 'Nurse B' },
     ];
   }
 
@@ -162,7 +183,7 @@ export class MemberProgramComponent implements OnInit, OnDestroy {
     this.sub = this.svc.list(this.memberDetailsId, this.page, this.pageSize, false)
       .subscribe({
         next: res => {
-          console.log('fetched member programs', res);  
+          console.log('fetched member programs', res);
           this.items = (res.items ?? []).map(x => this.decorate(x));
           console.log('decorated member programs', this.items);
           this.total = res.total ?? 0;
@@ -330,6 +351,7 @@ export class MemberProgramComponent implements OnInit, OnDestroy {
       createdBy: this.form.createdBy ?? this.currentUserId,
       updatedBy: this.form.updatedBy ?? this.currentUserId
     };
+    console.log('saving member program', payload);
 
     if (this.form.memberProgramId) {
       this.svc.update(payload).subscribe({
