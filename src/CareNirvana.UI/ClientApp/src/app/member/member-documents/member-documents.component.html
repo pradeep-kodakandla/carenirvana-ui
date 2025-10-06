@@ -1,4 +1,4 @@
-<div class="activity-container">
+<div class="activity-container force-two-pane">
   <!-- LEFT SIDE: Document Timeline -->
   <div class="activity-left">
     <div class="left-controls">
@@ -18,19 +18,25 @@
     </div>
 
     <div class="timeline-list">
-      <div *ngFor="let doc of dataSource.filteredData" class="timeline-item" >
+      <div *ngFor="let doc of dataSource.filteredData; trackBy: trackByDoc"
+           class="timeline-item"
+           [class.selected]="doc.memberDocumentId === selectedDocId">
+
         <div class="timeline-dot completed"></div>
-        <div class="timeline-content" (click)="onContentClick($event, doc)">
+        <div class="timeline-content" (click)="editDocument(doc)">
           <div class="timeline-header">
-            <div class="timeline-title">{{ doc.documentName }}</div>
+            <div class="timeline-title">{{ doc._documentTypeLabel }}</div>
             <div class="timeline-priority priority-default">{{ doc._createdOnDisplay || doc.createdOn }}</div>
-            <span class="activity-actions">
+
+            <!-- C) stopPropagation on action buttons -->
+            <span class="activity-actions" (click)="$event.stopPropagation()">
               <button type="button" class="icon-btn" title="Edit" [disabled]="!canEdit" (click)="editDocument(doc)">✏️</button>
               <button type="button" class="icon-btn" title="Delete" [disabled]="!canEdit" (click)="deleteDocument(doc)">🗑️</button>
             </span>
           </div>
+
           <div class="timeline-summary">
-            <strong>Type:</strong> {{ doc._documentTypeLabel }}<br />
+             {{ doc.documentName }}<br />
           </div>
         </div>
       </div>
@@ -49,8 +55,7 @@
                 <div [class.full-width]="field.type === 'textarea' || field.type === 'label'" class="form-outline dropdown-container" [ngClass]="{ 'hidden': field.hidden }">
                   <ng-container [ngSwitch]="field.type">
 
-                    <!-- Dropdown -->
-                    <ng-container *ngSwitchCase="'select'">
+                     <ng-container *ngSwitchCase="'select'">
                       <label class="floating-label">{{ field.displayName }} <span *ngIf="field.required" class="text-danger">*</span></label>
                       <div class="input-with-icon">
                         <input class="form-control"
@@ -58,9 +63,10 @@
                                [(ngModel)]="field.displayLabel"
                                (input)="filterOptions(field)"
                                (keydown)="handleDropdownKeydown($event, field)"
-                               (focus)="onFieldFocus(field)"
+                               (click)="onFieldClick(field)"
                                (blur)="onSelectBlur(field)"
                                [name]="field.id"
+                               [placeholder]="!field.value ? 'Select' : ''"
                                autocomplete="off"
                                #fieldModel="ngModel">
                         <span class="dropdown-arrow">&#9662;</span>
@@ -72,7 +78,6 @@
                             {{ option.label }}
                           </div>
                         </div>
-
                       </div>
                       <div *ngIf="field.required && fieldModel.invalid && (fieldModel.dirty || fieldModel.touched || showValidationErrors)" class="text-danger">
                         {{ field.requiredMsg || (field.displayName + ' is required.') }}

@@ -3,6 +3,7 @@ import { Component, Input, OnInit, ViewChildren, QueryList, ElementRef } from '@
 import { MatTableDataSource } from '@angular/material/table';
 import { MembersummaryService, MemberNoteDto } from 'src/app/service/membersummary.service';
 import { finalize } from 'rxjs/operators';
+import { CrudService } from 'src/app/service/crud.service';
 
 type FieldType = 'select' | 'datetime-local' | 'checkbox' | 'text' | 'textarea';
 
@@ -35,6 +36,15 @@ interface NotesSummary {
   byType: Array<{ id: number; label: string; count: number }>;
 }
 
+interface NoteType {
+  id: number;
+  label: string;          // e.g., "Provider Note"
+  template?: string | null;
+  active: boolean;
+  createdOn?: string;     // keep if you want to sort later
+  updatedOn?: string;
+}
+
 @Component({
   selector: 'app-member-notes',
   templateUrl: './member-notes.component.html',
@@ -65,15 +75,19 @@ export class MemberNotesComponent implements OnInit {
   // alert toggle controls showing End Datetime field
   showEndDatetimeField = false;
   endDatetimeValue = '';
+  selectedNoteId: number | null = null;
+
+  noteTypes: NoteType[] = [];
+  selectedNoteTypeId: number | null = null;
 
   // calendar hidden pickers
   @ViewChildren('calendarPickers') calendarPickers!: QueryList<ElementRef<HTMLInputElement>>;
   @ViewChildren('hiddenEndDatetimePicker') hiddenEndPicker!: QueryList<ElementRef<HTMLInputElement>>;
 
   // quick summary (right side)
- // summary = { total: 0, alert: 0, lastCreated: '-' };
+  // summary = { total: 0, alert: 0, lastCreated: '-' };
 
-  noteTypes: Array<{ id: number; label: string }> = [];
+  /*  noteTypes: Array<{ id: number; label: string }> = [];*/
 
   notesFields: NoteField[] = [
     {
@@ -96,13 +110,6 @@ export class MemberNotesComponent implements OnInit {
       displayName: 'Alert Note'
     },
     {
-      id: 'title',
-      type: 'text',
-      displayName: 'Title',
-      required: false,
-      value: ''
-    },
-    {
       id: 'notes',
       type: 'textarea',
       displayName: 'Notes',
@@ -111,24 +118,22 @@ export class MemberNotesComponent implements OnInit {
     }
   ];
 
-  constructor(private svc: MembersummaryService) { }
+  constructor(private svc: MembersummaryService, private crud: CrudService) { }
 
   ngOnInit(): void {
     if (!this.memberDetailsId) {
       this.memberDetailsId = Number(sessionStorage.getItem("selectedMemberDetailsId"));
     }
-   // this.loadNoteTypes();
+    this.loadNoteTypes();
     this.reload();
   }
 
-  // ------------ Data & mapping ------------
+
 
   get memberPointer(): number {
     // prefer new pointer if provided
     return (this.memberDetailsId ?? this.memberId) ?? 0;
   }
-
-
 
   reload(): void {
     if (!this.memberPointer) return;
@@ -189,11 +194,6 @@ export class MemberNotesComponent implements OnInit {
 
           this.dataSource.data = items;
           this.computeSummary(items);
-          // if you keep a selected item, re-sync it here if needed
-          //if (this.selectedNote) {
-          //  const found = items.find(x => x.id === this.selectedNote.id);
-          //  if (!found) this.selectedNote = undefined;
-          //}
         },
         error: _ => {
           this.total = 0;
@@ -287,6 +287,7 @@ export class MemberNotesComponent implements OnInit {
 
     if (mode === 'add') {
       this.editingId = null;
+      this.setNoteTypeFieldForAdd();
       this.setFieldValue('noteTypeId', null);
       this.setFieldLabel('noteTypeId', '');
       this.setFieldValue('createdOn', this.formatDateTimeLocal(new Date()));
@@ -296,6 +297,7 @@ export class MemberNotesComponent implements OnInit {
       this.setFieldValue('title', '');
       this.setFieldValue('notes', '');
     } else if (mode === 'edit' && note) {
+      this.setNoteTypeFieldForAdd();
       this.editingId = note.id;
       this.setFieldValue('noteTypeId', note.noteTypeId ?? null);
       this.setFieldLabel('noteTypeId', note._noteTypeLabel ?? '');
@@ -305,11 +307,18 @@ export class MemberNotesComponent implements OnInit {
       this.endDatetimeValue = ''; // optional end
       this.setFieldValue('title', note.title ?? '');
       this.setFieldValue('notes', note.notes ?? '');
+    } else {
+      this.setNoteTypeFieldForEdit(note);
     }
   }
 
+  trackByNoteId = (index: number, note: any) =>
+    (this.trackByNote ? this.trackByNote(index, note) : note?.id);
+
   editNote(note: MemberNoteDto) {
     this.isFormVisible = true;
+    this.setNoteTypeFieldForEdit(note);
+    console.log('Editing note:', note);
     this.editingId = note.memberNoteId ?? note.memberHealthNotesId ?? note.id ?? null;
 
     this.setFieldValue('noteTypeId', note.noteTypeId ?? null);
@@ -317,7 +326,7 @@ export class MemberNotesComponent implements OnInit {
     this.setFieldValue('createdOn', startIso ? this.formatDateTimeLocal(new Date(startIso)) : '');
     this.setFieldValue('title', note.title ?? '');
     this.setFieldValue('notes', note.notes ?? '');
-
+    this.selectedNoteId = note?.id ?? null;
     // toggle alert + end datetime
     this.showEndDatetimeField = !!note.isAlert || !!note.alertEndDateTime;
     this.endDatetimeValue = note.alertEndDateTime
@@ -349,7 +358,7 @@ export class MemberNotesComponent implements OnInit {
     const noteTypeId = this.notesFields.find(f => f.id === 'noteTypeId')?.value ?? null;
     const startText = this.notesFields.find(f => f.id === 'createdOn')?.value as string; // "Start Datetime" input
     const notesText = this.notesFields.find(f => f.id === 'notes')?.value as string ?? '';
-    const titleText = this.notesFields.find(f => f.id === 'title')?.value as string ?? '';
+    /*const titleText = this.notesFields.find(f => f.id === 'title')?.value as string ?? '';*/
 
     if (!noteTypeId || !notesText?.toString().trim()) return;
 
@@ -362,7 +371,7 @@ export class MemberNotesComponent implements OnInit {
     const payload: Partial<MemberNoteDto> = {
       memberDetailsId: this.memberPointer,
       noteTypeId: Number(noteTypeId),
-      title: titleText,
+      /*      title: titleText,*/
       notes: String(notesText),
       isAlert: !!this.showEndDatetimeField,
       enteredTimestamp,
@@ -473,14 +482,90 @@ export class MemberNotesComponent implements OnInit {
 
   // ------------ Select (Note Type) autocomplete ------------
 
+  // helpers (put at class scope)
+  private getField = (id: string) => this.notesFields.find(f => f.id === id);
+  private normalizeLabel = (s: string | null | undefined) =>
+    (s ?? '')
+      .replace(/[‘’]/g, "'")
+      .replace(/[“”]/g, '"')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  private prefillTemplateIfEmpty(template: string | null | undefined) {
+    const notesFld = this.getField('notes');
+    if (!notesFld) return;
+    const cur = String(notesFld.value ?? '');
+    if (!cur.trim() && template) notesFld.value = template;
+  }
+
   loadNoteTypes() {
-    this.svc.getNoteTypes().subscribe(list => {
-      this.noteTypes = list;
-      const f = this.notesFields.find(x => x.id === 'noteTypeId')!;
-      f.options = list.map((x: { id: number; label: string }) => ({ value: x.id, label: x.label }));
-      f.filteredOptions = [...(f.options ?? [])];
+    this.crud.getData('cm', 'notetype').subscribe((list: any[]) => {
+      if (!list) return;
+
+      // 🔹 Step 1: Normalize and dedupe
+      const byId = new Map<number, { value: number; label: string; template?: string | null }>();
+      for (const r of list ?? []) {
+        if (r?.activeFlag === false) continue;
+        const id = Number(r?.id);
+        if (!Number.isFinite(id)) continue;
+
+        const label = String(r?.noteType ?? '')
+          .replace(/[‘’]/g, "'")
+          .replace(/[“”]/g, '"')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        const template = (r?.noteTemplate && String(r.noteTemplate).trim().length > 0)
+          ? String(r.noteTemplate)
+          : null;
+
+        byId.set(id, { value: id, label, template });
+      }
+
+      // 🔹 Step 2: Convert to array and sort alphabetically
+      const options = Array.from(byId.values()).sort((a, b) =>
+        a.label.localeCompare(b.label, undefined, { sensitivity: 'base' })
+      );
+
+      // 🔹 Step 3: Hydrate the select field
+      const f = this.notesFields.find(x => x.id === 'noteTypeId');
+      if (!f) return;
+
+      f.options = options;
+      f.filteredOptions = options.slice();
+      f.highlightedIndex = 0;
+
+      // 🔹 Step 4: Set default (e.g., Member Note)
+      if (!f.value) {
+        const def = options.find(o => /member note/i.test(o.label)) ?? options[0];
+        if (def) {
+          f.value = def.value;
+          f.displayLabel = def.label;
+
+          // Prefill template if empty
+          const notesFld = this.notesFields.find(x => x.id === 'notes');
+          if (notesFld && (!notesFld.value || !String(notesFld.value).trim())) {
+            notesFld.value = def.template ?? '';
+          }
+        }
+      } else {
+        const selected = options.find(o => o.value === f.value);
+        if (selected) f.displayLabel = selected.label;
+      }
+
+      // 🔹 Step 5: Update _noteTypeLabel for any existing notes in dataSource
+      if (this.dataSource?.data?.length) {
+        for (const note of this.dataSource.data) {
+          const match = options.find(o => o.value === note.noteTypeId);
+          note._noteTypeLabel = match?.label ?? note._noteTypeLabel ?? '';
+        }
+      }
+
+      console.log('Loaded note types (normalized):', options);
     });
   }
+
+
 
   onFieldFocus(field: NoteField) {
     if (field.type !== 'select') return;
@@ -537,4 +622,47 @@ export class MemberNotesComponent implements OnInit {
     }
     field.showDropdown = false;
   }
+
+  // 1) Ensure Add starts neutral (“Select”) and closed
+  private setNoteTypeFieldForAdd(): void {
+    const f = this.getField('noteTypeId');
+    if (!f) return;
+    f.value = null;            // no selection
+    f.displayLabel = '';       // input empty -> placeholder “Select”
+    f.showDropdown = false;    // keep closed by default
+    f.highlightedIndex = 0;
+  }
+
+  // 2) Ensure Edit shows the existing selection’s label and stays closed
+  private setNoteTypeFieldForEdit(note: any): void {
+    const f = this.getField('noteTypeId');
+    if (!f) return;
+
+    // Resolve the saved id from the note
+    const savedId = Number(
+      note?.noteTypeId ?? note?.authorizationNoteTypeId ?? note?.noteType?.id ?? null
+    );
+
+    if (Number.isFinite(savedId)) {
+      // Find matching option (options may be {value,label} or {id,label})
+      const match = (f.options ?? []).find((o: any) => {
+        const val = Number(o.value ?? o.id);
+        return Number.isFinite(val) && val === savedId;
+      });
+
+      f.value = match ? Number(match.value ?? match.label) : savedId;
+      f.displayLabel = match?.label
+        ?? note?._noteTypeLabel
+        ?? (typeof note?.noteType === 'string' ? note.noteType : '')
+        ?? '';
+    } else {
+      // Fallback to neutral if no id
+      f.value = null;
+      f.displayLabel = '';
+    }
+
+    f.showDropdown = false;    // keep closed
+    f.highlightedIndex = 0;
+  }
+
 }

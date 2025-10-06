@@ -4,7 +4,7 @@ import {
 } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { CrudService } from 'src/app/service/crud.service';
-import { MembersummaryService  } from 'src/app/service/membersummary.service';
+import { MembersummaryService } from 'src/app/service/membersummary.service';
 import { ViewChildren, QueryList, ElementRef } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
@@ -233,6 +233,7 @@ export class MemberDocumentsComponent implements OnInit, OnChanges {
   // ---------------------------
   applyFilter(_: any = null): void {
     this.dataSource.filter = (this.searchTerm || '').trim().toLowerCase();
+    console.log('Filtered rows', this.dataSource.filteredData);
     this.computeSummary(this.dataSource.filteredData);
   }
 
@@ -264,7 +265,10 @@ export class MemberDocumentsComponent implements OnInit, OnChanges {
     this.isFormVisible = true;
     this.showValidationErrors = false;
     this.selectedFiles = [];
-
+    const f = this.getDocTypeField();
+    if (f) {
+      f.showDropdown = false;
+    }
     if (mode === 'add') {
       this.selected = undefined;
       this.selectedDocId = undefined;
@@ -277,6 +281,7 @@ export class MemberDocumentsComponent implements OnInit, OnChanges {
       this.setField('documentTypeId', doc.documentTypeId ?? null, label);
       this.setField('documentName', doc.documentName ?? '');
     }
+    this.closeAllDropdowns();
   }
 
   cancelForm(): void {
@@ -291,6 +296,7 @@ export class MemberDocumentsComponent implements OnInit, OnChanges {
     this.selectedDocId = doc.memberDocumentId;
     this.selected = doc;
   }
+  trackByDoc = (_: number, d: any) => d?.memberDocumentId ?? d?.id ?? _;
 
   editDocument(doc: MemberDocument): void {
     if (!this.canEdit) return;
@@ -323,21 +329,36 @@ export class MemberDocumentsComponent implements OnInit, OnChanges {
     }
   }
 
+  private normalizeOptionsToValueLabel(opts: any[]) {
+    return (opts ?? []).map(o =>
+      ('value' in o) ? o : { value: Number(o.id), label: String(o.label) }
+    );
+  }
+
   // ---------------------------
   // Save (Create / Update)
   // ---------------------------
   async saveDocument(form: any): Promise<void> {
 
+    console.log('Form submit', form);
     const nowIso = new Date().toISOString();
 
     // validate requireds
     const typeField = this.getField('documentTypeId');
     const nameField = this.getField('documentName');
+    if (typeField) {
+      typeField.options = this.normalizeOptionsToValueLabel(typeField.options || []);
+      typeField.filteredOptions = typeField.options.slice();
+      typeField.highlightedIndex = 0;
+    }
     this.showValidationErrors = true;
 
     const valid =
       !!typeField && (typeField.value !== undefined) &&
       !!nameField && !!(nameField.value && String(nameField.value).trim().length > 0);
+
+    console.log('Validation Values', valid, typeField?.value, nameField?.value);
+    console.log('Validation', valid, typeField, nameField);
 
     if (!valid) return;
 
@@ -362,6 +383,7 @@ export class MemberDocumentsComponent implements OnInit, OnChanges {
             createdBy: userId ?? null,
             createdOn: nowIso,        // <-- include timestamp here
           };
+          console.log('Creating document', payload);
           return firstValueFrom(this.api.createDocument(payload as any)); // 
         });
 
@@ -438,26 +460,25 @@ export class MemberDocumentsComponent implements OnInit, OnChanges {
     setTimeout(() => (field.showDropdown = false), 150);
   }
 
-  handleDropdownKeydown(evt: KeyboardEvent, field: DocumentField): void {
-    const len = field.filteredOptions?.length ?? 0;
-    if (!len) return;
+  handleDropdownKeydown(evt: KeyboardEvent, field: any) {
+    if (!field.filteredOptions?.length) return;
+    const max = field.filteredOptions.length - 1;
+
     if (evt.key === 'ArrowDown') {
+      field.highlightedIndex = Math.min(max, (field.highlightedIndex ?? 0) + 1);
       evt.preventDefault();
-      field.highlightedIndex = Math.min((field.highlightedIndex ?? 0) + 1, len - 1);
     } else if (evt.key === 'ArrowUp') {
+      field.highlightedIndex = Math.max(0, (field.highlightedIndex ?? 0) - 1);
       evt.preventDefault();
-      field.highlightedIndex = Math.max((field.highlightedIndex ?? 0) - 1, 0);
     } else if (evt.key === 'Enter') {
+      const opt = field.filteredOptions[field.highlightedIndex ?? 0];
+      if (opt) this.selectDropdownOption(field, opt);
       evt.preventDefault();
-      const opt = field.filteredOptions![field.highlightedIndex ?? 0];
-      this.selectDropdownOption(field, opt);
     }
   }
 
-  selectDropdownOption(field: DocumentField, opt: DropdownOption): void {
-    field.value = opt.id;
-    field.displayLabel = opt.label;
-    field.showDropdown = false;
+  private closeAllDropdowns() {
+    (this.documentFields ?? []).forEach((f: any) => f.showDropdown = false);
   }
 
   // ---------------------------
@@ -480,4 +501,29 @@ export class MemberDocumentsComponent implements OnInit, OnChanges {
     if (displayLabel !== undefined) f.displayLabel = displayLabel;
     if (f.type === 'select') this.filterOptions(f);
   }
+
+  // Find the Document Type field (supports common ids)
+  private getDocTypeField() {
+    const candidates = ['documentTypeId', 'authorizationDocumentTypeId', 'docTypeId'];
+    //return this.documentFields?.find((f: any) => candidates.includes(f.id));
+    return this.documentFields?.find((f: any) => f.id === 'documentTypeId');
+  }
+
+  // Open dropdown on click (not focus)
+  onFieldClick(field: any) {
+    field.filteredOptions = (field.options || []).slice();
+    field.showDropdown = true;
+    field.highlightedIndex = 0;
+  }
+
+  // When user picks an option
+  selectDropdownOption(field: any, option: any) {
+    const raw = (option?.value ?? option?.id);
+    const val = Number.isFinite(Number(raw)) ? Number(raw) : null;
+
+    field.displayLabel = option?.label ?? '';
+    field.value = val;
+    field.showDropdown = false;
+  }
+
 }

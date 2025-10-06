@@ -1,15 +1,8 @@
 import { Component, ViewChild, OnInit, ElementRef, ChangeDetectorRef } from '@angular/core';
-import { Router } from '@angular/router';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { animate, state, style, transition, trigger } from '@angular/animations';
-import { MatPaginatorModule } from '@angular/material/paginator';
-import { MatSortModule } from '@angular/material/sort';
-import { MatTableModule } from '@angular/material/table';
-import { MatMenu } from '@angular/material/menu';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
-import { MatMenuTrigger } from '@angular/material/menu';
 import { CrudService } from 'src/app/service/crud.service';
 import { MatDialog } from '@angular/material/dialog';
 import { SettingsDialogComponent } from 'src/app/admin/UM/settings-dialog/settings-dialog.component';

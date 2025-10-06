@@ -54,7 +54,11 @@ main {
 }
 
 .app-footer {
-  flex: 0 0 auto;
+  flex: 0 0 auto; /* fixed height content */
+  position: sticky;
+  top: 0;
+  z-index: 1000; /* keep above scrolling content */
+  background: white; /* prevent transparency */
   padding-left: 5px;
   padding-right: 5px;
 }

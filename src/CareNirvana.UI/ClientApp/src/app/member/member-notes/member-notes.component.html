@@ -18,28 +18,31 @@
     </div>
 
     <div class="timeline-list">
-      <div *ngFor="let note of dataSource.filteredData; let i = index" class="timeline-item">
-        <!--[class.selected]="note.id === selectedNoteId"-->
+      <div *ngFor="let note of dataSource.filteredData; trackBy: trackByNote"
+           class="timeline-item"
+           [class.selected]="note.id === selectedNoteId">
+
         <div class="timeline-dot completed"></div>
-        <div class="timeline-content">
-          <!--(click)="editNote(note)"-->
+
+        <div class="timeline-content" (click)="editNote(note)">
           <div class="timeline-header">
             <div class="timeline-title">
               {{ note._noteTypeLabel }}
               <mat-icon *ngIf="note.isAlert" class="alert-bell-icon" title="Active Alert Note">notifications</mat-icon>
             </div>
-            <div class="timeline-priority priority-default">{{ note._createdOnDisplay }}</div>
-            <span class="activity-actions">
+
+            <div class="timeline-priority priority-default">
+              {{ note._createdOnDisplay }}
+            </div>
+
+            <!-- prevent parent click from firing when using action buttons -->
+            <span class="activity-actions" (click)="$event.stopPropagation()">
               <button type="button" class="icon-btn" title="Edit" [disabled]="!canEdit" (click)="editNote(note)">✏️</button>
               <button type="button" class="icon-btn" title="Delete" [disabled]="!canEdit" (click)="deleteNote(note)">🗑️</button>
             </span>
           </div>
-          <div class="timeline-summary">
-            {{ note.notes }}
-          </div>
-          <div class="timeline-summary">
-            <!--{{ note.authorizationNotes }}-->
-          </div>
+
+          <div class="timeline-summary">{{ note.notes }}</div>
         </div>
       </div>
     </div>
@@ -67,6 +70,7 @@
                                (focus)="onFieldFocus(field)"
                                (blur)="onSelectBlur(field)"
                                [name]="field.id"
+                               [placeholder]="!field.value ? 'Select' : ''" 
                                autocomplete="off"
                                #fieldModel="ngModel">
                         <span class="dropdown-arrow">&#9662;</span>

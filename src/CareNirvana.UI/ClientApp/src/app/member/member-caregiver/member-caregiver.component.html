@@ -45,10 +45,10 @@
           <div class="timeline-summary">
             <strong>Email:</strong> {{ item.caregiver.primaryEmail || '—' }}
           <ng-container *ngIf="item.addresses?.length">
-            • <strong>City:</strong> {{ item.addresses?.[0]?.city ?? '—' }}
+            • <strong>City:</strong> {{ item.addresses[0]?.city ?? '—' }}
           </ng-container>
           <ng-container *ngIf="item.phones?.length">
-            • <strong>PhoneType:</strong> {{ item.phones?.[0]?.phoneTypeId ?? '—' }}
+            • <strong>PhoneType:</strong> {{ item.phones[0]?.phoneTypeId ?? '—' }}
           </ng-container>
           </div>
         </div>
