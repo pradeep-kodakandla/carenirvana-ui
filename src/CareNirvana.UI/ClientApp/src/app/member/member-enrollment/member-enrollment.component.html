@@ -1,141 +1,83 @@
-<mat-menu #menu="matMenu">
-  <button mat-menu-item>
-    <span>Add Activity</span>
-  </button>
-  <button mat-menu-item disabled>
-    <span>Run Assessment</span>
-  </button>
-  <button mat-menu-item>
-    <!--<mat-icon>notifications_off</mat-icon>-->
-    <span>Messages</span>
-  </button>
-  <button mat-menu-item>
-    <span>Add Notes</span>
-  </button>
-  <button mat-menu-item disabled>
-    <span>Send Letter</span>
-  </button>
-  <button mat-menu-item>
-    <!--<mat-icon>notifications_off</mat-icon>-->
-    <span>Unassign</span>
-  </button>
-  <button mat-menu-item>
-    <!--<mat-icon>notifications_off</mat-icon>-->
-    <span>Summary</span>
-  </button>
-</mat-menu>
+<!-- Top controls: search + status filter -->
+<!-- Top controls: search + status button-toggle -->
+<div class="enroll-toolbar">
+  <div class="search-wrap">
 
-<mat-drawer-container class="sidenav-container" autosize>
-  <mat-drawer-content mode="side" opened>
+    <input type="text"
+           placeholder="🔍 Search by plan, account, product, benefit plan, dates, status"
+           [value]="searchText"
+           (input)="onSearchChange($any($event.target).value)"
+           class="search-input" />
+  </div>
 
-    <div class="d-flex justify-content-between align-items-center " style="background: whitesmoke; width: 100%;  ">
-      <div class="search-section"  style="width:70%;">
-        <input type="text" placeholder="🔍 Search..." (input)="applyFilter($event)" class="search-input" #input />
+
+  <div class="filter-wrap">
+    <label class="filter-label">Status</label>
+
+    <div class="btn-toggle">
+      <button type="button"
+              class="btn-chip"
+              [class.active]="statusFilter === 'Active'"
+              (click)="onStatusFilterChange('Active')"
+              [attr.aria-selected]="statusFilter === 'Active'">
+        Active
+      </button>
+
+      <button type="button"
+              class="btn-chip"
+              [class.active]="statusFilter === 'Inactive'"
+              (click)="onStatusFilterChange('Inactive')"
+              [attr.aria-selected]="statusFilter === 'Inactive'">
+        Inactive
+      </button>
+
+      <button type="button"
+              class="btn-chip"
+              [class.active]="statusFilter === 'All'"
+              (click)="onStatusFilterChange('All')"
+              [attr.aria-selected]="statusFilter === 'All'">
+        All
+      </button>
+    </div>
+
+  </div>
+</div>
+
+
+
+<!-- Cards list -->
+<div class="cards-container" *ngIf="filtered?.length; else emptyTpl">
+  <div class="enroll-card" *ngFor="let m of filtered">
+    <div class="levels">
+      <div class="level-row" *ngFor="let p of getLevelPairs(m)">
+        <div class="level-key">{{ p.key }}</div>
+        <div class="level-val">{{ p.val }}</div>
       </div>
-      <div>
-        <div class="d-flex justify-content-between align-items-center" style="padding: 5px;">
-          <div class="search-bar-button-table">
-            <button mat-icon-button>
-              <mat-icon>add</mat-icon>
-            </button>
-            <a style="padding-right:10px;">Add</a>
-          </div>
-          <a style="padding-right:10px;"><mat-icon>settings</mat-icon></a>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="meta">
+      <div class="meta-item">
+        <div class="meta-key">Start Date</div>
+        <div class="meta-val">{{ m.startDate | date:'MMM d, y' }}</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-key">End Date</div>
+        <div class="meta-val">{{ m.endDate ? (m.endDate | date:'MMM d, y') : '—' }}</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-key">Status</div>
+        <div class="meta-val">
+          <span [class]="statusClass(m)">{{ displayStatus(m) }}</span>
         </div>
       </div>
     </div>
+  </div>
+</div>
 
-    <div class="table-wrapper">
-      <table mat-table [dataSource]="dataSource" matSort
-             multiTemplateDataRows
-             class="mat-elevation-z1 full-width-table pro-table mng-table">
-
-        <ng-container matColumnDef="enrollmentStatus">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Enrollment Status </th>
-          <td mat-cell *matCellDef="let row">
-            <div class="status-cell">
-              <button mat-icon-button [matMenuTriggerFor]="menu">
-                <mat-icon>list</mat-icon>
-              </button>
-              <a mat-button>{{row.enrollmentStatus}}</a>
-            </div>
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="memberId">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Member ID </th>
-          <td mat-cell *matCellDef="let row">
-            <div class="element-weight">
-              <a mat-button (click)="goToPage(row.memberId)">{{row.memberId}}</a>
-            </div>
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="firstName">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> First Name </th>
-          <td mat-cell *matCellDef="let row"> {{row.firstName}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="lastName">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Last Name </th>
-          <td mat-cell *matCellDef="let row"> {{row.lastName}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="DOB">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> DOB </th>
-          <td mat-cell *matCellDef="let row"> {{row.DOB}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="risk">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Risk </th>
-          <td mat-cell *matCellDef="let row"> {{row.risk}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="nextContact">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Next Contact </th>
-          <td mat-cell *matCellDef="let row"> {{row.nextContact}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="assignedDate">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Assigned Date </th>
-          <td mat-cell *matCellDef="let row"> {{row.assignedDate}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="programName">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Programe Name </th>
-          <td mat-cell *matCellDef="let row"> {{row.programName}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="description">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Status </th>
-          <td mat-cell *matCellDef="let row"> {{row.description}} </td>
-        </ng-container>
-
-
-        <!-- Expanded Content Column - The detail row is made up of this one column that spans across all columns -->
-
-        <ng-container matColumnDef="expandedDetail">
-          <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns.length">
-          </td>
-        </ng-container>
-
-        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns;"
-            class="element-row"
-            [class.expanded-row]="expandedElement === row"
-            (click)="expandedElement = expandedElement === row ? null : row">
-        </tr>
-        <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="detail-row"></tr>
-
-        <!--<tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;" (click)="expandedElement = expandedElement === row ? null : row"></tr>-->
-        <!-- Row shown when there is no matching data. -->
-        <tr class="mat-row" *matNoDataRow>
-          <td class="mat-cell" colspan="9">No data matching the filter "{{input.value}}"</td>
-        </tr>
-      </table>
-      <mat-paginator [pageSizeOptions]="[10, 25, 100]" aria-label="Select page of users"></mat-paginator>
-    </div>
-
-  </mat-drawer-content>
-</mat-drawer-container>
+<ng-template #emptyTpl>
+  <div class="empty-state">
+    No enrollments found for the current filters.
+  </div>
+</ng-template>

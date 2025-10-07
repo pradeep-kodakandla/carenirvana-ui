@@ -456,9 +456,8 @@ export class AuthorizationComponent {
   }
 
   loadMemberEnrollment(): void {
-    this.memberEnrollment.getMemberEnrollment(2).subscribe(
+    this.memberEnrollment.getMemberEnrollment(Number(sessionStorage.getItem("selectedMemberDetailsId"))).subscribe(
       (data) => {
-        console.log('Member Enrollment Data:', data);
         if (data) {
           this.setMemberEnrollments(data);
         }

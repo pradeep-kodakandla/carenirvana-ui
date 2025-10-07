@@ -76,8 +76,9 @@
     background: #f0f0f0;
   }
 
+/* Add button */
 .add-btn {
-  background: #1f72ff;
+  background: #28a745;
   color: #fff;
   border: none;
   border-radius: 6px;

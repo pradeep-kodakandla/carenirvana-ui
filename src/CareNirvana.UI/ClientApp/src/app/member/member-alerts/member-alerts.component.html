@@ -1,141 +1,121 @@
-<mat-menu #menu="matMenu">
-  <button mat-menu-item>
-    <span>Add Activity</span>
-  </button>
-  <button mat-menu-item disabled>
-    <span>Run Assessment</span>
-  </button>
-  <button mat-menu-item>
-    <!--<mat-icon>notifications_off</mat-icon>-->
-    <span>Messages</span>
-  </button>
-  <button mat-menu-item>
-    <span>Add Notes</span>
-  </button>
-  <button mat-menu-item disabled>
-    <span>Send Letter</span>
-  </button>
-  <button mat-menu-item>
-    <!--<mat-icon>notifications_off</mat-icon>-->
-    <span>Unassign</span>
-  </button>
-  <button mat-menu-item>
-    <!--<mat-icon>notifications_off</mat-icon>-->
-    <span>Summary</span>
-  </button>
-</mat-menu>
+<div class="activity-container">
+  <!-- LEFT: Alerts timeline -->
+  <div class="activity-left">
+    <div class="left-controls">
+      <input type="text"
+             placeholder="🔍 Search alerts/member/status…"
+             [(ngModel)]="searchTerm"
+             (input)="applyFilter()"
+             class="search-input" />
 
-<mat-drawer-container class="sidenav-container" autosize>
-  <mat-drawer-content mode="side" opened>
-
-    <div class="d-flex justify-content-between align-items-center ">
-      <div class="search-section">
-        <input type="text" placeholder="🔍 Search..." (input)="applyFilter($event)" class="search-input" #input />
-      </div>
-      <div>
-        <div class="d-flex justify-content-between align-items-center" style="padding: 5px;">
-          <div class="search-bar-button-table">
-            <button mat-icon-button>
-              <mat-icon>add</mat-icon>
-            </button>
-            <a style="padding-right:10px;">Add</a>
+      <div class="right-actions">
+        <div class="sort-wrapper" (mouseenter)="showSort = true" (mouseleave)="showSort = false">
+          <button class="sort-icon" type="button">⇅</button>
+          <div class="sort-menu" *ngIf="showSort">
+            <div class="sort-option" (click)="applySort('date_desc')">Newest first</div>
+            <div class="sort-option" (click)="applySort('date_asc')">Oldest first</div>
+            <div class="sort-option" (click)="applySort('name_asc')">Member (A–Z)</div>
+            <div class="sort-option" (click)="applySort('name_desc')">Member (Z–A)</div>
+            <div class="sort-option" (click)="applySort('status_asc')">Status (A–Z)</div>
+            <div class="sort-option" (click)="applySort('status_desc')">Status (Z–A)</div>
           </div>
-          <a style="padding-right:10px;"><mat-icon>settings</mat-icon></a>
+        </div>
+
+        <!-- reserved for future "Add alert" (if you choose to create from UI) -->
+        <!--<button class="add-btn" type="button" (click)="openFormForAdd()" disabled>➕ Add Alert</button>-->
+      </div>
+    </div>
+
+    <div class="timeline-list">
+      <div *ngFor="let a of filtered; trackBy: trackById"
+           class="timeline-item"
+           [class.selected]="a.memberAlertId === selectedId">
+        <div class="timeline-content" (click)="editItem(a)">
+          <div class="timeline-header">
+            <div class="timeline-title">
+              {{ a.cfgAlertName || ('Alert #' + a.alertId) }}
+              <ng-container *ngIf="a.alertStatusName"> • <strong>{{ a.alertStatusName }}</strong></ng-container>
+              <ng-container *ngIf="a.activeFlag === false"> • <em>Inactive</em></ng-container>
+            </div>
+            <span class="activity-actions" (click)="$event.stopPropagation()">
+              <button type="button" class="icon-btn" title="Acknowledge" (click)="acknowledge(a)">✅</button>
+              <button type="button" class="icon-btn" title="Dismiss" (click)="dismiss(a)">🗙</button>
+              <!--<button type="button" class="icon-btn" title="Clear dates" (click)="clearDates(a)">🧹</button>-->
+              <button type="button" class="icon-btn" title="Edit" (click)="editItem(a)">✏️</button>
+            </span>
+          </div>
+
+          <div class="timeline-summary">
+            <!--<strong>Member:</strong>
+            {{ (a.memberLastName || '') + (a.memberFirstName ? ', ' + a.memberFirstName : '') || '—' }}-->
+            • <strong>Date:</strong> {{ a.alertDate | date:'MM/dd/yyyy, h:mm a' }}
+            <ng-container *ngIf="a.acknowledgedDate"> • <strong>Ack:</strong> {{ a.acknowledgedDate | date:'MM/dd/yyyy, h:mm a' }}</ng-container>
+            <ng-container *ngIf="a.dismissedDate"> • <strong>Dismissed:</strong> {{ a.dismissedDate | date:'MM/dd/yyyy, h:mm a' }}</ng-container>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div *ngIf="!loading && filtered.length === 0" class="timeline-item">
+        <div class="timeline-content">
+          <div class="timeline-header">
+            <div class="timeline-title">No alerts found</div>
+          </div>
+          <div class="timeline-summary">Try a different search filter.</div>
         </div>
       </div>
     </div>
 
-    <div class="table-wrapper">
-      <table mat-table [dataSource]="dataSource" matSort
-             multiTemplateDataRows
-             class="mat-elevation-z1 full-width-table pro-table mng-table">
-
-        <ng-container matColumnDef="enrollmentStatus">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Enrollment Status </th>
-          <td mat-cell *matCellDef="let row">
-            <div class="status-cell">
-              <button mat-icon-button [matMenuTriggerFor]="menu">
-                <mat-icon>list</mat-icon>
-              </button>
-              <a mat-button>{{row.enrollmentStatus}}</a>
-            </div>
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="memberId">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Member ID </th>
-          <td mat-cell *matCellDef="let row">
-            <div class="element-weight">
-              <a mat-button (click)="goToPage(row.memberId)">{{row.memberId}}</a>
-            </div>
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="firstName">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> First Name </th>
-          <td mat-cell *matCellDef="let row"> {{row.firstName}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="lastName">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Last Name </th>
-          <td mat-cell *matCellDef="let row"> {{row.lastName}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="DOB">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> DOB </th>
-          <td mat-cell *matCellDef="let row"> {{row.DOB}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="risk">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Risk </th>
-          <td mat-cell *matCellDef="let row"> {{row.risk}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="nextContact">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Next Contact </th>
-          <td mat-cell *matCellDef="let row"> {{row.nextContact}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="assignedDate">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Assigned Date </th>
-          <td mat-cell *matCellDef="let row"> {{row.assignedDate}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="programName">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Programe Name </th>
-          <td mat-cell *matCellDef="let row"> {{row.programName}} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="description">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header> Status </th>
-          <td mat-cell *matCellDef="let row"> {{row.description}} </td>
-        </ng-container>
-
-
-        <!-- Expanded Content Column - The detail row is made up of this one column that spans across all columns -->
-
-        <ng-container matColumnDef="expandedDetail">
-          <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns.length">
-          </td>
-        </ng-container>
-
-        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns;"
-            class="element-row"
-            [class.expanded-row]="expandedElement === row"
-            (click)="expandedElement = expandedElement === row ? null : row">
-        </tr>
-        <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="detail-row"></tr>
-
-        <!--<tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;" (click)="expandedElement = expandedElement === row ? null : row"></tr>-->
-        <!-- Row shown when there is no matching data. -->
-        <tr class="mat-row" *matNoDataRow>
-          <td class="mat-cell" colspan="9">No data matching the filter "{{input.value}}"</td>
-        </tr>
-      </table>
-      <mat-paginator [pageSizeOptions]="[10, 25, 100]" aria-label="Select page of users"></mat-paginator>
+    <!-- Pager -->
+    <div class="d-flex" style="gap:.5rem; margin-top:.5rem;">
+      <button class="icon-btn" type="button" (click)="prevPage()" [disabled]="page<=1">⬅️ Prev</button>
+      <div style="align-self:center;">Page {{ page }} • {{ total }} total</div>
+      <button class="icon-btn" type="button" (click)="nextPage()" [disabled]="page*pageSize >= total">Next ➡️</button>
     </div>
+  </div>
 
-  </mat-drawer-content>
-</mat-drawer-container>
+  <!-- RIGHT: Form / Summary -->
+  <div class="activity-right">
+    <ng-container *ngIf="selectedAlert; else summaryTpl">
+      <div class="alert-details-card">
+        <h3>{{ selectedAlert.cfgAlertName || ('Alert #' + selectedAlert.alertId) }}</h3>
+
+        <div class="details-grid">
+          <p><strong>Source:</strong> {{ selectedAlert.alertSourceName || '—' }}</p>
+          <p><strong>Type:</strong> {{ selectedAlert.alertTypeName || '—' }}</p>
+          <p><strong>Status:</strong> {{ selectedAlert.alertStatusCode || '—' }}</p>
+          <p>
+            <strong>Alert Date:</strong>
+            {{ selectedAlert.alertDate ? (selectedAlert.alertDate | date:'MM/dd/yyyy, h:mm a') : '—' }}
+          </p>
+          <p>
+            <strong>Acknowledged:</strong>
+            {{ selectedAlert.acknowledgedDate ? (selectedAlert.acknowledgedDate | date:'MM/dd/yyyy, h:mm a') : '—' }}
+          </p>
+          <p>
+            <strong>Dismissed:</strong>
+            {{ selectedAlert.dismissedDate ? (selectedAlert.dismissedDate | date:'MM/dd/yyyy, h:mm a') : '—' }}
+          </p>
+        </div>
+
+        <div class="actions">
+          <button class="btn-primary" type="button" (click)="acknowledge(selectedAlert)">Acknowledge</button>
+          <button class="btn-warn" type="button" (click)="dismiss(selectedAlert)">Dismiss</button>
+          <button class="btn-outline" type="button" (click)="clearDates(selectedAlert)">Clear</button>
+        </div>
+      </div>
+
+    </ng-container>
+
+    <ng-template #summaryTpl>
+      <div class="ai-summary">
+        <h3>🔔 Alerts Summary</h3>
+        <p><strong>Total:</strong> {{ total }}</p>
+        <p><strong>Showing page:</strong> {{ page }}</p>
+        <p><strong>Search:</strong> {{ searchTerm || '—' }}</p>
+      </div>
+    </ng-template>
+  </div>
+
+</div>
+

@@ -116,7 +116,7 @@ export class MemberrelationService {
 
 
   private caregiverBase = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/MemberCareGiver';
-  //private caregiverBase = 'https://localhost:51346/api/MemberCareGiver';
+  // private caregiverBase = 'https://localhost:51346/api/MemberCareGiver';
   private careteamBase = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/MemberCareTeam';
   //private careteamBase = 'https://localhost:51346/api/MemberCareTeam';
 

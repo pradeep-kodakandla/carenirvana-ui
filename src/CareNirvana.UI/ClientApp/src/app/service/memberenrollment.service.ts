@@ -8,7 +8,7 @@ import { Observable } from 'rxjs';
 export class MemberenrollmentService {
 
   private apiUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/enrollment';
- // private apiUrl = 'https://localhost:51346/api/enrollment';
+  //private apiUrl = 'https://localhost:51346/api/enrollment';
 
 
   constructor(private http: HttpClient) { }

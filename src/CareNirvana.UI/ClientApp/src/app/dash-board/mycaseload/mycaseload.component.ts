@@ -57,7 +57,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
 
   // Table columns
   displayedColumns: string[] = [
-    'name', 'program', 'dob', 'risk', 'lastContact', 'nextContact', 'inlineCounts', 'expand'
+    'alert','name', 'program', 'dob', 'risk', 'lastContact', 'nextContact', 'inlineCounts', 'expand'
   ];
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -103,7 +103,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     if (!levelMap) return '';
     try {
       const obj = typeof levelMap === 'string' ? JSON.parse(levelMap) : levelMap as any;
-      return obj?.PRODUCT ?? '';
+      return obj?.LOB ?? '';
     } catch { return ''; }
   }
 

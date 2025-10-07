@@ -223,6 +223,7 @@ mat-chip.norisk {
     --dot: #10b981;
     --bd: #a7f3d0;
   }
+
   .risk-chip.norisk {
     --bg: #ecfdf5;
     --fg: #065f46;
@@ -305,8 +306,9 @@ mat-chip.norisk {
   display: flex;
   align-items: center;
   justify-content: space-between;
-/*  margin-bottom: 12px;
-*/}
+  /*  margin-bottom: 12px;
+*/
+}
 
   .filters-header h3 {
     margin: 0;
@@ -413,8 +415,9 @@ mat-chip.norisk {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-/*  margin-top: 12px;
-*/}
+  /*  margin-top: 12px;
+*/
+}
 
 .apply-btn, .close-btn {
   padding: 4px 7px;
@@ -700,3 +703,55 @@ mat-chip.norisk {
   cursor: pointer;
   text-decoration: underline;
 }
+
+.name-cell-centered {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  min-height: 48px; /* keeps consistent row height */
+}
+
+.alert-bell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: #e53935; /* red circle */
+  color: #fff; /* white bell */
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
+}
+
+  .alert-bell mat-icon {
+    font-size: 16px;
+    line-height: 1;
+    height: 16px;
+    width: 16px;
+  }
+
+.member-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.2;
+}
+
+  .member-info a {
+    font-weight: 500;
+    color: #1e88e5;
+    text-decoration: none;
+  }
+
+    .member-info a:hover {
+      text-decoration: underline;
+    }
+
+.sub-id {
+  font-size: 12px;
+  color: #666;
+}
+
+

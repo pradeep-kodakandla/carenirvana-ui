@@ -1,168 +1,148 @@
-import { Component, ViewChild } from '@angular/core';
-import { MatPaginatorModule } from '@angular/material/paginator';
-import { MatSortModule } from '@angular/material/sort';
-import { MatTableModule } from '@angular/material/table';
-import { MatMenu } from '@angular/material/menu';
-import { Router } from '@angular/router';
-import { animate, state, style, transition, trigger } from '@angular/animations';
-import { MatPaginator } from '@angular/material/paginator';
-import { MatSort } from '@angular/material/sort';
-import { MatTableDataSource } from '@angular/material/table';
-import { MatMenuTrigger } from '@angular/material/menu';
+import { Component, OnInit } from '@angular/core';
+import { MemberenrollmentService } from 'src/app/service/memberenrollment.service';
+
+type StatusFilter = 'Active' | 'Inactive' | 'All';
+
+export interface MemberEnrollment {
+  levelMap: Record<string, string>;
+  startDate?: string | null;
+  endDate?: string | null;
+  status?: string | null;         // if your API uses ActiveFlag instead, we map it below
+  activeFlag?: boolean | null;
+}
 
 @Component({
   selector: 'app-member-enrollment',
   templateUrl: './member-enrollment.component.html',
-  styleUrl: './member-enrollment.component.css',
-  animations: [
-    trigger('detailExpand', [
-      state('collapsed,void', style({ height: '0px', minHeight: '0' })),
-      state('expanded', style({ height: '*' })),
-      transition('expanded <=> collapsed', animate('225ms cubic-bezier(0.4, 0.0, 0.2, 1)')),
-    ]),
-  ],
+  styleUrls: ['./member-enrollment.component.css']
 })
-export class MemberEnrollmentComponent {
+export class MemberEnrollmentComponent implements OnInit {
+  // raw + filtered lists
+  enrollments: MemberEnrollment[] = [];
+  filtered: MemberEnrollment[] = [];
 
-  selectedDiv: number | null = 1; // Track the selected div
+  // ui state
+  searchText = '';
+  //statusFilter: StatusFilter = 'Active';
+  statusFilter: 'Active' | 'Inactive' | 'All' = 'Active';
 
-  // Method to select a div and clear others
-  selectDiv(index: number) {
-    this.selectedDiv = index; // Set the selected div index
-  }
-  /*Div Selection Style change logic*/
-  displayedColumns: string[] = ['enrollmentStatus', 'memberId', 'firstName', 'lastName', 'DOB', 'risk', 'nextContact', 'assignedDate', 'programName', 'description'];
-  columnsToDisplayWithExpand = [...this.displayedColumns, 'expand'];
+  constructor(
+    private memberEnrollment: MemberenrollmentService
+  ) { }
 
-
-  dataSource: MatTableDataSource<UserData>;
-  expandedElement!: UserData | null;
-
-
-  @ViewChild(MatPaginator) paginator!: MatPaginator;
-  @ViewChild(MatSort) sort!: MatSort;
-
-  loadPage(page: string) {
-    // Use Angular Router to navigate based on the page selection
-    // Assuming router has been injected in constructor
-    this.router.navigate([page]);
-  }
-
-  constructor(private router: Router) {
-    // Create 100 users
-    const users = Array.from({ length: 100 }, (_, k) => createNewUser(k + 1));
-
-    // Assign the data to the data source for the table to render
-    this.dataSource = new MatTableDataSource(users);
+  ngOnInit(): void {
+    // Keep your original call pattern; just wire setMemberEnrollments(...)
+    // Example using your snippet:
+    this.memberEnrollment.getMemberEnrollment(Number(sessionStorage.getItem("selectedMemberDetailsId"))).subscribe(
+      (data) => {
+        console.log('Fetched member enrollment data:', data);
+        if (data) this.setMemberEnrollments(data);
+      },
+      (error) => console.error('Error fetching member enrollment data:', error)
+    );
   }
 
-  ngAfterViewInit() {
-    this.dataSource.paginator = this.paginator;
-    this.dataSource.sort = this.sort;
+  /** Call this from your subscription, pass the API payload directly */
+  setMemberEnrollments(data: any): void {
+    const items = Array.isArray(data) ? data
+      : Array.isArray(data?.items) ? data.items
+        : data ? [data] : [];
+
+    const normalized: MemberEnrollment[] = items.map((row: any) => {
+      // parse level_map
+      let levelMap: Record<string, string> = {};
+      const raw = row.level_map ?? row.LevelMap ?? row.levelMap ?? null;
+      if (raw) {
+        if (typeof raw === 'string') {
+          try { levelMap = JSON.parse(raw); } catch { levelMap = {}; }
+        } else if (typeof raw === 'object') {
+          levelMap = raw;
+        }
+      }
+
+      // normalize fields (Pascal, camel, snake)
+      const startDate = row.startDate ?? row.StartDate ?? row.start_date ?? null;
+      const endDate = row.endDate ?? row.EndDate ?? row.end_date ?? null;
+
+      // status can be boolean or text
+      let status: string | null = null;
+      if (typeof row.status === 'string') status = row.status;
+      else if (typeof row.Status === 'string') status = row.Status;
+      else if (typeof row.status === 'boolean') status = row.status ? 'Active' : 'Inactive';
+      else if (typeof row.Status === 'boolean') status = row.Status ? 'Active' : 'Inactive';
+
+      const activeFlag = (status === 'Active');
+
+      return {
+        levelMap,
+        startDate,
+        endDate,
+        status,
+        activeFlag
+      };
+    });
+
+    this.enrollments = normalized;
+    this.applyAllFilters();
   }
 
-  applyFilter(event: Event) {
-    const filterValue = (event.target as HTMLInputElement).value;
-    this.dataSource.filter = filterValue.trim().toLowerCase();
 
-    if (this.dataSource.paginator) {
-      this.dataSource.paginator.firstPage();
-    }
+  onSearchChange(value: string) {
+    this.searchText = value ?? '';
+    this.applyAllFilters();
   }
 
-  goToPage(memberId: string) {
-    this.router.navigate(['/member-info', memberId]);
+  onStatusFilterChange(value: 'Active' | 'Inactive' | 'All' | string) {
+    this.statusFilter = (value as any);
+    this.applyAllFilters();
   }
 
-  /*Table Context Menu*/
-  @ViewChild(MatMenuTrigger)
-  contextMenu!: MatMenuTrigger;
+  private applyAllFilters() {
+    const term = (this.searchText || '').toLowerCase().trim();
 
-  contextMenuPosition = { x: '0px', y: '0px' };
+    const byStatus = (m: MemberEnrollment) => {
+      if (this.statusFilter === 'All') return true;
+      console.log('Filtering by status:', this.statusFilter, m);
+      // use explicit status label first; fallback to activeFlag
+      const statusLabel = (m.status ?? '').toLowerCase();
+      const isActive =
+        statusLabel ? ['active', 'inactive', 'open'].some(s => statusLabel == s)
+          : (m.activeFlag === true);
+      console.log('Determined isActive:', isActive, 'from statusLabel:', statusLabel, 'and activeFlag:', m.activeFlag);
+      return this.statusFilter === 'Active' ? isActive : !isActive;
+    };
 
+    const bySearch = (m: MemberEnrollment) => {
+      if (!term) return true;
+      const hay = [
+        ...Object.entries(m.levelMap || {}).map(([k, v]) => `${k} ${v}`),
+        m.status ?? '',
+        m.startDate ?? '',
+        m.endDate ?? ''
+      ].join(' ').toLowerCase();
+      return hay.includes(term);
+    };
 
-  onContextMenuAction1(item: UserData) {
-    alert(`Click on Action 1 for ${item.enrollmentStatus}`);
+    this.filtered = this.enrollments.filter(e => byStatus(e) && bySearch(e));
   }
 
-  onContextMenuAction2(item: UserData) {
-    alert(`Click on Action 2 for ${item.enrollmentStatus}`);
+  // Helpers for template
+  getLevelPairs(m: MemberEnrollment): Array<{ key: string; val: string }> {
+    if (!m?.levelMap) return [];
+    return Object.entries(m.levelMap)
+      .filter(([_, v]) => v != null && String(v).trim() !== '')
+      .map(([key, val]) => ({ key, val: String(val) }));
   }
 
+  displayStatus(m: MemberEnrollment): string {
+    // prefer status string if present; otherwise derive from activeFlag
+    if (m.status && m.status.trim()) return m.status;
+    return m.activeFlag === false ? 'Inactive' : 'Active';
+  }
+
+  statusClass(m: MemberEnrollment): string {
+    const s = this.displayStatus(m).toLowerCase();
+    if (s.includes('inactive') || s.includes('closed') || s.includes('terminated')) return 'status-badge inactive';
+    return 'status-badge active';
+  }
 }
-/** Builds and returns a new User. */
-export function createNewUser(id: number): UserData {
-  const name =
-    NAMES[Math.round(Math.random() * (NAMES.length - 1))];
-
-  return {
-    enrollmentStatus: 'Active',
-    firstName: name,
-    memberId: NUMS[Math.round(Math.random() * (NUMS.length - 1))], /*(100 * 100).toString(),*/
-    lastName: FRUITS[Math.round(Math.random() * (FRUITS.length - 1))],
-    DOB: '09/14/2024',
-    risk: 'Low',
-    nextContact: '09/14/2024',
-    assignedDate: '09/14/2024',
-    programName: 'Care Management',
-    description: 'Description'
-  };
-}
-export interface UserData {
-  enrollmentStatus: string;
-  memberId: string;
-  firstName: string;
-  lastName: string;
-  DOB: string;
-  risk: string;
-  nextContact: string;
-  assignedDate: string;
-  programName: string;
-  description: string;
-}
-
-/** Constants used to fill up our data base. */
-const FRUITS: string[] = [
-  'blueberry',
-  'lychee',
-  'kiwi',
-  'mango',
-  'peach',
-  'lime',
-  'pomegranate',
-  'pineapple',
-];
-const NUMS: string[] = [
-  '10000',
-  '10001',
-  '10003',
-  '10004',
-  '10005',
-  '10006',
-  '10007',
-  '10008',
-  '10009',
-  '10010',
-];
-
-const NAMES: string[] = [
-  'Pradeep',
-  'Pawan',
-  'Sridhar',
-  'Rohitha',
-  'Paavana',
-  'Jack',
-  'Charlotte',
-  'Theodore',
-  'Isla',
-  'Oliver',
-  'Isabella',
-  'Jasper',
-  'Cora',
-  'Levi',
-  'Violet',
-  'Arthur',
-  'Mia',
-  'Thomas',
-  'Elizabeth',
-];
