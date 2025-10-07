@@ -8,7 +8,7 @@
       </button>
 
       <button mat-icon-button class="toggle-button" *ngIf="!isCollapse">
-        <mat-icon aria-hidden="false" matBadge="20">notifications</mat-icon>
+        <mat-icon aria-hidden="false" matBadge="{{ member.AlertCount}}">notifications</mat-icon>
       </button>
 
       <!-- Spacer -->
@@ -24,31 +24,44 @@
     <div class="sidebar-content" *ngIf="!isCollapse">
       <!-- Header -->
       <div class="member-card">
-        <div class="member-avatar">JS</div>
+        <div class="member-avatar">
+          {{ member.FirstName?.charAt(0) }}{{ member.LastName?.charAt(0) }}
+        </div>
         <div>
-          <div class="member-name">John Smith</div>
-          <div class="member-sub">ID: 123456789 · DOB: 12/10/1983 (42 Yrs), Male</div>
+          <div class="member-name">{{ member.FirstName }} {{ member.LastName }}</div>
+          <div class="member-sub">
+            ID: {{ member.MemberId }} · DOB: {{ member.DOB }} ({{ getAge(member.DOB) }} Yrs), {{ member.Gender }}
+          </div>
         </div>
       </div>
 
       <!-- Enrollment & Risk -->
+      <!--<div class="section m-top-6">
+      <div class="section-title">Enrollment</div>-->
+      <!--<div><span class="badge-green">Medicaid (Active)</span></div>-->
+      <!--<span class="badge-green">
+          {{ getLevelValue(member.LevelMap, 'LOB') }} {{ member.EndDate ? 'Inactive' : 'Active' }}
+        </span>
+      </div>-->
       <div class="section m-top-6">
         <div class="section-title">Enrollment</div>
-        <div><span class="badge-green">Medicaid (Active)</span></div>
+        <span [ngClass]="member.EndDate ? 'pill-red' : 'badge-green'">
+          {{ getLevelValue(member.LevelMap, 'LOB') }}
+          {{ member.EndDate ? 'Inactive' : 'Active' }}
+        </span>
       </div>
 
       <div class="section m-top-6">
         <div class="section-title">Risk Level</div>
-        <div><span class="pill-red">HIGH</span></div>
+        <div><span [class]="'badge-' + getRiskClass(member.RiskLevelCode)">{{ member?.RiskLevelCode ?? 'No Risk' }}</span></div>
       </div>
 
       <!-- Programs -->
       <div class="section m-top-6">
         <div class="section-title">Programs</div>
-        <div>
-          <span class="chip">Diabetes Management</span>
-          <span class="chip">Disease Management</span>
-        </div>
+        <span class="chip" *ngFor="let prog of member.Programs.split(',')">
+          {{ prog.trim() }}
+        </span>
       </div>
 
       <!-- Contact Information -->
@@ -77,12 +90,12 @@
 
         <div class="team-row">
           <div class="team-role">Care Manager</div>
-          <div class="team-name">John Smith</div>
+          <div class="team-name">N/A</div>
         </div>
 
         <div class="team-row">
           <div class="team-role">PCP</div>
-          <div class="team-name">John Smith (PBP)</div>
+          <div class="team-name">N/A</div>
         </div>
       </div>
 
@@ -115,3 +128,62 @@
     </div>
   </div>
 </div>
+
+<!--<div class="sidebar-content" *ngIf="!isCollapse && member">-->
+<!-- Header -->
+<!--<div class="member-card">
+  <div class="member-avatar">
+    {{ member.FirstName?.charAt(0) }}{{ member.LastName?.charAt(0) }}
+  </div>
+  <div>
+    <div class="member-name">{{ member.FirstName }} {{ member.LastName }}</div>
+    <div class="member-sub">
+      ID: {{ member.MemberId }} · DOB: {{ member.DOB }} ({{ getAge(member.DOB) }} Yrs), {{ member.Gender }}
+    </div>
+  </div>
+</div>-->
+<!-- Enrollment & Risk -->
+<!--<div class="section m-top-6">
+  <div class="section-title">Enrollment</div>
+  <div>
+    <span class="badge-green">
+      {{ getLevelValue(member.LevelMap, 'LOB') }} ({{ member.EndDate ? 'Inactive' : 'Active' }})
+    </span>
+  </div>
+</div>
+
+<div class="section m-top-6" *ngIf="member.RiskLevelCode">
+  <div class="section-title">Risk Level</div>
+  <div><span [class]="'pill-' + getRiskClass(member.RiskLevelCode)">{{ member.RiskLevelCode }}</span></div>
+</div>-->
+<!-- Programs -->
+<!--<div class="section m-top-6" *ngIf="member.Programs">
+  <div class="section-title">Programs</div>
+  <div>
+    <span class="chip" *ngFor="let prog of member.Programs.split(',')">
+      {{ prog.trim() }}
+    </span>
+  </div>
+</div>-->
+<!-- Contact Information -->
+<!--<div class="section m-top-6">
+  <div class="section-title">Contact Information</div>
+
+  <div class="row" *ngIf="member.MemberPhoneNumberId">
+    <mat-icon>call</mat-icon>
+    <div>{{ member.MemberPhoneNumberId }}</div>
+  </div>-->
+<!-- static address -->
+<!--<div class="row">
+    <mat-icon>location_on</mat-icon>
+    <div>12345 Example Way<br />San Francisco, CA 17050</div>
+  </div>
+</div>-->
+<!-- Activity/Alerts -->
+<!--<div class="section m-top-6">
+    <div class="section-title">Stats</div>
+    <div class="team-row">Authorizations: {{ member.AuthCount }}</div>
+    <div class="team-row">Alerts: {{ member.AlertCount }}</div>
+    <div class="team-row">Care Plans: {{ member.CarePlanCount }}</div>
+  </div>
+</div>-->

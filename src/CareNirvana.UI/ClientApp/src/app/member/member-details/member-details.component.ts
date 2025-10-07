@@ -3,7 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { onMainContentChange } from 'src/app/animations/animations.service'
 import { TabService } from 'src/app/service/tab.service';
 import { MemberService } from 'src/app/service/shared-member.service';
-
+import { DashboardServiceService } from 'src/app/service/dashboard.service.service';
 
 interface Page {
   link: string;
@@ -25,8 +25,8 @@ export class MemberDetailsComponent implements OnInit {
   memberId!: number;
 
   isCollapse: boolean = false;
-
-  constructor(private route: ActivatedRoute, private router: Router, private tabService: TabService, private memberService: MemberService) { }
+  member: any;
+  constructor(private route: ActivatedRoute, private router: Router, private tabService: TabService, private memberService: MemberService, private dashboard: DashboardServiceService) { }
 
   toggleSidebar() {
     this.isCollapse = !this.isCollapse;
@@ -56,6 +56,14 @@ export class MemberDetailsComponent implements OnInit {
 
     this.memberService.isCollapse$.subscribe(value => {
       this.isCollapse = value;
+    });
+
+    this.dashboard.getpatientsummary(sessionStorage.getItem('selectedMemberDetailsId')).subscribe((data) => {
+      if (data && Array.isArray(data)) {
+        this.member = data[0];
+      }
+    }, error => {
+      console.error('Error fetching member summary', error);
     });
 
   }
@@ -94,28 +102,31 @@ export class MemberDetailsComponent implements OnInit {
 
 
 
-
-  tabs2 = [
-    { title: 'New Tab 1', content: 'This is the content for Tab 1.' },
-    { title: 'New Tab 2', content: 'This is the content for Tab 2.' },
-    { title: 'New Tab 3', content: 'This is the content for Tab 3.' },
-  ];
-  activeTab = 0;
-
-  setActiveTab(index: number): void {
-    this.activeTab = index;
+  getAge(dob: string): number {
+    if (!dob) return 0;
+    const [month, day, year] = dob.split('-').map(Number);
+    const birthDate = new Date(year, month - 1, day);
+    const diff = Date.now() - birthDate.getTime();
+    const age = new Date(diff).getUTCFullYear() - 1970;
+    return age;
   }
 
-  closeTab1(index: number, event: MouseEvent): void {
-    event.stopPropagation();
-    this.tabs.splice(index, 1);
-
-    // Adjust activeTab if the active tab is closed
-    if (this.activeTab === index && this.tabs.length > 0) {
-      this.activeTab = Math.max(0, index - 1);
-    } else if (this.tabs.length === 0) {
-      this.activeTab = -1; // No active tab if all are closed
+  getLevelValue(levelMap: string, key: string): string {
+    try {
+      const map = JSON.parse(levelMap);
+      return map[key] || '';
+    } catch {
+      return '';
     }
+  }
+
+  getRiskClass(level?: string): string {
+    if (!level) return 'gray'; // handle null/undefined early
+    const code = level.toLowerCase();
+    if (code.includes('high')) return 'red';
+    if (code.includes('medium')) return 'orange';
+    if (code.includes('low')) return 'green';
+    return 'gray';
   }
 
 

@@ -211,9 +211,12 @@
         </th>
         <td mat-cell *matCellDef="let m" class="is-center alert-col-cell">
           <span *ngIf="m.AlertCount > 0"
-                class="alert-bell"
-                matTooltip="{{ m.AlertCount }} active alerts" >
-            <mat-icon>notifications</mat-icon>
+                class="alert-bell" matBadge="{{ m.AlertCount}}"
+                matTooltip="{{ m.AlertCount }} active alerts">
+            <mat-icon >notifications</mat-icon>
+            <!--<button mat-icon-button >
+              <mat-icon aria-hidden="false" matBadge="{{ m.AlertCount}}">notifications</mat-icon>
+            </button>-->
           </span>
         </td>
       </ng-container>
@@ -230,11 +233,22 @@
         </td>
       </ng-container>
 
-      <!-- Program Column -->
-      <ng-container matColumnDef="program">
+      <!-- Enrollment Column -->
+      <ng-container matColumnDef="enrollment">
         <th mat-header-cell *matHeaderCellDef mat-sort-header>Enrollment</th>
         <td mat-cell *matCellDef="let m">{{ getProduct(m.LevelMap) || 'N/A' }}</td>
 
+      </ng-container>
+
+      <!-- Program Column -->
+      <ng-container matColumnDef="program">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Program</th>
+        <td mat-cell *matCellDef="let m">
+          <ng-container *ngIf="m.Programs; else noProgram">
+            <div *ngFor="let p of m.Programs.split(',')">{{ p.trim() }}</div>
+          </ng-container>
+          <ng-template #noProgram>N/A</ng-template>
+        </td>
       </ng-container>
 
       <!-- DOB Column -->
@@ -272,7 +286,7 @@
             <span class="count-pill"><em>Activities:</em><strong>{{ m.activityCount || 0 }}</strong></span>
             <span class="count-pill"><em>Care Plans:</em><strong>{{ m.carePlanCount || 0 }}</strong></span>
             <span class="count-pill"><em>Complaints:</em><strong>{{ m.overdueCount || 0 }}</strong></span>
-            <span class="count-pill"><em>Alerts:</em><strong style="color:red;">{{ m.AlertCount || 0 }}</strong></span>
+            <!--<span class="count-pill"><em>Alerts:</em><strong style="color:red;">{{ m.AlertCount || 0 }}</strong></span>-->
           </div>
         </td>
       </ng-container>

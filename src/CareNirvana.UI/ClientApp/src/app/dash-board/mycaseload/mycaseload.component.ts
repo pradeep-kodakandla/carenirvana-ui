@@ -57,7 +57,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
 
   // Table columns
   displayedColumns: string[] = [
-    'alert','name', 'program', 'dob', 'risk', 'lastContact', 'nextContact', 'inlineCounts', 'expand'
+    'alert','name', 'enrollment', 'program', 'dob', 'risk', 'lastContact', 'nextContact', 'inlineCounts', 'expand'
   ];
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;

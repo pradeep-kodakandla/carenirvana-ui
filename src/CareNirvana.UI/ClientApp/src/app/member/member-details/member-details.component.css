@@ -301,7 +301,9 @@ mat-tab-group {
 }
 
 
-
+.mat-badge {
+  --mat-badge-background-color: red;
+}
 
 
 
@@ -371,6 +373,16 @@ mat-tab-group {
   border: 1px solid #c8eed8;
 }
 
+.badge-red {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #c22b2b;
+  font-size: 11px;
+  border: 1px solid #c8eed8;
+}
+
 .pill-red {
   display: inline-block;
   padding: 2px 10px;
@@ -379,6 +391,15 @@ mat-tab-group {
   color: #c22b2b;
   font-size: 11px;
   border: 1px solid #f7c7c7;
+}
+.pill-gray {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+/*  background: #fdecec;
+  color: #c22b2b;
+*/  font-size: 11px;
+  border: 1px solid;
 }
 
 .chip {
@@ -404,9 +425,9 @@ mat-tab-group {
   color: rgba(98, 108, 113, 1); /* gray-400 */
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  padding: 8px 2px 6px;
+  padding: 5px 2px 5px;
   border-top: 1px solid #e5e7eb;
-  margin-top: 10px;
+
 }
 
 /* Rows with icons */
