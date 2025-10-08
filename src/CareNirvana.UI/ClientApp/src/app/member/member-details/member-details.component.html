@@ -37,16 +37,10 @@
 
       <!-- Enrollment & Risk -->
       <div class="section m-top-6">
-      <div class="section-title">Enrollment</div>
-      <!--<div><span class="badge-green">Medicaid (Active)</span></div>-->
-          {{ getLevelValue(member.LevelMap, 'LOB') }} {{ member.EndDate ? 'Inactive' : 'Active' }}
-      </div>
-
-      <div class="section m-top-6">
         <div class="section-title">Enrollment</div>
         <span [ngClass]="member.EndDate ? 'pill-red' : 'badge-green'">
           {{ getLevelValue(member.LevelMap, 'LOB') }}
-          {{ member.EndDate ? 'Inactive' : 'Active' }}
+          ({{ member.EndDate ? 'Inactive' : 'Active' }})
         </span>
       </div>
 
