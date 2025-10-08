@@ -72,6 +72,7 @@ export interface HeaderTab {
 export class HeaderService {
   private tabs: HeaderTab[] = [];
   private selectedRoute: string | null = null;
+  private selected: string | null = null;
 
   getTabs(): HeaderTab[] {
     return this.tabs;
@@ -127,6 +128,18 @@ export class HeaderService {
 
   getSelectedTab(): string | null {
     return this.selectedRoute;
+  }
+
+
+  resetTabs() {
+    this.tabs = [];
+    this.selected = null;
+    this.persist(); // writes empty state for current user
+  }
+
+  private persist(): void {
+    const state = { tabs: this.tabs, selected: this.selected };
+    //sessionStorage.setItem(this.key(), JSON.stringify(state));
   }
 }
 

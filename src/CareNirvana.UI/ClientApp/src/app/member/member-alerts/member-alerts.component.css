@@ -2,10 +2,8 @@
 
 :host {
   display: block;
-  font-family: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", system-ui, -apple-system, sans-serif;
-}
-
-
+/*  font-family: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", system-ui, -apple-system, sans-serif;
+*/}
 
 .activity-container {
   display: flex;
@@ -78,8 +76,9 @@
     background: #f0f0f0;
   }
 
+/* Add button */
 .add-btn {
-  background: #1f72ff;
+  background: #28a745;
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -107,11 +106,11 @@
   }
 
 .timeline-content {
-  background: #f9f9f9;
-  padding: 1rem;
-  border-radius: 8px;
-  border: 1px solid #ddd;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  /*  background: #f9f9f9;*/
+  padding: 10px;
+  border-radius: 5px;
+  /*  border: 1px solid #ddd;*/
+  /*  box-shadow: 0 2px 8px rgba(0,0,0,0.05);*/
 }
 
 .timeline-header {
@@ -212,6 +211,12 @@
     cursor: pointer;
   }
 
+.invalid-feedback {
+  color: #dc3545;
+  font-size: .85rem;
+  margin-top: 4px;
+}
+
 .ai-summary {
   padding: 1.25rem;
   background: #f7f9fc;
@@ -230,55 +235,4 @@
     padding: 0;
     border-right: 0;
   }
-
-  .alert-details-card {
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    padding: 1.5rem;
-    font-size: 15px;
-    line-height: 1.6;
-  }
-
-    .alert-details-card h3 {
-      margin-bottom: 1rem;
-      color: #0f1e3a;
-    }
-
-    .alert-details-card p {
-      margin: 0.25rem 0;
-    }
-
-    .alert-details-card .actions {
-      display: flex;
-      gap: 0.75rem;
-      margin-top: 1.25rem;
-    }
-
-  .btn-primary,
-  .btn-warn,
-  .btn-outline {
-    border: none;
-    border-radius: 6px;
-    padding: 6px 14px;
-    cursor: pointer;
-  }
-
-  .btn-primary {
-    background: #007bff;
-    color: #fff;
-  }
-
-  .btn-warn {
-    background: #dc3545;
-    color: #fff;
-  }
-
-  .btn-outline {
-    border: 1px solid #ccc;
-    background: #fff;
-    color: #333;
-  }
-
-
 }

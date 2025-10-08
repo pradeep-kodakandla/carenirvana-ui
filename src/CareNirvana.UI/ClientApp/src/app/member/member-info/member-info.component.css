@@ -21,7 +21,8 @@
 .details-row {
   display: flex;
   justify-content: space-between;
-  margin: 10px 0;
+  margin: 5px 0;
+  padding: 0 10px;
 }
 
 .details-column {
@@ -119,3 +120,67 @@ table {
   border-width: 1px;
   border-color: grey;
 }
+
+
+/* --- Floating label input fields --- */
+.form-outline {
+  position: relative;
+  margin-bottom: 8px;
+  flex: 1;
+  padding-right: 10px;
+}
+
+.form-control {
+  width: 100%;
+  padding: 10px 10px 10px 12px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  background-color: #fff;
+  color: #000;
+}
+
+  .form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 1px #007bff;
+  }
+
+/* Label default: black */
+.floating-label {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  font-size: 13px;
+  color: #000 !important; /* Always black */
+  background: white;
+  transition: 0.2s ease all;
+  pointer-events: none;
+}
+
+/* Floating behavior when typing or focused */
+.form-control:focus + .floating-label,
+.form-control:not(:placeholder-shown) + .floating-label {
+  top: -8px;
+  left: 10px;
+  font-size: 11px;
+  color: #007bff;
+  background-color: white;
+  padding: 0 4px;
+}
+
+/* Keep black text even when readonly */
+.form-control[readonly] {
+  background-color: #f8f9fa; /* subtle light background */
+  color: #000; /* text stays black */
+  border-color: #ccc;
+  cursor: default;
+}
+
+/* Optional: subtle disabled style (if you use disabled fields later) */
+.form-control:disabled {
+  background-color: #f0f0f0;
+  color: #000;
+}
+

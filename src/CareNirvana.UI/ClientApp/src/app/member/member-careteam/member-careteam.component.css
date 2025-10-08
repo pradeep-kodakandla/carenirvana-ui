@@ -100,10 +100,10 @@
 
 .timeline-item {
   position: relative;
-  margin-bottom: 1rem;
-  cursor: pointer;
-  padding: 0;
-  border-bottom: 1px solid #eee;
+  cursor: grab;
+  max-height: 150px;
+  overflow: hidden;
+  padding: 10px;
 }
 
   .timeline-item.selected .timeline-content {
@@ -112,11 +112,11 @@
   }
 
 .timeline-content {
-  background: #f9f9f9;
-  padding: 1rem;
-  border-radius: 8px;
-  border: 1px solid #ddd;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  /*  background: #f9f9f9;*/
+  padding: 10px;
+  border-radius: 5px;
+  /*  border: 1px solid #ddd;*/
+  /*  box-shadow: 0 2px 8px rgba(0,0,0,0.05);*/
 }
 
 .timeline-header {

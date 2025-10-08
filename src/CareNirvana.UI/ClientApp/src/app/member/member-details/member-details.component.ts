@@ -16,8 +16,6 @@ interface Page {
   templateUrl: './member-details.component.html',
   styleUrl: './member-details.component.css',
   animations: [onMainContentChange],
-
-
 })
 
 export class MemberDetailsComponent implements OnInit {
@@ -31,7 +29,6 @@ export class MemberDetailsComponent implements OnInit {
   toggleSidebar() {
     this.isCollapse = !this.isCollapse;
   }
-
 
   tabs: { title: string, memberId: string }[] = [];
   selectedTabIndex = 0;
@@ -96,10 +93,6 @@ export class MemberDetailsComponent implements OnInit {
     this.sideNavState = !this.sideNavState;
   }
 
-
-
-
-
   getAge(dob: string): number {
     if (!dob) return 0;
     const [month, day, year] = dob.split('-').map(Number);
@@ -119,26 +112,20 @@ export class MemberDetailsComponent implements OnInit {
   }
 
   getRiskClass(level?: string): string {
-    if (!level) return 'gray'; // handle null/undefined early
+    if (!level) return 'green'; // handle null/undefined early
     const code = level.toLowerCase();
     if (code.includes('high')) return 'red';
     if (code.includes('medium')) return 'orange';
     if (code.includes('low')) return 'green';
-    return 'gray';
+    return 'green';
   }
 
-
-
+  get programsList(): string[] {
+    const s = this.member?.Programs;
+    if (!s) return [];
+    return s
+      .split(',')
+      .map((p: string) => p.trim())   // ✅ explicitly type p
+      .filter((p: string) => p.length > 0);
+  }
 }
-//export class MemberInfoComponent {
-//  showFiller = true;
-//  public sideNavState: boolean = false;
-
-//  onSinenavToggle() {
-//    this.sideNavState = !this.sideNavState;
-//  }
-
-//}
-
-
-

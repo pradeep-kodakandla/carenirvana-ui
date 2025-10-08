@@ -27,27 +27,20 @@
       <span class="section-help">Pick the applicable LOB/account period.</span>
     </div>
 
-    <div class="selection-container" >
+    <div class="selection-container">
       <div class="rounded-box tooltip-wrapper"
            *ngFor="let enr of memberEnrollments; let i = index"
            (click)="selectEnrollment(i)"
            [ngClass]="{ 'selected': selectedDiv === i + 1 }">
-        <div class="d-flex justify-content-between div-secondary">
-          <div>
-            <!-- Left side labels -->
-            <label class="label" *ngFor="let pair of getEnrollmentDisplayPairs(enr)">
-              {{ pair.label }}
-            </label>
-          </div>
-          <div>
-            <!-- Right side values -->
-            <label class="label" *ngFor="let pair of getEnrollmentDisplayPairs(enr)">
-              {{ pair.value }}
-            </label>
+        <div class="pairs">
+          <div class="pair-row" *ngFor="let pair of getEnrollmentDisplayPairs(enr)">
+            <label class="label key">{{ pair.label }}</label>
+            <label class="label value" [title]="pair.value">{{ pair.value || '—' }}</label>
           </div>
         </div>
       </div>
     </div>
+
   </section>
 
   <mat-divider></mat-divider>
@@ -143,18 +136,35 @@
         <div class="row-2" *ngFor="let g of icds.controls; let i = index" [formGroupName]="i">
           <div class="form-field">
             <label class="floating-label">ICD-10</label>
-            <input type="text" class="form-control" formControlName="icd10">
+            <!--<input type="text" class="form-control" formControlName="icd10">-->
+            <input class="form-control"
+                   formControlName="icd10"
+                   [matAutocomplete]="cptAuto"
+                   placeholder="Type ICD-10 (code or description)"
+                   (focus)="loadCodesForField()" />
+
+            <mat-autocomplete #cptAuto="matAutocomplete"
+                              [displayWith]="displayCode"
+                              (optionSelected)="onCptSelected(i, $event.option.value)"
+                              autoActiveFirstOption>
+              <mat-option *ngFor="let opt of filteredCpt$ | async" [value]="opt">
+                <div class="opt-row">
+                  <span class="opt-code">{{ opt.code }}</span>
+                  <span class="opt-desc">{{ opt.desc }}</span>
+                </div>
+              </mat-option>
+            </mat-autocomplete>
           </div>
           <div class="form-field with-actions">
             <label class="floating-label">ICD-10 Description</label>
             <div class="inline-field">
-              <input type="text" class="form-control" formControlName="icd10Desc">
+              <!--<input type="text" class="form-control" formControlName="icd10Desc">-->
+              <input class="form-control" formControlName="icd10Desc" placeholder="ICD-10 Description" />
               <div class="row-actions">
                 <button type="button" class="icon-btn" (click)="addIcdRow()" title="Add another ICD">＋</button>
                 <button type="button" class="icon-btn danger" (click)="removeIcdRow(i)" [disabled]="icds.length === 1" title="Remove">−</button>
               </div>
             </div>
-
           </div>
         </div>
       </div>
@@ -168,12 +178,30 @@
         <div class="row-2" *ngFor="let g of services.controls; let i = index" [formGroupName]="i">
           <div class="form-field">
             <label class="floating-label">Service Code</label>
-            <input type="text" class="form-control" formControlName="serviceCode">
+            <!--<input type="text" class="form-control" formControlName="serviceCode">-->
+            <input class="form-control"
+                   formControlName="serviceCode"
+                   [matAutocomplete]="svcAuto"
+                   placeholder="Type Service Code (code or description)"
+                   (focus)="loadCodesForField()" />
+
+            <mat-autocomplete #svcAuto="matAutocomplete"
+                              [displayWith]="displayCode"
+                              (optionSelected)="onServiceSelected(i, $event.option.value)"
+                              autoActiveFirstOption>
+              <mat-option *ngFor="let opt of filteredService$ | async" [value]="opt">
+                <div class="opt-row">
+                  <span class="opt-code">{{ opt.code }}</span>
+                  <span class="opt-desc">{{ opt.desc }}</span>
+                </div>
+              </mat-option>
+            </mat-autocomplete>
           </div>
           <div class="form-field with-actions">
             <label class="floating-label">Service Description</label>
             <div class="inline-field">
-              <input type="text" class="form-control" formControlName="serviceDesc">
+              <input class="form-control" formControlName="serviceDesc" placeholder="Service Description" />
+
               <div class="row-actions">
                 <button type="button" class="icon-btn" (click)="addServiceRow()" title="Add another Service">＋</button>
                 <button type="button" class="icon-btn danger" (click)="removeServiceRow(i)" [disabled]="services.length === 1" title="Remove">−</button>

@@ -33,8 +33,27 @@ export class HeaderComponent {
   }
 
   goToPage(pageName: string) {
+    this.onLogout();
     this.router.navigate([`${pageName}`]);
   }
+
+  onLogout(): void {
+    // 1) clear tabs in memory
+    this.headerService.resetTabs();
+
+    // 2) clear any persisted tab state
+    // If you use user-scoped keys, you can also wipe all cn_tabs_* just in case.
+    Object.keys(sessionStorage)
+      .filter(k => k.startsWith('cn_tabs_') || k === 'cn_tabs' || k === 'selectedMemberDetailsId')
+      .forEach(k => sessionStorage.removeItem(k));
+
+    // 3) sign out (tokens, user state)
+   // this.authService.logout(); // implement this to clear tokens/user
+
+    // 4) navigate to login
+    this.router.navigate(['/login']);
+  }
+
 
   selectTab(tab: { label: string; route: string }): void {
     this.selectedTabId = tab.label;

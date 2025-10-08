@@ -247,23 +247,6 @@
 }
 
 
-.rounded-box {
-  border: 1px solid #e0e0e0;
-  border-radius: 14px;
-  padding: 7px 10px;
-  cursor: pointer;
-  transition: box-shadow .2s ease, border-color .2s ease;
-  /*max-width: 200px;*/
-}
-
-  .rounded-box.selected {
-    border-color: #3f51b5;
-    box-shadow: 0 0 0 3px rgba(63,81,181,0.15);
-    border-top: 5px solid #007BFF; /* highlight top border */
-
-    background: #f0f7ff;
-  }
-
 .selection-container {
   display: grid;
   gap: 12px;
@@ -368,4 +351,83 @@
     position: static;
     margin-top: 6px;
   }
+}
+
+/* stack cards one-after-another (optional if you want a single column list) */
+.selection-container {
+  display: grid; /* or flex; flex-direction: column; */
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+/* keep each label/value on one line */
+.pairs {
+  display: grid;
+  row-gap: 1px;
+}
+
+.pair-row {
+  display: grid;
+  grid-template-columns: 160px 1fr; /* label | value */
+  column-gap: 12px;
+  align-items: start;
+}
+
+.label.key {
+  font-weight: 600;
+  color: #333;
+}
+
+.label.value {
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.selection-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* or center if you want centered cards */
+  gap: 12px;
+}
+
+.rounded-box {
+  width: auto;
+  max-width: 420px; /* 👈 limit the card width */
+  border: 1px solid #e0e0e0;
+  border-radius: 14px;
+  padding: 5px 8px;
+  cursor: pointer;
+  background: #fff;
+  transition: box-shadow .2s ease, border-color .2s ease;
+}
+
+  .rounded-box.selected {
+    border-color: #3f51b5;
+    border-top: 5px solid #007BFF;
+    background: #f0f7ff;
+  }
+
+/* Optional: center horizontally instead of left */
+.selection-container.centered {
+  align-items: center;
+}
+
+.opt-row {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.opt-code {
+  font-weight: 600;
+  min-width: 74px;
+}
+
+.opt-desc {
+  opacity: .85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

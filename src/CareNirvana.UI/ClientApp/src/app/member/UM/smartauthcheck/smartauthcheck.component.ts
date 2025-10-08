@@ -4,7 +4,9 @@ import { AuthService } from 'src/app/service/auth.service';
 import { CrudService } from 'src/app/service/crud.service';
 import { HttpClient } from '@angular/common/http';
 import { MemberenrollmentService } from 'src/app/service/memberenrollment.service';
-
+import { FormControl } from '@angular/forms';
+import { Observable, of } from 'rxjs';
+import { map, startWith } from 'rxjs/operators';
 interface LevelItem {
   levelcode: string;
   levelname: string;
@@ -13,6 +15,8 @@ interface LevelItem {
   level_value_code: string;
   level_value_name: string;
 }
+
+type CodeRow = { code: string; label: string; desc: string };
 
 interface MemberEnrollment {
   MemberEnrollmentId: number;
@@ -74,18 +78,42 @@ export class SmartauthcheckComponent implements OnInit {
       icds: this.fb.array([this.newIcdGroup()]),
       services: this.fb.array([this.newServiceGroup()])
     });
+    this.loadCodesForField();
     this.loadMemberEnrollment();
   }
 
   get icds(): FormArray { return this.smartAuthCheckForm.get('icds') as FormArray; }
   newIcdGroup(): FormGroup { return this.fb.group({ icd10: [''], icd10Desc: [''] }); }
   addIcdRow(): void { this.icds.push(this.newIcdGroup()); }
-  removeIcdRow(i: number): void { if (this.icds.length > 1) this.icds.removeAt(i); }
+  removeIcdRow(i: number): void {
+    const fa = this.icds;
+    if (!fa || fa.length === 0) return;
+
+    // Clear the row first (so values are guaranteed wiped even if you keep one row)
+    const row = fa.at(i) as FormGroup;
+    row.reset({}, { emitEvent: false });   // clears all controls in the row
+    row.markAsPristine();
+    row.markAsUntouched();
+    row.updateValueAndValidity({ emitEvent: false });
+    if (this.icds.length > 1) this.icds.removeAt(i);
+  }
 
   get services(): FormArray { return this.smartAuthCheckForm.get('services') as FormArray; }
   newServiceGroup(): FormGroup { return this.fb.group({ serviceCode: [''], serviceDesc: [''] }); }
   addServiceRow(): void { this.services.push(this.newServiceGroup()); }
-  removeServiceRow(i: number): void { if (this.services.length > 1) this.services.removeAt(i); }
+  removeServiceRow(i: number): void {
+    const fa = this.services;
+    if (!fa || fa.length === 0) return;
+
+    // Clear the row first (so values are guaranteed wiped even if you keep one row)
+    const row = fa.at(i) as FormGroup;
+    row.reset({}, { emitEvent: false });   // clears all controls in the row
+    row.markAsPristine();
+    row.markAsUntouched();
+    row.updateValueAndValidity({ emitEvent: false });
+
+    if (this.services.length > 1) this.services.removeAt(i);
+  }
 
   selectDiv(index: number): void {
     this.selectedDiv = index;
@@ -387,4 +415,124 @@ export class SmartauthcheckComponent implements OnInit {
     return `${mm}/${dd}/${yyyy}`;
   }
 
+  getLevelPairs(m: MemberEnrollment): Array<{ key: string; val: string }> {
+    if (!m?.LevelMap) return [];
+    return Object.entries(m.LevelMap)
+      .filter(([_, v]) => v != null && String(v).trim() !== '')
+      .map(([key, val]) => ({ key, val: String(val) }));
+  }
+
+  /**********Codesets ***********/
+  searchText: string = '';
+  allCodes: CodeRow[] = [];
+  allCPTCodes: CodeRow[] = [];
+  filteredCodes: CodeRow[] = [];
+  // NEW: reactive controls for the two inputs
+  cptCtrl = new FormControl<string | CodeRow>('');
+  serviceCtrl = new FormControl<string | CodeRow>('');
+
+  // Streams feeding the autocomplete panels
+  filteredCpt$!: Observable<CodeRow[]>;
+  filteredService$!: Observable<CodeRow[]>;
+
+  /*  selectedField: { id: string; name: string } = { id: 'icd10Code', name: 'ICD-10 Code' };*/
+
+  loadCodesForField(): void {
+    const type = 'ICD';
+    this.authService.getAllCodesets(type).subscribe((data: any[]) => {
+      this.allCodes = data
+        .filter(d => d.type === type)
+        .map(d => ({
+          code: d.code,
+          desc: d.codeDesc || '',
+          label: `${d.code} - ${d.codeDesc || ''}`
+        }));
+      this.filteredCodes = [...this.allCodes];
+      this.initCptFilter();        // ensure stream connected
+    });
+
+    const typeCPT = 'CPT';
+    this.authService.getAllCodesets(typeCPT).subscribe((data: any[]) => {
+      this.allCPTCodes = data
+        .filter(d => d.type === typeCPT) // <- FIX: use typeCPT (was using type)
+        .map(d => ({
+          code: d.code,
+          desc: d.codeDesc || '',
+          label: `${d.code} - ${d.codeDesc || ''}`
+        }));
+      this.initServiceFilter();    // ensure stream connected
+    });
+  }
+
+  private initCptFilter(): void {
+    this.filteredCpt$ = (this.cptCtrl.valueChanges || of(this.cptCtrl.value)).pipe(
+      startWith(this.cptCtrl.value ?? ''),
+      map(val => this.filterAny(val, this.allCodes))
+    );
+  }
+
+  private initServiceFilter(): void {
+    this.filteredService$ = (this.serviceCtrl.valueChanges || of(this.serviceCtrl.value)).pipe(
+      startWith(this.serviceCtrl.value ?? ''),
+      map(val => this.filterAny(val, this.allCPTCodes))
+    );
+  }
+
+  // display helper for matAutocomplete
+  displayCode = (v: string | CodeRow | null): string =>
+    v && typeof v === 'object' ? v.code : (v ?? '');
+
+  // generic filter (by code or desc)
+  private filterAny(val: string | CodeRow | null, source: CodeRow[]): CodeRow[] {
+    if (!source?.length) return [];
+    const term = (typeof val === 'string' ? val : val?.code ?? '').trim().toLowerCase();
+
+    if (!term) return source.slice(0, 50);
+    return source
+      .filter(x =>
+        x.code.toLowerCase().includes(term) ||
+        x.desc.toLowerCase().includes(term)
+      )
+      .slice(0, 50);
+  }
+
+  // For CPT (filters from this.allCodes)
+
+  onCptSelected(i: number, picked: { code: string; desc: string }): void {
+    const row = this.icds.at(i) as FormGroup;
+    row.patchValue(
+      {
+        icd10: picked.code,
+        icd10Desc: picked.desc
+      },
+      { emitEvent: false }
+    );
+  }
+
+
+
+  // For SERVICE (filters from this.allCPTCodes)
+  private buildServiceRow(): FormGroup {
+    return this.fb.group({
+      serviceCode: [''],
+      serviceDescription: ['']   // <<< this MUST exist if your template uses formControlName="serviceDescription"
+      // if you prefer 'serviceDesc', then also change the template to formControlName="serviceDesc"
+    });
+  }
+
+  // When you need at least one row:
+  initFirstServiceRow(): void {
+    if (this.services.length === 0) {
+      this.services.push(this.buildServiceRow());
+    }
+  }
+
+  // Called when a service option is chosen
+  onServiceSelected(i: number, picked: { code: string; desc: string }): void {
+    const row = this.services.at(i) as FormGroup;
+    row.patchValue(
+      { serviceCode: picked.code, serviceDesc: picked.desc },
+      { emitEvent: false }
+    );
+  }
 }

@@ -8,7 +8,7 @@
       </button>
 
       <button mat-icon-button class="toggle-button" *ngIf="!isCollapse">
-        <mat-icon aria-hidden="false" matBadge="{{ member.AlertCount}}">notifications</mat-icon>
+        <mat-icon aria-hidden="false" matBadge="{{member?.AlertCount}}">notifications</mat-icon>
       </button>
 
       <!-- Spacer -->
@@ -25,12 +25,12 @@
       <!-- Header -->
       <div class="member-card">
         <div class="member-avatar">
-          {{ member.FirstName?.charAt(0) }}{{ member.LastName?.charAt(0) }}
+          {{ member?.FirstName?.charAt(0) }}{{ member?.LastName?.charAt(0) }}
         </div>
         <div>
-          <div class="member-name">{{ member.FirstName }} {{ member.LastName }}</div>
+          <div class="member-name">{{ member?.FirstName }} {{ member?.LastName }}</div>
           <div class="member-sub">
-            ID: {{ member.MemberId }} · DOB: {{ member.DOB }} ({{ getAge(member.DOB) }} Yrs), {{ member.Gender }}
+            ID: {{ member?.MemberId }} · DOB: {{ member?.DOB }} ({{ getAge(member?.DOB) }} Yrs), {{ member?.Gender }}
           </div>
         </div>
       </div>
@@ -38,23 +38,23 @@
       <!-- Enrollment & Risk -->
       <div class="section m-top-6">
         <div class="section-title">Enrollment</div>
-        <span [ngClass]="member.EndDate ? 'pill-red' : 'badge-green'">
-          {{ getLevelValue(member.LevelMap, 'LOB') }}
-          ({{ member.EndDate ? 'Inactive' : 'Active' }})
+        <span [ngClass]="member?.EndDate ? 'pill-red' : 'badge-green'">
+          {{ getLevelValue(member?.LevelMap, 'LOB') }}
+          ({{ member?.EndDate ? 'Inactive' : 'Active' }})
         </span>
       </div>
 
       <div class="section m-top-6">
         <div class="section-title">Risk Level</div>
-        <div><span [class]="'badge-' + getRiskClass(member.RiskLevelCode)">{{ member?.RiskLevelCode ?? 'No Risk' }}</span></div>
+        <div>
+          <span class="risk-chip compact" [ngClass]="(member?.RiskLevelCode || '').toLowerCase()">{{ member?.RiskLevelCode || 'No Risk' }}</span>
+        </div>
       </div>
 
       <!-- Programs -->
-      <div class="section m-top-6">
+      <div class="section m-top-6" *ngIf="programsList.length">
         <div class="section-title">Programs</div>
-        <span class="chip" *ngFor="let prog of member.Programs.split(',')">
-          {{ prog.trim() }}
-        </span>
+        <span class="chip" *ngFor="let prog of programsList">{{ prog }}</span>
       </div>
 
       <!-- Contact Information -->

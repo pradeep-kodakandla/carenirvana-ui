@@ -106,11 +106,11 @@
   }
 
 .timeline-content {
-  background: #f9f9f9;
-  padding: 1rem;
-  border-radius: 8px;
-  border: 1px solid #ddd;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  /*  background: #f9f9f9;*/
+  padding: 10px;
+  border-radius: 5px;
+  /*  border: 1px solid #ddd;*/
+  /*  box-shadow: 0 2px 8px rgba(0,0,0,0.05);*/
 }
 
 .timeline-header {
