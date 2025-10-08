@@ -44,16 +44,16 @@
 
           <div class="timeline-summary">
             <strong>Email:</strong> {{ item.caregiver.primaryEmail || '—' }}
-          <ng-container *ngIf="item.addresses?.length">
-            • <strong>City:</strong> {{ item.addresses[0]?.city ?? '—' }}
-          </ng-container>
-          <ng-container *ngIf="item.phones?.length">
-            • <strong>PhoneType:</strong> {{ item.phones[0]?.phoneTypeId ?? '—' }}
-          </ng-container>
+            <ng-container *ngIf="item.addresses?.length">
+              • <strong>City:</strong> {{  '—' }}
+            </ng-container>
+            <ng-container *ngIf="item.phones?.length">
+              • <strong>PhoneType:</strong> {{  '—' }}
+            </ng-container>
           </div>
         </div>
       </div>
-
+      <!--item.addresses[0]?.city ??item.phones[0]?.phoneTypeId ??-->
       <div *ngIf="!loading && (filtered?.length || 0) === 0" class="timeline-item">
         <div class="timeline-content">
           <div class="timeline-header">

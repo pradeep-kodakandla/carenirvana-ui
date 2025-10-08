@@ -18,7 +18,6 @@ type SelectedFilter =
   templateUrl: './mycaseload.component.html',
   styleUrls: ['./mycaseload.component.css']
 })
-
 export class MycaseloadComponent implements OnInit, AfterViewInit {
   constructor(
     private headerService: HeaderService,

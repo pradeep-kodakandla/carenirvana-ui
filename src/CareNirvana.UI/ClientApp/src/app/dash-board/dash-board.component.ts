@@ -65,7 +65,6 @@ export class DashBoardComponent {
   selectDiv(index: number) {
     this.selectedDiv = index; // Set the selected div index
   }
-
   constructor(private componentFactoryResolver: ComponentFactoryResolver, private roleService: RolepermissionService,
     private dashboard: DashboardServiceService) {
   }

@@ -37,8 +37,8 @@ export interface MemberProgramPaged {
 })
 export class MemberprogramService {
 
-  //private baseUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/memberprogram';
-  private baseUrl = 'https://localhost:51346/api/memberprogram';
+  private baseUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/memberprogram';
+  //private baseUrl = 'https://localhost:7201/api/memberprogram';
 
   constructor(private http: HttpClient) { }
 

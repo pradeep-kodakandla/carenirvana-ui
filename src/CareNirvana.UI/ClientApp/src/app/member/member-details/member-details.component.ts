@@ -38,8 +38,6 @@ export class MemberDetailsComponent implements OnInit {
   tabs1: { id: number; name: string; content: string }[] = [];
   selectedTabId: number | null = null;
 
-
-
   ngOnInit(): void {
     // Subscribe to route params to handle new member selection
     this.route.params.subscribe(params => {
