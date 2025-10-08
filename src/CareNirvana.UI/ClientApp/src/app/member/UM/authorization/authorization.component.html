@@ -44,7 +44,7 @@
     </ng-template>
     <!-- Horizontal Stepper -->
     <mat-horizontal-stepper style="padding: 5px;  background-color:transparent;" [selectedIndex]="stepperSelectedIndex" (selectionChange)="onStepperChanged($event)" #stepper>
-      <mat-step label="Smart Auth Check">
+      <mat-step label="Smart Auth Check" *ngIf="!authDetailId">
         <app-smartauthcheck>
         </app-smartauthcheck>
       </mat-step>
