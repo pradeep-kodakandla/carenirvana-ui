@@ -56,24 +56,100 @@
 
       <!-- Row 1: Auth Case + Auth Type -->
       <div class="row-2">
+        <!-- AUTH CASE -->
+        <div class="form-outline dropdown-container">
+          <label class="floating-label">Auth Case <span class="text-danger">*</span></label>
+
+          <div class="input-with-icon">
+            <!-- was class="form-select" -->
+            <input type="text"
+                   class="form-control"
+                   [value]="authCaseDisplay"
+                   (input)="onTypeaheadInput($event, 'authCase')"
+                   (keydown)="handleDropdownKeydown($event, 'authCase')"
+                   (focus)="openDropdown('authCase')"
+                   (focusout)="closeDropdown('authCase')"
+                   placeholder="Select Auth Case" />
+            <span class="dropdown-arrow" aria-hidden="true">&#9662;</span>
+
+            <span class="dropdown-arrow">&#9662;</span>
+
+            <div class="autocomplete-dropdown"
+                 *ngIf="showDropdowns.authCase && filteredAuthCases?.length">
+              <div class="autocomplete-option"
+                   *ngFor="let option of filteredAuthCases; let i = index"
+                   [ngClass]="{'highlighted': i === highlightedIndex.authCase}"
+                   (mousedown)="selectDropdownOption('authCase', option)">
+                {{ option.authClass }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AUTH TYPE -->
+        <div class="form-outline dropdown-container">
+          <label class="floating-label">Auth Type <span class="text-danger">*</span></label>
+
+          <div class="input-with-icon">
+            <input type="text"
+                   class="form-select"
+                   [value]="authTypeDisplay"
+                   (input)="onTypeaheadInput($event, 'authType')"
+                   (keydown)="handleDropdownKeydown($event, 'authType')"
+                   (focus)="openDropdown('authType')"
+                   (focusout)="closeDropdown('authType')"
+                   [disabled]="!selectedAuthClassId || selectedAuthClassId === 0"
+                   [ngClass]="{'is-invalid': !selectedTemplateId && !!selectedAuthClassId}"
+                   placeholder="Select Auth Type" />
+            <span class="dropdown-arrow">&#9662;</span>
+
+            <div class="autocomplete-dropdown"
+                 *ngIf="showDropdowns.authType && filteredAuthTypes?.length">
+              <div class="autocomplete-option"
+                   *ngFor="let option of filteredAuthTypes; let i = index"
+                   [ngClass]="{'highlighted': i === highlightedIndex.authType}"
+                   (mousedown)="selectDropdownOption('authType', option)">
+                {{ option.TemplateName }}
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Auth Case -->
-        <div class="form-field">
+        <!--<div class="form-field">
           <label class="floating-label">Auth Case</label>
           <select class="form-select"
                   [(ngModel)]="selectedAuthClassId"
+                  (focus)="openDropdown($event)"
+                  (blur)="closeDropdown($event)"
                   [ngModelOptions]="{ standalone: true }"
                   (change)="onAuthClassChange(); $event.stopPropagation();">
             <option *ngFor="let item of authClass" [value]="item.id">
               {{ item.authClass }}
             </option>
           </select>
-        </div>
+        </div>-->
+        <!--<div class="form-field">
+          <label class="floating-label">Auth Case</label>
 
+          <mat-select #authCaseSel="matSelect" class="form-select" panelClass="white-dropdown-panel"
+                      [(ngModel)]="selectedAuthClassId"
+                      [ngModelOptions]="{ standalone: true }"
+                      (focus)="authCaseSel.open()"
+                      (blur)="deferClose(authCaseSel)"
+                      (selectionChange)="onAuthClassChange()">
+            <mat-option *ngFor="let item of authClass" [value]="item.id">
+              {{ item.authClass }}
+            </mat-option>
+          </mat-select>
+        </div>-->
         <!-- Auth Type -->
-        <div class="form-field">
+        <!--<div class="form-field">
           <label class="floating-label">Auth Type</label>
           <select class="form-select"
                   [(ngModel)]="selectedTemplateId"
+                  (focus)="openDropdown($event)"
+                  (blur)="closeDropdown($event)"
                   [ngModelOptions]="{ standalone: true }"
                   [disabled]="!selectedAuthClassId || selectedAuthClassId === 0"
                   (change)="$event.stopPropagation();">
@@ -81,45 +157,79 @@
               {{ template.TemplateName }}
             </option>
           </select>
-        </div>
+        </div>-->
+        <!--<div class="form-field">
+          <label class="floating-label">Auth Type</label>
+
+          <mat-select #authTypeSel="matSelect" class="form-select" panelClass="white-dropdown-panel"
+                      [(ngModel)]="selectedTemplateId"
+                      [ngModelOptions]="{ standalone: true }"
+                      [disabled]="!selectedAuthClassId || selectedAuthClassId === 0"
+                      (focus)="authTypeSel.open()">
+            <mat-option *ngFor="let template of authTemplates" [value]="template.Id">
+              {{ template.TemplateName }}
+            </mat-option>
+          </mat-select>
+        </div>-->
       </div>
 
       <!-- Row 2: From + To -->
       <div class="row-2">
         <!-- From -->
+        <!-- FROM DATE -->
         <div class="form-field">
           <label class="floating-label">From Date <span class="req">*</span></label>
           <div class="input-with-icon">
             <input type="text"
                    class="form-control"
-                   formControlName="scheduledDateTime"
                    [value]="scheduledDateText"
                    (input)="onScheduledTextChange($event)"
                    (blur)="handleDateTimeBlur('scheduledDateText', 'scheduledDateTime')"
-                   [ngClass]="{'is-invalid': smartAuthCheckForm.get('scheduledDateTime')?.touched && smartAuthCheckForm.get('scheduledDateTime')?.invalid}"
+                   (keydown)="onDateKeydown($event, 'scheduled')"
+                   [ngClass]="{
+             'is-invalid': smartAuthCheckForm.get('scheduledDateTime')?.touched
+                           && smartAuthCheckForm.get('scheduledDateTime')?.invalid
+           }"
                    placeholder="Enter D, D+1, D-1 or select" />
-            <button type="button" class="calendar-icon-btn" (click)="triggerCalendar('scheduled')" tabindex="0">📅</button>
-            <input type="datetime-local" #scheduledPicker class="sr-only" (change)="handleCalendarChange($event, 'scheduledDateTime')">
+
+            <!-- Make the icon not tabbable -->
+            <button type="button"
+                    class="calendar-icon-btn"
+                    (click)="triggerCalendar('scheduled')"
+                    aria-hidden="true">
+              📅
+            </button>
+
+            <!-- Keep hidden input out of tab order, too -->
+            <input type="datetime-local"
+                   #scheduledPicker
+                   class="sr-only"
+                   (change)="handleCalendarChange($event, 'scheduledDateTime')"
+                   tabindex="-1"
+                   aria-hidden="true">
           </div>
-          <div *ngIf="smartAuthCheckForm.get('scheduledDateTime')?.touched && smartAuthCheckForm.get('scheduledDateTime')?.invalid" class="field-error">
+          <div *ngIf="smartAuthCheckForm.get('scheduledDateTime')?.touched
+              && smartAuthCheckForm.get('scheduledDateTime')?.invalid"
+               class="field-error">
             Scheduled date is required.
           </div>
         </div>
+
 
         <!-- To -->
         <div class="form-field">
           <label class="floating-label">To Date <span class="req">*</span></label>
           <div class="input-with-icon">
+
             <input type="text"
                    class="form-control"
-                   formControlName="dueDateTime"
                    [value]="dueDateText"
                    (input)="onDueTextChange($event)"
                    (blur)="handleDateTimeBlur('dueDateText', 'dueDateTime')"
                    [ngClass]="{'is-invalid': smartAuthCheckForm.get('dueDateTime')?.touched && smartAuthCheckForm.get('dueDateTime')?.invalid}"
                    placeholder="Enter D, D+1, D-1 or select" />
             <button type="button" class="calendar-icon-btn" (click)="triggerCalendar('due')">📅</button>
-            <input type="datetime-local" #duePicker class="sr-only" (change)="handleCalendarChange($event, 'dueDateTime')">
+            <input type="datetime-local" #duePicker class="sr-only" (change)="handleCalendarChange($event, 'dueDateTime')" tabindex="-1">
           </div>
           <div *ngIf="smartAuthCheckForm.get('dueDateTime')?.touched && smartAuthCheckForm.get('dueDateTime')?.invalid" class="field-error">
             Due date is required.

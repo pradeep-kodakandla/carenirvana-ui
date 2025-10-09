@@ -153,6 +153,9 @@
     box-shadow: 0 0 0 3px rgba(122,166,255,0.2);
   }
 
+.form-select {
+  transition: all 0.2s ease;
+}
 /* Date icon button */
 .input-with-icon {
   position: relative;
@@ -430,4 +433,68 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+
+/* container */
+.dropdown-container {
+  position: relative;
+}
+
+/* arrow */
+.input-with-icon {
+  position: relative;
+}
+
+.dropdown-arrow {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/* dropdown panel */
+.autocomplete-dropdown {
+  position: absolute;
+  z-index: 1000;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid #e2e2e2;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.12);
+  max-height: 260px;
+  overflow: auto;
+  margin-top: 4px;
+}
+
+/* options */
+.autocomplete-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  line-height: 1.25;
+}
+
+  .autocomplete-option:hover,
+  .autocomplete-option.highlighted {
+    background: #f3f6ff;
+  }
+
+/* Kill the native select background icon on our custom text dropdowns */
+.dropdown-container .form-select {
+  background-image: none !important;
+}
+
+.input-with-icon {
+  position: relative;
+}
+
+.dropdown-arrow {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: #666;
 }

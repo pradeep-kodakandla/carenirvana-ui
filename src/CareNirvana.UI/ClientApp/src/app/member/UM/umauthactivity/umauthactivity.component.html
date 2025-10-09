@@ -80,7 +80,7 @@
 
               <div class="input-with-icon">
                 <input type="text"
-                       class="form-control"
+                       class="form-select"
                        [value]="activityTypeDisplay"
                        (input)="onTypeaheadInput($event)"
                        (keydown)="handleDropdownKeydown($event, 'activityType')"
@@ -113,7 +113,7 @@
 
               <div class="input-with-icon">
                 <input type="text"
-                       class="form-control"
+                       class="form-select"
                        [value]="priorityDisplay"
                        (input)="onDropdownTextChange($event, 'priority')"
                        (keydown)="handleDropdownKeydown($event, 'priority')"
@@ -175,7 +175,6 @@
               <div class="input-with-icon">
                 <input type="text"
                        class="form-control"
-                       formControlName="scheduledDateTime"
                        [value]="scheduledDateText"
                        (input)="onScheduledTextChange($event)"
                        (blur)="handleDateTimeBlur('scheduledDateText', 'scheduledDateTime')"
@@ -186,7 +185,7 @@
 
                 <input type="datetime-local"
                        #scheduledPicker
-                       style="opacity: 0; position: absolute; pointer-events: none;"
+                       style="opacity: 0; position: absolute; pointer-events: none;" tabindex="-1"
                        (change)="handleCalendarChange($event, 'scheduledDateTime')">
               </div>
 
@@ -200,19 +199,16 @@
               <div class="input-with-icon">
                 <input type="text"
                        class="form-control"
-                       formControlName="dueDateTime"
                        [value]="dueDateText"
                        (input)="onDueTextChange($event)"
                        (blur)="handleDateTimeBlur('dueDateText', 'dueDateTime')"
                        [ngClass]="{'is-invalid': activityForm.get('dueDateTime')?.touched && activityForm.get('dueDateTime')?.invalid}"
                        placeholder="Enter D, D+1, D-1 or select" />
-
-
                 <button type="button" class="calendar-icon-btn" (click)="triggerCalendar('due')">📅</button>
 
                 <input type="datetime-local"
                        #duePicker
-                       style="opacity: 0; position: absolute; pointer-events: none;"
+                       style="opacity: 0; position: absolute; pointer-events: none;" tabindex="-1"
                        (change)="handleCalendarChange($event, 'dueDateTime')">
               </div>
 
@@ -294,7 +290,7 @@
 
           <div class="button-group">
             <button type="button" (click)="onSubmit()" [disabled]="!canAdd">Save</button>
-            <button type="button" (click)="onCancel()" >Cancel</button>
+            <button type="button" (click)="onCancel()">Cancel</button>
           </div>
         </form>
       </div>

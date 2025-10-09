@@ -7,6 +7,8 @@ import { MemberenrollmentService } from 'src/app/service/memberenrollment.servic
 import { FormControl } from '@angular/forms';
 import { Observable, of } from 'rxjs';
 import { map, startWith } from 'rxjs/operators';
+import { MatSelect } from '@angular/material/select';
+
 interface LevelItem {
   levelcode: string;
   levelname: string;
@@ -180,36 +182,54 @@ export class SmartauthcheckComponent implements OnInit {
       finalDate = base;
     } else {
       const parsed = new Date(input);
-      if (!isNaN(parsed.getTime())) {
-        finalDate = parsed;
-      }
+      if (!isNaN(parsed.getTime())) finalDate = parsed;
     }
 
     if (finalDate) {
       const control = this.smartAuthCheckForm.get(controlName);
-      control?.setValue(finalDate);
+
+      // ✅ Store a STRING in the form control, not a Date
+      // Use ISO for backend stability (or your own compact format).
+      const iso = finalDate.toISOString();
+      control?.setValue(iso);
       control?.markAsTouched();
 
-      // update correct display field
+      // ✅ Keep the visible text as a nice, compact STRING
+      const pretty = this.formatForDisplay(finalDate);
+      console.log('Formatted date for display:', pretty);
       if (controlName === 'scheduledDateTime') {
-        this.scheduledDateText = this.formatForDisplay(finalDate);
+        this.scheduledDateText = pretty;
       } else if (controlName === 'dueDateTime') {
-        this.dueDateText = this.formatForDisplay(finalDate);
+        this.dueDateText = pretty;
       }
     }
   }
 
-  formatForDisplay(date: Date): string {
-    return new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/New_York',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    }).format(date).replace(',', '');
+
+
+  //formatForDisplay(date: Date): string {
+  //  return new Intl.DateTimeFormat('en-US', {
+  //    timeZone: 'America/New_York',
+  //    year: 'numeric',
+  //    month: '2-digit',
+  //    day: '2-digit',
+  //    hour: '2-digit',
+  //    minute: '2-digit',
+  //    second: '2-digit',
+  //    hour12: false
+  //  }).format(date).replace(',', '');
+  //}
+  private pad(n: number) { return String(n).padStart(2, '0'); }
+
+  private formatForDisplay(d: Date): string {
+    // Local time → MM/DD/YYYY HH:MM:SS
+    const mm = this.pad(d.getMonth() + 1);
+    const dd = this.pad(d.getDate());
+    const yyyy = d.getFullYear();
+    const HH = this.pad(d.getHours());
+    const MM = this.pad(d.getMinutes());
+    const SS = this.pad(d.getSeconds());
+    return `${mm}/${dd}/${yyyy} ${HH}:${MM}:${SS}`;
   }
 
 
@@ -253,6 +273,7 @@ export class SmartauthcheckComponent implements OnInit {
 
   onDueTextChange(event: Event) {
     const input = (event.target as HTMLInputElement).value;
+    console.log('Due date input changed to:', input);
     this.dueDateText = input;
   }
 
@@ -272,6 +293,15 @@ export class SmartauthcheckComponent implements OnInit {
       hour12: false
     }).format(parsedDate).replace(',', '');
   }
+
+  onDateKeydown(evt: KeyboardEvent, which: 'scheduled' | 'due') {
+    // Alt+ArrowDown or F9 opens the picker
+    if ((evt.altKey && evt.key === 'ArrowDown') || evt.key === 'F9') {
+      evt.preventDefault();
+      this.triggerCalendar(which);
+    }
+  }
+
   /******Date time field******/
 
   onNextContinue(): void {
@@ -349,11 +379,6 @@ export class SmartauthcheckComponent implements OnInit {
   selectEnrollment(i: number) {
     this.selectedDiv = i + 1;
     this.enrollmentSelect = true;
-
-    // If you need to stash the chosen enrollment for later sections, do it here:
-    // const chosen = this.memberEnrollments[i];
-    // this.selectedEnrollment = chosen;
-    // (Optionally) propagate LOB/Product/etc. downstream if needed.
   }
 
   /** Safely parse JSON fields and return ordered levels + dates for display */
@@ -509,7 +534,9 @@ export class SmartauthcheckComponent implements OnInit {
     );
   }
 
-
+  deferClose(sel: MatSelect) {
+    setTimeout(() => sel.close(), 120);
+  }
 
   // For SERVICE (filters from this.allCPTCodes)
   private buildServiceRow(): FormGroup {
@@ -534,5 +561,112 @@ export class SmartauthcheckComponent implements OnInit {
       { serviceCode: picked.code, serviceDesc: picked.desc },
       { emitEvent: false }
     );
+  }
+
+
+
+
+
+  // displays (what user sees in the input)
+  authCaseDisplay = '';
+  authTypeDisplay = '';
+
+  // dropdown state
+  showDropdowns = { authCase: false, authType: false };
+  highlightedIndex = { authCase: -1, authType: -1 };
+
+  // filtered lists
+  filteredAuthCases: Array<{ id: number; authClass: string }> = [];
+  filteredAuthTypes: Array<{ Id: number; TemplateName: string }> = [];
+
+  // call once after you load authClass/authTemplates OR in ngOnInit
+  initDropdownDisplays() {
+    const ac = this.authClass?.find(a => a.id === this.selectedAuthClassId);
+    this.authCaseDisplay = ac ? ac.authClass : '';
+
+    const t = this.authTemplates?.find(x => x.Id === this.selectedTemplateId);
+    this.authTypeDisplay = t ? t.TemplateName : '';
+  }
+
+  // open/close (blur uses small timeout so mousedown can fire)
+  openDropdown(which: 'authCase' | 'authType') {
+    this.showDropdowns[which] = true;
+    this.recomputeFilter(which, '');
+    this.highlightedIndex[which] = this[which === 'authCase' ? 'filteredAuthCases' : 'filteredAuthTypes'].length ? 0 : -1;
+  }
+
+  closeDropdown(which: 'authCase' | 'authType') {
+    setTimeout(() => this.showDropdowns[which] = false, 120);
+  }
+
+  // typeahead input
+  onTypeaheadInput(evt: Event, which: 'authCase' | 'authType') {
+    const val = (evt.target as HTMLInputElement).value || '';
+    if (which === 'authCase') this.authCaseDisplay = val;
+    else this.authTypeDisplay = val;
+    this.recomputeFilter(which, val);
+    this.highlightedIndex[which] = this[which === 'authCase' ? 'filteredAuthCases' : 'filteredAuthTypes'].length ? 0 : -1;
+  }
+
+  // keyboard nav
+  handleDropdownKeydown(e: KeyboardEvent, which: 'authCase' | 'authType') {
+    const list = which === 'authCase' ? this.filteredAuthCases : this.filteredAuthTypes;
+    let idx = this.highlightedIndex[which];
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (list.length) this.highlightedIndex[which] = (idx + 1) % list.length;
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (list.length) this.highlightedIndex[which] = (idx - 1 + list.length) % list.length;
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (idx >= 0 && list[idx]) this.selectDropdownOption(which, list[idx]);
+      return;
+    }
+    if (e.key === 'Escape' || e.key === 'Tab') {
+      this.showDropdowns[which] = false;
+      return;
+    }
+  }
+
+  // selection (mouse or keyboard)
+  selectDropdownOption(which: 'authCase' | 'authType', option: any) {
+    if (which === 'authCase') {
+      this.selectedAuthClassId = option.id;
+      this.authCaseDisplay = option.authClass;
+      this.showDropdowns.authCase = false;
+
+      // refresh templates for selected class (your existing logic)
+      this.onAuthClassChange();
+
+      // reset Type display/selection if needed
+      this.selectedTemplateId = 0;
+      this.authTypeDisplay = '';
+      this.filteredAuthTypes = this.authTemplates || [];
+    } else {
+      this.selectedTemplateId = option.Id;
+      this.authTypeDisplay = option.TemplateName;
+      this.showDropdowns.authType = false;
+    }
+  }
+
+  // filter helpers
+  private recomputeFilter(which: 'authCase' | 'authType', term: string) {
+    const q = (term || '').toLowerCase().trim();
+
+    if (which === 'authCase') {
+      const src = this.authClass || [];
+      this.filteredAuthCases = !q ? src.slice(0, 50)
+        : src.filter(a => (a.authClass || '').toLowerCase().includes(q)).slice(0, 50);
+    } else {
+      const src = this.authTemplates || [];
+      this.filteredAuthTypes = !q ? src.slice(0, 50)
+        : src.filter(t => (t.TemplateName || '').toLowerCase().includes(q)).slice(0, 50);
+    }
   }
 }
