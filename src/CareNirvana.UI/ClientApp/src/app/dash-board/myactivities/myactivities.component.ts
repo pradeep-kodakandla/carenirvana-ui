@@ -1,4 +1,5 @@
 import { Component, OnInit, AfterViewInit, ViewChild } from '@angular/core';
+import { EventEmitter, Output, } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
@@ -6,7 +7,8 @@ import { MatSort } from '@angular/material/sort';
 import { Observable, of } from 'rxjs';
 import { DashboardServiceService } from 'src/app/service/dashboard.service.service';
 import { HeaderService } from 'src/app/service/header.service';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
+import { MemberService } from 'src/app/service/shared-member.service';
 
 @Component({
   selector: 'app-myactivities',
@@ -15,12 +17,12 @@ import { Router } from '@angular/router';
 })
 export class MyactivitiesComponent implements OnInit, AfterViewInit {
 
-  /** Columns requested:
-   * Module | Member | Created On | Refer To | Activity Type | Follow Up Date | Due Date | Status
-   */
+  selectedDue = new Set<'OVERDUE' | 'TODAY' | 'FUTURE'>();
+
   displayedColumns: string[] = [
     'module',
     'member',
+    'authnumber',
     'createdOn',
     'referredTo',
     'activityType',
@@ -55,7 +57,9 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
     private fb: FormBuilder,
     private activtyService: DashboardServiceService,
     private headerService: HeaderService,
-    private router: Router) { }
+    private router: Router,
+    private memberService: MemberService,
+    private route: ActivatedRoute) { }
 
   ngOnInit(): void {
     this.filtersForm = this.fb.group({}); // empty grid per request
@@ -96,6 +100,7 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
   private loadData(): void {
     this.getMyActivities$().subscribe({
       next: rows => {
+        console.log('My Activities rows', rows);
         this.rawData = Array.isArray(rows) ? rows : [];
         this.recomputeAll();
       },
@@ -115,8 +120,17 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
     this.recomputeAll();
   }
 
-  setDueChip(which: 'OVERDUE' | 'TODAY' | 'FUTURE'): void {
-    this.dueChip = which;
+  isDueSelected(kind: 'OVERDUE' | 'TODAY' | 'FUTURE'): boolean {
+    return this.selectedDue.has(kind);
+  }
+
+  setDueChip(kind: 'OVERDUE' | 'TODAY' | 'FUTURE'): void {
+    //this.dueChip = which;
+    if (this.selectedDue.has(kind)) {
+      this.selectedDue.delete(kind);
+    } else {
+      this.selectedDue.add(kind);
+    }
     this.recomputeAll();
   }
 
@@ -126,16 +140,24 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
 
     let base = [...this.rawData];
 
-    // chip filter on DueDate
-    if (this.dueChip) {
+    if (this.selectedDue && this.selectedDue.size > 0) {
+      const today = new Date();
+
       base = base.filter(r => {
         const d = this.toDate(r?.DueDate);
         if (!d) return false;
-        const cmp = this.compareDateOnly(d, new Date());
-        if (this.dueChip === 'OVERDUE') return cmp < 0;
-        if (this.dueChip === 'TODAY') return cmp === 0;
-        return cmp > 0; // FUTURE
+
+        const cmp = this.compareDateOnly(d, today); // <0 overdue, 0 today, >0 future
+
+        let match = false;
+        if (this.selectedDue.has('OVERDUE') && cmp < 0) match = true;
+        if (this.selectedDue.has('TODAY') && cmp === 0) match = true;
+        if (this.selectedDue.has('FUTURE') && cmp > 0) match = true;
+
+        return match;
       });
+    } else {
+      base = base;
     }
 
     // quick search
@@ -223,5 +245,36 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
         this.router.navigate([tabRoute]);
       });
     }
+  }
+
+  @Output() addClicked = new EventEmitter<string>();
+
+  onAuthClick(authNumber: string = '', memId: string = '', memberDetailsId: string) {
+    this.addClicked.emit(authNumber);
+    this.memberService.setIsCollapse(true);
+
+    if (!authNumber) authNumber = 'DRAFT';
+
+    // read member id once (prefer your own field; fall back to route)
+    const memberId = memId ?? Number(this.route.parent?.snapshot.paramMap.get('id'));
+
+    // ✅ point tab to the CHILD route under the shell
+    const tabRoute = `/member-info/${memberId}/member-auth/${authNumber}`;
+    const tabLabel = `Auth No ${authNumber}`;
+
+    const existingTab = this.headerService.getTabs().find(t => t.route === tabRoute);
+
+    if (existingTab) {
+      this.headerService.selectTab(tabRoute);
+      const mdId = existingTab.memberDetailsId ?? null;
+      if (mdId) sessionStorage.setItem('selectedMemberDetailsId', mdId);
+
+    } else {
+      this.headerService.addTab(tabLabel, tabRoute, String(memberId));
+      sessionStorage.setItem('selectedMemberDetailsId', memberDetailsId);
+    }
+    this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+      this.router.navigate([tabRoute]);
+    });
   }
 }

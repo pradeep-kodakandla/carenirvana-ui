@@ -1346,7 +1346,7 @@ export class AuthorizationComponent {
         TreatmentType: 'Standard',
         SaveType: this.saveType,
         CreatedOn: new Date().toISOString(),
-        CreatedBy: 1,
+        CreatedBy: sessionStorage.getItem('loggedInUserid'),
         responseData: JSON.stringify(this.formData) // Ensure it's a valid JSON string
       };
 

@@ -9,6 +9,7 @@ import { HeaderService } from 'src/app/service/header.service';
 import { MemberService } from 'src/app/service/shared-member.service';
 import { Observable, of } from 'rxjs';
 
+
 @Component({
   selector: 'app-assignedauths',
   templateUrl: './assignedauths.component.html',
@@ -16,6 +17,7 @@ import { Observable, of } from 'rxjs';
 })
 export class AssignedauthsComponent implements OnInit, AfterViewInit {
 
+  selectedDue = new Set<'OVERDUE' | 'TODAY' | 'FUTURE'>(); 
   // Column ids (keep your existing column ids the same)
   displayedColumns: string[] = [
     'actions',
@@ -178,9 +180,18 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
   }
 
   /** Chips */
-  setDueChip(which: 'OVERDUE' | 'TODAY' | 'FUTURE'): void {
-    this.dueChip = which;
+  setDueChip(kind: 'OVERDUE' | 'TODAY' | 'FUTURE'): void {
+    //this.dueChip = which;
+    if (this.selectedDue.has(kind)) {
+      this.selectedDue.delete(kind);
+    } else {
+      this.selectedDue.add(kind);
+    }
     this.recomputeAll();
+  }
+
+  isDueSelected(kind: 'OVERDUE' | 'TODAY' | 'FUTURE'): boolean {
+    return this.selectedDue.has(kind);
   }
 
   /** ===== Recompute pipeline ===== */
@@ -189,16 +200,25 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
 
     let base = [...this.rawData];
 
-    // Chip filter on AuthDueDate
-    if (this.dueChip) {
+    if (this.selectedDue && this.selectedDue.size > 0) {
+      const today = new Date();
+
       base = base.filter(r => {
         const d = this.toDate(r?.AuthDueDate);
         if (!d) return false;
-        const cmp = this.compareDateOnly(d, new Date());
-        if (this.dueChip === 'OVERDUE') return cmp < 0;
-        if (this.dueChip === 'TODAY') return cmp === 0;
-        return cmp > 0; // FUTURE
+
+        const cmp = this.compareDateOnly(d, today); // <0 overdue, 0 today, >0 future
+
+        let match = false;
+        if (this.selectedDue.has('OVERDUE') && cmp < 0) match = true;
+        if (this.selectedDue.has('TODAY') && cmp === 0) match = true;
+        if (this.selectedDue.has('FUTURE') && cmp > 0) match = true;
+
+        return match;
       });
+    } else {
+      base = base;          
+      // base = [];            // or show NONE (uncomment if you prefer)
     }
 
     // Advanced filters

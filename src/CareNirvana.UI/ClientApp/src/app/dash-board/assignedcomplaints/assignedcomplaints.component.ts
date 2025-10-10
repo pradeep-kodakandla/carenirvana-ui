@@ -1,15 +1,25 @@
 import { Component, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
-import { animate, state, style, transition, trigger } from '@angular/animations';
-import { MatPaginatorModule } from '@angular/material/paginator';
-import { MatSortModule } from '@angular/material/sort';
-import { MatTableModule } from '@angular/material/table';
-import { MatMenu } from '@angular/material/menu';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatMenuTrigger } from '@angular/material/menu';
 
+export interface UserData {
+  enrollmentStatus: 'Active' | 'Inactive' | 'Soon Ending' | string;
+  memberId: number | string;
+  firstName: string;
+  lastName: string;
+  DOB: string | Date;
+  risk?: string;
+  nextContact?: string | Date | null;
+  assignedDate?: string | Date | null;
+  programName?: string | null;
+  description?: string | null;
+  WQ?: number | string | null;
+  // Add any extra fields your template uses:
+  [key: string]: any;
+}
 
 @Component({
   selector: 'app-assignedcomplaints',
@@ -44,7 +54,7 @@ export class AssignedcomplaintsComponent {
 
   constructor(private router: Router) {
     // Create 100 users
-    const users = Array.from({ length: 100 }, (_, k) => createNewUser(k + 1));
+    const users = undefined;
 
     // Assign the data to the data source for the table to render
     this.dataSource = new MatTableDataSource(users);
@@ -74,142 +84,7 @@ export class AssignedcomplaintsComponent {
 
   contextMenuPosition = { x: '0px', y: '0px' };
 
-  onContextMenu(event: MouseEvent, item: UserData) {
-    event.preventDefault();
-    this.contextMenuPosition.x = event.clientX + 'px';
-    this.contextMenuPosition.y = event.clientY + 'px';
-    this.contextMenu.menuData = { 'item': item };
-    this.contextMenu.menu!.focusFirstItem('mouse');
-    this.contextMenu.openMenu();
-  }
-
-  onContextMenuAction1(item: UserData) {
-    alert(`Click on Action 1 for ${item.enrollmentStatus}`);
-  }
-
-  onContextMenuAction2(item: UserData) {
-    alert(`Click on Action 2 for ${item.enrollmentStatus}`);
-  }
-
-  items = [
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    },
-    {
-      photo: 'assets/item1.jpg',
-      header: 'JOHN SMITH',
-      content: 'DOB: 10/22/2024'
-    }
-  ];
+ 
 
 }
-/** Builds and returns a new User. */
-export function createNewUser(id: number): UserData {
-  const name =
-    NAMES[Math.round(Math.random() * (NAMES.length - 1))];
 
-  return {
-    enrollmentStatus: 'Active',
-    firstName: name,
-    memberId: NUMS[Math.round(Math.random() * (NUMS.length - 1))], /*(100 * 100).toString(),*/
-    lastName: FRUITS[Math.round(Math.random() * (FRUITS.length - 1))],
-    DOB: '09/14/2024',
-    risk: 'Low',
-    nextContact: '09/14/2024',
-    assignedDate: '09/14/2024',
-    programName: 'Care Management',
-    description: 'Pending Acceptance',
-    WQ: 'Medical'
-  };
-}
-export interface UserData {
-  enrollmentStatus: string;
-  memberId: string;
-  firstName: string;
-  lastName: string;
-  DOB: string;
-  risk: string;
-  nextContact: string;
-  assignedDate: string;
-  programName: string;
-  description: string;
-  WQ: string;
-}
-
-/** Constants used to fill up our data base. */
-const FRUITS: string[] = [
-  'blueberry',
-  'lychee',
-  'kiwi',
-  'mango',
-  'peach',
-  'lime',
-  'pomegranate',
-  'pineapple',
-];
-const NUMS: string[] = [
-  '10000',
-  '10001',
-  '10003',
-  '10004',
-  '10005',
-  '10006',
-  '10007',
-  '10008',
-  '10009',
-  '10010',
-];
-
-const NAMES: string[] = [
-  'Pradeep',
-  'Pawan',
-  'Sridhar',
-  'Rohitha',
-  'Paavana',
-  'Jack',
-  'Charlotte',
-  'Theodore',
-  'Isla',
-  'Oliver',
-  'Isabella',
-  'Jasper',
-  'Cora',
-  'Levi',
-  'Violet',
-  'Arthur',
-  'Mia',
-  'Thomas',
-  'Elizabeth',
-];

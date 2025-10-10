@@ -33,6 +33,10 @@ export class HeaderComponent {
   }
 
   goToPage(pageName: string) {
+    this.router.navigate([`${pageName}`]);
+  }
+
+  goToLogoutPage(pageName: string) {
     this.onLogout();
     this.router.navigate([`${pageName}`]);
   }
@@ -48,7 +52,7 @@ export class HeaderComponent {
       .forEach(k => sessionStorage.removeItem(k));
 
     // 3) sign out (tokens, user state)
-   // this.authService.logout(); // implement this to clear tokens/user
+    // this.authService.logout(); // implement this to clear tokens/user
 
     // 4) navigate to login
     this.router.navigate(['/login']);

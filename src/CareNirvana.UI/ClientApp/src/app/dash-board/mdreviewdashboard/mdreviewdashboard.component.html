@@ -21,15 +21,15 @@
 
         <div class="filters-col" *ngIf="!selectedAuth">
           <div class="chip-list">
-            <button type="button" class="pill red" [class.active]="dueChip==='OVERDUE'" (click)="setDueChip('OVERDUE')">
+            <button type="button" class="pill red" [class.active]="isDueSelected('OVERDUE')" (click)="setDueChip('OVERDUE')">
               <span class="dot red"></span> Over Due
               <span class="count">{{ overdueCount  }}</span>
             </button>
-            <button type="button" class="pill amber" [class.active]="dueChip==='TODAY'" (click)="setDueChip('TODAY')">
+            <button type="button" class="pill amber" [class.active]="isDueSelected('TODAY')" (click)="setDueChip('TODAY')">
               <span class="dot amber"></span> Due today
               <span class="count">{{ dueTodayCount  }}</span>
             </button>
-            <button type="button" class="pill green" [class.active]="dueChip==='FUTURE'" (click)="setDueChip('FUTURE')">
+            <button type="button" class="pill green" [class.active]="isDueSelected('FUTURE')" (click)="setDueChip('FUTURE')">
               <span class="dot green"></span> Due in future
               <span class="count">{{ dueFutureCount }}</span>
             </button>

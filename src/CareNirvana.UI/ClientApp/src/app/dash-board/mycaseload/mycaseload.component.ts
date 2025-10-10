@@ -56,7 +56,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
 
   // Table columns
   displayedColumns: string[] = [
-    'alert','name', 'enrollment', 'program', 'dob', 'risk', 'lastContact', 'nextContact', 'inlineCounts', 'expand'
+    'alert', 'name', 'enrollment', 'program', 'dob', 'risk', 'lastContact', 'nextContact', 'inlineCounts', 'expand'
   ];
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -89,7 +89,6 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     this.diagnosisOptions.forEach(d => this.diagnosisSelection[d] = false);
     this.qualityOptions.forEach(q => this.qualitySelection[q] = false);
     this.dashboard.getmembersummary(sessionStorage.getItem('loggedInUserid')).subscribe((data) => {
-      console.log('Member Summary', data);
       if (data && Array.isArray(data)) {
         this.loadMembers(data);
       }
@@ -273,8 +272,8 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
         const val = (m.RiskLevelCode || '').toLowerCase();
         return (this.filters.risks.has('High') && val === 'high') ||
           (this.filters.risks.has('Medium') && val === 'medium') ||
-          (this.filters.risks.has('Low') && (val === 'low' )) ||
-          (this.filters.risks.has('Norisk') && (val === '' ));
+          (this.filters.risks.has('Low') && (val === 'low')) ||
+          (this.filters.risks.has('Norisk') && (val === ''));
       });
     }
 
@@ -385,4 +384,21 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     this.applyFilters();
   }
   /*Filter Selection Logic - End*/
+
+  getAgeText(dob: string | Date): string {
+    if (!dob) return '';
+    const birth = new Date(dob);
+    const today = new Date();
+
+    let years = today.getFullYear() - birth.getFullYear();
+    let months = today.getMonth() - birth.getMonth();
+
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+
+    return `${years} yrs ${months} mos`;
+  }
+
 }

@@ -21,6 +21,7 @@ type Row = any;
 })
 export class MdreviewdashboardComponent {
 
+  selectedDue = new Set<'OVERDUE' | 'TODAY' | 'FUTURE'>();
   selectedAuthData: any = {};
   auths: any[] = []; // your full list (if you already have it, keep)
   selectedIndex: number = 0;
@@ -358,8 +359,17 @@ export class MdreviewdashboardComponent {
     this.recomputeAll();
   }
 
-  setDueChip(which: 'OVERDUE' | 'TODAY' | 'FUTURE'): void {
-    this.dueChip = which;
+  isDueSelected(kind: 'OVERDUE' | 'TODAY' | 'FUTURE'): boolean {
+    return this.selectedDue.has(kind);
+  }
+
+  setDueChip(kind: 'OVERDUE' | 'TODAY' | 'FUTURE'): void {
+    //this.dueChip = which;
+    if (this.selectedDue.has(kind)) {
+      this.selectedDue.delete(kind);
+    } else {
+      this.selectedDue.add(kind);
+    }
     this.recomputeAll();
   }
 
@@ -370,15 +380,34 @@ export class MdreviewdashboardComponent {
     let base = [...this.rawData];
 
     // chip filter on DueDate
-    if (this.dueChip) {
+    //if (this.dueChip) {
+    //  base = base.filter(r => {
+    //    const d = this.toDate(r?.DueDate);
+    //    if (!d) return false;
+    //    const cmp = this.compareDateOnly(d, new Date());
+    //    if (this.dueChip === 'OVERDUE') return cmp < 0;
+    //    if (this.dueChip === 'TODAY') return cmp === 0;
+    //    return cmp > 0; // FUTURE
+    //  });
+    //}
+    if (this.selectedDue && this.selectedDue.size > 0) {
+      const today = new Date();
+
       base = base.filter(r => {
         const d = this.toDate(r?.DueDate);
         if (!d) return false;
-        const cmp = this.compareDateOnly(d, new Date());
-        if (this.dueChip === 'OVERDUE') return cmp < 0;
-        if (this.dueChip === 'TODAY') return cmp === 0;
-        return cmp > 0; // FUTURE
+
+        const cmp = this.compareDateOnly(d, today); // <0 overdue, 0 today, >0 future
+
+        let match = false;
+        if (this.selectedDue.has('OVERDUE') && cmp < 0) match = true;
+        if (this.selectedDue.has('TODAY') && cmp === 0) match = true;
+        if (this.selectedDue.has('FUTURE') && cmp > 0) match = true;
+
+        return match;
       });
+    } else {
+      base = base;
     }
     // quick search
     this.dataSource.data = base;

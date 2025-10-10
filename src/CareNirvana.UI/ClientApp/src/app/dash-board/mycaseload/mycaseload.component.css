@@ -711,38 +711,21 @@ mat-chip.norisk {
   min-height: 48px; /* keeps consistent row height */
 }
 
-/*.alert-bell {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background-color: #e53935;*/ /* red circle */
-/*color: #fff;*/ /* white bell */
-/*box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
-  flex-shrink: 0;
-}*/
 
-/*  .alert-bell mat-icon {
-    font-size: 16px;
-    line-height: 1;
-    height: 16px;
-    width: 16px;
-  }*/
-/* keeps your original red circle + white bell */
 .alert-bell {
-  position: relative; /* needed for correct badge positioning */
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background-color: #e53935; /* red circle */
   color: #fff; /* white bell */
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+  position: relative;
 }
+
+  .alert-bell mat-icon {
+    font-size: 22px;
+    color: #fff; /* white bell */
+    -webkit-text-stroke: 1px #e53935; /* red outline border around bell */
+    text-stroke: 1px #e53935; /* Safari fallback */
+  }
 
   /* fine-tune badge placement */
   .alert-bell .mat-badge-content {
@@ -750,7 +733,7 @@ mat-chip.norisk {
     color: #fff !important; /* white number */
     font-size: 10px;
     font-weight: 600;
-/*    top: -6px !important;
+    /*    top: -6px !important;
     right: -6px !important;*/
     width: 16px;
     height: 16px;
@@ -781,4 +764,10 @@ mat-chip.norisk {
 .sub-id {
   font-size: 12px;
   color: #666;
+}
+
+.dob-age {
+  color: #555;
+  font-size: 12px;
+  margin-top: 2px;
 }
