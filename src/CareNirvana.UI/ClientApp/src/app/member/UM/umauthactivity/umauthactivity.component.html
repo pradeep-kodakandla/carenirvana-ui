@@ -23,7 +23,7 @@
     </div>
 
     <div cdkDropList (cdkDropListDropped)="dropActivity($event)" class="timeline-list">
-      <div *ngFor="let activity of filteredActivities; let i = index" cdkDrag class="timeline-item">
+      <div *ngFor="let activity of filteredActivities; let i = index" cdkDrag class="timeline-item" [ngClass]="{'selected': selectedIndex === i}">
         <div class="timeline-dot" [ngClass]="{'completed': activity.statusId === 2}"></div>
         <div class="timeline-content" (click)="selectActivity(i)">
           <div class="timeline-header">
@@ -58,6 +58,7 @@
         </div>
       </div>
     </div>
+
   </div>
 
   <!-- Right Side - Form or Summary -->
@@ -67,12 +68,12 @@
         <form [formGroup]="activityForm">
           <div class="form-grid">
             <!-- Your form fields (same as before) -->
-            <div class="form-outline dropdown-container">
+            <!--<div class="form-outline dropdown-container">
               <label class="floating-label">Member Name</label>
               <input type="text"
                      class="form-control"
                      formControlName="memberName">
-            </div>
+            </div>-->
 
 
             <div class="form-outline dropdown-container">

@@ -21,7 +21,7 @@ interface Page {
 export class MemberDetailsComponent implements OnInit {
 
   memberId!: number;
-
+  loggedInUser: string = sessionStorage.getItem('loggedInUsername') || '';
   isCollapse: boolean = false;
   member: any;
   constructor(private route: ActivatedRoute, private router: Router, private tabService: TabService, private memberService: MemberService, private dashboard: DashboardServiceService) { }
@@ -37,6 +37,8 @@ export class MemberDetailsComponent implements OnInit {
 
   ngOnInit(): void {
     // Subscribe to route params to handle new member selection
+    this.loggedInUser = sessionStorage.getItem('loggedInUsername') || '';
+
     this.route.params.subscribe(params => {
       const id = params['id'];
       if (id) {

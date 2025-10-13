@@ -70,7 +70,7 @@
                                (focus)="onFieldFocus(field)"
                                (blur)="onSelectBlur(field)"
                                [name]="field.id"
-                               [placeholder]="!field.value ? 'Select' : ''" 
+                               [placeholder]="!field.value ? 'Select' : ''"
                                autocomplete="off"
                                #fieldModel="ngModel">
                         <span class="dropdown-arrow">&#9662;</span>
@@ -132,26 +132,39 @@
                     </ng-container>
                   </ng-container>
                 </div>
-              </ng-container>
-            </ng-container>
 
-            <!-- End Datetime -->
+
+              </ng-container>
+              <!-- End Datetime -->
+
+            </ng-container>
             <div class="form-outline" *ngIf="showEndDatetimeField">
-              <label class="floating-label">End Datetime</label>
+              <label class="floating-label">End Datetime <span class="text-danger">*</span></label>
               <div class="input-with-icon">
                 <input class="form-control"
                        type="text"
                        [(ngModel)]="endDatetimeValue"
                        name="endDatetimeValue"
+                       [required]="true"
                        (blur)="handleEndDatetimeBlur()"
-                       placeholder="Enter D, D+1, D-1 or select">
+                       placeholder="Enter D, D+1, D-1 or select"
+                       #endModel="ngModel">
+
                 <button type="button" class="calendar-icon-btn" (click)="triggerNativePicker()">📅</button>
+
+                <!-- no ngModel here; just the native picker -->
                 <input type="datetime-local"
                        #hiddenEndDatetimePicker
                        style="opacity: 0; position: absolute; pointer-events: none;"
                        (change)="handleNativePickerForEndDatetime($event)" />
+
+                <div *ngIf="endModel.invalid && (endModel.touched || endModel.dirty || showValidationErrors)"
+                     class="text-danger">
+                  End Datetime is required.
+                </div>
               </div>
             </div>
+
 
             <!-- Textarea Field -->
             <ng-container *ngFor="let field of notesFields">

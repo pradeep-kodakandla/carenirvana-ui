@@ -11,7 +11,7 @@
     </main>
 
     <!-- Footer (optional sticky at bottom) -->
-    <footer class="app-footer" *ngIf="shouldDisplayHeaderAndFooter()">
+    <footer class="app-footer" *ngIf="!shouldDisplayHeaderAndFooter()">
       <app-footer></app-footer>
     </footer>
   </div>

@@ -214,8 +214,8 @@
                 matTooltip="{{ m.AlertCount }} active alerts">
             <mat-icon>notifications</mat-icon>
             <!--<button mat-icon-button >
-          <mat-icon aria-hidden="false" matBadge="{{ m.AlertCount}}">notifications</mat-icon>
-        </button>-->
+              <mat-icon aria-hidden="false" matBadge="{{ m.AlertCount}}">notifications</mat-icon>
+            </button>-->
           </span>
         </td>
       </ng-container>
@@ -252,9 +252,9 @@
 
       <!-- DOB Column -->
       <!--<ng-container matColumnDef="dob">
-    <th mat-header-cell *matHeaderCellDef mat-sort-header>DOB</th>
-    <td mat-cell *matCellDef="let m">{{ m.DOB }}</td>
-  </ng-container>-->
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>DOB</th>
+        <td mat-cell *matCellDef="let m">{{ m.DOB }}</td>
+      </ng-container>-->
       <ng-container matColumnDef="dob">
         <th mat-header-cell *matHeaderCellDef mat-sort-header>DOB</th>
         <td mat-cell *matCellDef="let m">
@@ -325,20 +325,22 @@
               <div class="pe-id">
                 <div class="pe-name">{{ row.FirstName }} {{ row.LastName }}</div>
                 <div class="pe-sub">ID: {{ row.MemberId }} • DOB: {{ row.DOB }}</div>
-                <span class="risk-chip" [ngClass]="(row.risk || '').toLowerCase()">{{ row.risk || 'LOW' }}</span>
+                <!--<span class="risk-chip" [ngClass]="(row.risk || '').toLowerCase()">{{ row.RiskLevelCode || 'no Risk' }}</span>-->
+                <span class="risk-chip compact" [ngClass]="(row.RiskLevelCode || '').toLowerCase()">{{ row.RiskLevelCode || 'No Risk' }}</span>
               </div>
-              <div class="pe-actions">
+
+              <!--<div class="pe-actions">
                 <mat-chip color="primary">Auth: {{ row.AuthCount || 0 }}</mat-chip>
                 <mat-chip color="accent">Act: {{ row.activityCount || 0 }}</mat-chip>
                 <mat-chip color="warn">Care: {{ row.carePlanCount || 0 }}</mat-chip>
                 <mat-chip *ngIf="row.overdueCount>0" color="warn">Over: {{ row.overdueCount }}</mat-chip>
-              </div>
+              </div>-->
             </div>
             <div class="overview-grid">
               <div class="panel panel--blue">
                 <div class="panel-title">Program Information</div>
-                <div class="panel-line"><strong>Program:</strong> {{ row.programName || '-' }}</div>
-                <div class="panel-line"><strong>Enrollment:</strong> {{ row.enrollment || 'Active' }}</div>
+                <div class="panel-line"><strong>Program:</strong> {{ row.Programs || '-' }}</div>
+                <div class="panel-line"><strong>Enrollment:</strong> {{ row.enrollment || 'No Active Enrollment' }}</div>
                 <div class="panel-line"><strong>Diagnosis:</strong> {{ row.diagnosis || 'Diabetes' }}</div>
               </div>
               <div class="panel panel--amber">

@@ -254,6 +254,7 @@
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  align-items: stretch;
 }
 
 
@@ -357,11 +358,11 @@
 }
 
 /* stack cards one-after-another (optional if you want a single column list) */
-.selection-container {
-  display: grid; /* or flex; flex-direction: column; */
-  grid-template-columns: 1fr;
+/*.selection-container {
+  display: grid;*/ /* or flex; flex-direction: column; */
+  /*grid-template-columns: 1fr;
   gap: 12px;
-}
+}*/
 
 /* keep each label/value on one line */
 .pairs {
@@ -388,12 +389,12 @@
   text-overflow: ellipsis;
 }
 
-.selection-container {
+/*.selection-container {
   display: flex;
   flex-direction: column;
-  align-items: flex-start; /* or center if you want centered cards */
-  gap: 12px;
-}
+  align-items: flex-start;*/ /* or center if you want centered cards */
+  /*gap: 12px;
+}*/
 
 .rounded-box {
   width: auto;

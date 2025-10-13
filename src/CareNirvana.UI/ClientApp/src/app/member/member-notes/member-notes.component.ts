@@ -362,8 +362,13 @@ export class MemberNotesComponent implements OnInit {
 
     if (!noteTypeId || !notesText?.toString().trim()) return;
 
-    // normalize "D / D+1 / D-1" forms already handled in your blur handlers
     const enteredTimestamp = startText ? new Date(startText).toISOString() : new Date().toISOString();
+
+    // normalize "D / D+1 / D-1" forms already handled in your blur handlers
+    if (this.showEndDatetimeField && !this.endDatetimeValue) {
+      return
+    }
+
     const alertEndDateTime = (this.showEndDatetimeField && this.endDatetimeValue)
       ? new Date(this.endDatetimeValue).toISOString()
       : null;
@@ -477,7 +482,8 @@ export class MemberNotesComponent implements OnInit {
     const dd = pad(d.getDate());
     const hh = pad(d.getHours());
     const mi = pad(d.getMinutes());
-    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+    const si = pad(d.getSeconds());
+    return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${si}`;
   }
 
   // ------------ Select (Note Type) autocomplete ------------

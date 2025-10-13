@@ -9,7 +9,6 @@ import { HeaderService } from 'src/app/service/header.service';
 import { MemberService } from 'src/app/service/shared-member.service';
 import { Observable, of } from 'rxjs';
 
-
 @Component({
   selector: 'app-assignedauths',
   templateUrl: './assignedauths.component.html',

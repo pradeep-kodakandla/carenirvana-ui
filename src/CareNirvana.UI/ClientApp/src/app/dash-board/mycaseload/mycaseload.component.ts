@@ -240,7 +240,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
   };
 
   // Track by memberId for performance
-  trackById = (_: number, row: any) => row.memberId;
+  trackById = (_: number, row: any) => row?.MemberId ?? row?.memberId ?? _;
 
   // Filter methods
   toggleFilters() {
