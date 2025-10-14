@@ -291,7 +291,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
 
   // --- Enrollment classifier reused by counts + filtering ---
   private getEnrollStatus(m: any): 'Active' | 'Soon Ending' | 'Inactive' | 'No Enrollment' {
-    if (m.LevelMap) return 'No Enrollment';
+    if (!m.LevelMap) return 'No Enrollment';
     const today = new Date();
     const start = new Date(m.StartDate);
     const end = m.EnrollmentEndDate ? new Date(m.EnrollmentEndDate) : new Date('2999-12-31'); //new Date(m.EnrollmentEndDate);
