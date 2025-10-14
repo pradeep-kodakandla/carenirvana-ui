@@ -113,6 +113,7 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
       next: rows => {
         this.rawData = Array.isArray(rows) ? rows : [];
         this.recomputeAll();
+        console.log('Assigned Auths data loaded, count=', this.rawData);
       },
       error: () => {
         this.rawData = [];

@@ -4,12 +4,15 @@
   <div class="close-container d-flex justify-content-between align-items-center">
     <div class="card p-2 shadow-sm rounded flex-grow-1">
       <div class="info-container">
-        <div *ngFor="let info of additionalInfo" class="info-item">
+        <div *ngFor="let info of additionalInfo; let last = last" class="info-item">
           <span class="info-label">{{ info.label }}:</span>
-          <span class="info-value">{{ info.value }} | </span>
+          <span class="info-value">
+            {{ info.value }}<span *ngIf="!last"> | </span>
+          </span>
         </div>
       </div>
     </div>
+
     <div class="d-flex align-items-center">
       <span>
         <mat-icon>menu</mat-icon>
@@ -707,7 +710,7 @@
                                                     </ng-container>
 
                                                     <ng-container *ngSwitchCase="'select'">
-                                                      <select class="form-control w-100" style="width:220px !important;margin-left:-12px;"
+                                                      <select class="form-control w-100" style="width:200px !important;margin-left:-12px;"
                                                               [id]="subField.id + '_' + i" name="{{ subField.id + '_' + i }}"
                                                               [(ngModel)]="entry[subField.id]" [required]="subField.required"
                                                               #subFieldModel="ngModel">

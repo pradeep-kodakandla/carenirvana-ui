@@ -136,8 +136,11 @@ export class MemberEnrollmentComponent implements OnInit {
 
   displayStatus(m: MemberEnrollment): string {
     // prefer status string if present; otherwise derive from activeFlag
-    if (m.status && m.status.trim()) return m.status;
-    return m.activeFlag === false ? 'Inactive' : 'Active';
+    if (!m) return '';
+    const today = new Date();
+    const endDate = m.endDate ? new Date(m.endDate) : new Date('2999-12-31');
+
+    return endDate >= today ? 'Active' : 'Inactive';
   }
 
   statusClass(m: MemberEnrollment): string {

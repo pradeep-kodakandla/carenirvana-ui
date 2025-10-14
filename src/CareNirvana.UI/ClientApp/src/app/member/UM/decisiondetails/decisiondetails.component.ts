@@ -81,6 +81,7 @@ export class DecisiondetailsComponent implements OnChanges, OnInit {
   ngOnInit(): void {
     // If the parent already has decisionData when this step instantiates,
     // do the same work you do after a click.
+
     if (this.decisionData && (!this.tabs || this.tabs.length === 0)) {
       this.ensureDecisionDetailsEntries();
       this.generateTabs();
@@ -197,9 +198,9 @@ export class DecisiondetailsComponent implements OnChanges, OnInit {
       }));
     }
 
-    if (!this.decisionData.decisionNotes.entries || this.decisionData.decisionNotes.entries.length !== serviceEntries.length) {
-      this.decisionData.decisionNotes.entries = serviceEntries.map(() => ({}));
-    }
+    //if (!this.decisionData.decisionNotes.entries || this.decisionData.decisionNotes.entries.length !== serviceEntries.length) {
+    //  this.decisionData.decisionNotes.entries = serviceEntries.map(() => ({}));
+    //}
 
     if (!this.decisionData.decisionMemberInfo.entries || this.decisionData.decisionMemberInfo.entries.length !== serviceEntries.length) {
       this.decisionData.decisionMemberInfo.entries = serviceEntries.map(() => ({}));
@@ -245,7 +246,10 @@ export class DecisiondetailsComponent implements OnChanges, OnInit {
   getDecisionStatusLabel(value: string): string {
     const field = this.decisionData?.decisionDetails?.fields?.find((f: any) => f.id === 'decisionStatus');
     const match = field?.options?.find((opt: any) => opt.value === value);
-    return match?.label || '';
+    if (!value || value.trim() === '' || value.toLowerCase() === 'select') {
+      return 'Pended';
+    }
+    return match?.label || 'Pended';
   }
 
 
@@ -322,6 +326,7 @@ export class DecisiondetailsComponent implements OnChanges, OnInit {
 
     if (this.decisionData.decisionNotes?.fields && this.decisionData.decisionNotes.entries[tabIndex]) {
       const entry = this.decisionData.decisionNotes.entries[tabIndex];
+
       this.sections.push({
         sectionId: tabId,
         sectionName: "Decision Notes",
@@ -405,15 +410,6 @@ export class DecisiondetailsComponent implements OnChanges, OnInit {
         return;
       }
 
-      //selectedTabs.forEach(tab => {
-      //  const section = this.sections.find(s => s.sectionName === tab.name);
-      //  const fieldToUpdate = section?.fields.find(f => f.id === 'decisionStatus');
-      //  if (fieldToUpdate) {
-      //    fieldToUpdate.value = decisionValue;
-      //    fieldToUpdate.displayLabel = decisionDisplay;
-      //  }
-      //});
-
       alert(`Bulk decision '${decisionField.displayLabel}' applied to ${selectedTabs.length} tab(s).`);
     }
 
@@ -423,7 +419,6 @@ export class DecisiondetailsComponent implements OnChanges, OnInit {
       "Decision Notes": "decisionNotes",
       "Member Provider Decision Info": "decisionMemberInfo"
     };
-
 
 
     selectedTabs.forEach(tab => {
@@ -849,5 +844,13 @@ export class DecisiondetailsComponent implements OnChanges, OnInit {
       (this.tabs || []).forEach(t => (t.selected = false));
     }
   }
+
+  onTabKeydown(e: KeyboardEvent, tab: any): void {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      this.selectTab(tab.id);
+    }
+  }
+
 
 }

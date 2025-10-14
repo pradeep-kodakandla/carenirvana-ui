@@ -80,7 +80,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
 
   counts = {
     risk: { high: 0, medium: 0, low: 0, norisk: 0 },
-    enroll: { active: 0, inactive: 0, soonEnding: 0 }
+    enroll: { active: 0, inactive: 0, soonEnding: 0, noEnrollment: 0 }
   };
 
   ngOnInit(): void {
@@ -252,7 +252,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     this.applyFilters();
   }
 
-  toggleEnroll(state: 'Active' | 'Soon Ending' | 'Inactive'): void {
+  toggleEnroll(state: 'Active' | 'Soon Ending' | 'Inactive' | 'No Enrollment'): void {
     this.filters.enroll.has(state) ? this.filters.enroll.delete(state) : this.filters.enroll.add(state);
     this.applyFilters();
   }
@@ -290,10 +290,12 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
   }
 
   // --- Enrollment classifier reused by counts + filtering ---
-  private getEnrollStatus(m: any): 'Active' | 'Soon Ending' | 'Inactive' {
+  private getEnrollStatus(m: any): 'Active' | 'Soon Ending' | 'Inactive' | 'No Enrollment' {
+    if (m.LevelMap) return 'No Enrollment';
     const today = new Date();
     const start = new Date(m.StartDate);
-    const end = new Date(m.EndDate);
+    const end = m.EnrollmentEndDate ? new Date(m.EnrollmentEndDate) : new Date('2999-12-31'); //new Date(m.EnrollmentEndDate);
+
     if (!(start <= today && end >= today)) return 'Inactive';
     const daysLeft = Math.floor((end.getTime() - today.getTime()) / 86400000);
     return daysLeft <= 30 ? 'Soon Ending' : 'Active';
@@ -311,15 +313,33 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     });
   }
 
+  //private calculateEnrollmentCounts(list: any[]): void {
+  //  this.counts.enroll = { active: 0, soonEnding: 0, inactive: 0 };
+  //  list.forEach(m => {
+  //    const s = this.getEnrollStatus(m);
+  //    if (s === 'Active') this.counts.enroll.active++;
+  //    else if (s === 'Soon Ending') this.counts.enroll.soonEnding++;
+  //    else this.counts.enroll.inactive++;
+  //  });
+  //}
   private calculateEnrollmentCounts(list: any[]): void {
-    this.counts.enroll = { active: 0, soonEnding: 0, inactive: 0 };
+    this.counts.enroll = { active: 0, soonEnding: 0, inactive: 0, noEnrollment: 0 };
+
     list.forEach(m => {
       const s = this.getEnrollStatus(m);
-      if (s === 'Active') this.counts.enroll.active++;
-      else if (s === 'Soon Ending') this.counts.enroll.soonEnding++;
-      else this.counts.enroll.inactive++;
+
+      if (s === 'Active') {
+        this.counts.enroll.active++;
+      } else if (s === 'Soon Ending') {
+        this.counts.enroll.soonEnding++;
+      } else if (s === 'Inactive') {
+        this.counts.enroll.inactive++;
+      } else if (s === 'No Enrollment') {
+        this.counts.enroll.noEnrollment++;
+      }
     });
   }
+
 
   /*Filter Selection Logic - Start*/
 

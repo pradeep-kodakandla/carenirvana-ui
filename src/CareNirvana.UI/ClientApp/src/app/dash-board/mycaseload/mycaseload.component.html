@@ -148,6 +148,10 @@
               <span class="dot red"></span> Inactive
               <span class="count">{{ counts.enroll.inactive }}</span>
             </button>
+            <button type="button" class="pill red" [class.active]="filters.enroll.has('No Enrollment')" (click)="toggleEnroll('No Enrollment')">
+               No Enrollment
+              <span class="count">{{ counts.enroll.noEnrollment }}</span>
+            </button>
           </div>
         </div>
       </div>

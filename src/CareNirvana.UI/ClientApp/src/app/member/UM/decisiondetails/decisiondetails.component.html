@@ -1,18 +1,27 @@
+<div style="text-align:end;">
+  <button class="btn btn-primary" (click)="gotoMDReview()">MD Review</button>
+  <button class="btn btn-primary" (click)="saveDecisionData()" [disabled]="!canAdd">Save</button>
+  <button class="btn btn-primary" (click)="enableBulkDecision = !enableBulkDecision">
+    {{ enableBulkDecision ? 'Cancel Bulk Decision' : 'Bulk Decision' }}
+  </button>
+
+</div>
 <div class="decision-details-layout">
+
   <!-- Left Side: Tabs -->
   <div class="tabs-container">
     <div class="tabs">
       <div *ngFor="let tab of tabs"
            class="tab"
            [class.active]="selectedTabId === tab.id"
-           [ngClass]="tab.bgClass">
+           [ngClass]="tab.bgClass" (click)="selectTab(tab.id)">
         <input *ngIf="enableBulkDecision"
                type="checkbox"
                [(ngModel)]="tab.selected"
                (click)="$event.stopPropagation()"
                style="margin-right: 5px;" />
 
-        <span (click)="selectTab(tab.id)"
+        <span 
               style="cursor: pointer;">
           {{ tab.name }} <span *ngIf="tab.decisionStatusLabel"> ({{ tab.decisionStatusLabel }})</span>
         </span>
@@ -23,14 +32,7 @@
 
   <!-- Right Side: Decision Details -->
   <div class="tab-content">
-    <div style="text-align:end;">
-      <button class="btn btn-primary" (click)="gotoMDReview()">MD Review</button>
-      <button class="btn btn-primary" (click)="saveDecisionData()" [disabled]="!canAdd">Save</button>
-      <button class="btn btn-primary" (click)="enableBulkDecision = !enableBulkDecision">
-        {{ enableBulkDecision ? 'Cancel Bulk Decision' : 'Bulk Decision' }}
-      </button>
 
-    </div>
     <div class="decision-details-container">
       <ng-container *ngFor="let section of sections">
         <mat-card *ngIf="section.sectionName !== 'Decision Notes'" class="section-card">
