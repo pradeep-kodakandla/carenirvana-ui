@@ -162,6 +162,7 @@ export class MemberAlertsComponent implements OnInit, OnDestroy {
   cancelForm(): void {
     this.isFormVisible = false;
     this.selectedId = undefined;
+    this.selectedAlert = undefined;
     this.form = {};
   }
 

@@ -31,8 +31,8 @@
           <div class="timeline-header">
             <div class="timeline-title">
               {{ fullName(item.caregiver) || ('Caregiver #' + item.caregiver.memberCaregiverId) }}
-              <ng-container *ngIf="item.caregiver.isPrimary"> • <strong>Primary</strong></ng-container>
-              <ng-container *ngIf="item.caregiver.isHealthcareProxy"> • <strong>HCP</strong></ng-container>
+              <ng-container *ngIf="item.caregiver.isPrimary"> • <span>Primary</span></ng-container>
+              <!--<ng-container *ngIf="item.caregiver.isHealthcareProxy"> • <span>HCP</span></ng-container>-->
               <ng-container *ngIf="item.caregiver.activeFlag === false"> • <em>Inactive</em></ng-container>
             </div>
 
@@ -43,13 +43,13 @@
           </div>
 
           <div class="timeline-summary">
-            <strong>Email:</strong> {{ item.caregiver.primaryEmail || '—' }}
+            <span class="timeline-title">Email:</span> {{ item.caregiver.primaryEmail || '—' }}
             <ng-container *ngIf="item.addresses?.length">
-              • <strong>City:</strong> {{  '—' }}
+              • <span class="timeline-title">City:</span> {{  '—' }}
             </ng-container>
-            <ng-container *ngIf="item.phones?.length">
+            <!--<ng-container *ngIf="item.phones?.length">
               • <strong>PhoneType:</strong> {{  '—' }}
-            </ng-container>
+            </ng-container>-->
           </div>
         </div>
       </div>
@@ -65,11 +65,11 @@
     </div>
 
     <!-- PAGER -->
-    <div class="d-flex" style="gap:.5rem; margin-top:.5rem;">
+    <!--<div class="d-flex" style="gap:.5rem; margin-top:.5rem;">
       <button class="icon-btn" type="button" (click)="prevPage()" [disabled]="page<=1">⬅️ Prev</button>
       <div style="align-self:center;">Page {{ page }} • {{ total }} total</div>
       <button class="icon-btn" type="button" (click)="nextPage()" [disabled]="page*pageSize >= total">Next ➡️</button>
-    </div>
+    </div>-->
   </div>
 
   <!-- RIGHT: Form / Summary -->

@@ -1,5 +1,4 @@
-<div class="page-header">
-  <!-- Top-right MD Review button -->
+<div class="page-header" >
   <button type="button"
           class="btn btn-primary mdreview-btn"
           (click)="openMdReview()"
@@ -51,37 +50,6 @@
           </div>
         </div>
 
-        <!--<div class="compact-field">
-      <mat-form-field appearance="outline" class="full-width compact-mat"
-                      style="--mat-form-field-container-height:40px; --mat-form-field-container-vertical-padding:6px;">
-        <mat-label>Priority</mat-label>
-
-        <mat-select [formControl]="priorityCtrl"
-                    (openedChange)="onOpen($event)"
-                    (closed)="onClosed()"
-                    panelClass="select-with-search-panel">-->
-        <!-- Search row -->
-        <!--<mat-option disabled class="search-option">
-        <input #searchInput
-               matInput
-               type="text"
-               placeholder="Search..."
-               [formControl]="priorityFilterCtrl"
-               (click)="$event.stopPropagation()"
-               (keydown)="onSearchKeydown($event)">
-      </mat-option>-->
-        <!-- Filtered options -->
-        <!--<mat-option *ngFor="let p of filteredPriorities$ | async" [value]="p">
-              {{ p }}
-            </mat-option>
-
-            <mat-option *ngIf="(filteredPriorities$ | async)?.length === 0" disabled>
-              No results
-            </mat-option>
-          </mat-select>
-        </mat-form-field>
-
-      </div>-->
         <!-- Priority -->
         <div class="form-outline dropdown-container">
           <label class="floating-label">Priority <span class="text-danger">*</span></label>
@@ -279,8 +247,8 @@
               </td>
               <td>{{ line.serviceCode }}</td>
               <td>{{ line.description }}</td>
-              <td>{{ toDisplayFormat(line.fromDate) }}</td>
-              <td>{{ toDisplayFormat(line.toDate) }}</td>
+              <td>{{ toDisplayFormat(line.fromDate) | date:'MM/dd/yyyy' }}</td>
+              <td>{{ toDisplayFormat(line.toDate)| date:'MM/dd/yyyy' }}</td>
               <td>{{ line.requested }}</td>
               <td>{{ line.approved }}</td>
               <td>{{ line.denied }}</td>
@@ -334,7 +302,7 @@
 
 
           <div class="kv-row">
-            <div class="kv-inline"><span class="kv-label">From Date</span><span class="kv-value">{{ toDisplayFormat(line.fromDate) }}</span></div>
+            <div class="kv-inline"><span class="kv-label">From Date</span><span class="kv-value">{{ toDisplayFormat(line.fromDate)  }}</span></div>
             <div class="kv-inline"><span class="kv-label">To Date</span><span class="kv-value">{{ toDisplayFormat(line.toDate) }}</span></div>
             <div class="kv-inline"><span class="kv-label">Requested</span><span class="kv-value">{{ line.requested }}</span></div>
             <div class="kv-inline"><span class="kv-label">Approved</span><span class="kv-value">{{ line.approved }}</span></div>
@@ -366,37 +334,36 @@
 
       <!-- Actions (unchanged) -->
       <div class="button-group">
-        <button type="button" (click)="submitReview()" >
+        <button type="button" (click)="submitReview()">
           Submit for Medical Director Review
         </button>
-        <button type="button" (click)="cancelReview(); closeMdReview()" >Cancel</button>
+        <button type="button" (click)="cancelReview(); closeMdReview()">Cancel</button>
       </div>
     </form>
   </div>
 </ng-container>
 
-<ng-container *ngIf="!showMdReview">
-  <div class="activity-layout">
-    <!--*ngIf="hasAnyActivity()" Left: Activity summary cards -->
-    <div class="left-column">
-      <div class="sl-card" *ngFor="let line of activities">
-        <div *ngIf="line.Activity" class="sl-card-body">
-          <div class="kv-row">
-            <!--<div><span class="kv-label">AuthActivityId</span><span class="kv-value">{{ line.Activity.AuthActivityId }}</span></div>-->
-            <div><span class="kv-label">Activity Type</span><span class="kv-value">{{ line.Activity.ActivityTypeId }}</span></div>
-            <div><span class="kv-label">Priority</span><span class="kv-value">{{ line.Activity.PriorityId }}</span></div>
-            <div><span class="kv-label">Due Date</span><span class="kv-value">{{ toDisplayFormat(line.Activity.DueDate) }}</span></div>
-            <div><span class="kv-label">Status</span><span class="kv-value">{{ line.Activity.Status }}</span></div>
-          </div>
-        </div>
+<!--<ng-container *ngIf="!showMdReview">
+  <div class="activity-layout">-->
+<!--*ngIf="hasAnyActivity()" Left: Activity summary cards -->
+<!--<div class="left-column">
+  <div class="sl-card" *ngFor="let line of activities">
+    <div *ngIf="line.Activity" class="sl-card-body">
+      <div class="kv-row">
+        <div><span class="kv-label">Activity Type</span><span class="kv-value">{{ line.Activity.ActivityTypeId }}</span></div>
+        <div><span class="kv-label">Priority</span><span class="kv-value">{{ line.Activity.PriorityId }}</span></div>
+        <div><span class="kv-label">Due Date</span><span class="kv-value">{{ toDisplayFormat(line.Activity.DueDate) }}</span></div>
+        <div><span class="kv-label">Status</span><span class="kv-value">{{ line.Activity.Status }}</span></div>
       </div>
     </div>
-
-    <!-- Right: Activity details with service lines -->
-    <div class="right-column">
+  </div>
+</div>-->
+<!-- Right: Activity details with service lines -->
+<!--<div class="right-column">
       <div class="sl-card" *ngFor="let activity of activities">
         <div class="sl-card-header">
-          <!--<strong>Activity #{{ activity.Activity.AuthActivityId }}</strong>-->
+          <strong>Activity #{{ activity.Activity.AuthActivityId }}</strong>
+          <strong>Activity #{{ activity.Activity.ActivityTypeId }}</strong>
           <span class="mdr-badge" [ngClass]="mdStatusClass(activity.Activity.MdReviewStatus)">
             {{ activity.Activity.MdReviewStatus }}
           </span>
@@ -416,4 +383,66 @@
       </div>
     </div>
   </div>
-  </ng-container>
+</ng-container>-->
+<ng-container *ngIf="!showMdReview">
+  <div class="activity-container">
+    <mat-accordion multi="true">
+      <mat-expansion-panel *ngFor="let activity of activities" class="activity-card" [expanded]="true">
+        <mat-expansion-panel-header>
+          <div class="header-left">
+            <span class="activity-id">Activity: {{ getActivityTypeLabelById(activity.Activity.ActivityTypeId) }}</span>
+          </div>
+          <!--<div class="header-right">
+            <span class="badge" [ngClass]="mdStatusClass(activity.Activity.MdReviewStatus)">
+              {{ activity.Activity.MdReviewStatus || 'Pending' }}
+            </span>
+          </div>-->
+        </mat-expansion-panel-header>
+
+        <!-- Activity Summary -->
+        <div class="activity-summary">
+          <div class="kv-pair">
+            <span class="kv-label">Priority</span>
+            <span class="kv-value">{{ activity.Activity.PriorityId }}</span>
+          </div>
+          <div class="kv-pair">
+            <span class="kv-label">Due Date</span>
+            <span class="kv-value">{{ toDisplayFormat(activity.Activity.DueDate) }}</span>
+          </div>
+          <div class="kv-pair">
+            <span class="kv-label">Status</span>
+            <span class="kv-value" >{{ activity.Activity.Status || 'Pending' }}</span>
+          </div>
+        </div>
+
+
+        <!-- Service Line Table -->
+        <table class="service-line-table" *ngIf="activity.Lines?.length">
+          <thead>
+            <tr>
+              <th>Service Code</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Requested</th>
+              <th>Approved</th>
+              <th>Denied</th>
+              <th>Initial Recommendation</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let line of activity.Lines">
+              <td>{{ line.ServiceCode }}</td>
+              <td>{{ toDisplayFormat(line.FromDate) }}</td>
+              <td>{{ toDisplayFormat(line.ToDate) }}</td>
+              <td>{{ line.Requested }}</td>
+              <td>{{ line.Approved }}</td>
+              <td>{{ line.Denied }}</td>
+              <td>{{ line.InitialRecommendation }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </mat-expansion-panel>
+    </mat-accordion>
+  </div>
+</ng-container>
+

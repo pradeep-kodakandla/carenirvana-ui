@@ -36,8 +36,17 @@
           </div>
 
           <div class="timeline-summary">
-             {{ doc.documentName }}<br />
+            {{ doc.documentName }}<br />
           </div>
+        </div>
+      </div>
+      <!-- Empty state -->
+      <div *ngIf="!loading &&  dataSource.filteredData.length === 0" class="timeline-item">
+        <div class="timeline-content">
+          <div class="timeline-header">
+            <div class="timeline-title">No documents found</div>
+          </div>
+          <div class="timeline-summary">Try a different search filter.</div>
         </div>
       </div>
     </div>

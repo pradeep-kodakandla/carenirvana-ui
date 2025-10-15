@@ -553,11 +553,28 @@ select.form-control {
 /* Header layout */
 .page-header {
   display: flex;
+  justify-content: flex-end;
   align-items: center;
-  justify-content: space-between; /* pushes button to the right */
-  gap: 12px;
-  margin-bottom: 12px;
+  padding: 12px 20px;
+  /*  background: #f8f9fa;*/
+  /*  border-bottom: 1px solid #e0e0e0;
+*/
 }
+
+.mdreview-btn {
+  background-color: #1976d2;
+  color: #fff;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 6px 16px;
+  transition: all 0.2s ease-in-out;
+}
+
+  .mdreview-btn:hover {
+    background-color: #125aa3;
+    transform: translateY(-1px);
+  }
+
 
 .page-title {
   margin: 0;
@@ -583,3 +600,117 @@ select.form-control {
   border-bottom: 1px solid #eee;
 }
 
+
+.activity-container {
+  display: flex;
+  flex-direction: column;
+
+}
+
+.activity-card {
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  background: #fff;
+}
+
+.mat-expansion-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f9fafb;
+  border-bottom: 1px solid #eee;
+  height: 40px !important;
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.activity-id {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.activity-type {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+  .badge.Pending {
+    background-color: #ffeeba;
+    color: #856404;
+  }
+
+  .badge.Completed {
+    background-color: #d4edda;
+    color: #155724;
+  }
+
+  .badge['In Progress'] {
+    background-color: #cce5ff;
+    color: #004085;
+  }
+
+  .badge.Denied {
+    background-color: #f8d7da;
+    color: #721c24;
+  }
+
+.activity-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  padding: 12px 16px;
+  background: #fff;
+  font-size: 0.95rem;
+}
+
+.kv-pair {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kv-label {
+  font-weight: 600;
+  color: #444;
+}
+
+.kv-value {
+  color: #222;
+  font-weight: 500;
+}
+
+
+.service-line-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+}
+
+  .service-line-table th,
+  .service-line-table td {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+    font-size: 0.9rem;
+  }
+
+  .service-line-table th {
+    background: #f4f5f7;
+    font-weight: 600;
+    color: #444;
+  }

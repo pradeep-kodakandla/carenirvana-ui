@@ -34,7 +34,7 @@
           <div class="timeline-header">
             <div class="timeline-title">
               {{ a.cfgAlertName || ('Alert #' + a.alertId) }}
-              <ng-container *ngIf="a.alertStatusName"> • <strong>{{ a.alertStatusName }}</strong></ng-container>
+
               <ng-container *ngIf="a.activeFlag === false"> • <em>Inactive</em></ng-container>
             </div>
             <span class="activity-actions" (click)="$event.stopPropagation()">
@@ -48,9 +48,10 @@
           <div class="timeline-summary">
             <!--<strong>Member:</strong>
             {{ (a.memberLastName || '') + (a.memberFirstName ? ', ' + a.memberFirstName : '') || '—' }}-->
-            • <strong>Date:</strong> {{ a.alertDate | date:'MM/dd/yyyy, h:mm a' }}
-            <ng-container *ngIf="a.acknowledgedDate"> • <strong>Ack:</strong> {{ a.acknowledgedDate | date:'MM/dd/yyyy, h:mm a' }}</ng-container>
-            <ng-container *ngIf="a.dismissedDate"> • <strong>Dismissed:</strong> {{ a.dismissedDate | date:'MM/dd/yyyy, h:mm a' }}</ng-container>
+            <ng-container *ngIf="a.alertStatusName"> <span class="timeline-title">Status: </span>{{ a.alertStatusName }}</ng-container>
+            • <span class="timeline-title"> Date:</span> {{ a.alertDate | date:'MM/dd/yyyy h:mm:ss a' }}
+            <ng-container *ngIf="a.acknowledgedDate"> • <span class="timeline-title">Ack:</span> {{ a.acknowledgedDate | date:'MM/dd/yyyy h:mm:ss a' }}</ng-container>
+            <ng-container *ngIf="a.dismissedDate"> • <span class="timeline-title">Dismissed:</span> {{ a.dismissedDate | date:'MM/dd/yyyy h:mm:ss a' }}</ng-container>
           </div>
         </div>
       </div>
@@ -67,11 +68,11 @@
     </div>
 
     <!-- Pager -->
-    <div class="d-flex" style="gap:.5rem; margin-top:.5rem;">
+    <!--<div class="d-flex" style="gap:.5rem; margin-top:.5rem;">
       <button class="icon-btn" type="button" (click)="prevPage()" [disabled]="page<=1">⬅️ Prev</button>
       <div style="align-self:center;">Page {{ page }} • {{ total }} total</div>
       <button class="icon-btn" type="button" (click)="nextPage()" [disabled]="page*pageSize >= total">Next ➡️</button>
-    </div>
+    </div>-->
   </div>
 
   <!-- RIGHT: Form / Summary -->
@@ -86,25 +87,24 @@
           <p><strong>Status:</strong> {{ selectedAlert.alertStatusCode || '—' }}</p>
           <p>
             <strong>Alert Date:</strong>
-            {{ selectedAlert.alertDate ? (selectedAlert.alertDate | date:'MM/dd/yyyy, h:mm a') : '—' }}
+            {{ selectedAlert.alertDate ? (selectedAlert.alertDate | date:'MM/dd/yyyy h:mm:ss a') : '—' }}
           </p>
           <p>
             <strong>Acknowledged:</strong>
-            {{ selectedAlert.acknowledgedDate ? (selectedAlert.acknowledgedDate | date:'MM/dd/yyyy, h:mm a') : '—' }}
+            {{ selectedAlert.acknowledgedDate ? (selectedAlert.acknowledgedDate | date:'MM/dd/yyyy h:mm:ss a') : '—' }}
           </p>
           <p>
             <strong>Dismissed:</strong>
-            {{ selectedAlert.dismissedDate ? (selectedAlert.dismissedDate | date:'MM/dd/yyyy, h:mm a') : '—' }}
+            {{ selectedAlert.dismissedDate ? (selectedAlert.dismissedDate | date:'MM/dd/yyyy h:mm:ss a') : '—' }}
           </p>
         </div>
 
         <div class="actions">
           <button class="btn-primary" type="button" (click)="acknowledge(selectedAlert)">Acknowledge</button>
           <button class="btn-warn" type="button" (click)="dismiss(selectedAlert)">Dismiss</button>
-          <button class="btn-outline" type="button" (click)="clearDates(selectedAlert)">Clear</button>
+          <button class="btn-outline" type="button" (click)="cancelForm()">Cancel</button>
         </div>
       </div>
-
     </ng-container>
 
     <ng-template #summaryTpl>

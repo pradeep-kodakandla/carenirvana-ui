@@ -85,6 +85,7 @@ export interface MemberCareStaffView {
   roleName?: string;
   isPrimary?: boolean;
   activeFlag?: boolean;
+  startDate?: string | Date | null;
 }
 
 export interface MemberCareStaffCreateRequest {
@@ -116,9 +117,9 @@ export class MemberrelationService {
 
 
   private caregiverBase = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/MemberCareGiver';
-  // private caregiverBase = 'https://localhost:51346/api/MemberCareGiver';
+  // private caregiverBase = 'https://localhost:7201/api/MemberCareGiver';
   private careteamBase = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/MemberCareTeam';
-  //private careteamBase = 'https://localhost:51346/api/MemberCareTeam';
+  //private careteamBase = 'https://localhost:7201/api/MemberCareTeam';
 
   constructor(private http: HttpClient) { }
 

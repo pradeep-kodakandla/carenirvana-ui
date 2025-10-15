@@ -47,10 +47,10 @@
           </div>
 
           <div class="timeline-summary">
-            <strong>Status:</strong> {{ p._statusLabel || p.programStatusId }}
-            <ng-container *ngIf="p._statusReasonLabel"> • <strong>Reason:</strong> {{ p._statusReasonLabel }}</ng-container>
-            <ng-container *ngIf="p._referralSourceLabel"> • <strong>Referral:</strong> {{ p._referralSourceLabel }}</ng-container>
-            <ng-container *ngIf="p._assignedToLabel"> • <strong>Assigned:</strong> {{ p._assignedToLabel }}</ng-container>
+            <span class="timeline-title">Status:</span> {{ p._statusLabel || p.programStatusId }}
+            <ng-container *ngIf="p._statusReasonLabel"> • <span class="timeline-title">Reason:</span> {{ p._statusReasonLabel }}</ng-container>
+            <ng-container *ngIf="p._referralSourceLabel"> • <span class="timeline-title">Referral:</span> {{ p._referralSourceLabel }}</ng-container>
+            <ng-container *ngIf="p._assignedToLabel"> • <span class="timeline-title">Assigned:</span> {{ p._assignedToLabel }}</ng-container>
             <ng-container *ngIf="p.activeFlag === false"> • <em>Inactive</em></ng-container>
           </div>
         </div>
@@ -68,11 +68,11 @@
     </div>
 
     <!-- PAGER -->
-    <div class="d-flex" style="gap:.5rem; margin-top: .5rem;">
+    <!--<div class="d-flex" style="gap:.5rem; margin-top: .5rem;">
       <button class="icon-btn" type="button" (click)="prevPage()" [disabled]="page<=1">⬅️ Prev</button>
       <div style="align-self:center;">Page {{ page }} • {{ total }} total</div>
       <button class="icon-btn" type="button" (click)="nextPage()" [disabled]="page*pageSize >= total">Next ➡️</button>
-    </div>
+    </div>-->
   </div>
 
   <!-- RIGHT: Form / AI Summary -->

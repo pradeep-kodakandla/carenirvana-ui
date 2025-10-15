@@ -32,7 +32,7 @@
           <div class="timeline-header">
             <div class="timeline-title">
               {{ item.userName || ('User #' + item.userId) }}
-              <ng-container *ngIf="item.isPrimary"> • <strong>Primary</strong></ng-container>
+              <ng-container *ngIf="item.isPrimary"> • <span class="timeline-title">Primary</span></ng-container>
               <ng-container *ngIf="item.activeFlag === false"> • <em>Inactive</em></ng-container>
             </div>
 
@@ -43,8 +43,8 @@
           </div>
 
           <div class="timeline-summary">
-            <strong>Role:</strong> {{ item.roleName || '—' }} •
-            <strong>User ID:</strong> {{ item.userId }}
+            <span class="timeline-title"> Role: </span> {{ 'Care Manager' }} •
+            <span class="timeline-title">Start Date:</span> {{ item.startDate | date:'MM/dd/yyyy'}}
           </div>
         </div>
       </div>
@@ -61,11 +61,11 @@
     </div>
 
     <!-- PAGER -->
-    <div class="d-flex" style="gap:.5rem; margin-top: .5rem;">
+    <!--<div class="d-flex" style="gap:.5rem; margin-top: .5rem;">
       <button class="icon-btn" type="button" (click)="prevPage()" [disabled]="page<=1">⬅️ Prev</button>
       <div style="align-self:center;">Page {{ page }} • {{ total }} total</div>
       <button class="icon-btn" type="button" (click)="nextPage()" [disabled]="page*pageSize >= total">Next ➡️</button>
-    </div>
+    </div>-->
   </div>
 
   <!-- RIGHT: Form / Summary -->

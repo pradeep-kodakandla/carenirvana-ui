@@ -172,6 +172,7 @@ textarea {
   max-height: 150px;
   overflow: hidden;
   padding: 10px;
+  border-bottom: 1px solid #ddd;
 }
 
 .timeline-dot {
@@ -206,8 +207,11 @@ textarea {
 }
 
 .timeline-title {
-  font-weight: bold;
-  color: #333;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(98, 108, 113, 1);
+  letter-spacing: 0.02em;
+  padding: 5px 2px 5px;
 }
 
 .timeline-summary {

@@ -124,8 +124,10 @@ export class MemberNotesComponent implements OnInit {
     if (!this.memberDetailsId) {
       this.memberDetailsId = Number(sessionStorage.getItem("selectedMemberDetailsId"));
     }
-    this.loadNoteTypes();
+
     this.reload();
+    this.loadNoteTypes();
+
   }
 
 
@@ -338,6 +340,7 @@ export class MemberNotesComponent implements OnInit {
   cancelForm() {
     this.isFormVisible = false;
     this.editingId = null;
+    this.showValidationErrors = false;
   }
 
   deleteNote(note: any) {

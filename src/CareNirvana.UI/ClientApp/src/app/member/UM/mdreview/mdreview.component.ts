@@ -122,7 +122,6 @@ export class MdreviewComponent implements OnInit, OnChanges {
     this.applyAssignmentTypeSideEffects(this.assignmentTypeDisplay);
     this.loadActivityTypes();
     this.loadUsers();
-    console.log('NGONIT AuthDetailId:', this.authDetailId);
     this.loadMdReviewActivities(this.authDetailId || undefined);
     // Default Priority to ID=2 (Routine) and reflect label in the input
     this.mdrForm.get('priority')?.setValue(2);
@@ -336,8 +335,8 @@ export class MdreviewComponent implements OnInit, OnChanges {
   toDisplayFormat(input: any): string {
     const dt = this.parseToDate(input);
     if (!dt) return '';
-    return `${this.pad2(dt.getMonth() + 1)}/${this.pad2(dt.getDate())}/${dt.getFullYear()} `
-      + `${this.pad2(dt.getHours())}:${this.pad2(dt.getMinutes())}:${this.pad2(dt.getSeconds())}`;
+    return `${this.pad2(dt.getMonth() + 1)}/${this.pad2(dt.getDate())}/${dt.getFullYear()} `;
+    /*+ `${this.pad2(dt.getHours())}:${this.pad2(dt.getMinutes())}:${this.pad2(dt.getSeconds())}`*/
   }
 
   private parseToDate(input: any): Date | null {
@@ -587,7 +586,7 @@ export class MdreviewComponent implements OnInit, OnChanges {
   // Optional: stable trackBy if you have an id; else fall back to index
   trackByLine = (_: number, line: any) => line?.id ?? line?.decisionLineId ?? _;
 
-  
+
   getMdStatus(serviceObject: any): string {
     const serviceCode = serviceObject?.serviceCode;
 
@@ -647,6 +646,11 @@ export class MdreviewComponent implements OnInit, OnChanges {
   loadMdReviewActivities(authDetailId?: number) {
     this.activityService.getMdReviewActivities(undefined, authDetailId ?? undefined).subscribe(res => {
       console.log('Response Activities loaded:', res);
+      if (res.length > 0)
+        this.showMdReview = false;
+      else
+        this.showMdReview = true;
+
       this.activities = res;
       this.rebuildMdStatusIndex();
       this.enrichServiceLinesWithMdPerLineStatus();
@@ -755,7 +759,7 @@ export class MdreviewComponent implements OnInit, OnChanges {
       const mdrStatus = line?.Activity?.MdReviewStatus;// this.statusLabelForKey(codeKey, idKey);
       return { ...line, mdrStatus };
     });
-    
+
     // Write back to the collection you bind in the template (displayLines)
     this.displayLines = enriched;
 
@@ -922,5 +926,10 @@ export class MdreviewComponent implements OnInit, OnChanges {
 
   closeMdReview(): void {
     this.showMdReview = false;
+  }
+
+  getActivityTypeLabelById(id: any): string {
+    const found = this.activityTypes?.find(t => t.value == id);
+    return found ? found.label : id;
   }
 }
