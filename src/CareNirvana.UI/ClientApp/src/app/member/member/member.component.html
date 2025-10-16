@@ -1,7 +1,8 @@
 <div class="tab-container">
   <!-- 🌟 Main Tabs Navigation -->
   <ul class="tab-header nav nav-tabs" role="tablist" *ngIf="!showAuthorizationComponent">
-    <li class="nav-item" *ngFor="let tab of getOrderedMainTabs(); let i = index"> <!--*ngFor="let tab of mainTabs; let i = index">-->
+    <li class="nav-item" *ngFor="let tab of getOrderedMainTabs(); let i = index">
+      <!--*ngFor="let tab of mainTabs; let i = index">-->
       <button class="nav-link"
               [class.active]="i === 0"
               data-bs-toggle="tab"
@@ -31,9 +32,14 @@
           <app-authorization [authNumber]="authNumber" [memberId]="memberId" (cancel)="onCancel()"></app-authorization>
         </div>
       </div>
+      <!---->
 
+      <div *ngIf="tab.name === 'Member Journey'">
+        <app-memberjourney ></app-memberjourney>
+      </div>
       <!-- 🌟 Child Tabs and Content -->
-      <ng-container *ngIf="tab.name !== 'Authorization'">
+      <ng-container *ngIf="tab.name !== 'Authorization' && tab.name !== 'Member Journey'">
+
         <!-- Child Tab Headers -->
         <ul class="child-tab-header nav nav-tabs mt-2" role="tablist" *ngIf="tab.pages.length > 0">
           <li class="nav-item" *ngFor="let page of getOrderedPages(tab); let j = index">
@@ -64,13 +70,14 @@
 
             <ng-container [ngSwitch]="page.name">
               <app-member-info *ngSwitchCase="'Member Info'"></app-member-info>
+              <!--<app-memberjourney *ngSwitchCase="'Member Info'"></app-memberjourney>-->
               <app-member-tasksummary *ngSwitchCase="'Task Summary'"></app-member-tasksummary>
               <app-member-program *ngSwitchCase="'Program'"></app-member-program>
               <app-member-enrollment *ngSwitchCase="'Enrollment'"></app-member-enrollment>
               <app-member-careteam *ngSwitchCase="'Care Team'"></app-member-careteam>
               <app-member-notes *ngSwitchCase="'Health Notes'" [memberId]="memberId"></app-member-notes>
               <app-member-documents *ngSwitchCase="'Member Documents'" [memberId]="memberId"></app-member-documents>
-              <app-member-caregiver *ngSwitchCase="'Caregiver'" ></app-member-caregiver>
+              <app-member-caregiver *ngSwitchCase="'Caregiver'"></app-member-caregiver>
               <app-member-alerts *ngSwitchCase="'Alerts'"></app-member-alerts>
               <p *ngSwitchDefault>📌 {{ page.name }} content...</p>
             </ng-container>

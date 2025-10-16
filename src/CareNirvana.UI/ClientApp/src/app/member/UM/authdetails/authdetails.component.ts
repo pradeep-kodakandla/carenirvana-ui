@@ -90,7 +90,7 @@ export class AuthdetailsComponent implements OnInit {
             authDetailId: item.Id || '',
             authNumber: item.AuthNumber || '',
             authTypeId: authTypeMap.get(item.AuthTypeId) || '',
-            memberId: item.MemberId || '',
+            memberId: item.memberDetailsId || '',
             authDueDate: item.AuthDueDate || '',
             nextReviewDate: item.NextReviewDate || '',
             treatmentType: item.TreatmentType || ''

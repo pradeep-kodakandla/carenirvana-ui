@@ -69,12 +69,11 @@ export class MemberAlertsComponent implements OnInit, OnDestroy {
   // --------- LOAD ----------
   load(): void {
     this.loading = true;
-    console.log('Loading alerts for memberDetailsIds', this.memberDetailsIds);
+
     this.api.getAlerts(this.memberDetailsIds, undefined, true, this.page, this.pageSize)
       .pipe(finalize(() => this.loading = false), takeUntil(this.destroy$))
       .subscribe({
         next: res => {
-          console.log('Loaded alerts', res);
           this.items = res.items ?? [];
           this.total = res.total ?? 0;
           this.applyFilter(); // refresh filtered after load

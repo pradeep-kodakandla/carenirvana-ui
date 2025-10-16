@@ -37,6 +37,7 @@ import { MemberNotesComponent } from './member/member-notes/member-notes.compone
 import { MemberProgramComponent } from './member/member-program/member-program.component';
 import { MemberTasksummaryComponent } from './member/member-tasksummary/member-tasksummary.component';
 import { MemberInfoComponent } from './member/member-info/member-info.component';
+import { MemberJourneyComponent } from './member/memberjourney/memberjourney.component';
 import { AuthorizationComponent } from './member/UM/authorization/authorization.component';
 import { DecisiondetailsComponent } from './member/UM/decisiondetails/decisiondetails.component';
 import { DecisionbulkdialogComponent } from './member/UM/decisionbulkdialog/decisionbulkdialog.component';
@@ -156,7 +157,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
     FaxesComponent,
     MemberAlertsComponent,
     MemberCareplanComponent,
-    MemberCareteamComponent, MemberCaregiverComponent,
+    MemberCareteamComponent, MemberCaregiverComponent, MemberJourneyComponent,
     MemberDocumentsComponent,
     MemberEnrollmentComponent,
     MemberNotesComponent,
@@ -215,7 +216,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
       { path: 'member-alerts', component: MemberAlertsComponent },
       { path: 'member-careplan', component: MemberCareplanComponent },
       { path: 'member-careteam', component: MemberCareteamComponent },
-      { path: 'member-caregiver', component: MemberCaregiverComponent }, 
+      { path: 'member-caregiver', component: MemberCaregiverComponent },
       { path: 'member-document', component: MemberDocumentsComponent },
       { path: 'member-enrollment', component: MemberEnrollmentComponent },
       { path: 'member-notes', component: MemberNotesComponent },
@@ -230,7 +231,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
       { path: 'member-decisionbulk', component: DecisionbulkdialogComponent },
       { path: 'member-mdreview', component: MdreviewComponent },
       { path: 'member-smartauthcheck', component: SmartauthcheckComponent },
-
+      { path: 'member-journey', component: MemberJourneyComponent },
 
 
 

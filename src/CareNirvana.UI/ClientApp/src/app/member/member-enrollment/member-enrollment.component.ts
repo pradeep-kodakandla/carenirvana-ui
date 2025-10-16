@@ -35,7 +35,6 @@ export class MemberEnrollmentComponent implements OnInit {
     // Example using your snippet:
     this.memberEnrollment.getMemberEnrollment(Number(sessionStorage.getItem("selectedMemberDetailsId"))).subscribe(
       (data) => {
-        console.log('Fetched member enrollment data:', data);
         if (data) this.setMemberEnrollments(data);
       },
       (error) => console.error('Error fetching member enrollment data:', error)
@@ -102,13 +101,13 @@ export class MemberEnrollmentComponent implements OnInit {
 
     const byStatus = (m: MemberEnrollment) => {
       if (this.statusFilter === 'All') return true;
-      console.log('Filtering by status:', this.statusFilter, m);
+
       // use explicit status label first; fallback to activeFlag
       const statusLabel = (m.status ?? '').toLowerCase();
       const isActive =
         statusLabel ? ['active', 'inactive', 'open'].some(s => statusLabel == s)
           : (m.activeFlag === true);
-      console.log('Determined isActive:', isActive, 'from statusLabel:', statusLabel, 'and activeFlag:', m.activeFlag);
+
       return this.statusFilter === 'Active' ? isActive : !isActive;
     };
 

@@ -320,7 +320,7 @@ export class MemberNotesComponent implements OnInit {
   editNote(note: MemberNoteDto) {
     this.isFormVisible = true;
     this.setNoteTypeFieldForEdit(note);
-    console.log('Editing note:', note);
+    
     this.editingId = note.memberNoteId ?? note.memberHealthNotesId ?? note.id ?? null;
 
     this.setFieldValue('noteTypeId', note.noteTypeId ?? null);
@@ -570,7 +570,7 @@ export class MemberNotesComponent implements OnInit {
         }
       }
 
-      console.log('Loaded note types (normalized):', options);
+
     });
   }
 

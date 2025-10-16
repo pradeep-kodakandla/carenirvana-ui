@@ -1,0 +1,394 @@
+.mj-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* TIMELINE */
+.time-anchor {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 8px 36px;
+}
+
+  .time-anchor .anchor-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #1976d2;
+    display: inline-block;
+  }
+
+  .time-anchor .anchor-date {
+    color: #1976d2;
+    font-weight: 600;
+  }
+
+.event-row {
+  display: grid;
+  grid-template-columns: 1fr 24px minmax(540px, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 8px 8px;
+}
+
+.rail {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+  .rail .dot {
+    width: 10px;
+    height: 10px;
+    background: #1976d2;
+    border-radius: 50%;
+    z-index: 1;
+  }
+
+  .rail .line {
+    position: absolute;
+    top: -24px;
+    bottom: -24px;
+    width: 2px;
+    background: #90caf9;
+  }
+
+.card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.12);
+  padding: 12px 14px;
+  border-left: 4px solid var(--edge-color, #42a5f5);
+}
+
+  .card.right-border {
+    border-left: 0;
+    border-right: 4px solid var(--edge-color, #66bb6a);
+  }
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+  .card-header .title {
+    color: #1565c0;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .card-header .actions {
+    display: flex;
+    gap: 8px;
+  }
+
+.meta {
+  margin-top: 8px;
+  color: #607d8b;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* TABLE */
+.table-wrap .full {
+  width: 100%;
+}
+
+.footer-chips .chip:hover {
+  transform: translateY(-2px);
+}
+
+
+
+/* PAGER */
+.pager {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+
+/* === Toolbar === */
+.mj-toolbar {
+  display: grid;
+  grid-template-columns: 250px auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding-top: 8px;
+  padding-left: 8px;
+}
+
+.w-200 {
+  width: 200px;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.segmented {
+  display: inline-flex;
+  background: #f1f3f5;
+  border-radius: 999px;
+}
+
+  .segmented button {
+    border-radius: 999px;
+    min-width: 68px;
+    text-transform: none;
+  }
+
+    .segmented button.active {
+      background: #e3eafc;
+      color: #1a73e8;
+      font-weight: 600;
+    }
+
+.apply-btn {
+  border-radius: 999px;
+  padding: 0 18px;
+}
+
+/* === Chip bar === */
+.mj-chipbar {
+  display: flex;
+  margin-bottom: 8px;
+}
+
+  .mj-chipbar .mat-mdc-chip {
+    background: #eef2ff;
+  }
+
+/* === Alternating timeline === */
+.timeline-alt {
+  position: relative;
+  padding: 16px 0 24px 0;
+}
+
+  .timeline-alt .rail {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #90caf9;
+    transform: translateX(-50%);
+    z-index: 0;
+  }
+
+  .timeline-alt .date-pill {
+    display: flex;
+    justify-content: center;
+    margin: 16px 0 8px;
+    position: relative;
+    z-index: 1;
+  }
+
+    .timeline-alt .date-pill span {
+      background: #1a73e8;
+      color: #fff;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-weight: 600;
+      box-shadow: 0 1px 3px rgba(0,0,0,.12);
+    }
+
+  /* A single row with left slot, center mid, right slot */
+  .timeline-alt .row {
+    display: grid;
+    grid-template-columns: 1fr 60px 1fr; /* left | rail | right */
+    gap: 12px;
+    align-items: start;
+    margin: 10px 0;
+    position: relative;
+  }
+
+  .timeline-alt .mid {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+    .timeline-alt .mid .dot {
+      width: 10px;
+      height: 10px;
+      background: #1976d2;
+      border-radius: 50%;
+      z-index: 2;
+      box-shadow: 0 0 0 3px #e3f2fd;
+    }
+
+    .timeline-alt .mid .line {
+      position: absolute;
+      top: -24px;
+      bottom: -24px;
+      width: 2px;
+      background: #90caf9;
+      z-index: 1;
+    }
+
+  /* Cards on left/right slots */
+  .timeline-alt .slot {
+    position: relative;
+  }
+
+  .timeline-alt .card {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 2px 6px rgba(0,0,0,.08);
+    padding: 12px 14px;
+    border-left: 4px solid var(--edge-color, #42a5f5);
+  }
+
+    .timeline-alt .card.right-edge {
+      border-left: 0;
+      border-right: 4px solid var(--edge-color, #66bb6a);
+    }
+
+    .timeline-alt .card::after {
+      content: '';
+      position: absolute;
+      top: 16px;
+      width: 12px;
+      height: 12px;
+      background: #fff;
+      transform: rotate(45deg);
+      box-shadow: 1px -1px 2px rgba(0,0,0,.05);
+    }
+
+  .timeline-alt .slot.left .card {
+    margin-right: 10px;
+  }
+
+  .timeline-alt .slot.right .card {
+    margin-left: 10px;
+  }
+
+  .timeline-alt .slot.left .card::after {
+    right: -6px; /* arrow towards rail */
+    border-left: 1px solid rgba(0,0,0,.06);
+    border-bottom: 1px solid rgba(0,0,0,.06);
+  }
+
+  .timeline-alt .slot.right .card::after {
+    left: -6px;
+    border-top: 1px solid rgba(0,0,0,.06);
+    border-right: 1px solid rgba(0,0,0,.06);
+  }
+
+/* Card header/meta */
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+  .card-header .title {
+    color: #1565c0;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+.meta {
+  margin-top: 8px;
+  color: #607d8b;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.form-outline {
+  position: relative;
+}
+
+.floating-label {
+  position: absolute;
+  top: -10px;
+  left: 12px;
+  background: #fff;
+  padding: 0 4px;
+  font-size: .85rem;
+  color: #555;
+  z-index: 10;
+  font-weight: 600;
+}
+
+
+
+/* 1) Make the component fill the viewport and stop the page from scrolling */
+:host {
+  display: block;
+  height: 90vh;
+}
+
+
+/* 2) Three-row grid: header (auto), middle (1fr), footer (auto) */
+.mj-shell {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100%;
+  min-height: 0; /* allow child overflow */
+}
+
+/* 3) Freeze header/footer; let main scroll */
+.mj-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  padding-top: 5px;
+}
+
+.mj-main {
+  overflow: auto; /* <- only this scrolls */
+  min-height: 0; /* essential with CSS grid */
+}
+
+.mj-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  background: #fff;
+  border-top: 1px solid #e5e7eb;
+  padding: 2px 2px;
+}
+
+/* Footer chip row stays visible and tidy */
+.footer-chips {
+  display: flex;
+  gap: 8px;
+}
+
+/* Your chips styling (kept, slightly tightened) */
+.footer-chips {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  background: #fff;
+  flex-wrap: wrap;
+}
+
+  .footer-chips .chip {
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-weight: 600;
+    min-width: 100px;
+    text-align: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  }

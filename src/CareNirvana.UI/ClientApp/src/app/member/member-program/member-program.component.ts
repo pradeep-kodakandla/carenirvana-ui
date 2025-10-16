@@ -183,9 +183,7 @@ export class MemberProgramComponent implements OnInit, OnDestroy {
     this.sub = this.svc.list(this.memberDetailsId, this.page, this.pageSize, false)
       .subscribe({
         next: res => {
-          console.log('fetched member programs', res);
           this.items = (res.items ?? []).map(x => this.decorate(x));
-          console.log('decorated member programs', this.items);
           this.total = res.total ?? 0;
           this.applyFilter();
           this.computeSummary();

@@ -1,159 +1,202 @@
 <form [formGroup]="detailsForm" class="editable-section">
-  <!-- PERSONAL DETAILS -->
-  <div class="details-container">
-    <div class="details-header">
-      <h6 style="color: #007BFF; font-weight: bold;">Personal Details</h6>
-      <button mat-icon-button color="primary" (click)="toggleEditMode()">
-        <mat-icon>{{ editMode ? 'save' : 'edit' }}</mat-icon>
-      </button>
+  <div class="info-grid">
+    <!-- PERSONAL DETAILS -->
+    <div class="details-container">
+      <div class="details-header">
+        <h6 style="color: #007BFF; font-weight: bold;">Personal Details</h6>
+        <button mat-icon-button color="primary" (click)="toggleEditMode()">
+          <mat-icon>{{ editMode ? 'save' : 'edit' }}</mat-icon>
+        </button>
+      </div>
+
+      <!-- Row 1 -->
+      <div class="details-row" style="padding-top:10px;">
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " formControlName="prefix" [readonly]="!editMode" />
+          <label class="floating-label">Prefix</label>
+        </div>
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " formControlName="firstName" [readonly]="!editMode" />
+          <label class="floating-label">First Name <span class="text-danger">*</span></label>
+        </div>
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " formControlName="middleInitial" [readonly]="!editMode" />
+          <label class="floating-label">Middle Initial</label>
+        </div>
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " formControlName="lastName" [readonly]="!editMode" />
+          <label class="floating-label">Last Name</label>
+        </div>
+
+
+      </div>
+
+      <!-- Row 2 -->
+      <div class="details-row">
+        <div class="form-outline">
+          <input class="form-control" matInput type="date" placeholder=" " formControlName="dateOfBirth" [readonly]="!editMode" />
+          <label class="floating-label">Date of Birth</label>
+        </div>
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " formControlName="maritalStatus" [readonly]="!editMode" />
+          <label class="floating-label">Marital Status</label>
+        </div>
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " formControlName="preferredcontactformat" [readonly]="!editMode" />
+          <label class="floating-label">Preferred Contact Format</label>
+        </div>
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " formControlName="veteranstatus" [readonly]="!editMode" />
+          <label class="floating-label">Veteran Status</label>
+        </div>
+
+
+      </div>
+
+      <!-- Row 3 -->
+      <div class="details-row">
+
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " formControlName="race" [readonly]="!editMode" />
+          <label class="floating-label">Race</label>
+        </div>
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " formControlName="preferredRace" [readonly]="!editMode" />
+          <label class="floating-label">Preferred Race</label>
+        </div>
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " formControlName="preferredName" [readonly]="!editMode" />
+          <label class="floating-label">Preferred Name</label>
+        </div>
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " formControlName="ethincity" [readonly]="!editMode" />
+          <label class="floating-label">Ethnicity</label>
+        </div>
+      </div>
+
+      <!-- Row 4 -->
+      <!-- Row 5 -->
+      <div class="details-row">
+
+
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " formControlName="gender" [readonly]="!editMode" />
+          <label class="floating-label">Gender</label>
+        </div>
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " formControlName="preferredEthincity" [readonly]="!editMode" />
+          <label class="floating-label">Preferred Ethnicity</label>
+        </div>
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " formControlName="communicationImpairment" [readonly]="!editMode" />
+          <label class="floating-label">Communication Impairment</label>
+        </div>
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " formControlName="genderIdentity" [readonly]="!editMode" />
+          <label class="floating-label">Gender Identity</label>
+        </div>
+      </div>
+
+      <!-- Row 6 -->
+      <div class="details-row">
+
+
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " formControlName="residenceStatus" [readonly]="!editMode" />
+          <label class="floating-label">Residence Status</label>
+        </div>
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " formControlName="evacuationZone" [readonly]="!editMode" />
+          <label class="floating-label">Evacuation Zone</label>
+        </div>
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " formControlName="sexualOrientation" [readonly]="!editMode" />
+          <label class="floating-label">Sexual Orientation</label>
+        </div>
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " formControlName="incomeStatus" [readonly]="!editMode" />
+          <label class="floating-label">Income Status</label>
+        </div>
+      </div>
+
+
+      <!-- Row 8 -->
+      <div class="details-row">
+
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " formControlName="serviceInterruption" [readonly]="!editMode" />
+          <label class="floating-label">Service Interruption</label>
+        </div>
+        <div class="form-outline">
+          <input class="form-control" matInput type="date" placeholder=" " formControlName="dateOfDeath" [readonly]="!editMode" />
+          <label class="floating-label">Date of Death</label>
+        </div>
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " formControlName="causeOfDeath" [readonly]="!editMode" />
+          <label class="floating-label">Cause of Death</label>
+        </div>
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " formControlName="actualPlaceOfDeath" [readonly]="!editMode" />
+          <label class="floating-label">Actual Place of Death</label>
+        </div>
+      </div>
+
+
+      <!-- Row 10 -->
+      <div class="details-row">
+
+
+        <div class="form-outline">
+          <input class="form-control" matInput type="time" placeholder=" " formControlName="preferredTimeOfCall" [readonly]="!editMode" />
+          <label class="floating-label">Preferred Time of Call</label>
+        </div>
+        <div class="form-outline">
+          <input class="form-control" matInput type="email" placeholder=" " formControlName="alternateEmail" [readonly]="!editMode" />
+          <label class="floating-label">Alternate Email</label>
+        </div>
+      </div>
     </div>
-
-    <!-- Row 1 -->
-    <div class="details-row" style="padding-top:10px;">
-      <div class="form-outline">
-        <input class="form-control" matInput placeholder=" " formControlName="prefix" [readonly]="!editMode" />
-        <label class="floating-label">Prefix</label>
-      </div>
-      <div class="form-outline">
-        <input class="form-control" matInput placeholder=" " formControlName="firstName" [readonly]="!editMode" />
-        <label class="floating-label">First Name <span class="text-danger">*</span></label>
-      </div>
-      <div class="form-outline">
-        <input class="form-control" matInput placeholder=" " formControlName="middleInitial" [readonly]="!editMode" />
-        <label class="floating-label">Middle Initial</label>
-      </div>
-      <div class="form-outline">
-        <input class="form-control" matInput placeholder=" " formControlName="lastName" [readonly]="!editMode" />
-        <label class="floating-label">Last Name</label>
+    <!-- RIGHT: MEMBER IDENTIFIERS (20%) -->
+    <aside class="details-container mi-narrow">
+      <div class="details-header">
+        <h6 style="color: #007BFF; font-weight: bold;">Member Identifiers</h6>
+        <button mat-icon-button color="primary" (click)="toggleEditModeMemberIdentifier()">
+          <mat-icon>{{ editModeMI ? 'save' : 'edit' }}</mat-icon>
+        </button>
       </div>
 
-
-    </div>
-
-    <!-- Row 2 -->
-    <div class="details-row">
-      <div class="form-outline">
-        <input class="form-control" matInput type="date" placeholder=" " formControlName="dateOfBirth" [readonly]="!editMode" />
-        <label class="floating-label">Date of Birth</label>
-      </div>
-      <div class="form-outline">
-        <input class="form-control" matInput placeholder=" " formControlName="maritalStatus" [readonly]="!editMode" />
-        <label class="floating-label">Marital Status</label>
-      </div>
-      <div class="form-outline">
-        <input class="form-control" matInput placeholder=" " formControlName="preferredcontactformat" [readonly]="!editMode" />
-        <label class="floating-label">Preferred Contact Format</label>
-      </div>
-      <div class="form-outline">
-        <input class="form-control" matInput placeholder=" " formControlName="veteranstatus" [readonly]="!editMode" />
-        <label class="floating-label">Veteran Status</label>
+      <!-- Row A (stacked in narrow column) -->
+      <div class="details-row" style="padding-top:10px;">
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " value="N/A" [readonly]="!editModeMI" />
+          <label class="floating-label">Member ID</label>
+        </div>
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " value="N/A" [readonly]="!editModeMI" />
+          <label class="floating-label">Subscriber ID</label>
+        </div>
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " value="N/A" [readonly]="!editModeMI" />
+          <label class="floating-label">Medicaid ID</label>
+        </div>
       </div>
 
-
-    </div>
-
-    <!-- Row 3 -->
-    <div class="details-row">
-
-      <div class="form-outline">
-        <input class="form-control" matInput placeholder=" " formControlName="race" [readonly]="!editMode" />
-        <label class="floating-label">Race</label>
+      <!-- Row B -->
+      <div class="details-row">
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " value="N/A" [readonly]="!editModeMI" />
+          <label class="floating-label">MRN</label>
+        </div>
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " value="N/A" [readonly]="!editModeMI" />
+          <label class="floating-label">Medicare ID</label>
+        </div>
+        <div class="form-outline">
+          <input class="form-control" matInput placeholder=" " value="N/A" [readonly]="!editModeMI" />
+          <label class="floating-label">Family ID</label>
+        </div>
       </div>
-      <div class="form-outline">
-        <input class="form-control" matInput placeholder=" " formControlName="preferredRace" [readonly]="!editMode" />
-        <label class="floating-label">Preferred Race</label>
-      </div>
-      <div class="form-outline">
-        <input class="form-control" matInput placeholder=" " formControlName="preferredName" [readonly]="!editMode" />
-        <label class="floating-label">Preferred Name</label>
-      </div>
-      <div class="form-outline">
-        <input class="form-control" matInput placeholder=" " formControlName="ethincity" [readonly]="!editMode" />
-        <label class="floating-label">Ethnicity</label>
-      </div>
-    </div>
-
-    <!-- Row 4 -->
-    <!-- Row 5 -->
-    <div class="details-row">
-
-
-      <div class="form-outline">
-        <input class="form-control" matInput placeholder=" " formControlName="gender" [readonly]="!editMode" />
-        <label class="floating-label">Gender</label>
-      </div>
-      <div class="form-outline">
-        <input class="form-control" matInput placeholder=" " formControlName="preferredEthincity" [readonly]="!editMode" />
-        <label class="floating-label">Preferred Ethnicity</label>
-      </div>
-      <div class="form-outline">
-        <input class="form-control" matInput placeholder=" " formControlName="communicationImpairment" [readonly]="!editMode" />
-        <label class="floating-label">Communication Impairment</label>
-      </div>
-      <div class="form-outline">
-        <input class="form-control" matInput placeholder=" " formControlName="genderIdentity" [readonly]="!editMode" />
-        <label class="floating-label">Gender Identity</label>
-      </div>
-    </div>
-
-    <!-- Row 6 -->
-    <div class="details-row">
-
-
-      <div class="form-outline">
-        <input class="form-control" matInput placeholder=" " formControlName="residenceStatus" [readonly]="!editMode" />
-        <label class="floating-label">Residence Status</label>
-      </div>
-      <div class="form-outline">
-        <input class="form-control" matInput placeholder=" " formControlName="evacuationZone" [readonly]="!editMode" />
-        <label class="floating-label">Evacuation Zone</label>
-      </div>
-      <div class="form-outline">
-        <input class="form-control" matInput placeholder=" " formControlName="sexualOrientation" [readonly]="!editMode" />
-        <label class="floating-label">Sexual Orientation</label>
-      </div>
-      <div class="form-outline">
-        <input class="form-control" matInput placeholder=" " formControlName="incomeStatus" [readonly]="!editMode" />
-        <label class="floating-label">Income Status</label>
-      </div>
-    </div>
-
-
-    <!-- Row 8 -->
-    <div class="details-row">
-
-      <div class="form-outline">
-        <input class="form-control" matInput placeholder=" " formControlName="serviceInterruption" [readonly]="!editMode" />
-        <label class="floating-label">Service Interruption</label>
-      </div>
-      <div class="form-outline">
-        <input class="form-control" matInput type="date" placeholder=" " formControlName="dateOfDeath" [readonly]="!editMode" />
-        <label class="floating-label">Date of Death</label>
-      </div>
-      <div class="form-outline">
-        <input class="form-control" matInput placeholder=" " formControlName="causeOfDeath" [readonly]="!editMode" />
-        <label class="floating-label">Cause of Death</label>
-      </div>
-      <div class="form-outline">
-        <input class="form-control" matInput placeholder=" " formControlName="actualPlaceOfDeath" [readonly]="!editMode" />
-        <label class="floating-label">Actual Place of Death</label>
-      </div>
-    </div>
-
-
-    <!-- Row 10 -->
-    <div class="details-row">
-
-
-      <div class="form-outline">
-        <input class="form-control" matInput type="time" placeholder=" " formControlName="preferredTimeOfCall" [readonly]="!editMode" />
-        <label class="floating-label">Preferred Time of Call</label>
-      </div>
-      <div class="form-outline">
-        <input class="form-control" matInput type="email" placeholder=" " formControlName="alternateEmail" [readonly]="!editMode" />
-        <label class="floating-label">Alternate Email</label>
-      </div>
-    </div>
+    </aside>
 
 
   </div>
@@ -256,32 +299,30 @@
   </div>
 
   <!-- MEMBER IDENTIFIERS formControlName="medicaidid"-->
-  <div class="details-container">
+  <!--<div class="details-container">
     <div class="details-header">
       <h6 style="color: #007BFF; font-weight: bold;">Member Identifiers</h6>
       <button mat-icon-button color="primary" (click)="toggleEditModeMemberIdentifier()">
         <mat-icon>{{ editModeMI ? 'save' : 'edit' }}</mat-icon>
       </button>
+    </div>-->
+  <!-- Row A -->
+  <!--<div class="details-row" style="padding-top:10px;">
+    <div class="form-outline">
+      <input class="form-control" matInput placeholder=" " [readonly]="!editModeMI" />
+      <label class="floating-label">Member ID</label>
     </div>
-
-    <!-- Row A -->
-    <div class="details-row" style="padding-top:10px;">
-      <div class="form-outline">
-        <input class="form-control" matInput placeholder=" " [readonly]="!editModeMI" />
-        <label class="floating-label">Member ID</label>
-      </div>
-      <div class="form-outline">
-        <input class="form-control" matInput placeholder=" " [readonly]="!editModeMI" />
-        <label class="floating-label">Subscriber ID</label>
-      </div>
-      <div class="form-outline">
-        <input class="form-control" matInput placeholder=" " [readonly]="!editModeMI" />
-        <label class="floating-label">Medicaid ID</label>
-      </div>
+    <div class="form-outline">
+      <input class="form-control" matInput placeholder=" " [readonly]="!editModeMI" />
+      <label class="floating-label">Subscriber ID</label>
     </div>
-
-    <!-- Row B -->
-    <div class="details-row">
+    <div class="form-outline">
+      <input class="form-control" matInput placeholder=" " [readonly]="!editModeMI" />
+      <label class="floating-label">Medicaid ID</label>
+    </div>
+  </div>-->
+  <!-- Row B -->
+  <!--<div class="details-row">
       <div class="form-outline">
         <input class="form-control" matInput placeholder=" " [readonly]="!editModeMI" />
         <label class="floating-label">MRN</label>
@@ -295,5 +336,5 @@
         <label class="floating-label">Family ID</label>
       </div>
     </div>
-  </div>
+  </div>-->
 </form>

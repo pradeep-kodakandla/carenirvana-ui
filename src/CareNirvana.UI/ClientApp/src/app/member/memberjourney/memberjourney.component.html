@@ -1,0 +1,145 @@
+<div class="mj-shell">
+  <!-- Controls Row -->
+  <header class="mj-header">
+    <div class="mj-toolbar">
+
+
+      <div class="form-outline">
+        <label class="floating-label">Range</label>
+        <select class="form-control" name="isFormalCaregiver" [formControl]="form.controls.rangePreset">
+          <option value="Last 7 Days">Last 7 Days</option>
+          <option value="Last 30 Days">Last 30 Days</option>
+          <option value="Last 90 Days">Last 90 Days</option>
+          <option value="All">All</option>
+        </select>
+      </div>
+      <div class="segmented">
+        <button mat-button [class.active]="granularity==='Day'" (click)="setGranularity('Day')">Day</button>
+        <button mat-button [class.active]="granularity==='Week'" (click)="setGranularity('Week')">Week</button>
+        <button mat-button [class.active]="granularity==='Month'" (click)="setGranularity('Month')">Month</button>
+      </div>
+
+
+      <!--<mat-form-field appearance="outline" class="flex-1">
+        <mat-label>Search events…</mat-label>
+        <input matInput [formControl]="form.controls.search" (keyup.enter)="onApply()" />
+      </mat-form-field>-->
+      <input type="text"
+             placeholder="🔍 Search events..."
+             (input)="onApply()"
+             [formControl]="form.controls.search"
+             class="search-input" />
+
+      <button mat-flat-button color="primary" class="apply-btn" (click)="onApply()">Apply</button>
+
+
+    </div>
+  </header>
+  <main class="mj-main">
+    <!-- View toggle (optional) -->
+    <!--<div class="view-toggle" style="display:flex;gap:8px;margin-bottom:8px;">
+      <button mat-stroked-button [color]="viewMode==='timeline' ? 'primary' : undefined" (click)="setView('timeline')">Timeline View</button>
+      <button mat-stroked-button [color]="viewMode==='table' ? 'primary' : undefined" (click)="setView('table')">Table View</button>
+    </div>-->
+
+    <div class="timeline-alt" *ngIf="!loading && !error">
+      <div class="rail"></div>
+
+      <ng-container *ngFor="let r of renderEvents; let i = index">
+
+        <!-- Date pill centered on rail -->
+        <div class="date-pill" *ngIf="r.isNewDate">
+          <span>{{ r.dateLabel }}</span>
+        </div>
+
+        <!-- Row with alternating sides -->
+        <div class="row">
+          <div class="slot left">
+            <div class="card" *ngIf="r.side==='left'"
+                 [class.right-edge]="isRightBorder(r.e)"
+                 [style.--edge-color]="categoryColor(r.e)">
+              <div class="card-header">
+                <a class="title" href="javascript:void(0)">{{ r.e.title }}</a>
+                <button mat-stroked-button color="primary">View</button>
+              </div>
+              <div class="meta">
+                <span class="time">{{ fmtTime(r.e.eventUtc) }}</span>
+                <span class="subtitle" *ngIf="r.e.subtitle">• {{ r.e.subtitle }}</span>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="mid">
+            <span class="dot"></span>
+            <span class="line"></span>
+          </div>
+
+          <div class="slot right">
+            <div class="card" *ngIf="r.side==='right'"
+                 [class.right-edge]="isRightBorder(r.e)"
+                 [style.--edge-color]="categoryColor(r.e)">
+              <div class="card-header">
+                <a class="title" href="javascript:void(0)">{{ r.e.title }}</a>
+                <button mat-stroked-button color="primary">View</button>
+              </div>
+              <div class="meta">
+                <span class="time">{{ fmtTime(r.e.eventUtc) }}</span>
+                <span class="subtitle" *ngIf="r.e.subtitle">• {{ r.e.subtitle }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+    </div>
+
+
+    <!-- Table View -->
+    <div *ngIf="!loading && !error && viewMode==='table'" class="table-wrap">
+      <table mat-table [dataSource]="events" class="mat-elevation-z1 full">
+        <ng-container matColumnDef="date">
+          <th mat-header-cell *matHeaderCellDef>Date</th>
+          <td mat-cell *matCellDef="let e">{{ fmtDate(e.eventUtc) }}</td>
+        </ng-container>
+        <ng-container matColumnDef="time">
+          <th mat-header-cell *matHeaderCellDef>Time</th>
+          <td mat-cell *matCellDef="let e">{{ fmtTime(e.eventUtc) }}</td>
+        </ng-container>
+        <ng-container matColumnDef="category">
+          <th mat-header-cell *matHeaderCellDef>Category</th>
+          <td mat-cell *matCellDef="let e">{{ (e.category | number) }}</td>
+        </ng-container>
+        <ng-container matColumnDef="title">
+          <th mat-header-cell *matHeaderCellDef>Title</th>
+          <td mat-cell *matCellDef="let e">{{ e.title }}</td>
+        </ng-container>
+        <ng-container matColumnDef="subtitle">
+          <th mat-header-cell *matHeaderCellDef>Details</th>
+          <td mat-cell *matCellDef="let e">{{ e.subtitle }}</td>
+        </ng-container>
+
+
+        <tr mat-header-row *matHeaderRowDef="['date','time','category','title','subtitle']"></tr>
+        <tr mat-row *matRowDef="let row; columns: ['date','time','category','title','subtitle'];"></tr>
+      </table>
+    </div>
+
+
+    <!-- Simple pager -->
+    <div class="pager" *ngIf="!loading && total > pageSize">
+      <button mat-stroked-button (click)="onPageChange(page-1)" [disabled]="page===1">Prev</button>
+      <span>Page {{ page }} of {{ totalPages }}</span>
+      <button mat-stroked-button (click)="onPageChange(page+1)" [disabled]="page >= totalPages">Next</button>
+    </div>
+  </main>
+
+  <footer class="mj-footer">
+    <div class="footer-chips" *ngIf="counters?.length">
+      <div *ngFor="let c of counters"
+           class="chip"
+           [style.background-color]="c.color">
+        {{ c.label }}: {{ c.count }}
+      </div>
+    </div>
+  </footer>
+</div>

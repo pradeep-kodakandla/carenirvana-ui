@@ -28,7 +28,7 @@ html, body {
 
 main {
   /* min-height: 100vh;*/ /* Ensures content fills the screen */
-  padding-bottom: 25px; /* This ensures space for the footer */
+  padding-bottom: 5px; /* This ensures space for the footer */
 }
 
 .app-layout {

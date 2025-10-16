@@ -38,16 +38,16 @@ export class MemberInfoComponent implements OnInit {
       residenceStatus: ['Adult Foster Home'],
       evacuationZone: ['Zone1'],
       incomeStatus: ['$60,000'],
-      serviceInterruption: [''],
-      dateOfDeath: [''],
-      causeOfDeath: [''],
-      actualPlaceOfDeath: [''],
+      serviceInterruption: ['N/A'],
+      dateOfDeath: ['N/A'],
+      causeOfDeath: ['N/A'],
+      actualPlaceOfDeath: ['N/A'],
       alternatePhone: [''],
       fax: [''],
       preferredTimeOfCall: [''],
       primaryEmail: ['test@yahoo.com'],
       preferredEmail: [''],
-      alternateEmail: [''],
+      alternateEmail: ['N/A'],
     });
   }
 

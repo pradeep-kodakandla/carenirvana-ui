@@ -233,7 +233,6 @@ export class MemberDocumentsComponent implements OnInit, OnChanges {
   // ---------------------------
   applyFilter(_: any = null): void {
     this.dataSource.filter = (this.searchTerm || '').trim().toLowerCase();
-    console.log('Filtered rows', this.dataSource.filteredData);
     this.computeSummary(this.dataSource.filteredData);
   }
 
