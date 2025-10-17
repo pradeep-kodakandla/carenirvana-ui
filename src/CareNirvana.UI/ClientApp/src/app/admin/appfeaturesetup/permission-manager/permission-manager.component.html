@@ -6,16 +6,6 @@
       <div style="display: flex; gap: 20px;">
 
         <!-- Role Dropdown -->
-        <!--<div style="flex: 1;">
-          <mat-form-field appearance="outline" class="w-100">
-            <mat-label>Select Role</mat-label>
-            <mat-select [(ngModel)]="selectedRole">
-              <mat-option *ngFor="let role of roles" [value]="role">
-                {{ role }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>-->
         <!-- Module Multi-Select Dropdown -->
         <div style="flex: 1;">
           <mat-form-field appearance="outline" class="w-100">
@@ -49,8 +39,8 @@
             <!--<table class="table table-bordered table-striped align-middle">-->
             <thead>
               <tr>
-                <th style="background-color: #007BFF;">Features</th>
-                <th style="background-color: #007BFF;" class="text-center" *ngFor="let col of ['Add','Edit','View','Delete','Download','Print']">
+                <th style="background-color: #dae2f9; color:black; font-size:.86rem font-size:.86rem">Features</th>
+                <th style="background-color: #dae2f9; color:black; font-size:.86rem font-size:.86rem " class="text-center" *ngFor="let col of ['Add','Edit','View','Delete','Download','Print']">
                   <input type="checkbox"
                          [checked]="isAllSelectedGlobal(col)"
                          [indeterminate]="isSomeSelectedGlobal(col)"
@@ -132,21 +122,21 @@
           <table class="responsive-table">
             <thead>
               <tr>
-                <th style="background-color: #007BFF;">Resource</th>
-                <th style="background-color: #007BFF;">Field</th>
-                <th class="text-center" style="background-color: #007BFF;">
+                <th style="background-color: #dae2f9; color:black; font-size:.86rem">Resource</th>
+                <th style="background-color: #dae2f9; color:black; font-size:.86rem">Field</th>
+                <th class="text-center" style="background-color: #dae2f9; color:black; font-size:.86rem">
                   <input type="radio" name="global-access"
                          [(ngModel)]="selectedFieldAccessHeader"
                          [value]="'Edit'"
                          (change)="setAllFieldAccess('Edit')"> Edit
                 </th>
-                <th class="text-center" style="background-color: #007BFF;">
+                <th class="text-center" style="background-color: #dae2f9; color:black; font-size:.86rem">
                   <input type="radio" name="global-access"
                          [(ngModel)]="selectedFieldAccessHeader"
                          [value]="'View'"
                          (change)="setAllFieldAccess('View')"> View
                 </th>
-                <th class="text-center" style="background-color: #007BFF;">
+                <th class="text-center" style="background-color: #dae2f9; color:black; font-size:.86rem">
                   <input type="radio" name="global-access"
                          [(ngModel)]="selectedFieldAccessHeader"
                          [value]="'Hide'"
@@ -193,10 +183,10 @@
         <table class="responsive-table">
           <thead class="table-primary">
             <tr>
-              <th style="background-color: #007BFF;">Enable</th>
-              <th style="background-color: #007BFF;">Widget</th>
-              <th style="background-color: #007BFF;">Rename</th>
-              <th style="background-color: #007BFF;">Set as Default</th>
+              <th style="background-color: #dae2f9; color:black; font-size:.86rem">Enable</th>
+              <th style="background-color: #dae2f9; color:black; font-size:.86rem">Widget</th>
+              <th style="background-color: #dae2f9; color:black; font-size:.86rem">Rename</th>
+              <th style="background-color: #dae2f9; color:black; font-size:.86rem">Set as Default</th>
             </tr>
           </thead>
           <tbody>

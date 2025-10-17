@@ -147,25 +147,12 @@
     <h4 style="color: #007BFF; font-weight: bold;">Auth Template</h4>
   </div>
   <div style="padding-top:10px;" class="table-container">
-    <div class="d-flex justify-content-between align-items-center " style="width: 100%; padding-bottom:5px;  ">
-      <!--<div class="d-flex justify-content-between align-items-center">
-        <div class="search-bar-container-table">
-          <button mat-icon-button>
-            <mat-icon>search</mat-icon>
-          </button>
-          <input class="input" matInput (keyup)="applyFilter($event)" placeholder="Search Auth Template" />
-        </div>
-      </div>-->
-      <div class="search-box" [class.active]="isFocused">
-        <button mat-icon-button>
-          <mat-icon>search</mat-icon>
-        </button>
-        <input type="text"
-               (keyup)="applyFilter($event)" placeholder="Search Auth Template"
-               class="search-input"
-               (focus)="onFocus()"
-               (blur)="onBlur()" />
+    <div class="search-section">
 
+      <div class="search-section">
+
+        <input type="text" placeholder="🔍 Search Auth Template..." (keyup)="applyFilter($event)" (focus)="onFocus()"
+               (blur)="onBlur()" class="search-input" />
       </div>
       <div>
         <button mat-icon-button color="primary" (click)="openForm('add')" matTooltip="Add Auth Template">

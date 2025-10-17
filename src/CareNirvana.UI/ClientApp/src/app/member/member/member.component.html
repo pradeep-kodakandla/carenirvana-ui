@@ -35,10 +35,13 @@
       <!---->
 
       <div *ngIf="tab.name === 'Member Journey'">
-        <app-memberjourney ></app-memberjourney>
+        <app-memberjourney></app-memberjourney>
+      </div>
+      <div *ngIf="tab.name === 'Summarize AI'">
+        <app-member-summaryai></app-member-summaryai>
       </div>
       <!-- 🌟 Child Tabs and Content -->
-      <ng-container *ngIf="tab.name !== 'Authorization' && tab.name !== 'Member Journey'">
+      <ng-container *ngIf="tab.name !== 'Authorization' && tab.name !== 'Member Journey' && tab.name !== 'Summarize AI'">
 
         <!-- Child Tab Headers -->
         <ul class="child-tab-header nav nav-tabs mt-2" role="tablist" *ngIf="tab.pages.length > 0">
@@ -70,7 +73,6 @@
 
             <ng-container [ngSwitch]="page.name">
               <app-member-info *ngSwitchCase="'Member Info'"></app-member-info>
-              <!--<app-memberjourney *ngSwitchCase="'Member Info'"></app-memberjourney>-->
               <app-member-tasksummary *ngSwitchCase="'Task Summary'"></app-member-tasksummary>
               <app-member-program *ngSwitchCase="'Program'"></app-member-program>
               <app-member-enrollment *ngSwitchCase="'Enrollment'"></app-member-enrollment>

@@ -6,6 +6,7 @@ import { MatTable } from '@angular/material/table';
 import { HeaderService } from 'src/app/service/header.service';
 import { Router } from '@angular/router';
 import { DashboardServiceService } from 'src/app/service/dashboard.service.service';
+import { AuthenticateService, RecentlyAccessed } from 'src/app/service/authentication.service';
 
 type SelectedFilter =
   | { group: 'Risk'; label: string; key: 'High' | 'Medium' | 'Low' }
@@ -23,7 +24,8 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     private headerService: HeaderService,
     private router: Router,
     private cdr: ChangeDetectorRef,
-    private dashboard: DashboardServiceService
+    private dashboard: DashboardServiceService,
+    private authService: AuthenticateService
   ) { }
 
   // View mode toggle
@@ -183,11 +185,25 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
 
     const existingTab = this.headerService.getTabs().find(tab => tab.route === tabRoute);
 
+    const record: RecentlyAccessed = {
+      userId: Number(sessionStorage.getItem('loggedInUserid')),
+      featureId: null,
+      featureGroupId: 2,
+      action: 'VIEW',
+      memberDetailsId: Number(memberDetailsId)
+    };
+
+    this.authService.addRecentlyAccessed(record.userId, record)
+      .subscribe({
+        next: id => console.log('Inserted record ID:', id),
+        error: err => console.error('Insert failed:', err)
+      });
+
     if (existingTab) {
       this.headerService.selectTab(tabRoute);
+
       const mdId = existingTab.memberDetailsId ?? null;
       if (mdId) sessionStorage.setItem('selectedMemberDetailsId', mdId);
-
       this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
         this.router.navigate([tabRoute]);
       });
@@ -198,6 +214,8 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
         this.router.navigate([tabRoute]);
       });
     }
+
+
   }
 
   getRiskEmoji(risk: string): string {

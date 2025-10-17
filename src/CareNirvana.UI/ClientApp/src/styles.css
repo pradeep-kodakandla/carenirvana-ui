@@ -64,8 +64,8 @@ main {
 }
 
 .container {
-  min-height: 90vh; /* Ensures content fills the screen */
-  padding-bottom: 20px; /*This ensures space for the footer */
+  /*min-height: 90vh;*/ /* Ensures content fills the screen */
+  /*padding-bottom: 20px;*/ /*This ensures space for the footer */
   margin: 5px !important;
   overflow: auto;
 }
@@ -443,3 +443,18 @@ icon-admin {
 .cdk-overlay-pane .select-with-search-panel .mat-mdc-option {
   min-height: 36px;
 }
+
+/* Make the history popover panel wide */
+.history-popover.mat-mdc-menu-panel {
+  max-width: none !important;
+  width: 1100px !important; /* adjust as you like */
+  border-radius: 12px;
+}
+
+/* Let the menu content fill the wide panel */
+.history-popover .mat-mdc-menu-content {
+  width: 100% !important;
+  max-width: none !important;
+  padding: 12px 14px;
+}
+

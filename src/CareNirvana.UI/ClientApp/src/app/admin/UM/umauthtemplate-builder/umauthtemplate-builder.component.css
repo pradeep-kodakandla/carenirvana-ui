@@ -313,6 +313,7 @@
   font-weight: bold;
   cursor: pointer;
   transition: background-color 0.3s ease;
+  background-color: #e2e2e2;
 }
 
   .accordion-header:hover {
@@ -441,24 +442,28 @@ select[disabled] {
 .delete-section {
   width: 30px;
   height: 30px;
-  background-color: red;
+  background-color: #c62828; /* material red tone */
+  color: #fff;
+  font-size: 20px;
+  font-weight: bold;
+  line-height: 10px; /* exactly match height for perfect centering */
+  text-align: center;
   border: none;
-  border-radius: 4px; /* Slight rounding; remove if you want a perfect square */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: 10px;
+  border-radius: 6px;
   cursor: pointer;
+  display: inline-block;
+  padding: 0;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  user-select: none;
 }
 
-  .delete-section mat-icon {
-    font-size: 18px;
-    color: white;
+  .delete-section:hover {
+    background-color: #b71c1c;
+    transform: scale(1.05);
   }
 
-  .delete-section:hover {
-    background-color: #d0d0d0;
-  }
+
+
 
 
 
@@ -567,5 +572,25 @@ select[disabled] {
   background: rgba(0, 123, 255, 0.1);
   border: 2px dashed #007BFF;
 }
+
+.search-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+}
+
+.search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  height: 40px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
 
 

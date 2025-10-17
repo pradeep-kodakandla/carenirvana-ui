@@ -1,62 +1,3 @@
-//import { Injectable } from '@angular/core';
-//import { Router } from '@angular/router';
-
-//@Injectable({
-//  providedIn: 'root'
-//})
-//export class HeaderService {
-//  dynamicTabs: { label: string; route: string; memberId?: string; memberDetailsId?: string | null; }[] = [];
-//  selectedTabRoute: string | null = null; // Track selected tab
-
-//  addTab(label: string, route: string, memberId: string): void {
-//    if (!this.dynamicTabs.some(tab => tab.route === route)) {
-//      this.dynamicTabs.push({ label, route, memberId });
-//    }
-//    this.selectTab(route); // Select tab when added
-//  }
-
-//  constructor(private router: Router) { }
-
-//  removeTab(route: string): void {
-//    this.dynamicTabs = this.dynamicTabs.filter(tab => tab.route !== route);
-
-//    // ✅ If no tabs remain, redirect to the dashboard
-//    if (this.dynamicTabs.length === 0) {
-//      this.selectedTabRoute = null;
-//      this.router.navigate(['/dashboard']); // Redirect to dashboard
-//    } else {
-//      // ✅ If tabs exist, select the first one
-//      this.selectedTabRoute = this.dynamicTabs[0].route;
-//      this.router.navigate([this.selectedTabRoute]); // Redirect to the first tab
-//    }
-//  }
-
-//  getTabs(): { label: string; route: string; memberId?: string }[] {
-//    return this.dynamicTabs;
-//  }
-
-//  selectTab(route: string): void {
-//    this.selectedTabRoute = route;
-//  }
-
-//  getSelectedTab(): string | null {
-//    return this.selectedTabRoute;
-//  }
-
-//  getMemberId(route: string): string | undefined {
-//    return this.dynamicTabs.find(tab => tab.route === route)?.memberId;
-//  }
-
-//  updateTab(oldRoute: string, newTab: { label: string; route: string; memberId: string }) {
-//    const index = this.dynamicTabs.findIndex(t => t.route === oldRoute);
-//    if (index !== -1) {
-//      this.dynamicTabs[index] = newTab;
-//    }
-//  }
-
-
-//}
-
 // header.service.ts
 import { Injectable } from '@angular/core';
 
@@ -74,6 +15,7 @@ export class HeaderService {
   private selectedRoute: string | null = null;
   private selected: string | null = null;
 
+
   getTabs(): HeaderTab[] {
     return this.tabs;
   }
@@ -89,9 +31,6 @@ export class HeaderService {
     this.selectedRoute = route;
   }
 
-  //selectTab(route: string): void {
-  //  this.selectedRoute = route;
-  //}
   selectTab(route: string): void {
     this.selectedRoute = route;
     const tab = this.tabs.find(t => t.route === route);
@@ -112,18 +51,43 @@ export class HeaderService {
     return this.tabs.find(t => t.route === route)?.memberDetailsId ?? null;
   }
 
-  // Optional helpers if you support closing tabs, renaming, etc.
-  removeTab(route: string): void {
-    this.tabs = this.tabs.filter(t => t.route !== route);
-    if (this.selectedRoute === route) this.selectedRoute = this.tabs.at(-1)?.route ?? null;
+
+  // header.service.ts
+  removeTab(route: string): string | null {
+    const i = this.tabs.findIndex(t => t.route === route);
+    if (i === -1) return this.selectedRoute;
+
+    // remove the tab
+    this.tabs.splice(i, 1);
+
+    // if we closed the selected tab, pick a neighbor
+    if (this.selectedRoute === route) {
+      // try the tab that shifted into the same index (to the right)
+      const right = this.tabs[i];
+      // else use the left neighbor
+      const left = this.tabs[i - 1];
+      this.selectedRoute = (right?.route ?? left?.route) ?? null;
+    }
+
+    return this.selectedRoute;
   }
 
+  updateTab(oldRoute: string, patch: Partial<HeaderTab>): void {
+    const oldR = this.norm(oldRoute);
+    const idx = this.tabs.findIndex(t => this.sameRoute(t.route, oldR));
 
-  updateTab(oldRoute: string, newTab: { label: string; route: string; memberId: string }) {
-    const index = this.tabs.findIndex(t => t.route === oldRoute);
-    if (index !== -1) {
-      this.tabs[index] = newTab;
+    if (idx === -1) {
+      // Optional: if you meant the selected tab, update that instead
+      if (this.selectedRoute) {
+        const selIdx = this.tabs.findIndex(t => this.sameRoute(t.route, this.selectedRoute!));
+        if (selIdx !== -1) {
+          this.applyPatch(selIdx, patch, oldR);
+        }
+      }
+      return;
     }
+
+    this.applyPatch(idx, patch, oldR);
   }
 
   getSelectedTab(): string | null {
@@ -141,6 +105,55 @@ export class HeaderService {
     const state = { tabs: this.tabs, selected: this.selected };
     //sessionStorage.setItem(this.key(), JSON.stringify(state));
   }
+
+  // ---- Internal helpers ----------------------------------------------------
+
+  private applyPatch(index: number, patch: Partial<HeaderTab>, oldR: string): void {
+    const current = this.tabs[index];
+
+    // Normalize new route if provided; otherwise keep existing
+    const newRoute = patch.route ? this.norm(patch.route) : current.route;
+
+    const updated: HeaderTab = {
+      ...current,
+      ...patch,
+      route: newRoute
+    };
+
+    // Replace immutably so OnPush UIs update
+    this.tabs = this.replaceAt(this.tabs, index, updated);
+
+    // If the updated tab was selected (by old route), move selection to new route
+    if (this.selectedRoute && this.sameRoute(this.selectedRoute, oldR)) {
+      this.selectTab(newRoute);
+    }
+
+    this.persist();
+  }
+
+  private replaceAt<T>(arr: T[], index: number, value: T): T[] {
+    const copy = arr.slice();
+    copy[index] = value;
+    return copy;
+  }
+
+  private sameRoute(a: string, b: string): boolean {
+    return this.norm(a) === this.norm(b);
+  }
+
+  /** Normalize: strip host, query/hash, decode, lowercase, strip trailing slash */
+  private norm(route: string): string {
+    if (!route) return '';
+    try {
+      const noHost = route.replace(/^https?:\/\/[^/]+/i, '');
+      let r = decodeURIComponent(noHost).split('#')[0].split('?')[0];
+      r = r.replace(/\/+$/, '');
+      return r.toLowerCase();
+    } catch {
+      return route.toLowerCase().split('#')[0].split('?')[0].replace(/\/+$/, '');
+    }
+  }
 }
+
 
 

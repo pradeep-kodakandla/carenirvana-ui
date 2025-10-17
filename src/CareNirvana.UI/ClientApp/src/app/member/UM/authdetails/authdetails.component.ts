@@ -8,7 +8,7 @@ import { MemberService } from 'src/app/service/shared-member.service';
 import { AuthService } from 'src/app/service/auth.service';
 import { HeaderService } from 'src/app/service/header.service';
 import { CrudService } from 'src/app/service/crud.service';
-
+import { AuthenticateService, RecentlyAccessed } from 'src/app/service/authentication.service';
 
 
 @Component({
@@ -21,7 +21,7 @@ export class AuthdetailsComponent implements OnInit {
 
   authDetails: any[] = [];
   @Input() memberId!: number;
-  memberDetailsId: number  = 0;
+  memberDetailsId: number = 0;
   isLoading = true;
   isEmpty = false;
   showAddHighlight = false;
@@ -35,7 +35,9 @@ export class AuthdetailsComponent implements OnInit {
   pagedCardData: any[] = [];
   viewMode: 'card' | 'table' = 'card'; // or set default
 
-  constructor(private router: Router, private memberService: MemberService, private authService: AuthService, private headerService: HeaderService, private crudService: CrudService, private route: ActivatedRoute) {
+  constructor(private router: Router, private memberService: MemberService, private authService: AuthService,
+    private headerService: HeaderService, private crudService: CrudService, private route: ActivatedRoute,
+    private recentlyAccessedService: AuthenticateService) {
   }
 
   displayedColumns: string[] = [
@@ -148,12 +150,30 @@ export class AuthdetailsComponent implements OnInit {
   /*to display add auth component*/
   @Output() addClicked = new EventEmitter<string>();
 
-  
+
   onAddClick(authNumber: string = '') {
     this.addClicked.emit(authNumber);
     this.memberService.setIsCollapse(true);
 
     if (!authNumber) authNumber = 'DRAFT';
+    if (authNumber) {
+      const found = this.authDetails.find(x => x.authNumber === authNumber);
+
+      const record: RecentlyAccessed = {
+        userId: Number(sessionStorage.getItem('loggedInUserid')),
+        featureId: null,
+        featureGroupId: 1,
+        action: 'VIEW',
+        memberDetailsId: Number(sessionStorage.getItem('selectedMemberDetailsId')),
+        authDetailId: Number(found ? found.authDetailId : null)
+      };
+      console.log('Adding recently accessed record:', record);
+      this.recentlyAccessedService.addRecentlyAccessed(record.userId, record)
+        .subscribe({
+          next: id => console.log('Inserted record ID:', id),
+          error: err => console.error('Insert failed:', err)
+        });
+    }
 
     // read member id once (prefer your own field; fall back to route)
     const memberId = this.memberId ?? Number(this.route.parent?.snapshot.paramMap.get('id'));

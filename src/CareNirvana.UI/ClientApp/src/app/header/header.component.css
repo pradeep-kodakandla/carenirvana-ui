@@ -90,7 +90,7 @@ mat-form-field {
 .left {
   display: flex;
   justify-content: flex-start;
-  gap:-2px;
+  gap: -2px;
 }
 
 .middle {
@@ -312,6 +312,7 @@ button {
 .nav-tabs .nav-link:hover {
   color: white;
 }
+
 .nav-tabs .nav-link.inactive {
   color: white;
 }
@@ -344,3 +345,327 @@ mat-tab-group {
   height: 24px;
   object-fit: contain; /* Ensures the image scales properly */
 }
+
+
+/* Popover panel */
+.history-popover .mat-mdc-menu-content {
+  padding: 12px 14px;
+  min-width: 320px;
+}
+
+/* Content layout */
+.counts-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.counts-title {
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+  .counts-title .subtle {
+    font-weight: 400;
+    opacity: 0.7;
+  }
+
+/* Chips row */
+.chip-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Chips */
+.count-chip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1;
+  border: 1px solid rgba(0,0,0,0.12);
+  background: #f7f7f9;
+  white-space: nowrap;
+}
+
+  .count-chip.members {
+    border-color: #1976d2;
+    background: rgba(25,118,210,.08);
+  }
+
+  .count-chip.auths {
+    border-color: #2e7d32;
+    background: rgba(46,125,50,.08);
+  }
+
+  .count-chip.complaints {
+    border-color: #c62828;
+    background: rgba(198,40,40,.08);
+  }
+
+
+
+/* Popover sizing/padding */
+.history-popover .mat-mdc-menu-content {
+  padding: 12px 14px;
+  min-width: 680px; /* wide enough for the table */
+  max-width: 860px;
+}
+
+/* Title + chips */
+.counts-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.counts-title {
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+  .counts-title .subtle {
+    font-weight: 400;
+    opacity: 0.7;
+  }
+
+.chip-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.count-chip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1;
+  border: 1px solid rgba(0,0,0,0.12);
+  background: #f7f7f9;
+  white-space: nowrap;
+}
+
+  .count-chip.members {
+    border-color: #1976d2;
+    background: rgba(25,118,210,.08);
+  }
+
+  .count-chip.auths {
+    border-color: #2e7d32;
+    background: rgba(46,125,50,.08);
+  }
+
+  .count-chip.complaints {
+    border-color: #c62828;
+    background: rgba(198,40,40,.08);
+  }
+
+.divider {
+  height: 8px;
+}
+
+/* Make the MAT MENU PANEL itself wider (default max-width is ~280px) */
+.history-popover.mat-mdc-menu-panel {
+  max-width: none !important;
+  width: 1100px; /* tweak as you like: 960, 1100, 1280… */
+  border-radius: 12px;
+}
+
+/* Inner content spacing */
+.history-popover .mat-mdc-menu-content {
+  padding: 12px 14px;
+}
+
+/* Chips section (unchanged) */
+.counts-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.counts-title {
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+  .counts-title .subtle {
+    font-weight: 400;
+    opacity: 0.7;
+  }
+
+.chip-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.count-chip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1;
+  border: 1px solid rgba(0,0,0,0.12);
+  background: #f7f7f9;
+  white-space: nowrap;
+}
+
+  .count-chip.members {
+    border-color: #1976d2;
+    background: rgba(25,118,210,.08);
+  }
+
+  .count-chip.auths {
+    border-color: #2e7d32;
+    background: rgba(46,125,50,.08);
+  }
+
+  .count-chip.complaints {
+    border-color: #c62828;
+    background: rgba(198,40,40,.08);
+  }
+
+.divider {
+  height: 8px;
+}
+
+
+
+/* Chips section (unchanged) */
+.counts-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.counts-title {
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+  .counts-title .subtle {
+    font-weight: 400;
+    opacity: 0.7;
+  }
+
+.chip-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.count-chip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1;
+  border: 1px solid rgba(0,0,0,0.12);
+  background: #f7f7f9;
+  white-space: nowrap;
+}
+
+  .count-chip.members {
+    border-color: #1976d2;
+    background: rgba(25,118,210,.08);
+  }
+
+  .count-chip.auths {
+    border-color: #2e7d32;
+    background: rgba(46,125,50,.08);
+  }
+
+  .count-chip.complaints {
+    border-color: #c62828;
+    background: rgba(198,40,40,.08);
+  }
+
+.divider {
+  height: 8px;
+}
+
+
+
+
+  /* Make the MAT MENU PANEL itself wider (default max-width is ~280px) */
+.history-popover.mat-mdc-menu-panel {
+  max-width: none !important;
+  width: 1100px;                /* tweak as you like: 960, 1100, 1280… */
+  border-radius: 12px;
+}
+
+/* Inner content spacing */
+.history-popover .mat-mdc-menu-content {
+  padding: 12px 14px;
+}
+
+/* Chips section (unchanged) */
+.counts-wrap { display: flex; flex-direction: column; gap: 8px; }
+.counts-title { font-weight: 600; font-size: 14px; display: flex; align-items: baseline; gap: 6px; }
+.counts-title .subtle { font-weight: 400; opacity: 0.7; }
+.chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.count-chip { padding: 6px 10px; border-radius: 999px; font-size: 12px; line-height: 1;
+  border: 1px solid rgba(0,0,0,0.12); background: #f7f7f9; white-space: nowrap; }
+.count-chip.members    { border-color: #1976d2; background: rgba(25,118,210,.08); }
+.count-chip.auths      { border-color: #2e7d32; background: rgba(46,125,50,.08); }
+.count-chip.complaints { border-color: #c62828; background: rgba(198,40,40,.08); }
+
+.divider { height: 8px; }
+
+/* Scroll area */
+.table-scroll {
+  max-height: 360px;            /* increase if you want more rows visible */
+  overflow: auto;               /* both axes enabled; will show H scroll if needed */
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: #fff;
+}
+
+/* Table layout */
+.recent-table {
+  width: 100%;
+  min-width: 1050px;            /* ensure all columns fit; matches colgroup widths */
+  border-collapse: collapse;
+  font-size: 12px;
+  table-layout: fixed;          /* respect colgroup widths */
+}
+.recent-table thead th {
+  position: sticky; top: 0;
+  background: #fafafa;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  text-align: left;
+  padding: 8px 10px;
+  font-weight: 600;
+}
+.recent-table tbody td {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  white-space: nowrap;          /* keep dates & IDs on one line */
+  overflow: hidden;
+  text-overflow: ellipsis;      /* just in case a value is too long */
+}
+.recent-table tbody tr:hover { background: #f7faff; }
+
+.link-member,
+.link-auth {
+  color: #1976d2;
+  text-decoration: none;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+  .link-member:hover,
+  .link-auth:hover {
+    text-decoration: underline;
+    color: #0d47a1;
+  }

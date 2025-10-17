@@ -28,7 +28,8 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
     'activityType',
     'followUpDate',
     'dueDate',
-    'status'
+    'status',
+    'thumb'
   ];
 
   dataSource = new MatTableDataSource<any>([]);
@@ -277,4 +278,21 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
       this.router.navigate([tabRoute]);
     });
   }
+  toggleThumb(row: any, event: MouseEvent): void {
+    event.stopPropagation(); // prevent row expansion click
+    if (row.thumb === 'up') {
+      row.thumb = 'down';
+    } else if (row.thumb === 'down') {
+      row.thumb = null;
+    } else {
+      row.thumb = 'up';
+    }
+  }
+
+  getThumbClass(row: any): string {
+    if (row.thumb === 'up') return 'thumb-up';
+    if (row.thumb === 'down') return 'thumb-down';
+    return 'thumb-neutral';
+  }
+
 }

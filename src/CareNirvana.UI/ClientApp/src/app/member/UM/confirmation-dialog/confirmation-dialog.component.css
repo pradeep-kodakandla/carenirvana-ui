@@ -1,0 +1,19 @@
+.confirm-dialog .mat-mdc-dialog-container {
+  border-radius: 12px !important;
+  padding: 16px !important;
+}
+
+.confirm-dialog h2 {
+  font-weight: 600;
+  color: #0f1e3a;
+}
+
+.confirm-dialog .mat-dialog-content {
+  padding-top: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.confirm-dialog .mat-dialog-actions {
+  padding-top: 12px;
+}

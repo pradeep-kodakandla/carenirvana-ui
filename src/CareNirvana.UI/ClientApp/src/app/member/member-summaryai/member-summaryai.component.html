@@ -1,0 +1,123 @@
+
+<div class="app">
+  <h1 class="title">Nirvana AI</h1>
+  <!--<h1 class="title">
+    <svg class="ai-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="gradAI" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#4F46E5" />
+          <stop offset="50%" stop-color="#0EA5E9" />
+          <stop offset="100%" stop-color="#22C55E" />
+        </linearGradient>
+        <filter id="glowAI" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+          <feMerge>
+            <feMergeNode in="coloredBlur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      <circle cx="32" cy="32" r="28" fill="url(#gradAI)" filter="url(#glowAI)" opacity="0.9" />
+      <path d="M20 32h24M32 20v24M24 24h16v16H24z" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+    Summarizer AI
+  </h1>-->
+
+  <div class="shell">
+    <!-- LEFT PANEL: Summary -->
+    <aside class="card left" aria-label="Summary">
+      <section class="section">
+        <h3>Demographics Summary</h3>
+        <ul>
+          <li>18-year-old male with commercial insurance coverage</li>
+          <li>High-risk patient enrolled in Complex Care Management program</li>
+          <li>Resident of Adult Foster Home in San Francisco, CA</li>
+          <li>Active enrollment status with care manager Sridhar</li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <h3>Recent Events &amp; Activities</h3>
+        <ul>
+          <li>Primary care visit on 10/10/2025 for annual wellness check</li>
+          <li>Blood panel completed 10/08/2025 with normal results (HbA1c: 7.2%)</li>
+          <li>Medication adjustment on 10/05/2025 - Lisinopril increased</li>
+          <li>Cardiology consultation claim approved for $450.00</li>
+          <li>MRI brain scan authorization approved through 11/28/2025</li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <h3>Current Medications</h3>
+        <ul>
+          <li>Lisinopril 20mg daily (recently increased from 10mg)</li>
+          <li>Metformin 500mg twice daily for diabetes management</li>
+          <li>Daily multivitamin supplement</li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <h3>Active Diagnoses</h3>
+        <ul>
+          <li>Essential Hypertension (I10) - currently managed with Lisinopril</li>
+          <li>Type 2 Diabetes Mellitus (E11.9) - controlled with Metformin</li>
+          <li>Anxiety Disorder (F41.9) - ongoing monitoring and support</li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <h3>Recent Claims &amp; Authorizations</h3>
+        <ul>
+          <li>Cardiology consultation claim - $450 approved</li>
+          <li>Primary care visit claim - $185 approved</li>
+          <li>Laboratory work claim - $125 approved</li>
+          <li>MRI brain scan pre-authorization active</li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <h3>Care Management Notes</h3>
+        <ul>
+          <li>High-risk designation due to multiple chronic conditions</li>
+          <li>Enrolled in Complex Care Management for comprehensive support</li>
+          <li>Regular monitoring required for diabetes and hypertension</li>
+          <li>Responsive to care management outreach and interventions</li>
+        </ul>
+      </section>
+    </aside>
+
+    <!-- RIGHT PANEL: Assistant -->
+    <section class="card right" aria-label="Assistant">
+      <div class="header">
+        <h3>AI Assistant - Alexander King</h3>
+        <small class="muted">Ask questions or request actions</small>
+      </div>
+
+      <div class="body">
+        <div class="bubble">
+          <strong>AI Assistant:</strong>
+          Hello! I've reviewed Alexander King's comprehensive health record. He's an 18-year-old high-risk
+          patient with well-controlled diabetes and hypertension. His recent wellness check shows good
+          compliance with medications and care management. How can I assist you with his care today?
+        </div>
+
+        <div class="input-row">
+          <textarea class="text-input" placeholder="Ask a question about Alexander's care or request an action..."></textarea>
+        </div>
+
+        <div class="actions">
+          <button class="chip">Send Message</button>
+          <button class="chip">Add Activity</button>
+          <button class="chip">Create Note</button>
+          <button class="chip">Upload Document</button>
+          <button class="chip">Set Alert</button>
+          <button class="chip">New Authorization</button>
+          <button class="chip">Log Complaint</button>
+          <button class="chip">Update Care Plan</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+

@@ -133,10 +133,82 @@
       </button>
       <!--<div class="separator"></div>-->
       <!--<label style="padding-left:10px;" class="form-check-label" for="form2Example3">-->
-
-      <button mat-icon-button>
+      <!--<button mat-icon-button>
+        <mat-icon style="color:white;">history</mat-icon>
+      </button>-->
+      <!-- History: hover/click to open, stays open until outside click -->
+      <button mat-icon-button
+              aria-label="Recently accessed (last 24 hours)"
+              #historyTrigger="matMenuTrigger"
+              [matMenuTriggerFor]="historyMenu"
+              (mouseenter)="openHistoryMenu(historyTrigger)">
+        <!-- no mouseleave -->
         <mat-icon style="color:white;">history</mat-icon>
       </button>
+
+      <mat-menu #historyMenu="matMenu"
+                class="history-popover"
+                yPosition="below"
+                [overlapTrigger]="false"
+                [hasBackdrop]="true"
+                [backdropClass]="'cdk-overlay-dark-backdrop'"
+                matMenuTriggerRestoreFocus="false"
+                (click)="$event.stopPropagation()">
+
+        <!-- chips + table (your existing content) -->
+        <div class="counts-wrap">
+          <div class="counts-title">
+            User accessed <span class="subtle">from last 24 hours</span>
+          </div>
+          <div class="chip-row">
+            <span class="count-chip members">Members: {{ accessCounts?.members ?? 0 }}</span>
+            <span class="count-chip auths">Auths: {{ accessCounts?.auths ?? 0 }}</span>
+            <span class="count-chip complaints">Complaints: {{ accessCounts?.complaints ?? 0 }}</span>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="table-scroll">
+          <table class="recent-table">
+            <thead>
+              <tr>
+                <th>MemberId</th>
+                <th>FeatureGroupName</th>
+                <th>FeatureName</th>
+                <th>AuthNumber</th>
+                <th>Action</th>
+                <th>AccessedDateTime</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let it of items">
+                <td>
+                  <a href="#"
+                     class="link-member"
+                     (click)="openMemberTab(it.MemberID, it.MemberName, it.MemberDetailsId); $event.preventDefault()">
+                    {{ it.MemberID || 'N/A' }}
+                  </a>
+                </td>
+                <td>{{ it.FeatureGroupName || 'N/A' }}</td>
+                <td>{{ it.FeatureName || 'N/A' }}</td>
+                <td>
+                  <a *ngIf="it.AuthNumber"
+                     href="#"
+                     class="link-auth"
+                     (click)="openAuthTab(it.AuthNumber,it.MemberID, it.MemberDetailsId); $event.preventDefault()">
+                    {{ it.AuthNumber }}
+                  </a>
+                  <span *ngIf="!it.AuthNumber">N/A</span>
+                </td>
+                <td>{{ it.Action || 'N/A' }}</td>
+                <td>{{ it.AccessedDateTime | date:'MM/dd/yyyy, hh:mm a' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </mat-menu>
+
 
       <button mat-icon-button>
         <mat-icon class="mat-badge" aria-hidden="false" style="color:white;" matBadge="15">mail</mat-icon>

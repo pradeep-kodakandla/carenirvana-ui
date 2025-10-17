@@ -38,6 +38,7 @@ import { MemberProgramComponent } from './member/member-program/member-program.c
 import { MemberTasksummaryComponent } from './member/member-tasksummary/member-tasksummary.component';
 import { MemberInfoComponent } from './member/member-info/member-info.component';
 import { MemberJourneyComponent } from './member/memberjourney/memberjourney.component';
+import { MemberSummaryaiComponent } from './member/member-summaryai/member-summaryai.component';
 import { AuthorizationComponent } from './member/UM/authorization/authorization.component';
 import { DecisiondetailsComponent } from './member/UM/decisiondetails/decisiondetails.component';
 import { DecisionbulkdialogComponent } from './member/UM/decisionbulkdialog/decisionbulkdialog.component';
@@ -50,6 +51,7 @@ import { UmauthactivityComponent } from './member/UM/umauthactivity/umauthactivi
 import { ValidationErrorDialogComponent } from './member/validation-error-dialog/validation-error-dialog.component';
 import { MdreviewComponent } from './member/UM/mdreview/mdreview.component';
 import { SmartauthcheckComponent } from './member/UM/smartauthcheck/smartauthcheck.component';
+import { ConfirmationDialogComponent } from './member/UM/confirmation-dialog/confirmation-dialog.component';
 
 import { ConfigurationComponent } from './admin/configuration/configuration.component';
 import { UsermanagementComponent } from './admin/usermanagement/usermanagement.component';
@@ -157,7 +159,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
     FaxesComponent,
     MemberAlertsComponent,
     MemberCareplanComponent,
-    MemberCareteamComponent, MemberCaregiverComponent, MemberJourneyComponent,
+    MemberCareteamComponent, MemberCaregiverComponent, MemberJourneyComponent, MemberSummaryaiComponent,
     MemberDocumentsComponent,
     MemberEnrollmentComponent,
     MemberNotesComponent,
@@ -165,7 +167,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
     MemberTasksummaryComponent,
     MemberInfoComponent, AuthorizationComponent, DecisiondetailsComponent, AuthdetailsComponent, AuthdynamicComponent, ProviderSearchComponent,
     UmauthnotesComponent, UmauthdocumentsComponent, UmauthactivityComponent, ValidationErrorDialogComponent, MdreviewComponent,
-    NewDashBoardComponent, NewDashboard2Component, MdreviewdashboardComponent, SmartauthcheckComponent,
+    NewDashBoardComponent, NewDashboard2Component, MdreviewdashboardComponent, SmartauthcheckComponent, ConfirmationDialogComponent,
     ConfigurationComponent, UsermanagementComponent, RolemanagementComponent, ProfilemanagementComponent, AppfeaturesetupComponent, PermissionManagerComponent,
     UmdocumenttypeComponent, SettingsDialogComponent, UmactivitytypeComponent, DecisionbulkdialogComponent, DialogContentComponent, UmnotetypeComponent, ExternallinksComponent,
     UmclaimtypeComponent, UmactivitypriorityComponent, UmadmissionlevelComponent, UmadmissiontypeComponent, UmadmitreasonComponent,
@@ -232,7 +234,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
       { path: 'member-mdreview', component: MdreviewComponent },
       { path: 'member-smartauthcheck', component: SmartauthcheckComponent },
       { path: 'member-journey', component: MemberJourneyComponent },
-
+      { path: 'member-summaryai', component: MemberSummaryaiComponent },
 
 
 

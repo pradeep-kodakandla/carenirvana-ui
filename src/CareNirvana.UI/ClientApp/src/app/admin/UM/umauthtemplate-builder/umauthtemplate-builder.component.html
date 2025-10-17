@@ -1,14 +1,9 @@
 <div style="padding-top:10px;" class="table-container" *ngIf="!isVisible">
   <div class="d-flex justify-content-between align-items-center" style="width: 100%; padding-bottom:5px;">
-    <div class="search-box" [class.active]="isFocused">
-      <button mat-icon-button>
-        <mat-icon>search</mat-icon>
-      </button>
-      <input type="text"
-             (keyup)="applyFilter($event)" placeholder="Search Auth Template"
-             class="search-input"
-             (focus)="onFocus()"
-             (blur)="onBlur()" />
+    <div class="search-section" [class.active]="isFocused">
+
+      <input type="text" placeholder="🔍 Search Auth Template..." (keyup)="applyFilter($event)" (focus)="onFocus()"
+             (blur)="onBlur()" class="search-input" />
     </div>
     <div>
       <button mat-icon-button color="primary" (click)="openForm('add')" matTooltip="Add Auth Template">
@@ -215,7 +210,7 @@
         <div class="accordion-header" (click)="toggleSection(section.sectionName); selectSection(section)">
           <span class="section-title">{{ section.sectionName }}</span>
           <button class="delete-section" (click)="deleteAccordionSection(section.sectionName, $event)" matTooltip="Delete Section">
-            <mat-icon>close</mat-icon>
+            x
           </button>
         </div>
         <div class="accordion-body">

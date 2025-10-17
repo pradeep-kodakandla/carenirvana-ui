@@ -1,9 +1,17 @@
+<mat-menu #menu="matMenu">
+  <button mat-menu-item><span>Add Activity</span></button>
+  <button mat-menu-item><span>Run Assessment</span></button>
+  <button mat-menu-item><span>Add Message</span></button>
+  <button mat-menu-item><span>Add Notes</span></button>
+  <button mat-menu-item><span>Upload Document</span></button>
+</mat-menu>
+
 <div style="display:flex;">
   <div class="sidebar" [class.collapsed]="isCollapse">
     <!-- Expand/Collapse Button -->
     <div class="sidebar-toolbar">
       <!-- Left-aligned button -->
-      <button class="toggle-button" *ngIf="!isCollapse">
+      <button class="toggle-button" [matMenuTriggerFor]="menu" *ngIf="!isCollapse">
         <mat-icon>menu</mat-icon>
       </button>
 
@@ -110,7 +118,7 @@
 
 
     <!-- Show 'People' Icon when Collapsed -->
-    <div class="collapsed-icon" *ngIf="isCollapse">
+    <div class="collapsed-icon" [matMenuTriggerFor]="menu" *ngIf="isCollapse">
       <mat-icon>menu</mat-icon>
     </div>
   </div>

@@ -4,16 +4,13 @@
     <h4 style="color: #007BFF; font-weight: bold;">Role Management</h4>
   </div>
   <div style="padding-top:10px;" class="table-container">
-    <div class="d-flex justify-content-between align-items-center " style="background: whitesmoke; width: 100%;  ">
-      <div class="d-flex justify-content-between align-items-center">
-        <div class="search-bar-container-table">
-          <button mat-icon-button>
-            <mat-icon>search</mat-icon>
-          </button>
-          <!--<input class="input" matInput [readonly]="mode === 'view'" (keyup)="applyFilter($event)" placeholder="Start typing to search User " #input>-->
-          <input class="input" matInput (keyup)="applyFilter($event)" placeholder="Search..." />
-        </div>
-      </div>
+    <div class="search-section" style="padding-bottom:10px;">
+
+      <!--<input class="input" matInput [readonly]="mode === 'view'" (keyup)="applyFilter($event)" placeholder="Start typing to search User " #input>-->
+      <!--<input class="input" matInput (keyup)="applyFilter($event)" placeholder="Search..." />-->
+      <input type="text" placeholder="🔍 Search Role ..." (keyup)="applyFilter($event)"
+             class="search-input" />
+
       <button mat-icon-button color="primary" (click)="openForm('add')" matTooltip="Add User">
         <mat-icon>add</mat-icon>
       </button>
@@ -145,7 +142,7 @@
 
 
       <app-permission-manager *ngIf="formMode === 'add' || formMode === 'edit'"
-                              [permissionData]="parsedPermissionsJson" >
+                              [permissionData]="parsedPermissionsJson">
       </app-permission-manager>
 
     </div>

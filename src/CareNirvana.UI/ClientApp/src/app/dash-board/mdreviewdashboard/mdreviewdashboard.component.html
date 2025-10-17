@@ -33,6 +33,18 @@
               <span class="dot green"></span> Due in future
               <span class="count">{{ dueFutureCount }}</span>
             </button>
+            <button type="button" class="pill" [class.active]="isStatusSelected('APPROVED')"
+                    (click)="setStatusChip('APPROVED')">
+              <span class="dot blue"></span> Approved
+            </button>
+          </div>
+          <div class="chip-list" style="margin-top:8px;">
+            <!--<button type="button" class="pill" [class.active]="isStatusSelected('PENDING_OR_INPROGRESS')"
+                    (click)="setStatusChip('PENDING_OR_INPROGRESS')">
+              <span class="dot amber"></span> Pending / In Progress
+            </button>-->
+
+
           </div>
         </div>
       </div>
@@ -198,12 +210,21 @@
         <p>Review Due Date: {{ selectedAuth.dueDate }} | Review Priority: {{ selectedAuth.priority }}</p>
         <!--<p style="color:green;"><strong>Overall Initial Recommendation:</strong> {{ selectedAuth.recommendation }}</p>-->
         <p class="overall-ir">
-          <strong>Overall Initial Recommendation:</strong> {{ overallInitialRecommendation }}
+          <strong>Overall Initial Recommendation:</strong>
+          <span class="md-badge" [ngClass]="getOverallIrClass()">
+            {{ overallInitialRecommendation || 'Not Reviewed' }}
+          </span>
         </p>
       </div>
 
       <div class="review-content">
-        <h6>Clinical Context & Instructions</h6>
+        <h6 class="section-title" style="display:flex;align-items:center;gap:10px;">
+          <span>Clinical Context & Instructions: </span>
+          <span *ngIf="firstServiceLineComment as c"
+                style="font-weight:700;color:black;">
+            {{ c }}
+          </span>
+        </h6>
         <h6>Clinical Documents</h6>
         <div class="clinical-documents">
           <div class="field">
@@ -219,10 +240,10 @@
             <label>Auth #:</label>
             <span>{{ selectedAuth.authNumber }}</span>
           </div>
-          <div class="field">
+          <!--<div class="field">
             <label>Auth Type:</label>
             <span>{{ selectedAuth.authType }}</span>
-          </div>
+          </div>-->
           <div class="field">
             <label>Facility:</label>
             <span>{{ selectedAuth.facility }}</span>
@@ -239,6 +260,8 @@
           <table mat-table
                  [dataSource]="serviceLinesDS"
                  class="mat-elevation-z1 full-width-table pro-table mng-table">
+
+            bl
 
             <ng-container matColumnDef="select">
               <th mat-header-cell *matHeaderCellDef class="col-select">

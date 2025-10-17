@@ -6,7 +6,6 @@ import { MatTableDataSource } from '@angular/material/table';
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { DashboardServiceService } from 'src/app/service/dashboard.service.service';
 import { HeaderService } from 'src/app/service/header.service';
-import { MemberService } from 'src/app/service/shared-member.service';
 import { Observable, of } from 'rxjs';
 
 @Component({
@@ -57,7 +56,6 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
     private router: Router,
     private assignedAuthsService: DashboardServiceService,
     private headerService: HeaderService,
-    private memberService: MemberService,
     private route: ActivatedRoute
   ) { }
 
@@ -357,7 +355,6 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
 
   onAuthClick(authNumber: string = '', memId: string = '', memberDetailsId: string) {
     this.addClicked.emit(authNumber);
-    this.memberService.setIsCollapse(true);
 
     if (!authNumber) authNumber = 'DRAFT';
 

@@ -548,6 +548,10 @@ tr.example-element-row:not(.example-expanded-row):active {
     background: #10b981;
   }
 
+  .dot.blue {
+    background: #3b82f6;
+  }
+
 .days-left {
   margin-top: 2px;
   font-size: 11px;

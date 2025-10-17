@@ -24,6 +24,7 @@ export class MdreviewdashboardComponent {
   selectedDue = new Set<'OVERDUE' | 'TODAY' | 'FUTURE'>();
   selectedAuthData: any = {};
   auths: any[] = []; // your full list (if you already have it, keep)
+  allActivities: any[] = [];
   selectedIndex: number = 0;
   selectedAuth: any | null = null;
   selectedAuthRaw: Row | null = null;
@@ -48,6 +49,7 @@ export class MdreviewdashboardComponent {
   selection = new SelectionModel<any>(true, []);
   overallInitialRecommendation: string = '-';
   selectedRowforRefresh: number = 0;
+  firstServiceLineComment: string | null = null;
 
   showDropdowns: { [key: string]: boolean } = {
     DecisionStatus: false,
@@ -115,11 +117,14 @@ export class MdreviewdashboardComponent {
     const obs = this.activtyService.getwqactivitylinedetails(activityId) as Observable<any[]>;
     this.serviceLinesSub = obs.subscribe({
       next: (rows) => {
+        console.log('Fetched activity lines:', rows);
         const data = Array.isArray(rows) ? rows : [];
         // keep raw for any other logic you have
         this.selectedAuth.serviceLines = data;
         // feed the Material table so it matches your main table design
         this.serviceLinesDS.data = data;
+        this.firstServiceLineComment = rows.length ? (rows[0]?.Comments || null) : null;
+        this.computeOverallInitialRecommendation(rows);
       },
       error: () => {
         this.selectedAuth.serviceLines = [];
@@ -340,7 +345,17 @@ export class MdreviewdashboardComponent {
   private loadData(): void {
     this.getMyActivities$().subscribe({
       next: rows => {
-        this.rawData = Array.isArray(rows) ? rows : [];
+        console.log('Fetched activities:', rows);
+        // 1️⃣ Normalize to array
+        const allRows = Array.isArray(rows) ? rows : [];
+        this.allActivities = allRows;
+        // 2️⃣ Filter to exclude approved records
+        const notApproved = allRows.filter(r => {
+          const s = (r?.Status ?? '').toString().trim().toLowerCase();
+          return s !== 'approved' && s !== 'completed'; // add others if needed
+        });
+
+        this.rawData = Array.isArray(notApproved) ? notApproved : [];
         this.recomputeAll();
       },
       error: () => {
@@ -780,23 +795,111 @@ export class MdreviewdashboardComponent {
   }
 
   // Compute overall initial recommendation from the service lines
-  private computeOverallInitialRecommendation(): void {
-    const rows: any[] = this.serviceLinesDS?.data ?? [];
-    if (!rows.length) {
-      this.overallInitialRecommendation = '-';
-      return;
-    }
-    const values = rows
-      .map(r => (r?.InitialRecommendation ?? '').toString().trim())
-      .filter(v => v.length > 0);
+  private normalizeIR(v: string): 'approved' | 'denied' | 'pending' | 'other' {
+    const s = (v || '').trim().toLowerCase();
+    if (s === 'approved') return 'approved';
+    if (s === 'denied') return 'denied';
+    if (s === 'pending' || s === 'notreviewed' || s === 'not reviewed') return 'pending';
+    return s ? 'other' : 'pending';
+  }
 
-    if (!values.length) {
-      this.overallInitialRecommendation = '-';
-      return;
+  computeOverallInitialRecommendation(lines?: any[]): void {
+    const rows = (lines ?? this.serviceLinesDS?.data ?? []) as Array<any>;
+    const vals = rows
+      .map(r => this.normalizeIR(r?.InitialRecommendation))
+      .filter(Boolean);
+
+    if (!vals.length) { this.overallInitialRecommendation = '—'; return; }
+
+    const hasApproved = vals.includes('approved');
+    const hasDenied = vals.includes('denied');
+    const hasPending = vals.includes('pending') || vals.includes('other');
+
+    // Priority rules:
+    // 1) All Approved -> Approved
+    if (hasApproved && !hasDenied && !hasPending) { this.overallInitialRecommendation = 'Approved'; return; }
+    // 2) All Denied -> Denied
+    if (hasDenied && !hasApproved && !hasPending) { this.overallInitialRecommendation = 'Denied'; return; }
+    // 3) Mixed Approved & Denied (regardless of pending/other) -> Mixed
+    if (hasApproved && hasDenied) { this.overallInitialRecommendation = 'Mixed'; return; }
+    // 4) Only Approved + Pending/Other -> Approved (Partial)
+    if (hasApproved && !hasDenied) { this.overallInitialRecommendation = 'Approved'; return; }
+    // 5) Only Denied  + Pending/Other -> Denied (Leaning)
+    if (hasDenied && !hasApproved) { this.overallInitialRecommendation = 'Denied'; return; }
+    // 6) Otherwise -> Pending
+    this.overallInitialRecommendation = 'Pending';
+  }
+
+  getOverallIrClass(): string {
+    const v = (this.overallInitialRecommendation || '').trim().toLowerCase();
+    if (v === 'approved') return 'md-approved';
+    if (v === 'denied') return 'md-denied';
+    if (v === 'mixed') return 'md-mixed';
+    if (v === 'pending') return 'md-pending';
+    return 'md-notreviewed';
+  }
+
+  statusFilter: 'PENDING_OR_INPROGRESS' | 'APPROVED' = 'PENDING_OR_INPROGRESS';
+
+  // helpers to bind active state
+  isStatusSelected(k: 'PENDING_OR_INPROGRESS' | 'APPROVED'): boolean {
+    return this.statusFilter === k;
+  }
+
+  setStatusChip(k: 'APPROVED'): void {
+    // If clicking the same chip again, unselect it and go back to default
+    if (this.statusFilter === k) {
+      this.statusFilter = 'PENDING_OR_INPROGRESS';  // default view
+    } else {
+      this.statusFilter = k;
+    }
+    this.applyListFilters(); // reapply filters after toggle
+  }
+
+
+  private normalizeStatus(v: any): 'approved' | 'inprogress' | 'pending' | 'other' {
+    const s = (v ?? '').toString().trim().toLowerCase();
+    if (s.includes('approved')) return 'approved';
+    if (s.includes('progress') || s === 'inprogress') return 'inprogress';
+    if (s === '' || s.includes('pending') || s.includes('not reviewed') || s === 'notreviewed' || s === 'rfi') return 'pending';
+    return 'other';
+  }
+
+  private applyListFilters(): void {
+    // 1) start with full set
+    const all: any[] = Array.isArray(this.allActivities) ? this.allActivities : [];
+
+    // 2) due filter (keep your existing semantics)
+    let byDue = all;
+    if (this.selectedDue.size) {
+      byDue = all.filter(row => {
+        const d = new Date(row.DueDate || row.AuthDueDate);
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const dd = new Date(d); dd.setHours(0, 0, 0, 0);
+
+        const days = Math.floor((dd.getTime() - today.getTime()) / 86400000);
+        const bucket =
+          days < 0 ? 'OVERDUE' :
+            days === 0 ? 'TODAY' : 'FUTURE';
+
+        return this.selectedDue.has(bucket as any);
+      });
     }
 
-    const first = values[0];
-    const allSame = values.every(v => v.toLowerCase() === first.toLowerCase());
-    this.overallInitialRecommendation = allSame ? first : 'Mixed';
+    // 3) status filter (NEW)
+    let byStatus = byDue;
+    if (this.statusFilter === 'PENDING_OR_INPROGRESS') {
+      byStatus = byDue.filter(r => {
+        const s = this.normalizeStatus(r.Status);
+        return s === 'pending' || s === 'inprogress';
+      });
+    } else if (this.statusFilter === 'APPROVED') {
+      byStatus = byDue.filter(r => this.normalizeStatus(r.Status) === 'approved');
+    }
+
+    // 4) set data
+    if (this.dataSource) {
+      this.dataSource.data = byStatus;
+    }
   }
 }

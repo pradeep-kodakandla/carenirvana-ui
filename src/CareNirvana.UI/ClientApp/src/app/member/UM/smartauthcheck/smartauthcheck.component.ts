@@ -8,6 +8,11 @@ import { FormControl } from '@angular/forms';
 import { Observable, of } from 'rxjs';
 import { map, startWith } from 'rxjs/operators';
 import { MatSelect } from '@angular/material/select';
+import { Inject } from '@angular/core';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { MatDialog } from '@angular/material/dialog';
+import { Router } from '@angular/router';
+import { ConfirmationDialogComponent } from '../../UM/confirmation-dialog/confirmation-dialog.component';
 
 interface LevelItem {
   levelcode: string;
@@ -51,7 +56,8 @@ export class SmartauthcheckComponent implements OnInit {
     private authService: AuthService,
     private fb: FormBuilder,
     private http: HttpClient,
-    private memberEnrollment: MemberenrollmentService
+    private memberEnrollment: MemberenrollmentService,
+    private dialog: MatDialog,
   ) { }
 
   smartAuthCheckForm!: FormGroup;
@@ -322,18 +328,44 @@ export class SmartauthcheckComponent implements OnInit {
         let data: any = text;
         try { data = JSON.parse(text); } catch { /* keep as plain text */ }
 
-        // Example: handle simple “Y/N” contract
-        if (typeof data === 'string' && data.trim() === 'Y') {
-          // success path
+
+
+        if (data === 'Y') {
+          // Show confirmation message when authorization is required
+          const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+            width: '480px',
+            data: {
+              title: 'Authorization Required',
+              message:
+                'Smart Auth Check indicates that this request **requires an Authorization**.<br><br>' +
+                'Please press <b>Continue</b> to proceed with creating the Authorization in the <b>Request Details</b> step,<br>' +
+                'or click <b>Cancel</b> to remain on the Smart Auth Check page.'
+            },
+            panelClass: 'confirm-dialog',
+          });
+
+          dialogRef.afterClosed().subscribe(result => {
+            if (result === 'continue') {
+              // Move to Request Details stepper in Authorization component
+              //this.router.navigate(['/authorization'], {
+              //  queryParams: { step: 'request-details' },
+              //});
+            } else {
+              // Stay on the same page
+              console.log('User chose to stay on Smart Auth Check');
+            }
+          });
         } else {
-          // handle other values or parsed JSON object
+          // Continue your normal flow if no authorization required
+         // this.proceedToNextStep();
         }
       },
       error: (err) => {
-        console.error('Decision Table call failed:', err);
+        console.error('Error during Smart Auth Check:', err);
       }
     });
   }
+  
 
   onCompleteAuth(): void {
     if (this.smartAuthCheckForm.invalid) {

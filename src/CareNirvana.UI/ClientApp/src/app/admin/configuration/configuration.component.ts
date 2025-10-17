@@ -179,8 +179,7 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
     'QOC Score': AgqocscoreComponent,
     'QOC Investigation Reason': AgqocinvestigationreasonComponent,
     'Resolution Category': AgresolutioncategoryComponent,
-    'Resolution Sub Category': AgresolutionsubcategoryComponent,
-    'Role Permission': PermissionManagerComponent
+    'Resolution Sub Category': AgresolutionsubcategoryComponent
   };
 
   private readonly mainMenu: MenuItem[] = [
@@ -218,7 +217,7 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
     { name: 'Manage', children: ['Member Merge'] },
     {
       name: 'Administration',
-      children: ['User Management', 'Role Management', 'Profile Management', 'Application Features Setup', 'Role Permission']
+      children: ['Role Management', 'User Management', 'Profile Management', 'Application Features Setup']
     },
     { name: 'Configuration Management', children: ['Config Push'] },
     { name: 'Business Rules Engine', children: ['Rules'] }
@@ -323,7 +322,7 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
 
   private loadInitialComponent(): void {
     if (this.dynamicContainer) {
-      this.loadComponent('Role Management');
+      this.loadComponent('Auth Template');
     } else {
       console.error('Dynamic container not initialized');
     }

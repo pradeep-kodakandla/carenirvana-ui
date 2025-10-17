@@ -1,5 +1,5 @@
 <!-- Header: search + Add -->
-<div class="top-bar" style="display:flex;align-items:center;gap:10px;margin:8px 0; padding:5px;">
+<div class="top-bar" style="display:flex;align-items:center;gap:10px; padding:5px;">
   <div class="search-section" style="display:flex;align-items:center;gap:8px;flex:1;">
     <input type="text"
            placeholder="🔍 Search faxes…"
@@ -37,7 +37,7 @@
 
 <!-- Table -->
 <div class="table-wrapper" *ngIf="!showPreview" style="padding:5px;">
-  <table mat-table [dataSource]="dataSource" class="mat-elevation-z0 mng-table responsive-table">
+  <table mat-table [dataSource]="dataSource" class="mat-elevation-z1 full-width-table pro-table mng-table">
 
     <!-- Fax File Name -->
     <ng-container matColumnDef="fileName">
@@ -101,7 +101,7 @@
 </div>
 
 <!-- Split preview panel (shows when selectedFax is set) -->
-<div *ngIf="showPreview" class="split3 mt-4" style="padding:5px;">
+<div *ngIf="showPreview" class="split3" style="padding:5px;">
   <!-- Left: cards list -->
   <div class="pane pane-left">
     <div class="pane-header">
@@ -143,22 +143,57 @@
 
   <!-- Middle: details (bind to your OCR model when ready) -->
   <div class="pane pane-middle">
-    <div class="pane-header">
-      <span>Extracted Details</span>
+    <div *ngIf="isLoadingDetails" class="loader-container">
+      <div class="spinner"></div>
+      <div class="loader-text">Extracting details, please wait...</div>
     </div>
 
-    <div *ngIf="priorAuth as pa; else noOcr" class="space-y-3">
-      <div class="card">
+    <div *ngIf="!isLoadingDetails && priorAuth as pa; else noOcr" class="space-y-3">
+      <div class="pane-header">
+        <span>Extracted Details</span>
         <div class="text-sm muted">
           {{ pa.source?.template || 'Generic' }}
-          <ng-container *ngIf="pa.source?.confidence as conf">
-            • {{ (conf * 100) | number:'1.0-0' }}% match
-            <div class="info-highlight">
-              Member identified and ready for linkage. Authorization is required for this request using the specified Service Codes and effective Start–End dates.
-            </div>
+          <ng-container>
+            <span [class.muted-percent]="!pa.patient?.memberId">
+              • {{ pa.patient?.memberId ? ((pa.source?.confidence ?? 0) * 100 | number:'1.0-0') : 0 }}% match
+            </span>
           </ng-container>
+
+
         </div>
-        <div class="card-title">Patient</div>
+      </div>
+      <div class="card">
+        <div *ngIf="pa.patient?.memberId; else noMember" class="info-highlight">
+          <!--Member identified (Member ID: {{ pa.patient?.memberId }}) and ready for linkage.
+          Authorization can be initiated for this request using the extracted Service Codes and valid Start–End dates.-->
+          Member identified (Member ID: {{ pa.patient?.memberId }}) and ready for linkage.
+          <strong class="smart-check">Smart Auth Check completed.</strong> Authorization is required for this request based on the extracted
+          <strong>Service Codes</strong> and verified <strong>Start–End dates</strong>.
+        </div>
+
+        <ng-template #noMember>
+          <div class="info-highlight no-match">
+            No matching member record found. Please verify patient details before linking or adding an authorization.
+          </div>
+        </ng-template>
+      </div>
+
+      <div class="card">
+        <div class="pane-header">
+          <span>Patient</span>
+          <div class="text-sm muted">
+            <a [class.disabled-link]="!pa.patient?.memberId" href="#" [attr.tabindex]="pa.patient?.memberId ? 0 : -1">
+              Link to member
+            </a>
+            <a style="padding-left:10px;"
+               [class.disabled-link]="!pa.patient?.memberId"
+               href="#"
+               [attr.tabindex]="pa.patient?.memberId ? 0 : -1">
+              Add Auth
+            </a>
+
+          </div>
+        </div>
         <div class="grid-2">
           <div><strong>Name</strong>: {{ pa.patient?.name || '—' }}</div>
           <div><strong>Member ID</strong>: {{ pa.patient?.memberId || '—' }}</div>
@@ -168,7 +203,7 @@
       </div>
 
       <div class="card">
-        <div class="card-title">Review / Setting</div>
+        <div class="pane-header">Review / Setting</div>
         <div class="grid-2">
           <div><strong>Type</strong>: {{ pa.review?.type || '—' }}</div>
           <div><strong>Inpatient</strong>: {{ pa.setting?.inpatient ? 'Yes' : 'No' }}</div>
@@ -177,7 +212,7 @@
       </div>
 
       <div class="card" *ngIf="pa.services?.length">
-        <div class="card-title">Services</div>
+        <div class="pane-header">Services</div>
         <div *ngFor="let s of pa.services" class="svc">
           <div><strong>Code</strong>: {{ s.code || '—' }}</div>
           <div class="md:col-span-2"><strong>Description</strong>: {{ s.description || '—' }}</div>
@@ -188,7 +223,7 @@
       </div>
 
       <div class="card">
-        <div class="card-title">Providers</div>
+        <div class="pane-header">Providers</div>
         <div class="grid-2">
           <div>
             <strong>Requesting</strong>: {{ pa.providerRequesting?.name || '—' }}
@@ -201,7 +236,7 @@
       </div>
 
       <div class="card" *ngIf="pa.notes || pa.submission?.issuerName">
-        <div class="card-title">Submission / Notes</div>
+        <div class="pane-header">Submission / Notes</div>
         <div class="grid-2">
           <div><strong>Issuer</strong>: {{ pa.submission?.issuerName || '—' }}</div>
           <div><strong>Date</strong>: {{ pa.submission?.date || '—' }}</div>
@@ -211,23 +246,13 @@
     </div>
 
     <ng-template #noOcr>
-      <div class="muted">No OCR details yet. Choose a fax on the left.</div>
+      <!--<div class="muted"> No OCR details yet. Choose a fax on the left.</div>-->
     </ng-template>
   </div>
 
-  <!-- Right: status (placeholder) -->
-  <!--<div class="pane pane-right">
-    <div class="pane-title">Load Status</div>
-    <div class="card">
-      <div class="row"><span class="muted">Current status</span><span class="chip chip-soft">{{ selectedFax.status }}</span></div>
-      <div class="row"><span class="muted">Priority</span><span class="chip chip-soft" [ngClass]="priorityClass(selectedFax.priority || 2)">{{ priorityLabel(selectedFax.priority || 2) }}</span></div>
-      <div class="row"><span class="muted">Pages</span><span>{{ selectedFax.pageCount }}</span></div>
-      <div class="row"><span class="muted">Received</span><span>{{ selectedFax.receivedAt | date:'M/d/yy, h:mm a' }}</span></div>-->
-  <!-- Add timeline/progress later -->
-  <!--</div>
-  </div>-->
   <!-- Right: PDF preview + status -->
   <div class="pane pane-right">
+
     <div class="pane-header">
       <span>Preview</span>
     </div>
@@ -240,26 +265,10 @@
       </iframe>
     </div>
     <ng-template #noPreview>
-      <div class="muted" style="padding:12px 0;">Select a fax to preview.</div>
+      <div class="muted" style="padding:12px 0;">
+        Select a fax to preview. -
+      </div> to -
     </ng-template>
-
-    <!-- Status card (kept from your layout) -->
-    <!--<div class="pane-title" style="margin-top:12px;">Load Status</div>
-    <div class="card" *ngIf="selectedFax">
-      <div class="row"><span class="muted">Current status</span><span class="chip chip-soft">{{ selectedFax.status || selectedFax.status }}</span></div>
-      <div class="row">
-        <span class="muted">Priority</span>
-        <span class="chip chip-soft" [ngClass]="priorityClass((selectedFax.priority ?? selectedFax.priority) || 2)">
-          {{ priorityLabel((selectedFax.priority ?? selectedFax.priority) || 2) }}
-        </span>
-      </div>
-      <div class="row"><span class="muted">Pages</span><span>{{ selectedFax.pageCount ?? selectedFax.pageCount }}</span></div>
-      <div class="row">
-        <span class="muted">Received</span>
-        <span>{{ (selectedFax.receivedAt ?? selectedFax.receivedAt) | date:'M/d/yy, h:mm a' }}</span>
-      </div>
-    </div>-->
   </div>
-
 </div>
 
