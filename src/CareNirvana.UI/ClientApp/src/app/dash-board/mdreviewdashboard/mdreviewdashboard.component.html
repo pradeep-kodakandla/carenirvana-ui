@@ -207,7 +207,7 @@
       </div>
 
       <div class="review-header">
-        <p>Review Due Date: {{ selectedAuth.dueDate }} | Review Priority: {{ selectedAuth.priority }}</p>
+        <p>Review Due Date: {{ selectedAuth.dueDate ? (selectedAuth.dueDate | date:'MM/dd/yyyy HH:mm:ss a') : 'N/A' }} | Review Priority: {{ selectedAuth.priority || 'N/A' }}</p>
         <!--<p style="color:green;"><strong>Overall Initial Recommendation:</strong> {{ selectedAuth.recommendation }}</p>-->
         <p class="overall-ir">
           <strong>Overall Initial Recommendation:</strong>

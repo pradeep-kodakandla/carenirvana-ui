@@ -173,12 +173,13 @@
           <table class="recent-table">
             <thead>
               <tr>
-                <th>MemberId</th>
-                <th>FeatureGroupName</th>
-                <th>FeatureName</th>
-                <th>AuthNumber</th>
+                <th>Member Id</th>
+                <th>Member Name</th>
+                <th>Feature Group Name</th>
+                <th>Feature Name</th>
+                <th>Auth Number</th>
                 <th>Action</th>
-                <th>AccessedDateTime</th>
+                <th>Accessed Date Time</th>
               </tr>
             </thead>
             <tbody>
@@ -190,6 +191,7 @@
                     {{ it.MemberID || 'N/A' }}
                   </a>
                 </td>
+                <td>{{ it.MemberName || 'N/A' }}</td>
                 <td>{{ it.FeatureGroupName || 'N/A' }}</td>
                 <td>{{ it.FeatureName || 'N/A' }}</td>
                 <td>
