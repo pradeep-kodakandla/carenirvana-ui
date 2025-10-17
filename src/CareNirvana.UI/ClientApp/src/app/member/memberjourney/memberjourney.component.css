@@ -392,3 +392,65 @@
     text-align: center;
     box-shadow: 0 2px 6px rgba(0,0,0,0.15);
   }
+
+
+  /* Footer chip row (keep) */
+.footer-chips {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  background: #fff;
+}
+
+/* New pill chip */
+.pill-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 6px 12px;
+  background: #fff;
+  border: 1px solid #e9edf5;
+  border-radius: 999px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  cursor: default;
+  user-select: none;
+}
+
+/* Colored dot on the left (bind bg via [style.background-color]) */
+.pill-chip .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* Label text */
+.pill-chip .label {
+  font-weight: 600;
+  color: #1f2937; /* slate-800 */
+  line-height: 1;
+}
+
+/* Count badge on the right */
+.pill-chip .count {
+  margin-left: 6px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #f3f5f9;
+  color: #111827;       /* gray-900 */
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Optional hover focus for slight depth */
+.pill-chip:hover {
+  border-color: #dfe6f0;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.06);
+}

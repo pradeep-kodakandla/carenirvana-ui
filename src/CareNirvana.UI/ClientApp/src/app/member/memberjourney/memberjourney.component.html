@@ -133,7 +133,7 @@
     </div>
   </main>
 
-  <footer class="mj-footer">
+  <!--<footer class="mj-footer">
     <div class="footer-chips" *ngIf="counters?.length">
       <div *ngFor="let c of counters"
            class="chip"
@@ -141,5 +141,22 @@
         {{ c.label }}: {{ c.count }}
       </div>
     </div>
+  </footer>-->
+  <footer class="mj-footer">
+    <div class="footer-chips" *ngIf="counters?.length">
+      <ng-container *ngFor="let c of counters; trackBy: trackByLabel">
+        <button *ngIf="c.count > 0"
+                type="button"
+                class="pill-chip"
+                [attr.aria-label]="c.label + ' ' + c.count">
+          <span class="dot" [style.background-color]="c.color"></span>
+          <span class="label">{{ c.label }}</span>
+          <span class="count">{{ c.count }}</span>
+        </button>
+      </ng-container>
+    </div>
   </footer>
+
+
+
 </div>

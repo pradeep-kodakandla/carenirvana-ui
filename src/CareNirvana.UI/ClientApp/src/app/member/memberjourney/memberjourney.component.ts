@@ -251,5 +251,6 @@ export class MemberJourneyComponent implements OnInit, OnDestroy {
     }
     this.renderEvents = out;
   }
+  trackByLabel(_i: number, item: { label: string }) { return item.label; }
 
 }
