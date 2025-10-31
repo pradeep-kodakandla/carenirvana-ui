@@ -1,0 +1,126 @@
+<div *ngIf="isFormVisible" class="form-container">
+  <h4 style="color:#007BFF;font-weight:bold;">{{ formMode | titlecase }} Workgroup</h4>
+
+  <form [formGroup]="workgroupForm">
+    <mat-card class="details-card">
+      <mat-card-content>
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="form-field">
+            <mat-label>Workgroup Code</mat-label>
+            <input matInput formControlName="workGroupCode" placeholder="Enter Code" required />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="form-field">
+            <mat-label>Workgroup Name</mat-label>
+            <input matInput formControlName="workGroupName" placeholder="Enter Name" required />
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Description</mat-label>
+            <textarea matInput formControlName="description" rows="3" placeholder="Description"></textarea>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-checkbox formControlName="isFax">Fax Workgroup</mat-checkbox>
+          <mat-checkbox formControlName="isProviderPortal">Provider Portal</mat-checkbox>
+          <mat-checkbox formControlName="activeFlag">Active</mat-checkbox>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <div class="action-buttons">
+      <button mat-raised-button color="primary" (click)="saveEntry()">
+        {{ formMode === 'add' ? 'Create' : 'Update' }}
+      </button>
+      <button mat-stroked-button color="warn" (click)="cancelForm()">Cancel</button>
+    </div>
+  </form>
+</div>
+
+<div *ngIf="!isFormVisible" class="container">
+  <div class="card-header">
+    <h4 style="color:#007BFF;font-weight:bold;">Workgroup List</h4>
+  </div>
+
+  <div class="table-container">
+    <div class="d-flex justify-content-between align-items-center" style="background:whitesmoke;">
+      <div class="search-bar-container-table">
+        <mat-icon>search</mat-icon>
+        <input class="input" matInput (keyup)="applyFilter($event)" placeholder="Search Workgroup" />
+      </div>
+      <div>
+        <button mat-icon-button color="primary" (click)="openForm('add')" matTooltip="Add Workgroup">
+          <mat-icon>add</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <table mat-table [dataSource]="dataSource" matSort class="responsive-table">
+      <ng-container matColumnDef="workGroupCode">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Code</th>
+        <td mat-cell *matCellDef="let e">{{ e.workGroupCode }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="workGroupName">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Name</th>
+        <td mat-cell *matCellDef="let e">{{ e.workGroupName }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="description">
+        <th mat-header-cell *matHeaderCellDef>Description</th>
+        <td mat-cell *matCellDef="let e">{{ e.description || '—' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="isFax">
+        <th mat-header-cell *matHeaderCellDef>Fax</th>
+        <td mat-cell *matCellDef="let e">
+          <mat-icon *ngIf="e.isFax" color="primary">check</mat-icon>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="isProviderPortal">
+        <th mat-header-cell *matHeaderCellDef>Provider Portal</th>
+        <td mat-cell *matCellDef="let e">
+          <mat-icon *ngIf="e.isProviderPortal" color="primary">check</mat-icon>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="activeFlag">
+        <th mat-header-cell *matHeaderCellDef>Active</th>
+        <td mat-cell *matCellDef="let e">
+          <mat-slide-toggle color="primary" [checked]="e.activeFlag" disabled></mat-slide-toggle>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="createdBy">
+        <th mat-header-cell *matHeaderCellDef>Created By</th>
+        <td mat-cell *matCellDef="let e">{{ e.createdBy }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="createdOn">
+        <th mat-header-cell *matHeaderCellDef>Created On</th>
+        <td mat-cell *matCellDef="let e">{{ e.createdOn | date:'MM/dd/yyyy HH:mm' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Actions</th>
+        <td mat-cell *matCellDef="let e">
+          <button mat-icon-button (click)="openForm('edit', e)" matTooltip="Edit">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button (click)="confirmDelete(e)" matTooltip="Delete">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+    </table>
+
+    <mat-paginator [pageSizeOptions]="[10,15,20]" showFirstLastButtons></mat-paginator>
+  </div>
+</div>

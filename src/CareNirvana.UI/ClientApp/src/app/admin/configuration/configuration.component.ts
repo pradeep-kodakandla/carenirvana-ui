@@ -6,6 +6,8 @@ import { RolemanagementComponent } from 'src/app/admin/rolemanagement/rolemanage
 import { ProfilemanagementComponent } from 'src/app/admin/profilemanagement/profilemanagement.component';
 import { AppfeaturesetupComponent } from 'src/app/admin/appfeaturesetup/appfeaturesetup.component';
 import { PermissionManagerComponent } from 'src/app/admin/appfeaturesetup/permission-manager/permission-manager.component';
+import { WorkgroupComponent } from 'src/app/admin/workgroup/workgroup.component';
+import { WorkbasketComponent } from 'src/app/admin/workbasket/workbasket.component';
 
 // UM Components
 import { UmdocumenttypeComponent } from 'src/app/admin/UM/umdocumenttype/umdocumenttype.component';
@@ -179,7 +181,9 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
     'QOC Score': AgqocscoreComponent,
     'QOC Investigation Reason': AgqocinvestigationreasonComponent,
     'Resolution Category': AgresolutioncategoryComponent,
-    'Resolution Sub Category': AgresolutionsubcategoryComponent
+    'Resolution Sub Category': AgresolutionsubcategoryComponent,
+    'Work Group': WorkgroupComponent,
+    'Work Basket': WorkbasketComponent
   };
 
   private readonly mainMenu: MenuItem[] = [
@@ -217,7 +221,7 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
     { name: 'Manage', children: ['Member Merge'] },
     {
       name: 'Administration',
-      children: ['Role Management', 'User Management', 'Profile Management', 'Application Features Setup']
+      children: ['Role Management', 'User Management', 'Profile Management', 'Application Features Setup', 'Work Group','Work Basket']
     },
     { name: 'Configuration Management', children: ['Config Push'] },
     { name: 'Business Rules Engine', children: ['Rules'] }
@@ -322,7 +326,8 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
 
   private loadInitialComponent(): void {
     if (this.dynamicContainer) {
-      this.loadComponent('Auth Template');
+      //this.loadComponent('Auth Template');
+      this.loadComponent('Work Group');
     } else {
       console.error('Dynamic container not initialized');
     }

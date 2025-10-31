@@ -1,0 +1,137 @@
+<!-- Form -->
+<div *ngIf="isFormVisible" class="form-container">
+  <h4 style="color:#007BFF;font-weight:bold;">{{ formMode | titlecase }} WorkBasket</h4>
+
+  <form [formGroup]="form">
+    <mat-card class="details-card">
+      <mat-card-content>
+        <div class="form-row">
+          <mat-form-field class="form-field" appearance="outline">
+            <mat-label>WorkBasket Code</mat-label>
+            <input matInput formControlName="workBasketCode" placeholder="Enter code" required />
+            <mat-error *ngIf="form.get('workBasketCode')?.hasError('required')">Required</mat-error>
+          </mat-form-field>
+
+          <mat-form-field class="form-field" appearance="outline">
+            <mat-label>WorkBasket Name</mat-label>
+            <input matInput formControlName="workBasketName" placeholder="Enter name" required />
+            <mat-error *ngIf="form.get('workBasketName')?.hasError('required')">Required</mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field class="full-width" appearance="outline">
+            <mat-label>Description</mat-label>
+            <textarea matInput formControlName="description" rows="3" placeholder="Description"></textarea>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field class="full-width" appearance="outline">
+            <mat-label>Linked WorkGroups</mat-label>
+            <mat-select formControlName="workGroupIds" multiple (selectionChange)="onGroupsChange($event)">
+              <mat-option *ngFor="let g of allWorkGroups" [value]="g.workGroupId">
+                {{ g.workGroupName }} ({{ g.workGroupCode }})
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-checkbox formControlName="activeFlag">Active</mat-checkbox>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <div class="action-buttons">
+      <button mat-raised-button color="primary" (click)="save()">
+        {{ formMode === 'add' ? 'Create' : 'Update' }}
+      </button>
+      <button mat-stroked-button color="warn" (click)="cancelForm()">Cancel</button>
+    </div>
+  </form>
+</div>
+
+<!-- List -->
+<div *ngIf="!isFormVisible" class="container">
+  <div class="card-header">
+    <h4 style="color:#007BFF;font-weight:bold;">WorkBaskets</h4>
+  </div>
+
+  <div class="table-container">
+    <div class="d-flex justify-content-between align-items-center" style="background:whitesmoke;">
+      <div class="search-bar-container-table">
+        <mat-icon>search</mat-icon>
+        <input class="input" matInput (keyup)="applyFilter($event)" placeholder="Search WorkBaskets" />
+      </div>
+      <div>
+        <button mat-icon-button color="primary" (click)="openForm('add')" matTooltip="Add WorkBasket">
+          <mat-icon>add</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <table mat-table [dataSource]="dataSource" matSort class="responsive-table">
+      <ng-container matColumnDef="workBasketCode">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Code</th>
+        <td mat-cell *matCellDef="let e">{{ e.workBasketCode }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="workBasketName">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Name</th>
+        <td mat-cell *matCellDef="let e">{{ e.workBasketName }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="description">
+        <th mat-header-cell *matHeaderCellDef>Description</th>
+        <td mat-cell *matCellDef="let e">{{ e.description || '—' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="workGroups">
+        <th mat-header-cell *matHeaderCellDef>WorkGroups</th>
+        <td mat-cell *matCellDef="let e">
+          <!-- show count; click row to edit to see details -->
+          <span class="chip">{{ 'Linked: ' }}</span>
+          <span class="chip accent">
+            <!-- Best-effort: if selectedView is current row, show its length; else show '—' -->
+            {{ e.workBasketId === selectedId && selectedView ? (selectedView.workGroupIds.length || 0) : '—' }}
+          </span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="activeFlag">
+        <th mat-header-cell *matHeaderCellDef>Active</th>
+        <td mat-cell *matCellDef="let e">
+          <mat-slide-toggle color="primary" [checked]="e.activeFlag" disabled></mat-slide-toggle>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="createdBy">
+        <th mat-header-cell *matHeaderCellDef>Created By</th>
+        <td mat-cell *matCellDef="let e">{{ e.createdBy }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="createdOn">
+        <th mat-header-cell *matHeaderCellDef>Created On</th>
+        <td mat-cell *matCellDef="let e">{{ e.createdOn | date:'MM/dd/yyyy HH:mm' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Actions</th>
+        <td mat-cell *matCellDef="let e">
+          <button mat-icon-button (click)="openForm('edit', e)" matTooltip="Edit">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button (click)="confirmDelete(e)" matTooltip="Delete">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+    </table>
+
+    <mat-paginator [pageSizeOptions]="[10, 15, 20]" showFirstLastButtons></mat-paginator>
+  </div>
+</div>

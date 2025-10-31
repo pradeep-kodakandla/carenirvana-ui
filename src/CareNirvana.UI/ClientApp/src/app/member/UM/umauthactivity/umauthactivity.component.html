@@ -53,7 +53,7 @@
             </span>
           </div>
           <div class="timeline-summary">
-            Assign To: {{ getProviderName(activity.referredTo) || 'No Assignee' }} | Scheduled: {{ formatDateEST(activity.scheduledDateTime) }}
+            Assign To: {{ getProviderName(activity.referredTo) || 'No Assignee' }} | Scheduled: {{ formatDateEST(activity.followUpDateTime) }}
           </div>
         </div>
       </div>
@@ -64,44 +64,17 @@
   <!-- Right Side - Form or Summary -->
   <div class="activity-right">
     <ng-container *ngIf="isEditing; else aiSummary">
-      <div class="auth-form">
+      <div class="auth-form" [attr.data-form-key]="formKey">
         <form [formGroup]="activityForm">
           <div class="form-grid">
-            <!-- Your form fields (same as before) -->
-            <!--<div class="form-outline dropdown-container">
-              <label class="floating-label">Member Name</label>
-              <input type="text"
-                     class="form-control"
-                     formControlName="memberName">
-            </div>-->
-
 
             <div class="form-outline dropdown-container">
               <label class="floating-label">Activity Type <span class="text-danger">*</span></label>
-
-              <div class="input-with-icon">
-                <input type="text"
-                       class="form-select"
-                       [value]="activityTypeDisplay"
-                       (input)="onTypeaheadInput($event)"
-                       (keydown)="handleDropdownKeydown($event, 'activityType')"
-                       (focus)="openDropdown('activityType')"
-                       (focusout)="closeDropdown('activityType')"
-                       [ngClass]="{'is-invalid': activityForm.get('activityType')?.touched && activityForm.get('activityType')?.invalid}">
-
-                <span class="dropdown-arrow">&#9662;</span>
-
-                <div class="autocomplete-dropdown" *ngIf="showDropdowns.activityType && filteredActivityTypes?.length">
-                  <div class="autocomplete-option"
-                       *ngFor="let option of filteredActivityTypes; let i = index"
-                       [ngClass]="{'highlighted': i === highlightedIndex}"
-                       (mousedown)="selectDropdownOption('activityType', option)">
-                    {{ option.label }}
-                  </div>
-
-                </div>
-              </div>
-
+              <ui-dropdown formControlName="activityType"
+                           [options]="activityTypeOptions"
+                           [compareWith]="compareId"
+                           placeholder="Select activity type">
+              </ui-dropdown>
               <div *ngIf="activityForm.get('activityType')?.touched && activityForm.get('activityType')?.invalid" class="text-danger">
                 Activity Type is required.
               </div>
@@ -111,166 +84,100 @@
 
             <div class="form-outline dropdown-container">
               <label class="floating-label">Priority <span class="text-danger">*</span></label>
-
-              <div class="input-with-icon">
-                <input type="text"
-                       class="form-select"
-                       [value]="priorityDisplay"
-                       (input)="onDropdownTextChange($event, 'priority')"
-                       (keydown)="handleDropdownKeydown($event, 'priority')"
-                       (focus)="openDropdown('priority')"
-                       (blur)="closeDropdown('priority')"
-                       [ngClass]="{'is-invalid': activityForm.get('priority')?.touched && activityForm.get('priority')?.invalid}">
-
-                <span class="dropdown-arrow">&#9662;</span>
-
-                <div class="autocomplete-dropdown" *ngIf="showDropdowns.priority && filteredPriorities?.length">
-                  <div class="autocomplete-option"
-                       *ngFor="let option of filteredPriorities; let i = index"
-                       [ngClass]="{'highlighted': i === highlightedIndex && activeDropdown === 'priority'}"
-                       (mousedown)="selectDropdownOption('priority', option)">
-                    {{ option.label }}
-                  </div>
-                </div>
-              </div>
-
+              <ui-dropdown formControlName="priority"
+                           [options]="priorityOptions"
+                           [compareWith]="compareId"
+                           placeholder="Select priority">
+              </ui-dropdown>
               <div *ngIf="activityForm.get('priority')?.touched && activityForm.get('priority')?.invalid" class="text-danger">
                 Priority is required.
               </div>
             </div>
 
 
+            <div class="form-outline position-relative">
+              <label class="floating-label">Scheduled Date & Time <span class="text-danger">*</span></label>
+              <ui-datetime-picker formControlName="followUpDateTime"
+                                  placeholderDate="Select date"
+                                  placeholderTime="Select time">
+              </ui-datetime-picker>
+              <div *ngIf="activityForm.get('followUpDateTime')?.touched && activityForm.get('followUpDateTime')?.invalid" class="text-danger">
+                Scheduled date is required.
+              </div>
+            </div>
 
+            <!-- Due Date & Time -->
+            <div class="form-outline position-relative">
+              <label class="floating-label">Due Date & Time <span class="text-danger">*</span></label>
+              <ui-datetime-picker formControlName="dueDate"
+                                  placeholderDate="Select date"
+                                  placeholderTime="Select time">
+              </ui-datetime-picker>
+              <div *ngIf="activityForm.get('dueDate')?.touched && activityForm.get('dueDate')?.invalid" class="text-danger">
+                Due date is required.
+              </div>
+            </div>
+
+            <!-- Assign To (single, autocomplete) -->
             <div class="form-outline dropdown-container">
               <label class="floating-label">Assign To <span class="text-danger">*</span></label>
-              <div class="input-with-icon">
-                <input type="text"
-                       class="form-control"
-                       [value]="assignToDisplay"
-                       (input)="onDropdownTextChange($event, 'assignTo')"
-                       (keydown)="handleDropdownKeydown($event, 'assignTo')"
-                       (focus)="openDropdown('assignTo')"
-                       (blur)="closeDropdown('assignTo')"
-                       [ngClass]="{'is-invalid': activityForm.get('assignTo')?.touched && activityForm.get('assignTo')?.invalid}">
-                <span class="dropdown-arrow">&#9662;</span>
-
-                <div class="autocomplete-dropdown" *ngIf="showDropdowns.assignTo && filteredUsers?.length">
-                  <div class="autocomplete-option"
-                       *ngFor="let option of filteredUsers; let i = index"
-                       [ngClass]="{'highlighted': i === highlightedIndex && activeDropdown === 'assignTo'}"
-                       (mousedown)="selectDropdownOption('assignTo', option)">
-                    {{ option.label }}
-                  </div>
-                </div>
-              </div>
-
+              <ui-dropdown formControlName="assignTo"
+                           [options]="assignToOptions"
+                           [compareWith]="compareId"
+                           placeholder="Select user">
+              </ui-dropdown>
               <div *ngIf="activityForm.get('assignTo')?.touched && activityForm.get('assignTo')?.invalid" class="text-danger">
                 Assign To is required.
               </div>
             </div>
 
-
-
-            <div class="form-outline position-relative">
-              <label class="floating-label">Scheduled Date & Time <span class="text-danger">*</span></label>
-              <div class="input-with-icon">
-                <input type="text"
-                       class="form-control"
-                       [value]="scheduledDateText"
-                       (input)="onScheduledTextChange($event)"
-                       (blur)="handleDateTimeBlur('scheduledDateText', 'scheduledDateTime')"
-                       [ngClass]="{'is-invalid': activityForm.get('scheduledDateTime')?.touched && activityForm.get('scheduledDateTime')?.invalid}"
-                       placeholder="Enter D, D+1, D-1 or select" />
-
-                <button type="button" class="calendar-icon-btn" (click)="triggerCalendar('scheduled')" tabindex="0">📅</button>
-
-                <input type="datetime-local"
-                       #scheduledPicker
-                       style="opacity: 0; position: absolute; pointer-events: none;" tabindex="-1"
-                       (change)="handleCalendarChange($event, 'scheduledDateTime')">
-              </div>
-
-              <div *ngIf="activityForm.get('scheduledDateTime')?.touched && activityForm.get('scheduledDateTime')?.invalid" class="text-danger">
-                Scheduled date is required.
-              </div>
+            <div class="form-outline dropdown-container">
+              <label class="floating-label">Work Group</label>
+              <ui-multi-check-dropdown formControlName="workGroups"
+                                       [options]="workGroupOptions"
+                                       [defaultSelect]="true"
+                                       [showChips]="false"
+                                       placeholder="Select work groups">
+              </ui-multi-check-dropdown>
             </div>
-
-            <div class="form-outline position-relative">
-              <label class="floating-label">Due Date & Time <span class="text-danger">*</span></label>
-              <div class="input-with-icon">
-                <input type="text"
-                       class="form-control"
-                       [value]="dueDateText"
-                       (input)="onDueTextChange($event)"
-                       (blur)="handleDateTimeBlur('dueDateText', 'dueDateTime')"
-                       [ngClass]="{'is-invalid': activityForm.get('dueDateTime')?.touched && activityForm.get('dueDateTime')?.invalid}"
-                       placeholder="Enter D, D+1, D-1 or select" />
-                <button type="button" class="calendar-icon-btn" (click)="triggerCalendar('due')">📅</button>
-
-                <input type="datetime-local"
-                       #duePicker
-                       style="opacity: 0; position: absolute; pointer-events: none;" tabindex="-1"
-                       (change)="handleCalendarChange($event, 'dueDateTime')">
-              </div>
-
-              <div *ngIf="activityForm.get('dueDateTime')?.touched && activityForm.get('dueDateTime')?.invalid" class="text-danger">
-                Due date is required.
-              </div>
-            </div>
-
-
 
             <div class="form-outline dropdown-container">
               <label class="floating-label">Work Basket</label>
-
-              <div class="input-with-icon">
-                <input type="text"
-                       class="form-control"
-                       [value]="workBasketDisplay"
-                       (input)="onDropdownTextChange($event, 'workBasket')"
-                       (keydown)="handleDropdownKeydown($event, 'workBasket')"
-                       (focus)="openDropdown('workBasket')"
-                       (blur)="closeDropdown('workBasket')"
-                       [ngClass]="{'is-invalid': activityForm.get('workBasket')?.touched && activityForm.get('workBasket')?.invalid}">
-
-                <span class="dropdown-arrow">&#9662;</span>
-
-                <div class="autocomplete-dropdown" *ngIf="showDropdowns.workBasket && filteredWorkBaskets?.length">
-                  <div class="autocomplete-option"
-                       *ngFor="let option of filteredWorkBaskets; let i = index"
-                       [ngClass]="{'highlighted': i === highlightedIndex && activeDropdown === 'workBasket'}"
-                       (mousedown)="selectDropdownOption('workBasket', option)">
-                    {{ option.label }}
-                  </div>
-                </div>
-              </div>
+              <ui-multi-check-dropdown formControlName="workBasket"
+                                       [options]="workBasketOptions"
+                                       [defaultSelect]="true"
+                                       [showChips]="false"
+                                       placeholder="Select work basket">
+              </ui-multi-check-dropdown>
             </div>
 
+            <!-- Work Basket (single, autocomplete) -->
+            <!--<div class="form-outline dropdown-container">
+              <label class="floating-label">Work Basket</label>
+              <ui-dropdown formControlName="workBasket"
+                           [options]="workBasketOptions"
+                           [compareWith]="compareId"
+                           placeholder="Select work basket">
+              </ui-dropdown>
+            </div>-->
+            <!-- Work Basket Users (single, autocomplete; enabled based on basket) -->
             <div class="form-outline dropdown-container">
               <label class="floating-label">Work Basket Users</label>
-              <div class="input-with-icon">
-                <input type="text"
-                       class="form-control"
-                       [value]="workBasketUserDisplay"
-                       (input)="onDropdownTextChange($event, 'workBasketUser')"
-                       (keydown)="handleDropdownKeydown($event, 'workBasketUser')"
-                       (focus)="openDropdown('workBasketUser')"
-                       (blur)="closeDropdown('workBasketUser')"
-                       [disabled]="!activityForm.get('workBasket')?.value"
-                       [ngClass]="{'is-invalid': activityForm.get('workBasketUser')?.touched && activityForm.get('workBasketUser')?.invalid}">
-
-                <span class="dropdown-arrow">&#9662;</span>
-
-                <div class="autocomplete-dropdown" *ngIf="showDropdowns.workBasketUser && filteredUsers?.length">
-                  <div class="autocomplete-option"
-                       *ngFor="let option of filteredUsers; let i = index"
-                       [ngClass]="{'highlighted': i === highlightedIndex && activeDropdown === 'workBasketUser'}"
-                       (mousedown)="selectDropdownOption('workBasketUser', option)">
-                    {{ option.label }}
-                  </div>
-                </div>
-              </div>
+              <ui-multi-check-dropdown formControlName="workBasketUser"
+                                       [options]="workBasketUserOptions"
+                                       [defaultSelect]="true"
+                                       [showChips]="false"
+                                       placeholder="Select work basket user">
+              </ui-multi-check-dropdown>
             </div>
+            <!--<div class="form-outline dropdown-container">
+              <label class="floating-label">Work Basket Users</label>
+              <ui-dropdown formControlName="workBasketUser"
+                           [options]="workBasketUserOptions"
+                           [compareWith]="compareId"
+                           placeholder="Select user in basket">
+              </ui-dropdown>
+            </div>-->
 
 
             <div class="form-outline full-width" style="grid-column: span 2;">
@@ -279,7 +186,7 @@
                         formControlName="comments"
                         rows="3"
                         [ngClass]="{'is-invalid': activityForm.get('comments')?.touched && activityForm.get('comments')?.invalid}">
-  </textarea>
+              </textarea>
               <div *ngIf="activityForm.get('comments')?.touched && activityForm.get('comments')?.invalid" class="invalid-feedback">
                 Comments are required.
               </div>

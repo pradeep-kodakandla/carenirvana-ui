@@ -53,64 +53,9 @@
   </div>
 
 
-
-
-
-
-
-  <!-- Middle: Search Bar -->
-  <!--<div class="middle">
-
-    <div class="ai-search-container">
-      <button class="ai-button" (click)="toggleHighlight()">AI</button>
-      <div class="search-bar-container1">
-        <input *ngIf="isHighlighted; else searchIcon"
-               type="text"
-               class="search-bar"
-               [class.highlight]="isHighlighted"
-               placeholder="AI powered - search iCare..."
-               (blur)="removeHighlight()" />
-        <ng-template #searchIcon>
-          <div class="search-bar-container">
-            <button mat-icon-button>
-              <mat-icon>search</mat-icon>
-            </button>
-            <input class="input" placeholder="Search iCare" />
-          </div>-->
-  <!--<span class="search-icon">search</span>-->
-  <!--</ng-template>
-    </div>
-  </div>-->
-  <!--<div class="search-bar-container">
-    <button mat-icon-button>
-      <mat-icon>search</mat-icon>
-    </button>
-    <input class="input" placeholder="Search my iCare" />
-  </div>-->
-  <!--</div>-->
-  <!-- Right Side: Action Icons -->
   <div class="right">
     <div class="notification-bar">
 
-      <!--<div class="ai-search-container">
-            <button class="ai-button" (click)="toggleHighlight()">AI</button>
-            <div class="search-bar-container1">
-            <input *ngIf="isHighlighted; else searchIcon"
-                   type="text"
-                   class="search-bar"
-                   [class.highlight]="isHighlighted"
-                   placeholder="AI powered - search iCare..."
-                   (blur)="removeHighlight()" />
-            <ng-template #searchIcon>
-              <!--<div class="search-bar-container">
-            <button mat-icon-button>
-              <mat-icon>search</mat-icon>
-            </button>
-            <input class="input" placeholder="Search iCare" />
-          </div>
-          </ng-template>
-        </div>
-      </div>-->
       <div class="search-bar" *ngIf="isExpanded">
         <input type="text"
                class="form-control"
@@ -131,17 +76,13 @@
       <button hidden mat-icon-button [matMenuTriggerFor]="menu">
         <mat-icon style="color:white;">apps</mat-icon>
       </button>
-      <!--<div class="separator"></div>-->
-      <!--<label style="padding-left:10px;" class="form-check-label" for="form2Example3">-->
-      <!--<button mat-icon-button>
-        <mat-icon style="color:white;">history</mat-icon>
-      </button>-->
+
       <!-- History: hover/click to open, stays open until outside click -->
       <button mat-icon-button
               aria-label="Recently accessed (last 24 hours)"
               #historyTrigger="matMenuTrigger"
               [matMenuTriggerFor]="historyMenu"
-              (mouseenter)="openHistoryMenu(historyTrigger)">
+              (onclick)="openHistoryMenu(historyTrigger)">
         <!-- no mouseleave -->
         <mat-icon style="color:white;">history</mat-icon>
       </button>

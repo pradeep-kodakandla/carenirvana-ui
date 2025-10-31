@@ -1,0 +1,54 @@
+<div class="ui-multi" [class.disabled]="isDisabled">
+  <!-- Autocomplete input (always visible) -->
+  <div class="position-relative">
+    <input #inputEl
+           type="text"
+           class="form-control ui-dd-toggle"
+           [attr.placeholder]="valueSet().size === 0 ? placeholder : ''"
+           [disabled]="isDisabled"
+           [value]="displayText()"
+           (focus)="onFocus()"
+           (input)="onInput($event)"
+           (blur)="onBlur()"
+           autocomplete="off" />
+
+    <span class="ui-dd-caret">▾</span>
+  </div>
+
+  <!-- Menu with checkboxes -->
+  <div #menu class="ui-dd-menu dropdown-menu show" *ngIf="open()" (keydown)="onMenuKey($event)">
+    <!--<div class="d-flex gap-2 align-items-center px-2 py-2">-->
+      <!--<button type="button" class="btn btn-sm btn-outline-primary" (mousedown)="$event.preventDefault()" (click)="selectAllVisible()">Select visible</button>
+      <button type="button" class="btn btn-sm btn-outline-secondary" (mousedown)="$event.preventDefault()" (click)="clearVisible()">Clear visible</button>-->
+      <!--<div class="ms-auto small text-muted">{{ valueSet().size }} selected</div>-->
+    <!--</div>-->
+
+    <div class="ui-list">
+      <button type="button"
+              class="dropdown-item"
+              *ngFor="let o of filtered(); let i = index"
+              [class.active]="i===highlightedIndex()"
+              [class.disabled]="o.disabled"
+              (mouseenter)="highlightedIndex.set(i)"
+              (mousedown)="$event.preventDefault()"
+              (click)="toggleValue(o.value, o.disabled)">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox"
+                 [checked]="valueSet().has(o.value)" [disabled]="o.disabled" (click)="$event.preventDefault()">
+          <label class="form-check-label">{{ o.label }}</label>
+          <span class="badge bg-secondary ms-2" *ngIf="o.disabled">{{ disabledText }}</span>
+        </div>
+      </button>
+
+      <div class="dropdown-item text-muted" *ngIf="filtered().length===0">No results</div>
+    </div>
+  </div>
+
+  <!-- Selected chips summary (optional) -->
+  <!--<div class="chips" *ngIf="showChips && valueSet().size>0">
+    <span class="badge text-bg-light me-2" *ngFor="let o of options" [hidden]="!valueSet().has(o.value)">
+      {{ o.label }}
+      <button type="button" class="btn-close btn-close-white btn-chip" aria-label="Remove" (click)="removeChip(o.value)"></button>
+    </span>
+  </div>-->
+</div>

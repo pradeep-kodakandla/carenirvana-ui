@@ -624,9 +624,9 @@ export class AuthorizationComponent {
           this.selectDiv(1);
 
           let savedData = data[0]?.responseData;
-          const authTemplateId = data[0]?.AuthTypeId || 0;
-          const authClassId = data[0]?.AuthClassId || 0;
-          this.authDetailId = data[0]?.Id || null;
+          const authTemplateId = data[0]?.authTypeId || 0;
+          const authClassId = data[0]?.authClassId || 0;
+          this.authDetailId = data[0]?.id || null;
 
           if (authClassId) {
             this.selectedAuthClassId = authClassId;
@@ -635,7 +635,7 @@ export class AuthorizationComponent {
             this.authService.getAuthTemplates(authClassId).subscribe({
               next: (templates: any[]) => {
                 this.authTemplates = [
-                  { Id: 0, TemplateName: 'Select Auth Type' },
+                  { id: 0, templateName: 'Select Auth Type' },
                   ...templates
                 ];
               }
@@ -663,7 +663,7 @@ export class AuthorizationComponent {
                   }
 
                   this.formData = savedData; // Assign the correctly parsed object
-                  this.authNumber = data[0]?.AuthNumber;
+                  this.authNumber = data[0]?.authNumber;
                   this.saveType = 'Update';
 
                   if (savedData && savedData['Authorization Notes']) {
@@ -678,18 +678,18 @@ export class AuthorizationComponent {
 
                   this.loadDecisionData();
 
-                  const authTypeName = this.authTemplates.find(t => t.Id === data[0]?.AuthTypeId)?.TemplateName || 'N/A';
+                  const authTypeName = this.authTemplates.find(t => t.id === data[0]?.authTypeId)?.templateName || 'N/A';
 
                   // Update additionalInfo dynamically
                   this.additionalInfo = [
-                    { label: "Auth No", value: data[0]?.AuthNumber || "N/A" },
+                    { label: "Auth No", value: data[0]?.authNumber || "N/A" },
                     { label: "Auth Type", value: authTypeName || "N/A" },
-                    { label: "Due Date", value: this.formatDateOnly(new Date(data[0]?.AuthDueDate)) || "N/A" },
-                    { label: "Days Left", value: this.calculateDaysLeft(data[0]?.AuthDueDate) || "N/A" },
-                    { label: "Request Priority", value: savedData?.RequestPriority || "N/A" },
-                    { label: "Auth Owner", value: savedData?.AuthOwner || "N/A" },
-                    { label: "Auth Status", value: savedData?.AuthStatus || "N/A" },
-                    { label: "Overall Status", value: savedData?.OverallStatus || "N/A" }
+                    { label: "Due Date", value: this.formatDateOnly(new Date(data[0]?.authDueDate)) || "N/A" },
+                    { label: "Days Left", value: this.calculateDaysLeft(data[0]?.authDueDate) || "N/A" },
+                    { label: "Request Priority", value: savedData?.requestPriority || "N/A" },
+                    { label: "Auth Owner", value: savedData?.authOwner || "N/A" },
+                    { label: "Auth Status", value: savedData?.authStatus || "N/A" },
+                    { label: "Overall Status", value: savedData?.overallStatus || "N/A" }
                   ];
 
                   const providerSection = this.formData?.['Provider Details'];
@@ -785,13 +785,13 @@ export class AuthorizationComponent {
 
       this.authService.getTemplate(this.selectedTemplateId).subscribe({
         next: (data: any) => {
-          if (!data || !data[0]?.JsonContent) {
+          if (!data || !data[0]?.jsonContent) {
             console.error('API returned invalid data:', data);
             return;
           }
           try {
 
-            const parsedJson = JSON.parse(data[0].JsonContent);
+            const parsedJson = JSON.parse(data[0].jsonContent);
             const configObj: any = {};
 
             if (parsedJson.sections && Array.isArray(parsedJson.sections)) {

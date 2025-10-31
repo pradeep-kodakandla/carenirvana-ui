@@ -5,8 +5,8 @@ export interface AuthActivity {
   priorityId?: number;          // <-- New
   providerId?: number | null;   // <-- New
   referredTo?: number | null;   // <-- New
-  scheduledDateTime?: string;
-  dueDateTime?: string;
+  followUpDateTime?: string;
+  dueDate?: string;
   comment?: string;
   statusId?: number;
   activeFlag?: boolean;

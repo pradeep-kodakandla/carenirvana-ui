@@ -4,6 +4,10 @@ import './app/pdfjs.worker';
 import { AppModule } from './app/app.module';
 import { environment } from './environments/environment';
 
+export * from 'src/app/shared/ui/shared/uioption.model';
+export * from 'src/app/shared/ui/shared/valueaccessorbase';
+
+
 export function getBaseUrl() {
   return document.getElementsByTagName('base')[0].href;
 }

@@ -1,0 +1,46 @@
+<div class="ui-dd" [class.disabled]="isDisabled">
+  <!-- Input is always visible; typing filters and opens the menu -->
+  <div class="position-relative">
+    <input #inputEl
+           type="text"
+           class="form-control ui-dd-toggle"
+           [attr.placeholder]="placeholder"
+           [disabled]="isDisabled"
+           [value]="displayText()"
+           (focus)="onFocus()"
+           (input)="onInput($event)"
+           (blur)="onBlur()"
+           autocomplete="off" />
+
+    <!-- Clear button (×) when there is a value -->
+    <button *ngIf="(selectedLabel() || search().length) && !isDisabled"
+            type="button"
+            class="btn btn-sm btn-link position-absolute end-0 top-0 mt-1 me-4 text-muted"
+            (mousedown)="$event.preventDefault()"
+            (click)="clearSelection($event)">
+      ×
+    </button>
+
+    <span class="ui-dd-caret">▾</span>
+  </div>
+
+  <!-- Autocomplete menu -->
+  <div #menu class="ui-dd-menu dropdown-menu show" *ngIf="open()" role="listbox" (keydown)="handleKey($event)">
+    <div class="ui-dd-options">
+      <button type="button"
+              class="dropdown-item"
+              *ngFor="let o of filtered; let i = index"
+              [class.active]="i===highlightedIndex()"
+              [class.disabled]="o.disabled"
+              role="option"
+              (mouseenter)="highlightedIndex.set(i)"
+              (mousedown)="$event.preventDefault()"
+              (click)="selectOption(o)">
+        {{ o.label }}
+        <span class="badge bg-secondary ms-2" *ngIf="o.disabled">{{ disabledText }}</span>
+      </button>
+
+      <div class="dropdown-item text-muted" *ngIf="filtered.length===0">No results</div>
+    </div>
+  </div>
+</div>

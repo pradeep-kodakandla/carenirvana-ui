@@ -180,7 +180,6 @@ textarea {
 .timeline-item {
   max-height: 150px;
   overflow: hidden;
-  padding: 10px;
 }
 
 .timeline-dot {

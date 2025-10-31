@@ -59,6 +59,8 @@ import { RolemanagementComponent } from './admin/rolemanagement/rolemanagement.c
 import { ProfilemanagementComponent } from './admin/profilemanagement/profilemanagement.component';
 import { AppfeaturesetupComponent } from './admin/appfeaturesetup/appfeaturesetup.component';
 import { PermissionManagerComponent } from 'src/app/admin/appfeaturesetup/permission-manager/permission-manager.component';
+import { WorkgroupComponent } from './admin/workgroup/workgroup.component';
+import { WorkbasketComponent } from './admin/workbasket/workbasket.component';
 
 import { UmdocumenttypeComponent } from './admin/UM/umdocumenttype/umdocumenttype.component';
 import { UmactivitytypeComponent } from './admin/UM/umactivitytype/umactivitytype.component';
@@ -140,6 +142,11 @@ import { AgqocscoreComponent } from './admin/AG/agqocscore/agqocscore.component'
 import { AgresolutioncategoryComponent } from './admin/AG/agresolutioncategory/agresolutioncategory.component';
 import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcategory/agresolutionsubcategory.component';
 
+
+import { UiDatetimePickerComponent } from './shared/ui/uidatetimepicker/uidatetimepicker.component';
+import { UiDropdownComponent } from './shared/ui/uidropdown/uidropdown.component';
+import { UiMultiCheckDropdownComponent } from './shared/ui/uimulticheckdropdown/uimulticheckdropdown.component';
+
 @NgModule({
   declarations: [
     AppComponent,
@@ -169,6 +176,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
     UmauthnotesComponent, UmauthdocumentsComponent, UmauthactivityComponent, ValidationErrorDialogComponent, MdreviewComponent,
     NewDashBoardComponent, NewDashboard2Component, MdreviewdashboardComponent, SmartauthcheckComponent, ConfirmationDialogComponent,
     ConfigurationComponent, UsermanagementComponent, RolemanagementComponent, ProfilemanagementComponent, AppfeaturesetupComponent, PermissionManagerComponent,
+    WorkgroupComponent, WorkbasketComponent,
     UmdocumenttypeComponent, SettingsDialogComponent, UmactivitytypeComponent, DecisionbulkdialogComponent, DialogContentComponent, UmnotetypeComponent, ExternallinksComponent,
     UmclaimtypeComponent, UmactivitypriorityComponent, UmadmissionlevelComponent, UmadmissiontypeComponent, UmadmitreasonComponent,
     UmcertificationtypeComponent, UmdenialtypeComponent, UmdeterminationtypeComponent, UmdischargetoComponent, UmdischargetypeComponent,
@@ -183,7 +191,9 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
     CmclinicalindicatorsComponent, AgcomplaintcategoryComponent, AgcomplaintclassComponent, AgcomplaintcredentialsComponent, AgcomplaintstatusreasonComponent,
     AgcomplaintsubcategoryComponent, AgcoordinatortypeComponent, AgparticipantroleComponent, AgparticipanttypeComponent,
     AgqocinvestigationoutcomeComponent, AgqocinvestigationreasonComponent, AgqocscoreComponent, AgresolutioncategoryComponent,
-    AgresolutionsubcategoryComponent
+    AgresolutionsubcategoryComponent,
+
+    UiDatetimePickerComponent, UiDropdownComponent, UiMultiCheckDropdownComponent
   ],
   imports: [
     BrowserModule.withServerTransition({ appId: 'ng-cli-universal' }),
@@ -252,6 +262,8 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
       { path: 'admin-profile', component: ProfilemanagementComponent },
       { path: 'admin-permission', component: PermissionManagerComponent },
       { path: 'admin-appfeature', component: AppfeaturesetupComponent },
+      { path: 'admin-workgroup', component: WorkgroupComponent },
+      { path: 'admin-workbasket', component: WorkbasketComponent },
       { path: 'admin-umdocumenttype', component: UmdocumenttypeComponent },
       { path: 'admin-settingdialog', component: SettingsDialogComponent },
       { path: 'admin-umactivitytype', component: UmactivitytypeComponent },
@@ -329,7 +341,11 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
       { path: 'admin-agresolutioncategory', component: AgresolutioncategoryComponent },
       { path: 'admin-agresolutionsubcategory', component: AgresolutionsubcategoryComponent },
 
-      { path: 'admin-bre', component: BretestComponent }
+      { path: 'admin-bre', component: BretestComponent },
+
+      { path: 'ui-datetime', component: UiDatetimePickerComponent },
+      { path: 'ui-dropdown', component: UiDropdownComponent },
+      { path: 'ui-multicheckdropdown', component: UiMultiCheckDropdownComponent } 
 
     ])
   ],

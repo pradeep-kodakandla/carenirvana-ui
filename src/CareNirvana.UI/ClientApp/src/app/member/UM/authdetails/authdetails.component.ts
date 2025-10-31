@@ -86,16 +86,16 @@ export class AuthdetailsComponent implements OnInit {
 
         this.authService.getAuthTemplates(0).subscribe((authTypes: any[]) => {
           // Create a map for easy lookup
-          const authTypeMap = new Map(authTypes.map(type => [type.Id, type.TemplateName]));
-
+          const authTypeMap = new Map(authTypes.map(type => [type.id, type.templateName]));
+          //this.authDetails = data;
           this.authDetails = data.map((item: any) => ({
-            authDetailId: item.Id || '',
-            authNumber: item.AuthNumber || '',
-            authTypeId: authTypeMap.get(item.AuthTypeId) || '',
-            memberId: item.memberDetailsId || '',
-            authDueDate: item.AuthDueDate || '',
-            nextReviewDate: item.NextReviewDate || '',
-            treatmentType: item.TreatmentType || ''
+            authDetailId: item.id || '',
+            authNumber: item.authNumber || '',
+            authTypeId: authTypeMap.get(item.authTypeId) || '',
+            memberId: item.memberId || '',
+            authDueDate: item.authDueDate || '',
+            nextReviewDate: item.nextReviewDate || '',
+            treatmentType: item.treatmentType || ''
           }));
           this.dataSource.data = this.authDetails;
           this.updatePagedCardData();
@@ -165,9 +165,9 @@ export class AuthdetailsComponent implements OnInit {
         featureGroupId: 1,
         action: 'VIEW',
         memberDetailsId: Number(sessionStorage.getItem('selectedMemberDetailsId')),
-        authDetailId: Number(found ? found.authDetailId : null)
+        authDetailId: Number(found ? found.id : null)
       };
-      console.log('Adding recently accessed record:', record);
+
       this.recentlyAccessedService.addRecentlyAccessed(record.userId, record)
         .subscribe({
           next: id => console.log('Inserted record ID:', id),

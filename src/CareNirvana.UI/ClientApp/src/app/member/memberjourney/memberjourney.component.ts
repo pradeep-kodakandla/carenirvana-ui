@@ -108,7 +108,6 @@ export class MemberJourneyComponent implements OnInit, OnDestroy {
     const start = new Date();
     start.setDate(start.getDate() - (preset === 'Last 7 Days' ? 7 : preset === 'Last 90 Days' ? 90 : 30));
     fromUtc = start.toISOString(); toUtc = end;
-    console.log('Computed range', { fromUtc, toUtc });
 
     return { fromUtc, toUtc };
   }
@@ -132,7 +131,7 @@ export class MemberJourneyComponent implements OnInit, OnDestroy {
       categories: cats.length ? cats as any : undefined,
       search: (this.form.value.search || '')!.trim() || undefined
     };
-    console.log('Fetching journey with query', query);
+
     this.journeyService.getJourney(query).subscribe({
       next: (res) => {
         this.events = res.page.items;
@@ -157,8 +156,7 @@ export class MemberJourneyComponent implements OnInit, OnDestroy {
 
         this.buildRenderEvents(this.events);
         this.loading = false;
-        console.log('Journey data', res);
-        console.log('Events', this.events);
+
       },
 
       error: err => console.error('Failed to load journey', err)

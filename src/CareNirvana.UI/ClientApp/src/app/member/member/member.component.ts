@@ -36,9 +36,7 @@ export class MemberComponent {
   ngOnInit(): void {
     this.fetchRoleData(4); // ⬅️ Hardcoded roleId = 1 for now
     this.route.parent?.paramMap.subscribe(params => {
-      console.log('Route Params:', params); // ✅ Debugging log
       this.memberId = Number(params.get('id')!);
-      console.log('Loaded Member ID:', this.memberId);
     });
 
    // this.shared.showAuthorization$.subscribe(v => this.showAuthorizationComponent = v);

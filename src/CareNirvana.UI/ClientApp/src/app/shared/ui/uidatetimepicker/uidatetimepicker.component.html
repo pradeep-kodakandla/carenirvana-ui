@@ -1,0 +1,38 @@
+<!-- Click anywhere on this container to open the picker -->
+<div class="ui-dt d-flex align-items-center gap-2"
+     [class.disabled]="isDisabled"
+     (click)="openPicker()">
+
+  <div class="input-group w-100">
+    <!--<span class="input-group-text">
+    {{ dateOnly ? 'Date' : 'Date & Time' }}
+  </span>-->
+    <!-- Single native input: date OR datetime-local (with seconds) -->
+    <input #pickerInput
+           [type]="dateOnly ? 'date' : 'datetime-local'"
+           class="form-control"
+           [placeholder]="dateOnly ? placeholderDate : placeholderDateTime"
+           [disabled]="isDisabled"
+           [value]="dateOnly ? dateStr : datetimeStr"
+           (click)="$event.stopPropagation()"
+           (change)="onDateTimeChange($any($event.target).value)"
+           (blur)="onTouched()"
+           [attr.step]="dateOnly ? null : 60"  
+          [attr.min]="min ? (dateOnly ? toDateInputValue(min) : toDatetimeLocalValue(min)) : null"
+          [attr.max]="max ? (dateOnly ? toDateInputValue(max) : toDatetimeLocalValue(max)) : null" />
+
+    <!--<button type="button"
+          class="btn btn-outline-secondary btn-sm ms-2"
+          (click)="now($event)"
+          [disabled]="isDisabled">
+    Now
+  </button>
+
+  <button type="button"
+          class="btn btn-outline-danger btn-sm"
+          (click)="clear($event)"
+          [disabled]="isDisabled">
+    Clear
+  </button>-->
+  </div>
+</div>
