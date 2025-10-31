@@ -92,6 +92,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     this.qualityOptions.forEach(q => this.qualitySelection[q] = false);
     this.dashboard.getmembersummary(sessionStorage.getItem('loggedInUserid')).subscribe((data) => {
       if (data && Array.isArray(data)) {
+        console.log('Member summary data fetched', data);
         this.loadMembers(data);
       }
     }, error => {
@@ -180,6 +181,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
   }
 
   onMemberClick(memberId: string, memberName: string, memberDetailsId: string): void {
+    console.log('Member clicked:', memberId, memberName, memberDetailsId);
     const tabLabel = `Member: ${memberName}`;
     const tabRoute = `/member-info/${memberId}`;
 

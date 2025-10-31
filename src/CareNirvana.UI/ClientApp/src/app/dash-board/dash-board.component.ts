@@ -25,13 +25,13 @@ interface PermissionConfig {
 }
 
 interface DashboardCounts {
-  MyMemberCount: number;
-  AuthCount: number;
-  RequestCount: number;
-  ComplaintCount: number;
-  FaxCount: number;
-  WQCount: number;
-  ActivityCount: number;
+  myMemberCount: number;
+  authCount: number;
+  requestCount: number;
+  complaintCount: number;
+  faxCount: number;
+  wQCount: number;
+  activityCount: number;
 }
 
 @Component({
@@ -49,13 +49,13 @@ export class DashBoardComponent {
 
   // Mapping of widget keys to DashboardCounts properties
   private widgetToProp: Record<string, keyof DashboardCounts> = {
-    myCaseLoad: 'MyMemberCount',
-    assignedAuthorizations: 'AuthCount',
-    requests: 'RequestCount',
-    myActivities: 'ActivityCount',
-    assignedComplaints: 'ComplaintCount',
-    faxes: 'FaxCount',
-    mdreview: 'WQCount'         // or change if MD Review should map differently
+    myCaseLoad: 'myMemberCount',
+    assignedAuthorizations: 'authCount',
+    requests: 'requestCount',
+    myActivities: 'activityCount',
+    assignedComplaints: 'complaintCount',
+    faxes: 'faxCount',
+    mdreview: 'wQCount'         // or change if MD Review should map differently
   };
 
   /*Div Selection Style change logic*/
@@ -84,11 +84,14 @@ export class DashBoardComponent {
   }
 
   private loadCounts(): void {
+    
     this.dashboard.getdashboardCounts(sessionStorage.getItem('loggedInUserid'))
       .subscribe({
+        
         next: (res: DashboardCounts) => { this.dashboardCounts = res; },
         error: (err) => { console.error('Failed to load dashboard counts', err); }
       });
+    console.log('Loading counts...');
     console.log('Counts', this.dashboardCounts);
   }
 
