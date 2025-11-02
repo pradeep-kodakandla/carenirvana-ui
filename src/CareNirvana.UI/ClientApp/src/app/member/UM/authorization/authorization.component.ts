@@ -29,14 +29,14 @@ interface LevelItem {
 }
 
 interface MemberEnrollment {
-  MemberEnrollmentId: number;
-  MemberDetailsId: number;
-  StartDate: string; // ISO
-  EndDate: string;   // ISO
-  Status: boolean;
-  HierarchyPath: string;
-  LevelMap: string;  // JSON string
-  Levels: string;    // JSON string
+  memberEnrollmentId: number;
+  memberDetailsId: number;
+  startDate: string; // ISO
+  endDate: string;   // ISO
+  status: boolean;
+  hierarchyPath: string;
+  levelMap: string;  // JSON string
+  levels: string;    // JSON string
 }
 
 @Component({
@@ -498,11 +498,11 @@ export class AuthorizationComponent {
     let levels: LevelItem[] = [];
 
     try {
-      levelMap = JSON.parse(enr.LevelMap || '{}');
+      levelMap = JSON.parse(enr.levelMap || '{}');
     } catch { levelMap = {}; }
 
     try {
-      levels = JSON.parse(enr.Levels || '[]') as LevelItem[];
+      levels = JSON.parse(enr.levels || '[]') as LevelItem[];
     } catch { levels = []; }
 
     // Sort by levelsequence if present; otherwise fall back to as-is
@@ -533,8 +533,8 @@ export class AuthorizationComponent {
     }
 
     // Dates (always last two lines, matching your layout)
-    const start = enr.StartDate ? this.formatDateMMDDYYYY(enr.StartDate) : '';
-    const end = enr.EndDate ? this.formatDateMMDDYYYY(enr.EndDate) : '';
+    const start = enr.startDate ? this.formatDateMMDDYYYY(enr.startDate) : '';
+    const end = enr.endDate ? this.formatDateMMDDYYYY(enr.endDate) : '';
 
     if (start) pairs.push({ label: 'Start Date', value: start });
     if (end) pairs.push({ label: 'End Date', value: end });

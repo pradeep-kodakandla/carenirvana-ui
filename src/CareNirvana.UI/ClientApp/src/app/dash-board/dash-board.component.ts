@@ -30,7 +30,7 @@ interface DashboardCounts {
   requestCount: number;
   complaintCount: number;
   faxCount: number;
-  wQCount: number;
+  wqCount: number;
   activityCount: number;
 }
 
@@ -55,7 +55,7 @@ export class DashBoardComponent {
     myActivities: 'activityCount',
     assignedComplaints: 'complaintCount',
     faxes: 'faxCount',
-    mdreview: 'wQCount'         // or change if MD Review should map differently
+    mdreview: 'wqCount'         // or change if MD Review should map differently
   };
 
   /*Div Selection Style change logic*/

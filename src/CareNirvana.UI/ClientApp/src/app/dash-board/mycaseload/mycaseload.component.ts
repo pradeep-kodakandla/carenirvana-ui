@@ -92,7 +92,6 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     this.qualityOptions.forEach(q => this.qualitySelection[q] = false);
     this.dashboard.getmembersummary(sessionStorage.getItem('loggedInUserid')).subscribe((data) => {
       if (data && Array.isArray(data)) {
-        console.log('Member summary data fetched', data);
         this.loadMembers(data);
       }
     }, error => {
@@ -289,7 +288,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     // Risk filter
     if (this.filters.risks.size) {
       arr = arr.filter(m => {
-        const val = (m.RiskLevelCode || '').toLowerCase();
+        const val = (m.riskLevelCode || '').toLowerCase();
         return (this.filters.risks.has('High') && val === 'high') ||
           (this.filters.risks.has('Medium') && val === 'medium') ||
           (this.filters.risks.has('Low') && (val === 'low')) ||
@@ -311,10 +310,10 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
 
   // --- Enrollment classifier reused by counts + filtering ---
   private getEnrollStatus(m: any): 'Active' | 'Soon Ending' | 'Inactive' | 'No Enrollment' {
-    if (!m.LevelMap) return 'No Enrollment';
+    if (!m.levelMap) return 'No Enrollment';
     const today = new Date();
-    const start = new Date(m.StartDate);
-    const end = m.EnrollmentEndDate ? new Date(m.EnrollmentEndDate) : new Date('2999-12-31'); //new Date(m.EnrollmentEndDate);
+    const start = new Date(m.startDate);
+    const end = m.enrollmentEndDate ? new Date(m.enrollmentEndDate) : new Date('2999-12-31'); //new Date(m.EnrollmentEndDate);
 
     if (!(start <= today && end >= today)) return 'Inactive';
     const daysLeft = Math.floor((end.getTime() - today.getTime()) / 86400000);
@@ -325,7 +324,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
   private calculateRiskCounts(list: any[]): void {
     this.counts.risk = { high: 0, medium: 0, low: 0, norisk: 0 };
     list.forEach(m => {
-      const code = (m.RiskLevelCode || '').toLowerCase();
+      const code = (m.riskLevelCode || '').toLowerCase();
       if (code === 'high') this.counts.risk.high++;
       else if (code === 'medium') this.counts.risk.medium++;
       else if (code === 'low') this.counts.risk.low++;
