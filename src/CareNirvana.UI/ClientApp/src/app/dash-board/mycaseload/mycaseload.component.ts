@@ -48,7 +48,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
   expandedRow: any | null = null;
 
   showNotes = false;
-  selectedMemberId: number | null = null;
+  selectedMemberId?: number;
 
   // Summary widgets
   summaryStats = [
@@ -449,7 +449,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
 
   closeNotes(): void {
     this.showNotes = false;
-    this.selectedMemberId = null;
+    this.selectedMemberId = 0;
   }
 
 }

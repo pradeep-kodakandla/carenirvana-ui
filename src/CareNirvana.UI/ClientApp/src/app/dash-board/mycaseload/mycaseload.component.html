@@ -424,7 +424,7 @@
 
   <!-- RIGHT SIDE: MEMBER NOTES (40%) -->
   <div class="caseload-right" *ngIf="showNotes">
-    <app-member-notes [memberId]?="selectedMemberId"
+    <app-member-notes [memberId]="selectedMemberId"
                       (close)="closeNotes()"></app-member-notes>
   </div>
 
