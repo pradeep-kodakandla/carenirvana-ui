@@ -351,7 +351,7 @@ export class MdreviewdashboardComponent {
         this.allActivities = allRows;
         // 2️⃣ Filter to exclude approved records
         const notApproved = allRows.filter(r => {
-          const s = (r?.Status ?? '').toString().trim().toLowerCase();
+          const s = (r?.status ?? '').toString().trim().toLowerCase();
           return s !== 'approved' && s !== 'completed'; // add others if needed
         });
 
@@ -409,7 +409,7 @@ export class MdreviewdashboardComponent {
       const today = new Date();
 
       base = base.filter(r => {
-        const d = this.toDate(r?.DueDate);
+        const d = this.toDate(r?.dueDate);
         if (!d) return false;
 
         const cmp = this.compareDateOnly(d, today); // <0 overdue, 0 today, >0 future
@@ -873,7 +873,7 @@ export class MdreviewdashboardComponent {
     let byDue = all;
     if (this.selectedDue.size) {
       byDue = all.filter(row => {
-        const d = new Date(row.DueDate || row.AuthDueDate);
+        const d = new Date(row.dueDate || row.authDueDate);
         const today = new Date(); today.setHours(0, 0, 0, 0);
         const dd = new Date(d); dd.setHours(0, 0, 0, 0);
 
@@ -890,11 +890,11 @@ export class MdreviewdashboardComponent {
     let byStatus = byDue;
     if (this.statusFilter === 'PENDING_OR_INPROGRESS') {
       byStatus = byDue.filter(r => {
-        const s = this.normalizeStatus(r.Status);
+        const s = this.normalizeStatus(r.status);
         return s === 'pending' || s === 'inprogress';
       });
     } else if (this.statusFilter === 'APPROVED') {
-      byStatus = byDue.filter(r => this.normalizeStatus(r.Status) === 'approved');
+      byStatus = byDue.filter(r => this.normalizeStatus(r.status) === 'approved');
     }
 
     // 4) set data

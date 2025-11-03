@@ -171,7 +171,7 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
   private computeDueCounts(): void {
     const today = new Date();
     const counts = this.rawData.reduce((acc, r) => {
-      const d = this.toDate(r?.DueDate);
+      const d = this.toDate(r?.dueDate);
       if (!d) return acc;
       const cmp = this.compareDateOnly(d, today);
       if (cmp < 0) acc.overdue++;

@@ -47,6 +47,8 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
   // Expanded row for table (use object reference)
   expandedRow: any | null = null;
 
+  showNotes = false;
+  selectedMemberId: number | null = null;
 
   // Summary widgets
   summaryStats = [
@@ -58,7 +60,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
 
   // Table columns
   displayedColumns: string[] = [
-    'alert', 'name', 'enrollment', 'program', 'dob', 'risk', 'lastContact', 'nextContact', 'inlineCounts', 'expand'
+    'actions','alert', 'name', 'enrollment', 'program', 'dob', 'risk', 'lastContact', 'nextContact', 'inlineCounts', 'expand'
   ];
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -438,6 +440,16 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     }
 
     return `${years} yrs ${months} mos`;
+  }
+
+  openNotes(): void {
+    this.selectedMemberId = Number(10000);
+    this.showNotes = true;
+  }
+
+  closeNotes(): void {
+    this.showNotes = false;
+    this.selectedMemberId = null;
   }
 
 }

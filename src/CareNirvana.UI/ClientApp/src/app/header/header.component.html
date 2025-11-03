@@ -128,24 +128,24 @@
                 <td>
                   <a href="#"
                      class="link-member"
-                     (click)="openMemberTab(it.MemberID, it.MemberName, it.MemberDetailsId); $event.preventDefault()">
-                    {{ it.MemberID || 'N/A' }}
+                     (click)="openMemberTab(it.memberID, it.memberName, it.memberDetailsId); $event.preventDefault()">
+                    {{ it.memberID || 'N/A' }}
                   </a>
                 </td>
-                <td>{{ it.MemberName || 'N/A' }}</td>
-                <td>{{ it.FeatureGroupName || 'N/A' }}</td>
-                <td>{{ it.FeatureName || 'N/A' }}</td>
+                <td>{{ it.memberName || 'N/A' }}</td>
+                <td>{{ it.featureGroupName || 'N/A' }}</td>
+                <td>{{ it.featureName || 'N/A' }}</td>
                 <td>
-                  <a *ngIf="it.AuthNumber"
+                  <a *ngIf="it.authNumber"
                      href="#"
                      class="link-auth"
-                     (click)="openAuthTab(it.AuthNumber,it.MemberID, it.MemberDetailsId); $event.preventDefault()">
-                    {{ it.AuthNumber }}
+                     (click)="openAuthTab(it.authNumber,it.memberID, it.memberDetailsId); $event.preventDefault()">
+                    {{ it.authNumber }}
                   </a>
-                  <span *ngIf="!it.AuthNumber">N/A</span>
+                  <span *ngIf="!it.authNumber">N/A</span>
                 </td>
-                <td>{{ it.Action || 'N/A' }}</td>
-                <td>{{ it.AccessedDateTime | date:'MM/dd/yyyy, hh:mm a' }}</td>
+                <td>{{ it.action || 'N/A' }}</td>
+                <td>{{ it.accessedDateTime | date:'MM/dd/yyyy, hh:mm a' }}</td>
               </tr>
             </tbody>
           </table>

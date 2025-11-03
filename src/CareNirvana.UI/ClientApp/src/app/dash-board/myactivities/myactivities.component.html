@@ -139,7 +139,7 @@
             <ng-container matColumnDef="dueDate">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Due Date</th>
               <td mat-cell *matCellDef="let row">
-                <span class="risk-chip compact" [ngClass]="getDueDateClass(row.DueDate)">
+                <span class="risk-chip compact" [ngClass]="getDueDateClass(row.dueDate)">
                   <div class="date-value">
                     {{ row.dueDate | date:'MM/dd/yyyy HH:mm:ss' }}
                   </div>
