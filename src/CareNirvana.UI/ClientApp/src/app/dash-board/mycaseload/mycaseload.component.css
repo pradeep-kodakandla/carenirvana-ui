@@ -774,27 +774,95 @@ mat-chip.norisk {
 
 
 
-/*.caseload-container {
+
+
+/* Grid: stays 2 columns; second column is 0fr when closed */
+.workspace {
+  display: grid;
+  grid-template-columns: 1fr 0fr; /* left 100%, right 0% (visually hidden) */
+  gap: 5px;
+  align-items: start;
+  transition: grid-template-columns 820ms cubic-bezier(.16,.84,.44,1);
+}
+
+  /* Open: 60/40 split */
+  .workspace.has-notes {
+    grid-template-columns: 3fr 2fr; /* ~60% / 40% */
+  }
+
+/* Left column: nothing special; expands/shrinks with grid */
+.left-pane {
+  min-width: 0;
+}
+
+/* Right pane: fade+slide in/out, but stay aligned with the grid */
+.right-pane {
+  background: #ffffff;
+  border: 1px solid #e6ebf2;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(16,24,40,.06);
+
+  overflow: auto;
+  /* hidden state (closed) */
+  opacity: 0;
+  transform: translateX(24px);
+  transition: opacity 600ms ease, transform 700ms cubic-bezier(.16,.84,.44,1);
+  pointer-events: none; /* no interaction when closed */
+}
+
+/* visible state (open) */
+.workspace.has-notes .right-pane {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.notes-header {
   display: flex;
-  gap: 0;
-  width: 100%;
-  overflow: hidden;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid #eef2f7;
+  background: linear-gradient(180deg, #eef5ff 0%, #e3edff 100%);
 }
 
-.caseload-left {
-  width: 60%;
-  min-width: 60%;
-  max-width: 60%;
-  overflow: auto;
-  border-right: 1px solid #e5e7eb;
+  .notes-header h3 {
+    margin: 7px;
+    font-size: 18px;
+    font-weight: 700;
+    color: #111827;
+    
+  }
+
+.notes-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  color: #e53935;
 }
 
-.caseload-right {
-  width: 40%;
-  min-width: 40%;
-  max-width: 40%;
-  overflow: auto;
-  background: #fafafa;
-  border-left: 1px solid #e5e7eb;
-  padding: 10px;
-}*/
+/* Optional: stack on very small screens */
+@media (max-width: 900px) {
+  /* Keep same pattern: 1fr 0fr when closed; 1fr 1fr when open if you prefer */
+  .workspace {
+    grid-template-columns: 1fr 0fr;
+  }
+
+    .workspace.has-notes {
+      grid-template-columns: 1fr 1fr;
+    }
+  /* or 1fr 0.9fr */
+}
+
+.notes-target {
+  background: #e6f0ff; /* subtle blue tint */
+  box-shadow: inset 0 0 0 5px #cde6ff;
+  transition: background 240ms ease, box-shadow 240ms ease;
+}

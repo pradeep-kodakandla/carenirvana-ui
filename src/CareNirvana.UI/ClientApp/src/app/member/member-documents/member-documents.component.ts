@@ -60,7 +60,7 @@ interface DocumentField {
 })
 export class MemberDocumentsComponent implements OnInit, OnChanges {
   @Input() memberId!: number;
-
+  @Input() memberDetailsId?: number; 
   // left side
   searchTerm = '';
   showSort = false;

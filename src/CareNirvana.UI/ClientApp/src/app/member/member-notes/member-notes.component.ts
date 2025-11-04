@@ -1,9 +1,10 @@
 // src/app/member/member-notes/member-notes.component.ts
-import { Component, Input, OnInit, ViewChildren, QueryList, ElementRef } from '@angular/core';
+import { Component, Input, OnInit, OnChanges, OnDestroy, ViewChildren, QueryList, ElementRef, SimpleChanges, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { MembersummaryService, MemberNoteDto } from 'src/app/service/membersummary.service';
 import { finalize } from 'rxjs/operators';
 import { CrudService } from 'src/app/service/crud.service';
+import { Observable, Subscription } from 'rxjs';
 
 type FieldType = 'select' | 'datetime-local' | 'checkbox' | 'text' | 'textarea';
 
@@ -48,14 +49,17 @@ interface NoteType {
 @Component({
   selector: 'app-member-notes',
   templateUrl: './member-notes.component.html',
-  styleUrls: ['./member-notes.component.css']
+  styleUrls: ['./member-notes.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class MemberNotesComponent implements OnInit {
+export class MemberNotesComponent implements OnInit, OnChanges, OnDestroy {
 
   @Input() memberId?: number;           // works for legacy
   @Input() memberDetailsId?: number;    // works for new schema
   @Input() canAdd = true;
   @Input() canEdit = true;
+  @Input() refresh$?: Observable<void>;
+  private sub?: Subscription;
 
   loading = false;
   total = 0;
@@ -118,9 +122,28 @@ export class MemberNotesComponent implements OnInit {
     }
   ];
 
-  constructor(private svc: MembersummaryService, private crud: CrudService) { }
+  constructor(private svc: MembersummaryService, private crud: CrudService, private cdr: ChangeDetectorRef) { }
+
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['memberDetailsId']) {
+      if (!this.memberDetailsId) {
+        console.log('memberDetailsId not provided, attempting to read from sessionStorage', this.memberDetailsId);
+        this.reload();
+        this.loadNoteTypes();
+      }
+      //if (id != null) {
+
+      //}
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.sub?.unsubscribe();
+  }
 
   ngOnInit(): void {
+    console.log('MemberNotesComponent initialized with memberId:', this.memberId, 'memberDetailsId:', this.memberDetailsId);
     if (!this.memberDetailsId) {
       this.memberDetailsId = Number(sessionStorage.getItem("selectedMemberDetailsId"));
     }
@@ -320,7 +343,7 @@ export class MemberNotesComponent implements OnInit {
   editNote(note: MemberNoteDto) {
     this.isFormVisible = true;
     this.setNoteTypeFieldForEdit(note);
-    
+
     this.editingId = note.memberNoteId ?? note.memberHealthNotesId ?? note.id ?? null;
 
     this.setFieldValue('noteTypeId', note.noteTypeId ?? null);

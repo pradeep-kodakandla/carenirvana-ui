@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, AfterViewInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ViewChild, AfterViewInit, ChangeDetectorRef, ViewContainerRef, ComponentRef } from '@angular/core';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
@@ -7,6 +7,12 @@ import { HeaderService } from 'src/app/service/header.service';
 import { Router } from '@angular/router';
 import { DashboardServiceService } from 'src/app/service/dashboard.service.service';
 import { AuthenticateService, RecentlyAccessed } from 'src/app/service/authentication.service';
+import { trigger, transition, style, animate, state, group } from '@angular/animations';
+import { Subject } from 'rxjs';
+import { MemberNotesComponent } from 'src/app//member/member-notes/member-notes.component';
+import { MemberDocumentsComponent } from 'src/app/member/member-documents/member-documents.component';
+
+type PaneType = 'notes' | 'document' | null;
 
 type SelectedFilter =
   | { group: 'Risk'; label: string; key: 'High' | 'Medium' | 'Low' }
@@ -17,7 +23,32 @@ type SelectedFilter =
 @Component({
   selector: 'app-mycaseload',
   templateUrl: './mycaseload.component.html',
-  styleUrls: ['./mycaseload.component.css']
+  styleUrls: ['./mycaseload.component.css'],
+  animations: [
+    // Left column subtle nudge when split toggles
+    trigger('leftShift', [
+      state('closed', style({ transform: 'translateX(0)' })),
+      state('open', style({ transform: 'translateX(-12px)' })), // move slightly left
+      transition('closed <=> open', animate('750ms cubic-bezier(.16,.84,.44,1)'))
+    ]),
+
+    // Right pane slide/fade from right-to-left and back
+    trigger('paneSlide', [
+      transition(':enter', [
+        style({ transform: 'translateX(36px)', opacity: 0 }),
+        group([
+          animate('850ms cubic-bezier(.16,.84,.44,1)', style({ transform: 'translateX(0)' })),
+          animate('600ms ease-out', style({ opacity: 1 }))
+        ])
+      ]),
+      transition(':leave', [
+        group([
+          animate('800ms cubic-bezier(.7,.0,.3,1)', style({ transform: 'translateX(40px)' })), // slow move to right
+          animate('600ms ease-in', style({ opacity: 0 }))
+        ])
+      ])
+    ])
+  ]
 })
 export class MycaseloadComponent implements OnInit, AfterViewInit {
   constructor(
@@ -47,8 +78,22 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
   // Expanded row for table (use object reference)
   expandedRow: any | null = null;
 
-  showNotes = false;
+  showRightPane = false;
+  activePane: PaneType = null;
+  showNotesPanel = false;
   selectedMemberId?: number;
+  refreshNotes$ = new Subject<number>();
+  refreshDocuments$ = new Subject<number>();
+  @ViewChild('dynamicContainer', { read: ViewContainerRef, static: false })
+  private vcr!: ViewContainerRef;
+  private activeRef?: ComponentRef<any>;
+
+
+
+  headerTitleMap: Readonly<Record<'notes' | 'document', string>> = {
+    notes: 'Add Note',
+    document: 'Add Document'
+  };
 
   // Summary widgets
   summaryStats = [
@@ -60,7 +105,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
 
   // Table columns
   displayedColumns: string[] = [
-    'actions','alert', 'name', 'enrollment', 'program', 'dob', 'risk', 'lastContact', 'nextContact', 'inlineCounts', 'expand'
+    'alert', 'name', 'enrollment', 'program', 'dob', 'risk', 'lastContact', 'nextContact', 'actions'
   ];
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -442,14 +487,115 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     return `${years} yrs ${months} mos`;
   }
 
-  openNotes(): void {
-    this.selectedMemberId = Number(10000);
-    this.showNotes = true;
+  //onAddNotesFor(member: any) {
+  //  this.selectedMemberId = member?.memberDetailsId ?? member?.memberId;
+  //  this.showNotesPanel = true;
+  //}
+  //onAddNotesFor(member: any | number) {
+  //  // support either an object or a raw id (for safety)
+  //  console.log('Adding notes for member:', member);
+  //  const id = typeof member === 'number'
+  //    ? member
+  //    : (member?.memberDetailsId ?? member?.memberId);
+
+  //  console.log('Determined member ID for notes:', id);
+  //  this.selectedMemberId = id;
+  //  this.showNotesPanel = true; // keeps your 60/40 split open
+  //  this.refreshNotes$.next(id);
+  //}
+
+  //// Called from the top menu “Add Notes” (no specific member)
+  //openNotes() {
+  //  // keep previously selected member if any, or leave undefined
+  //  this.showNotesPanel = true;
+  //}
+
+  //// Optional: close the notes pane
+  //closeNotes() {
+  //  this.showNotesPanel = false;
+  //}
+
+
+
+
+  openPanel(pane: PaneType, member: any | number) {
+    const id = typeof member === 'number'
+      ? member
+      : (member?.memberDetailsId ?? member?.memberId);
+
+    this.selectedMemberId = id;
+    this.activePane = pane;
+    this.showRightPane = true;
+    this.showNotesPanel = true;
+    // Create or swap the component
+    this.mountPane(pane, id);
   }
 
-  closeNotes(): void {
-    this.showNotes = false;
-    this.selectedMemberId = 0;
+  closePanel() {
+    this.showRightPane = false;
+    this.showNotesPanel = false;
+    this.selectedMemberId = undefined;
+    // Keep the component mounted if you want to preserve state on reopen.
+    // If you prefer to dispose it: this.disposeActive();
   }
 
+  private disposeActive() {
+    if (this.activeRef) {
+      this.activeRef.destroy();
+      this.activeRef = undefined;
+    }
+    this.vcr.clear();
+  }
+
+  private mountPane(pane: PaneType, id?: number) {
+    if (!this.vcr) return;
+
+    // If pane type changed, recreate; if same type, reuse and just update inputs.
+    const shouldRecreate =
+      !this.activeRef ||
+      (pane === 'notes' && this.activeRef.instance instanceof MemberDocumentsComponent) ||
+      (pane === 'document' && this.activeRef.instance instanceof MemberNotesComponent);
+
+    if (shouldRecreate) {
+      this.disposeActive();
+
+      if (pane === 'notes') {
+        this.activeRef = this.vcr.createComponent(MemberNotesComponent);
+      } else if (pane === 'document') {
+        this.activeRef = this.vcr.createComponent(MemberDocumentsComponent);
+      } else {
+        return;
+      }
+    }
+
+    // Set inputs on the current component (Angular will run OnChanges for changed values)
+    if (this.activeRef) {
+      // Common input name assumed as memberId; adjust if your component uses a different @Input
+      this.activeRef.setInput?.('memberDetailsId', id);
+
+      // Pass through refresh streams so you can force reload even if id is same
+      if (pane === 'notes') {
+        this.activeRef.setInput?.('refresh$', this.refreshNotes$.asObservable());
+        if (id != null) this.refreshNotes$.next(id);
+      } else if (pane === 'document') {
+        this.activeRef.setInput?.('refresh$', this.refreshDocuments$.asObservable());
+        if (id != null) this.refreshDocuments$.next(id);
+      }
+
+      // If your child uses OnPush and you update data internally, change detection will be fine;
+      // if needed, you can call this.activeRef.changeDetectorRef.markForCheck();
+    }
+  }
+
+  // Optional: allow reloading when the same row is clicked again
+  onRowAddNotes(member: any) {
+    this.openPanel('notes', member);
+  }
+  onRowAddDocument(member: any) {
+    this.openPanel('document', member);
+  }
+
+  getHeaderTitle(): string {
+    return this.activePane ? this.headerTitleMap[this.activePane] : 'Action';
+  }
 }
