@@ -49,10 +49,9 @@ interface NoteType {
 @Component({
   selector: 'app-member-notes',
   templateUrl: './member-notes.component.html',
-  styleUrls: ['./member-notes.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  styleUrls: ['./member-notes.component.css']
 })
-export class MemberNotesComponent implements OnInit, OnChanges, OnDestroy {
+export class MemberNotesComponent implements OnInit {
 
   @Input() memberId?: number;           // works for legacy
   @Input() memberDetailsId?: number;    // works for new schema
@@ -122,25 +121,9 @@ export class MemberNotesComponent implements OnInit, OnChanges, OnDestroy {
     }
   ];
 
-  constructor(private svc: MembersummaryService, private crud: CrudService, private cdr: ChangeDetectorRef) { }
+  constructor(private svc: MembersummaryService, private crud: CrudService) { }
 
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['memberDetailsId']) {
-      if (!this.memberDetailsId) {
-        console.log('memberDetailsId not provided, attempting to read from sessionStorage', this.memberDetailsId);
-        this.reload();
-        this.loadNoteTypes();
-      }
-      //if (id != null) {
-
-      //}
-    }
-  }
-
-  ngOnDestroy(): void {
-    this.sub?.unsubscribe();
-  }
 
   ngOnInit(): void {
     console.log('MemberNotesComponent initialized with memberId:', this.memberId, 'memberDetailsId:', this.memberDetailsId);
