@@ -1,0 +1,249 @@
+<div class="messages-shell" [class.hasEditor]="showEditor">
+
+  <!-- Left: table and controls -->
+  <div class="list-pane">
+    <div class="toolbar">
+      <div class="search">
+        <input type="text"
+               class="search-input"
+               placeholder="Search by text or user id"
+               [(ngModel)]="searchTerm">
+      </div>
+      <!--<div class="view-toggle">
+        <label class="toggle-option">
+          <input type="radio" name="groupMode" value="thread" [(ngModel)]="groupMode">
+          <span>Group by thread</span>
+        </label>
+        <label class="toggle-option">
+          <input type="radio" name="groupMode" value="message" [(ngModel)]="groupMode">
+          <span>Group by message</span>
+        </label>
+      </div>-->
+      <div class="view-toggle">
+        <mat-button-toggle-group class="status-group"
+                                 name="groupMode"
+                                 [(ngModel)]="groupMode"
+                                 aria-label="Group mode">
+          <mat-button-toggle value="thread">Group by thread</mat-button-toggle>
+          <mat-button-toggle value="message">Group by message</mat-button-toggle>
+        </mat-button-toggle-group>
+      </div>
+      <div class="actions">
+        <button class="btn primary" (click)="addMessage()">
+          <span class="icon plus"></span>
+          Add message
+        </button>
+      </div>
+    </div>
+
+    <div class="table-card" *ngIf="!loading; else loadingTpl">
+      <div *ngIf="groupMode === 'thread'">
+        <table class="grid">
+          <thead>
+            <tr>
+              <th class="col-user">User</th>
+              <th class="col-body">Message</th>
+              <th class="col-date">Created</th>
+              <th class="col-date">Updated</th>
+              <th class="col-actions"></th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <!-- Group by thread with a header row -->
+            <ng-container *ngFor="let t of filteredThreads; trackBy: trackThread">
+
+              <tr class="thread-header">
+                <td colspan="5">
+                  <div class="thread-title">
+                    <span class="bubble">Thread {{ t.threadId }}</span>
+                    <span class="participants">
+                      Users: <strong>{{ t.user1Id }}</strong> ↔ <strong>{{ t.user2Id }}</strong>
+                      <span *ngIf="t.memberDetailsId"> • Member: <strong>{{ t.memberDetailsId }}</strong></span>
+                    </span>
+                    <span class="count">{{ t.messages?.length || 0 }} message(s)</span>
+                  </div>
+                </td>
+              </tr>
+
+              <tr *ngFor="let m of t.flatMessages; trackBy: trackMessage" class="message-row">
+                <td class="col-user">
+                  <span class="user-chip" [class.me]="m.senderUserId === currentUserId">
+                    {{ m.senderUserId === currentUserId ? 'Me' : m.senderUserId }}
+                  </span>
+                </td>
+                <td class="col-body">
+                  <div class="body-text" [class.deleted]="m.isDeleted">
+                    {{ m.body }}
+                  </div>
+                </td>
+                <td class="col-date">
+                  <div class="mono">{{ m.createdOn | date:'MM/dd/yyyy HH:mm' }}</div>
+                </td>
+                <td class="col-date">
+                  <div class="mono">
+                    <ng-container *ngIf="m.editedOn; else dash"> {{ m.editedOn | date:'MM/dd/yyyy HH:mm' }} </ng-container>
+                    <ng-template #dash>—</ng-template>
+                  </div>
+                </td>
+                <td class="col-actions">
+                  <div class="actions-row">
+                    <button class="icon-btn"
+                            title="Reply"
+                            *ngIf="m.senderUserId !== currentUserId"
+                            (click)="replyToMessage(t, m)">
+                      <span class="icon reply"></span>
+                    </button>
+                    <button class="icon-btn" title="Edit" (click)="editMessage(t, m)">
+                      <span class="icon edit"></span>
+                    </button>
+                    <button class="icon-btn danger" title="Delete" (click)="deleteMessage(m)">
+                      <span class="icon trash"></span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+
+            </ng-container>
+          </tbody>
+        </table>
+
+        <div class="empty" *ngIf="filteredThreads.length === 0">
+          No messages found.
+        </div>
+      </div>
+
+
+      <div *ngIf="groupMode === 'message'">
+        <table class="grid">
+          <thead>
+            <tr>
+              <th class="col-user">User</th>
+              <th class="col-body">Message</th>
+              <th class="col-date">Created</th>
+              <!--<th class="col-date">Updated</th>-->
+              <th class="col-actions"></th>
+            </tr>
+          </thead>
+          <tbody>
+
+            <ng-container *ngFor="let g of filteredMessageGroups; trackBy: trackGroup">
+              <tr class="thread-header">
+                <td colspan="5">
+                  <div class="thread-title">
+                    <span class="bubble">Root {{ g.root.messageId }}</span>
+                    <span class="participants">
+                      Thread: <strong>{{ g.threadId }}</strong>
+                    </span>
+                    <span class="count">{{ g.flat.length }} message(s)</span>
+                  </div>
+                </td>
+              </tr>
+
+              <tr *ngFor="let m of g.flat; trackBy: trackMessage" class="message-row">
+                <td class="col-user">
+                  <span class="user-chip" [class.me]="m.senderUserId === currentUserId">
+                    {{ m.senderUserId === currentUserId ? 'Me' : m.senderUserId }}
+                  </span>
+                </td>
+                <td class="col-body">
+                  <div class="indent" [style.paddingLeft.px]="m.level * 20">
+                    <div class="body-text" [class.deleted]="m.isDeleted">
+                      <span *ngIf="m.level > 0">↳ </span>{{ m.body }}
+                    </div>
+                  </div>
+                </td>
+                <td class="col-date"><div class="mono">{{ m.createdOn | date:'MM/dd/yyyy HH:mm' }}</div></td>
+                <!--<td class="col-date">
+                  <div class="mono">
+                    <ng-container *ngIf="m.editedOn; else dash">{{ m.editedOn | date:'MM/dd/yyyy HH:mm' }}</ng-container>
+                    <ng-template #dash>—</ng-template>
+                  </div>
+                </td>-->
+                <td class="col-actions">
+                  <div class="actions-stack">
+                    <button class="icon-btn" title="Reply" *ngIf="m.senderUserId !== currentUserId"
+                            (click)="replyToMessage(threadDict[g.threadId], m)">
+                      <span class="icon reply"></span>
+                    </button>
+
+                    <button class="icon-btn" title="Edit"
+                            (click)="editMessage(threadDict[g.threadId], m)">
+                      <span class="icon edit"></span>
+                    </button>
+                    <button class="icon-btn danger" title="Delete" (click)="deleteMessage(m)">
+                      <span class="icon trash"></span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </ng-container>
+
+          </tbody>
+        </table>
+
+        <div class="empty" *ngIf="filteredMessageGroups.length === 0">No messages found.</div>
+      </div>
+
+    </div>
+
+    <ng-template #loadingTpl>
+      <div class="loading">
+        <div class="spinner"></div>
+        <div>Loading messages…</div>
+      </div>
+    </ng-template>
+  </div>
+
+  <!-- Right: editor panel -->
+  <div class="editor-pane" *ngIf="showEditor">
+    <div class="editor-card">
+
+      <div class="editor-header">
+        <div class="title">{{ isEditing ? 'Edit message' : 'New message' }}</div>
+        <button class="icon-btn" title="Close" (click)="cancelEdit()">
+          <span class="icon close"></span>
+        </button>
+      </div>
+      <!-- Inside editor-card, above the form -->
+      <div class="reply-context" *ngIf="replyingTo">
+        Replying to message <strong>#{{ replyingTo.messageId }}</strong>
+        from <strong>{{ replyingTo.senderUserId === currentUserId ? 'Me' : replyingTo.senderUserId }}</strong>:
+        <div class="reply-quote">{{ replyingTo.body }}</div>
+      </div>
+
+      <form [formGroup]="editorForm" (ngSubmit)="save()">
+
+        <div class="form-row">
+          <!-- keep dropdown visible in edit but disabled (we disabled control in code) -->
+          <ui-dropdown formControlName="otherUserId"
+                       [options]="careStaffOptions"
+                       placeholder="Select care staff">
+          </ui-dropdown>
+          <div class="hint" *ngIf="isEditing">Partner is fixed for an existing thread.</div>
+        </div>
+
+        <div class="form-row">
+          <label>Message</label>
+          <textarea class="text-area" rows="6" formControlName="body" placeholder="Type your message"></textarea>
+          <div class="error" *ngIf="editorForm.get('body')?.touched && editorForm.get('body')?.invalid">
+            Message is required
+          </div>
+        </div>
+
+        <!-- Optional: reply to a specific message id -->
+        <div class="form-row compact">
+          <label>Reply to (optional)</label>
+          <input type="number" class="input" formControlName="parentMessageId" placeholder="Message id">
+        </div>
+
+        <div class="editor-actions">
+          <button type="button" class="btn" (click)="cancelEdit()">Cancel</button>
+          <button type="submit" class="btn primary">{{ isEditing ? 'Update' : 'Send' }}</button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+</div>

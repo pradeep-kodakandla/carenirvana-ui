@@ -10,6 +10,7 @@ import { AngularMaterialModule } from './shared/helpers/angular-material/angular
 import { AppComponent } from './app.component';
 import { LoginComponent } from './login/login.component'
 import { DashBoardComponent } from './dash-board/dash-board.component';
+import { MessagesComponent } from './messages/messages.component'; 
 import { HeaderComponent } from './header/header.component';
 import { FooterComponent } from './footer/footer.component';
 import { CounterComponent } from './counter/counter.component';
@@ -154,7 +155,7 @@ import { UiMultiCheckDropdownComponent } from './shared/ui/uimulticheckdropdown/
     CounterComponent,
     FetchDataComponent, ShowLabelDirective,
     DashBoardComponent,
-    HeaderComponent,
+    MessagesComponent, HeaderComponent,
     FooterComponent,
     MemberDetailsComponent,
     MemberComponent,
@@ -208,6 +209,7 @@ import { UiMultiCheckDropdownComponent } from './shared/ui/uimulticheckdropdown/
       { path: 'fetch-data', component: FetchDataComponent },
       { path: 'dashboard', component: DashBoardComponent },
       { path: 'header', component: HeaderComponent },
+      { path: 'message', component: MessagesComponent }, 
       { path: 'footer', component: FooterComponent },
       {
         path: 'member-info/:id',

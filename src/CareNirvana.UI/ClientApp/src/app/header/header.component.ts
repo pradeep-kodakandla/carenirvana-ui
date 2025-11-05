@@ -318,4 +318,21 @@ export class HeaderComponent implements OnInit {
     });
   }
 
+
+  // Add these fields (or map them from your own sources)
+  selectedMemberDetailsId: number | null = null; // set this when a member tab is active
+  careStaffOptions = [
+    // populate from your service; example:
+    // { value: 3, label: 'Sridhar' }, { value: 2, label: 'Pradeep' }
+  ];
+
+  // Optional: open on hover like your History menu
+  openMessagesMenu(trigger: any) {
+    // avoid re-open loops; open only if not already open
+    if (!trigger.menuOpen) {
+      trigger.openMenu();
+    }
+  }
+
+
 }

@@ -153,6 +153,34 @@
       </mat-menu>
 
 
+      <!--<button mat-icon-button>
+        <mat-icon class="mat-badge" aria-hidden="false" style="color:white;" matBadge="15">message</mat-icon>
+      </button>-->
+
+      <button mat-icon-button
+              aria-label="Messages"
+              #messagesTrigger="matMenuTrigger"
+              [matMenuTriggerFor]="messagesMenu"
+              (onclick)="openMessagesMenu(messagesTrigger)">
+        <mat-icon style="color:white;" matBadge="15">message</mat-icon>
+      </button>
+
+      <!-- Messages popover -->
+      <mat-menu #messagesMenu="matMenu"
+                class="history-popover"
+                yPosition="below"
+                [overlapTrigger]="false"
+                [hasBackdrop]="true"
+                [backdropClass]="'cdk-overlay-dark-backdrop'"
+                matMenuTriggerRestoreFocus="false">
+        <div class="messages-wrap" (click)="$event.stopPropagation()">
+          <!-- Give the panel a nice fixed size -->
+          <app-messages [memberDetailsId]="selectedMemberDetailsId"
+                        [careStaffOptions]="careStaffOptions">
+          </app-messages>
+        </div>
+      </mat-menu>
+
       <button mat-icon-button>
         <mat-icon class="mat-badge" aria-hidden="false" style="color:white;" matBadge="15">mail</mat-icon>
       </button>
