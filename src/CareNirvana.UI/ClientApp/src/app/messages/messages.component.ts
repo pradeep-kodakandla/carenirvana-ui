@@ -13,10 +13,14 @@ type UiThread = ThreadWithMessagesDto & { flatMessages: UiMessage[] };
 
 type UiMessageGroup = {
   threadId: number;
-  root: UiMessage;        // the root message
-  flat: UiMessage[];      // root + its replies flattened
+  root: UiMessage;
+  flat: UiMessage[];
 };
 
+type UiSubjectGroup = {
+  subject: string;
+  flat: UiMessage[];
+};
 
 @Component({
   selector: 'app-messages',
@@ -33,7 +37,8 @@ export class MessagesComponent implements OnInit {
 
   threads: ThreadWithMessagesDto[] = [];
   uiThreads: UiThread[] = [];
-  uiMessageGroups: UiMessageGroup[] = [];
+  //uiMessageGroups: UiMessageGroup[] = [];
+  uiMessageGroups: UiSubjectGroup[] = [];
 
   searchTerm = '';
   loading = false;
@@ -55,6 +60,7 @@ export class MessagesComponent implements OnInit {
   ngOnInit(): void {
     this.editorForm = this.fb.group({
       otherUserId: [null, Validators.required],
+      subject: [''],
       body: ['', [Validators.required, Validators.maxLength(4000)]],
       parentMessageId: [null]
     });
@@ -75,8 +81,6 @@ export class MessagesComponent implements OnInit {
     const src$ = this.memberDetailsId
       ? this.messages.getByMember(this.memberDetailsId, page, pageSize)
       : this.messages.getByUser(this.currentUserId, page, pageSize);
-
-    console.log('Loading messages for userId:', this.currentUserId, 'member:', this.memberDetailsId ?? '(none)');
 
     src$.subscribe({
       next: list => {
@@ -118,27 +122,34 @@ export class MessagesComponent implements OnInit {
       .filter(t => t.flatMessages.length > 0);
   }
 
-  get filteredMessageGroups(): UiMessageGroup[] {
+  get filteredMessageGroups(): UiSubjectGroup[] {
     const q = (this.searchTerm || '').trim().toLowerCase();
     if (!q) return this.uiMessageGroups;
 
-    const keep = (m: UiMessage) =>
+    const itemHit = (m: UiMessage) =>
       (m.body || '').toLowerCase().includes(q) ||
+      (m.userName || '').toLowerCase().includes(q) ||
       String(m.senderUserId).includes(q);
 
     return this.uiMessageGroups
-      .map(g => ({ ...g, flat: g.flat.filter(keep) }))
-      .filter(g => g.flat.length > 0);
+      .map(g => {
+        // keep group if subject matches OR any message matches
+        const subjectHit = g.subject.toLowerCase().includes(q);
+        if (subjectHit) return g;
+        const flat = g.flat.filter(itemHit);
+        return flat.length ? { ...g, flat } : null as any;
+      })
+      .filter(Boolean) as UiSubjectGroup[];
   }
-
 
 
   addMessage(): void {
     this.isEditing = false;
     this.editingMessageId = null;
     this.selectedThreadId = null;
-    this.editorForm.reset({ otherUserId: null, body: '', parentMessageId: null });
+    this.editorForm.reset({ otherUserId: null, body: '', parentMessageId: null, subject: '', });
     this.editorForm.get('otherUserId')?.enable();
+    this.editorForm.get('subject')?.enable(); 
     this.showEditor = true;
   }
 
@@ -152,10 +163,12 @@ export class MessagesComponent implements OnInit {
     this.editorForm.reset({
       otherUserId: otherId,
       body: msg.body || '',
+      subject: msg.subject || '',
       parentMessageId: msg.parentMessageId ?? null
     });
     // on edit, keep partner fixed
     this.editorForm.get('otherUserId')?.disable();
+    this.editorForm.get('subject')?.disable(); 
 
     this.showEditor = true;
   }
@@ -167,13 +180,6 @@ export class MessagesComponent implements OnInit {
       error: err => console.error(err)
     });
   }
-
-  //cancelEdit(): void {
-  //  this.showEditor = false;
-  //  this.isEditing = false;
-  //  this.editingMessageId = null;
-  //  this.selectedThreadId = null;
-  //}
 
   save(): void {
     if (this.editorForm.invalid) {
@@ -196,12 +202,14 @@ export class MessagesComponent implements OnInit {
     // create
     const otherUserId = this.editorForm.get('otherUserId')?.value as number;
     const parentMessageId = this.editorForm.get('parentMessageId')?.value as number | null;
+    const subject = (this.editorForm.get('subject')?.value ?? '').toString().trim() || null;
 
     const req: CreateMessageRequest = {
       otherUserId,
       memberDetailsId: this.memberDetailsId ?? null,
       parentMessageId: parentMessageId ?? null,
       body,
+      subject,
       createdUserId: Number(createdUserId)
     };
     console.log('Creating message with request:', req);
@@ -219,8 +227,7 @@ export class MessagesComponent implements OnInit {
   trackThread = (_: number, t: UiThread) => t.threadId;
   trackMessage = (_: number, m: UiMessage) => m.messageId;
   trackGroup = (_: number, g: UiMessageGroup) => g.root.messageId;
-
-
+  trackSubjectGroup = (_: number, g: UiSubjectGroup) => g.subject;
 
   // Add this field near your other editor state
   replyingTo: MessageDto | null = null;
@@ -232,18 +239,24 @@ export class MessagesComponent implements OnInit {
     this.selectedThreadId = thread.threadId;
     this.replyingTo = msg;
 
+    const subjectText = (msg.subject && msg.subject.trim().length > 0)
+      ? msg.subject
+      : 'Re:';
+
     // partner is the original sender of the message we're replying to
     const otherId = msg.senderUserId;
 
     // seed the form:
     this.editorForm.reset({
-      otherUserId: otherId,               // reply to the sender
+      otherUserId: otherId,
+      subject: subjectText,
       body: '',
       parentMessageId: msg.messageId      // thread the reply
     });
 
     // lock partner (we're replying to that person)
     this.editorForm.get('otherUserId')?.disable();
+    this.editorForm.get('subject')?.disable(); 
 
     this.showEditor = true;
   }
@@ -257,8 +270,45 @@ export class MessagesComponent implements OnInit {
     this.replyingTo = null;
   }
 
+  // add this field on the component
+  threadDict: { [id: number]: UiThread } = {};
 
 
+  private buildUi(list: ThreadWithMessagesDto[] | null | undefined): void {
+    const src = Array.isArray(list) ? list : [];
+
+    // 1) Thread view
+    this.uiThreads = src.map(t => ({
+      ...t,
+      flatMessages: this.flatten(t.messages, 0, [])
+    }));
+
+    this.threadDict = {};
+    for (const t of this.uiThreads) this.threadDict[t.threadId] = t;
+
+    // 2) Subject groups (group every root by its subject; include root + replies)
+    const bucket = new Map<string, UiMessage[]>();
+
+    for (const t of src) {
+      for (const root of (t.messages || [])) {
+        const key = this.normSubject(root.subject);
+        const flat = this.flattenFromRoot(root); // root + replies, keeps original m.threadId
+        const arr = bucket.get(key) ?? [];
+        arr.push(...flat);
+        bucket.set(key, arr);
+      }
+    }
+
+    // materialize + sort groups by subject asc
+    this.uiMessageGroups = Array.from(bucket.entries())
+      .map(([subject, flat]) => ({ subject, flat }))
+      .sort((a, b) => a.subject.localeCompare(b.subject));
+  }
+
+  private normSubject(s?: string | null): string {
+    const v = (s ?? '').trim();
+    return v.length ? v : '(no subject)';
+  }
 
   private flatten(messages: MessageDto[] | undefined, level = 0, out: UiMessage[] = []): UiMessage[] {
     if (!messages) return out;
@@ -270,39 +320,8 @@ export class MessagesComponent implements OnInit {
   }
 
   private flattenFromRoot(root: MessageDto): UiMessage[] {
-    // Flatten starting from a specific root
-    const copy: MessageDto = { ...root, replies: root.replies || [] };
-    return this.flatten([copy], 0, []);
-  }
-
-  // add this field on the component
-  threadDict: { [id: number]: UiThread } = {};
-
-  // after you compute uiThreads in buildUi(...)
-  private buildUi(list: ThreadWithMessagesDto[] | null | undefined): void {
-    const src = Array.isArray(list) ? list : [];
-
-    // 1) threads view
-    this.uiThreads = src.map(t => ({
-      ...t,
-      flatMessages: this.flatten(t.messages, 0, [])
-    }));
-
-    // keep a dictionary for quick lookup in the template
-    this.threadDict = {};
-    for (const t of this.uiThreads) this.threadDict[t.threadId] = t;
-
-    // 2) message groups (unchanged)
-    const groups: UiMessageGroup[] = [];
-    for (const t of src) {
-      for (const root of (t.messages || [])) {
-        const flat = this.flattenFromRoot(root);
-        groups.push({ threadId: t.threadId, root: flat[0], flat });
-      }
-    }
-    this.uiMessageGroups = groups.sort((a, b) =>
-      new Date(a.root.createdOn).getTime() - new Date(b.root.createdOn).getTime()
-    );
+    // flatten a single root “conversation” tree
+    return this.flatten([root], 0, []);
   }
 
 

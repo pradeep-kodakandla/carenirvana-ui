@@ -1,6 +1,6 @@
 <div class="activity-container">
   <!-- LEFT SIDE: Notes List -->
-  <div class="activity-left">
+  <div class="activity-left" *ngIf="!formOnly">
     <div class="left-controls">
       <input type="text" placeholder="🔍 Search..." [(ngModel)]="searchTerm" (input)="applyFilter($event)" class="search-input" />
       <div class="right-actions">
@@ -58,7 +58,7 @@
   </div>
 
   <!-- RIGHT SIDE: Form -->
-  <div class="activity-right">
+  <div class="activity-right" [style.width]="formOnly ? '100%' : null">
     <ng-container *ngIf="isFormVisible">
       <div class="auth-form">
         <form #noteForm="ngForm">
@@ -194,13 +194,13 @@
 
           <div class="button-group">
             <button type="button" (click)="saveNote()" [disabled]="!canAdd">Save</button>
-            <button type="button" (click)="cancelForm()">Cancel</button>
+            <button type="button" *ngIf="!formOnly" (click)="cancelForm()">Cancel</button>
           </div>
         </form>
       </div>
     </ng-container>
 
-    <ng-template #aiSummary>
+    <ng-template   #aiSummary>
       <div class="ai-summary" *ngIf="summary as s">
         <h3>📝 Notes Summary</h3>
 
@@ -226,7 +226,7 @@
       </div>
     </ng-template>
 
-    <ng-container *ngIf="!isFormVisible">
+    <ng-container *ngIf="!formOnly && !isFormVisible">
       <ng-container *ngTemplateOutlet="aiSummary"></ng-container>
     </ng-container>
 

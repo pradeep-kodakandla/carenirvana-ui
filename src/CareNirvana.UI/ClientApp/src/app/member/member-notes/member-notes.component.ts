@@ -58,6 +58,7 @@ export class MemberNotesComponent implements OnInit {
   @Input() canAdd = true;
   @Input() canEdit = true;
   @Input() refresh$?: Observable<void>;
+  @Input() formOnly = false;
   private sub?: Subscription;
 
   loading = false;
@@ -87,10 +88,6 @@ export class MemberNotesComponent implements OnInit {
   @ViewChildren('calendarPickers') calendarPickers!: QueryList<ElementRef<HTMLInputElement>>;
   @ViewChildren('hiddenEndDatetimePicker') hiddenEndPicker!: QueryList<ElementRef<HTMLInputElement>>;
 
-  // quick summary (right side)
-  // summary = { total: 0, alert: 0, lastCreated: '-' };
-
-  /*  noteTypes: Array<{ id: number; label: string }> = [];*/
 
   notesFields: NoteField[] = [
     {
@@ -124,19 +121,22 @@ export class MemberNotesComponent implements OnInit {
   constructor(private svc: MembersummaryService, private crud: CrudService) { }
 
 
-
   ngOnInit(): void {
     console.log('MemberNotesComponent initialized with memberId:', this.memberId, 'memberDetailsId:', this.memberDetailsId);
     if (!this.memberDetailsId) {
       this.memberDetailsId = Number(sessionStorage.getItem("selectedMemberDetailsId"));
     }
 
+
     this.reload();
     this.loadNoteTypes();
 
+    if (this.formOnly) {
+      console.log('MemberNotesComponent in formOnly mode, opening add form.');
+      this.isFormVisible = true;        // show the right form by default
+      this.openAddFormClean();
+    }
   }
-
-
 
   get memberPointer(): number {
     // prefer new pointer if provided
@@ -399,7 +399,8 @@ export class MemberNotesComponent implements OnInit {
 
     obs.pipe(finalize(() => { })).subscribe({
       next: _ => {
-        this.isFormVisible = false;
+        this.isFormVisible = this.formOnly ? true : false;
+        if (this.formOnly) { this.openForm("add"); }
         this.editingId = null;
         this.reload();
       },
@@ -678,6 +679,33 @@ export class MemberNotesComponent implements OnInit {
 
     f.showDropdown = false;    // keep closed
     f.highlightedIndex = 0;
+  }
+
+
+  // Clears values for form-only add
+  private resetFormForAdd(): void {
+    (this.notesFields || []).forEach(f => {
+      if (f.type === 'select') {
+        f.value = null;
+        f.displayLabel = '';
+        f.filteredOptions = f.options || [];
+        f.highlightedIndex = -1;
+        f.showDropdown = false;
+      } else if (f.type === 'checkbox') {
+        this.showEndDatetimeField = false;
+      } else {
+        f.value = '';
+      }
+    });
+    this.endDatetimeValue = '';
+    this.showValidationErrors = false;
+  }
+
+  // Public method you can call from MyCaseload
+  openAddFormClean(): void {
+    this.isFormVisible = true;
+    this.editingId = null;
+    this.resetFormForAdd();
   }
 
 }

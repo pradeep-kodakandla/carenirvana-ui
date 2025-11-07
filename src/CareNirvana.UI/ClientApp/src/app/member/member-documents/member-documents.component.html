@@ -1,6 +1,6 @@
 <div class="activity-container force-two-pane">
   <!-- LEFT SIDE: Document Timeline -->
-  <div class="activity-left">
+  <div class="activity-left" *ngIf="!formOnly">
     <div class="left-controls">
       <input type="text" placeholder="🔍 Search..." [(ngModel)]="searchTerm" (input)="applyFilter($event)" class="search-input" />
       <div class="right-actions">
@@ -53,7 +53,7 @@
   </div>
 
   <!-- RIGHT SIDE: Document Form -->
-  <div class="activity-right">
+  <div class="activity-right" [style.width]="formOnly ? '100%' : null">
     <ng-container *ngIf="isFormVisible">
       <div class="auth-form">
         <form #docForm="ngForm" novalidate>
@@ -64,7 +64,7 @@
                 <div [class.full-width]="field.type === 'textarea' || field.type === 'label'" class="form-outline dropdown-container" [ngClass]="{ 'hidden': field.hidden }">
                   <ng-container [ngSwitch]="field.type">
 
-                     <ng-container *ngSwitchCase="'select'">
+                    <ng-container *ngSwitchCase="'select'">
                       <label class="floating-label">{{ field.displayName }} <span *ngIf="field.required" class="text-danger">*</span></label>
                       <div class="input-with-icon">
                         <input class="form-control"
@@ -135,7 +135,7 @@
 
           <div class="button-group">
             <button type="button" (click)="saveDocument(docForm)" [disabled]="!canAdd">Save</button>
-            <button type="button" (click)="cancelForm()">Cancel</button>
+            <button type="button" *ngIf="!formOnly" (click)="cancelForm()">Cancel</button>
           </div>
         </form>
       </div>
@@ -150,7 +150,7 @@
       </div>
     </ng-template>
 
-    <ng-container *ngIf="!isFormVisible">
+    <ng-container *ngIf="!formOnly && !isFormVisible">
       <ng-container *ngTemplateOutlet="aiSummary"></ng-container>
     </ng-container>
   </div>

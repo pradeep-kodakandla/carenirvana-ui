@@ -60,7 +60,8 @@ interface DocumentField {
 })
 export class MemberDocumentsComponent implements OnInit, OnChanges {
   @Input() memberId!: number;
-  @Input() memberDetailsId?: number; 
+  @Input() memberDetailsId?: number;
+  @Input() formOnly = false;  
   // left side
   searchTerm = '';
   showSort = false;
@@ -137,6 +138,10 @@ export class MemberDocumentsComponent implements OnInit, OnChanges {
       },
       error: _ => { this.documentTypeOptions = []; }
     });
+
+    if (this.formOnly) {
+      this.isFormVisible = true;        // show the right form by default
+    }
 
     this.configureFormFields();
     if (this.memberId) this.reload();

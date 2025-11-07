@@ -444,11 +444,10 @@
         <h3>{{ getHeaderTitle() }}</h3>
         <button type="button" class="notes-close" (click)="closePanel()" aria-label="Close">×</button>
       </div>
-      <div style="padding-left:5px;">
-        <!-- Your notes component, safely typed -->
-        <!--<app-member-notes [memberDetailsId]="selectedMemberId" ></app-member-notes>-->
-        <ng-container #dynamicContainer></ng-container>
-      </div>
+      <!-- Your notes component, safely typed -->
+      <!--<app-member-notes [memberDetailsId]="selectedMemberId" ></app-member-notes>-->
+      <ng-container style="padding-left:5px;" #dynamicContainer></ng-container>
+
     </aside>
   </div>
 </div>

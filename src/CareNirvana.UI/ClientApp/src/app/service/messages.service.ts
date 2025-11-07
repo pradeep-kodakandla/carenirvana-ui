@@ -9,6 +9,8 @@ export interface MessageDto {
   parentMessageId?: number | null;
   senderUserId: number;
   body: string;
+  subject?: string | null;
+  userName?: string | null;
   isDeleted: boolean;
   createdOn: string;
   editedOn?: string | null;
@@ -19,6 +21,8 @@ export interface ThreadWithMessagesDto {
   threadId: number;
   user1Id: number;
   user2Id: number;
+  user1Name?: string | null;
+  user2Name?: string | null;
   memberDetailsId?: number | null;
   messages: MessageDto[];
 }
@@ -29,6 +33,7 @@ export interface CreateMessageRequest {
   parentMessageId?: number | null;
   body: string;
   createdUserId: number;
+  subject?: string | null;
 }
 
 export interface UpdateMessageRequest {

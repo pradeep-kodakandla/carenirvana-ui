@@ -379,15 +379,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     });
   }
 
-  //private calculateEnrollmentCounts(list: any[]): void {
-  //  this.counts.enroll = { active: 0, soonEnding: 0, inactive: 0 };
-  //  list.forEach(m => {
-  //    const s = this.getEnrollStatus(m);
-  //    if (s === 'Active') this.counts.enroll.active++;
-  //    else if (s === 'Soon Ending') this.counts.enroll.soonEnding++;
-  //    else this.counts.enroll.inactive++;
-  //  });
-  //}
+
   private calculateEnrollmentCounts(list: any[]): void {
     this.counts.enroll = { active: 0, soonEnding: 0, inactive: 0, noEnrollment: 0 };
 
@@ -487,56 +479,28 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     return `${years} yrs ${months} mos`;
   }
 
-  //onAddNotesFor(member: any) {
-  //  this.selectedMemberId = member?.memberDetailsId ?? member?.memberId;
-  //  this.showNotesPanel = true;
-  //}
-  //onAddNotesFor(member: any | number) {
-  //  // support either an object or a raw id (for safety)
-  //  console.log('Adding notes for member:', member);
-  //  const id = typeof member === 'number'
-  //    ? member
-  //    : (member?.memberDetailsId ?? member?.memberId);
-
-  //  console.log('Determined member ID for notes:', id);
-  //  this.selectedMemberId = id;
-  //  this.showNotesPanel = true; // keeps your 60/40 split open
-  //  this.refreshNotes$.next(id);
-  //}
-
-  //// Called from the top menu “Add Notes” (no specific member)
-  //openNotes() {
-  //  // keep previously selected member if any, or leave undefined
-  //  this.showNotesPanel = true;
-  //}
-
-  //// Optional: close the notes pane
-  //closeNotes() {
-  //  this.showNotesPanel = false;
-  //}
-
-
-
 
   openPanel(pane: PaneType, member: any | number) {
     const id = typeof member === 'number'
       ? member
       : (member?.memberDetailsId ?? member?.memberId);
 
+    const memberId = typeof member === 'number'
+      ? member
+      : (member?.memberId ?? member?.memberDetailsId);
+
     this.selectedMemberId = id;
     this.activePane = pane;
     this.showRightPane = true;
     this.showNotesPanel = true;
     // Create or swap the component
-    this.mountPane(pane, id);
+    this.mountPane(pane, id, memberId);
   }
 
   closePanel() {
     this.showRightPane = false;
     this.showNotesPanel = false;
     this.selectedMemberId = undefined;
-    // Keep the component mounted if you want to preserve state on reopen.
-    // If you prefer to dispose it: this.disposeActive();
   }
 
   private disposeActive() {
@@ -547,16 +511,10 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     this.vcr.clear();
   }
 
-  private mountPane(pane: PaneType, id?: number) {
+  private mountPane(pane: PaneType, id?: number, memberId?: number) {
     if (!this.vcr) return;
 
-    // If pane type changed, recreate; if same type, reuse and just update inputs.
-    const shouldRecreate =
-      !this.activeRef ||
-      (pane === 'notes' && this.activeRef.instance instanceof MemberDocumentsComponent) ||
-      (pane === 'document' && this.activeRef.instance instanceof MemberNotesComponent);
-
-    if (shouldRecreate) {
+    if (true) {
       this.disposeActive();
 
       if (pane === 'notes') {
@@ -568,22 +526,22 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
       }
     }
 
-    // Set inputs on the current component (Angular will run OnChanges for changed values)
     if (this.activeRef) {
-      // Common input name assumed as memberId; adjust if your component uses a different @Input
-      this.activeRef.setInput?.('memberDetailsId', id);
 
       // Pass through refresh streams so you can force reload even if id is same
       if (pane === 'notes') {
-        this.activeRef.setInput?.('refresh$', this.refreshNotes$.asObservable());
-        if (id != null) this.refreshNotes$.next(id);
-      } else if (pane === 'document') {
-        this.activeRef.setInput?.('refresh$', this.refreshDocuments$.asObservable());
-        if (id != null) this.refreshDocuments$.next(id);
-      }
 
-      // If your child uses OnPush and you update data internally, change detection will be fine;
-      // if needed, you can call this.activeRef.changeDetectorRef.markForCheck();
+        this.activeRef.setInput?.('memberDetailsId', id);
+        this.activeRef.setInput?.('formOnly', true);
+        this.activeRef.instance.openForm?.('add');
+        if (id != null) this.refreshNotes$.next(id);
+        (this.activeRef.instance as MemberNotesComponent).openAddFormClean?.();
+       
+      } else if (pane === 'document') {
+        this.activeRef.setInput?.('memberId', memberId);
+        this.activeRef.setInput?.('formOnly', true);
+        if (memberId != null) this.refreshDocuments$.next(memberId);
+      }
     }
   }
 

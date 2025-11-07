@@ -270,6 +270,35 @@
     top: 3px;
   }
 
+  /* Reply chevron + bar */
+  .icon.reply::before,
+  .icon.reply::after {
+    content: "";
+    position: absolute;
+    background: currentColor;
+  }
+
+  /* horizontal bar */
+  .icon.reply::before {
+    width: 12px;
+    height: 2px;
+    left: 2px;
+    top: 7px;
+    border-radius: 1px;
+  }
+
+  /* arrow head */
+  .icon.reply::after {
+    width: 8px;
+    height: 8px;
+    left: 4px;
+    top: 3px;
+    border-left: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg);
+    border-radius: 0 0 0 2px;
+  }
+
   .icon.close::before, .icon.close::after {
     content: "";
     position: absolute;
