@@ -16,7 +16,7 @@
       </button>
 
       <button mat-icon-button class="toggle-button" *ngIf="!isCollapse">
-        <mat-icon aria-hidden="false" matBadge="{{member?.AlertCount}}">notifications</mat-icon>
+        <mat-icon aria-hidden="false" matBadge="{{member?.alertCount}}">notifications</mat-icon>
       </button>
 
       <!-- Spacer -->
@@ -33,12 +33,12 @@
       <!-- Header -->
       <div class="member-card">
         <div class="member-avatar">
-          {{ member?.FirstName?.charAt(0) }}{{ member?.LastName?.charAt(0) }}
+          {{ member?.firstName?.charAt(0) }}{{ member?.lastName?.charAt(0) }}
         </div>
         <div>
-          <div class="member-name">{{ member?.FirstName }} {{ member?.LastName }}</div>
+          <div class="member-name">{{ member?.firstName }} {{ member?.lastName }}</div>
           <div class="member-sub">
-            ID: {{ member?.MemberId }} · DOB: {{ member?.DOB }} ({{ getAge(member?.DOB) }} Yrs), {{ member?.Gender }}
+            ID: {{ member?.memberId }} · DOB: {{ member?.dob }} ({{ getAge(member?.dob) }} Yrs), {{ member?.gender }}
           </div>
         </div>
       </div>
@@ -47,15 +47,15 @@
       <div class="section m-top-6">
         <div class="section-title">Enrollment</div>
         <span [ngClass]="member?.EndDate ? 'pill-red' : 'badge-green'">
-          {{ getLevelValue(member?.LevelMap, 'LOB') }}
-          ({{ member?.EndDate ? 'Inactive' : 'Active' }})
+          {{ getLevelValue(member?.levelMap, 'LOB') }}
+          ({{ member?.endDate ? 'Inactive' : 'Active' }})
         </span>
       </div>
 
       <div class="section m-top-6">
         <div class="section-title">Risk Level</div>
         <div>
-          <span class="risk-chip compact" [ngClass]="(member?.RiskLevelCode || '').toLowerCase()">{{ member?.RiskLevelCode || 'No Risk' }}</span>
+          <span class="risk-chip compact" [ngClass]="(member?.riskLevelCode || '').toLowerCase()">{{ member?.riskLevelCode || 'No Risk' }}</span>
         </div>
       </div>
 
