@@ -1,6 +1,6 @@
 <div class="activity-container">
   <!-- LEFT SIDE: Notes List -->
-  <div class="activity-left" *ngIf="!formOnly">
+  <div class="activity-left" *ngIf="!formOnly || (formOnly && paneMode === 'list')" [style.width]="formOnly ? '100%' : null">
     <div class="left-controls">
       <input type="text" placeholder="🔍 Search..." [(ngModel)]="searchTerm" (input)="applyFilter($event)" class="search-input" />
       <div class="right-actions">
@@ -13,7 +13,7 @@
             <div class="sort-option" (click)="applySort('createdOn_asc')">Oldest First</div>
           </div>
         </div>
-        <button class="add-btn" (click)="openForm('add')" [disabled]="!canAdd">➕ Add Note</button>
+        <button class="add-btn" (click)="onAddNoteFromList()" [disabled]="!canAdd">➕ Add Note</button>
       </div>
     </div>
 
@@ -58,7 +58,7 @@
   </div>
 
   <!-- RIGHT SIDE: Form -->
-  <div class="activity-right" [style.width]="formOnly ? '100%' : null">
+  <div class="activity-right" *ngIf="!formOnly || (formOnly && paneMode === 'form')" [style.width]="formOnly ? '100%' : null">
     <ng-container *ngIf="isFormVisible">
       <div class="auth-form">
         <form #noteForm="ngForm">
@@ -113,6 +113,7 @@
                                style="opacity: 0; position: absolute; pointer-events: none;"
                                (change)="handleCalendarChange($event, field)">
                       </div>
+
                     </ng-container>
 
                     <!-- Checkbox -->
@@ -141,8 +142,6 @@
                     </ng-container>
                   </ng-container>
                 </div>
-
-
               </ng-container>
               <!-- End Datetime -->
 
@@ -184,6 +183,7 @@
                           [required]="!!field.required"
                           [name]="field.id"
                           rows="3"
+                          style="height:250px;"
                           #fieldModel="ngModel"></textarea>
                 <div *ngIf="field.required && fieldModel.invalid && (fieldModel.touched || fieldModel.dirty || showValidationErrors)" class="text-danger">
                   {{ field.requiredMsg || (field.displayName + ' is required.') }}
@@ -195,12 +195,23 @@
           <div class="button-group">
             <button type="button" (click)="saveNote()" [disabled]="!canAdd">Save</button>
             <button type="button" *ngIf="!formOnly" (click)="cancelForm()">Cancel</button>
+            <button type="button" *ngIf="formOnly" (click)="switchToListView()">
+              View Notes
+            </button>
+            <div *ngIf="saveStatus === 'success'" class="form-feedback success" role="status" aria-live="polite">
+              ✓ Notes added successfully.
+            </div>
+
+            <!-- Optional error message -->
+            <div *ngIf="saveStatus === 'error'" class="form-feedback error" role="alert">
+              Sorry, we couldn’t save the note. Please try again.
+            </div>
           </div>
         </form>
       </div>
     </ng-container>
 
-    <ng-template   #aiSummary>
+    <ng-template #aiSummary>
       <div class="ai-summary" *ngIf="summary as s">
         <h3>📝 Notes Summary</h3>
 
@@ -228,6 +239,9 @@
 
     <ng-container *ngIf="!formOnly && !isFormVisible">
       <ng-container *ngTemplateOutlet="aiSummary"></ng-container>
+      
+
+      co
     </ng-container>
 
 

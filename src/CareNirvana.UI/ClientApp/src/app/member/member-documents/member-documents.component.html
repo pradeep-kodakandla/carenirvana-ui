@@ -1,6 +1,6 @@
 <div class="activity-container force-two-pane">
   <!-- LEFT SIDE: Document Timeline -->
-  <div class="activity-left" *ngIf="!formOnly">
+  <div class="activity-left" *ngIf="!formOnly || (formOnly && paneMode === 'list')" [style.width]="formOnly ? '100%' : null">
     <div class="left-controls">
       <input type="text" placeholder="🔍 Search..." [(ngModel)]="searchTerm" (input)="applyFilter($event)" class="search-input" />
       <div class="right-actions">
@@ -13,7 +13,7 @@
             <div class="sort-option" (click)="applySort('createdOn_asc')">Oldest First</div>
           </div>
         </div>
-        <button class="add-btn" (click)="openForm('add')" [disabled]="!canAdd">➕ Add Document</button>
+        <button class="add-btn" (click)="onAddNoteFromList()" [disabled]="!canAdd">➕ Add Document</button>
       </div>
     </div>
 
@@ -53,7 +53,7 @@
   </div>
 
   <!-- RIGHT SIDE: Document Form -->
-  <div class="activity-right" [style.width]="formOnly ? '100%' : null">
+  <div class="activity-right" *ngIf="!formOnly || (formOnly && paneMode === 'form')" [style.width]="formOnly ? '100%' : null">
     <ng-container *ngIf="isFormVisible">
       <div class="auth-form">
         <form #docForm="ngForm" novalidate>
@@ -136,6 +136,17 @@
           <div class="button-group">
             <button type="button" (click)="saveDocument(docForm)" [disabled]="!canAdd">Save</button>
             <button type="button" *ngIf="!formOnly" (click)="cancelForm()">Cancel</button>
+            <button type="button" *ngIf="formOnly" (click)="switchToListView()">
+              View Documents
+            </button>
+            <div *ngIf="saveStatus === 'success'" class="form-feedback success" role="status" aria-live="polite">
+              ✓ Document added successfully.
+            </div>
+
+            <!-- Optional error message -->
+            <div *ngIf="saveStatus === 'error'" class="form-feedback error" role="alert">
+              Sorry, we couldn’t save the document. Please try again.
+            </div>
           </div>
         </form>
       </div>

@@ -109,8 +109,8 @@ body {
 /* Table Styles */
 .mng-table {
   width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
+/*  border-collapse: separate;
+*/  border-spacing: 0;
   font-family: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", system-ui, -apple-system, sans-serif;
   font-size: 14px;
 }

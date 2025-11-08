@@ -11,14 +11,39 @@ import { trigger, transition, style, animate, state, group } from '@angular/anim
 import { Subject } from 'rxjs';
 import { MemberNotesComponent } from 'src/app//member/member-notes/member-notes.component';
 import { MemberDocumentsComponent } from 'src/app/member/member-documents/member-documents.component';
+import { MemberJourneyComponent } from 'src/app/member/memberjourney/memberjourney.component';
+import { MemberSummaryaiComponent } from 'src/app/member/member-summaryai/member-summaryai.component';
+import { MessagesComponent } from 'src/app/messages/messages.component';
 
-type PaneType = 'notes' | 'document' | null;
+type PaneType = 'notes' | 'document' | 'journey' | 'summary' | 'activity' | 'messages' | null;
 
 type SelectedFilter =
   | { group: 'Risk'; label: string; key: 'High' | 'Medium' | 'Low' }
   | { group: 'Enrollment'; label: string; key: 'Active' | 'Soon Ending' | 'Inactive' }
   | { group: 'Diagnosis'; label: string; key: string }
   | { group: 'Quality'; label: string; key: string };
+
+
+function nowInEasternISO(): string {
+  const now = new Date();
+  const dtf = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false, timeZoneName: 'short' // -> "EST" or "EDT"
+  });
+
+  const parts = Object.fromEntries(dtf.formatToParts(now).map(p => [p.type, p.value]));
+  const abbr = String(parts.timeZoneName);           // "EST" or "EDT"
+  const offset = abbr === 'EST' ? '-05:00' : '-04:00';
+
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}${offset}`;
+}
+
+/** If your API wants UTC ("Z"), convert the Eastern instant to UTC ISO */
+function nowInEasternAsUTCISO(): string {
+  return new Date(nowInEasternISO()).toISOString();
+}
 
 @Component({
   selector: 'app-mycaseload',
@@ -90,11 +115,16 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
 
 
 
-  headerTitleMap: Readonly<Record<'notes' | 'document', string>> = {
+  headerTitleMap: Readonly<Record<'notes' | 'document' | 'journey' | 'activity' | 'summary' | 'messages', string>> = {
     notes: 'Add Note',
-    document: 'Add Document'
+    document: 'Add Document',
+    journey: 'Journey',
+    activity: 'Activity',
+    summary: 'Summary',
+    messages: 'Messages'
   };
 
+  headerTitle: string = '';
   // Summary widgets
   summaryStats = [
     //{ label: 'Total Assigned', value: 65, icon: 'assignment_ind' },
@@ -493,6 +523,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     this.activePane = pane;
     this.showRightPane = true;
     this.showNotesPanel = true;
+    this.headerTitle = member?.firstName + ' ' + member?.lastName + (' (ID: ' + memberId + ')');
     // Create or swap the component
     this.mountPane(pane, id, memberId);
   }
@@ -521,7 +552,17 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
         this.activeRef = this.vcr.createComponent(MemberNotesComponent);
       } else if (pane === 'document') {
         this.activeRef = this.vcr.createComponent(MemberDocumentsComponent);
-      } else {
+      }
+      else if (pane === 'journey') {
+        this.activeRef = this.vcr.createComponent(MemberJourneyComponent);
+      }
+      else if (pane === 'summary') {
+        this.activeRef = this.vcr.createComponent(MemberSummaryaiComponent);
+      }
+      else if (pane === 'messages') {
+        this.activeRef = this.vcr.createComponent(MessagesComponent);
+      }
+      else {
         return;
       }
     }
@@ -535,13 +576,24 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
         this.activeRef.setInput?.('formOnly', true);
         this.activeRef.instance.openForm?.('add');
         if (id != null) this.refreshNotes$.next(id);
-        (this.activeRef.instance as MemberNotesComponent).openAddFormClean?.();
-       
       } else if (pane === 'document') {
         this.activeRef.setInput?.('memberId', memberId);
         this.activeRef.setInput?.('formOnly', true);
         if (memberId != null) this.refreshDocuments$.next(memberId);
       }
+      else if (pane === 'journey') {
+        this.activeRef.setInput?.('memberDetailsId', id);
+        this.activeRef.setInput?.('formOnly', true);
+      }
+      else if (pane === 'summary') {
+        this.activeRef.setInput?.('memberDetailsId', id);
+        this.activeRef.setInput?.('formOnly', true);
+      }
+      else if (pane === 'messages') {
+        this.activeRef.setInput?.('memberDetailsId', id);
+        this.activeRef.setInput?.('formOnly', true);
+      }
+
     }
   }
 
@@ -556,4 +608,62 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
   getHeaderTitle(): string {
     return this.activePane ? this.headerTitleMap[this.activePane] : 'Action';
   }
+
+  confirmUnassign(member: any, ev?: Event): void {
+    ev?.stopPropagation();
+
+    const first = (member?.firstName ?? '').trim();
+    const last = (member?.lastName ?? '').trim();
+    const label = [first, last].filter(Boolean).join(' ') || `ID ${member?.memberId ?? ''}`.trim();
+
+    const ok = window.confirm(
+      `Are you sure you want to unassign ${label || 'this member'}?`
+    );
+
+    if (!ok) return;
+
+    // Call your existing method
+    this.unassignMember(member);
+  }
+
+  unassignMember(member: any): void {
+    const selectedMemberDetailsId = member?.memberDetailsId;
+    const selectedCareStaffId = sessionStorage.getItem('loggedInUserid')
+      ? Number(sessionStorage.getItem('loggedInUserid'))
+      : null;
+    this.dashboard.endMemberCareStaff({
+      memberDetailsId: selectedMemberDetailsId,
+      endDate: new Date(),            // or '2025-11-08T00:00:00Z'
+      careStaffId: selectedCareStaffId ?? null,
+      updatedBy: selectedCareStaffId ?? null
+    }).subscribe({
+      next: affected => {
+        console.log(`Unassigned member and carestaff ${selectedMemberDetailsId}, ${selectedCareStaffId}`);
+        // e.g., show toast
+        this.dashboard.getmembersummary(sessionStorage.getItem('loggedInUserid')).subscribe((data) => {
+          if (data && Array.isArray(data)) {
+            this.loadMembers(data);
+          }
+        }, error => {
+          console.error('Error fetching member summary', error);
+        });
+      },
+      error: err => {
+        /*this.toast.error('Failed to end assignment.');*/
+        console.error(err);
+      }
+    });
+  }
+
+  private formatDateTimeLocal(d: Date) {
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const yyyy = d.getFullYear();
+    const mm = pad(d.getMonth() + 1);
+    const dd = pad(d.getDate());
+    const hh = pad(d.getHours());
+    const mi = pad(d.getMinutes());
+    const si = pad(d.getSeconds());
+    return `${mm}-${dd}-${yyyy} ${hh}:${mi}:${si}`;
+  }
+
 }

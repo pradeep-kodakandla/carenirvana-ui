@@ -61,7 +61,7 @@ interface DocumentField {
 export class MemberDocumentsComponent implements OnInit, OnChanges {
   @Input() memberId!: number;
   @Input() memberDetailsId?: number;
-  @Input() formOnly = false;  
+  @Input() formOnly = false;
   // left side
   searchTerm = '';
   showSort = false;
@@ -94,6 +94,10 @@ export class MemberDocumentsComponent implements OnInit, OnChanges {
 
   // files selected in the form
   private selectedFiles: File[] = [];
+
+  saveStatus: 'idle' | 'saving' | 'success' | 'error' = 'idle';
+  private successTimer?: any;
+  paneMode: 'form' | 'list' = 'form';
 
   // refs (kept if you later add native pickers)
   @ViewChildren('hiddenPickers') hiddenPickers!: QueryList<ElementRef<HTMLInputElement>>;
@@ -140,7 +144,9 @@ export class MemberDocumentsComponent implements OnInit, OnChanges {
     });
 
     if (this.formOnly) {
-      this.isFormVisible = true;        // show the right form by default
+      this.paneMode = 'form';
+      this.isFormVisible = true;
+      this.openForm('add');
     }
 
     this.configureFormFields();
@@ -417,10 +423,18 @@ export class MemberDocumentsComponent implements OnInit, OnChanges {
         await firstValueFrom(this.api.updateDocument(this.selectedDocId, payload as any));
       }
 
-      this.isFormVisible = false;
+      this.isFormVisible = this.formOnly ? true : false;
+      if (this.formOnly) { this.openForm("add"); }
       this.reload();
+      this.saveStatus = 'success';
+      clearTimeout(this.successTimer);
+      this.successTimer = setTimeout(() => (this.saveStatus = 'idle'), 3000);
 
     } catch (err) {
+      this.saveStatus = 'error';
+      // optionally auto-hide error too:
+      setTimeout(() => (this.saveStatus = 'idle'), 4000);
+
       console.error('Save failed', err);
     }
   }
@@ -530,4 +544,21 @@ export class MemberDocumentsComponent implements OnInit, OnChanges {
     field.showDropdown = false;
   }
 
+  switchToListView(): void {
+    if (!this.formOnly) return;
+    this.paneMode = 'list';
+    this.isFormVisible = false; // hide right pane
+  }
+
+  switchToFormView(): void {
+    if (!this.formOnly) return;
+    this.paneMode = 'form';
+    this.isFormVisible = true; // show right pane
+  }
+
+  /** When Add Note is clicked from the list while in formOnly mode */
+  onAddNoteFromList(): void {
+    if (this.formOnly) this.switchToFormView();
+    this.openForm('add');
+  }
 }

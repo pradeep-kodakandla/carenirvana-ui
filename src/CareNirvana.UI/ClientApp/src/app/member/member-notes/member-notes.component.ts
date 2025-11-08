@@ -88,6 +88,9 @@ export class MemberNotesComponent implements OnInit {
   @ViewChildren('calendarPickers') calendarPickers!: QueryList<ElementRef<HTMLInputElement>>;
   @ViewChildren('hiddenEndDatetimePicker') hiddenEndPicker!: QueryList<ElementRef<HTMLInputElement>>;
 
+  saveStatus: 'idle' | 'saving' | 'success' | 'error' = 'idle';
+  private successTimer?: any;
+  paneMode: 'form' | 'list' = 'form';
 
   notesFields: NoteField[] = [
     {
@@ -122,7 +125,7 @@ export class MemberNotesComponent implements OnInit {
 
 
   ngOnInit(): void {
-    console.log('MemberNotesComponent initialized with memberId:', this.memberId, 'memberDetailsId:', this.memberDetailsId);
+
     if (!this.memberDetailsId) {
       this.memberDetailsId = Number(sessionStorage.getItem("selectedMemberDetailsId"));
     }
@@ -131,10 +134,11 @@ export class MemberNotesComponent implements OnInit {
     this.reload();
     this.loadNoteTypes();
 
+    console.log("Form Only Mode:", this.formOnly);
     if (this.formOnly) {
-      console.log('MemberNotesComponent in formOnly mode, opening add form.');
-      this.isFormVisible = true;        // show the right form by default
-      this.openAddFormClean();
+      this.paneMode = 'form';
+      this.isFormVisible = true;
+      this.openForm('add');
     }
   }
 
@@ -290,6 +294,7 @@ export class MemberNotesComponent implements OnInit {
   // ------------ Form open/edit/cancel ------------
 
   openForm(mode: 'add' | 'edit', note?: any) {
+    console.log("Open Form Mode:", mode);
     this.isFormVisible = true;
     this.showValidationErrors = false;
 
@@ -304,7 +309,9 @@ export class MemberNotesComponent implements OnInit {
       this.endDatetimeValue = '';
       this.setFieldValue('title', '');
       this.setFieldValue('notes', '');
-    } else if (mode === 'edit' && note) {
+      return;
+    }
+    else if (mode === 'edit' && note) {
       this.setNoteTypeFieldForAdd();
       this.editingId = note.id;
       this.setFieldValue('noteTypeId', note.noteTypeId ?? null);
@@ -318,7 +325,9 @@ export class MemberNotesComponent implements OnInit {
     } else {
       this.setNoteTypeFieldForEdit(note);
     }
+
   }
+
 
   trackByNoteId = (index: number, note: any) =>
     (this.trackByNote ? this.trackByNote(index, note) : note?.id);
@@ -399,12 +408,19 @@ export class MemberNotesComponent implements OnInit {
 
     obs.pipe(finalize(() => { })).subscribe({
       next: _ => {
+        this.saveStatus = 'success';
         this.isFormVisible = this.formOnly ? true : false;
         if (this.formOnly) { this.openForm("add"); }
         this.editingId = null;
         this.reload();
+        clearTimeout(this.successTimer);
+        this.successTimer = setTimeout(() => (this.saveStatus = 'idle'), 3000);
       },
-      error: _ => { /* optionally toast */ }
+      error: _ => {
+        this.saveStatus = 'error';
+        // optionally auto-hide error too:
+        setTimeout(() => (this.saveStatus = 'idle'), 4000);
+      }
     });
   }
 
@@ -493,7 +509,7 @@ export class MemberNotesComponent implements OnInit {
     const hh = pad(d.getHours());
     const mi = pad(d.getMinutes());
     const si = pad(d.getSeconds());
-    return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${si}`;
+    return `${mm}-${dd}-${yyyy} ${hh}:${mi}:${si}`;
   }
 
   // ------------ Select (Note Type) autocomplete ------------
@@ -682,30 +698,23 @@ export class MemberNotesComponent implements OnInit {
   }
 
 
-  // Clears values for form-only add
-  private resetFormForAdd(): void {
-    (this.notesFields || []).forEach(f => {
-      if (f.type === 'select') {
-        f.value = null;
-        f.displayLabel = '';
-        f.filteredOptions = f.options || [];
-        f.highlightedIndex = -1;
-        f.showDropdown = false;
-      } else if (f.type === 'checkbox') {
-        this.showEndDatetimeField = false;
-      } else {
-        f.value = '';
-      }
-    });
-    this.endDatetimeValue = '';
-    this.showValidationErrors = false;
+
+  switchToListView(): void {
+    if (!this.formOnly) return;
+    this.paneMode = 'list';
+    this.isFormVisible = false; // hide right pane
   }
 
-  // Public method you can call from MyCaseload
-  openAddFormClean(): void {
-    this.isFormVisible = true;
-    this.editingId = null;
-    this.resetFormForAdd();
+  switchToFormView(): void {
+    if (!this.formOnly) return;
+    this.paneMode = 'form';
+    this.isFormVisible = true; // show right pane
+  }
+
+  /** When Add Note is clicked from the list while in formOnly mode */
+  onAddNoteFromList(): void {
+    if (this.formOnly) this.switchToFormView();
+    this.openForm('add');
   }
 
 }

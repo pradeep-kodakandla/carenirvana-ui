@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit, Input } from '@angular/core';
 import { FormBuilder } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import {
@@ -29,7 +29,9 @@ interface CounterChip {
   styleUrl: './memberjourney.component.css'
 })
 export class MemberJourneyComponent implements OnInit, OnDestroy {
-  memberDetailsId = Number(sessionStorage.getItem("selectedMemberDetailsId"));
+
+  @Input() memberDetailsId?: number;
+  @Input() formOnly = false;
 
   viewMode: 'timeline' | 'table' = 'timeline';
   granularity: 'Day' | 'Week' | 'Month' = 'Day';
@@ -73,6 +75,11 @@ export class MemberJourneyComponent implements OnInit, OnDestroy {
   constructor(private fb: FormBuilder, private journeyService: MemberjourneyService) { }
 
   ngOnInit(): void {
+    if (!this.memberDetailsId) {
+      this.memberDetailsId = Number(sessionStorage.getItem("selectedMemberDetailsId"));
+    }
+
+
     this.fetch();
   }
 
@@ -123,7 +130,7 @@ export class MemberJourneyComponent implements OnInit, OnDestroy {
 
 
     const query: MemberJourneyQuery = {
-      memberDetailsId: this.memberDetailsId,
+      memberDetailsId: this.memberDetailsId!,
       fromUtc, toUtc,
       page: this.page,
       pageSize: this.pageSize,

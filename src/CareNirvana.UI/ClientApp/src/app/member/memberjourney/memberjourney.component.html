@@ -28,7 +28,7 @@
              placeholder="🔍 Search events..."
              (input)="onApply()"
              [formControl]="form.controls.search"
-             class="search-input" />
+             class="search-input" *ngIf="!formOnly" />
 
       <button mat-flat-button color="primary" class="apply-btn" (click)="onApply()">Apply</button>
 

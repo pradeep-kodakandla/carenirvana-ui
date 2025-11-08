@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 
 export interface UpdateActivityLinesRequest {
   lineIds: number[];
@@ -48,6 +48,17 @@ export interface FaxFileListResponse {
   page: number;
   pageSize: number;
   totalPages: number;
+}
+
+export interface EndMemberCareStaffRequest {
+  memberDetailsId: number;
+  endDate: Date | string;     // ISO string or Date is fine
+  careStaffId?: number | null;
+  updatedBy?: number | null;
+}
+
+export interface EndMemberCareStaffResponse {
+  affectedRows: number;
 }
 
 @Injectable({
@@ -119,6 +130,20 @@ export class DashboardServiceService {
       `${this.apiUrl}/updatefaxfile`,
       fax
     );
+  }
+
+  endMemberCareStaff(req: EndMemberCareStaffRequest): Observable<number> {
+    const url = `${this.apiUrl}/endmembercarestaff`;
+
+    // Ensure endDate is serialized as ISO if a Date is passed in
+    const payload: EndMemberCareStaffRequest = {
+      ...req,
+      endDate: req.endDate instanceof Date ? req.endDate.toISOString() : req.endDate
+    };
+
+    return this.http
+      .post<EndMemberCareStaffResponse>(url, payload)
+      .pipe(map(res => res.affectedRows ?? 0));
   }
 
 }

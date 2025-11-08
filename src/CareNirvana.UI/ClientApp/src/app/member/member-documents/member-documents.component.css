@@ -390,3 +390,27 @@ label .text-danger {
     border-right: 0;
   }
 }
+
+
+.form-feedback {
+  margin-top: 8px;
+  font-size: 0.95rem;
+}
+
+  .form-feedback.success {
+    color: #065f46; /* emerald-900-ish */
+    background: #ecfdf5; /* emerald-50-ish */
+    border: 1px solid #34d399; /* emerald-400-ish */
+    padding: 6px 10px;
+    border-radius: 6px;
+    display: inline-block;
+  }
+
+  .form-feedback.error {
+    color: #7c2d12;
+    background: #fff7ed;
+    border: 1px solid #f59e0b;
+    padding: 6px 10px;
+    border-radius: 6px;
+    display: inline-block;
+  }

@@ -836,6 +836,16 @@ mat-chip.norisk {
     
   }
 
+  /* optional */
+  .notes-header .title-strong {
+    font-weight: 700;
+  }
+  /* keep bold for the first part */
+  .notes-header .title-normal {
+    font-weight: 400;
+    font-size: 15px;
+  }
+
 .notes-close {
   width: 28px;
   height: 28px;
@@ -865,4 +875,8 @@ mat-chip.norisk {
   background: #e6f0ff; /* subtle blue tint */
   box-shadow: inset 0 0 0 5px #cde6ff;
   transition: background 240ms ease, box-shadow 240ms ease;
+  border: 2px solid #007BFF;
 }
+
+
+

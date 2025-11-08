@@ -1,7 +1,7 @@
 <div class="messages-shell" [class.hasEditor]="showEditor">
 
   <!-- Left: table and controls -->
-  <div class="list-pane">
+  <div class="list-pane" *ngIf="!formOnly || (formOnly && paneMode === 'list')" [style.width]="formOnly ? '100%' : null">
     <div class="toolbar">
       <div class="search">
         <input type="text"
@@ -19,7 +19,7 @@
         </mat-button-toggle-group>
       </div>
       <div class="actions">
-        <button class="btn primary" (click)="addMessage()">
+        <button class="btn primary" (click)="onAddMessageFromList()">
           <span class="icon plus"></span>
           Add message
         </button>
@@ -201,11 +201,11 @@
     </ng-template>
   </div>
 
-  <!-- Right: editor panel -->
-  <div class="editor-pane" *ngIf="showEditor">
+  <!-- Right: editor panel *ngIf="showEditor"-->
+  <div class="editor-pane" *ngIf="showEditor && !formOnly  || (formOnly && paneMode === 'form')" [style.width]="formOnly ? '100%' : null">
     <div class="editor-card">
 
-      <div class="editor-header">
+      <div class="editor-header" *ngIf="!formOnly">
         <div class="title">{{ isEditing ? 'Edit message' : 'New message' }}</div>
         <button class="icon-btn" title="Close" (click)="cancelEdit()">
           <span class="icon close"></span>
@@ -233,8 +233,7 @@
           <input type="text"
                  class="input"
                  formControlName="subject"
-                 placeholder="Enter subject"
-                 >   <!-- uneditable during update -->
+                 placeholder="Enter subject">   <!-- uneditable during update -->
         </div>
         <div class="form-row">
           <label>Message</label>
@@ -251,8 +250,12 @@
         </div>-->
 
         <div class="editor-actions">
-          <button type="button" class="btn" (click)="cancelEdit()">Cancel</button>
+          <button type="button" class="btn" (click)="cancelEdit()" *ngIf="!formOnly">Cancel</button>
+          <button type="button" class="btn primary" *ngIf="formOnly" (click)="switchToListView()">
+            View Messages
+          </button>
           <button type="submit" class="btn primary">{{ isEditing ? 'Update' : 'Send' }}</button>
+
         </div>
 
       </form>

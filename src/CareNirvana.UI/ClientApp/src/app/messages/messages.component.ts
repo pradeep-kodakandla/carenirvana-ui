@@ -34,6 +34,7 @@ export class MessagesComponent implements OnInit {
 
   @Input() memberDetailsId?: number | null;
   @Input() careStaffOptions: SelectOption[] = []; // [{value:12,label:'John Doe'}, ...]
+  @Input() formOnly = false;
 
   threads: ThreadWithMessagesDto[] = [];
   uiThreads: UiThread[] = [];
@@ -49,6 +50,10 @@ export class MessagesComponent implements OnInit {
   selectedThreadId: number | null = null;
 
   editorForm!: FormGroup;
+
+  saveStatus: 'idle' | 'saving' | 'success' | 'error' = 'idle';
+  private successTimer?: any;
+  paneMode: 'form' | 'list' = 'form';
 
   get currentUserId(): number | null {
     const raw = sessionStorage.getItem('loggedInUserid');
@@ -149,7 +154,7 @@ export class MessagesComponent implements OnInit {
     this.selectedThreadId = null;
     this.editorForm.reset({ otherUserId: null, body: '', parentMessageId: null, subject: '', });
     this.editorForm.get('otherUserId')?.enable();
-    this.editorForm.get('subject')?.enable(); 
+    this.editorForm.get('subject')?.enable();
     this.showEditor = true;
   }
 
@@ -168,7 +173,7 @@ export class MessagesComponent implements OnInit {
     });
     // on edit, keep partner fixed
     this.editorForm.get('otherUserId')?.disable();
-    this.editorForm.get('subject')?.disable(); 
+    this.editorForm.get('subject')?.disable();
 
     this.showEditor = true;
   }
@@ -256,7 +261,7 @@ export class MessagesComponent implements OnInit {
 
     // lock partner (we're replying to that person)
     this.editorForm.get('otherUserId')?.disable();
-    this.editorForm.get('subject')?.disable(); 
+    this.editorForm.get('subject')?.disable();
 
     this.showEditor = true;
   }
@@ -268,6 +273,7 @@ export class MessagesComponent implements OnInit {
     this.editingMessageId = null;
     this.selectedThreadId = null;
     this.replyingTo = null;
+    this.formOnly = false;
   }
 
   // add this field on the component
@@ -325,4 +331,18 @@ export class MessagesComponent implements OnInit {
   }
 
 
+  switchToListView(): void {
+    if (!this.formOnly) return;
+    this.paneMode = 'list';
+  }
+
+  switchToFormView(): void {
+    if (!this.formOnly) return;
+    this.paneMode = 'form';
+  }
+
+  onAddMessageFromList(): void {
+    if (this.formOnly) this.switchToFormView();
+    this.addMessage();
+  }
 }
