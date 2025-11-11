@@ -1,9 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 
-:host {
-  display: block;
-/*  font-family: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", system-ui, -apple-system, sans-serif;
-*/}
 
 .activity-container {
   display: flex;
@@ -238,7 +233,6 @@
     padding: 0;
     border-right: 0;
   }
-
 }
 
 /* ===== Button Styles ===== */
@@ -297,3 +291,8 @@
     color: #007bff;
   }
 
+.editor-actions {
+  display: flex;
+  justify-content: flex-start;
+  gap: 4px;
+}

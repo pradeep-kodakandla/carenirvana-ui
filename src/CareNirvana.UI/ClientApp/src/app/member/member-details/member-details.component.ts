@@ -130,4 +130,11 @@ export class MemberDetailsComponent implements OnInit {
       .map((p: string) => p.trim())   // ✅ explicitly type p
       .filter((p: string) => p.length > 0);
   }
+
+  openMessagesMenu(trigger: any) {
+    // avoid re-open loops; open only if not already open
+    if (!trigger.menuOpen) {
+      trigger.openMenu();
+    }
+  }
 }

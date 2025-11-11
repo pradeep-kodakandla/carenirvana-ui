@@ -17,7 +17,19 @@
   </ng-template>
 </mat-menu>
 
-
+<mat-menu #alertsMenu="matMenu"
+          class="history-popover"
+          yPosition="below"
+          [overlapTrigger]="false"
+          [hasBackdrop]="true"
+          [backdropClass]="'cdk-overlay-dark-backdrop'"
+          (menuClosed)="memDelId = 0"
+          matMenuTriggerRestoreFocus="false">
+  <div class="messages-wrap">
+    <!-- Give the panel a nice fixed size -->
+    <app-member-alerts [showTable]="true" [memberDetailsId]="memDelId"></app-member-alerts>
+  </div>
+</mat-menu>
 
 <!-- mycaseload-dashboard.component.html -->
 <div class="dashboard-wrapper">
@@ -239,14 +251,16 @@
               <!-- Header -->
             </th>
             <td mat-cell *matCellDef="let m" class="is-center alert-col-cell">
-
-              <span *ngIf="m.alertCount > 0"
-                    class="alert-bell"
-                    matBadge="{{ m.alertCount }}"
-                    matTooltip="{{ m.alertCount }} active alerts">
-                <mat-icon>notifications</mat-icon>
-              </span>
-
+              <button mat-icon-button
+                      *ngIf="m.alertCount > 0"
+                      [matMenuTriggerFor]="alertsMenu"
+                      (click)="onAlertsButtonClick(m.memberDetailId ?? m.memberDetailsId)">
+                <span class="alert-bell"
+                      [matBadge]="m.alertCount"
+                      matTooltip="{{ m.alertCount }} active alerts">
+                  <mat-icon>notifications</mat-icon>
+                </span>
+              </button>
             </td>
           </ng-container>
 
@@ -289,7 +303,6 @@
 
 
           <ng-container matColumnDef="dob">
-            t-
             <th mat-header-cell *matHeaderCellDef mat-sort-header>DOB</th>
             <td mat-cell *matCellDef="let m">
               <div>
@@ -320,6 +333,10 @@
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Next Contact</th>
             <td mat-cell *matCellDef="let m">{{ m.nextContact || 'N/A' }}</td>
           </ng-container>
+
+
+
+
 
 
 
@@ -443,6 +460,8 @@
       <div class="notes-header">
         <!--<h3>{{ getHeaderTitle() }}</h3>-->
         <h3 class="pane-title">
+          3
+          >
           <span class="title-strong">{{ getHeaderTitle() }}</span>
           <span class="title-normal"> for {{ headerTitle || '' }}</span>
         </h3>

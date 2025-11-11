@@ -113,6 +113,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
   private vcr!: ViewContainerRef;
   private activeRef?: ComponentRef<any>;
 
+  memDelId?: number;
 
 
   headerTitleMap: Readonly<Record<'notes' | 'document' | 'journey' | 'activity' | 'summary' | 'messages', string>> = {
@@ -666,4 +667,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     return `${mm}-${dd}-${yyyy} ${hh}:${mi}:${si}`;
   }
 
+  onAlertsButtonClick(memberDetailId?: number) {
+    this.memDelId = memberDetailId ?? 0;
+  }
 }

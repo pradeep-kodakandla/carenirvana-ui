@@ -15,10 +15,29 @@
         <mat-icon>menu</mat-icon>
       </button>
 
-      <button mat-icon-button class="toggle-button" *ngIf="!isCollapse">
+      <!--<button mat-icon-button class="toggle-button" *ngIf="!isCollapse">
         <mat-icon aria-hidden="false" matBadge="{{member?.alertCount}}">notifications</mat-icon>
+      </button>-->
+      <button mat-icon-button
+              aria-label="Messages"
+              #messagesTrigger="matMenuTrigger"
+              [matMenuTriggerFor]="alertsMenu"
+              (onclick)="openMessagesMenu(messagesTrigger)">
+        <mat-icon style="color:white;" aria-hidden="false" matBadge="{{member?.alertCount}}">notifications</mat-icon>
       </button>
-
+      <!-- Alert popover -->
+      <mat-menu #alertsMenu="matMenu"
+                class="history-popover"
+                yPosition="below"
+                [overlapTrigger]="false"
+                [hasBackdrop]="true"
+                [backdropClass]="'cdk-overlay-dark-backdrop'"
+                matMenuTriggerRestoreFocus="false">
+        <div class="messages-wrap" (click)="$event.stopPropagation()">
+          <!-- Give the panel a nice fixed size -->
+          <app-member-alerts [showTable]="true"></app-member-alerts>
+        </div>
+      </mat-menu>
       <!-- Spacer -->
       <div class="flex-spacer"></div>
 

@@ -185,9 +185,26 @@
         <mat-icon class="mat-badge" aria-hidden="false" style="color:white;" matBadge="15">mail</mat-icon>
       </button>
 
-      <button mat-icon-button>
+      <button mat-icon-button
+              aria-label="Messages"
+              #messagesTrigger="matMenuTrigger"
+              [matMenuTriggerFor]="alertsMenu"
+              (onclick)="openMessagesMenu(messagesTrigger)">
         <mat-icon style="color:white;" aria-hidden="false" matBadge="20">notifications</mat-icon>
       </button>
+      <!-- Alert popover -->
+      <mat-menu #alertsMenu="matMenu"
+                class="history-popover"
+                yPosition="below"
+                [overlapTrigger]="false"
+                [hasBackdrop]="true"
+                [backdropClass]="'cdk-overlay-dark-backdrop'"
+                matMenuTriggerRestoreFocus="false">
+        <div class="messages-wrap" (click)="$event.stopPropagation()">
+          <!-- Give the panel a nice fixed size -->
+          <app-member-alerts [showTable]="true"></app-member-alerts>
+        </div>
+      </mat-menu>
 
       <button mat-icon-button [matMenuTriggerFor]="menuperson">
         <mat-icon style="color:white;">person</mat-icon>

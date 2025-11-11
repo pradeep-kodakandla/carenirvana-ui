@@ -1,11 +1,8 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit, Input, ViewChild, OnChanges } from '@angular/core';
 import { finalize, Subject, takeUntil } from 'rxjs';
-import {
-  MemberalertService,
-  MemberAlert,
-  UpdateAlertStatusRequest
-} from 'src/app/service/memberalert.service';
-
+import { MemberalertService, MemberAlert, UpdateAlertStatusRequest } from 'src/app/service/memberalert.service';
+import { MatTableDataSource } from '@angular/material/table';
+import { MatSort } from '@angular/material/sort';
 
 type SortKey =
   | 'name_asc' | 'name_desc'
@@ -17,12 +14,14 @@ type SortKey =
   templateUrl: './member-alerts.component.html',
   styleUrls: ['./member-alerts.component.css']
 })
-export class MemberAlertsComponent implements OnInit, OnDestroy {
+export class MemberAlertsComponent implements OnInit, OnChanges, OnDestroy {
   // left pane state
   loading = false;
   searchTerm = '';
   showSort = false;
   sortKey: SortKey = 'date_desc';
+  @Input() showTable: boolean | undefined;
+  @Input() memberDetailsId?: number | null;
 
   // paging
   page = 1;
@@ -53,17 +52,53 @@ export class MemberAlertsComponent implements OnInit, OnDestroy {
 
   constructor(private api: MemberalertService) { }
 
+
+  dataSource = new MatTableDataSource<MemberAlert>([]);
+  displayedColumns: string[] = [
+    'alertname',
+    'alertsource',
+    'alerttype',
+    'alertstatus',
+    'alertdate',
+    'acknowledgeddate',
+    'actions'
+  ];
+  @ViewChild(MatSort, { static: false }) sort!: MatSort;
+
   ngOnInit(): void {
     // example: if parent sets memberDetailsIds through @Input, call load() in ngOnChanges
-    const sel = Number(sessionStorage.getItem("selectedMemberDetailsId"));
-    if (sel && !this.memberDetailsIds.includes(sel)) {
-      this.memberDetailsIds.push(sel);
+
+    if (this.memberDetailsId) {
+      this.memberDetailsIds.push(this.memberDetailsId);
     }
+    else {
+      const sel = Number(sessionStorage.getItem("selectedMemberDetailsId"));
+      if (sel && !this.memberDetailsIds.includes(sel)) {
+        this.memberDetailsIds.push(sel);
+      }
+    }
+
     this.load();
   }
 
   ngOnDestroy(): void {
     this.destroy$.next(); this.destroy$.complete();
+  }
+
+  ngOnChanges(): void {
+
+    if (this.memberDetailsId) {
+      this.memberDetailsIds = []; // reset
+      this.memberDetailsIds.push(this.memberDetailsId);
+    }
+    else {
+      const sel = Number(sessionStorage.getItem("selectedMemberDetailsId"));
+      if (sel && !this.memberDetailsIds.includes(sel)) {
+        this.memberDetailsIds.push(sel);
+      }
+    }
+
+    this.load();
   }
 
   // --------- LOAD ----------
@@ -81,6 +116,7 @@ export class MemberAlertsComponent implements OnInit, OnDestroy {
           if (this.selectedId && !this.items.some(x => x.memberAlertId === this.selectedId)) {
             this.cancelForm();
           }
+          this.refreshTable();
         },
         error: _ => {
           this.items = []; this.filtered = []; this.total = 0;
@@ -165,16 +201,7 @@ export class MemberAlertsComponent implements OnInit, OnDestroy {
     this.form = {};
   }
 
-  // acknowledge sets acknowledgedDate=now, clears dismissedDate
-  acknowledge(a: MemberAlert): void {
-    const now = new Date().toISOString();
-    this.saveStatus(a.memberAlertId, { alertStatusId: this.pickStatusId('Acknowledged', a), acknowledgedDate: now, dismissedDate: null });
-  }
-  // dismiss sets dismissedDate=now, clears acknowledgedDate
-  dismiss(a: MemberAlert): void {
-    const now = new Date().toISOString();
-    this.saveStatus(a.memberAlertId, { alertStatusId: this.pickStatusId('Dismissed', a), dismissedDate: now, acknowledgedDate: null });
-  }
+
   // clear both dates (keeps status unless you change below)
   clearDates(a: MemberAlert): void {
     this.saveStatus(a.memberAlertId, { alertStatusId: a.alertStatusId ?? null, dismissedDate: null, acknowledgedDate: null });
@@ -250,4 +277,49 @@ export class MemberAlertsComponent implements OnInit, OnDestroy {
     this.form.dismissedDate = value ? new Date(value).toISOString() : null;
   }
 
+
+  refreshTable(): void {
+    this.dataSource = new MatTableDataSource<MemberAlert>(this.filtered ?? []);
+    if (this.sort) this.dataSource.sort = this.sort;
+  }
+
+  /*  trackById = (_: number, a: MemberAlert) => a.memberAlertId ?? a.alertId ?? _;*/
+
+  //// === Actions ===
+  //async acknowledge(a: MemberAlert) {
+  //  // TODO: wire to your service call; optimistic UI update below
+  //  // await this.alertService.acknowledge(a.memberAlertId).toPromise();
+  //  a.acknowledgedDate = new Date().toISOString();
+  //  this.refreshTable();
+  //}
+
+  //async dismiss(a: MemberAlert) {
+  //  // TODO: wire to your service call; optimistic UI update below
+  //  // await this.alertService.dismiss(a.memberAlertId).toPromise();
+  //  a.dismissedDate = new Date().toISOString();
+  //  this.refreshTable();
+  //}
+
+  // acknowledge sets acknowledgedDate=now, clears dismissedDate
+  acknowledge(a: MemberAlert): void {
+    const now = new Date().toISOString();
+    this.saveStatus(a.memberAlertId, { alertStatusId: this.pickStatusId('Acknowledged', a), acknowledgedDate: now, dismissedDate: null });
+  }
+  // dismiss sets dismissedDate=now, clears acknowledgedDate
+  dismiss(a: MemberAlert): void {
+    const now = new Date().toISOString();
+    this.saveStatus(a.memberAlertId, { alertStatusId: this.pickStatusId('Dismissed', a), dismissedDate: now, acknowledgedDate: null });
+  }
+
+  // If you already have search/sort hooks, keep them.
+  applyFilterTerm(term: string) {
+    const t = (term || '').toLowerCase();
+    this.filtered = (this.filtered || []).filter(a =>
+      (a.cfgAlertName || '').toLowerCase().includes(t) ||
+      (a.alertSourceName || '').toLowerCase().includes(t) ||
+      (a.alertTypeName || '').toLowerCase().includes(t) ||
+      (a.alertStatusName || a.alertStatusCode || '').toLowerCase().includes(t)
+    );
+    this.refreshTable();
+  }
 }
