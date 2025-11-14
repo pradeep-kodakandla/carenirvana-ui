@@ -360,3 +360,141 @@ tr.example-element-row:not(.example-expanded-row):active {
 .thumb-neutral mat-icon {
   color: #9ca3af; /* gray */
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.view-toggle .view-btn {
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+  .view-toggle .view-btn.active {
+    background: #2563eb;
+    color: #fff;
+    border-color: #2563eb;
+  }
+
+.calendar-wrapper {
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+  .calendar-header .month-label {
+    font-weight: 600;
+    font-size: 16px;
+  }
+
+  .calendar-header .nav-btn {
+    border: 1px solid #d1d5db;
+    background: #fff;
+    border-radius: 999px;
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+  }
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-top: 1px solid #e5e7eb;
+  border-left: 1px solid #e5e7eb;
+}
+
+.calendar-day-header {
+  text-align: center;
+  padding: 6px 0;
+  font-weight: 600;
+  font-size: 12px;
+  background: #f3f4f6;
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.calendar-day {
+  min-height: 90px;
+  padding: 4px;
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+  background: #fff;
+  position: relative;
+  font-size: 11px;
+}
+
+  .calendar-day.other-month {
+    background: #f9fafb;
+    color: #9ca3af;
+  }
+
+  .calendar-day.today {
+    box-shadow: inset 0 0 0 2px #2563eb;
+  }
+
+.date-label {
+  font-weight: 600;
+  font-size: 11px;
+  margin-bottom: 2px;
+}
+
+.events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.event-pill {
+  border-radius: 8px;
+  padding: 2px 4px;
+  font-size: 10px;
+  cursor: pointer;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.more-pill {
+  font-size: 10px;
+  color: #2563eb;
+  cursor: pointer;
+}

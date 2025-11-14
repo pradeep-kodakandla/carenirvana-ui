@@ -1,6 +1,7 @@
 <mat-menu #rowMenu="matMenu">
   <ng-template matMenuContent let-member="member">
-    <button mat-menu-item><span>Add Activity</span></button>
+    <!--<button mat-menu-item><span>Add Activity</span></button>-->
+    <button mat-menu-item (click)="openPanel('activity', member)"><span>Add Activity</span></button>
     <button mat-menu-item><span>Run Assessment</span></button>
     <button mat-menu-item (click)="openPanel('messages', member)"><span>Add Messages</span></button>
     <!--<button mat-menu-item><span>Add document</span></button>
@@ -303,6 +304,8 @@
 
 
           <ng-container matColumnDef="dob">
+            
+
             <th mat-header-cell *matHeaderCellDef mat-sort-header>DOB</th>
             <td mat-cell *matCellDef="let m">
               <div>
@@ -394,6 +397,8 @@
                     ri
 
                     "r
+
+                    "r
                     <span class="risk-chip compact" [ngClass]="(row.RiskLevelCode || '').toLowerCase()">{{ row.RiskLevelCode || 'No Risk' }}</span>
                   </div>
 
@@ -404,7 +409,7 @@
                     <mat-chip *ngIf="row.overdueCount>0" color="warn">Over: {{ row.overdueCount }}</mat-chip>
                   </div>-->
                 </div>
-                "o
+      "o
                 <div class="overview-grid">
                   <div class="panel panel--blue">
                     <div class="panel-title">Program Information</div>
@@ -460,8 +465,6 @@
       <div class="notes-header">
         <!--<h3>{{ getHeaderTitle() }}</h3>-->
         <h3 class="pane-title">
-          3
-          >
           <span class="title-strong">{{ getHeaderTitle() }}</span>
           <span class="title-normal"> for {{ headerTitle || '' }}</span>
         </h3>

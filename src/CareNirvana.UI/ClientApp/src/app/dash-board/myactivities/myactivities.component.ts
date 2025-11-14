@@ -10,6 +10,13 @@ import { HeaderService } from 'src/app/service/header.service';
 import { Router, ActivatedRoute } from '@angular/router';
 import { MemberService } from 'src/app/service/shared-member.service';
 
+interface CalendarDay {
+  date: Date;
+  isCurrentMonth: boolean;
+  isToday: boolean;
+  activities: any[]; // same shape as rows in dataSource
+}
+
 @Component({
   selector: 'app-myactivities',
   templateUrl: './myactivities.component.html',
@@ -18,6 +25,11 @@ import { MemberService } from 'src/app/service/shared-member.service';
 export class MyactivitiesComponent implements OnInit, AfterViewInit {
 
   selectedDue = new Set<'OVERDUE' | 'TODAY' | 'FUTURE'>();
+  viewMode: 'calendar' | 'table' = 'calendar';
+  weekDays: string[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  currentMonth: Date = new Date();
+  calendarDays: CalendarDay[] = [];
+  activities: any[] = [];
 
   displayedColumns: string[] = [
     'module',
@@ -102,12 +114,18 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
     this.getMyActivities$().subscribe({
       next: rows => {
         console.log('My Activities rows', rows);
+        this.activities = rows || [];
+        this.dataSource.data = this.activities;
         this.rawData = Array.isArray(rows) ? rows : [];
         this.recomputeAll();
+        this.buildCalendar();
       },
       error: () => {
         this.rawData = [];
         this.recomputeAll();
+        this.activities = [];
+        this.dataSource.data = [];
+        this.buildCalendar();
       }
     });
   }
@@ -294,5 +312,77 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
     if (row.thumb === 'down') return 'thumb-down';
     return 'thumb-neutral';
   }
+
+
+  // Calendar view methods (kept for parity; not used currently)
+  setViewMode(mode: 'calendar' | 'table'): void {
+    this.viewMode = mode;
+  }
+
+  changeMonth(delta: number): void {
+    const year = this.currentMonth.getFullYear();
+    const month = this.currentMonth.getMonth() + delta;
+    this.currentMonth = new Date(year, month, 1);
+    this.buildCalendar();
+  }
+
+  private buildCalendar(): void {
+    if (!this.activities) {
+      this.calendarDays = [];
+      return;
+    }
+
+    const year = this.currentMonth.getFullYear();
+    const month = this.currentMonth.getMonth();
+
+    const firstOfMonth = new Date(year, month, 1);
+    const firstDayOfWeek = firstOfMonth.getDay(); // 0=Sun
+    const calendarStart = new Date(firstOfMonth);
+    calendarStart.setDate(firstOfMonth.getDate() - firstDayOfWeek);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const days: CalendarDay[] = [];
+
+    for (let i = 0; i < 42; i++) {
+      const date = new Date(calendarStart);
+      date.setDate(calendarStart.getDate() + i);
+
+      const dayStart = new Date(date);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(date);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      const dayActivities = this.activities.filter(a => {
+        if (!a.followUpDateTime) { return false; }
+        const d = new Date(a.followUpDateTime);
+        return d >= dayStart && d <= dayEnd;
+      });
+
+      days.push({
+        date,
+        isCurrentMonth: date.getMonth() === month,
+        isToday: date.getTime() === today.getTime(),
+        activities: dayActivities
+      });
+    }
+
+    this.calendarDays = days;
+  }
+
+  // Optional: click handlers
+  onCalendarEventClick(activity: any, event: MouseEvent): void {
+    event.stopPropagation();
+    // You can reuse your row click / open details / navigate, e.g.:
+    // this.onMemberClick(activity.memberId, activity.firstName + ' ' + activity.lastName);
+  }
+
+  onCalendarDayClick(day: CalendarDay, event: MouseEvent): void {
+    event.stopPropagation();
+    // Maybe open a side panel with all activities for that day
+  }
+
+
 
 }

@@ -10,7 +10,7 @@ import { AngularMaterialModule } from './shared/helpers/angular-material/angular
 import { AppComponent } from './app.component';
 import { LoginComponent } from './login/login.component'
 import { DashBoardComponent } from './dash-board/dash-board.component';
-import { MessagesComponent } from './messages/messages.component'; 
+import { MessagesComponent } from './messages/messages.component';
 import { HeaderComponent } from './header/header.component';
 import { FooterComponent } from './footer/footer.component';
 import { CounterComponent } from './counter/counter.component';
@@ -40,6 +40,8 @@ import { MemberTasksummaryComponent } from './member/member-tasksummary/member-t
 import { MemberInfoComponent } from './member/member-info/member-info.component';
 import { MemberJourneyComponent } from './member/memberjourney/memberjourney.component';
 import { MemberSummaryaiComponent } from './member/member-summaryai/member-summaryai.component';
+import { MemberActivityComponent } from './member/memberactivity/memberactivity.component';
+
 import { AuthorizationComponent } from './member/UM/authorization/authorization.component';
 import { DecisiondetailsComponent } from './member/UM/decisiondetails/decisiondetails.component';
 import { DecisionbulkdialogComponent } from './member/UM/decisionbulkdialog/decisionbulkdialog.component';
@@ -167,7 +169,7 @@ import { UiMultiCheckDropdownComponent } from './shared/ui/uimulticheckdropdown/
     FaxesComponent,
     MemberAlertsComponent,
     MemberCareplanComponent,
-    MemberCareteamComponent, MemberCaregiverComponent, MemberJourneyComponent, MemberSummaryaiComponent,
+    MemberCareteamComponent, MemberCaregiverComponent, MemberJourneyComponent, MemberSummaryaiComponent, MemberActivityComponent,
     MemberDocumentsComponent,
     MemberEnrollmentComponent,
     MemberNotesComponent,
@@ -209,7 +211,7 @@ import { UiMultiCheckDropdownComponent } from './shared/ui/uimulticheckdropdown/
       { path: 'fetch-data', component: FetchDataComponent },
       { path: 'dashboard', component: DashBoardComponent },
       { path: 'header', component: HeaderComponent },
-      { path: 'message', component: MessagesComponent }, 
+      { path: 'message', component: MessagesComponent },
       { path: 'footer', component: FooterComponent },
       {
         path: 'member-info/:id',
@@ -247,7 +249,7 @@ import { UiMultiCheckDropdownComponent } from './shared/ui/uimulticheckdropdown/
       { path: 'member-smartauthcheck', component: SmartauthcheckComponent },
       { path: 'member-journey', component: MemberJourneyComponent },
       { path: 'member-summaryai', component: MemberSummaryaiComponent },
-
+      { path: 'member-activity', component: MemberActivityComponent },
 
 
 
@@ -347,7 +349,7 @@ import { UiMultiCheckDropdownComponent } from './shared/ui/uimulticheckdropdown/
 
       { path: 'ui-datetime', component: UiDatetimePickerComponent },
       { path: 'ui-dropdown', component: UiDropdownComponent },
-      { path: 'ui-multicheckdropdown', component: UiMultiCheckDropdownComponent } 
+      { path: 'ui-multicheckdropdown', component: UiMultiCheckDropdownComponent }
 
     ])
   ],

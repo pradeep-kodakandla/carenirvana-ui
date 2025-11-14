@@ -259,8 +259,8 @@ export class UmauthactivityComponent {
     this.authenticateService.getAllUsers().subscribe({
       next: (users: any[]) => {
         this.assignToOptions = users.map(u => ({
-          value: u.UserId,
-          label: u.UserName
+          value: u.userId,
+          label: u.userName
         }));
 
         //this.assignToOptions = this.filteredUsers.map(u => ({ value: Number(u.value), label: u.label }));

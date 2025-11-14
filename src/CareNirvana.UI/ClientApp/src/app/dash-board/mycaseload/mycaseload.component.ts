@@ -14,6 +14,7 @@ import { MemberDocumentsComponent } from 'src/app/member/member-documents/member
 import { MemberJourneyComponent } from 'src/app/member/memberjourney/memberjourney.component';
 import { MemberSummaryaiComponent } from 'src/app/member/member-summaryai/member-summaryai.component';
 import { MessagesComponent } from 'src/app/messages/messages.component';
+import { MemberActivityComponent } from 'src/app/member/memberactivity/memberactivity.component';
 
 type PaneType = 'notes' | 'document' | 'journey' | 'summary' | 'activity' | 'messages' | null;
 
@@ -120,7 +121,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     notes: 'Add Note',
     document: 'Add Document',
     journey: 'Journey',
-    activity: 'Activity',
+    activity: 'Add Activity',
     summary: 'Summary',
     messages: 'Messages'
   };
@@ -563,6 +564,9 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
       else if (pane === 'messages') {
         this.activeRef = this.vcr.createComponent(MessagesComponent);
       }
+      else if (pane === 'activity') {
+        this.activeRef = this.vcr.createComponent(MemberActivityComponent);
+      }
       else {
         return;
       }
@@ -593,6 +597,10 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
       else if (pane === 'messages') {
         this.activeRef.setInput?.('memberDetailsId', id);
         this.activeRef.setInput?.('formOnly', true);
+      }
+      else if (pane === 'activity') {
+        this.activeRef.setInput?.('memberDetailsId', id);
+        this.activeRef.setInput?.('currentUserId', Number(sessionStorage.getItem('loggedInUserid')));
       }
 
     }

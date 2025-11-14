@@ -1,0 +1,167 @@
+<form [formGroup]="activityForm"
+      class="activity-form-grid"
+      (ngSubmit)="onSubmit()" style="padding-left:5px; padding-right:5px;">
+
+  <!-- Activity Type -->
+  <div class="form-outline dropdown-container">
+    <label class="floating-label">
+      Activity Type <span class="text-danger">*</span>
+    </label>
+    <ui-dropdown formControlName="activityType"
+                 [options]="activityTypeOptions"
+                 [compareWith]="compareId"
+                 placeholder="Select activity type">
+    </ui-dropdown>
+    <div *ngIf="activityForm.get('activityType')?.touched &&
+                activityForm.get('activityType')?.invalid"
+         class="text-danger">
+      Activity Type is required.
+    </div>
+  </div>
+
+  <!-- Priority -->
+  <div class="form-outline dropdown-container">
+    <label class="floating-label">
+      Priority <span class="text-danger">*</span>
+    </label>
+    <ui-dropdown formControlName="priority"
+                 [options]="priorityOptions"
+                 [compareWith]="compareId"
+                 placeholder="Select priority">
+    </ui-dropdown>
+    <div *ngIf="activityForm.get('priority')?.touched &&
+                activityForm.get('priority')?.invalid"
+         class="text-danger">
+      Priority is required.
+    </div>
+  </div>
+
+  <!-- Scheduled Date & Time -->
+  <div class="form-outline position-relative">
+    <label class="floating-label">
+      Scheduled Date &amp; Time <span class="text-danger">*</span>
+    </label>
+    <ui-datetime-picker formControlName="followUpDateTime"
+                        placeholderDate="Select date"
+                        placeholderTime="Select time">
+    </ui-datetime-picker>
+    <div *ngIf="activityForm.get('followUpDateTime')?.touched &&
+                activityForm.get('followUpDateTime')?.invalid"
+         class="text-danger">
+      Scheduled date is required.
+    </div>
+  </div>
+
+  <!-- Due Date & Time -->
+  <div class="form-outline position-relative">
+    <label class="floating-label">
+      Due Date &amp; Time <span class="text-danger">*</span>
+    </label>
+    <ui-datetime-picker formControlName="dueDate"
+                        placeholderDate="Select date"
+                        placeholderTime="Select time">
+    </ui-datetime-picker>
+    <div *ngIf="activityForm.get('dueDate')?.touched &&
+                activityForm.get('dueDate')?.invalid"
+         class="text-danger">
+      Due date is required.
+    </div>
+  </div>
+
+  <!-- Assign To + Work basket activity toggle -->
+  <div class="assign-to-row">
+    <div class="form-outline dropdown-container flex-fill">
+      <label class="floating-label">
+        Assign To <span class="text-danger">*</span>
+      </label>
+      <ui-dropdown formControlName="assignTo"
+                   [options]="assignToOptions"
+                   [compareWith]="compareId"
+                   placeholder="Select user">
+      </ui-dropdown>
+      <div *ngIf="activityForm.get('assignTo')?.touched &&
+                  activityForm.get('assignTo')?.invalid &&
+                  !activityForm.get('isWorkBasketActivity')?.value"
+           class="text-danger">
+        Assign To is required.
+      </div>
+    </div>
+
+    <div class="workbasket-toggle">
+      <label class="form-check-label">
+        <input type="checkbox"
+               class="form-check-input"
+               formControlName="isWorkBasketActivity" />
+        Work basket activity
+      </label>
+    </div>
+  </div>
+
+  <!-- Work Group -->
+  <div class="form-outline dropdown-container">
+    <label class="floating-label">Work Group</label>
+    <ui-multi-check-dropdown formControlName="workGroups"
+                             [options]="workGroupOptions"
+                             [defaultSelect]="true"
+                             [showChips]="false"
+                             placeholder="Select work groups">
+    </ui-multi-check-dropdown>
+  </div>
+
+  <!-- Work Basket -->
+  <div class="form-outline dropdown-container">
+    <label class="floating-label">Work Basket</label>
+    <ui-multi-check-dropdown formControlName="workBasket"
+                             [options]="workBasketOptions"
+                             [defaultSelect]="true"
+                             [showChips]="false"
+                             placeholder="Select work basket">
+    </ui-multi-check-dropdown>
+  </div>
+
+  <!-- Work Basket Users -->
+  <div class="form-outline dropdown-container">
+    <label class="floating-label">Work Basket Users</label>
+    <ui-multi-check-dropdown formControlName="workBasketUser"
+                             [options]="workBasketUserOptions"
+                             [defaultSelect]="true"
+                             [showChips]="false"
+                             placeholder="Select work basket user">
+    </ui-multi-check-dropdown>
+  </div>
+
+  <!-- spacer cell for grid alignment -->
+  <div></div>
+
+  <!-- Comments -->
+  <div class="form-outline full-width" style="grid-column: span 2;">
+    <label class="floating-label">
+      Comments <span class="text-danger">*</span>
+    </label>
+    <textarea class="form-control" style="height:200px;"
+              formControlName="comments"
+              rows="3"
+              [ngClass]="{'is-invalid': activityForm.get('comments')?.touched &&
+                                      activityForm.get('comments')?.invalid}">
+    </textarea>
+    <div *ngIf="activityForm.get('comments')?.touched &&
+                activityForm.get('comments')?.invalid"
+         class="invalid-feedback">
+      Comments are required.
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="form-actions" style="grid-column: span 2;">
+    <button type="submit"
+            class="btn btn-primary"
+            [disabled]="activityForm.invalid">
+      Save Activity
+    </button>
+    <button type="button"
+            class="btn btn-secondary ms-2"
+            (click)="onCancel()">
+      Cancel
+    </button>
+  </div>
+</form>
