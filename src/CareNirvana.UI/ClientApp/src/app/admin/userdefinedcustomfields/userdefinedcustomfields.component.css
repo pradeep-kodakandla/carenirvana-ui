@@ -1,0 +1,250 @@
+.udcf-container {
+  padding: 24px 32px;
+  background: #f5f7fb;
+  min-height: 100%;
+}
+
+/* Header */
+.udcf-header {
+  margin-bottom: 16px;
+}
+
+  .udcf-header h2 {
+    margin: 0;
+    font-weight: 600;
+  }
+
+  .udcf-header .subtitle {
+    margin: 4px 0 0;
+    color: #6b7280;
+    font-size: 13px;
+  }
+
+  .udcf-header .header-actions button mat-icon {
+    margin-right: 4px;
+  }
+
+/* Summary cards */
+.udcf-summary {
+  margin-bottom: 16px;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+}
+
+  .stat-card .icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    background: #eef2ff;
+  }
+
+    .stat-card .icon.success {
+      background: #dcfce7;
+    }
+
+    .stat-card .icon.info {
+      background: #e0f2fe;
+    }
+
+    .stat-card .icon mat-icon {
+      font-size: 22px;
+    }
+
+  .stat-card .content .label {
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  .stat-card .content .value {
+    font-size: 22px;
+    font-weight: 600;
+    color: #111827;
+  }
+
+/* Filters */
+.udcf-filters,
+.udcf-grid-filters {
+  margin-bottom: 12px;
+}
+
+  .udcf-filters .hint-text,
+  .udcf-grid-filters .hint-text {
+    font-size: 12px;
+    color: #6b7280;
+    text-align: right;
+  }
+
+/* Table */
+.udcf-table {
+  margin-top: 8px;
+}
+
+  .udcf-table table {
+    border-radius: 12px;
+    overflow: hidden;
+    background: #ffffff;
+  }
+
+  .udcf-table th.mat-header-cell {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+  }
+
+  .udcf-table td.mat-cell {
+    font-size: 13px;
+  }
+
+  .udcf-table .is-right {
+    text-align: right;
+  }
+
+  .udcf-table .field-name .technical {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #6b7280;
+  }
+
+  .udcf-table .field-name .label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #111827;
+  }
+
+  .udcf-table .entity-section {
+    display: inline-flex;
+    align-items: center;
+    font-size: 12px;
+    color: #4b5563;
+  }
+
+    .udcf-table .entity-section .separator {
+      margin: 0 4px;
+      color: #9ca3af;
+    }
+
+  .udcf-table .type-chip {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    background: #eff6ff;
+    color: #1d4ed8;
+    text-transform: capitalize;
+  }
+
+/* Empty state */
+.udcf-empty {
+  margin-top: 16px;
+}
+
+  .udcf-empty .empty-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 32px;
+    text-align: center;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+  }
+
+    .udcf-empty .empty-card mat-icon {
+      font-size: 40px;
+      margin-bottom: 8px;
+      color: #9ca3af;
+    }
+
+    .udcf-empty .empty-card h4 {
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+
+    .udcf-empty .empty-card p {
+      margin-bottom: 16px;
+      color: #6b7280;
+      font-size: 13px;
+    }
+
+/* Side editor panel */
+.field-editor {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 520px;
+  max-width: 100%;
+  height: 100vh;
+  background: #ffffff;
+  box-shadow: -2px 0 10px rgba(15, 23, 42, 0.18);
+  padding: 24px 24px 16px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+}
+
+.field-editor-header {
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+  .field-editor-header h3 {
+    margin: 0;
+    font-weight: 600;
+  }
+
+  .field-editor-header .subtitle {
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+.field-editor-body {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+  .field-editor-body h5 {
+    margin-top: 12px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  .field-editor-body .toggles {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 4px;
+  }
+
+  .field-editor-body .options-section,
+  .field-editor-body .dynamictable-section {
+    margin-top: 8px;
+  }
+
+    .field-editor-body .options-section p,
+    .field-editor-body .dynamictable-section p {
+      margin: 0 0 8px;
+    }
+
+/* Editor footer */
+.editor-footer {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 12px;
+  margin-top: 8px;
+}
+
+  .editor-footer button + button {
+    margin-left: 8px;
+  }

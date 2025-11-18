@@ -92,7 +92,6 @@ export class MessagesComponent implements OnInit {
         this.threads = Array.isArray(list) ? list : [];
         this.buildUi(this.threads);
         this.loading = false;
-        console.log('Loaded threads count:', this.threads.length, this.threads);
       },
       error: err => {
         this.loading = false;

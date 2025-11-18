@@ -87,10 +87,16 @@ export class DashboardServiceService {
     return this.http.get<any>(`${this.apiUrl}/authdetails/${userId}`);
   }
   getpendingactivitydetails(userId: any): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/pendingauthactivities/${userId}`);
+    return this.http.get<any>(`${this.apiUrl}/pendingactivities/${userId}`);
   }
   getpendingwqactivitydetails(userId: any): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/pendingwq/${userId}`);
+  }
+  getrequestactivitydetails(userId: any): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/requestactivities/${userId}`);
+  }
+  getuserworkgroups(userId: any): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/userworkgroups/${userId}`);
   }
   getwqactivitylinedetails(activityid: any): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/wqactivitylines/${activityid}`);

@@ -202,7 +202,7 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
       const today = new Date();
 
       base = base.filter(r => {
-        const d = this.toDate(r?.AuthDueDate);
+        const d = this.toDate(r?.authDueDate);
         if (!d) return false;
 
         const cmp = this.compareDateOnly(d, today); // <0 overdue, 0 today, >0 future

@@ -30,6 +30,10 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
   currentMonth: Date = new Date();
   calendarDays: CalendarDay[] = [];
   activities: any[] = [];
+  // controls Day / Week / Month inside the calendar view
+  calendarViewRange: 'day' | 'week' | 'month' = 'month';
+  // which day is currently “selected” for day/week views
+  selectedDate: Date = new Date();
 
   displayedColumns: string[] = [
     'module',
@@ -163,7 +167,7 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
       const today = new Date();
 
       base = base.filter(r => {
-        const d = this.toDate(r?.DueDate);
+        const d = this.toDate(r?.dueDate);
         if (!d) return false;
 
         const cmp = this.compareDateOnly(d, today); // <0 overdue, 0 today, >0 future
@@ -379,10 +383,68 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
   }
 
   onCalendarDayClick(day: CalendarDay, event: MouseEvent): void {
-    event.stopPropagation();
-    // Maybe open a side panel with all activities for that day
+    if (event) {
+      event.stopPropagation();
+    }
+
+    this.selectedDate = day.date;
+
   }
 
+  setCalendarViewRange(range: 'day' | 'week' | 'month'): void {
+    this.calendarViewRange = range;
 
+    // make sure we always have a selected date
+    if (!this.selectedDate) {
+      this.selectedDate = new Date(this.currentMonth);
+    }
+  }
+
+  get visibleCalendarDays(): any[] {
+    if (!this.calendarDays || !this.calendarDays.length) {
+      return [];
+    }
+
+    switch (this.calendarViewRange) {
+      case 'day':
+        return this.getDayFromDate(this.selectedDate);
+      case 'week':
+        return this.getWeekFromDate(this.selectedDate);
+      case 'month':
+      default:
+        return this.calendarDays;
+    }
+  }
+
+  private getDayFromDate(date: Date): any[] {
+    const d = this.findCalendarDay(date);
+    return d ? [d] : [];
+  }
+
+  private getWeekFromDate(date: Date): any[] {
+    const target = this.findCalendarDay(date);
+    if (!target) {
+      return this.calendarDays.slice(0, 7);
+    }
+
+    const index = this.calendarDays.indexOf(target);
+
+    // assuming week starts on Sunday (getDay() 0–6)
+    const offset = target.date.getDay(); // 0 = Sun, 1 = Mon, ...
+    const start = Math.max(0, index - offset);
+    return this.calendarDays.slice(start, start + 7);
+  }
+
+  private findCalendarDay(date: Date): any | undefined {
+    const y = date.getFullYear();
+    const m = date.getMonth();
+    const d = date.getDate();
+
+    return this.calendarDays.find((x: any) =>
+      x.date.getFullYear() === y &&
+      x.date.getMonth() === m &&
+      x.date.getDate() === d
+    );
+  }
 
 }

@@ -55,7 +55,7 @@
                       <strong>{{ t.user2Name || t.user2Id }}</strong>
                       <span *ngIf="t.memberDetailsId"> • Member: <strong>{{ t.memberDetailsId }}</strong></span>
                     </span>
-                    <span class="count">{{ t.messages?.length || 0 }} message(s)</span>
+                    <span class="count">{{ t.messages.length || 0 }} message(s)</span>
                   </div>
                 </td>
               </tr>

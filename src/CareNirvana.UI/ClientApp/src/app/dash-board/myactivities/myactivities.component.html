@@ -106,7 +106,23 @@
         </div>
         <button type="button" class="nav-btn" (click)="changeMonth(1)">›</button>
       </div>
-
+      <div class="calendar-range-toggle">
+        <button type="button"
+                [class.active]="calendarViewRange === 'day'"
+                (click)="setCalendarViewRange('day')">
+          Day
+        </button>
+        <button type="button"
+                [class.active]="calendarViewRange === 'week'"
+                (click)="setCalendarViewRange('week')">
+          Week
+        </button>
+        <button type="button"
+                [class.active]="calendarViewRange === 'month'"
+                (click)="setCalendarViewRange('month')">
+          Month
+        </button>
+      </div>
       <div class="calendar-grid">
         <!-- Day-of-week headers -->
         <div class="calendar-day-header" *ngFor="let d of weekDays">
@@ -115,33 +131,37 @@
 
         <!-- 6-week grid (like Outlook month view) -->
         <div class="calendar-day"
-             *ngFor="let day of calendarDays"
+             *ngFor="let day of visibleCalendarDays"
              [class.other-month]="!day.isCurrentMonth"
-             [class.today]="day.isToday">
+             [class.today]="day.isToday"
+             (click)="onCalendarDayClick(day, $event)">
+
           <div class="date-label">
             {{ day.date.getDate() }}
           </div>
 
+
           <div class="events-list">
             <div class="event-pill"
-                 *ngFor="let ev of day.activities | slice:0:3"
-                 [ngClass]="getDueDateClass(ev.dueDate)"
-                 (click)="onCalendarEventClick(ev, $event)">
+                 *ngFor="let ev of $any(day).activities | slice:0:3"
+                 [ngClass]="getDueDateClass($any(ev).dueDate)"
+                 (click)="onCalendarEventClick($any(ev), $event)">
               <div class="event-title">
-                {{ ev.activityType || 'Activity' }}
+                {{ $any(ev).activityType || 'Activity' }}
               </div>
               <div class="event-time">
-                {{ ev.followUpDateTime | date:'shortTime' }}
+                {{ $any(ev).followUpDateTime | date:'shortTime' }}
               </div>
             </div>
 
             <!-- if more than 3 events, small "+n more" -->
             <div class="more-pill"
-                 *ngIf="day.activities && day.activities.length > 3"
+                 *ngIf="$any(day).activities && $any(day).activities.length > 3"
                  (click)="onCalendarDayClick(day, $event)">
-              +{{ day.activities.length - 3 }} more
+              +{{ $any(day).activities.length - 3 }} more
             </div>
           </div>
+
         </div>
       </div>
     </section>

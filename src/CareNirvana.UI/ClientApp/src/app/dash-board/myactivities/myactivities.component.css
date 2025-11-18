@@ -363,6 +363,39 @@ tr.example-element-row:not(.example-expanded-row):active {
 
 
 
+.calendar-range-toggle {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  margin: 4px 0 8px;
+}
+
+  .calendar-range-toggle button {
+    border: 1px solid #e1e5ea;
+    padding: 4px 10px;
+    border-radius: 12px;
+    background: #f3f4f6;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+    .calendar-range-toggle button.active {
+      background: #2563eb;
+      color: #fff;
+      border-color: #2563eb;
+    }
+
+/* when in "day" mode, use single column */
+.calendar-wrapper.day .calendar-grid {
+  grid-template-columns: repeat(1, 1fr);
+}
+
+/* when in "week" mode, 7 columns (month is already 7) */
+.calendar-wrapper.week .calendar-grid {
+  grid-template-columns: repeat(7, 1fr);
+}
+
+
 
 
 
@@ -484,7 +517,7 @@ tr.example-element-row:not(.example-expanded-row):active {
 .event-pill {
   border-radius: 8px;
   padding: 2px 4px;
-  font-size: 10px;
+  font-size: 14px;
   cursor: pointer;
   background: #eff6ff;
   border: 1px solid #bfdbfe;

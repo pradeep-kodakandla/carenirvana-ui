@@ -1,0 +1,341 @@
+<div class="udcf-container">
+  <!-- Header -->
+  <div class="udcf-header d-flex justify-content-between align-items-center">
+    <div>
+      <h2>Custom Fields Configuration</h2>
+      <p class="subtitle">Manage user-defined fields for Care Nirvana</p>
+    </div>
+
+    <div class="header-actions">
+      <button mat-stroked-button color="primary" (click)="openCreateField()">
+        <mat-icon>add</mat-icon>
+        Create New Field
+      </button>
+    </div>
+  </div>
+
+  <!-- Summary cards -->
+  <div class="udcf-summary row">
+    <div class="col-md-4">
+      <div class="stat-card">
+        <div class="icon">
+          <mat-icon>view_list</mat-icon>
+        </div>
+        <div class="content">
+          <div class="label">Total Custom Fields</div>
+          <div class="value">{{ totalFields }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="stat-card">
+        <div class="icon success">
+          <mat-icon>check_circle</mat-icon>
+        </div>
+        <div class="content">
+          <div class="label">Active Fields</div>
+          <div class="value">{{ activeFields }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="stat-card">
+        <div class="icon info">
+          <mat-icon>category</mat-icon>
+        </div>
+        <div class="content">
+          <div class="label">Field Types Used</div>
+          <div class="value">{{ fieldTypesUsed }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature group / feature selection -->
+  <div class="udcf-filters row align-items-end">
+    <div class="col-md-4">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Feature Group</mat-label>
+        <mat-select [value]="selectedFeatureGroupId"
+                    (selectionChange)="onFeatureGroupChange($event.value)">
+          <mat-option *ngFor="let fg of featureGroups" [value]="fg.featureGroupId">
+            {{ fg.featureGroupName }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="col-md-4">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Feature</mat-label>
+        <mat-select [value]="selectedFeatureId"
+                    (selectionChange)="onFeatureChange($event.value)"
+                    [disabled]="!selectedFeatureGroupId">
+          <mat-option *ngFor="let f of features" [value]="f.featureId">
+            {{ f.featureName }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="col-md-4 text-md-right text-start">
+      <div class="hint-text">
+        Select a feature group and feature to configure custom fields.
+      </div>
+    </div>
+  </div>
+
+  <!-- Grid filters -->
+  <div class="udcf-grid-filters row align-items-center" *ngIf="selectedFeatureId">
+    <div class="col-md-4">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Search fields...</mat-label>
+        <input matInput
+               [value]="searchText"
+               (input)="onSearchChange($any($event.target).value)" />
+        <button mat-icon-button matSuffix *ngIf="searchText" (click)="onSearchChange('')">
+          <mat-icon>close</mat-icon>
+        </button>
+      </mat-form-field>
+    </div>
+
+    <div class="col-md-3">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Field Type</mat-label>
+        <mat-select [value]="filterType" (selectionChange)="onFilterTypeChange($event.value)">
+          <mat-option value="All">All Types</mat-option>
+          <mat-option *ngFor="let ft of fieldTypes" [value]="ft">
+            {{ ft | titlecase }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="col-md-3">
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Status</mat-label>
+        <mat-select [value]="filterStatus" (selectionChange)="onFilterStatusChange($event.value)">
+          <mat-option value="All">All Status</mat-option>
+          <mat-option value="Active">Active</mat-option>
+          <mat-option value="Inactive">Inactive</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="col-md-2 text-md-right text-start">
+      <button mat-flat-button color="primary" (click)="openCreateField()">
+        <mat-icon>add</mat-icon>
+        New Field
+      </button>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div class="udcf-empty" *ngIf="selectedFeatureId && filteredFields.length === 0">
+    <div class="empty-card">
+      <mat-icon>playlist_add</mat-icon>
+      <h4>No custom fields defined yet</h4>
+      <p>Click “New Field” to create your first custom field for this feature.</p>
+      <button mat-stroked-button color="primary" (click)="openCreateField()">
+        Create Field
+      </button>
+    </div>
+  </div>
+
+  <!-- Fields table -->
+  <div class="udcf-table" *ngIf="selectedFeatureId && filteredFields.length > 0">
+    <table mat-table [dataSource]="filteredFields" class="mat-elevation-z1 w-100">
+
+      <!-- Name -->
+      <ng-container matColumnDef="fieldName">
+        <th mat-header-cell *matHeaderCellDef> Field Name </th>
+        <td mat-cell *matCellDef="let f">
+          <div class="field-name">
+            <span class="technical">{{ f.fieldName }}</span>
+            <div class="label">{{ f.fieldLabel }}</div>
+          </div>
+        </td>
+      </ng-container>
+
+      <!-- Type -->
+      <ng-container matColumnDef="fieldType">
+        <th mat-header-cell *matHeaderCellDef> Type </th>
+        <td mat-cell *matCellDef="let f">
+          <span class="type-chip type-{{ f.fieldType }}">
+            {{ f.fieldType | titlecase }}
+          </span>
+        </td>
+      </ng-container>
+
+      <!-- Entity / Section -->
+      <ng-container matColumnDef="entitySection">
+        <th mat-header-cell *matHeaderCellDef> Entity / Section </th>
+        <td mat-cell *matCellDef="let f">
+          <div class="entity-section">
+            <span class="entity">{{ f.entityType }}</span>
+            <span class="separator">•</span>
+            <span class="section">{{ f.section }}</span>
+          </div>
+        </td>
+      </ng-container>
+
+      <!-- Required -->
+      <ng-container matColumnDef="required">
+        <th mat-header-cell *matHeaderCellDef> Required </th>
+        <td mat-cell *matCellDef="let f">
+          <mat-slide-toggle [checked]="f.isRequired" (change)="toggleRequired(f)">
+          </mat-slide-toggle>
+        </td>
+      </ng-container>
+
+      <!-- Status -->
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef> Status </th>
+        <td mat-cell *matCellDef="let f">
+          <mat-slide-toggle [checked]="f.isActive" (change)="toggleActive(f)">
+          </mat-slide-toggle>
+        </td>
+      </ng-container>
+
+      <!-- Actions -->
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef class="is-right"> Actions </th>
+        <td mat-cell *matCellDef="let f" class="is-right">
+          <button mat-icon-button matTooltip="Edit" (click)="openEditField(f)">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button matTooltip="More">
+            <mat-icon>more_vert</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="['fieldName','fieldType','entitySection','required','status','actions']"></tr>
+      <tr mat-row *matRowDef="let row; columns: ['fieldName','fieldType','entitySection','required','status','actions'];"></tr>
+    </table>
+  </div>
+
+  <!-- Side editor (Create / Edit) -->
+  <div class="field-editor" *ngIf="editorOpen">
+    <div class="field-editor-header d-flex justify-content-between align-items-center">
+      <div>
+        <h3>{{ isEditMode ? 'Edit Field' : 'Create New Field' }}</h3>
+        <p class="subtitle">Define how this field behaves and where it appears.</p>
+      </div>
+      <button mat-icon-button (click)="closeEditor()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <form [formGroup]="fieldForm" (ngSubmit)="saveField()" class="field-editor-body">
+      <h5>Basic Information</h5>
+      <div class="row">
+        <div class="col-md-6">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Field Name</mat-label>
+            <input matInput formControlName="fieldName" placeholder="preferred_language" />
+            <!--<mat-hint>lowercase, underscore-separated</mat-hint>-->
+          </mat-form-field>
+        </div>
+        <div class="col-md-6">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Field Label</mat-label>
+            <input matInput formControlName="fieldLabel" placeholder="Preferred Language" />
+          </mat-form-field>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Field Type</mat-label>
+            <mat-select formControlName="fieldType">
+              <mat-option *ngFor="let ft of fieldTypes" [value]="ft">
+                {{ ft | titlecase }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <div class="col-md-3">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Display Order</mat-label>
+            <input matInput type="number" formControlName="displayOrder" />
+          </mat-form-field>
+        </div>
+
+        <div class="col-md-3 toggles">
+          <mat-slide-toggle formControlName="isRequired">Required</mat-slide-toggle>
+          <mat-slide-toggle formControlName="isActive">Active</mat-slide-toggle>
+          <mat-slide-toggle formControlName="isSearchable">Searchable</mat-slide-toggle>
+        </div>
+      </div>
+
+      <h5>Configuration</h5>
+      <div class="row">
+        <div class="col-md-6">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Entity Type</mat-label>
+            <mat-select formControlName="entityType">
+              <mat-option *ngFor="let et of entityTypes" [value]="et">
+                {{ et }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+        <div class="col-md-6">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Section</mat-label>
+            <mat-select formControlName="section">
+              <mat-option *ngFor="let s of sections" [value]="s">
+                {{ s }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Placeholder</mat-label>
+            <input matInput formControlName="placeHolder" />
+          </mat-form-field>
+        </div>
+        <div class="col-md-6">
+          <mat-form-field appearance="outline" class="w-100">
+            <mat-label>Help Text</mat-label>
+            <textarea matInput rows="2" formControlName="helpText"></textarea>
+          </mat-form-field>
+        </div>
+      </div>
+
+      <!-- Options section: show when fieldType is one of multi-choice types -->
+      <div class="options-section" *ngIf="['dropdown','radio','checkbox','listbox'].includes(fieldForm.get('fieldType')?.value)">
+        <h5>Field Options</h5>
+        <p class="small text-muted">
+          Configure the values shown to the user (placeholder – wire to options array later).
+        </p>
+        <!-- TODO: implement add/edit/remove option rows -->
+      </div>
+
+      <!-- Dynamic table config placeholder -->
+      <div class="dynamictable-section" *ngIf="fieldForm.get('fieldType')?.value === 'dynamictable'">
+        <h5>Dynamic Table Configuration</h5>
+        <p class="small text-muted">
+          Define table columns and validation here (placeholder – implement builder later).
+        </p>
+        <!-- TODO: implement dynamic table column builder -->
+      </div>
+
+      <div class="editor-footer d-flex justify-content-end">
+        <button mat-button type="button" (click)="closeEditor()">Cancel</button>
+        <button mat-flat-button color="primary" type="submit">
+          {{ isEditMode ? 'Save Changes' : 'Create Field' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
