@@ -9,7 +9,8 @@ import { DashboardServiceService } from 'src/app/service/dashboard.service.servi
 import { HeaderService } from 'src/app/service/header.service';
 import { Router, ActivatedRoute } from '@angular/router';
 import { MemberService } from 'src/app/service/shared-member.service';
-
+import { MemberactivityService, AcceptWorkGroupActivityRequest, RejectWorkGroupActivityRequest, DeleteMemberActivityRequest } from 'src/app/service/memberactivity.service';
+import { FormsModule } from '@angular/forms';
 interface ActivityItem {
   activityType?: string;
   followUpDateTime?: string | Date;
@@ -18,6 +19,7 @@ interface ActivityItem {
   lastName?: string;
   memberId?: number;
   status?: string;
+  memberActivityWorkGroupId?: number;
   // ...other fields you already have
 }
 
@@ -26,6 +28,30 @@ interface CalendarDay {
   isCurrentMonth: boolean;
   isToday: boolean;
   activities: ActivityItem[]; // same shape as rows in dataSource
+}
+
+
+export interface WorkGroupAssignment {
+  userId: number;
+  userFullName: string;
+  workGroupWorkBasketId: number;
+  workGroupId: number;
+  workGroupName: string;
+  workBasketId: number;
+  workBasketName: string;
+  activeFlag: boolean;
+  assignedUserIds: number[];
+  assignedUserNames: string[];
+}
+
+export interface SimpleUser {
+  userId: number;
+  userFullName: string;
+}
+
+export interface SimpleWorkGroup {
+  workGroupId: number;
+  workGroupName: string;
 }
 
 type CalendarViewRange = 'day' | 'workweek' | 'week' | 'month';
@@ -97,23 +123,60 @@ export class RequestsComponent implements OnInit, AfterViewInit {
   // expand placeholder (kept for parity)
   expandedElement: any | null = null;
 
+
+
+
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
   constructor(
     private fb: FormBuilder,
-    private activtyService: DashboardServiceService,
+    private activityService: DashboardServiceService,
     private headerService: HeaderService,
     private router: Router,
     private memberService: MemberService,
-    private route: ActivatedRoute) { }
+    private route: ActivatedRoute,
+    private memberActivityService: MemberactivityService) { }
 
   ngOnInit(): void {
     this.filtersForm = this.fb.group({}); // empty grid per request
     this.buildMonthGrid();
     this.buildActiveRangeDays();
     this.loadData();
+
+    this.activityService.getuserworkgroups(Number(sessionStorage.getItem('loggedInUserid'))).subscribe({
+      next: (res) => {
+        this.initializeWorkGroups(res);
+        console.log('User work groups:', res);
+      },
+      error: (err) => {
+        console.error('Error fetching user work groups:', err);
+      }
+    });
   }
+
+  initializeWorkGroups(rows: WorkGroupAssignment[]): void {
+    this.workGroupAssignments = rows || [];
+
+    // build distinct work group list for chips
+    const map = new Map<number, string>();
+    for (const row of this.workGroupAssignments) {
+      if (!map.has(row.workGroupId)) {
+        map.set(row.workGroupId, row.workGroupName);
+      }
+    }
+
+    this.workGroups = Array.from(map.entries()).map(([id, name]) => ({
+      workGroupId: id,
+      workGroupName: name
+    }));
+
+    // default: "all groups" selected
+    this.selectedWorkGroupId = null;
+    this.selectedWorkGroupName = 'All work groups';
+    this.updateVisibleUsers();
+  }
+
 
   ngAfterViewInit(): void {
     this.dataSource.paginator = this.paginator;
@@ -143,16 +206,22 @@ export class RequestsComponent implements OnInit, AfterViewInit {
    * FollowUpDateTime, DueDate, Status, (and optionally StatusId / ActivityTypeId).
    */
   private getMyActivities$(): Observable<any[]> {
-    return this.activtyService.getrequestactivitydetails(sessionStorage.getItem('loggedInUserid'));
+    return this.activityService.getrequestactivitydetails(sessionStorage.getItem('loggedInUserid'));
   }
 
   private loadData(): void {
     this.getMyActivities$().subscribe({
       next: rows => {
         console.log('My Activities rows', rows);
-        this.activities = rows || [];
+        const filtered = (rows || []).filter((row: any) => {
+          const rejected = row.rejectedUserIds || [];
+
+          // keep the row ONLY if current user is NOT in rejectedUserIds
+          return !rejected.some((id: any) => Number(id) === Number(sessionStorage.getItem('loggedInUserid')));
+        });
+        this.activities = filtered || [];
         this.dataSource.data = this.activities;
-        this.rawData = Array.isArray(rows) ? rows : [];
+        this.rawData = Array.isArray(filtered) ? filtered : [];
         this.recomputeAll();
         this.buildMonthGrid();
         this.buildActiveRangeDays();
@@ -600,6 +669,177 @@ export class RequestsComponent implements OnInit, AfterViewInit {
   toggleCalendar(cal: { id: number; name: string; color: string; selected: boolean }): void {
     cal.selected = !cal.selected;
     // You can use this to filter activities by calendar later.
+  }
+
+  onAccept(ev: any): void {
+    const confirmed = confirm('Are you sure want to accept the activity?');
+    if (!confirmed) {
+      return;
+    }
+
+    const payload: AcceptWorkGroupActivityRequest = {
+      memberActivityWorkGroupId: ev.memberActivityWorkGroupId,
+      userId: Number(sessionStorage.getItem('loggedInUserid')),
+       comment: 'Accepted from calendar' // optional
+    };
+
+    this.memberActivityService.acceptWorkGroupActivity(payload).subscribe({
+      next: () => {
+        console.log('Work-group activity accepted:', payload);
+        // TODO: refresh list / calendar if needed
+        this.loadData();
+      },
+      error: err => {
+        console.error('Error accepting work-group activity', err);
+      }
+    });
+  }
+
+  onReject(ev: any): void {
+    const confirmed = confirm('Are you sure want to reject the activity?');
+    if (!confirmed) {
+      return;
+    }
+
+    const payload: RejectWorkGroupActivityRequest = {
+      memberActivityWorkGroupId: ev.memberActivityWorkGroupId,
+      userId: Number(sessionStorage.getItem('loggedInUserid')),
+      comment: 'Rejected from calendar' // or prompt for reason
+    };
+
+    this.memberActivityService.rejectWorkGroupActivity(payload).subscribe({
+      next: () => {
+        console.log('Work-group activity rejected:', payload);
+        // TODO: refresh list / calendar if needed
+        this.loadData();
+      },
+      error: err => {
+        console.error('Error rejecting work-group activity', err);
+      }
+    });
+  }
+
+
+  onView(ev: any): void {
+    // your view logic here (maybe open details dialog)
+  }
+
+  /**********Work Group************/
+
+  // raw result from API
+  workGroupAssignments: WorkGroupAssignment[] = [];
+
+  // distinct work groups to show as chips
+  workGroups: SimpleWorkGroup[] = [];
+
+  // currently selected group; null = all groups
+  selectedWorkGroupId: number | null = null;
+  selectedWorkGroupName = 'All work groups';
+
+  // users shown on the left side
+  visibleUsers: SimpleUser[] = [];
+  maxUserSelection = 1;
+  selectedUserIds: number[] = [];
+  userSearchTerm = '';
+  filteredVisibleUsers: SimpleUser[] = []
+
+  private buildUsersForAssignments(assignments: WorkGroupAssignment[]): SimpleUser[] {
+    const userMap = new Map<number, string>();
+
+    for (const row of assignments) {
+      const ids = row.assignedUserIds || [];
+      const names = row.assignedUserNames || [];
+
+      ids.forEach((id, index) => {
+        const name = names[index] ?? '';
+        if (!userMap.has(id)) {
+          userMap.set(id, name);
+        }
+      });
+    }
+
+    return Array.from(userMap.entries()).map(([userId, userFullName]) => ({
+      userId,
+      userFullName
+    }));
+  }
+
+  private updateVisibleUsers(): void {
+    if (!this.workGroupAssignments || this.workGroupAssignments.length === 0) {
+      this.visibleUsers = [];
+      return;
+    }
+
+    const relevant = this.selectedWorkGroupId == null
+      ? this.workGroupAssignments                     // all groups
+      : this.workGroupAssignments.filter(a => a.workGroupId === this.selectedWorkGroupId);
+
+    this.visibleUsers = this.buildUsersForAssignments(relevant);
+    this.applyUserFilter();
+  }
+
+  onWorkGroupChipClick(workGroupId: number | null): void {
+    this.selectedWorkGroupId = workGroupId;
+
+    if (workGroupId == null) {
+      this.selectedWorkGroupName = 'All work groups';
+    } else {
+      const found = this.workGroups.find(w => w.workGroupId === workGroupId);
+      this.selectedWorkGroupName = found?.workGroupName || 'Selected group';
+    }
+
+    this.updateVisibleUsers();
+
+
+    // reset selection when group changes
+    this.selectedUserIds = [];
+    // reset search when switching group
+    this.userSearchTerm = '';
+
+  }
+
+
+  isUserSelected(userId: number): boolean {
+    return this.selectedUserIds.includes(userId);
+  }
+
+  onUserCheckboxChange(user: SimpleUser, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const checked = input.checked;
+
+    if (checked) {
+      // trying to select
+      if (this.selectedUserIds.length >= this.maxUserSelection) {
+        // undo the check in UI
+        input.checked = false;
+        alert(`You can select maximum ${this.maxUserSelection} users.`);
+        return;
+      }
+
+      if (!this.selectedUserIds.includes(user.userId)) {
+        this.selectedUserIds.push(user.userId);
+      }
+    } else {
+      // unselect
+      this.selectedUserIds = this.selectedUserIds.filter(id => id !== user.userId);
+    }
+
+    // TODO: apply this.selectedUserIds to filter calendar events if needed
+    // this.filterActivitiesBySelectedUsers();
+  }
+
+  applyUserFilter(): void {
+    const term = (this.userSearchTerm || '').toLowerCase().trim();
+
+    if (!term) {
+      this.filteredVisibleUsers = [...this.visibleUsers];
+      return;
+    }
+
+    this.filteredVisibleUsers = this.visibleUsers.filter(u =>
+      (u.userFullName || '').toLowerCase().includes(term) ||
+      String(u.userId).includes(term)
+    );
   }
 
 }

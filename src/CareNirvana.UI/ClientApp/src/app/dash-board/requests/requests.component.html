@@ -53,6 +53,26 @@
       <!-- Due chips -->
       <div class="filters-col">
         <div class="chip-list">
+
+
+          <!-- "All groups" chip -->
+          <button type="button"
+                  class="wg-chip"
+                  [class.active]="selectedWorkGroupId === null"
+                  (click)="onWorkGroupChipClick(null)">
+            All groups
+          </button>
+
+          <!-- one chip per work group -->
+          <button type="button"
+                  class="wg-chip"
+                  *ngFor="let wg of workGroups"
+                  [class.active]="selectedWorkGroupId === wg.workGroupId"
+                  (click)="onWorkGroupChipClick(wg.workGroupId)">
+            {{ wg.workGroupName }}
+          </button>
+
+
           <button type="button" class="pill red"
                   [class.active]="isDueSelected('OVERDUE')"
                   (click)="setDueChip('OVERDUE')">
@@ -142,11 +162,69 @@
               <span class="color-dot" [style.backgroundColor]="cal.color"></span>
               <span class="calendar-name">{{ cal.name }}</span>
             </label>
+            <!-- Users for selected work group(s) -->
+            <div class="calendar-list" *ngIf="filteredVisibleUsers?.length">
+              <div class="calendar-list-title">
+                <div class="calendar-list-title">
+                  {{ selectedWorkGroupName }}
+                </div>
+                <div class="calendar-list-subtitle">
+                  Selected: {{ selectedUserIds.length }} / {{ maxUserSelection }}
+                </div>
+              </div>
+              <div class="user-search">
+                <input type="text"
+                       class="user-search-input"
+                       placeholder="Search users..."
+                       [(ngModel)]="userSearchTerm"
+                       (ngModelChange)="applyUserFilter()">
+              </div>
+              <label class="calendar-list-item"
+                     *ngFor="let u of filteredVisibleUsers">
+                <input type="checkbox"
+                       [checked]="isUserSelected(u.userId)"
+                       (change)="onUserCheckboxChange(u, $event)"
+                       [disabled]="!isUserSelected(u.userId) && selectedUserIds.length >= maxUserSelection">
+                <!--<span class="color-dot"></span>-->
+                <span class="calendar-name">{{ u.userFullName }}</span>
+              </label>
+            </div>
+
+            <div class="calendar-list" *ngIf="!filteredVisibleUsers?.length">
+              <div class="calendar-list-title">Users</div>
+              <div class="calendar-list-item">
+                <span class="calendar-name">No users found</span>
+              </div>
+            </div>
+
+
           </div>
         </aside>
 
         <!-- RIGHT PANEL (main Outlook-like calendar) -->
         <main class="calendar-main">
+
+          <!-- Work group chips -->
+          <div class="workgroup-chips" *ngIf="workGroups?.length">
+
+            <!-- "All groups" chip -->
+            <button type="button"
+                    class="wg-chip"
+                    [class.active]="selectedWorkGroupId === null"
+                    (click)="onWorkGroupChipClick(null)">
+              All groups
+            </button>
+
+            <!-- one chip per work group -->
+            <button type="button"
+                    class="wg-chip"
+                    *ngFor="let wg of workGroups"
+                    [class.active]="selectedWorkGroupId === wg.workGroupId"
+                    (click)="onWorkGroupChipClick(wg.workGroupId)">
+              {{ wg.workGroupName }}
+            </button>
+
+          </div>
 
           <!-- toolbar -->
           <div class="calendar-toolbar">
@@ -256,20 +334,56 @@
                       <div class="time-event"
                            *ngFor="let ev of getEventsForHour(day, h)"
                            [ngClass]="getDueDateClass(ev.dueDate)"
-                           (click)="onCalendarEventClick(ev, $event)">
-                        <div class="event-title">
-                          {{ ev.activityType || 'Activity' }}
+                           (click)="onCalendarEventClick(ev, $event)"
+                           [matTooltip]="
+                               'Activity: ' + (ev.activityType || 'Activity') + '\n' +
+                               'Follow-up: ' + (ev.followUpDateTime | date:'short') + '\n' +
+                               'Due Date: ' + (ev.dueDate | date:'shortDate') + '\n' +
+                               'Member: ' + ((ev.firstName || '') + ' ' + (ev.lastName || '')) + '\n' +
+                               'Status: ' + (ev.status || '')
+                             "
+                           matTooltipClass="activity-tooltip"
+                           matTooltipPosition="above">
+
+                        <!-- left side: text -->
+                        <div class="event-main">
+                          <div class="event-title">
+                            {{ ev.activityType || 'Activity' }}
+                          </div>
+                          <div class="event-time">
+                            {{ (ev.firstName || '') + ' ' + (ev.lastName || '') }}
+                          </div>
+                          <div class="event-time">
+                            {{ ev.followUpDateTime | date:'shortTime' }}
+                          </div>
                         </div>
-                        <div class="event-time">
-                          {{ (ev.firstName || '') + ' ' + (ev.lastName || '') }}
+
+                        <!-- right side: action icons -->
+                        <div class="event-actions">
+                          <button mat-icon-button
+                                  matTooltip="Accept"
+                                  (click)="onAccept(ev); $event.stopPropagation()">
+                            <mat-icon>check_circle</mat-icon>
+                          </button>
+
+                          <button mat-icon-button
+                                  matTooltip="Reject"
+                                  (click)="onReject(ev); $event.stopPropagation()">
+                            <mat-icon>cancel</mat-icon>
+                          </button>
+
+                          <button mat-icon-button
+                                  matTooltip="View"
+                                  (click)="onView(ev); $event.stopPropagation()">
+                            <mat-icon>visibility</mat-icon>
+                          </button>
                         </div>
-                        <div class="event-time">
-                          {{ ev.followUpDateTime | date:'shortTime' }}
-                        </div>
+
                       </div>
                     </div>
                   </div>
                 </div>
+
 
               </div>
             </div>

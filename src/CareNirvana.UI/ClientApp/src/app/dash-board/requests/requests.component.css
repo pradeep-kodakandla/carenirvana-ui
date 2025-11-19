@@ -705,7 +705,7 @@ tr.example-element-row:not(.example-expanded-row):active {
   border-bottom: 1px solid #e5e7eb;
   background-color: #ffffff;
   text-align: center;
-  height:58px;
+  height: 58px;
 }
 
   .day-header .dow {
@@ -751,11 +751,11 @@ tr.example-element-row:not(.example-expanded-row):active {
 
 
 .time-grid .time-event {
-  position: absolute;   /* key: this removes it from the normal flow */
+  position: absolute; /* key: this removes it from the normal flow */
   left: 4px;
   right: 4px;
   top: 2px;
-  bottom: 2px;          /* fill the row vertically */
+  bottom: 2px; /* fill the row vertically */
   padding: 4px 6px;
   border-radius: 4px;
   background-color: #e0edff;
@@ -764,13 +764,13 @@ tr.example-element-row:not(.example-expanded-row):active {
   overflow: hidden;
 }
 
-/* prevent long text from forcing height – just ellipsis it */
-.time-grid .time-event .event-title,
-.time-grid .time-event .event-time {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+  /* prevent long text from forcing height – just ellipsis it */
+  .time-grid .time-event .event-title,
+  .time-grid .time-event .event-time {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 /* Highlight today's cell in month grid */
 .calendar-day.today {
   outline: 2px solid #2563eb; /* strong blue border */
@@ -789,4 +789,97 @@ tr.example-element-row:not(.example-expanded-row):active {
   background-color: #2563eb;
   color: #ffffff;
   border-radius: 4px 4px 0 0;
+}
+
+
+.time-event {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+
+.event-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.event-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 1px;
+  margin-left: 3px;
+}
+
+/* make tooltip respect the \n line breaks */
+.activity-tooltip {
+  white-space: pre-line;
+  font-size: 12px;
+}
+
+
+
+.workgroup-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 8px 0;
+}
+
+.wg-chip {
+  border-radius: 999px;
+  padding: 4px 10px;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+  .wg-chip:hover {
+    background: #e5f0ff;
+  }
+
+  .wg-chip.active {
+    background: #2563eb;
+    color: #fff;
+    border-color: #2563eb;
+  }
+
+.calendar-list-title {
+  font-weight: 600;
+  margin-top: 12px;
+}
+
+.calendar-list-subtitle {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.calendar-list-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+}
+
+.color-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #9ca3af;
+}
+
+
+.user-search {
+  margin: 6px 0 8px 0;
+}
+
+.user-search-input {
+  width: 100%;
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid #d1d5db;
+  font-size: 12px;
 }
