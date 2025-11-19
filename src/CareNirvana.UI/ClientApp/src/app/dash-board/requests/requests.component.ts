@@ -10,14 +10,25 @@ import { HeaderService } from 'src/app/service/header.service';
 import { Router, ActivatedRoute } from '@angular/router';
 import { MemberService } from 'src/app/service/shared-member.service';
 
-
+interface ActivityItem {
+  activityType?: string;
+  followUpDateTime?: string | Date;
+  dueDate?: string | Date;
+  firstName?: string;
+  lastName?: string;
+  memberId?: number;
+  status?: string;
+  // ...other fields you already have
+}
 
 interface CalendarDay {
   date: Date;
   isCurrentMonth: boolean;
   isToday: boolean;
-  activities: any[]; // same shape as rows in dataSource
+  activities: ActivityItem[]; // same shape as rows in dataSource
 }
+
+type CalendarViewRange = 'day' | 'workweek' | 'week' | 'month';
 
 @Component({
   selector: 'app-requests',
@@ -31,11 +42,28 @@ export class RequestsComponent implements OnInit, AfterViewInit {
   weekDays: string[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   currentMonth: Date = new Date();
   calendarDays: CalendarDay[] = [];
-  activities: any[] = [];
-  // controls Day / Week / Month inside the calendar view
-  calendarViewRange: 'day' | 'week' | 'month' = 'month';
-  // which day is currently “selected” for day/week views
+  calendarViewRange: CalendarViewRange = 'workweek';  // default like Outlook
+  currentDate: Date = new Date();
   selectedDate: Date = new Date();
+
+  visibleCalendarDays: CalendarDay[] = [];
+  activeRangeDays: CalendarDay[] = [];
+
+  // hours shown in the time grid (change to taste)
+  //hours: number[] = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+  hours: number[] = Array.from({ length: 24 }, (_, i) => i);
+
+  rangeLabel = '';
+
+  // sample “My calendars” data – wire to your own filters later
+  userCalendars = [
+    { id: 1, name: 'Calendar', color: '#2563eb', selected: true },
+    { id: 2, name: 'Reminders', color: '#16a34a', selected: true }
+  ];
+
+  // this should already exist in your component
+  activities: ActivityItem[] = [];
+
 
   displayedColumns: string[] = [
     'module',
@@ -82,6 +110,8 @@ export class RequestsComponent implements OnInit, AfterViewInit {
 
   ngOnInit(): void {
     this.filtersForm = this.fb.group({}); // empty grid per request
+    this.buildMonthGrid();
+    this.buildActiveRangeDays();
     this.loadData();
   }
 
@@ -124,14 +154,16 @@ export class RequestsComponent implements OnInit, AfterViewInit {
         this.dataSource.data = this.activities;
         this.rawData = Array.isArray(rows) ? rows : [];
         this.recomputeAll();
-        this.buildCalendar();
+        this.buildMonthGrid();
+        this.buildActiveRangeDays();
+
       },
       error: () => {
         this.rawData = [];
         this.recomputeAll();
         this.activities = [];
         this.dataSource.data = [];
-        this.buildCalendar();
+
       }
     });
   }
@@ -325,128 +357,249 @@ export class RequestsComponent implements OnInit, AfterViewInit {
     this.viewMode = mode;
   }
 
-  changeMonth(delta: number): void {
-    const year = this.currentMonth.getFullYear();
-    const month = this.currentMonth.getMonth() + delta;
-    this.currentMonth = new Date(year, month, 1);
-    this.buildCalendar();
-  }
 
-  private buildCalendar(): void {
-    if (!this.activities) {
-      this.calendarDays = [];
-      return;
-    }
+  /************Calendar Control**********/
+  /** Build month grid (6x7) for currentMonth */
+  private buildMonthGrid(): void {
+    const base = this.stripTime(this.currentMonth);
+    const firstOfMonth = new Date(base.getFullYear(), base.getMonth(), 1);
+    const start = new Date(firstOfMonth);
+    const dayOfWeek = start.getDay(); // 0..6
 
-    const year = this.currentMonth.getFullYear();
-    const month = this.currentMonth.getMonth();
+    // go back to Sunday of the first row
+    start.setDate(start.getDate() - dayOfWeek);
 
-    const firstOfMonth = new Date(year, month, 1);
-    const firstDayOfWeek = firstOfMonth.getDay(); // 0=Sun
-    const calendarStart = new Date(firstOfMonth);
-    calendarStart.setDate(firstOfMonth.getDate() - firstDayOfWeek);
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const days: CalendarDay[] = [];
+    this.visibleCalendarDays = [];
+    const today = this.stripTime(new Date());
 
     for (let i = 0; i < 42; i++) {
-      const date = new Date(calendarStart);
-      date.setDate(calendarStart.getDate() + i);
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
 
-      const dayStart = new Date(date);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(date);
-      dayEnd.setHours(23, 59, 59, 999);
-
-      const dayActivities = this.activities.filter(a => {
-        if (!a.followUpDateTime) { return false; }
-        const d = new Date(a.followUpDateTime);
-        return d >= dayStart && d <= dayEnd;
-      });
-
-      days.push({
-        date,
-        isCurrentMonth: date.getMonth() === month,
-        isToday: date.getTime() === today.getTime(),
-        activities: dayActivities
+      this.visibleCalendarDays.push({
+        date: d,
+        isCurrentMonth: d.getMonth() === base.getMonth(),
+        isToday: this.isSameDate(d, today),
+        activities: this.getActivitiesForDate(d)
       });
     }
 
-    this.calendarDays = days;
+    this.updateRangeLabel();
   }
 
-  // Optional: click handlers
-  onCalendarEventClick(activity: any, event: MouseEvent): void {
-    event.stopPropagation();
-    // You can reuse your row click / open details / navigate, e.g.:
-    // this.onMemberClick(activity.memberId, activity.firstName + ' ' + activity.lastName);
+  /** For day/week/work-week time grid */
+  private buildActiveRangeDays(): void {
+    const base = this.stripTime(this.selectedDate || this.currentDate);
+    let start: Date;
+    let end: Date;
+
+    if (this.calendarViewRange === 'day') {
+      start = end = base;
+    } else if (this.calendarViewRange === 'week') {
+      // Sunday–Saturday
+      start = new Date(base);
+      start.setDate(base.getDate() - base.getDay());
+      end = new Date(start);
+      end.setDate(start.getDate() + 6);
+    } else {
+      // work week: Monday–Friday
+      const dow = base.getDay(); // 0=Sun..6=Sat
+      start = new Date(base);
+      start.setDate(base.getDate() - ((dow + 6) % 7)); // back to Monday
+      end = new Date(start);
+      end.setDate(start.getDate() + 4);
+    }
+
+    const today = this.stripTime(new Date());
+    this.activeRangeDays = [];
+
+    const cursor = new Date(start);
+    while (cursor <= end) {
+      this.activeRangeDays.push({
+        date: new Date(cursor),
+        isCurrentMonth: cursor.getMonth() === this.currentMonth.getMonth(),
+        isToday: this.isSameDate(cursor, today),
+        activities: this.getActivitiesForDate(cursor)   // 🔴 same as month
+      });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    this.updateRangeLabel(start, end);
+  }
+
+  /** Get activities whose followUpDateTime (or dueDate) is on a specific date */
+  private getActivitiesForDate(date: Date): ActivityItem[] {
+    const target = this.stripTime(date).getTime();
+    return (this.activities || []).filter(ev => {
+      const src = ev.followUpDateTime || ev.dueDate;
+      if (!src) { return false; }
+      const d = this.stripTime(new Date(src));
+      return d.getTime() === target;
+    });
+  }
+
+  // === toolbar / nav actions ===
+
+  setCalendarViewRange(range: CalendarViewRange): void {
+    this.calendarViewRange = range;
+    if (range === 'month') {
+      this.currentMonth = new Date(this.selectedDate);
+      this.buildMonthGrid();
+    } else {
+      this.buildActiveRangeDays();
+    }
+  }
+
+  goToToday(): void {
+    const today = new Date();
+    this.currentDate = today;
+    this.selectedDate = today;
+    this.currentMonth = today;
+    this.buildMonthGrid();
+    this.buildActiveRangeDays();
+  }
+
+  goToPreviousRange(): void {
+    const base = new Date(this.selectedDate);
+    if (this.calendarViewRange === 'month') {
+      this.currentMonth = new Date(
+        this.currentMonth.getFullYear(),
+        this.currentMonth.getMonth() - 1,
+        1
+      );
+      this.selectedDate = this.currentMonth;
+      this.buildMonthGrid();
+    } else if (this.calendarViewRange === 'day') {
+      base.setDate(base.getDate() - 1);
+      this.selectedDate = base;
+    } else if (this.calendarViewRange === 'week') {
+      base.setDate(base.getDate() - 7);
+      this.selectedDate = base;
+    } else {
+      // work week
+      base.setDate(base.getDate() - 7);
+      this.selectedDate = base;
+    }
+    this.buildActiveRangeDays();
+  }
+
+  goToNextRange(): void {
+    const base = new Date(this.selectedDate);
+    if (this.calendarViewRange === 'month') {
+      this.currentMonth = new Date(
+        this.currentMonth.getFullYear(),
+        this.currentMonth.getMonth() + 1,
+        1
+      );
+      this.selectedDate = this.currentMonth;
+      this.buildMonthGrid();
+    } else if (this.calendarViewRange === 'day') {
+      base.setDate(base.getDate() + 1);
+      this.selectedDate = base;
+    } else if (this.calendarViewRange === 'week') {
+      base.setDate(base.getDate() + 7);
+      this.selectedDate = base;
+    } else {
+      base.setDate(base.getDate() + 7);
+      this.selectedDate = base;
+    }
+    this.buildActiveRangeDays();
+  }
+
+  changeMonth(offset: number): void {
+    this.currentMonth = new Date(
+      this.currentMonth.getFullYear(),
+      this.currentMonth.getMonth() + offset,
+      1
+    );
+    this.buildMonthGrid();
+  }
+
+  onMiniDayClick(day: CalendarDay): void {
+    this.selectedDate = new Date(day.date);
+    if (this.calendarViewRange === 'month') {
+      // keep month view but move active range anchor
+      this.buildActiveRangeDays();
+    } else {
+      this.buildActiveRangeDays();
+    }
   }
 
   onCalendarDayClick(day: CalendarDay, event: MouseEvent): void {
-    if (event) {
-      event.stopPropagation();
+    event.stopPropagation();
+    this.selectedDate = new Date(day.date);
+    if (this.calendarViewRange !== 'month') {
+      this.buildActiveRangeDays();
     }
-
-    this.selectedDate = day.date;
-
+    // existing logic you may already have (open drawer, etc.)
   }
 
-  setCalendarViewRange(range: 'day' | 'week' | 'month'): void {
-    this.calendarViewRange = range;
+  onCalendarEventClick(ev: ActivityItem, event: MouseEvent): void {
+    event.stopPropagation();
+    // hook into your existing event click handler
+  }
 
-    // make sure we always have a selected date
-    if (!this.selectedDate) {
-      this.selectedDate = new Date(this.currentMonth);
+  // === helpers ===
+
+  isSameDate(a: Date, b: Date): boolean {
+    return a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate();
+  }
+
+  private stripTime(d: Date): Date {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }
+
+  private updateRangeLabel(start?: Date, end?: Date): void {
+    if (this.calendarViewRange === 'month') {
+      this.rangeLabel = this.currentMonth.toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric'
+      });
+      return;
+    }
+
+    const s = this.stripTime(start || this.activeRangeDays[0]?.date || new Date());
+    const e = this.stripTime(end || this.activeRangeDays[this.activeRangeDays.length - 1]?.date || s);
+
+    if (this.isSameDate(s, e)) {
+      this.rangeLabel = s.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    } else {
+      const left = s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const right = e.toLocaleDateString('en-US', {
+        month: s.getMonth() === e.getMonth() ? 'short' : 'short',
+        day: 'numeric',
+        year: s.getFullYear() === e.getFullYear() ? undefined : 'numeric'
+      });
+      this.rangeLabel = `${left} – ${right}`;
     }
   }
 
-  get visibleCalendarDays(): any[] {
-    if (!this.calendarDays || !this.calendarDays.length) {
-      return [];
-    }
-
-    switch (this.calendarViewRange) {
-      case 'day':
-        return this.getDayFromDate(this.selectedDate);
-      case 'week':
-        return this.getWeekFromDate(this.selectedDate);
-      case 'month':
-      default:
-        return this.calendarDays;
-    }
+  getTimeLabel(hour: number): string {
+    const suffix = hour >= 12 ? 'PM' : 'AM';
+    const h12 = hour % 12 === 0 ? 12 : hour % 12;
+    return `${h12}:00 ${suffix}`;
   }
 
-  private getDayFromDate(date: Date): any[] {
-    const d = this.findCalendarDay(date);
-    return d ? [d] : [];
+  getEventsForHour(day: CalendarDay, hour: number): ActivityItem[] {
+    return day.activities.filter(ev => {
+      if (!ev.followUpDateTime && !ev.dueDate) { return false; }
+      const src = ev.followUpDateTime || ev.dueDate;
+      const d = new Date(src as any);
+      return d.getHours() === hour;
+    });
   }
 
-  private getWeekFromDate(date: Date): any[] {
-    const target = this.findCalendarDay(date);
-    if (!target) {
-      return this.calendarDays.slice(0, 7);
-    }
 
-    const index = this.calendarDays.indexOf(target);
-
-    // assuming week starts on Sunday (getDay() 0–6)
-    const offset = target.date.getDay(); // 0 = Sun, 1 = Mon, ...
-    const start = Math.max(0, index - offset);
-    return this.calendarDays.slice(start, start + 7);
-  }
-
-  private findCalendarDay(date: Date): any | undefined {
-    const y = date.getFullYear();
-    const m = date.getMonth();
-    const d = date.getDate();
-
-    return this.calendarDays.find((x: any) =>
-      x.date.getFullYear() === y &&
-      x.date.getMonth() === m &&
-      x.date.getDate() === d
-    );
+  toggleCalendar(cal: { id: number; name: string; color: string; selected: boolean }): void {
+    cal.selected = !cal.selected;
+    // You can use this to filter activities by calendar later.
   }
 
 }

@@ -372,10 +372,11 @@ export class MemberActivityComponent implements OnInit, OnChanges {
       priorityId,
       memberDetailsId: this.memberDetailsId!,
       followUpDateTime: formValue.followUpDateTime
-        ? new Date(formValue.followUpDateTime).toISOString()
+        ? this.toLocalDateTimeString(formValue.followUpDateTime)
         : undefined,
+
       dueDate: formValue.dueDate
-        ? new Date(formValue.dueDate).toISOString()
+        ? this.toLocalDateTimeString(formValue.dueDate)
         : undefined,
       referTo: referTo ?? undefined,
       isWorkBasket: isWorkBasket,
@@ -405,6 +406,19 @@ export class MemberActivityComponent implements OnInit, OnChanges {
         this.isSaving = false;
       }
     });
+  }
+
+  private toLocalDateTimeString(value: any): string {
+    const d = new Date(value);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const seconds = String(d.getSeconds()).padStart(2, '0');
+
+    // no Z, no timezone → just "wall time"
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
   }
 
 

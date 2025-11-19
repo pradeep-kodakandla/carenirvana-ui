@@ -34,20 +34,20 @@
       </div>
 
       <!-- View toggle -->
-      <div class="view-toggle"
-           style="display:flex;align-items:center;gap:4px;margin-right:8px;">
+      <div class="segment-group">
         <button type="button"
-                class="view-btn"
+                class="segment"
                 [class.active]="viewMode === 'calendar'"
                 (click)="setViewMode('calendar')">
           Calendar
         </button>
         <button type="button"
-                class="view-btn"
+                class="segment"
                 [class.active]="viewMode === 'table'"
                 (click)="setViewMode('table')">
           Table
         </button>
+
       </div>
 
       <!-- Due chips -->
@@ -96,75 +96,190 @@
       </form>
     </section>
 
+
     <!-- CALENDAR VIEW -->
-    <section *ngIf="viewMode === 'calendar'" class="calendar-wrapper">
+    <!-- CALENDAR VIEW -->
+    <section *ngIf="viewMode === 'calendar'" class="calendar-shell">
 
-      <div class="calendar-header">
-        <button type="button" class="nav-btn" (click)="changeMonth(-1)">‹</button>
-        <div class="month-label">
-          {{ currentMonth | date:'MMMM yyyy' }}
-        </div>
-        <button type="button" class="nav-btn" (click)="changeMonth(1)">›</button>
-      </div>
-      <div class="calendar-range-toggle">
-        <button type="button"
-                [class.active]="calendarViewRange === 'day'"
-                (click)="setCalendarViewRange('day')">
-          Day
-        </button>
-        <button type="button"
-                [class.active]="calendarViewRange === 'week'"
-                (click)="setCalendarViewRange('week')">
-          Week
-        </button>
-        <button type="button"
-                [class.active]="calendarViewRange === 'month'"
-                (click)="setCalendarViewRange('month')">
-          Month
-        </button>
-      </div>
-      <div class="calendar-grid">
-        <!-- Day-of-week headers -->
-        <div class="calendar-day-header" *ngFor="let d of weekDays">
-          {{ d }}
-        </div>
-
-        <!-- 6-week grid (like Outlook month view) -->
-        <div class="calendar-day"
-             *ngFor="let day of visibleCalendarDays"
-             [class.other-month]="!day.isCurrentMonth"
-             [class.today]="day.isToday"
-             (click)="onCalendarDayClick(day, $event)">
-
-          <div class="date-label">
-            {{ day.date.getDate() }}
+      <div class="calendar-layout">
+        <!-- LEFT PANEL (mini calendar + calendars list) -->
+        <aside class="calendar-sidebar">
+          <div class="mini-header">
+            <button type="button" class="today-btn" (click)="goToToday()">Today</button>
+            <div class="mini-nav">
+              <button type="button" class="nav-icon" (click)="changeMonth(-1)">‹</button>
+              <span class="mini-month-label">
+                {{ currentMonth | date:'MMMM yyyy' }}
+              </span>
+              <button type="button" class="nav-icon" (click)="changeMonth(1)">›</button>
+            </div>
           </div>
 
+          <!-- mini month calendar -->
+          <div class="mini-weekdays">
+            <span *ngFor="let d of weekDays">{{ d }}</span>
+          </div>
+          <div class="mini-month-grid">
+            <button type="button"
+                    class="mini-day"
+                    *ngFor="let day of visibleCalendarDays"
+                    [class.other-month]="!day.isCurrentMonth"
+                    [class.today]="day.isToday"
+                    [class.selected]="isSameDate(day.date, selectedDate)"
+                    (click)="onMiniDayClick(day)">
+              {{ day.date.getDate() }}
+            </button>
+          </div>
 
-          <div class="events-list">
-            <div class="event-pill"
-                 *ngFor="let ev of $any(day).activities | slice:0:3"
-                 [ngClass]="getDueDateClass($any(ev).dueDate)"
-                 (click)="onCalendarEventClick($any(ev), $event)">
-              <div class="event-title">
-                {{ $any(ev).activityType || 'Activity' }}
-              </div>
-              <div class="event-time">
-                {{ $any(ev).followUpDateTime | date:'shortTime' }}
-              </div>
+          <!-- “My calendars” (static sample, wire to your data if needed) -->
+          <div class="calendar-list">
+            <div class="calendar-list-title">My calendars</div>
+            <label class="calendar-list-item"
+                   *ngFor="let cal of userCalendars">
+              <input type="checkbox"
+                     [checked]="cal.selected"
+                     (change)="toggleCalendar(cal)">
+              <span class="color-dot" [style.backgroundColor]="cal.color"></span>
+              <span class="calendar-name">{{ cal.name }}</span>
+            </label>
+          </div>
+        </aside>
+
+        <!-- RIGHT PANEL (main Outlook-like calendar) -->
+        <main class="calendar-main">
+
+          <!-- toolbar -->
+          <div class="calendar-toolbar">
+            <div class="toolbar-left">
+              <button type="button" class="nav-icon" (click)="goToPreviousRange()">‹</button>
+              <button type="button" class="today-btn" (click)="goToToday()">Today</button>
+              <button type="button" class="nav-icon" (click)="goToNextRange()">›</button>
+              <span class="range-label">{{ rangeLabel }}</span>
             </div>
 
-            <!-- if more than 3 events, small "+n more" -->
-            <div class="more-pill"
-                 *ngIf="$any(day).activities && $any(day).activities.length > 3"
+            <div class="toolbar-right">
+              <!-- Day / Work week / Week / Month -->
+              <div class="segment-group">
+                <button type="button"
+                        class="segment"
+                        [class.active]="calendarViewRange === 'day'"
+                        (click)="setCalendarViewRange('day')">
+                  Day
+                </button>
+                <button type="button"
+                        class="segment"
+                        [class.active]="calendarViewRange === 'workweek'"
+                        (click)="setCalendarViewRange('workweek')">
+                  Work week
+                </button>
+                <button type="button"
+                        class="segment"
+                        [class.active]="calendarViewRange === 'week'"
+                        (click)="setCalendarViewRange('week')">
+                  Week
+                </button>
+                <button type="button"
+                        class="segment"
+                        [class.active]="calendarViewRange === 'month'"
+                        (click)="setCalendarViewRange('month')">
+                  Month
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- MONTH VIEW (big 6x7 grid) -->
+          <div *ngIf="calendarViewRange === 'month'" class="calendar-grid">
+            <!-- day headers -->
+            <div class="calendar-day-header" *ngFor="let d of weekDays">
+              {{ d }}
+            </div>
+
+            <!-- 6-week grid -->
+            <div class="calendar-day"
+                 *ngFor="let day of visibleCalendarDays"
+                 [class.other-month]="!day.isCurrentMonth"
+                 [class.today]="day.isToday"
                  (click)="onCalendarDayClick(day, $event)">
-              +{{ $any(day).activities.length - 3 }} more
+
+              <div class="date-label">
+                {{ day.date.getDate() }}
+              </div>
+
+              <div class="events-list">
+                <div class="event-pill"
+                     *ngFor="let ev of day.activities | slice:0:3"
+                     [ngClass]="getDueDateClass(ev.dueDate)"
+                     (click)="onCalendarEventClick(ev, $event)">
+                  <div class="event-title">
+                    {{ ev.activityType || 'Activity' }}
+                  </div>
+                  <div class="event-time">
+                    {{ ev.followUpDateTime | date:'shortTime' }}
+                  </div>
+                </div>
+
+                <div class="more-pill"
+                     *ngIf="day.activities && day.activities.length > 3"
+                     (click)="onCalendarDayClick(day, $event)">
+                  +{{ day.activities.length - 3 }} more
+                </div>
+              </div>
             </div>
           </div>
 
-        </div>
+          <!-- DAY / WORK WEEK / WEEK VIEW (time grid) -->
+          <div *ngIf="calendarViewRange !== 'month'" class="time-grid">
+            <!-- times column -->
+            <div class="time-column">
+              <div class="time-cell time-header"></div>
+              <div class="time-cell"
+                   *ngFor="let h of hours">
+                {{ getTimeLabel(h) }}
+              </div>
+            </div>
+
+            <!-- day columns -->
+            <div class="day-columns">
+              <div class="day-column"
+                   *ngFor="let day of activeRangeDays"
+                   [class.today]="day.isToday">
+                <div class="day-header">
+                  <div class="dow">{{ day.date | date:'EEE' }}</div>
+                  <div class="dom">{{ day.date | date:'MMM d' }}</div>
+                </div>
+
+                <div class="day-body">
+                  <div class="time-cell"
+                       *ngFor="let h of hours">
+                    <div class="slot">
+                      <div class="time-event"
+                           *ngFor="let ev of getEventsForHour(day, h)"
+                           [ngClass]="getDueDateClass(ev.dueDate)"
+                           (click)="onCalendarEventClick(ev, $event)">
+                        <div class="event-title">
+                          {{ ev.activityType || 'Activity' }}
+                        </div>
+                        <div class="event-time">
+                          {{ (ev.firstName || '') + ' ' + (ev.lastName || '') }}
+                        </div>
+                        <div class="event-time">
+                          {{ ev.followUpDateTime | date:'shortTime' }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+        </main>
       </div>
     </section>
+
+
 
     <!-- TABLE VIEW -->
     <section *ngIf="viewMode === 'table'" class="table-view-wrapper">
