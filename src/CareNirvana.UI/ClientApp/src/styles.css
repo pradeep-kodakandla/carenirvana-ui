@@ -109,8 +109,8 @@ body {
 /* Table Styles */
 .mng-table {
   width: 100%;
-/*  border-collapse: separate;
-*/  border-spacing: 0;
+  /*  border-collapse: separate;
+*/ border-spacing: 0;
   font-family: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", system-ui, -apple-system, sans-serif;
   font-size: 14px;
 }
@@ -201,21 +201,55 @@ body {
   box-shadow: none;
 }
 
-/*.search-bar-container-table {
-  padding: 0px 56px 0px 8px;
-  background: #eaf1fb;
-  border-radius: 5px;
-  display: flex;
-  align-items: center;
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  /*  margin: 0 2px;*/
+  border-radius: 50%;
+  /*  padding: 0;*/
+  line-height: 32px;
 }
-*/
-/*.input {
-  font-size: 1.1rem;
-  outline: none;
-  border: none;
-  background: inherit;
-  min-width: 500px;
-}*/
+
+  /* Base icon style */
+  .icon-btn mat-icon {
+    font-size: 20px;
+  }
+
+  /* Approve (green) */
+  .icon-btn.approve mat-icon {
+    color: #2e7d32; /* dark green */
+  }
+
+  .icon-btn.approve:hover {
+    background-color: #e8f5e9; /* light green */
+  }
+
+  /* Reject (red) */
+  .icon-btn.reject mat-icon {
+    color: #c62828; /* dark red */
+  }
+
+  .icon-btn.reject:hover {
+    background-color: #ffebee; /* light red */
+  }
+
+  /* View (blue) */
+  .icon-btn.view mat-icon {
+    color: #1565c0; /* primary blue */
+  }
+
+  .icon-btn.view:hover {
+    background-color: #e3f2fd; /* light blue */
+  }
+
+  /* Acknowledge / Complete (amber) */
+  .icon-btn.acknowledge mat-icon {
+    color: #ff8f00; /* amber/orange */
+  }
+
+  .icon-btn.acknowledge:hover {
+    background-color: #fff3e0; /* light amber */
+  }
 
 /* Container for the table */
 .table-container {
@@ -294,8 +328,12 @@ mat-label {
   text-align: center;
 }
 
-button {
+/*button {
   margin: 0 5px;
+}*/
+
+.mat-mdc-tooltip {
+  white-space: pre-line;
 }
 
 icon-admin {
@@ -462,4 +500,68 @@ icon-admin {
   width: 100% !important;
   max-width: none !important;
   padding: 12px 14px;
+}
+
+
+/* Style the outline label */
+.form-outline {
+  position: relative; /* needed for floating label */
+  border-radius: 4px;
+  background-color: #ffffff;
+}
+
+/* make the custom controls fill the outline */
+.form-outline {
+  position: relative;
+}
+
+.floating-label {
+  position: absolute;
+  top: -10px;
+  left: 12px;
+  background-color: white;
+  font-size: 0.85rem;
+  color: #555;
+  z-index: 10;
+}
+
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.form-group-outline {
+  position: relative;
+  margin-top: 1.5rem;
+}
+
+  .form-group-outline label {
+    position: absolute;
+    top: -10px;
+    left: 10px;
+    background: white;
+    font-size: 13px;
+    color: #333;
+    font-weight: 500;
+    z-index: 1;
+  }
+
+  .form-group-outline input,
+  .form-group-outline select,
+  .form-group-outline textarea
+  .form-group-outline datetime {
+    width: 100%;
+    padding: 12px 10px;
+    border-radius: 4px;
+    font-size: 14px;
+    background-color: white;
+  }
+
+.form-grid .form-outline,
+.form-grid .dropdown-container {
+  margin-bottom: 15px !important;
+  padding-bottom: 0 !important;
+  border-radius: 4px;
 }

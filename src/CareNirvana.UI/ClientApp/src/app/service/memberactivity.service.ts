@@ -93,6 +93,29 @@ export interface ActivityFilter {
   memberDetailsId?: number;
 }
 
+export interface MemberActivityAssignedUserItem {
+  userId: number;
+  userFullName?: string | null;
+  status?: 'Accepted' | 'Rejected' | 'Request' | string | null;
+}
+
+export interface MemberActivityDetailItem {
+  memberActivityId: number;
+  memberDetailsId: number;
+  activityTypeId?: number | null;
+  priorityId?: number | null;
+  followUpDateTime?: string | null; // ISO string from API
+  dueDate?: string | null;
+  comment?: string | null;
+  statusId?: number | null;
+  referTo?: number | null;
+  isWorkBasket: boolean;
+  memberActivityWorkGroupId?: number | null;
+  workGroupWorkBasketId?: number | null;
+
+  assignedUsers: MemberActivityAssignedUserItem[];
+}
+
 
 @Injectable({
   providedIn: 'root'
@@ -228,4 +251,9 @@ export class MemberactivityService {
       { params }
     );
   }
+  getMemberActivityDetail(memberActivityId: number): Observable<MemberActivityDetailItem> {
+    const url = `${this.baseUrl}/${memberActivityId}`;
+    return this.http.get<MemberActivityDetailItem>(url);
+  }
 }
+

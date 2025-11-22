@@ -87,18 +87,18 @@
       </div>
     </div>
 
-    <div class="workbasket-toggle">
+    <div class="workbasket-toggle" *ngIf="!isView">
       <label class="form-check-label">
         <input type="checkbox"
                class="form-check-input"
                formControlName="isWorkBasketActivity" />
-        Work basket activity
+        Work Basket
       </label>
     </div>
   </div>
 
   <!-- Work Group -->
-  <div class="form-outline dropdown-container">
+  <!--<div class="form-outline dropdown-container">
     <label class="floating-label">Work Group</label>
     <ui-multi-check-dropdown formControlName="workGroups"
                              [options]="workGroupOptions"
@@ -106,10 +106,9 @@
                              [showChips]="false"
                              placeholder="Select work groups">
     </ui-multi-check-dropdown>
-  </div>
-
+  </div>-->
   <!-- Work Basket -->
-  <div class="form-outline dropdown-container">
+  <!--<div class="form-outline dropdown-container">
     <label class="floating-label">Work Basket</label>
     <ui-multi-check-dropdown formControlName="workBasket"
                              [options]="workBasketOptions"
@@ -117,10 +116,9 @@
                              [showChips]="false"
                              placeholder="Select work basket">
     </ui-multi-check-dropdown>
-  </div>
-
+  </div>-->
   <!-- Work Basket Users -->
-  <div class="form-outline dropdown-container">
+  <!--<div class="form-outline dropdown-container">
     <label class="floating-label">Work Basket Users</label>
     <ui-multi-check-dropdown formControlName="workBasketUser"
                              [options]="workBasketUserOptions"
@@ -128,7 +126,44 @@
                              [showChips]="false"
                              placeholder="Select work basket user">
     </ui-multi-check-dropdown>
-  </div>
+  </div>-->
+  <!-- Show these ONLY when Work Basket is checked -->
+  <ng-container *ngIf="activityForm.get('isWorkBasketActivity')?.value && !isView">
+
+    <!-- Work Group -->
+    <div class="form-outline dropdown-container">
+      <label class="floating-label">Work Group</label>
+      <ui-multi-check-dropdown formControlName="workGroups"
+                               [options]="workGroupOptions"
+                               [defaultSelect]="true"
+                               [showChips]="false"
+                               placeholder="Select work groups">
+      </ui-multi-check-dropdown>
+    </div>
+
+    <!-- Work Basket -->
+    <div class="form-outline dropdown-container">
+      <label class="floating-label">Work Basket</label>
+      <ui-multi-check-dropdown formControlName="workBasket"
+                               [options]="workBasketOptions"
+                               [defaultSelect]="true"
+                               [showChips]="false"
+                               placeholder="Select work basket">
+      </ui-multi-check-dropdown>
+    </div>
+
+    <!-- Work Basket Users -->
+    <div class="form-outline dropdown-container">
+      <label class="floating-label">Work Basket Users</label>
+      <ui-multi-check-dropdown formControlName="workBasketUser"
+                               [options]="workBasketUserOptions"
+                               [defaultSelect]="true"
+                               [showChips]="false"
+                               placeholder="Select work basket user">
+      </ui-multi-check-dropdown>
+    </div>
+
+  </ng-container>
 
   <!-- spacer cell for grid alignment -->
   <div></div>
@@ -151,14 +186,46 @@
     </div>
   </div>
 
+  <!-- Assigned Users (View mode) -->
+  <div *ngIf="isView && assignedUsers && assignedUsers.length"
+       class="assigned-users-container"
+       style="grid-column: span 2; margin-top: 10px;">
+
+    <h5>Assigned Users</h5>
+
+    <table class="table table-sm table-bordered assigned-users-table">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th class="text-center">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let u of assignedUsers">
+          <td>{{ u.userFullName || ('User ' + u.userId) }}</td>
+          <td class="text-center">
+            <span class="status-pill"
+                  [ngClass]="{
+                  'status-accepted': u.status === 'Accepted',
+                  'status-rejected': u.status === 'Rejected',
+                  'status-request': !u.status || u.status === 'Request'
+                }">
+              {{ u.status || 'Request' }}
+            </span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
   <!-- Actions -->
-  <div class="form-actions" style="grid-column: span 2;">
+  <div class="form-actions" style="grid-column: span 2;" *ngIf="!isView">
     <button type="submit"
             class="btn btn-primary"
             [disabled]="activityForm.invalid">
       Save Activity
     </button>
-    <button type="button"
+    <button type="button" *ngIf="noCancel"
             class="btn btn-secondary ms-2"
             (click)="onCancel()">
       Cancel

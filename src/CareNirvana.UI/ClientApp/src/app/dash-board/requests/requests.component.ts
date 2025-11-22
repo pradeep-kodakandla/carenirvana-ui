@@ -64,7 +64,7 @@ type CalendarViewRange = 'day' | 'workweek' | 'week' | 'month';
 export class RequestsComponent implements OnInit, AfterViewInit {
 
   selectedDue = new Set<'OVERDUE' | 'TODAY' | 'FUTURE'>();
-  viewMode: 'calendar' | 'table' = 'calendar';
+  viewMode: 'calendar' | 'table' = 'table';
   weekDays: string[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   currentMonth: Date = new Date();
   calendarDays: CalendarDay[] = [];

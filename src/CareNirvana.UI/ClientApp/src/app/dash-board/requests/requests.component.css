@@ -883,3 +883,11 @@ tr.example-element-row:not(.example-expanded-row):active {
   border: 1px solid #d1d5db;
   font-size: 12px;
 }
+
+
+.actions-cell {
+  text-align: right;
+  white-space: nowrap;
+}
+
+

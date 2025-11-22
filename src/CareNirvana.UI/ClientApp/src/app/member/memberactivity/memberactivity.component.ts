@@ -1,6 +1,6 @@
 import { Component, Input, OnInit, OnChanges, SimpleChanges, Output, EventEmitter } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { MemberactivityService, MemberActivityRequestItem, CreateMemberActivityRequest, UpdateMemberActivityRequest, AcceptWorkGroupActivityRequest, RejectWorkGroupActivityRequest, DeleteMemberActivityRequest } from 'src/app/service/memberactivity.service';
+import { MemberactivityService, MemberActivityRequestItem, CreateMemberActivityRequest, UpdateMemberActivityRequest, AcceptWorkGroupActivityRequest, RejectWorkGroupActivityRequest, DeleteMemberActivityRequest, MemberActivityDetailItem, MemberActivityAssignedUserItem } from 'src/app/service/memberactivity.service';
 import { CrudService } from 'src/app/service/crud.service';
 import { AuthenticateService } from 'src/app/service/authentication.service';
 import { AuthService } from 'src/app/service/auth.service';
@@ -15,11 +15,15 @@ export class MemberActivityComponent implements OnInit, OnChanges {
 
   @Input() memberDetailsId: number | null = null;
   @Input() currentUserId: number | null = null;
+  @Input() noCancel: boolean | null = false;
+  @Input() memberActivityId?: number | null;
+  @Input() isView: boolean = false;
 
   @Output() activitySaved = new EventEmitter<number>();
   @Output() cancelled = new EventEmitter<void>();
 
   public activityForm!: FormGroup;
+  assignedUsers: MemberActivityAssignedUserItem[] = [];
 
   // dropdown options (fill these from your lookup services)
   activityTypeOptions: any[] = [];
@@ -55,6 +59,7 @@ export class MemberActivityComponent implements OnInit, OnChanges {
     if (changes['memberDetailsId'] && this.activityForm) {
       this.activityForm.patchValue({ memberDetailsId: this.memberDetailsId });
     }
+    this.loadActivityDetail(this.memberActivityId ?? 0);
   }
 
   private buildForm(): void {
@@ -69,9 +74,9 @@ export class MemberActivityComponent implements OnInit, OnChanges {
       assignTo: [null],          // required only when NOT work basket
       isWorkBasketActivity: [false],
 
-      workGroups: [{ value: [], disabled: true }],
-      workBasket: [{ value: [], disabled: true }],
-      workBasketUser: [{ value: [], disabled: true }],
+      workGroups: [{ value: [], disabled: false }],
+      workBasket: [{ value: [], disabled: false }],
+      workBasketUser: [{ value: [], disabled: false }],
 
       comments: ['', Validators.required]
     });
@@ -98,11 +103,7 @@ export class MemberActivityComponent implements OnInit, OnChanges {
         assignTo.setValue(null);
         assignTo.clearValidators();
         assignTo.disable();
-
-        workGroups.enable();
-        workBasket.enable();
-        workBasketUser.enable();
-
+        this.selectAllWorkBasketFieldsIfEmpty();
         // if you want them required in workbasket mode, uncomment:
         // workBasket.setValidators([Validators.required]);
       } else {
@@ -110,9 +111,6 @@ export class MemberActivityComponent implements OnInit, OnChanges {
         assignTo.enable();
         assignTo.setValidators([Validators.required]);
 
-        workGroups.disable();
-        workBasket.disable();
-        workBasketUser.disable();
         // workBasket.clearValidators();
       }
 
@@ -122,6 +120,31 @@ export class MemberActivityComponent implements OnInit, OnChanges {
       workBasketUser.updateValueAndValidity();
     });
   }
+
+
+  private selectAllWorkBasketFieldsIfEmpty(): void {
+    const wgCtrl = this.activityForm.get('workGroups');
+    const wbCtrl = this.activityForm.get('workBasket');
+    const wbUserCtrl = this.activityForm.get('workBasketUser');
+
+    if (!wgCtrl || !wbCtrl || !wbUserCtrl) {
+      return;
+    }
+
+    // only auto-select if nothing chosen yet
+    if (!Array.isArray(wgCtrl.value) || wgCtrl.value.length === 0) {
+      wgCtrl.setValue(this.workGroupOptions.map(o => o.value));
+    }
+
+    if (!Array.isArray(wbCtrl.value) || wbCtrl.value.length === 0) {
+      wbCtrl.setValue(this.workBasketOptions.map(o => o.value));
+    }
+
+    if (!Array.isArray(wbUserCtrl.value) || wbUserCtrl.value.length === 0) {
+      wbUserCtrl.setValue(this.workBasketUserOptions.map(o => o.value));
+    }
+  }
+
 
   loadUsers() {
     this.authenticateService.getAllUsers().subscribe({
@@ -252,71 +275,6 @@ export class MemberActivityComponent implements OnInit, OnChanges {
   compareId = (o1: any, o2: any): boolean =>
     o1 && o2 ? o1.id === o2.id : o1 === o2;
 
-  //onSubmit(): void {
-  //  if (this.activityForm.invalid || !this.currentUserId || !this.memberDetailsId) {
-  //    this.activityForm.markAllAsTouched();
-  //    return;
-  //  }
-
-  //  this.isSaving = true;
-
-  //  const formValue = this.activityForm.getRawValue();
-  //  const isWorkBasket = !!formValue.isWorkBasketActivity;
-
-  //  const activityTypeId = formValue.activityType?.id ?? null;
-  //  const priorityId = formValue.priority?.id ?? null;
-
-  //  // assignTo user id (direct activity)
-  //  const referTo = !isWorkBasket && formValue.assignTo
-  //    ? formValue.assignTo.id
-  //    : null;
-
-  //  // Work basket activity: pick the first selected work basket as workGroupWorkBasketId
-  //  let workGroupWorkBasketId: number | undefined;
-  //  if (isWorkBasket && formValue.workBasket && formValue.workBasket.length > 0) {
-  //    const firstBasket = formValue.workBasket[0];
-  //    workGroupWorkBasketId = firstBasket.id;
-  //  }
-
-  //  const payload: CreateMemberActivityRequest = {
-  //    activityTypeId,
-  //    priorityId,
-  //    memberDetailsId: this.memberDetailsId!,
-  //    followUpDateTime: formValue.followUpDateTime
-  //      ? new Date(formValue.followUpDateTime).toISOString()
-  //      : undefined,
-  //    dueDate: formValue.dueDate
-  //      ? new Date(formValue.dueDate).toISOString()
-  //      : undefined,
-  //    referTo,
-  //    isWorkBasket: isWorkBasket,
-  //    queueId: undefined, // set if you have a queue
-  //    comment: formValue.comments,
-  //    statusId: undefined, // set default status if needed
-  //    performedDateTime: undefined,
-  //    performedBy: undefined,
-  //    activeFlag: true,
-  //    workGroupWorkBasketId,
-  //    createdBy: this.currentUserId!
-  //  };
-  //  console.log('Submitting member activity', payload);
-  //  this.memberActivityService.createActivity(payload).subscribe({
-  //    next: res => {
-  //      this.isSaving = false;
-  //      this.activitySaved.emit(res.memberActivityId);
-  //      this.activityForm.reset({
-  //        memberDetailsId: this.memberDetailsId,
-  //        isWorkBasketActivity: false
-  //      });
-  //      console.log('Member activity saved', res);
-  //    },
-  //    error: err => {
-  //      console.error('Error saving member activity', err);
-  //      this.isSaving = false;
-  //    }
-  //  });
-  //}
-
   private getNumericValue(source: any): number | null {
     if (source === null || source === undefined) {
       return null;
@@ -428,5 +386,29 @@ export class MemberActivityComponent implements OnInit, OnChanges {
       isWorkBasketActivity: false
     });
     this.cancelled.emit();
+  }
+
+  private loadActivityDetail(id: number): void {
+    console.log('Loading activity detail for ID', id);
+    this.memberActivityService.getMemberActivityDetail(id).subscribe({
+      next: (detail: MemberActivityDetailItem) => {
+        console.log('Activity detail loaded', detail);
+
+        this.assignedUsers = detail.assignedUsers || [];
+
+        // Optional: patch the form with data from API
+        this.activityForm.patchValue({
+          activityType: detail.activityTypeId ?? null,
+          priority: detail.priorityId ?? null,
+          followUpDateTime: detail.followUpDateTime,
+          dueDate: detail.dueDate,
+          comments: detail.comment,
+          isWorkBasketActivity: detail.isWorkBasket
+        });
+      },
+      error: err => {
+        console.error('Error loading activity detail', err);
+      }
+    });
   }
 }

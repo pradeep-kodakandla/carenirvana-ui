@@ -34,7 +34,7 @@
       </div>
 
       <!-- View toggle -->
-      <div class="segment-group">
+      <!--<div class="segment-group">
         <button type="button"
                 class="segment"
                 [class.active]="viewMode === 'calendar'"
@@ -48,8 +48,7 @@
           Table
         </button>
 
-      </div>
-
+      </div>-->
       <!-- Due chips -->
       <div class="filters-col">
         <div class="chip-list">
@@ -119,7 +118,8 @@
 
     <!-- CALENDAR VIEW -->
     <!-- CALENDAR VIEW -->
-    <section *ngIf="viewMode === 'calendar'" class="calendar-shell">
+    <!--<section *ngIf="viewMode === 'calendar'" class="calendar-shell">-->
+    <section *ngIf="false" class="calendar-shell">
 
       <div class="calendar-layout">
         <!-- LEFT PANEL (mini calendar + calendars list) -->
@@ -491,11 +491,26 @@
 
               <ng-container matColumnDef="thumb">
                 <th mat-header-cell *matHeaderCellDef class="is-center"></th>
-                <td mat-cell style="font-size:20px !important;"
-                    *matCellDef="let row"
-                    class="is-center">
-                  👍
+
+                <td class="actions-cell" mat-cell
+                    *matCellDef="let row">
+                  <button mat-icon-button class="icon-btn approve" matTooltip="Approve" (click)="onAccept(row); $event.stopPropagation()">
+                    <mat-icon>check_circle</mat-icon>
+                  </button>
+
+                  <button mat-icon-button class="icon-btn reject" matTooltip="Reject" (click)="onReject(row); $event.stopPropagation()">
+                    <mat-icon>cancel</mat-icon>
+                  </button>
+
+                  <button mat-icon-button class="icon-btn view" matTooltip="View" (click)="onView(row); $event.stopPropagation()">
+                    <mat-icon>visibility</mat-icon>
+                  </button>
+
+                  <button mat-icon-button class="icon-btn acknowledge" matTooltip="Accept & Complete">
+                    <mat-icon>thumb_up</mat-icon>
+                  </button>
                 </td>
+
               </ng-container>
 
               <!-- Expanded placeholder -->

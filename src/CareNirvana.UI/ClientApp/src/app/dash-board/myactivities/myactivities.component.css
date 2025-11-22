@@ -189,7 +189,7 @@ tr.example-element-row:not(.example-expanded-row):active {
 
 .is-center {
   text-align: center;
-  width: 48px;
+  width: auto;
 }
 
 .chev-btn {
@@ -789,4 +789,170 @@ tr.example-element-row:not(.example-expanded-row):active {
   background-color: #2563eb;
   color: #ffffff;
   border-radius: 4px 4px 0 0;
+}
+
+
+.time-event {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+
+.event-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.event-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 1px;
+  margin-left: 3px;
+}
+
+/* make tooltip respect the \n line breaks */
+.activity-tooltip {
+  white-space: pre-line;
+  font-size: 12px;
+}
+
+
+
+.workgroup-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 8px 0;
+}
+
+.wg-chip {
+  border-radius: 999px;
+  padding: 4px 10px;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+  .wg-chip:hover {
+    background: #e5f0ff;
+  }
+
+  .wg-chip.active {
+    background: #2563eb;
+    color: #fff;
+    border-color: #2563eb;
+  }
+
+.calendar-list-title {
+  font-weight: 600;
+  margin-top: 12px;
+}
+
+.calendar-list-subtitle {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.calendar-list-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+}
+
+.color-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #9ca3af;
+}
+
+
+.user-search {
+  margin: 6px 0 8px 0;
+}
+
+.user-search-input {
+  width: 100%;
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid #d1d5db;
+  font-size: 12px;
+}
+
+
+
+
+
+
+.myactivities-shell {
+  display: flex;
+  gap: 8px;
+}
+
+/* Left column: main content */
+.myactivities-left {
+  flex: 1 1 auto; /* will take remaining width */
+}
+
+/* Right column: detail pane */
+.myactivities-right {
+  flex: 0 0 30%;
+  max-width: 31%;
+  min-width: 280px; /* optional: avoid being too narrow */
+}
+
+/* If you want to force left to ~70% when detail is shown */
+.myactivities-shell.has-detail .myactivities-left {
+  flex: 0 0 69%;
+  max-width: 69%;
+}
+
+
+
+
+
+
+.notes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid #eef2f7;
+  background: linear-gradient(180deg, #eef5ff 0%, #e3edff 100%);
+}
+
+  .notes-header h3 {
+    margin: 7px;
+    font-size: 18px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  /* optional */
+  .notes-header .title-strong {
+    font-weight: 700;
+  }
+  /* keep bold for the first part */
+  .notes-header .title-normal {
+    font-weight: 400;
+    font-size: 15px;
+  }
+
+.notes-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  color: #e53935;
 }
