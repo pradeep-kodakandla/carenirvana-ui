@@ -801,7 +801,6 @@ mat-chip.norisk {
   border: 1px solid #e6ebf2;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(16,24,40,.06);
-
   overflow: auto;
   /* hidden state (closed) */
   opacity: 0;
@@ -822,18 +821,18 @@ mat-chip.norisk {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 15px;
   padding-bottom: 2px;
-  border-bottom: 1px solid #eef2f7;
-  background: linear-gradient(180deg, #eef5ff 0%, #e3edff 100%);
+  border-bottom: 1px solid rgba(168, 75, 47, 1);
+  /*  background: linear-gradient(180deg, #eef5ff 0%, #e3edff 100%);
+*/
 }
 
   .notes-header h3 {
     margin: 7px;
     font-size: 18px;
     font-weight: 700;
-    color: #111827;
-    
+    color: rgba(168, 75, 47, 1);
   }
 
   /* optional */
@@ -844,6 +843,7 @@ mat-chip.norisk {
   .notes-header .title-normal {
     font-weight: 400;
     font-size: 15px;
+    color: gray
   }
 
 .notes-close {
@@ -879,4 +879,25 @@ mat-chip.norisk {
 }
 
 
+/* 3-dot trigger button: rounded square with light border */
+.row-menu-trigger-icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 8px; /* rounded square */
+  border: 1px solid #e2e5ea; /* light border */
+  background-color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
 
+  .row-menu-trigger-icon:hover {
+    background-color: #f9fafb;
+    border-color: #d5d8df;
+  }
+
+  .row-menu-trigger-icon mat-icon {
+    color: gray; /* dark dot color */
+  }

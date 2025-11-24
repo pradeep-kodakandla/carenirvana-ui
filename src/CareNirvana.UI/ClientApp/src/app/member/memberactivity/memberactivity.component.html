@@ -1,3 +1,24 @@
+<!-- Call type header -->
+<div class="call-type-header">
+  <div class="call-type-item"
+       [ngClass]="{ 'selected': callType === 'Scheduled' }"
+       (click)="setCallType('Scheduled')">
+    Scheduled
+  </div>
+
+  <div class="call-type-item"
+       [ngClass]="{ 'selected': callType === 'CompletedCall' }"
+       (click)="setCallType('CompletedCall')">
+    Complete Call
+  </div>
+
+  <div class="call-type-item"
+       [ngClass]="{ 'selected': callType === 'ConferenceCall' }"
+       (click)="setCallType('ConferenceCall')">
+    Conference Call
+  </div>
+</div>
+
 <form [formGroup]="activityForm"
       class="activity-form-grid"
       (ngSubmit)="onSubmit()" style="padding-left:5px; padding-right:5px;">
@@ -97,36 +118,7 @@
     </div>
   </div>
 
-  <!-- Work Group -->
-  <!--<div class="form-outline dropdown-container">
-    <label class="floating-label">Work Group</label>
-    <ui-multi-check-dropdown formControlName="workGroups"
-                             [options]="workGroupOptions"
-                             [defaultSelect]="true"
-                             [showChips]="false"
-                             placeholder="Select work groups">
-    </ui-multi-check-dropdown>
-  </div>-->
-  <!-- Work Basket -->
-  <!--<div class="form-outline dropdown-container">
-    <label class="floating-label">Work Basket</label>
-    <ui-multi-check-dropdown formControlName="workBasket"
-                             [options]="workBasketOptions"
-                             [defaultSelect]="true"
-                             [showChips]="false"
-                             placeholder="Select work basket">
-    </ui-multi-check-dropdown>
-  </div>-->
-  <!-- Work Basket Users -->
-  <!--<div class="form-outline dropdown-container">
-    <label class="floating-label">Work Basket Users</label>
-    <ui-multi-check-dropdown formControlName="workBasketUser"
-                             [options]="workBasketUserOptions"
-                             [defaultSelect]="true"
-                             [showChips]="false"
-                             placeholder="Select work basket user">
-    </ui-multi-check-dropdown>
-  </div>-->
+
   <!-- Show these ONLY when Work Basket is checked -->
   <ng-container *ngIf="activityForm.get('isWorkBasketActivity')?.value && !isView">
 
@@ -168,6 +160,68 @@
   <!-- spacer cell for grid alignment -->
   <div></div>
 
+  <!-- ********** NEW: Outcome / Contact Section ********** -->
+  <!-- Activity Outcome Type -->
+  <ng-container *ngIf="callType === 'CompletedCall'">
+    <div class="form-outline dropdown-container">
+      <label class="floating-label">Activity Outcome Type</label>
+      <ui-dropdown formControlName="activityOutcomeType"
+                   [options]="activityOutcomeTypeOptions"
+                   [compareWith]="compareId"
+                   placeholder="Select outcome type">
+      </ui-dropdown>
+    </div>
+
+    <!-- Activity Outcome -->
+    <div class="form-outline dropdown-container">
+      <label class="floating-label">Activity Outcome</label>
+      <ui-dropdown formControlName="activityOutcome"
+                   [options]="activityOutcomeOptions"
+                   [compareWith]="compareId"
+                   placeholder="Select outcome">
+      </ui-dropdown>
+    </div>
+
+    <!-- Contact With -->
+    <div class="form-outline dropdown-container">
+      <label class="floating-label">Contact With</label>
+      <ui-dropdown formControlName="contactWith"
+                   [options]="contactWithOptions"
+                   [compareWith]="compareId"
+                   placeholder="Select contact with">
+      </ui-dropdown>
+    </div>
+
+    <!-- Contact Mode -->
+    <div class="form-outline dropdown-container">
+      <label class="floating-label">Contact Mode</label>
+      <ui-dropdown formControlName="contactMode"
+                   [options]="contactModeOptions"
+                   [compareWith]="compareId"
+                   placeholder="Select contact mode">
+      </ui-dropdown>
+    </div>
+
+    <!-- Activity Duration -->
+    <div class="form-outline">
+      <label class="floating-label">Activity Duration (minutes)</label>
+      <input type="number"
+             class="form-control"
+             min="0"
+             formControlName="activityDuration"
+             placeholder="Enter duration in minutes" />
+    </div>
+
+    <!-- Outcome Notes -->
+    <div class="form-outline">
+      <label class="floating-label">Outcome Notes</label>
+      <textarea class="form-control"
+                formControlName="outcomeNotes"
+                rows="3">
+    </textarea>
+    </div>
+  </ng-container>
+  <!-- ********** END: Outcome / Contact Section ********** -->
   <!-- Comments -->
   <div class="form-outline full-width" style="grid-column: span 2;">
     <label class="floating-label">

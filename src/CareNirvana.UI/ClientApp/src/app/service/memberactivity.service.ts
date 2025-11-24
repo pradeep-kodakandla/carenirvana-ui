@@ -13,26 +13,51 @@ export interface CreateMemberActivityRequest {
   referTo?: number;
   isWorkBasket?: boolean;
   queueId?: number;
+
+  // used for memactivitynote (server writes to note table)
   comment?: string;
+
   statusId?: number;
+
+  // NEW outcome/contact fields
+  activityOutcomeTypeId?: number;
+  activityOutcomeId?: number;
+  contactModeId?: number;
+  contactWithId?: number;
+  activityDuration?: number;   // e.g. minutes
+
   performedDateTime?: string;
   performedBy?: number;
   activeFlag?: boolean;
 
-  workGroupWorkBasketId?: number; // for pool activities
+  // for pool activities (workgroup/workbasket)
+  workGroupWorkBasketId?: number;
+  outcomeNotes?: string;
   createdBy: number;
 }
 
 export interface UpdateMemberActivityRequest {
   memberActivityId: number;
+
   activityTypeId?: number;
   priorityId?: number;
   memberDetailsId?: number;
   followUpDateTime?: string;
   dueDate?: string;
   queueId?: number;
+
+  // used for memactivitynote (server writes to note table)
   comment?: string;
+
   statusId?: number;
+
+  // NEW outcome/contact fields
+  activityOutcomeTypeId?: number;
+  activityOutcomeId?: number;
+  contactModeId?: number;
+  contactWithId?: number;
+  activityDuration?: number;
+
   performedDateTime?: string;
   performedBy?: number;
   activeFlag?: boolean;
@@ -43,12 +68,16 @@ export interface UpdateMemberActivityRequest {
 export interface AcceptWorkGroupActivityRequest {
   memberActivityWorkGroupId: number;
   userId: number;
+
+  // this comment is also saved as memactivitynote (notetypeid = NULL)
   comment?: string;
 }
 
 export interface RejectWorkGroupActivityRequest {
   memberActivityWorkGroupId: number;
   userId: number;
+
+  // this comment is also saved as memactivitynote (notetypeid = NULL)
   comment?: string;
 }
 
@@ -61,13 +90,23 @@ export interface MemberActivityRequestItem {
   memberActivityId: number;
   memberActivityWorkGroupId: number;
   workGroupWorkBasketId: number;
+
   memberDetailsId?: number;
   activityTypeId?: number;
   priorityId?: number;
   followUpDateTime?: string;
   dueDate?: string;
+
+  // last/summary comment (if API returns it)
   comment?: string;
   statusId?: number;
+
+  // NEW outcome/contact fields coming from API
+  activityOutcomeTypeId?: number;
+  activityOutcomeId?: number;
+  contactModeId?: number;
+  contactWithId?: number;
+  activityDuration?: number;
 
   rejectedCount: number;
   rejectedUserIds: number[];
@@ -80,8 +119,17 @@ export interface MemberActivityCurrentItem {
   priorityId?: number;
   followUpDateTime?: string;
   dueDate?: string;
+
   comment?: string;
   statusId?: number;
+
+  // NEW outcome/contact fields coming from API
+  activityOutcomeTypeId?: number;
+  activityOutcomeId?: number;
+  contactModeId?: number;
+  contactWithId?: number;
+  activityDuration?: number;
+
   referTo?: number;
   performedDateTime?: string;
   performedBy?: number;
@@ -106,8 +154,17 @@ export interface MemberActivityDetailItem {
   priorityId?: number | null;
   followUpDateTime?: string | null; // ISO string from API
   dueDate?: string | null;
+
   comment?: string | null;
   statusId?: number | null;
+
+  // NEW outcome/contact fields coming from API
+  activityOutcomeTypeId?: number | null;
+  activityOutcomeId?: number | null;
+  contactModeId?: number | null;
+  contactWithId?: number | null;
+  activityDuration?: number | null;
+
   referTo?: number | null;
   isWorkBasket: boolean;
   memberActivityWorkGroupId?: number | null;
@@ -116,16 +173,13 @@ export interface MemberActivityDetailItem {
   assignedUsers: MemberActivityAssignedUserItem[];
 }
 
-
 @Injectable({
   providedIn: 'root'
 })
-
 export class MemberactivityService {
 
   private baseUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/memberactivity';
   //private baseUrl = 'https://localhost:7201/api/memberactivity';
-
 
   constructor(private http: HttpClient) { }
 
@@ -251,9 +305,9 @@ export class MemberactivityService {
       { params }
     );
   }
+
   getMemberActivityDetail(memberActivityId: number): Observable<MemberActivityDetailItem> {
     const url = `${this.baseUrl}/${memberActivityId}`;
     return this.http.get<MemberActivityDetailItem>(url);
   }
 }
-

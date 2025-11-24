@@ -678,4 +678,28 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
   onAlertsButtonClick(memberDetailId?: number) {
     this.memDelId = memberDetailId ?? 0;
   }
+
+
+
+
+  openMenuForMemberId: number | null = null;
+
+  toggleRowMenu(member: any, event: MouseEvent): void {
+    event.stopPropagation();
+    const id = member?.memberDetailsId ?? member?.id;
+    this.openMenuForMemberId = this.openMenuForMemberId === id ? null : id;
+  }
+
+  closeRowMenu(): void {
+    this.openMenuForMemberId = null;
+  }
+
+
 }
+
+
+
+
+
+
+

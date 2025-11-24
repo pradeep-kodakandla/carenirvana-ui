@@ -33,8 +33,14 @@ export class MemberActivityComponent implements OnInit, OnChanges {
   workBasketOptions: any[] = [];
   workBasketUserOptions: any[] = [];
   assignToDisplay: string = 'Select';
+  activityOutcomeTypeOptions: any[] = [];
+  activityOutcomeOptions: any[] = [];
+  contactWithOptions: any[] = [];
+  contactModeOptions: any[] = [];
 
   isSaving = false;
+
+  callType: 'Scheduled' | 'CompletedCall' | 'ConferenceCall' = 'Scheduled';
 
   constructor(
     private fb: FormBuilder,
@@ -64,22 +70,29 @@ export class MemberActivityComponent implements OnInit, OnChanges {
 
   private buildForm(): void {
     this.activityForm = this.fb.group({
-      memberDetailsId: [this.memberDetailsId, Validators.required],
-
       activityType: [null, Validators.required],
       priority: [null, Validators.required],
       followUpDateTime: [null, Validators.required],
       dueDate: [null, Validators.required],
-
-      assignTo: [null],          // required only when NOT work basket
+      assignTo: [null],
       isWorkBasketActivity: [false],
+      workGroups: [[]],
+      workBasket: [[]],
+      workBasketUser: [[]],
 
-      workGroups: [{ value: [], disabled: false }],
-      workBasket: [{ value: [], disabled: false }],
-      workBasketUser: [{ value: [], disabled: false }],
+      // NEW
+      activityOutcomeType: [null],
+      activityOutcome: [null],
+      contactWith: [null],
+      contactMode: [null],
+      activityDuration: [null],
+      outcomeNotes: [''],
 
       comments: ['', Validators.required]
+    }, {
+      // whatever custom validators you already have
     });
+
 
     // initial validator for assignTo
     this.activityForm.get('assignTo')?.setValidators([Validators.required]);
@@ -300,6 +313,72 @@ export class MemberActivityComponent implements OnInit, OnChanges {
     return null;
   }
 
+  //onSubmit(): void {
+  //  if (this.activityForm.invalid || !this.currentUserId || !this.memberDetailsId) {
+  //    this.activityForm.markAllAsTouched();
+  //    return;
+  //  }
+
+  //  const formValue = this.activityForm.getRawValue();
+  //  const isWorkBasket = !!formValue.isWorkBasketActivity;
+
+  //  // 🔹 Use helper instead of ?.value
+  //  const activityTypeId = this.getNumericValue(formValue.activityType) || 0;
+  //  const priorityId = this.getNumericValue(formValue.priority) || 0;
+
+  //  // Direct assignment: referTo comes from assignTo
+  //  const referTo = !isWorkBasket
+  //    ? this.getNumericValue(formValue.assignTo)
+  //    : null;
+
+  //  // Work basket activity: first selected work basket
+  //  let workGroupWorkBasketId: number | undefined;
+  //  if (isWorkBasket && formValue.workBasket && formValue.workBasket.length > 0) {
+  //    const firstBasket = formValue.workBasket[0];
+  //    workGroupWorkBasketId = this.getNumericValue(firstBasket) ?? undefined;
+  //  }
+
+  //  const payload: CreateMemberActivityRequest = {
+  //    activityTypeId,
+  //    priorityId,
+  //    memberDetailsId: this.memberDetailsId!,
+  //    followUpDateTime: formValue.followUpDateTime
+  //      ? this.toLocalDateTimeString(formValue.followUpDateTime)
+  //      : undefined,
+
+  //    dueDate: formValue.dueDate
+  //      ? this.toLocalDateTimeString(formValue.dueDate)
+  //      : undefined,
+  //    referTo: referTo ?? undefined,
+  //    isWorkBasket: isWorkBasket,
+  //    queueId: undefined,
+  //    comment: formValue.comments,
+  //    statusId: undefined,
+  //    performedDateTime: undefined,
+  //    performedBy: undefined,
+  //    activeFlag: true,
+  //    workGroupWorkBasketId,
+  //    createdBy: this.currentUserId!
+  //  };
+
+  //  console.log('Submitting member activity', payload);
+
+  //  this.memberActivityService.createActivity(payload).subscribe({
+  //    next: res => {
+  //      this.isSaving = false;
+  //      this.activitySaved.emit(res.memberActivityId);
+  //      this.activityForm.reset({
+  //        memberDetailsId: this.memberDetailsId,
+  //        isWorkBasketActivity: false
+  //      });
+  //    },
+  //    error: err => {
+  //      console.error('Error saving member activity', err);
+  //      this.isSaving = false;
+  //    }
+  //  });
+  //}
+
   onSubmit(): void {
     if (this.activityForm.invalid || !this.currentUserId || !this.memberDetailsId) {
       this.activityForm.markAllAsTouched();
@@ -309,21 +388,33 @@ export class MemberActivityComponent implements OnInit, OnChanges {
     const formValue = this.activityForm.getRawValue();
     const isWorkBasket = !!formValue.isWorkBasketActivity;
 
-    // 🔹 Use helper instead of ?.value
+    // Use helper instead of ?.value
     const activityTypeId = this.getNumericValue(formValue.activityType) || 0;
     const priorityId = this.getNumericValue(formValue.priority) || 0;
 
-    // Direct assignment: referTo comes from assignTo
+    // Direct assignment: referTo comes from assignTo when NOT work basket
     const referTo = !isWorkBasket
       ? this.getNumericValue(formValue.assignTo)
       : null;
 
     // Work basket activity: first selected work basket
     let workGroupWorkBasketId: number | undefined;
-    if (isWorkBasket && formValue.workBasket && formValue.workBasket.length > 0) {
+    if (isWorkBasket && Array.isArray(formValue.workBasket) && formValue.workBasket.length > 0) {
       const firstBasket = formValue.workBasket[0];
       workGroupWorkBasketId = this.getNumericValue(firstBasket) ?? undefined;
     }
+
+    // NEW: outcome / contact fields from form
+    const activityOutcomeTypeId = this.getNumericValue(formValue.activityOutcomeType);
+    const activityOutcomeId = this.getNumericValue(formValue.activityOutcome);
+    const contactWithId = this.getNumericValue(formValue.contactWith);
+    const contactModeId = this.getNumericValue(formValue.contactMode);
+    const activityDuration =
+      formValue.activityDuration !== null &&
+        formValue.activityDuration !== undefined &&
+        formValue.activityDuration !== ''
+        ? Number(formValue.activityDuration)
+        : undefined;
 
     const payload: CreateMemberActivityRequest = {
       activityTypeId,
@@ -332,7 +423,6 @@ export class MemberActivityComponent implements OnInit, OnChanges {
       followUpDateTime: formValue.followUpDateTime
         ? this.toLocalDateTimeString(formValue.followUpDateTime)
         : undefined,
-
       dueDate: formValue.dueDate
         ? this.toLocalDateTimeString(formValue.dueDate)
         : undefined,
@@ -345,10 +435,20 @@ export class MemberActivityComponent implements OnInit, OnChanges {
       performedBy: undefined,
       activeFlag: true,
       workGroupWorkBasketId,
-      createdBy: this.currentUserId!
+
+      // NEW: outcome / contact fields sent to API
+      activityOutcomeTypeId: activityOutcomeTypeId ?? undefined,
+      activityOutcomeId: activityOutcomeId ?? undefined,
+      contactWithId: contactWithId ?? undefined,
+      contactModeId: contactModeId ?? undefined,
+      activityDuration,
+      outcomeNotes: formValue.outcomeNotes || undefined,
+
+      createdBy: this.currentUserId!  // non-null assertion fixes the TS error
     };
 
     console.log('Submitting member activity', payload);
+    this.isSaving = true;
 
     this.memberActivityService.createActivity(payload).subscribe({
       next: res => {
@@ -365,6 +465,9 @@ export class MemberActivityComponent implements OnInit, OnChanges {
       }
     });
   }
+
+
+
 
   private toLocalDateTimeString(value: any): string {
     const d = new Date(value);
@@ -391,24 +494,45 @@ export class MemberActivityComponent implements OnInit, OnChanges {
   private loadActivityDetail(id: number): void {
     console.log('Loading activity detail for ID', id);
     this.memberActivityService.getMemberActivityDetail(id).subscribe({
-      next: (detail: MemberActivityDetailItem) => {
-        console.log('Activity detail loaded', detail);
+      next: (activity: MemberActivityDetailItem) => {
+        console.log('Activity detail loaded', activity);
 
-        this.assignedUsers = detail.assignedUsers || [];
+        this.assignedUsers = activity.assignedUsers || [];
 
         // Optional: patch the form with data from API
         this.activityForm.patchValue({
-          activityType: detail.activityTypeId ?? null,
-          priority: detail.priorityId ?? null,
-          followUpDateTime: detail.followUpDateTime,
-          dueDate: detail.dueDate,
-          comments: detail.comment,
-          isWorkBasketActivity: detail.isWorkBasket
+          // existing fields...
+          activityType: this.findOption(this.activityTypeOptions, activity.activityTypeId),
+          priority: this.findOption(this.priorityOptions, activity.priorityId),
+          followUpDateTime: activity.followUpDateTime,
+          dueDate: activity.dueDate,
+          //assignTo: this.getAssignToOption(activity.referTo),
+          isWorkBasketActivity: activity.isWorkBasket,
+
+          // NEW: map IDs from API to dropdown options
+          activityOutcomeType: this.findOption(this.activityOutcomeTypeOptions, activity.activityOutcomeTypeId),
+          activityOutcome: this.findOption(this.activityOutcomeOptions, activity.activityOutcomeId),
+          contactWith: this.findOption(this.contactWithOptions, activity.contactWithId),
+          contactMode: this.findOption(this.contactModeOptions, activity.contactModeId),
+          activityDuration: activity.activityDuration,
+          outcomeNotes: '',
+
+          comments: activity.comment || ''
         });
+
       },
       error: err => {
         console.error('Error loading activity detail', err);
       }
     });
+  }
+
+  private findOption(options: any[], id: number | null | undefined): any | null {
+    if (!id || !options) return null;
+    return options.find(o => o.id === id) || null;
+  }
+
+  setCallType(type: 'Scheduled' | 'CompletedCall' | 'ConferenceCall'): void {
+    this.callType = type;
   }
 }
