@@ -648,6 +648,8 @@ tr.example-element-row:not(.example-expanded-row):active {
   flex: 1;
   display: flex;
   font-size: 11px;
+  /*max-height: 700px;*/ /* whatever height you want visible */
+  /*overflow-y: auto;*/ /* one scrollbar for the whole grid */
 }
 
 .time-column {
@@ -955,4 +957,33 @@ tr.example-element-row:not(.example-expanded-row):active {
   font-size: 18px;
   line-height: 1;
   color: #e53935;
+}
+
+
+
+/* Base slot styling (you probably already have something similar) */
+.slot {
+  position: relative;
+  min-height: 32px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+/* Highlighted (selected) slot */
+.slot-selected {
+  border: 2px solid #1976d2; /* primary blue border */
+  background-color: rgba(25, 118, 210, 0.08);
+  box-shadow: 0 0 0 1px rgba(25, 118, 210, 0.35) inset;
+}
+
+/* Smooth transition when changing selection */
+.slot,
+.slot-selected {
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+
+/* optional: keep each hour row a consistent height */
+.time-grid .time-column .time-cell,
+.time-grid .day-body .time-cell {
+ /* min-height: 40px;*/
 }

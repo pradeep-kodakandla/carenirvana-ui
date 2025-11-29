@@ -18,7 +18,7 @@ export class MemberActivityComponent implements OnInit, OnChanges {
   @Input() noCancel: boolean | null = false;
   @Input() memberActivityId?: number | null;
   @Input() isView: boolean = false;
-
+  @Input() preselectedFollowup: Date | null = null;
   @Output() activitySaved = new EventEmitter<number>();
   @Output() cancelled = new EventEmitter<void>();
 
@@ -66,13 +66,28 @@ export class MemberActivityComponent implements OnInit, OnChanges {
       this.activityForm.patchValue({ memberDetailsId: this.memberDetailsId });
     }
     this.loadActivityDetail(this.memberActivityId ?? 0);
+
+    if (changes['preselectedFollowup'] &&
+      this.preselectedFollowup &&
+      this.activityForm) {
+
+      const ctrl = this.activityForm.get('followUpDateTime');
+
+      // Only override if it’s empty / null (i.e. new activity)
+      if (!ctrl?.value) {
+        ctrl!.patchValue(this.preselectedFollowup);
+        ctrl!.markAsDirty();
+        ctrl!.markAsTouched();
+      }
+    }
   }
 
   private buildForm(): void {
     this.activityForm = this.fb.group({
       activityType: [null, Validators.required],
       priority: [null, Validators.required],
-      followUpDateTime: [null, Validators.required],
+      //followUpDateTime: [null, Validators.required],
+      followUpDateTime: [this.preselectedFollowup ?? null, Validators.required],
       dueDate: [null, Validators.required],
       assignTo: [null],
       isWorkBasketActivity: [false],
@@ -193,13 +208,13 @@ export class MemberActivityComponent implements OnInit, OnChanges {
     ];
 
     // ---- Activity Types ----
-    this.crudService.getData('um', 'activitytype').subscribe({
+    this.crudService.getData('cm', 'careactivitytype').subscribe({
       next: (data: any[]) => {
         this.activityTypeOptions = (data || [])
           .map(item => ({
             // pick whatever id field you actually have
-            value: Number(item.activityTypeId ?? item.id ?? item.value),
-            label: item.activityType || item.label || item.display || item.code
+            value: Number(item.id ?? item.id ?? item.value),
+            label: item.careActivityType || item.label || item.display || item.code
           }))
           .filter(o => !isNaN(o.value));
       },
@@ -208,6 +223,60 @@ export class MemberActivityComponent implements OnInit, OnChanges {
         this.activityTypeOptions = [];
       }
     });
+    // ---- Activity Outcome Type----
+    this.crudService.getData('cm', 'activityoutcometype').subscribe({
+      next: (data: any[]) => {
+        this.activityOutcomeTypeOptions = (data || [])
+          .map(item => ({
+            // pick whatever id field you actually have
+            value: Number(item.id ?? item.id ?? item.value),
+            label: item.activityOutcomeType || item.label || item.display || item.code
+          }))
+          .filter(o => !isNaN(o.value));
+      },
+      error: err => {
+        console.error('Error fetching activity types', err);
+        this.activityOutcomeTypeOptions = [];
+      }
+    });
+    // ---- Activity Outcome ----
+    this.crudService.getData('cm', 'activityoutcome').subscribe({
+      next: (data: any[]) => {
+        this.activityOutcomeOptions = (data || [])
+          .map(item => ({
+            // pick whatever id field you actually have
+            value: Number(item.id ?? item.id ?? item.value),
+            label: item.activityOutcome || item.label || item.display || item.code
+          }))
+          .filter(o => !isNaN(o.value));
+      },
+      error: err => {
+        console.error('Error fetching activity types', err);
+        this.activityOutcomeOptions = [];
+      }
+    });
+    // ---- Contact Mode ----
+    this.crudService.getData('cm', 'contacttype').subscribe({
+      next: (data: any[]) => {
+        this.contactModeOptions = (data || [])
+          .map(item => ({
+            // pick whatever id field you actually have
+            value: Number(item.id ?? item.id ?? item.value),
+            label: item.contactType || item.label || item.display || item.code
+          }))
+          .filter(o => !isNaN(o.value));
+      },
+      error: err => {
+        console.error('Error fetching activity types', err);
+        this.contactModeOptions = [];
+      }
+    });
+    // ---- Contact With ----
+    this.contactWithOptions = [
+      { value: 1, label: 'Member' },
+      { value: 2, label: 'Provder' },
+      { value: 3, label: 'Other' }
+    ];
 
     // ---- Work Group / Work Basket / Work Basket Users (by user) ----
     const userId = this.currentUserId ?? 0;

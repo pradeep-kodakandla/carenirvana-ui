@@ -7,6 +7,8 @@ import { extractPriorAuth, extractTexasFromText, extractGeorgiaFromText, extract
 import { PriorAuth } from 'src/app/service/priorauth.schema';
 import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { PDFDocument } from 'pdf-lib';
+
 // Keep this in sync with your C# FaxFile DTO
 export interface FaxFile {
   faxId?: number;
@@ -39,6 +41,14 @@ export interface FaxFile {
   updatedOn?: string | null;
   updatedBy?: number | null;
   fileBytes?: string;
+  parentFaxId?: number | null;
+  deletedOn?: string | null;
+  deletedBy?: number | null;
+
+  // client-side helper properties:
+  children?: FaxFile[];
+  hasChildren?: boolean;
+  isChild?: boolean;
 }
 
 // Match the GET /faxfiles response
@@ -92,6 +102,23 @@ export class FaxesComponent implements OnInit {
   previewOpen = false;
   showPreview = false;
   isLoadingDetails: boolean = false;
+  currentIndex: number = -1;
+
+  splitFirstPageCount: number | null = 1;
+  isSplitting = false;
+
+
+  faxesRaw: FaxFile[] = [];
+  groupedFaxes: FaxFile[] = []; // what we bind to the table
+
+
+  // backing list from API (getfaxfiles)
+  allFaxes: any[] = [];
+
+  // workbasket chips (fax-only)
+  faxWorkBaskets: { id: number; name: string; count: number }[] = [];
+  selectedWorkBasket: string | null = null;
+  totalFaxCount = 0;
 
   constructor(private pdfOcr: PdfOcrService, private destroyRef: DestroyRef,
     private api: DashboardServiceService, private sanitizer: DomSanitizer,
@@ -119,6 +146,23 @@ export class FaxesComponent implements OnInit {
 
   ngOnInit(): void {
     this.reload();
+
+    this.api.getuserworkgroups(Number(sessionStorage.getItem('loggedInUserid'))).subscribe({
+      next: (res: any[]) => {
+        console.log('User work groups:', res);
+
+        this.faxWorkBaskets = (res || [])
+          .filter(wg => wg.isFax === true)
+          .map(wg => ({
+            id: wg.workBasketId,
+            name: wg.workBasketName,
+            count: 0
+          }));
+      },
+      error: (err) => {
+        console.error('Error fetching user work groups:', err);
+      }
+    });
   }
 
   // -------- List / paging --------
@@ -130,13 +174,17 @@ export class FaxesComponent implements OnInit {
       .subscribe({
         next: (res: FaxFileListResponse) => {
           const rawItems = this.getItems(res);
-
+          console.log("data", rawItems);
           // 🔁 normalize every row to camelCase FaxFile
           const rows = rawItems.map(this.normalizeFax);
-
-          this.dataSource.data = rows;
+          this.faxesRaw = rawItems || [];
+          this.allFaxes = rows || [];
+          this.buildFaxHierarchy();
+          //this.dataSource.data = rows;
           this.total = this.getTotal(res);
-
+          this.applyWorkBasketFilter();
+          // update chip counts
+          this.updateFaxCounts();
           // keep selection in sync if visible in page (compare against normalized rows)
           if (this.selectedFax) {
             const found = rows.find(x => x.faxId === this.selectedFax!.faxId);
@@ -145,10 +193,58 @@ export class FaxesComponent implements OnInit {
           }
         },
         error: _ => {
+          this.faxesRaw = [];
+          this.groupedFaxes = [];
           this.dataSource.data = [];
           this.total = 0;
+          this.allFaxes = [];
+
+          this.updateFaxCounts();
         }
       });
+
+
+  }
+
+  private buildFaxHierarchy(): void {
+    const byId = new Map<number, FaxFile>();
+
+    // initialize map + helper flags
+    this.faxesRaw.forEach(f => {
+      f.children = [];
+      f.hasChildren = false;
+      f.isChild = false;
+      byId.set(f.faxId ?? 0, f);
+    });
+
+    const roots: FaxFile[] = [];
+
+    this.faxesRaw.forEach(f => {
+      const parentId = f.parentFaxId ?? 0;
+
+      // If parentFaxId has a valid parent in list -> attach as child
+      if (parentId > 0 && byId.has(parentId)) {
+        const parent = byId.get(parentId)!;
+        parent.children!.push(f);
+        parent.hasChildren = true;
+        f.isChild = true;
+      } else {
+        // Either parentFaxId is 0/null OR parent not found -> treat as root
+        roots.push(f);
+      }
+    });
+
+    // flatten for mat-table: parent followed by its children
+    const flat: FaxFile[] = [];
+    roots.forEach(p => {
+      flat.push(p);
+      if (p.children && p.children.length) {
+        p.children.forEach(c => flat.push(c));
+      }
+    });
+
+    this.groupedFaxes = flat;
+    this.dataSource.data = this.groupedFaxes;
   }
 
   // Put this helper in your component (or a utils file)
@@ -204,6 +300,12 @@ export class FaxesComponent implements OnInit {
     // Show the split view immediately
     this.showPreview = true;
 
+    const data = this.dataSource?.data || [];
+    const idx = data.findIndex(d => d.faxId === row.faxId);
+
+    // if we find the fax in the list, use that index, otherwise default to 0
+    this.currentIndex = idx >= 0 ? idx : 0;
+
     this.api.getFaxFileById(row.faxId).subscribe({
       next: (res: any) => {
         const fileBytes = res.fileBytes ?? res.FileBytes ?? null;
@@ -244,43 +346,6 @@ export class FaxesComponent implements OnInit {
     });
   }
 
-  //openPreview(row: any): void {
-  //  this.selectedFax = row;
-  //  this.api.getFaxFileById(row.faxId).subscribe({
-  //    next: (res: any) => {
-  //      // Handle the response once the service returns the file
-  //      const fileBytes = res.fileBytes ?? res.FileBytes ?? null;
-  //      const contentType = res.contentType ?? res.ContentType ?? 'application/pdf';
-  //      const fileUrl = res.url ?? res.Url ?? null;
-  //      this.showPreview = true;
-  //      // If backend returns base64 data
-  //      const base64 = fileBytes;
-  //      if (base64) {
-  //        this.onFileChosen(undefined, base64, row.OriginalName ?? 'preview.pdf');
-  //      }
-
-  //      //if (fileBytes) {
-  //      //  const u8 = this.base64ToUint8Array(fileBytes);
-  //      //  const objUrl = this.makePdfBlobUrl(u8, contentType);
-  //      //  this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(objUrl);
-  //      //  return;
-  //      //}
-
-  //      // Fallback to server URL if available (streaming endpoint preferred)
-  //      if (fileUrl) {
-  //        this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fileUrl);
-  //        return;
-  //      }
-
-  //      this.previewUrl = null;
-
-  //    },
-  //    error: (err) => {
-  //      console.error('Error fetching fax file:', err);
-  //    }
-  //  });
-  //}
-
   closePreview(): void {
     this.showPreview = false;
     this.selectedFax = undefined;
@@ -288,6 +353,7 @@ export class FaxesComponent implements OnInit {
     this.priorAuth = null;           // clear OCR details if you prefer
     this.progress = 0;
     this.error = '';
+    this.currentIndex = -1;
   }
 
   // -------- Upload + Insert --------
@@ -295,13 +361,23 @@ export class FaxesComponent implements OnInit {
     this.fileInput?.nativeElement.click();
   }
 
-  async saveFileData(e: Event): Promise<void> {
-    const input = e.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
+  async saveFileData(e?: Event | null, fileOverride?: File): Promise<void> {
+    // if split provided a file, use that
+    let file: File | undefined;
 
-    // allow re-selecting the same file
-    input.value = '';
+    if (fileOverride) {
+      file = fileOverride;
+    } else if (e) {
+      const input = e.target as HTMLInputElement;
+      file = input.files?.[0];
+      if (input) {
+        input.value = ''; // allow re-selecting same file
+      }
+    }
+
+    if (!file) {
+      return;
+    }
 
     // --- derive file fields
     const contentType = file.type || 'application/pdf';
@@ -345,7 +421,7 @@ export class FaxesComponent implements OnInit {
 
       pageCount,
       memberId: null,
-      workBasket: null,
+      workBasket: "2",
       priority,
       status: 'New',
       processStatus: 'Pending',
@@ -381,19 +457,39 @@ export class FaxesComponent implements OnInit {
   saveUpdate(): void {
     if (!this.selectedFax) return;
 
-    //const toSave: ApiFaxFile = {
-    //  ...this.selectedFax,
-    //  updatedOn: new Date().toISOString(),
-    //  updatedBy: this.selectedFax.updatedBy ?? 1
-    //};
+    //filename : this.selectedFax.filename,
+    //  memberid : this.selectedFax.memberid,
+    //  workbasket : this.selectedFax.workbasket,
+    //  priority : this.selectedFax.priority,
+    //  status : this.selectedFax.status,
+    //  processstatus : this.selectedFax.processstatus,
+    //  updatedon : this.selectedFax.updatedon,
+    //  updatedby : this.selectedFax.updatedby,
+    //  deletedon : this.selectedFax.deletedon,
+    //  deletedby : this.selectedFax.deletedby
 
-    //this.saving = true;
-    //this.api.updateFaxFile(toSave)
-    //  .pipe(finalize(() => (this.saving = false)))
-    //  .subscribe({
-    //    next: () => this.reload(),
-    //    error: () => alert('Update failed')
-    //  });
+    const toSave: ApiFaxFile = {
+
+      /*memberId: this.selectedFax.memberid,*/
+      faxId: this.selectedFax.faxId,
+      workBasket: "2",
+      fileName: this.selectedFax.fileName,
+      priority: this.selectedFax.priority,
+      status: this.selectedFax.status,
+      /*processStatus: this.selectedFax.processstatus,*/
+      //deletedOn: this.selectedFax.deletedOn,
+      //deletedBy: this.selectedFax.deletedBy ?? 1,
+      updatedOn: new Date().toISOString(),
+      updatedBy: this.selectedFax.updatedBy ?? 1
+    };
+
+    this.saving = true;
+    this.api.updateFaxFile(toSave)
+      .pipe(finalize(() => (this.saving = false)))
+      .subscribe({
+        next: () => this.reload(),
+        error: () => alert('Update failed')
+      });
   }
 
   // -------- Helpers --------
@@ -504,9 +600,6 @@ export class FaxesComponent implements OnInit {
       const p1Text = res.byPage.find(p => p.page === 1)?.text
         ?? await this.pdfOcr.ocrPageText(file, 1);
 
-
-
-
       this.priorAuth = pa;
       this.isLoadingDetails = false;
       const url = 'https://carenirvanabre-b2ananexbwedbfes.eastus2-01.azurewebsites.net/api/DecisionTable/rundecision?decisionTableName=PayorCatalogueSpec';
@@ -517,26 +610,6 @@ export class FaxesComponent implements OnInit {
         "Start Date": "01-01-2026",
         "End Date": "01-01-2027"
       };
-
-      //this.http.post(url, body, { responseType: 'text' }).subscribe({
-      //  next: (text: string) => {
-      //    console.log('Raw response:', text);
-
-      //    // Optional: try to parse if it sometimes sends JSON
-      //    let data: any = text;
-      //    try { data = JSON.parse(text); } catch { /* keep as plain text */ }
-
-      //    // Example: handle simple “Y/N” contract
-      //    if (typeof data === 'string' && data.trim() === 'Y') {
-      //      // success path
-      //    } else {
-      //      // handle other values or parsed JSON object
-      //    }
-      //  },
-      //  error: (err) => {
-      //    console.error('Decision Table call failed:', err);
-      //  }
-      //});
 
 
     } catch (e: any) {
@@ -587,6 +660,292 @@ export class FaxesComponent implements OnInit {
   private makePdfBlobUrl(bytes: Uint8Array, contentType = 'application/pdf'): string {
     const blob = new Blob([bytes], { type: contentType || 'application/pdf' });
     return URL.createObjectURL(blob);
+  }
+
+  showNext(): void {
+    const data = this.dataSource?.data || [];
+    const total = data.length;
+
+    if (!total) {
+      return;
+    }
+
+    if (this.currentIndex < 0) {
+      this.currentIndex = 0;
+    } else if (this.currentIndex < total - 1) {
+      this.currentIndex++;
+    } else {
+      // Already at last record
+      return;
+    }
+
+    const next = data[this.currentIndex];
+    if (next) {
+      this.openPreview(next);
+    }
+  }
+
+  showPrevious(): void {
+    const data = this.dataSource?.data || [];
+    const total = data.length;
+
+    if (!total) {
+      return;
+    }
+
+    if (this.currentIndex <= 0) {
+      this.currentIndex = 0;
+    } else {
+      this.currentIndex--;
+    }
+
+    const prev = data[this.currentIndex];
+    if (prev) {
+      this.openPreview(prev);
+    }
+  }
+
+
+  // holds the currently loaded PDF bytes for preview/splitting
+  private currentFaxBytes: Uint8Array | null = null;
+  private currentFaxContentType: string = 'application/pdf';
+  private currentFaxOriginalName: string | null = null;
+
+
+  async splitCurrentFaxOnClient(): Promise<void> {
+    if (!this.selectedFax || !this.selectedFax.pageCount || this.selectedFax.pageCount < 2) {
+      alert('Not enough pages to split.');
+      return;
+    }
+
+    const total = this.selectedFax.pageCount;
+    const first = this.splitFirstPageCount ?? 1;
+    console.log("Step 3", this.selectedFax);
+    if (first <= 0 || first >= total) {
+      alert(`First document pages must be between 1 and ${total - 1}.`);
+      return;
+    }
+
+    this.api.getFaxFileById(this.selectedFax.faxId ?? 0).subscribe({
+      next: (res: any) => {
+        const fileBytes = res.fileBytes ?? res.FileBytes ?? null;
+        const contentType = res.contentType ?? res.ContentType ?? 'application/pdf';
+        const fileUrl = res.url ?? res.Url ?? null;
+
+        this.currentFaxContentType = contentType;
+        this.currentFaxOriginalName = this.selectedFax?.fileName ?? 'preview.pdf';
+
+        // If backend returns base64 data, pass it to your existing handler
+        const base64 = fileBytes;
+        if (base64) {
+          // OCR / extraction
+          this.onFileChosen(undefined, base64, this.currentFaxOriginalName);
+
+          // ✅ Also decode to bytes and keep for splitting
+          const u8 = this.base64ToUint8Array(base64);
+          console.log('Decoded bytes length for splitting:', u8.length);
+          this.currentFaxBytes = u8;
+
+          // Build preview URL from bytes
+          const objUrl = this.makePdfBlobUrl(u8, contentType);
+          this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(objUrl);
+          return;
+        }
+
+        // Fallback: stream from server (no bytes)
+        if (fileUrl) {
+          this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fileUrl);
+          this.currentFaxBytes = null; // we don't have raw bytes in this path
+          return;
+        }
+
+        // If nothing usable came back, clear preview and stop loader
+        this.previewUrl = null;
+        this.currentFaxBytes = null;
+        this.isLoadingDetails = false;
+      },
+      error: err => {
+        console.error('getFaxFileById error', err);
+        this.previewUrl = null;
+        this.currentFaxBytes = null;
+        this.isLoadingDetails = false;
+      }
+    });
+
+    // ✅ 1) Get raw PDF bytes from the fax, not from a URL
+    // ✅ Use the bytes captured when we loaded the fax
+    const bytes = this.currentFaxBytes;
+    console.log('splitCurrentFaxOnClient bytes len =', bytes?.length ?? -1);
+
+    if (!bytes || bytes.length === 0) {
+      alert('No PDF data loaded for this fax. Open the fax first, then try splitting.');
+      return;
+    }
+
+    // optional sanity check
+    console.log('First 4 bytes:', Array.from(bytes.slice(0, 4)));
+
+    const originalPdf = await PDFDocument.load(bytes);
+    const pageCount = originalPdf.getPageCount();
+
+    console.log('original PDF pageCount', pageCount);
+
+    if (pageCount !== total) {
+      console.warn('pageCount mismatch', { db: total, pdf: pageCount });
+    }
+
+    const pdf1 = await PDFDocument.create();
+    const pdf2 = await PDFDocument.create();
+
+    const part1Indices = Array.from({ length: first }, (_, i) => i);
+    const part2Indices = Array.from({ length: pageCount - first }, (_, i) => i + first);
+
+    const copied1 = await pdf1.copyPages(originalPdf, part1Indices);
+    copied1.forEach(p => pdf1.addPage(p));
+
+    const copied2 = await pdf2.copyPages(originalPdf, part2Indices);
+    copied2.forEach(p => pdf2.addPage(p));
+
+    const bytes1 = await pdf1.save();
+    const bytes2 = await pdf2.save();
+
+    const originalName = this.currentFaxOriginalName || this.selectedFax.fileName || 'document.pdf';
+    const dot = originalName.lastIndexOf('.');
+    const base = dot >= 0 ? originalName.substring(0, dot) : originalName;
+    const ext = dot >= 0 ? originalName.substring(dot) : '.pdf';
+
+    const file1Name = `${base}_Split1${ext}`;
+    const file2Name = `${base}_Split2${ext}`;
+
+    const blob1 = new Blob([bytes1], { type: 'application/pdf' });
+    const blob2 = new Blob([bytes2], { type: 'application/pdf' });
+
+    const file1 = new File([blob1], file1Name, { type: 'application/pdf' });
+    const file2 = new File([blob2], file2Name, { type: 'application/pdf' });
+
+    await this.saveFileData(null, file1);
+    await this.saveFileData(null, file2);
+  }
+
+  // FaxesComponent
+
+
+
+
+  openSplitDialog(row: FaxFile): void {
+    /* open split dialog, then use saveFileData(...) */
+  }
+
+  openUpdateWorkBasketDialog(row: FaxFile): void {
+    /* open WB dialog */
+  }
+
+  renameFax(row: FaxFile): void {
+    /* prompt for new name + saveFileData(...) */
+  }
+
+  deleteFax(row: FaxFile): void {
+    /* confirm + delete */
+  }
+
+
+
+  /* Update Methods */
+  // Inline edit mode for preview pane
+  editMode: 'none' | 'rename' | 'workbasket' | 'deleteConfirm' = 'none';
+
+  // Simple work basket dropdown list (replace with real data from API if needed)
+  workBasketOptions = [
+    { value: '1', label: 'Work Basket 1' },
+    { value: '2', label: 'Work Basket Fax' },
+    // add more as needed
+  ];
+
+  // Cancel any inline edit banner
+  cancelInlineEdit(): void {
+    this.editMode = 'none';
+  }
+
+  // --- Rename ---
+
+  renameFaxInline(row: FaxFile): void {
+    // Show preview + inline rename editor
+    this.openPreview(row);
+    this.editMode = 'rename';
+  }
+
+  // --- Work Basket ---
+
+  openUpdateWorkBasketInline(row: FaxFile): void {
+    this.openPreview(row);
+    this.editMode = 'workbasket';
+
+    // Optionally default a work basket if not set
+    if (!this.selectedFax?.workBasket && this.workBasketOptions.length) {
+      this.selectedFax!.workBasket = this.workBasketOptions[0].value;
+    }
+  }
+
+  // --- Priority toggle (1 <-> 2) ---
+
+  updatePriority(row: FaxFile): void {
+    // No dialog; just toggle and save
+    this.selectedFax = {
+      ...row,
+      priority: row.priority === 1 ? 2 : 1,
+      updatedBy: this.currentUserId ?? row.updatedBy ?? 1
+    };
+
+    this.saveUpdate();
+  }
+
+  // --- Delete (inline confirmation) ---
+
+  deleteFaxInline(row: FaxFile): void {
+    this.openPreview(row);
+    this.editMode = 'deleteConfirm';
+  }
+
+  confirmDelete(): void {
+    if (!this.selectedFax) return;
+
+    this.selectedFax = {
+      ...this.selectedFax,
+      deletedOn: new Date().toISOString(),
+      deletedBy: this.currentUserId ?? this.selectedFax.deletedBy ?? 1,
+      status: 'Deleted' // if your backend expects a status change
+    };
+
+    this.saveUpdate();
+  }
+
+
+  /* END Update Methods */
+
+  private updateFaxCounts(): void {
+    const data = this.allFaxes || [];
+    this.totalFaxCount = data.length;
+
+    this.faxWorkBaskets.forEach(wb => {
+      wb.count = data.filter(f => (f.workBasket || '') === wb.name).length;
+    });
+  }
+  private applyWorkBasketFilter(): void {
+    const source = this.allFaxes || [];
+
+    if (!this.selectedWorkBasket) {
+      this.dataSource.data = source;
+      return;
+    }
+
+    this.dataSource.data = source.filter(
+      f => (f.workBasket || '') === this.selectedWorkBasket
+    );
+  }
+
+  selectWorkBasket(name: string | null): void {
+    this.selectedWorkBasket = name;
+    this.applyWorkBasketFilter();
   }
 
 }

@@ -41,6 +41,9 @@ export interface FaxFile {
   updatedOn?: string | null;
   updatedBy?: number | null;
   fileBytes?: string;
+  parentFaxId?: number | null;
+  deletedOn?: string | null;
+  deletedBy?: number | null;
 }
 export interface FaxFileListResponse {
   Items: FaxFile[];

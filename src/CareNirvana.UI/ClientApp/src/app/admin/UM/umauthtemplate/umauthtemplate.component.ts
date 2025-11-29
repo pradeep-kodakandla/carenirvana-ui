@@ -73,7 +73,9 @@ export class UmauthtemplateComponent implements OnInit {
     this.crudService.getData('um', 'authtemplate').subscribe((response) => {
       this.dataSource.data = response.filter(item => item.deletedOn == null).map((item: any) => ({
         ...item,
-        authClass: this.authClassStatusLookup.find(opt => opt.id === item.authClassId)?.value || '', }));
+        authClass: this.authClassStatusLookup.find(opt => opt.id === item.authClassId)?.value || '',
+      }));
+      console.log("DataSource", response);
       this.dataSource.paginator = this.paginator;
       this.dataSource.sort = this.sort;
     });

@@ -6,19 +6,29 @@
            (input)="onQuickSearch($event)"
            class="search-input"
            style="flex:1; padding:10px 12px; border:1px solid #e1e5ea; border-radius:10px; outline:none;" />
-    <!--<button class="filter-btn"
-            type="button"
-            (click)="toggleFilters()"
-            title="Filters">
-      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M3 5h18v2l-7 7v5l-4 2v-7L3 7z"></path>
-      </svg>
-    </button>-->
   </div>
 
   <div class="filters-col">
+
     <div class="chip-list">
       <div class="flex items-center gap-2">
+
+          <button type="button"
+                  class="wb-chip"
+                  [class.wb-chip-active]="!selectedWorkBasket"
+                  (click)="selectWorkBasket(null)">
+            All ({{ totalFaxCount }})
+          </button>
+
+          <button type="button"
+                  class="wb-chip"
+                  *ngFor="let wb of faxWorkBaskets"
+                  [class.wb-chip-active]="selectedWorkBasket === wb.name"
+                  (click)="selectWorkBasket(wb.name)">
+            {{ wb.name }} ({{ wb.count || 0 }})
+          </button>
+
+
         <button mat-stroked-button color="primary" (click)="reload()">Search</button>
 
 
@@ -30,6 +40,28 @@
         <!-- faxes.component.html -->
         <input #fileInput type="file" accept="application/pdf" hidden (change)="saveFileData($event)" />
 
+        <!-- 👇 Record navigation beside Add when preview is open -->
+        <div class="nav-controls top-nav" *ngIf="showPreview">
+          <span class="nav-info">
+            {{ (currentIndex + 1) > 0 ? (currentIndex + 1) : 0 }}
+            /
+            {{ dataSource?.data?.length || 0 }}
+          </span>
+
+          <button mat-icon-button
+                  matTooltip="Previous"
+                  (click)="showPrevious()"
+                  [disabled]="currentIndex <= 0">
+            <mat-icon>chevron_left</mat-icon>
+          </button>
+
+          <button mat-icon-button
+                  matTooltip="Next"
+                  (click)="showNext()"
+                  [disabled]="currentIndex < 0 || currentIndex >= (dataSource?.data?.length || 0) - 1">
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -40,11 +72,25 @@
   <table mat-table [dataSource]="dataSource" class="mat-elevation-z1 full-width-table pro-table mng-table">
 
     <!-- Fax File Name -->
+    <!--<ng-container matColumnDef="fileName">
+    <th mat-header-cell *matHeaderCellDef>Fax File Name</th>
+    <td mat-cell *matCellDef="let r">
+      <div class="font-medium">{{ r.fileName }}</div>-->
+    <!--<div class="sub-id">#{{ r.faxId }}</div>-->
+    <!--</td>
+    </ng-container>-->
     <ng-container matColumnDef="fileName">
       <th mat-header-cell *matHeaderCellDef>Fax File Name</th>
       <td mat-cell *matCellDef="let r">
-        <div class="font-medium">{{ r.fileName }}</div>
-        <!--<div class="sub-id">#{{ r.faxId }}</div>-->
+        <div class="fax-name" [ngClass]="{ 'is-child': r.isChild }">
+          <span *ngIf="r.isChild" class="child-badge">↳</span>
+          <span class="font-medium">{{ r.fileName }}</span>
+
+          <span *ngIf="r.hasChildren"
+                class="child-count-badge">
+            ({{ r.children?.length }} split page{{ (r.children?.length || 0) > 1 ? 's' : '' }})
+          </span>
+        </div>
       </td>
     </ng-container>
 
@@ -83,7 +129,7 @@
     </ng-container>
 
     <!-- Actions -->
-    <ng-container matColumnDef="actions">
+    <!--<ng-container matColumnDef="actions">
       <th mat-header-cell *matHeaderCellDef class="is-center">Actions</th>
       <td mat-cell *matCellDef="let r" class="is-center">
         <button mat-icon-button matTooltip="Preview" (click)="openPreview(r)">
@@ -93,7 +139,133 @@
           <mat-icon>picture_as_pdf</mat-icon>
         </a>
       </td>
+    </ng-container>-->
+    <!--<ng-container matColumnDef="actions">
+    <th mat-header-cell *matHeaderCellDef class="is-center">Actions</th>
+    <td mat-cell *matCellDef="let r" class="is-center">
+      <button mat-icon-button
+              matTooltip="Preview"
+              (click)="openPreview(r)"
+              *ngIf="!r.hasChildren">
+        <mat-icon>preview</mat-icon>
+      </button>-->
+    <!-- Still allow direct link if you want, or likewise disable -->
+    <!--<a *ngIf="r.url"
+           mat-icon-button
+           [href]="r.url"
+           target="_blank"
+           matTooltip="Open file">
+          <mat-icon>picture_as_pdf</mat-icon>
+        </a>
+      </td>
+    </ng-container>-->
+    <ng-container matColumnDef="actions">
+      <th mat-header-cell *matHeaderCellDef class="is-center">Actions</th>
+      <td mat-cell *matCellDef="let r" class="is-center">
+
+        <!-- Trigger button -->
+        <button mat-icon-button
+                matTooltip="Actions"
+                aria-label="Fax actions"
+                [matMenuTriggerFor]="rowMenu"
+                *ngIf="!r.hasChildren">
+          <mat-icon>more_vert</mat-icon>
+        </button>
+
+        <!-- Row menu -->
+        <!--<mat-menu #rowMenu="matMenu">-->
+        <!-- Preview -->
+        <!--<button mat-menu-item
+                (click)="openPreview(r)"
+                [disabled]="r.hasChildren">
+          <mat-icon>preview</mat-icon>
+          <span>Preview</span>
+        </button>-->
+        <!-- Split -->
+        <!--<button mat-menu-item
+                (click)="openSplitDialog(r)"
+                [disabled]="!r.pageCount || r.pageCount <= 1">
+          <mat-icon>call_split</mat-icon>
+          <span>Split</span>
+        </button>-->
+        <!-- Update Work Basket -->
+        <!--<button mat-menu-item
+                (click)="openUpdateWorkBasketDialog(r)">
+          <mat-icon>work</mat-icon>
+          <span>Update Work Basket</span>
+        </button>-->
+        <!-- Update Priority -->
+        <!--<button mat-menu-item
+                (click)="updatePriority(r)">
+          <mat-icon>priority_high</mat-icon>
+          <span>
+            {{ r.priority === 1 ? 'Mark as Normal Priority' : 'Mark as High Priority' }}
+          </span>
+        </button>-->
+        <!-- Rename file -->
+        <!--<button mat-menu-item
+                (click)="renameFax(r)">
+          <mat-icon>drive_file_rename_outline</mat-icon>
+          <span>Rename file</span>
+        </button>-->
+        <!-- Delete -->
+        <!--<button mat-menu-item
+                  (click)="deleteFax(r)">
+            <mat-icon>delete</mat-icon>
+            <span>Delete</span>
+          </button>
+        </mat-menu>-->
+        <mat-menu #rowMenu="matMenu">
+          <!-- Preview -->
+          <button mat-menu-item
+                  (click)="openPreview(r)">
+            <mat-icon>preview</mat-icon>
+            <span>Preview</span>
+          </button>
+
+          <!-- Split -->
+          <button mat-menu-item
+                  (click)="openSplitDialog(r)"
+                  [disabled]="!r.pageCount || r.pageCount <= 1">
+            <mat-icon>call_split</mat-icon>
+            <span>Split</span>
+          </button>
+
+          <!-- Update Work Basket (inline dropdown) -->
+          <button mat-menu-item
+                  (click)="openUpdateWorkBasketInline(r)">
+            <mat-icon>work</mat-icon>
+            <span>Update Work Basket</span>
+          </button>
+
+          <!-- Update Priority (toggle 1 ↔ 2) -->
+          <button mat-menu-item
+                  (click)="updatePriority(r)">
+            <mat-icon>priority_high</mat-icon>
+            <span>
+              {{ r.priority === 1 ? 'Mark as Normal Priority' : 'Mark as High Priority' }}
+            </span>
+          </button>
+
+          <!-- Rename file (inline input) -->
+          <button mat-menu-item
+                  (click)="renameFaxInline(r)">
+            <mat-icon>drive_file_rename_outline</mat-icon>
+            <span>Rename File</span>
+          </button>
+
+          <!-- Delete (inline confirm) -->
+          <button mat-menu-item
+                  (click)="deleteFaxInline(r)">
+            <mat-icon>delete</mat-icon>
+            <span>Delete</span>
+          </button>
+        </mat-menu>
+
+      </td>
     </ng-container>
+
+
 
     <tr mat-header-row *matHeaderRowDef="columns"></tr>
     <tr mat-row class="data-row" *matRowDef="let row; columns: columns;"></tr>
@@ -103,7 +275,7 @@
 <!-- Split preview panel (shows when selectedFax is set) -->
 <div *ngIf="showPreview" class="split3" style="padding:5px;">
   <!-- Left: cards list -->
-  <div class="pane pane-left">
+  <div class="pane pane-left" *ngIf="false">
     <div class="pane-header">
       <span>Faxes (Page {{ page }})</span>
       <button mat-flat-button color="primary" (click)="closePreview()">Close Preview</button>
@@ -119,132 +291,227 @@
           <span>{{ (r.receivedAt ?? r.receivedAt) | date:'MM/dd/yyyy, hh:mm:ss a' }}</span> •
           <span>{{ r.pageCount ?? r.pageCount }} pg</span>
         </div>
-        <!--<div class="row">
-          <span class="muted">Member</span>
-          <span>{{ r.memberId ?? r.memberId || '—' }}</span>
-        </div>
-        <div class="row">
-          <span class="muted">Basket</span>
-          <span>{{ r.workBasket ?? r.workBasket || '—' }}</span>
-        </div>
-        <div class="row">
-          <span class="muted">Priority</span>
-          <span class="chip xs" [ngClass]="priorityClass((r.priority ?? r.priority) || 2)">
-            {{ priorityLabel((r.priority ?? r.priority) || 2) }}
-          </span>
-        </div>
-        <div class="row">
-          <span class="muted">Status</span>
-          <span class="chip xs chip-soft">{{ r.status ?? r.status }}</span>
-        </div>-->
+
       </div>
     </div>
   </div>
 
   <!-- Middle: details (bind to your OCR model when ready) -->
   <div class="pane pane-middle">
+    <!-- Loading -->
     <div *ngIf="isLoadingDetails" class="loader-container">
       <div class="spinner"></div>
       <div class="loader-text">Extracting details, please wait...</div>
     </div>
 
-    <div *ngIf="!isLoadingDetails && priorAuth as pa; else noOcr" class="space-y-3">
-      <div class="pane-header">
-        <span>Extracted Details</span>
-        <div class="text-sm muted">
-          {{ pa.source?.template || 'Generic' }}
-          <ng-container>
-            <span [class.muted-percent]="!pa.patient?.memberId">
-              • {{ pa.patient?.memberId ? ((pa.source?.confidence ?? 0) * 100 | number:'1.0-0') : 0 }}% match
-            </span>
-          </ng-container>
-
-
-        </div>
-      </div>
-      <div class="card">
-        <div *ngIf="pa.patient?.memberId; else noMember" class="info-highlight">
-          <!--Member identified (Member ID: {{ pa.patient?.memberId }}) and ready for linkage.
-          Authorization can be initiated for this request using the extracted Service Codes and valid Start–End dates.-->
-          Member identified (Member ID: {{ pa.patient?.memberId }}) and ready for linkage.
-          <strong class="smart-check">Smart Auth Check completed.</strong> Authorization is required for this request based on the extracted
-          <strong>Service Codes</strong> and verified <strong>Start–End dates</strong>.
-        </div>
-
-        <ng-template #noMember>
-          <div class="info-highlight no-match">
-            No matching member record found. Please verify patient details before linking or adding an authorization.
-          </div>
-        </ng-template>
-      </div>
-
-      <div class="card">
+    <!-- Not loading: show details if priorAuth exists, else noOcr -->
+    <ng-container *ngIf="!isLoadingDetails && priorAuth as pa; else noOcr">
+      <div class="space-y-3">
         <div class="pane-header">
-          <span>Patient</span>
-          <div class="text-sm muted">
-            <a [class.disabled-link]="!pa.patient?.memberId" href="#" [attr.tabindex]="pa.patient?.memberId ? 0 : -1">
-              Link to member
-            </a>
-            <a style="padding-left:10px;"
-               [class.disabled-link]="!pa.patient?.memberId"
-               href="#"
-               [attr.tabindex]="pa.patient?.memberId ? 0 : -1">
-              Add Auth
-            </a>
+          <div class="edit-toolbar" *ngIf="selectedFax">
+            <ng-container [ngSwitch]="editMode">
 
+              <!-- Rename filename -->
+              <div *ngSwitchCase="'rename'" class="edit-row">
+                <label>
+                  File name:
+                  <input [(ngModel)]="selectedFax.fileName"
+                         class="edit-input" />
+                </label>
+
+                <button mat-stroked-button
+                        color="primary"
+                        (click)="saveUpdate()"
+                        [disabled]="saving || !selectedFax.fileName">
+                  Save
+                </button>
+
+                <button mat-button type="button" (click)="cancelInlineEdit()">
+                  Cancel
+                </button>
+              </div>
+
+              <!-- Update Work Basket -->
+              <div *ngSwitchCase="'workbasket'" class="edit-row">
+                <label>
+                  Work Basket:
+                  <select [(ngModel)]="selectedFax.workBasket" class="edit-select">
+                    <option *ngFor="let wb of workBasketOptions"
+                            [value]="wb.value">
+                      {{ wb.label }}
+                    </option>
+                  </select>
+                </label>
+
+                <button mat-stroked-button
+                        color="primary"
+                        (click)="saveUpdate()"
+                        [disabled]="saving || !selectedFax.workBasket">
+                  Save
+                </button>
+
+                <button mat-button type="button" (click)="cancelInlineEdit()">
+                  Cancel
+                </button>
+              </div>
+
+              <!-- Delete confirm -->
+              <div *ngSwitchCase="'deleteConfirm'" class="edit-row delete-row">
+                <span>Are you sure you want to delete this fax?</span>
+
+                <button mat-stroked-button
+                        color="warn"
+                        (click)="confirmDelete()"
+                        [disabled]="saving">
+                  Delete
+                </button>
+
+                <button mat-button type="button" (click)="cancelInlineEdit()">
+                  Cancel
+                </button>
+              </div>
+
+            </ng-container>
+          </div>
+
+          <!-- LEFT: document name -->
+          <div class="doc-name">
+            {{ selectedFax?.fileName || 'No fax selected' }}
+          </div>
+
+          <!-- RIGHT: record count + navigation -->
+          <!--<div class="nav-controls">
+            <span class="nav-info">
+              {{ (currentIndex + 1) > 0 ? (currentIndex + 1) : 0 }} /
+              {{ dataSource.data.length || 0 }}
+            </span>
+
+            <button mat-icon-button
+                    matTooltip="Previous"
+                    (click)="showPrevious()"
+                    [disabled]="currentIndex <= 0">
+              <mat-icon>chevron_left</mat-icon>
+            </button>
+
+            <button mat-icon-button
+                    matTooltip="Next"
+                    (click)="showNext()"
+                    [disabled]="currentIndex < 0 || currentIndex >= (dataSource.data.length || 0) - 1">
+              <mat-icon>chevron_right</mat-icon>
+            </button>
+          </div>-->
+        </div>
+
+        <!-- Split panel: only show if we have a selected fax with more than 1 page -->
+        <div class="split-panel"
+             *ngIf="(selectedFax?.pageCount ?? 0) > 1 ">
+
+          <div class="split-info">
+            Total pages: <strong>{{ selectedFax?.pageCount }}</strong>
+          </div>
+
+          <div class="split-controls">
+            <label>
+              Pages in first document:
+              <input type="number"
+                     min="1"
+                     [max]="(selectedFax?.pageCount ?? 0) - 1"
+                     [(ngModel)]="splitFirstPageCount">
+            </label>
+
+            <button mat-stroked-button
+                    color="primary"
+                    (click)="splitCurrentFaxOnClient()"
+                    [disabled]="!selectedFax || (selectedFax.pageCount ?? 0) <= 1">
+              <mat-icon>call_split</mat-icon>
+              <span>Split &amp; Save</span>
+            </button>
           </div>
         </div>
-        <div class="grid-2">
-          <div><strong>Name</strong>: {{ pa.patient?.name || '—' }}</div>
-          <div><strong>Member ID</strong>: {{ pa.patient?.memberId || '—' }}</div>
-          <div><strong>DOB</strong>: {{ pa.patient?.dob || '—' }}</div>
-          <div><strong>Phone</strong>: {{ pa.patient?.phone || '—' }}</div>
-        </div>
-      </div>
 
-      <div class="card">
-        <div class="pane-header">Review / Setting</div>
-        <div class="grid-2">
-          <div><strong>Type</strong>: {{ pa.review?.type || '—' }}</div>
-          <div><strong>Inpatient</strong>: {{ pa.setting?.inpatient ? 'Yes' : 'No' }}</div>
-          <div><strong>Outpatient</strong>: {{ pa.setting?.outpatient ? 'Yes' : 'No' }}</div>
-        </div>
-      </div>
-
-      <div class="card" *ngIf="pa.services?.length">
-        <div class="pane-header">Services</div>
-        <div *ngFor="let s of pa.services" class="svc">
-          <div><strong>Code</strong>: {{ s.code || '—' }}</div>
-          <div class="md:col-span-2"><strong>Description</strong>: {{ s.description || '—' }}</div>
-          <div><strong>Start</strong>: {{ s.startDate || '—' }}</div>
-          <div><strong>End</strong>: {{ s.endDate || '—' }}</div>
-          <div><strong>DX</strong>: {{ s.diagnosisCode || s.diagnosisDescription || (pa.dx?.codes?.join(', ') || '—') }}</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="pane-header">Providers</div>
-        <div class="grid-2">
-          <div>
-            <strong>Requesting</strong>: {{ pa.providerRequesting?.name || '—' }}
-            <span *ngIf="pa.providerRequesting?.npi"> (NPI {{ pa.providerRequesting?.npi }})</span>
+        <div class="card">
+          <div *ngIf="pa.patient?.memberId; else noMember" class="info-highlight">
+            <!--Member identified (Member ID: {{ pa.patient?.memberId }}) and ready for linkage.
+            Authorization can be initiated for this request using the extracted Service Codes and valid Start–End dates.-->
+            Member identified (Member ID: {{ pa.patient?.memberId }}) and ready for linkage.
+            <strong class="smart-check">Smart Auth Check completed.</strong> Authorization is required for this request based on the extracted
+            <strong>Service Codes</strong> and verified <strong>Start–End dates</strong>.
           </div>
-          <div><strong>Servicing/Facility</strong>: {{ pa.providerServicing?.name || pa.providerServicing?.facility || '—' }}</div>
-          <div><strong>Req. Phone</strong>: {{ pa.providerRequesting?.phone || '—' }}</div>
-          <div><strong>Serv. Phone</strong>: {{ pa.providerServicing?.phone || '—' }}</div>
+
+          <ng-template #noMember>
+            <div class="info-highlight no-match">
+              No matching member record found. Please verify patient details before linking or adding an authorization.
+            </div>
+          </ng-template>
+        </div>
+
+        <div class="card">
+          <div class="pane-header">
+            <span>Patient</span>
+            <div class="text-sm muted">
+              <a [class.disabled-link]="!pa.patient?.memberId" href="#" [attr.tabindex]="pa.patient?.memberId ? 0 : -1">
+                Link to member
+              </a>
+              <a style="padding-left:10px;"
+                 [class.disabled-link]="!pa.patient?.memberId"
+                 href="#"
+                 [attr.tabindex]="pa.patient?.memberId ? 0 : -1">
+                Add Auth
+              </a>
+
+            </div>
+          </div>
+          <div class="grid-2">
+            <div><strong>Name</strong>: {{ pa.patient?.name || '—' }}</div>
+            <div><strong>Member ID</strong>: {{ pa.patient?.memberId || '—' }}</div>
+            <div><strong>DOB</strong>: {{ pa.patient?.dob || '—' }}</div>
+            <div><strong>Phone</strong>: {{ pa.patient?.phone || '—' }}</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="pane-header">Review / Setting</div>
+          <div class="grid-2">
+            <div><strong>Type</strong>: {{ pa.review?.type || '—' }}</div>
+            <div><strong>Inpatient</strong>: {{ pa.setting?.inpatient ? 'Yes' : 'No' }}</div>
+            <div><strong>Outpatient</strong>: {{ pa.setting?.outpatient ? 'Yes' : 'No' }}</div>
+          </div>
+        </div>
+
+        <div class="card" *ngIf="pa.services?.length">
+          <div class="pane-header">Services</div>
+          <div *ngFor="let s of pa.services" class="svc">
+            <div><strong>Code</strong>: {{ s.code || '—' }}</div>
+            <div class="md:col-span-2"><strong>Description</strong>: {{ s.description || '—' }}</div>
+            <div><strong>Start</strong>: {{ s.startDate || '—' }}</div>
+            <div><strong>End</strong>: {{ s.endDate || '—' }}</div>
+            <div><strong>DX</strong>: {{ s.diagnosisCode || s.diagnosisDescription || (pa.dx?.codes?.join(', ') || '—') }}</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="pane-header">Providers</div>
+          <div class="grid-2">
+            <div>
+              <strong>Requesting</strong>: {{ pa.providerRequesting?.name || '—' }}
+              <span *ngIf="pa.providerRequesting?.npi"> (NPI {{ pa.providerRequesting?.npi }})</span>
+            </div>
+            <div><strong>Servicing/Facility</strong>: {{ pa.providerServicing?.name || pa.providerServicing?.facility || '—' }}</div>
+            <div><strong>Req. Phone</strong>: {{ pa.providerRequesting?.phone || '—' }}</div>
+            <div><strong>Serv. Phone</strong>: {{ pa.providerServicing?.phone || '—' }}</div>
+          </div>
+        </div>
+
+        <div class="card" *ngIf="pa.notes || pa.submission?.issuerName">
+          <div class="pane-header">Submission / Notes</div>
+          <div class="grid-2">
+            <div><strong>Issuer</strong>: {{ pa.submission?.issuerName || '—' }}</div>
+            <div><strong>Date</strong>: {{ pa.submission?.date || '—' }}</div>
+          </div>
+          <div class="mt-2"><strong>Notes</strong>: {{ pa.notes || '—' }}</div>
         </div>
       </div>
-
-      <div class="card" *ngIf="pa.notes || pa.submission?.issuerName">
-        <div class="pane-header">Submission / Notes</div>
-        <div class="grid-2">
-          <div><strong>Issuer</strong>: {{ pa.submission?.issuerName || '—' }}</div>
-          <div><strong>Date</strong>: {{ pa.submission?.date || '—' }}</div>
-        </div>
-        <div class="mt-2"><strong>Notes</strong>: {{ pa.notes || '—' }}</div>
-      </div>
-    </div>
-
+    </ng-container>
     <ng-template #noOcr>
       <!--<div class="muted"> No OCR details yet. Choose a fax on the left.</div>-->
     </ng-template>

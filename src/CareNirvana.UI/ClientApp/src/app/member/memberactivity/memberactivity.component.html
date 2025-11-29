@@ -57,6 +57,25 @@
     </div>
   </div>
 
+  <!-- Contact With -->
+  <div class="form-outline dropdown-container">
+    <label class="floating-label">Contact With</label>
+    <ui-dropdown formControlName="contactWith"
+                 [options]="contactWithOptions"
+                 [compareWith]="compareId"
+                 placeholder="Select contact with">
+    </ui-dropdown>
+  </div>
+
+  <!-- Contact Mode -->
+  <div class="form-outline dropdown-container">
+    <label class="floating-label">Contact Mode</label>
+    <ui-dropdown formControlName="contactMode"
+                 [options]="contactModeOptions"
+                 [compareWith]="compareId"
+                 placeholder="Select contact mode">
+    </ui-dropdown>
+  </div>
   <!-- Scheduled Date & Time -->
   <div class="form-outline position-relative">
     <label class="floating-label">
@@ -182,25 +201,7 @@
       </ui-dropdown>
     </div>
 
-    <!-- Contact With -->
-    <div class="form-outline dropdown-container">
-      <label class="floating-label">Contact With</label>
-      <ui-dropdown formControlName="contactWith"
-                   [options]="contactWithOptions"
-                   [compareWith]="compareId"
-                   placeholder="Select contact with">
-      </ui-dropdown>
-    </div>
 
-    <!-- Contact Mode -->
-    <div class="form-outline dropdown-container">
-      <label class="floating-label">Contact Mode</label>
-      <ui-dropdown formControlName="contactMode"
-                   [options]="contactModeOptions"
-                   [compareWith]="compareId"
-                   placeholder="Select contact mode">
-      </ui-dropdown>
-    </div>
 
     <!-- Activity Duration -->
     <div class="form-outline">

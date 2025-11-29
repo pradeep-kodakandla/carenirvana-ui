@@ -288,12 +288,14 @@
               </div>
 
               <!-- DAY / WORK WEEK / WEEK VIEW (time grid) -->
-              <div *ngIf="calendarViewRange !== 'month'" class="time-grid">
+              <div *ngIf="calendarViewRange !== 'month'" class="time-grid" #timeGridContainer>
                 <!-- times column -->
                 <div class="time-column">
                   <div class="time-cell time-header"></div>
                   <div class="time-cell"
-                       *ngFor="let h of hours">
+                       *ngFor="let h of hours"
+                       #hourRow
+                       [attr.data-hour]="h">
                     {{ getTimeLabel(h) }}
                   </div>
                 </div>
@@ -307,22 +309,22 @@
                       <div class="dow">{{ day.date | date:'EEE' }}</div>
                       <div class="dom">{{ day.date | date:'MMM d' }}</div>
                     </div>
-
                     <div class="day-body">
                       <div class="time-cell"
                            *ngFor="let h of hours">
-                        <div class="slot">
+                        <div class="slot"
+                             (dblclick)="onTimeSlotDblClick(day, h, $event)"
+                             [ngClass]="{ 'slot-selected': isSelectedSlot(day, h) }">
                           <div class="time-event"
                                *ngFor="let ev of getEventsForHour(day, h)"
                                [ngClass]="getDueDateClass(ev.dueDate)"
                                (click)="onCalendarEventClick(ev, $event)"
                                [matTooltip]="
-                               'Activity: ' + (ev.activityType || 'Activity') + '\n' +
-                               'Follow-up: ' + (ev.followUpDateTime | date:'short') + '\n' +
-                               'Due Date: ' + (ev.dueDate | date:'shortDate') + '\n' +
-                               'Member: ' + ((ev.firstName || '') + ' ' + (ev.lastName || '')) + '\n' +
-                               'Status: ' + (ev.status || '')
-                             "
+                                   'Activity: ' + (ev.activityType || 'Activity') + '\n' +
+                                   'Follow-up: ' + (ev.followUpDateTime | date:'short') + '\n' +
+                                   'Due Date: ' + (ev.dueDate | date:'shortDate') + '\n' +
+                                   'Member: ' + ((ev.firstName || '') + ' ' + (ev.lastName || '')) + '\n' +
+                                   'Status: ' + (ev.status || '')"
                                matTooltipClass="activity-tooltip"
                                matTooltipPosition="above">
 
@@ -545,20 +547,25 @@
         </section>
       </div>
       <div class="myactivities-right"
-           *ngIf="selectedActivityId">
+           *ngIf="selectedActivityId || selectedFollowUpDate">
         <div class="notes-header">
-          <!--<h3>{{ getHeaderTitle() }}</h3>-->
           <h3 class="pane-title">
-            <span class="title-strong"> View Activity </span>
-            <!--<span class="title-normal"> for {{ headerTitle || '' }}</span>-->
+            <span class="title-strong">
+              {{ selectedActivityId ? 'View Activity' : 'New Activity' }}
+            </span>
           </h3>
-          <button type="button" class="notes-close" (click)="closeDetail()" aria-label="Close">×</button>
+          <button type="button"
+                  class="notes-close"
+                  (click)="closeDetail()"
+                  aria-label="Close">
+            ×
+          </button>
         </div>
 
         <app-memberactivity [memberActivityId]="selectedActivityId"
-                            [isView]="true">
+                            [isView]="!!selectedActivityId"
+                            [preselectedFollowup]="selectedFollowUpDate">
         </app-memberactivity>
-
       </div>
     </div>
   </mat-drawer-content>

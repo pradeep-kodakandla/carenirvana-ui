@@ -67,7 +67,7 @@
 /* 3-column split */
 .split3 {
   display: grid;
-  grid-template-columns: 280px 1fr 500px;
+  grid-template-columns: 700px 1fr;
   gap: 16px;
 }
 
@@ -497,3 +497,125 @@
   color: #9ca3af;
   font-weight: 500;
 }
+
+
+
+.pane-right .pane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.doc-name {
+  font-weight: 600;
+  max-width: 60%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.nav-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.nav-info {
+  min-width: 60px;
+  text-align: right;
+}
+
+
+
+.split-panel {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 0 12px;
+  border-bottom: 1px dashed #e1e5ea;
+  margin-bottom: 8px;
+}
+
+.split-info {
+  font-size: 13px;
+}
+
+.split-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+  .split-controls input[type="number"] {
+    width: 80px;
+    margin-left: 4px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    border: 1px solid #d0d4da;
+  }
+
+
+
+.fax-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+  .fax-name.is-child {
+    padding-left: 16px;
+  }
+
+.child-badge {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.child-count-badge {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+
+.wb-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.wb-chip {
+  border: 1px solid #d0d7e2;
+  background-color: #f5f7fb;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  outline: none;
+  white-space: nowrap;
+}
+
+  .wb-chip:hover {
+    background-color: #e7edf8;
+  }
+
+.wb-chip-active {
+  background-color: #1976d2;
+  color: #fff;
+  border-color: #1976d2;
+}
+
+/* top nav beside Add */
+.top-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+  .top-nav .nav-info {
+    font-size: 12px;
+    color: #4b5563;
+  }

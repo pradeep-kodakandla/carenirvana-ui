@@ -271,13 +271,13 @@ export class UmauthtemplateBuilderComponent implements OnInit {
     if (this.selectedTemplateId && this.selectedTemplateId > 0) {
       this.authService.getTemplate(this.selectedTemplateId).subscribe({
         next: (data: any) => {
-          if (!data || !data.length || !data[0] || !data[0].JsonContent) {
+          if (!data || !data.length || !data[0] || !data[0].jsonContent) {
             console.error('API returned invalid data or missing JsonContent');
             return;
           }
           try {
             // Parse the new JSON format with a sections array.
-            this.masterTemplate = JSON.parse(data[0].JsonContent);
+            this.masterTemplate = JSON.parse(data[0].jsonContent);
 
             if (this.masterTemplate.sections && Array.isArray(this.masterTemplate.sections)) {
               // Sort sections by order (using 0 as default if order is missing).
@@ -305,14 +305,14 @@ export class UmauthtemplateBuilderComponent implements OnInit {
             // Set the original master template for comparison.
             this.authService.getTemplate(1).subscribe({
               next: (data: any) => {
-                if (!data || !data[0]?.JsonContent) {
+                if (!data || !data[0]?.jsonContent) {
                   console.error('API returned invalid data:', data);
                   return;
                 }
 
                 try {
                   // Parse the new JSON format with a sections array.
-                  this.originalMasterTemplate = JSON.parse(data[0].JsonContent);
+                  this.originalMasterTemplate = JSON.parse(data[0].jsonContent);
                   if (this.originalMasterTemplate.sections && Array.isArray(this.originalMasterTemplate.sections)) {
                     // Sort sections by order (using 0 as default if order is missing).
                     this.originalMasterTemplate.sections.sort((a, b) => (a.order || 0) - (b.order || 0));

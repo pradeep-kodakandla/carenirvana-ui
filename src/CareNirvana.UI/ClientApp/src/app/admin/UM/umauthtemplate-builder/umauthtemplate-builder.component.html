@@ -18,13 +18,13 @@
     <!-- Id Column -->
     <ng-container matColumnDef="Id">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Auth Template ID</th>
-      <td mat-cell *matCellDef="let element" class="center-column">{{ element.Id }}</td>
+      <td mat-cell *matCellDef="let element" class="center-column">{{ element.id }}</td>
     </ng-container>
     <!-- Template Name Column -->
     <ng-container matColumnDef="TemplateName">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Template Name</th>
       <td mat-cell *matCellDef="let element">
-        <span>{{ element.TemplateName }}</span>
+        <span>{{ element.templateName }}</span>
       </td>
     </ng-container>
 
@@ -37,12 +37,12 @@
     <!-- Created By Column -->
     <ng-container matColumnDef="CreatedBy">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Created By</th>
-      <td mat-cell *matCellDef="let element"> {{ element.CreatedBy }} </td>
+      <td mat-cell *matCellDef="let element"> {{ element.createdBy }} </td>
     </ng-container>
     <!-- Created On Column -->
     <ng-container matColumnDef="CreatedOn">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Created On</th>
-      <td mat-cell *matCellDef="let element"> {{ element.CreatedOn | date: 'MM/dd/yyyy HH:mm' }} </td>
+      <td mat-cell *matCellDef="let element"> {{ element.createdOn | date: 'MM/dd/yyyy HH:mm' }} </td>
     </ng-container>
     <!-- Optional Columns -->
     <ng-container matColumnDef="updatedBy" *ngIf="visibleColumns.includes('updatedBy')">
@@ -183,8 +183,8 @@
                 (change)="onAuthTypeChange()"
                 appShowLabel
                 [disabled]="formMode === 'edit'">
-          <option *ngFor="let template of authTemplates" [value]="template.Id">
-            {{ template.TemplateName }}
+          <option *ngFor="let template of authTemplates" [value]="template.id">
+            {{ template.templateName }}
           </option>
         </select>
       </div>

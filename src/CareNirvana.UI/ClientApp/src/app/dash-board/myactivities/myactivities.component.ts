@@ -1,4 +1,4 @@
-import { Component, OnInit, AfterViewInit, ViewChild } from '@angular/core';
+import { Component, OnInit, AfterViewInit, ViewChild, QueryList, ViewChildren, ElementRef } from '@angular/core';
 import { EventEmitter, Output, } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { MatTableDataSource } from '@angular/material/table';
@@ -121,8 +121,15 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
   // expand placeholder (kept for parity)
   expandedElement: any | null = null;
 
+  selectedActivityId: number | null = null;   // you already have this
+  selectedFollowUpDate: Date | null = null;   // NEW
 
+  @ViewChild('timeGridContainer') timeGridContainer!: ElementRef<HTMLDivElement>;
+  @ViewChildren('hourRow')
+  hourRows!: QueryList<ElementRef<HTMLDivElement>>;
 
+  readonly workingStartHour = 8;
+  readonly workingEndHour = 17;
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -177,6 +184,8 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
 
 
   ngAfterViewInit(): void {
+
+
     this.dataSource.paginator = this.paginator;
     this.dataSource.sort = this.sort;
 
@@ -197,6 +206,8 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
 
       return fields.some(v => (v ?? '').toString().toLowerCase().includes(q));
     };
+
+    setTimeout(() => this.scrollToWorkingHours());
   }
 
   /** Wire your real service here (kept AS-IS). It should return rows with PascalCase keys:
@@ -856,21 +867,84 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
 
 
   /**********Activity Detail Drawer************/
-  selectedActivityId: number | null = null;
-
+  /*  selectedActivityId: number | null = null;*/
+  selectedSlot: { dayKey: string; hour: number } | null = null;
   // Called from both calendar and table View buttons
   onViewActivity(item: any): void {
     console.log('View activity clicked', item);
-    const id = item.activityId ;
+    const id = item.activityId;
     if (!id) {
       console.warn('No memberActivityId found on row/event', item);
       return;
     }
+    this.selectedFollowUpDate = null;
     this.selectedActivityId = id;
   }
 
   closeDetail(): void {
     this.selectedActivityId = null;
+    this.selectedFollowUpDate = null;
+  }
+
+
+
+
+  onTimeSlotDblClick(day: CalendarDay, hour: number, event: MouseEvent): void {
+    event.stopPropagation();
+
+    // Build a Date from the day + hour (you can adjust minutes if you have 30-min slots)
+    const dt = new Date(day.date);
+    dt.setHours(hour, 0, 0, 0); // hour:00
+
+    this.selectedSlot = {
+      dayKey: this.getDayKey(day),
+      hour
+    };
+
+    this.selectedActivityId = null;        // we are creating a NEW activity
+    this.selectedFollowUpDate = dt;        // pass to memberactivity component
+  }
+
+  private getDayKey(day: any): string {
+    // if day.date is a Date
+    const d = day.date instanceof Date ? day.date : new Date(day.date);
+    return d.toISOString().substring(0, 10); // 'YYYY-MM-DD'
+  }
+
+  isSelectedSlot(day: any, hour: number): boolean {
+    if (!this.selectedSlot) {
+      return false;
+    }
+
+    return (
+      this.selectedSlot.dayKey === this.getDayKey(day) &&
+      this.selectedSlot.hour === hour
+    );
+  }
+
+
+  private scrollToWorkingHours(): void {
+    if (!this.timeGridContainer || !this.hourRows?.length) {
+      return;
+    }
+
+    const containerEl = this.timeGridContainer.nativeElement;
+    const rows = this.hourRows.toArray();
+
+    const targetRowRef = rows.find(ref => {
+      const el = ref.nativeElement as HTMLDivElement;
+      const hour = Number(el.dataset['hour']);
+      return hour === this.workingStartHour;
+    });
+
+    if (!targetRowRef) {
+      return;
+    }
+
+    const rowEl = targetRowRef.nativeElement as HTMLDivElement;
+
+    // rowEl.offsetTop is relative to .time-grid container
+    containerEl.scrollTop = rowEl.offsetTop;
   }
 
 }
