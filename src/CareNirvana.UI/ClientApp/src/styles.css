@@ -565,3 +565,111 @@ icon-admin {
   padding-bottom: 0 !important;
   border-radius: 4px;
 }
+
+
+
+
+/*Menu Style*/
+.mat-mdc-menu-panel {
+  background-color: white !important;
+}
+/**/
+
+.row-menu-panel {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
+  min-width: 240px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.mat-mdc-menu-content {
+  padding: 0px !important;
+}
+
+.mat-mdc-menu-item {
+  border-bottom: 0.5px solid rgba(94, 82, 64,0.2) !important;
+  color: rgba(19, 52, 59, 1) !important;
+}
+/* remove default padding inside mat-menu */
+.row-menu-panel .mat-mdc-menu-content,
+.row-menu-panel .mat-menu-content {
+  padding: 0px 0 !important;
+  padding: 0px 0 !important;
+}
+
+/* base item look (height, font, color) */
+.row-menu-panel .mat-mdc-menu-item,
+.row-menu-panel .mat-menu-item {
+  height: 44px;
+  font-size: 14px;
+  font-weight: 400;
+  color: #111827;
+}
+
+  /* this makes the inner content flex so we can align icon + label */
+  .row-menu-panel .mat-mdc-menu-item .mdc-list-item__primary-text,
+  .row-menu-panel .mat-menu-item .mat-menu-item-text {
+    display: flex;
+    align-items: center;
+  }
+
+/* our custom item wrapper */
+.row-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+
+}
+
+/* icon column (fixed width, centered) */
+.row-menu-icon {
+  width: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 5px;
+}
+
+  .row-menu-icon mat-icon {
+    font-size: 18px;
+    color: darkslategray; /* gray-500 like screenshot */
+  }
+
+/* text label alignment */
+.row-menu-label {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  color: darkslategray;
+  vertical-align: super;
+}
+
+/* divider between rows like in screenshot */
+.row-menu-panel .mat-mdc-menu-item + .mat-mdc-menu-item,
+.row-menu-panel .mat-menu-item + .mat-menu-item {
+  border-top: 1px solid #f3f4f6;
+}
+
+/* hover / focus row background */
+.row-menu-panel .mat-mdc-menu-item:hover,
+.row-menu-panel .mat-mdc-menu-item.cdk-program-focused,
+.row-menu-panel .mat-menu-item:hover,
+.row-menu-panel .mat-menu-item.cdk-program-focused {
+  background-color: #f7f9fc;
+}
+
+/* first row: slightly tinted background & bolder text (Add Activity) */
+/*.row-menu-item--primary {
+  background-color: #f4f6ff;
+  font-weight: 500;
+}
+*/
+/* remove weird focus ring from trigger if you don’t want it */
+button[mat-icon-button][matMenuTriggerFor] {
+  outline: none;
+}
+
