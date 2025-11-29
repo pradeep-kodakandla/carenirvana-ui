@@ -41,6 +41,7 @@ import { MemberInfoComponent } from './member/member-info/member-info.component'
 import { MemberJourneyComponent } from './member/memberjourney/memberjourney.component';
 import { MemberSummaryaiComponent } from './member/member-summaryai/member-summaryai.component';
 import { MemberActivityComponent } from './member/memberactivity/memberactivity.component';
+import { MembersearchComponent } from './member/membersearch/membersearch.component';
 
 import { AuthorizationComponent } from './member/UM/authorization/authorization.component';
 import { DecisiondetailsComponent } from './member/UM/decisiondetails/decisiondetails.component';
@@ -170,7 +171,7 @@ import { UiMultiCheckDropdownComponent } from './shared/ui/uimulticheckdropdown/
     FaxesComponent,
     MemberAlertsComponent,
     MemberCareplanComponent,
-    MemberCareteamComponent, MemberCaregiverComponent, MemberJourneyComponent, MemberSummaryaiComponent, MemberActivityComponent,
+    MemberCareteamComponent, MemberCaregiverComponent, MemberJourneyComponent, MemberSummaryaiComponent, MemberActivityComponent, MembersearchComponent,
     MemberDocumentsComponent,
     MemberEnrollmentComponent,
     MemberNotesComponent,
@@ -251,7 +252,7 @@ import { UiMultiCheckDropdownComponent } from './shared/ui/uimulticheckdropdown/
       { path: 'member-journey', component: MemberJourneyComponent },
       { path: 'member-summaryai', component: MemberSummaryaiComponent },
       { path: 'member-activity', component: MemberActivityComponent },
-
+      { path: 'member-search', component: MembersearchComponent },
 
 
       { path: 'dash-newdash', component: NewDashBoardComponent },

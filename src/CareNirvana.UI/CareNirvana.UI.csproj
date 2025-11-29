@@ -31,6 +31,7 @@
     <None Remove="ClientApp\src\app\admin\" />
     <None Remove="ClientApp\src\app\core\" />
     <None Remove="ClientApp\src\app\dash-board\DashBoardComponent.ts" />
+    <None Remove="ClientApp\src\app\dash-board\mdreviewdashboard\mdreviewdashboard.component.ts" />
     <None Remove="ClientApp\src\app\service\validation-expression.service.spec.ts" />
     <!--<None Remove="ClientApp\src\app\dash-board\DashBoardComponent.ts" />-->
     <None Remove="ClientApp\src\app\shared\" />
@@ -45,9 +46,9 @@
     <Folder Include="ClientApp\src\app\animations\" />
     <Folder Include="ClientApp\src\app\member\member-caregiver\" />
     <Folder Include="ClientApp\src\app\Provider\" />
-    <Folder Include="ClientApp\src\app\shared\" />
     <Folder Include="ClientApp\src\app\login\" />
     <Folder Include="ClientApp\src\app\shared\helpers\" />
+    <Folder Include="ClientApp\src\app\shared\ui\shared\" />
     <Folder Include="ClientApp\src\assets\icons\" />
   </ItemGroup>
     <Target Name="DebugEnsureNodeEnv" BeforeTargets="Build" Condition=" '$(Configuration)' == 'Debug' And !Exists('$(SpaRoot)node_modules') ">

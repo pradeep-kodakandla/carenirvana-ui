@@ -131,8 +131,8 @@
                                   [(ngModel)]="selectedTemplateId"
                                   [disabled]="!selectedAuthClassId || selectedAuthClassId === 0"
                                   (change)="onAuthTypeChange(); $event.stopPropagation();">
-                            <option *ngFor="let template of authTemplates" [value]="template.Id">
-                              {{ template.TemplateName }}
+                            <option *ngFor="let template of authTemplates" [value]="template.id">
+                              {{ template.templateName }}
                             </option>
                           </select>
                         </div>

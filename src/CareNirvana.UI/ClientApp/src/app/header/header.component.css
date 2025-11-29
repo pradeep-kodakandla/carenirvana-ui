@@ -719,4 +719,14 @@ mat-tab-group {
   }
 
 
+.member-search-popover .mat-mdc-menu-content {
+  padding: 0; /* remove default padding */
+}
+
+.member-search-wrap {
+  min-width: 1050px;
+  max-height: 520px;
+  padding: 8px;
+  box-sizing: border-box;
+}
 

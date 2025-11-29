@@ -56,7 +56,7 @@
   <div class="right">
     <div class="notification-bar">
 
-      <div class="search-bar" *ngIf="isExpanded">
+      <!--<div class="search-bar" *ngIf="isExpanded">
         <input type="text"
                class="form-control"
                placeholder="Search Care Nirvana"
@@ -67,7 +67,30 @@
       </div>
       <button mat-icon-button (click)="toggleSearch()">
         <mat-icon style="color:white;">search</mat-icon>
+      </button>-->
+      <!-- Search icon opens member search popover -->
+      <button mat-icon-button
+              aria-label="Member search"
+              #memberSearchTrigger="matMenuTrigger"
+              [matMenuTriggerFor]="memberSearchMenu">
+        <mat-icon style="color:white;">search</mat-icon>
       </button>
+
+      <!-- Popover containing the reusable member search component -->
+      <mat-menu #memberSearchMenu="matMenu"
+                class="history-popover"
+                yPosition="below"
+                [overlapTrigger]="false"
+                [hasBackdrop]="true"
+                [backdropClass]="'cdk-overlay-dark-backdrop'"
+                matMenuTriggerRestoreFocus="false">
+        <div class="member-search-wrap" (click)="$event.stopPropagation()">
+          <!-- Your reusable member search component -->
+          <ui-member-search (memberSelected)="onHeaderMemberSelected($event)">
+          </ui-member-search>
+        </div>
+      </mat-menu>
+
 
       <button mat-icon-button (click)="goToPage('admin-config')">
         <mat-icon style="color:white;">settings</mat-icon>

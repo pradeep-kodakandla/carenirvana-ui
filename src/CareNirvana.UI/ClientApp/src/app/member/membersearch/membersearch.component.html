@@ -1,0 +1,235 @@
+<div class="member-search-container">
+  <!-- Header & simple search -->
+  <div class="search-header">
+    <h3 class="title">Member Search</h3>
+
+    <div class="simple-search">
+      <div class="search-input-wrapper">
+        <input type="text"
+               class="form-control search-input"
+               placeholder="Search by Name, Member ID, Medicaid ID, Phone..."
+               [(ngModel)]="quickSearch"
+               (keyup.enter)="onQuickSearch()" />
+
+        <button type="button" class="icon-button" (click)="onQuickSearch()">
+          <mat-icon>search</mat-icon>
+        </button>
+      </div>
+
+      <button type="button"
+              class="advanced-toggle"
+              (click)="showAdvanced = !showAdvanced">
+        <mat-icon class="toggle-icon">
+          {{ showAdvanced ? 'expand_less' : 'expand_more' }}
+        </mat-icon>
+        <span>{{ showAdvanced ? 'Hide advanced search' : 'Advanced search' }}</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Advanced search panel -->
+  <div class="advanced-panel" *ngIf="showAdvanced" [formGroup]="advancedForm">
+    <!-- Row 1 -->
+    <div class="filters-row">
+      <div class="form-outline">
+        <label class="floating-label">First Name</label>
+        <input type="text" class="form-control" formControlName="firstName" />
+      </div>
+
+      <div class="form-outline">
+        <label class="floating-label">Last Name</label>
+        <input type="text" class="form-control" formControlName="lastName" />
+      </div>
+    </div>
+
+    <!-- Row 2 -->
+    <div class="filters-row">
+      <div class="form-outline">
+        <label class="floating-label">Member ID</label>
+        <input type="text" class="form-control" formControlName="memberId" />
+      </div>
+
+      <div class="form-outline">
+        <label class="floating-label">Medicaid ID</label>
+        <input type="text" class="form-control" formControlName="medicaidId" />
+      </div>
+    </div>
+
+    <!-- Row 3 DOB -->
+    <div class="filters-row">
+      <div class="form-outline dropdown-container">
+        <label class="floating-label">DOB From</label>
+        <ui-datetime-picker formControlName="dobFrom"
+
+                            placeholder="Select date">
+        </ui-datetime-picker>
+      </div>
+
+      <div class="form-outline dropdown-container">
+        <label class="floating-label">DOB To</label>
+        <ui-datetime-picker formControlName="dobTo"
+
+                            placeholder="Select date">
+        </ui-datetime-picker>
+      </div>
+    </div>
+
+    <!-- Row 4 Gender / Program -->
+    <div class="filters-row">
+      <div class="form-outline dropdown-container">
+        <label class="floating-label">Gender</label>
+        <ui-dropdown formControlName="genderId"
+                     [options]="genderOptions"
+                     optionIdField="id"
+                     optionLabelField="name"
+                     placeholder="Select gender">
+        </ui-dropdown>
+      </div>
+
+      <div class="form-outline dropdown-container">
+        <label class="floating-label">Program</label>
+        <ui-multi-check-dropdown formControlName="programIds"
+                                 [options]="programOptions"
+                                 optionIdField="id"
+                                 optionLabelField="name"
+                                 [showChips]="true"
+                                 placeholder="Select program(s)">
+        </ui-multi-check-dropdown>
+      </div>
+    </div>
+
+    <!-- Row 5 Risk / Status -->
+    <div class="filters-row">
+      <div class="form-outline dropdown-container">
+        <label class="floating-label">Risk Level</label>
+        <ui-multi-check-dropdown formControlName="riskIds"
+                                 [options]="riskOptions"
+                                 optionIdField="id"
+                                 optionLabelField="name"
+                                 [showChips]="true"
+                                 placeholder="Select risk level(s)">
+        </ui-multi-check-dropdown>
+      </div>
+
+      <div class="form-outline dropdown-container">
+        <label class="floating-label">Status</label>
+        <ui-dropdown formControlName="statusId"
+                     [options]="statusOptions"
+                     optionIdField="id"
+                     optionLabelField="name"
+                     placeholder="Select status">
+        </ui-dropdown>
+      </div>
+    </div>
+
+    <!-- Row 6 PCP / Phone -->
+    <div class="filters-row">
+      <div class="form-outline">
+        <label class="floating-label">PCP Name</label>
+        <input type="text" class="form-control" formControlName="pcp" />
+      </div>
+
+      <div class="form-outline">
+        <label class="floating-label">Phone</label>
+        <input type="text" class="form-control" formControlName="phone" />
+      </div>
+    </div>
+
+    <!-- Row 7 Email full -->
+    <div class="filters-row">
+      <div class="form-outline full-width">
+        <label class="floating-label">Email</label>
+        <input type="text" class="form-control" formControlName="email" />
+      </div>
+    </div>
+
+    <div class="filters-actions">
+      <button mat-raised-button color="primary" (click)="onAdvancedSearch()">
+        Search
+      </button>
+      <button mat-stroked-button type="button" (click)="onAdvancedClear()">
+        Clear
+      </button>
+    </div>
+  </div>
+
+  <!-- Results table -->
+  <div class="results-wrapper" *ngIf="members && members.length">
+    <div class="results-header">
+      <span>Results: {{ members.length }} members</span>
+    </div>
+
+    <div class="results-table">
+      <table mat-table [dataSource]="members" class="mat-elevation-z1 full-width-table">
+
+        <!-- Select -->
+        <ng-container matColumnDef="select">
+          <th mat-header-cell *matHeaderCellDef class="is-center"></th>
+          <td mat-cell *matCellDef="let m" class="is-center">
+            <mat-radio-button [checked]="isSelected(m)"
+                              (change)="onRadioChange(m)">
+            </mat-radio-button>
+          </td>
+        </ng-container>
+
+        <!-- Member ID -->
+        <ng-container matColumnDef="memberId">
+          <th mat-header-cell *matHeaderCellDef>Member ID</th>
+          <td mat-cell *matCellDef="let m" (click)="onRowClick(m)">
+            {{ m.memberId }}
+          </td>
+        </ng-container>
+
+        <!-- Name -->
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>Name</th>
+          <td mat-cell *matCellDef="let m" (click)="onRowClick(m)">
+            {{ m.firstName }} {{ m.lastName }}
+          </td>
+        </ng-container>
+
+        <!-- DOB -->
+        <ng-container matColumnDef="dob">
+          <th mat-header-cell *matHeaderCellDef>DOB</th>
+          <td mat-cell *matCellDef="let m" (click)="onRowClick(m)">
+            {{ m.dob | date:'MM/dd/yyyy' }}
+          </td>
+        </ng-container>
+
+        <!-- Gender -->
+        <ng-container matColumnDef="gender">
+          <th mat-header-cell *matHeaderCellDef>Gender</th>
+          <td mat-cell *matCellDef="let m" (click)="onRowClick(m)">
+            {{ m.gender }}
+          </td>
+        </ng-container>
+
+        <!-- Program -->
+        <ng-container matColumnDef="program">
+          <th mat-header-cell *matHeaderCellDef>Program</th>
+          <td mat-cell *matCellDef="let m" (click)="onRowClick(m)">
+            {{ m.programName }}
+          </td>
+        </ng-container>
+
+        <!-- Status -->
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Status</th>
+          <td mat-cell *matCellDef="let m" (click)="onRowClick(m)">
+            {{ m.status }}
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row
+            *matRowDef="let row; columns: displayedColumns"
+            [class.selected-row]="isSelected(row)">
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="no-results" *ngIf="members && !members.length">
+    No members found. Please adjust search criteria.
+  </div>
+</div>

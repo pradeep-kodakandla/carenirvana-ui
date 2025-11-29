@@ -8,6 +8,7 @@ import { FaxesComponent } from './faxes/faxes.component';
 import { RolepermissionService, CfgRole } from 'src/app/service/rolepermission.service';
 import { MdreviewdashboardComponent } from './mdreviewdashboard/MdreviewdashboardComponent';
 import { DashboardServiceService } from 'src/app/service/dashboard.service.service';
+import { MembersearchComponent } from 'src/app/member/membersearch/membersearch.component';
 
 interface DashboardWidget {
   key: string;
@@ -164,7 +165,7 @@ export class DashBoardComponent {
         this.loadComponent(MyactivitiesComponent);
         break;
       case 'assignedComplaints':
-        this.loadComponent(AssignedcomplaintsComponent);
+        this.loadComponent(MembersearchComponent);
         break;
       case 'faxes':
         this.loadComponent(FaxesComponent);

@@ -7,6 +7,7 @@ import {
   Last24hCounts
 } from 'src/app/service/authentication.service';
 import { MemberService } from 'src/app/service/shared-member.service';
+import { MemberSummary } from 'src/app/member/membersearch/membersearch.component';
 
 @Component({
   selector: 'app-header',
@@ -80,7 +81,15 @@ export class HeaderComponent implements OnInit {
     });
   }
 
+  onHeaderMemberSelected(member: MemberSummary | null): void {
+    if (!member) {
+      return;
+    }
 
+    // Example: open member tab using your existing method
+    // you already have openMemberTab in history popover
+    //this.openMemberTab(member.memberId, `${member.firstName} ${member.lastName}`, member.memberDetailsId);
+  }
 
 
   onSearch(): void {

@@ -178,13 +178,9 @@ export class FaxesComponent implements OnInit {
           // 🔁 normalize every row to camelCase FaxFile
           const rows = rawItems.map(this.normalizeFax);
           this.faxesRaw = rawItems || [];
-          this.allFaxes = rows || [];
           this.buildFaxHierarchy();
           //this.dataSource.data = rows;
-          this.total = this.getTotal(res);
-          this.applyWorkBasketFilter();
-          // update chip counts
-          this.updateFaxCounts();
+
           // keep selection in sync if visible in page (compare against normalized rows)
           if (this.selectedFax) {
             const found = rows.find(x => x.faxId === this.selectedFax!.faxId);
@@ -245,6 +241,11 @@ export class FaxesComponent implements OnInit {
 
     this.groupedFaxes = flat;
     this.dataSource.data = this.groupedFaxes;
+    this.allFaxes = this.groupedFaxes || [];
+    this.total = this.getTotal(this.groupedFaxes);
+    this.applyWorkBasketFilter();
+    // update chip counts
+    this.updateFaxCounts();
   }
 
   // Put this helper in your component (or a utils file)

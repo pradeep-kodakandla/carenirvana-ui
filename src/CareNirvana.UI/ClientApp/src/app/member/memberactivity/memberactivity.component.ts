@@ -41,6 +41,7 @@ export class MemberActivityComponent implements OnInit, OnChanges {
   isSaving = false;
 
   callType: 'Scheduled' | 'CompletedCall' | 'ConferenceCall' = 'Scheduled';
+  private initialized = false;
 
   constructor(
     private fb: FormBuilder,
@@ -59,13 +60,21 @@ export class MemberActivityComponent implements OnInit, OnChanges {
     if (this.memberDetailsId) {
       this.activityForm.patchValue({ memberDetailsId: this.memberDetailsId });
     }
+    this.initialized = true;
+
+    if (this.memberActivityId) {
+      this.loadActivityDetail(this.memberActivityId);
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['memberDetailsId'] && this.activityForm) {
       this.activityForm.patchValue({ memberDetailsId: this.memberDetailsId });
     }
-    this.loadActivityDetail(this.memberActivityId ?? 0);
+    /*this.loadActivityDetail(this.memberActivityId ?? 0);*/
+    if (changes['memberActivityId'] && !changes['memberActivityId'].firstChange && this.initialized) {
+      this.loadActivityDetail(this.memberActivityId ?? 0);
+    }
 
     if (changes['preselectedFollowup'] &&
       this.preselectedFollowup &&
@@ -354,8 +363,14 @@ export class MemberActivityComponent implements OnInit, OnChanges {
   }
 
 
-  compareId = (o1: any, o2: any): boolean =>
-    o1 && o2 ? o1.id === o2.id : o1 === o2;
+  //compareId = (o1: any, o2: any): boolean =>
+  //  o1 && o2 ? o1.id === o2.id : o1 === o2;
+
+  compareId = (o1: any, o2: any): boolean => {
+    const v1 = this.getNumericValue(o1);
+    const v2 = this.getNumericValue(o2);
+    return v1 === v2;
+  };
 
   private getNumericValue(source: any): number | null {
     if (source === null || source === undefined) {
@@ -588,7 +603,7 @@ export class MemberActivityComponent implements OnInit, OnChanges {
 
           comments: activity.comment || ''
         });
-
+        console.log("Patch Values", this.activityForm);
       },
       error: err => {
         console.error('Error loading activity detail', err);
@@ -596,9 +611,17 @@ export class MemberActivityComponent implements OnInit, OnChanges {
     });
   }
 
+  //private findOption(options: any[], id: number | null | undefined): any | null {
+  //  if (!id || !options) return null;
+  //  return options.find(o => o.id === id) || null;
+  //}
+
   private findOption(options: any[], id: number | null | undefined): any | null {
-    if (!id || !options) return null;
-    return options.find(o => o.id === id) || null;
+    if (id === null || id === undefined || !options || !options.length) {
+      return null;
+    }
+
+    return options.find(o => this.getNumericValue(o) === id) || null;
   }
 
   setCallType(type: 'Scheduled' | 'CompletedCall' | 'ConferenceCall'): void {
