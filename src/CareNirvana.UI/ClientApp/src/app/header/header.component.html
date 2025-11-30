@@ -72,7 +72,8 @@
       <button mat-icon-button
               aria-label="Member search"
               #memberSearchTrigger="matMenuTrigger"
-              [matMenuTriggerFor]="memberSearchMenu">
+              [matMenuTriggerFor]="memberSearchMenu"
+              (click)="onMemberSearchIconClick(memberSearchComp)">
         <mat-icon style="color:white;">search</mat-icon>
       </button>
 
@@ -86,7 +87,7 @@
                 matMenuTriggerRestoreFocus="false">
         <div class="member-search-wrap" (click)="$event.stopPropagation()">
           <!-- Your reusable member search component -->
-          <ui-member-search (memberSelected)="onHeaderMemberSelected($event)">
+          <ui-member-search #memberSearchComp (memberSelected)="onHeaderMemberSelected($event, memberSearchTrigger)">
           </ui-member-search>
         </div>
       </mat-menu>

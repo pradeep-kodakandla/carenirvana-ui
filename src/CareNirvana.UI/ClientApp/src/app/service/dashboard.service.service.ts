@@ -64,6 +64,48 @@ export interface EndMemberCareStaffResponse {
   affectedRows: number;
 }
 
+
+
+export interface MemberSearchCriteria {
+  quickText?: string | null;
+
+  firstName?: string | null;
+  lastName?: string | null;
+  memberId?: string | null;
+  medicaidId?: string | null;
+
+  dobFrom?: string | null;  // ISO date string
+  dobTo?: string | null;
+
+  gender?: string | null;
+  phone?: string | null;
+  email?: string | null;
+
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+
+  pageNumber?: number;
+  pageSize?: number;
+}
+
+export interface MemberSummary {
+  memberDetailsId: number;
+  memberId: string;
+  medicaidId?: string | null;
+  firstName: string;
+  lastName: string;
+  dob?: string | null;
+  gender?: string | null;
+  status?: string | null;
+  phoneNumber?: string | null;
+  emailAddress?: string | null;
+  addressLine1?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zipCode?: string | null;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -155,4 +197,13 @@ export class DashboardServiceService {
       .pipe(map(res => res.affectedRows ?? 0));
   }
 
+  searchMembers(criteria: MemberSearchCriteria): Observable<MemberSummary[]> {
+    const payload: MemberSearchCriteria = {
+      pageNumber: criteria.pageNumber ?? 1,
+      pageSize: criteria.pageSize ?? 25,
+      ...criteria
+    };
+
+    return this.http.post<MemberSummary[]>(`${this.apiUrl}/search`, payload);
+  }
 }

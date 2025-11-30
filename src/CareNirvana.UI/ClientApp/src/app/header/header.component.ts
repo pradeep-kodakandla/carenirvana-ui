@@ -1,13 +1,11 @@
 import { Component, OnInit, EventEmitter, Output } from '@angular/core';
 import { Router } from '@angular/router';
 import { HeaderService } from '../service/header.service';
-import {
-  AuthenticateService,
-  RecentlyAccessed,
-  Last24hCounts
-} from 'src/app/service/authentication.service';
+import { AuthenticateService, RecentlyAccessed, Last24hCounts } from 'src/app/service/authentication.service';
 import { MemberService } from 'src/app/service/shared-member.service';
-import { MemberSummary } from 'src/app/member/membersearch/membersearch.component';
+import { MemberSummary } from 'src/app/service/dashboard.service.service';
+import { MembersearchComponent } from 'src/app/member/membersearch/membersearch.component';
+import { MatMenuTrigger } from '@angular/material/menu';
 
 @Component({
   selector: 'app-header',
@@ -81,14 +79,27 @@ export class HeaderComponent implements OnInit {
     });
   }
 
-  onHeaderMemberSelected(member: MemberSummary | null): void {
-    if (!member) {
+  onMemberSearchIconClick(comp: MembersearchComponent): void {
+    // Clear previous search, filters, results, and selection
+    if (comp) {
+      comp.resetSearch();
+    }
+  }
+
+  // Called when a member is selected in the popover search
+  onHeaderMemberSelected( member: MemberSummary | null, trigger: MatMenuTrigger ): void {
+
+    if (!member) { 
       return;
     }
+    if (member) {
+      this.openMemberTab(member.memberId, `${member.firstName} ${member.lastName}`, member.memberDetailsId);
+    }
 
-    // Example: open member tab using your existing method
-    // you already have openMemberTab in history popover
-    //this.openMemberTab(member.memberId, `${member.firstName} ${member.lastName}`, member.memberDetailsId);
+    // Close the member search menu/hover
+    if (trigger) {
+      trigger.closeMenu();
+    }
   }
 
 
