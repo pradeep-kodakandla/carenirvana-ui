@@ -8,7 +8,7 @@ import { AppfeaturesetupComponent } from 'src/app/admin/appfeaturesetup/appfeatu
 import { PermissionManagerComponent } from 'src/app/admin/appfeaturesetup/permission-manager/permission-manager.component';
 import { WorkgroupComponent } from 'src/app/admin/workgroup/workgroup.component';
 import { WorkbasketComponent } from 'src/app/admin/workbasket/workbasket.component';
-import { UserDefinedCustomFieldsComponent } from 'src/app/admin/userdefinedcustomfields/userdefinedcustomfields.component'; 
+import { UserDefinedCustomFieldsComponent } from 'src/app/admin/userdefinedcustomfields/userdefinedcustomfields.component';
 // UM Components
 import { UmdocumenttypeComponent } from 'src/app/admin/UM/umdocumenttype/umdocumenttype.component';
 import { UmactivitytypeComponent } from 'src/app/admin/UM/umactivitytype/umactivitytype.component';
@@ -222,7 +222,7 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
     { name: 'Manage', children: ['Member Merge'] },
     {
       name: 'Administration',
-      children: ['Role Management', 'User Management', 'Profile Management', 'Application Features Setup', 'Work Group','Work Basket', 'Custom Field']
+      children: ['Role Management', 'User Management', 'Profile Management', 'Application Features Setup', 'Work Group', 'Work Basket', 'Custom Field']
     },
     { name: 'Configuration Management', children: ['Config Push'] },
     { name: 'Business Rules Engine', children: ['Rules'] }
@@ -327,8 +327,8 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
 
   private loadInitialComponent(): void {
     if (this.dynamicContainer) {
-      //this.loadComponent('Auth Template');
-      this.loadComponent('Custom Field');
+      this.loadComponent('Auth Template');
+      //this.loadComponent('Custom Field');
     } else {
       console.error('Dynamic container not initialized');
     }

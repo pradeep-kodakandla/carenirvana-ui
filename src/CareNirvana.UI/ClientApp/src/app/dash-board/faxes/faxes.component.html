@@ -13,20 +13,20 @@
     <div class="chip-list">
       <div class="flex items-center gap-2">
 
-          <button type="button"
-                  class="wb-chip"
-                  [class.wb-chip-active]="!selectedWorkBasket"
-                  (click)="selectWorkBasket(null)">
-            All ({{ totalFaxCount }})
-          </button>
+        <button type="button"
+                class="wb-chip"
+                [class.wb-chip-active]="!selectedWorkBasket"
+                (click)="selectWorkBasket(null)">
+          All ({{ totalFaxCount }})
+        </button>
 
-          <button type="button"
-                  class="wb-chip"
-                  *ngFor="let wb of faxWorkBaskets"
-                  [class.wb-chip-active]="selectedWorkBasket === wb.name"
-                  (click)="selectWorkBasket(wb.name)">
-            {{ wb.name }} ({{ wb.count || 0 }})
-          </button>
+        <button type="button"
+                class="wb-chip"
+                *ngFor="let wb of faxWorkBaskets"
+                [class.wb-chip-active]="selectedWorkBasket === wb.name"
+                (click)="selectWorkBasket(wb.name)">
+          {{ wb.name }} ({{ wb.count || 0 }})
+        </button>
 
 
         <button mat-stroked-button color="primary" (click)="reload()">Search</button>
@@ -79,7 +79,7 @@
     <!--<div class="sub-id">#{{ r.faxId }}</div>-->
     <!--</td>
     </ng-container>-->
-    <ng-container matColumnDef="fileName">
+    <!--<ng-container matColumnDef="fileName">
       <th mat-header-cell *matHeaderCellDef>Fax File Name</th>
       <td mat-cell *matCellDef="let r">
         <div class="fax-name" [ngClass]="{ 'is-child': r.isChild }">
@@ -91,6 +91,46 @@
             ({{ r.children?.length }} split page{{ (r.children?.length || 0) > 1 ? 's' : '' }})
           </span>
         </div>
+      </td>
+    </ng-container>-->
+    <ng-container matColumnDef="fileName">
+      <th mat-header-cell *matHeaderCellDef>Fax File Name</th>
+      <td mat-cell *matCellDef="let r">
+
+        <!-- Normal view -->
+        <div class="fax-name"
+             *ngIf="editingFileNameFaxId !== r.faxId"
+             [ngClass]="{ 'is-child': r.isChild }">
+          <span *ngIf="r.isChild" class="child-badge">↳</span>
+          <span class="font-medium">{{ r.fileName }}</span>
+
+          <span *ngIf="r.hasChildren"
+                class="child-count-badge">
+            ({{ r.children?.length }} split page{{ (r.children?.length || 0) > 1 ? 's' : '' }})
+          </span>
+        </div>
+
+        <!-- Inline rename editor -->
+        <div class="inline-edit"
+             *ngIf="editingFileNameFaxId === r.faxId">
+          <input [(ngModel)]="tempFileName"
+                 class="inline-input"
+                 placeholder="Enter file name" />
+
+          <button mat-icon-button
+                  matTooltip="Save"
+                  (click)="saveRename(r)"
+                  [disabled]="saving || !tempFileName?.trim()">
+            <mat-icon>check</mat-icon>
+          </button>
+
+          <button mat-icon-button
+                  matTooltip="Cancel"
+                  (click)="cancelRename()">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+
       </td>
     </ng-container>
 
@@ -107,10 +147,48 @@
     </ng-container>
 
     <!-- Work Basket -->
-    <ng-container matColumnDef="workBasket">
+    <!--<ng-container matColumnDef="workBasket">
       <th mat-header-cell *matHeaderCellDef>Work Basket</th>
       <td mat-cell *matCellDef="let r">{{ r.workBasket || '—' }}</td>
+    </ng-container>-->
+    <ng-container matColumnDef="workBasket">
+      <th mat-header-cell *matHeaderCellDef>Work Basket</th>
+      <td mat-cell *matCellDef="let r">
+
+        <!-- Normal view -->
+        <ng-container *ngIf="editingWorkBasketFaxId !== r.faxId; else wbEdit">
+          {{ r.workBasket || '—' }}
+        </ng-container>
+
+        <!-- Inline work basket editor -->
+        <ng-template #wbEdit>
+          <div class="inline-edit">
+            <select [(ngModel)]="tempWorkBasket"
+                    class="inline-select">
+              <option *ngFor="let wb of workBasketOptions"
+                      [value]="wb.value">
+                {{ wb.label }}
+              </option>
+            </select>
+
+            <button mat-icon-button
+                    matTooltip="Save"
+                    (click)="saveWorkBasket(r)"
+                    [disabled]="saving || !tempWorkBasket">
+              <mat-icon>check</mat-icon>
+            </button>
+
+            <button mat-icon-button
+                    matTooltip="Cancel"
+                    (click)="cancelWorkBasketEdit()">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+        </ng-template>
+
+      </td>
     </ng-container>
+
 
     <!-- Priority -->
     <ng-container matColumnDef="priority">
@@ -173,48 +251,7 @@
         </button>
 
         <!-- Row menu -->
-        <!--<mat-menu #rowMenu="matMenu">-->
-        <!-- Preview -->
-        <!--<button mat-menu-item
-                (click)="openPreview(r)"
-                [disabled]="r.hasChildren">
-          <mat-icon>preview</mat-icon>
-          <span>Preview</span>
-        </button>-->
-        <!-- Split -->
-        <!--<button mat-menu-item
-                (click)="openSplitDialog(r)"
-                [disabled]="!r.pageCount || r.pageCount <= 1">
-          <mat-icon>call_split</mat-icon>
-          <span>Split</span>
-        </button>-->
-        <!-- Update Work Basket -->
-        <!--<button mat-menu-item
-                (click)="openUpdateWorkBasketDialog(r)">
-          <mat-icon>work</mat-icon>
-          <span>Update Work Basket</span>
-        </button>-->
-        <!-- Update Priority -->
-        <!--<button mat-menu-item
-                (click)="updatePriority(r)">
-          <mat-icon>priority_high</mat-icon>
-          <span>
-            {{ r.priority === 1 ? 'Mark as Normal Priority' : 'Mark as High Priority' }}
-          </span>
-        </button>-->
-        <!-- Rename file -->
-        <!--<button mat-menu-item
-                (click)="renameFax(r)">
-          <mat-icon>drive_file_rename_outline</mat-icon>
-          <span>Rename file</span>
-        </button>-->
-        <!-- Delete -->
-        <!--<button mat-menu-item
-                  (click)="deleteFax(r)">
-            <mat-icon>delete</mat-icon>
-            <span>Delete</span>
-          </button>
-        </mat-menu>-->
+
         <mat-menu #rowMenu="matMenu">
           <!-- Preview -->
           <button mat-menu-item
@@ -256,11 +293,31 @@
 
           <!-- Delete (inline confirm) -->
           <button mat-menu-item
-                  (click)="deleteFaxInline(r)">
+                  (click)="openDeleteInline(r)">
             <mat-icon>delete</mat-icon>
             <span>Delete</span>
           </button>
         </mat-menu>
+        <!-- Inline delete confirmation -->
+        <div class="inline-delete"
+             *ngIf="deletingFaxId === r.faxId">
+          <span class="inline-delete-message">
+            {{ deleteMessage }}
+          </span>
+
+          <button mat-button
+                  color="warn"
+                  (click)="confirmDelete(r)"
+                  [disabled]="saving">
+            Yes, delete
+          </button>
+
+          <button mat-button
+                  (click)="cancelDelete()"
+                  [disabled]="saving">
+            Cancel
+          </button>
+        </div>
 
       </td>
     </ng-container>
@@ -308,98 +365,11 @@
     <ng-container *ngIf="!isLoadingDetails && priorAuth as pa; else noOcr">
       <div class="space-y-3">
         <div class="pane-header">
-          <div class="edit-toolbar" *ngIf="selectedFax">
-            <ng-container [ngSwitch]="editMode">
-
-              <!-- Rename filename -->
-              <div *ngSwitchCase="'rename'" class="edit-row">
-                <label>
-                  File name:
-                  <input [(ngModel)]="selectedFax.fileName"
-                         class="edit-input" />
-                </label>
-
-                <button mat-stroked-button
-                        color="primary"
-                        (click)="saveUpdate()"
-                        [disabled]="saving || !selectedFax.fileName">
-                  Save
-                </button>
-
-                <button mat-button type="button" (click)="cancelInlineEdit()">
-                  Cancel
-                </button>
-              </div>
-
-              <!-- Update Work Basket -->
-              <div *ngSwitchCase="'workbasket'" class="edit-row">
-                <label>
-                  Work Basket:
-                  <select [(ngModel)]="selectedFax.workBasket" class="edit-select">
-                    <option *ngFor="let wb of workBasketOptions"
-                            [value]="wb.value">
-                      {{ wb.label }}
-                    </option>
-                  </select>
-                </label>
-
-                <button mat-stroked-button
-                        color="primary"
-                        (click)="saveUpdate()"
-                        [disabled]="saving || !selectedFax.workBasket">
-                  Save
-                </button>
-
-                <button mat-button type="button" (click)="cancelInlineEdit()">
-                  Cancel
-                </button>
-              </div>
-
-              <!-- Delete confirm -->
-              <div *ngSwitchCase="'deleteConfirm'" class="edit-row delete-row">
-                <span>Are you sure you want to delete this fax?</span>
-
-                <button mat-stroked-button
-                        color="warn"
-                        (click)="confirmDelete()"
-                        [disabled]="saving">
-                  Delete
-                </button>
-
-                <button mat-button type="button" (click)="cancelInlineEdit()">
-                  Cancel
-                </button>
-              </div>
-
-            </ng-container>
-          </div>
 
           <!-- LEFT: document name -->
           <div class="doc-name">
             {{ selectedFax?.fileName || 'No fax selected' }}
           </div>
-
-          <!-- RIGHT: record count + navigation -->
-          <!--<div class="nav-controls">
-            <span class="nav-info">
-              {{ (currentIndex + 1) > 0 ? (currentIndex + 1) : 0 }} /
-              {{ dataSource.data.length || 0 }}
-            </span>
-
-            <button mat-icon-button
-                    matTooltip="Previous"
-                    (click)="showPrevious()"
-                    [disabled]="currentIndex <= 0">
-              <mat-icon>chevron_left</mat-icon>
-            </button>
-
-            <button mat-icon-button
-                    matTooltip="Next"
-                    (click)="showNext()"
-                    [disabled]="currentIndex < 0 || currentIndex >= (dataSource.data.length || 0) - 1">
-              <mat-icon>chevron_right</mat-icon>
-            </button>
-          </div>-->
         </div>
 
         <!-- Split panel: only show if we have a selected fax with more than 1 page -->

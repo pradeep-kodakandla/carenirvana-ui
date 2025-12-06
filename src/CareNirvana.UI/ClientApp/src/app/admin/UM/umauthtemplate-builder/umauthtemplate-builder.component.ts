@@ -208,7 +208,7 @@ export class UmauthtemplateBuilderComponent implements OnInit {
     this.selectedSection = '';
 
     if (mode === 'edit' && element) {
-      this.newTemplateName = element.TemplateName;
+      this.newTemplateName = element.templateName;
       this.selectedClassId = element.authclassid;
 
       // ✅ Load templates first, then set selectedTemplateId
@@ -217,7 +217,8 @@ export class UmauthtemplateBuilderComponent implements OnInit {
           this.authTemplates = [{ Id: 0, TemplateName: 'Select Auth Type' }, ...data];
 
           // ✅ Set selectedTemplateId after dropdown is populated
-          this.selectedTemplateId = element.Id;
+          this.selectedTemplateId = element.id;
+          console.log("Selected Template ID", this.selectedTemplateId);
           this.onAuthTypeChange(); // Load masterTemplate after setting TemplateId
         },
         error: (err) => {
@@ -755,7 +756,7 @@ export class UmauthtemplateBuilderComponent implements OnInit {
   }
 
 
-   moveFieldToAvailable(field: TemplateField, sectionName: string, event: Event): void {
+  moveFieldToAvailable(field: TemplateField, sectionName: string, event: Event): void {
     event.stopPropagation();
 
     let wasRemoved = false;
@@ -894,11 +895,11 @@ export class UmauthtemplateBuilderComponent implements OnInit {
             templateId: this.selectedTemplateId,
             validations,
             templateJson: this.masterTemplate
-}
+          }
         });
 
         dialogRef.afterClosed().subscribe((result: any) => {
-          console.log('Returned validations:', result); 
+          console.log('Returned validations:', result);
           if (result) {
             const payload = {
               templateId: this.selectedTemplateId,
@@ -915,4 +916,69 @@ export class UmauthtemplateBuilderComponent implements OnInit {
       }
     });
   }
+
+  // Left panel collapse state
+  leftPanelGroups = {
+    available: true,
+    unavailSections: true,
+    unavailFields: true
+  };
+
+  get totalUnavailableFieldCount(): number {
+    if (!this.unavailableFieldsGrouped) return 0;
+    return Object.keys(this.unavailableFieldsGrouped)
+      .reduce((sum, key) => sum + (this.unavailableFieldsGrouped[key]?.length || 0), 0);
+  }
+
+  toggleLeftPanelGroup(key: 'available' | 'unavailSections' | 'unavailFields'): void {
+    this.leftPanelGroups[key] = !this.leftPanelGroups[key];
+  }
+
+
+
+  getSectionFieldCount(section: TemplateSectionModel): number {
+    if (!section) {
+      return 0;
+    }
+
+    let count = 0;
+
+    const countFields = (fields?: TemplateField[]) => {
+      if (!Array.isArray(fields)) {
+        return;
+      }
+      fields.forEach(f => {
+        // If this is a row layout with sub-fields, count the children
+        if (f.layout === 'row' && Array.isArray(f.fields) && f.fields.length) {
+          count += f.fields.length;
+        } else {
+          count += 1;
+        }
+      });
+    };
+
+    countFields(section.fields);
+
+    if (section.subsections) {
+      Object.values(section.subsections).forEach((sub: TemplateSectionModel) => {
+        countFields(sub.fields);
+      });
+    }
+
+    return count;
+  }
+
+  onAddFieldClicked(section: TemplateSectionModel, event: Event): void {
+    event.stopPropagation();
+    // For now just select the section – user can drag fields into it
+    this.selectSection(section);
+  }
+
+  onSectionSettings(section: TemplateSectionModel, event: Event): void {
+    event.stopPropagation();
+    console.log('Section settings clicked:', section.sectionName);
+    // Hook to a settings dialog here later if needed
+  }
+
+
 }

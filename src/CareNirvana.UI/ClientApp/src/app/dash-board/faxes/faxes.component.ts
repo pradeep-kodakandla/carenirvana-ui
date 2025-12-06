@@ -158,6 +158,11 @@ export class FaxesComponent implements OnInit {
             name: wg.workBasketName,
             count: 0
           }));
+        this.workBasketOptions = this.faxWorkBaskets.map(wb => ({
+          value: wb.name,   // we store workBasket as its name in the fax row
+          label: wb.name
+        }));
+        this.updateFaxCounts();
       },
       error: (err) => {
         console.error('Error fetching user work groups:', err);
@@ -198,8 +203,6 @@ export class FaxesComponent implements OnInit {
           this.updateFaxCounts();
         }
       });
-
-
   }
 
   private buildFaxHierarchy(): void {
@@ -473,7 +476,7 @@ export class FaxesComponent implements OnInit {
 
       /*memberId: this.selectedFax.memberid,*/
       faxId: this.selectedFax.faxId,
-      workBasket: "2",
+      workBasket: "2",//this.selectedFax.workBasket ?? undefined,
       fileName: this.selectedFax.fileName,
       priority: this.selectedFax.priority,
       status: this.selectedFax.status,
@@ -855,36 +858,84 @@ export class FaxesComponent implements OnInit {
   // Inline edit mode for preview pane
   editMode: 'none' | 'rename' | 'workbasket' | 'deleteConfirm' = 'none';
 
-  // Simple work basket dropdown list (replace with real data from API if needed)
-  workBasketOptions = [
-    { value: '1', label: 'Work Basket 1' },
-    { value: '2', label: 'Work Basket Fax' },
-    // add more as needed
-  ];
+  // Dropdown options for work baskets (we'll fill from user work groups)
+  workBasketOptions: { value: string; label: string }[] = [];
 
-  // Cancel any inline edit banner
+  // Inline edit state (table-level, not preview)
+  editingFileNameFaxId: number | null = null;
+  editingWorkBasketFaxId: number | null = null;
+  tempFileName: string = '';
+  tempWorkBasket: string | null = null;
+
+  // Cancel any preview-banner edit (still used for delete confirm if you want)
   cancelInlineEdit(): void {
     this.editMode = 'none';
   }
 
   // --- Rename ---
 
+  // --- Rename (inline in table) ---
+
   renameFaxInline(row: FaxFile): void {
-    // Show preview + inline rename editor
-    this.openPreview(row);
-    this.editMode = 'rename';
+    // Only one editor at a time
+    this.editingWorkBasketFaxId = null;
+    this.editingFileNameFaxId = row.faxId ?? null;
+    this.tempFileName = row.fileName;
   }
+
+  saveRename(row: FaxFile): void {
+    const name = (this.tempFileName || '').trim();
+    if (!name) return;
+
+    this.selectedFax = {
+      ...row,
+      fileName: name,
+      updatedBy: this.currentUserId ?? row.updatedBy ?? 1
+    };
+
+    this.saveUpdate();
+    this.editingFileNameFaxId = null;
+  }
+
+  cancelRename(): void {
+    this.editingFileNameFaxId = null;
+    this.tempFileName = '';
+  }
+
 
   // --- Work Basket ---
 
   openUpdateWorkBasketInline(row: FaxFile): void {
-    this.openPreview(row);
-    this.editMode = 'workbasket';
+    this.editingFileNameFaxId = null;
+    this.editingWorkBasketFaxId = row.faxId ?? null;
 
-    // Optionally default a work basket if not set
-    if (!this.selectedFax?.workBasket && this.workBasketOptions.length) {
-      this.selectedFax!.workBasket = this.workBasketOptions[0].value;
+    const current = row.workBasket;
+
+    if (current && this.workBasketOptions.some(w => w.value === current)) {
+      this.tempWorkBasket = current;
+    } else if (this.workBasketOptions.length) {
+      this.tempWorkBasket = this.workBasketOptions[0].value;
+    } else {
+      this.tempWorkBasket = current || null;
     }
+  }
+
+  saveWorkBasket(row: FaxFile): void {
+    if (!this.tempWorkBasket) return;
+
+    this.selectedFax = {
+      ...row,
+      workBasket: this.tempWorkBasket,
+      updatedBy: this.currentUserId ?? row.updatedBy ?? 1
+    };
+
+    this.saveUpdate();
+    this.editingWorkBasketFaxId = null;
+  }
+
+  cancelWorkBasketEdit(): void {
+    this.editingWorkBasketFaxId = null;
+    this.tempWorkBasket = null;
   }
 
   // --- Priority toggle (1 <-> 2) ---
@@ -902,24 +953,67 @@ export class FaxesComponent implements OnInit {
 
   // --- Delete (inline confirmation) ---
 
-  deleteFaxInline(row: FaxFile): void {
-    this.openPreview(row);
-    this.editMode = 'deleteConfirm';
+  //deleteFaxInline(row: FaxFile): void {
+  //  this.openPreview(row);
+  //  this.editMode = 'deleteConfirm';
+  //}
+
+  //confirmDelete(): void {
+  //  if (!this.selectedFax) return;
+
+  //  this.selectedFax = {
+  //    ...this.selectedFax,
+  //    deletedOn: new Date().toISOString(),
+  //    deletedBy: this.currentUserId ?? this.selectedFax.deletedBy ?? 1,
+  //    status: 'Deleted' // if your backend expects a status change
+  //  };
+
+  //  this.saveUpdate();
+  //}
+  deletingFaxId: number | null = null;
+  deleteMessage: string = '';
+  openDeleteInline(row: FaxFile): void {
+    // Close other inline editors
+    this.editingFileNameFaxId = null;
+    this.editingWorkBasketFaxId = null;
+
+    this.deletingFaxId = row.faxId ?? null;
+
+    // Build message depending on selection
+    if (row.hasChildren) {
+      this.deleteMessage = `This will delete "${row.fileName}" and all its split pages. Continue?`;
+    } else if ((row as any).isChild) {
+      this.deleteMessage = `This will delete the split page "${row.fileName}". Continue?`;
+    } else {
+      this.deleteMessage = `Are you sure you want to delete "${row.fileName}"?`;
+    }
   }
 
-  confirmDelete(): void {
-    if (!this.selectedFax) return;
+  confirmDelete(row: FaxFile): void {
+    if (!row || !row.faxId) {
+      return;
+    }
 
+    const nowIso = new Date().toISOString();
+
+    // Mark the selected fax for delete; saveUpdate will use deletedBy/deletedOn
     this.selectedFax = {
-      ...this.selectedFax,
-      deletedOn: new Date().toISOString(),
-      deletedBy: this.currentUserId ?? this.selectedFax.deletedBy ?? 1,
-      status: 'Deleted' // if your backend expects a status change
+      ...row,
+      deletedBy: this.currentUserId ?? row.deletedBy ?? 1,
+      deletedOn: nowIso
     };
 
     this.saveUpdate();
+
+    // Clear inline UI
+    this.deletingFaxId = null;
+    this.deleteMessage = '';
   }
 
+  cancelDelete(): void {
+    this.deletingFaxId = null;
+    this.deleteMessage = '';
+  }
 
   /* END Update Methods */
 

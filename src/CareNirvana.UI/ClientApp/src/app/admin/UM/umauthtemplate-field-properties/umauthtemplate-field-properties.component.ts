@@ -25,6 +25,17 @@ interface TemplateField {
   authStatus?: string[];
   isEnabled?: boolean;
   dateOnly?: boolean;
+
+  showWhen?: 'always' | 'fieldEquals' | 'fieldNotEquals';
+  referenceFieldId?: string | null;
+  visibilityValue?: string | number | null;
+  requiredWhen?: 'always' | 'whenVisible' | 'never';
+
+  // === Advanced tab ===
+  apiEndpoint?: string | null;
+  enableAuditTrail?: boolean;
+  includeInExport?: boolean;
+  fieldPermission?: 'all' | 'careManagers' | 'admins';
 }
 interface DropdownOption {
   id: string;
@@ -49,6 +60,8 @@ export class UmauthtemplateFieldPropertiesComponent implements OnChanges {
   @Input() selectedSection: TemplateSectionModel | null = null;
   @Output() fieldUpdated = new EventEmitter<TemplateField>();
   @Output() sectionUpdated = new EventEmitter<TemplateSectionModel>();
+
+
 
   searchText: string = '';
   allCodes: { code: string; label: string }[] = [];
@@ -353,4 +366,13 @@ export class UmauthtemplateFieldPropertiesComponent implements OnChanges {
     this.emitUpdate();
   }
 
+
+  activeTab: 'basic' | 'conditional' | 'advanced' = 'basic';
+
+  setActiveTab(tab: 'basic' | 'conditional' | 'advanced'): void {
+    this.activeTab = tab;
+  }
+
+  // Optional – if you want a list of other fields for "Reference Field"
+  @Input() allFields: any[] = []; // populate from parent if needed
 }

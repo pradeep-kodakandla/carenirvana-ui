@@ -1,192 +1,180 @@
-<div class="card shadow-sm p-3 mb-4 bg-white rounded" *ngIf="selectedField">
-  <div class="card-header bg-primary text-white">
-    <h5 class="mb-0">Field Properties</h5>
+<div class="card shadow-sm mb-4 bg-white rounded" *ngIf="selectedField">
+  <div class="field-header">
+    <div class="field-header-left">
+      <i class="bi bi-sliders field-header-icon"></i>
+      <span class="field-header-title">Field Properties</span>
+    </div>
+
+    <!-- Right-side rounded “back / reset” button -->
+    <button type="button" class="field-header-back" title="Back">
+      <i class="bi bi-arrow-counterclockwise"></i>
+    </button>
   </div>
 
   <div class="card-body" style="padding:10px;">
-    <div class="content-section">
-      <!-- Section Name Update (only if a section is selected) -->
-      <div *ngIf="selectedSection" class="mb-3 form-outline" style="padding-bottom:15px;">
-        <label class="form-label">Section Name</label>
-        <input type="text" class="form-control" [(ngModel)]="selectedSection.sectionName" (change)="emitSectionUpdate()">
-      </div>
+    <!--<div class="content-section">-->
+    <!-- Section Name Update (only if a section is selected) -->
+    <!--<div *ngIf="selectedSection" class="mb-3 form-outline" style="padding-bottom:15px;">
+      <label class="form-label">Section Name</label>
+      <input type="text" class="form-control" [(ngModel)]="selectedSection.sectionName" (change)="emitSectionUpdate()">
+    </div>-->
+    <!-- Label Input -->
+    <!--<div *ngIf="selectedField.type !== 'button'" class="mb-3 form-outline" style="padding-bottom:15px;">
+      <label class="form-label">Label</label>
+      <input type="text" class="form-control" [(ngModel)]="selectedField.label" (change)="emitUpdate()" disabled>
+    </div>-->
+    <!--<div *ngIf="selectedField.type !== 'button'" class="mb-3">
+      <span class="info-label">Field Label: </span>
+      <span class="info-value">{{ selectedField.label }}</span>
+    </div>
 
-      <!-- Label Input -->
-      <!--<div *ngIf="selectedField.type !== 'button'" class="mb-3 form-outline" style="padding-bottom:15px;">
-    <label class="form-label">Label</label>
-    <input type="text" class="form-control" [(ngModel)]="selectedField.label" (change)="emitUpdate()" disabled>
-  </div>-->
-      <div *ngIf="selectedField.type !== 'button'" class="mb-3">
-        <span class="info-label">Field Label: </span>
-        <span class="info-value">{{ selectedField.label }}</span>
-      </div>
 
-
-      <div *ngIf="selectedField.type !== 'button'" class="mb-3 form-outline" style="padding-bottom:15px;">
-        <label class="form-label">Display Name</label>
-        <input type="text" class="form-control" [(ngModel)]="selectedField.displayName" (change)="emitUpdate()">
-      </div>
-      <!-- Field Type Dropdown -->
-      <div class="mb-3 form-outline">
-        <label class="form-label">Field Type</label>
-        <select class="form-select" [(ngModel)]="selectedField.type" (selectionChange)="emitUpdate()">
-          <option value="text">Text</option>
-          <option value="number">Number</option>
-          <option value="datetime-local">DateTime</option>
-          <option value="select">Select</option>
-          <option value="textarea">Textarea</option>
-          <option value="button">Button</option>
-        </select>
-      </div>
-
-      <!-- Is Enabled Checkbox -->
-      <div class="form-check mb-3" style="padding-top:10px;">
-        <input type="checkbox" class="form-check-input"
-               [(ngModel)]="selectedField.isEnabled"
-               (change)="emitUpdate()">
-        <label class="form-check-label">Is Editable</label>
-      </div>
-
-      <!-- Default Value Input for datetime-local -->
-      <div *ngIf="selectedField.type === 'datetime-local'" class="mb-3 form-outline">
-        <label class="form-label">Default Value (D, D+1, D+2)</label>
-        <input type="text"
-               class="form-control"
-               [(ngModel)]="selectedField.defaultValue"
-               (change)="emitUpdate()"
-               placeholder="Enter default (e.g., D, D+1)">
-      </div>
-
-      <!-- Date Only Toggle -->
-      <div *ngIf="selectedField.type === 'datetime-local'" class="form-check mb-3">
-        <input type="checkbox"
-               class="form-check-input"
-               [(ngModel)]="selectedField.dateOnly"
-               (change)="emitUpdate()" />
-        <label class="form-check-label">Only Date (No Time)</label>
-      </div>
-
-      <!-- Required Checkbox -->
-      <div class="form-check mb-3" style="padding-top:10px;">
-        <input type="checkbox" class="form-check-input" [(ngModel)]="selectedField.required" (change)="emitUpdate()">
-        <label class="form-check-label">Required</label>
-      </div>
-      <!-- Auth Status Dropdown (Multi-select) -->
-      <div class="mb-3 form-outline" *ngIf="selectedField.required" style="padding-bottom:15px;">
-        <label class="form-label">Auth Status</label>
-        <div class="border rounded p-2">
-          <div *ngFor="let status of authStatusOptions" class="form-check">
-            <input type="checkbox" class="form-check-input"
-                   [value]="status"
-                   [checked]="selectedField.authStatus && selectedField.authStatus.includes(status)"
-                   (change)="toggleAuthStatus(status, $event)">
-            <label class="form-check-label">{{ status }}</label>
-          </div>
+    <div *ngIf="selectedField.type !== 'button'" class="mb-3 form-outline" style="padding-bottom:15px;">
+      <label class="form-label">Display Name</label>
+      <input type="text" class="form-control" [(ngModel)]="selectedField.displayName" (change)="emitUpdate()">
+    </div>-->
+    <!-- Field Type Dropdown -->
+    <!--<div class="mb-3 form-outline">
+      <label class="form-label">Field Type</label>
+      <select class="form-select" [(ngModel)]="selectedField.type" (selectionChange)="emitUpdate()">
+        <option value="text">Text</option>
+        <option value="number">Number</option>
+        <option value="datetime-local">DateTime</option>
+        <option value="select">Select</option>
+        <option value="textarea">Textarea</option>
+        <option value="button">Button</option>
+      </select>
+    </div>-->
+    <!-- Is Enabled Checkbox -->
+    <!--<div class="form-check mb-3" style="padding-top:10px;">
+      <input type="checkbox" class="form-check-input"
+             [(ngModel)]="selectedField.isEnabled"
+             (change)="emitUpdate()">
+      <label class="form-check-label">Is Editable</label>
+    </div>-->
+    <!-- Default Value Input for datetime-local -->
+    <!--<div *ngIf="selectedField.type === 'datetime-local'" class="mb-3 form-outline">
+      <label class="form-label">Default Value (D, D+1, D+2)</label>
+      <input type="text"
+             class="form-control"
+             [(ngModel)]="selectedField.defaultValue"
+             (change)="emitUpdate()"
+             placeholder="Enter default (e.g., D, D+1)">
+    </div>-->
+    <!-- Date Only Toggle -->
+    <!--<div *ngIf="selectedField.type === 'datetime-local'" class="form-check mb-3">
+      <input type="checkbox"
+             class="form-check-input"
+             [(ngModel)]="selectedField.dateOnly"
+             (change)="emitUpdate()" />
+      <label class="form-check-label">Only Date (No Time)</label>
+    </div>-->
+    <!-- Required Checkbox -->
+    <!--<div class="form-check mb-3" style="padding-top:10px;">
+      <input type="checkbox" class="form-check-input" [(ngModel)]="selectedField.required" (change)="emitUpdate()">
+      <label class="form-check-label">Required</label>
+    </div>-->
+    <!-- Auth Status Dropdown (Multi-select) -->
+    <!--<div class="mb-3 form-outline" *ngIf="selectedField.required" style="padding-bottom:15px;">
+      <label class="form-label">Auth Status</label>
+      <div class="border rounded p-2">
+        <div *ngFor="let status of authStatusOptions" class="form-check">
+          <input type="checkbox" class="form-check-input"
+                 [value]="status"
+                 [checked]="selectedField.authStatus && selectedField.authStatus.includes(status)"
+                 (change)="toggleAuthStatus(status, $event)">
+          <label class="form-check-label">{{ status }}</label>
         </div>
       </div>
-      <!-- Required Message Input (if required is checked) -->
-      <div *ngIf="selectedField.required" class="mb-3 form-outline" style="padding-bottom:15px;">
-        <label class="form-label">Required Message</label>
-        <input type="text" class="form-control" [(ngModel)]="selectedField.requiredMsg" (change)="emitUpdate()" placeholder="Enter required message">
-      </div>
-
-
-      <!-- Datasource Input (only for select fields) -->
-      <div *ngIf="selectedField.type === 'select'" class="mb-3 form-outline">
-        <label class="form-label">Datasource</label>
-        <input type="text" class="form-control"
-               [(ngModel)]="selectedField.datasource"
-               (blur)="checkAndTriggerDatasourceChange()"
-               (keydown.enter)="checkAndTriggerDatasourceChange()"
-               placeholder="Enter datasource name">
-      </div>
-
-      <!-- Dropdown with default selection -->
-      <div *ngIf="selectedField.type === 'select' && selectedField.datasource" class="mb-3">
-        <label class="form-label">Select Options (with default selection)</label>
-
-        <!-- Custom Multi-Select with Checkboxes -->
-        <!-- Dynamic Options with Radio Buttons for Default Selection -->
-        <div class="border rounded p-2" style="max-height: 250px; overflow-y: auto;">
-
-          <!-- Select All Option -->
-          <div class="form-check">
-            <input type="checkbox" class="form-check-input"
-                   [checked]="isAllSelected()" [indeterminate]="isIndeterminate()"
-                   (change)="toggleSelectAll()">
-            <label class="form-check-label fw-bold">Select All</label>
-          </div>
-
-          <!-- Dynamic Options List -->
-          <div *ngFor="let option of dropdownOptions" class="form-check d-flex justify-content-between align-items-center">
-            <!-- Checkbox for Selection -->
-            <div>
-              <input type="checkbox" class="form-check-input me-2"
-                     [value]="option.id"
-                     [checked]="selectedField.selectedOptions?.includes(option.id)"
-                     (change)="onCheckboxChange(option.id, $event)">
-              <label class="form-check-label">{{ option.value }}</label>
-            </div>
-
-            <!-- Radio Button for Default Selection -->
-            <input type="radio" name="defaultOption" class="form-check-input"
-                   [checked]="selectedField.defaultValue === option.id"
-                   (click)="setDefault(option.id)">
-          </div>
-
-          <!-- Clear Default Selection Button -->
-          <button class="btn btn-secondary btn-sm mt-2" (click)="clearDefaultSelection()">
-            Clear Default Selection
-          </button>
-
-        </div>
+    </div>-->
+    <!-- Required Message Input (if required is checked) -->
+    <!--<div *ngIf="selectedField.required" class="mb-3 form-outline" style="padding-bottom:15px;">
+      <label class="form-label">Required Message</label>
+      <input type="text" class="form-control" [(ngModel)]="selectedField.requiredMsg" (change)="emitUpdate()" placeholder="Enter required message">
+    </div>-->
+    <!-- Datasource Input (only for select fields) -->
+    <!--<div *ngIf="selectedField.type === 'select'" class="mb-3 form-outline">
+      <label class="form-label">Datasource</label>
+      <input type="text" class="form-control"
+             [(ngModel)]="selectedField.datasource"
+             (blur)="checkAndTriggerDatasourceChange()"
+             (keydown.enter)="checkAndTriggerDatasourceChange()"
+             placeholder="Enter datasource name">
+    </div>-->
+    <!-- Dropdown with default selection -->
+    <!--<div *ngIf="selectedField.type === 'select' && selectedField.datasource" class="mb-3">
+    <label class="form-label">Select Options (with default selection)</label>-->
+    <!-- Custom Multi-Select with Checkboxes -->
+    <!-- Dynamic Options with Radio Buttons for Default Selection -->
+    <!--<div class="border rounded p-2" style="max-height: 250px; overflow-y: auto;">-->
+    <!-- Select All Option -->
+    <!--<div class="form-check">
+      <input type="checkbox" class="form-check-input"
+             [checked]="isAllSelected()" [indeterminate]="isIndeterminate()"
+             (change)="toggleSelectAll()">
+      <label class="form-check-label fw-bold">Select All</label>
+    </div>-->
+    <!-- Dynamic Options List -->
+    <!--<div *ngFor="let option of dropdownOptions" class="form-check d-flex justify-content-between align-items-center">-->
+    <!-- Checkbox for Selection -->
+    <!--<div>
+      <input type="checkbox" class="form-check-input me-2"
+             [value]="option.id"
+             [checked]="selectedField.selectedOptions?.includes(option.id)"
+             (change)="onCheckboxChange(option.id, $event)">
+      <label class="form-check-label">{{ option.value }}</label>
+    </div>-->
+    <!-- Radio Button for Default Selection -->
+    <!--<input type="radio" name="defaultOption" class="form-check-input"
+             [checked]="selectedField.defaultValue === option.id"
+             (click)="setDefault(option.id)">
+    </div>-->
+    <!-- Clear Default Selection Button -->
+    <!--<button class="btn btn-secondary btn-sm mt-2" (click)="clearDefaultSelection()">
+          Clear Default Selection
+        </button>
 
       </div>
 
-      <!-- Options for "select" field type -->
-      <div *ngIf="selectedField.type === 'select'">
-        <h5 class="mb-2">Options</h5>
-        <div *ngFor="let option of selectedField.options; let i = index" class="d-flex align-items-center mb-2">
-          <input class="form-control me-2" [(ngModel)]="selectedField.options![i]" (input)="debouncedEmitUpdate()">
-          <button class="btn btn-danger btn-sm" (click)="removeOption(i)">
-            <i class="bi bi-trash"></i>
-          </button>
-        </div>
-        <button class="btn btn-success btn-sm" (click)="addOption()">+ Add Option</button>
+    </div>-->
+    <!-- Options for "select" field type -->
+    <!--<div *ngIf="selectedField.type === 'select'">
+      <h5 class="mb-2">Options</h5>
+      <div *ngFor="let option of selectedField.options; let i = index" class="d-flex align-items-center mb-2">
+        <input class="form-control me-2" [(ngModel)]="selectedField.options![i]" (input)="debouncedEmitUpdate()">
+        <button class="btn btn-danger btn-sm" (click)="removeOption(i)">
+          <i class="bi bi-trash"></i>
+        </button>
       </div>
-
-      <!-- Button Text Input (only for button fields) -->
-      <div *ngIf="selectedField.type === 'button'" class="mb-3 form-outline">
-        <label class="form-label">Button Text</label>
-        <input type="text" class="form-control" [(ngModel)]="selectedField.buttonText" (change)="emitUpdate()" placeholder="Enter button text">
-      </div>
-
-
-      <!-- ICD10 Multi-Select Autocomplete -->
-      <div *ngIf="selectedField?.id === 'icd10Code' || selectedField?.id === 'serviceCode'" class="mb-3 form-outline">
-        <label class="form-label">
-          {{ selectedField.id === 'icd10Code' ? 'ICD10 Codes' : 'Service Codes' }}
-        </label>
-
-        <!-- Selected Tags -->
-        <div class="border p-2 rounded mb-2" style="min-height: 40px;">
-          <span *ngFor="let code of selectedField.selectedOptions" class="badge bg-primary me-1">
-            {{ code }}
-            <button type="button" class="btn-close btn-close-white btn-sm ms-1"
-                    (click)="removeCode(code)"></button>
-          </span>
-        </div>
-
-        <!-- Input box -->
-        <input type="text"
-               [(ngModel)]="searchText"
-               class="form-control"
-               placeholder="Type to search"
-               (input)="filterCodes()"
-               (keydown.enter)="addCodeFromText()" />
-
-        <!-- Suggestions -->
-        <ul class="list-group mt-1" *ngIf="filteredCodes.length && searchText">
+      <button class="btn btn-success btn-sm" (click)="addOption()">+ Add Option</button>
+    </div>-->
+    <!-- Button Text Input (only for button fields) -->
+    <!--<div *ngIf="selectedField.type === 'button'" class="mb-3 form-outline">
+      <label class="form-label">Button Text</label>
+      <input type="text" class="form-control" [(ngModel)]="selectedField.buttonText" (change)="emitUpdate()" placeholder="Enter button text">
+    </div>-->
+    <!-- ICD10 Multi-Select Autocomplete -->
+    <!--<div *ngIf="selectedField?.id === 'icd10Code' || selectedField?.id === 'serviceCode'" class="mb-3 form-outline">
+    <label class="form-label">
+      {{ selectedField.id === 'icd10Code' ? 'ICD10 Codes' : 'Service Codes' }}
+    </label>-->
+    <!-- Selected Tags -->
+    <!--<div class="border p-2 rounded mb-2" style="min-height: 40px;">
+      <span *ngFor="let code of selectedField.selectedOptions" class="badge bg-primary me-1">
+        {{ code }}
+        <button type="button" class="btn-close btn-close-white btn-sm ms-1"
+                (click)="removeCode(code)"></button>
+      </span>
+    </div>-->
+    <!-- Input box -->
+    <!--<input type="text"
+         [(ngModel)]="searchText"
+         class="form-control"
+         placeholder="Type to search"
+         (input)="filterCodes()"
+         (keydown.enter)="addCodeFromText()" />-->
+    <!-- Suggestions -->
+    <!--<ul class="list-group mt-1" *ngIf="filteredCodes.length && searchText">
           <li class="list-group-item list-group-item-action"
               *ngFor="let option of filteredCodes"
               (click)="selectCode(option)">
@@ -200,6 +188,227 @@
 
 
 
+    </div>-->
+
+
+
+    <div class="card-body" style="padding:10px;" *ngIf="selectedField">
+      <!-- Tabs -->
+      <div class="field-tabs mb-2">
+        <button type="button"
+                class="field-tab"
+                [class.active]="activeTab === 'basic'"
+                (click)="setActiveTab('basic')">
+          <span>Basic</span>
+        </button>
+
+        <button type="button"
+                class="field-tab"
+                [class.active]="activeTab === 'conditional'"
+                (click)="setActiveTab('conditional')">
+          <span>Conditional</span>
+        </button>
+
+        <button type="button"
+                class="field-tab"
+                [class.active]="activeTab === 'advanced'"
+                (click)="setActiveTab('advanced')">
+          <span>Advanced</span>
+        </button>
+      </div>
+
+      <!-- ================= BASIC TAB ================= -->
+      <div class="content-section" *ngIf="activeTab === 'basic'">
+        <!-- everything you already had stays here -->
+        <!-- Section Name -->
+        <div *ngIf="selectedSection" class="mb-3 form-outline" style="padding-bottom:15px;">
+          <label class="form-label">Section Name</label>
+          <input type="text" class="form-control"
+                 [(ngModel)]="selectedSection.sectionName"
+                 (change)="emitSectionUpdate()">
+        </div>
+
+        <!-- Field Label (read only) -->
+        <div *ngIf="selectedField.type !== 'button'" class="mb-3">
+          <span class="info-label">Field Label: </span>
+          <span class="info-value">{{ selectedField.label }}</span>
+        </div>
+
+        <!-- Display Name -->
+        <div *ngIf="selectedField.type !== 'button'" class="mb-3 form-outline" style="padding-bottom:15px;">
+          <label class="form-label">Display Name</label>
+          <input type="text" class="form-control"
+                 [(ngModel)]="selectedField.displayName"
+                 (change)="emitUpdate()">
+        </div>
+
+        <!-- Field Type -->
+        <div class="mb-3 form-outline">
+          <label class="form-label">Field Type</label>
+          <select class="form-select"
+                  [(ngModel)]="selectedField.type"
+                  (selectionChange)="emitUpdate()">
+            <option value="text">Text</option>
+            <option value="number">Number</option>
+            <option value="datetime-local">DateTime</option>
+            <option value="select">Select</option>
+            <option value="textarea">Textarea</option>
+            <option value="button">Button</option>
+          </select>
+        </div>
+
+        <!-- Is Editable -->
+        <div class="form-check mb-3" style="padding-top:10px;">
+          <input type="checkbox"
+                 class="form-check-input"
+                 [(ngModel)]="selectedField.isEnabled"
+                 (change)="emitUpdate()">
+          <label class="form-check-label">Is Editable</label>
+        </div>
+
+        <!-- Default Value + Date Only (for datetime-local) -->
+        <div *ngIf="selectedField.type === 'datetime-local'" class="mb-3 form-outline">
+          <label class="form-label">Default Value (D, D+1, D+2)</label>
+          <input type="text"
+                 class="form-control"
+                 [(ngModel)]="selectedField.defaultValue"
+                 (change)="emitUpdate()"
+                 placeholder="Enter default (e.g., D, D+1)">
+        </div>
+
+        <div *ngIf="selectedField.type === 'datetime-local'" class="form-check mb-3">
+          <input type="checkbox"
+                 class="form-check-input"
+                 [(ngModel)]="selectedField.dateOnly"
+                 (change)="emitUpdate()" />
+          <label class="form-check-label">Only Date (No Time)</label>
+        </div>
+
+        <!-- Required -->
+        <div class="form-check mb-3" style="padding-top:10px;">
+          <input type="checkbox"
+                 class="form-check-input"
+                 [(ngModel)]="selectedField.required"
+                 (change)="emitUpdate()">
+          <label class="form-check-label">Required</label>
+        </div>
+
+        <!-- Auth Status (only when required) -->
+        <div class="mb-3 form-outline"
+             *ngIf="selectedField.required"
+             style="padding-bottom:15px;">
+          <label class="form-label">Auth Status</label>
+          <div class="border rounded p-2">
+            <div *ngFor="let status of authStatusOptions" class="form-check">
+              <input type="checkbox"
+                     class="form-check-input"
+                     [value]="status"
+                     [checked]="selectedField.authStatus && selectedField.authStatus.includes(status)"
+                     (change)="toggleAuthStatus(status, $event)">
+              <label class="form-check-label">{{ status }}</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Required Message -->
+        <div *ngIf="selectedField.required" class="mb-3 form-outline" style="padding-bottom:15px;">
+          <label class="form-label">Required Message</label>
+          <input type="text" class="form-control"
+                 [(ngModel)]="selectedField.requiredMsg"
+                 (change)="emitUpdate()"
+                 placeholder="Enter required message">
+        </div>
+
+        <!-- Datasource / options / ICD10 / etc. -->
+        <!-- keep all your existing select / options / ICD10 code blocks here unchanged -->
+        <!-- ... existing code from your file ... -->
+      </div>
+
+      <!-- ================= CONDITIONAL TAB ================= -->
+      <div class="content-section" *ngIf="activeTab === 'conditional'">
+        <!-- Visibility Rules -->
+        <div class="section-panel">
+          <div class="section-panel-header">Visibility Rules</div>
+
+          <div class="mb-3">
+            <label class="form-label">Show When</label>
+            <select class="form-select"
+                    [(ngModel)]="selectedField.showWhen"
+                    (change)="emitUpdate()">
+              <option value="always">Always</option>
+              <option value="fieldEquals">Field equals value</option>
+              <option value="fieldNotEquals">Field not equal to value</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Reference Field</label>
+            <select class="form-select"
+                    [(ngModel)]="selectedField.referenceFieldId"
+                    (change)="emitUpdate()">
+              <option [ngValue]="null">Select field</option>
+              <option *ngFor="let f of allFields"
+                      [ngValue]="f.id">
+                {{ f.displayName || f.label }}
+              </option>
+            </select>
+          </div>
+
+          <div class="mb-3 form-outline">
+            <label class="form-label">Value</label>
+            <input type="text"
+                   class="form-control"
+                   [(ngModel)]="selectedField.visibilityValue"
+                   (change)="emitUpdate()"
+                   placeholder="100">
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= ADVANCED TAB ================= -->
+      <div class="content-section" *ngIf="activeTab === 'advanced'">
+        <!-- Integration Settings -->
+        <div class="section-panel">
+          <div class="section-panel-header">Integration Settings</div>
+
+          <div class="mb-3 form-outline">
+            <label class="form-label">API Endpoint</label>
+            <input type="text"
+                   class="form-control"
+                   placeholder="Enter API endpoint"
+                   [(ngModel)]="selectedField.apiEndpoint"
+                   (change)="emitUpdate()">
+          </div>
+
+          <div class="form-check mb-2">
+            <input type="checkbox"
+                   class="form-check-input"
+                   id="includeExportChk"
+                   [(ngModel)]="selectedField.includeInExport"
+                   (change)="emitUpdate()">
+            <label class="form-check-label" for="includeExportChk">
+              Include in Export
+            </label>
+          </div>
+        </div>
+
+        <!-- Security -->
+        <div class="section-panel">
+          <div class="section-panel-header">Security</div>
+
+          <div class="mb-3">
+            <label class="form-label">Field Permissions</label>
+            <select class="form-select"
+                    [(ngModel)]="selectedField.fieldPermission"
+                    (change)="emitUpdate()">
+              <option value="all">All Users</option>
+              <option value="careManagers">Care Managers</option>
+              <option value="admins">Admins Only</option>
+            </select>
+          </div>
+        </div>
+      </div>
     </div>
+
   </div>
 </div>

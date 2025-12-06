@@ -50,6 +50,188 @@
     text-align: center;
   }
 
+/* Left panel sections (similar to screenshot) */
+.left-panel-section {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #e3e7f0;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  margin: 10px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+/* Header */
+.left-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  cursor: pointer;
+  background: #fffaf2; /* soft warm like your sample */
+}
+
+.left-panel-header-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.left-panel-header-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e3f2fd;
+  color: #1976d2;
+  flex-shrink: 0;
+}
+
+  .left-panel-header-icon.sections {
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+
+  .left-panel-header-icon.standards {
+    background: #fff3e0;
+    color: #ef6c00;
+  }
+
+.left-panel-header-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.left-panel-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.left-panel-subtitle {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.left-panel-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.left-panel-count-pill {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #0ea5e9;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.left-panel-expand-icon {
+  font-size: 18px;
+  color: #9ca3af;
+}
+
+/* Body / list */
+.left-panel-body {
+  padding: 8px 10px 10px 10px;
+}
+
+.left-panel-list {
+  border: none;
+  background: transparent;
+  padding: 0;
+  gap: 6px;
+}
+
+.left-panel-subsection {
+  margin-bottom: 10px;
+}
+
+.left-panel-subsection-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #4b5563;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 4px 2px 6px;
+}
+
+/* Item tiles */
+.left-panel-item {
+  background: #ffffff;
+  border-radius: 10px !important;
+  border: 1px solid #e5e7eb !important;
+  padding: 6px 8px !important;
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  cursor: grab;
+  transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+
+  .left-panel-item:hover {
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+    transform: translateY(-1px);
+    border-color: #cbd5f5 !important;
+  }
+
+  .left-panel-item.selected {
+    border-color: #0ea5e9 !important;
+    box-shadow: 0 0 0 1px rgba(14, 165, 233, 0.5);
+  }
+
+.left-panel-item-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: #eff6ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #2563eb;
+}
+
+  .left-panel-item-icon.sections {
+    background: #ecfdf3;
+    color: #16a34a;
+  }
+
+  .left-panel-item-icon.standards {
+    background: #fef3c7;
+    color: #d97706;
+  }
+
+.left-panel-item-text {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.left-panel-item-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.left-panel-item-subtitle {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+
 /* Middle Column – merged */
 .middle-column {
   position: relative; /* Positioning context */
@@ -484,7 +666,7 @@ select[disabled] {
   border: none;
   cursor: pointer;
   color: red;
-  font-size:large;
+  font-size: large;
 }
 
 
@@ -537,7 +719,7 @@ select[disabled] {
 }
 
 .custom-dropdown {
-  /*background-color: #f0f8ff; *//* Light blue to differentiate */
+  /*background-color: #f0f8ff; */ /* Light blue to differentiate */
 }
 
 
@@ -546,8 +728,8 @@ select[disabled] {
 .middle-column .field-item.active {
   /*background: #007BFF !important;*/
   color: white !important;
-/*  border: 2px solid #0056b3 !important;
-*/  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  /*  border: 2px solid #0056b3 !important;
+ box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);*/
 }
 
 /* Ensure left column does not get highlighted */
@@ -593,4 +775,97 @@ select[disabled] {
 }
 
 
+
+/* === Master template accordion header (section bar) === */
+.master-template-content .accordion-item {
+  border: 1px solid #e3e7f0;
+  border-radius: 16px;
+/*  background: #f5f7ff;*/
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.master-template-content .accordion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+/*  background: #f5f7ff;*/
+}
+
+.accordion-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.accordion-header-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  background: #e0ecff;
+}
+
+  .accordion-header-icon mat-icon {
+    font-size: 16px;
+    line-height: 16px;
+    color: #2563eb;
+  }
+
+.accordion-header-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.accordion-header-pill {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #0f766e;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.accordion-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.accordion-header-btn {
+/*  width: 28px !important;
+  height: 28px !important;
+  border-radius: 999px !important;
+  border: 1px solid #e5e7eb !important;*/
+/*  background: #ffffff !important;
+*/}
+
+  .accordion-header-btn.mat-icon-button {
+    /* kill Material default padding and width */
+    padding: 0 !important;
+    min-width: 0 !important;
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 999px !important;
+    border: 1px solid #e5e7eb !important;
+    background: #ffffff !important;
+    /* center the icon perfectly */
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .accordion-header-btn .mat-icon {
+    font-size: 16px;
+    line-height: 1;
+    color: #2563eb;
+  }
+
+  .accordion-header-btn.delete .mat-icon {
+    color: #dc2626;
+  }
 
