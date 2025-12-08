@@ -869,3 +869,13 @@ select[disabled] {
     color: #dc2626;
   }
 
+.left-panel-item.empty-section-tile {
+  border-style: dashed !important;
+  border-color: #38bdf8 !important;
+  background: #ecfeff;
+}
+
+  .left-panel-item.empty-section-tile:hover {
+    background: #e0f2fe;
+    box-shadow: 0 4px 10px rgba(56, 189, 248, 0.4);
+  }

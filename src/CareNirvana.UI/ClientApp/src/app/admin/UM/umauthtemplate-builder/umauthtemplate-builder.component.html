@@ -166,12 +166,30 @@
       </div>
 
       <div class="left-panel-body" *ngIf="leftPanelGroups.unavailSections">
+
+        <!-- Existing section templates list (unchanged drag data = string) -->
         <div cdkDropList
              id="unavailable-sections"
              [cdkDropListData]="unavailableSections"
              [cdkDropListConnectedTo]="['section-drop']"
              (cdkDropListDropped)="dropSection($event)"
              class="drop-list left-panel-list">
+          <div cdkDrag
+               [cdkDragData]="{ kind: 'emptySection' }"
+               class="field-item left-panel-item empty-section-tile">
+            <div class="left-panel-item-icon sections">
+              <mat-icon>add_box</mat-icon>
+            </div>
+            <div class="left-panel-item-text">
+              <div class="left-panel-item-title">
+                Empty Section
+              </div>
+              <div class="left-panel-item-subtitle">
+                Drag to create a blank section
+              </div>
+            </div>
+          </div>
+
           <div *ngFor="let section of unavailableSections"
                cdkDrag
                [cdkDragData]="section"
@@ -184,13 +202,14 @@
                 {{ section }}
               </div>
               <div class="left-panel-item-subtitle">
-                Section
+                Section template
               </div>
             </div>
           </div>
         </div>
-
       </div>
+
+
     </div>
 
     <!-- Unavailable Fields (grouped) -->

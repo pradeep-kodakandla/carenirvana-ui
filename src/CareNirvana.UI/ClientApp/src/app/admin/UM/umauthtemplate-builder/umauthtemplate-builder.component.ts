@@ -80,7 +80,7 @@ export class UmauthtemplateBuilderComponent implements OnInit {
   unavailableFieldsList: TemplateField[] = [];
   unavailableFieldsGrouped: { [sectionName: string]: TemplateField[] } = {};
 
-
+  emptySectionCounter = 1;
 
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -644,8 +644,10 @@ export class UmauthtemplateBuilderComponent implements OnInit {
       CreatedOn: new Date().toISOString(),
       CreatedBy: 1,
       authclassid: this.selectedClassId,
-      Id: this.formMode === 'edit' ? this.selectedEntry.Id : 0
+      Id: this.formMode === 'edit' ? this.selectedTemplateId : 0
     };
+
+    console.log("jsonData", jsonData);
 
     this.authService.saveAuthTemplate(jsonData).subscribe({
       next: () => {
@@ -833,8 +835,143 @@ export class UmauthtemplateBuilderComponent implements OnInit {
     }
   }
 
-  dropSection(event: CdkDragDrop<any[]>) {
-    const sectionName: string = event.item.data;
+  //dropSection(event: CdkDragDrop<any[]>) {
+  //  const sectionName: string = event.item.data;
+
+  //  const data = event.item.data;
+  //  console.log('dropSection event:', event);
+  //  console.log('dropSection data:', data);
+
+  //  // Make sure our sections array exists
+  //  this.ensureMasterTemplateSections();
+
+  //  // 1) New Empty Section from left panel
+  //  if (data && data.kind === 'emptySection') {
+  //    const sectionName = `New Section ${this.emptySectionCounter++}`;
+
+  //    const newSection: any = {
+  //      sectionName,
+  //      fields: []
+  //    };
+
+  //    // Push into masterTemplate.sections so the accordion can render it
+  //    this.masterTemplate.sections = [
+  //      ...this.masterTemplate.sections,
+  //      newSection
+  //    ];
+
+  //    // Mark as active/open + select it so user can add fields
+  //    this.activeSections[sectionName] = true;
+  //    this.selectedSectionObject = newSection;
+
+  //    return;
+  //  }
+
+  //  if (data && data.kind === 'templateSection') {
+  //    const sectionName: string = data.sectionName;
+
+  //    // Only add if not already present (optional)
+  //    const alreadyExists = this.masterTemplate.sections.some(s => s.sectionName === sectionName);
+  //    if (!alreadyExists) {
+  //      const newSection: any = {
+  //        sectionName,
+  //        fields: []
+  //      };
+
+  //      this.masterTemplate.sections = [
+  //        ...this.masterTemplate.sections,
+  //        newSection
+  //      ];
+
+  //      this.activeSections[sectionName] = true;
+  //      this.selectedSectionObject = newSection;
+
+  //      // If you want to remove it from unavailableSections after use:
+  //      const idx = this.unavailableSections.indexOf(sectionName);
+  //      if (idx > -1) {
+  //        this.unavailableSections.splice(idx, 1);
+  //      }
+  //    }
+
+  //    return;
+  //  }
+
+  //  if (event.previousContainer === event.container) {
+  //    moveItemInArray(
+  //      event.container.data,
+  //      event.previousIndex,
+  //      event.currentIndex
+  //    );
+  //  }
+  //  //const sectionToRestore = this.originalMasterTemplate.sections?.find(
+  //  //  s => s.sectionName === sectionName
+  //  //);
+
+  //  //if (sectionToRestore) {
+  //  //  const alreadyExists = this.masterTemplate.sections?.some(
+  //  //    s => s.sectionName === sectionName
+  //  //  );
+  //  //  if (alreadyExists) {
+  //  //    console.warn(`Section '${sectionName}' already exists.`);
+  //  //    return;
+  //  //  }
+
+  //  //  this.masterTemplate.sections = this.masterTemplate.sections || [];
+  //  //  this.masterTemplate.sections.push(JSON.parse(JSON.stringify(sectionToRestore)));
+  //  //  this.activeSections[sectionName] = true;
+
+  //  //  const index = this.unavailableSections.indexOf(sectionName);
+  //  //  if (index > -1) this.unavailableSections.splice(index, 1);
+
+  //  //  if (this.unavailableFieldsGrouped[sectionName]) {
+  //  //    delete this.unavailableFieldsGrouped[sectionName];
+  //  //  }
+
+  //  //  this.unavailableFieldsList = this.unavailableFieldsList.filter(f => f.sectionName !== sectionName);
+
+  //  //  this.forceAngularChangeDetection();
+  //  //}
+  //}
+
+
+  dropSection(event: CdkDragDrop<any[]>): void {
+    const data = event.item.data;
+    console.log('Creating new empty section');
+    // 🔹 CASE 1: Dragged "New Empty Section" tile
+    if (data && typeof data === 'object' && (data as any).kind === 'emptySection') {
+      // Ensure sections array exists
+      const sections = this.masterTemplate.sections || [];
+      const maxOrder = sections.length
+        ? Math.max(...sections.map(s => s.order ?? 0))
+        : 0;
+      console.log('Creating new empty section');
+      const sectionName = `New Section ${this.emptySectionCounter++}`;
+
+      const newSection: TemplateSectionModel = {
+        sectionName,
+        order: maxOrder + 1,
+        fields: []
+      };
+
+      this.masterTemplate.sections = [...sections, newSection];
+
+      sections.push(newSection);
+
+      // 🔸 Make this section a valid drop target for fields
+      if (!this.allDropLists.includes(sectionName)) {
+        this.allDropLists.push(sectionName);
+      }
+
+      // Open & select it so user can immediately add fields
+      this.activeSections[sectionName] = true;
+      this.selectedSectionObject = newSection;
+
+      this.forceAngularChangeDetection();
+      return;
+    }
+
+    // 🔹 CASE 2: Existing template section (string name) – your original logic
+    const sectionName: string = data as string;
 
     const sectionToRestore = this.originalMasterTemplate.sections?.find(
       s => s.sectionName === sectionName
@@ -850,21 +987,35 @@ export class UmauthtemplateBuilderComponent implements OnInit {
       }
 
       this.masterTemplate.sections = this.masterTemplate.sections || [];
-      this.masterTemplate.sections.push(JSON.parse(JSON.stringify(sectionToRestore)));
+      this.masterTemplate.sections.push(
+        JSON.parse(JSON.stringify(sectionToRestore))
+      );
+
+      if (!this.allDropLists.includes(sectionName)) {
+        this.allDropLists.push(sectionName);
+      }
+
       this.activeSections[sectionName] = true;
 
       const index = this.unavailableSections.indexOf(sectionName);
-      if (index > -1) this.unavailableSections.splice(index, 1);
+      if (index > -1) {
+        this.unavailableSections.splice(index, 1);
+      }
 
       if (this.unavailableFieldsGrouped[sectionName]) {
         delete this.unavailableFieldsGrouped[sectionName];
       }
 
-      this.unavailableFieldsList = this.unavailableFieldsList.filter(f => f.sectionName !== sectionName);
+      this.unavailableFieldsList = this.unavailableFieldsList.filter(
+        f => f.sectionName !== sectionName
+      );
 
       this.forceAngularChangeDetection();
     }
   }
+
+
+
 
   openValidationDialog(): void {
     if (!this.selectedTemplateId || this.selectedTemplateId === 0) {
@@ -978,6 +1129,27 @@ export class UmauthtemplateBuilderComponent implements OnInit {
     event.stopPropagation();
     console.log('Section settings clicked:', section.sectionName);
     // Hook to a settings dialog here later if needed
+  }
+
+
+
+
+  private createEmptySection(): any {
+    const name = `New Section ${this.emptySectionCounter++}`;
+
+    return {
+      sectionName: name,
+      fields: []
+    };
+  }
+
+  private ensureMasterTemplateSections(): void {
+    if (!this.masterTemplate) {
+      this.masterTemplate = { sections: [] } as any;
+    }
+    if (!this.masterTemplate.sections) {
+      this.masterTemplate.sections = [];
+    }
   }
 
 
