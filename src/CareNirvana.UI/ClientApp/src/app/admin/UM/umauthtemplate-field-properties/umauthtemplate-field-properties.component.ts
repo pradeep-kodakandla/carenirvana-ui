@@ -3,7 +3,7 @@ import { CrudService } from 'src/app/service/crud.service';
 import { debounceTime, Subject } from 'rxjs';
 import { COMMA, ENTER } from '@angular/cdk/keycodes';
 import { AuthService } from 'src/app/service/auth.service';
-
+import { UiSmartDropdownComponent, UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
 
 
 interface TemplateField {
@@ -42,6 +42,15 @@ interface DropdownOption {
   value?: string; // Default field to hold dynamic data
 }
 
+export interface FieldCondition {
+  id: number;
+  showWhen: 'always' | 'fieldEquals' | 'fieldNotEquals';
+  referenceFieldId: string | null;
+  value: string | number | null;
+  operatorWithPrev?: 'AND' | 'OR'; // only meaningful for index > 0
+}
+
+
 interface TemplateSectionModel {
   sectionName: string;
   order: number;
@@ -61,17 +70,45 @@ export class UmauthtemplateFieldPropertiesComponent implements OnChanges {
   @Output() fieldUpdated = new EventEmitter<TemplateField>();
   @Output() sectionUpdated = new EventEmitter<TemplateSectionModel>();
 
+  conditionOperatorOptions = [
+    { label: 'AND', value: 'AND' as const },
+    { label: 'OR', value: 'OR' as const }
+  ];
 
+  // Local list of conditions for the selected field
+  conditions: FieldCondition[] = [];
+
+  fieldTypeOptions: UiSmartOption<string>[] = [
+    { label: 'Text', value: 'text' },
+    { label: 'Number', value: 'number' },
+    { label: 'DateTime', value: 'datetime-local' },
+    { label: 'Select', value: 'select' },
+    { label: 'Textarea', value: 'textarea' },
+    { label: 'Button', value: 'button' }
+  ];
+
+  // ShowWhen dropdown options
+  showWhenOptions: UiSmartOption<'always' | 'fieldEquals' | 'fieldNotEquals'>[] = [
+    { label: 'Always', value: 'always' },
+    { label: 'Field equals value', value: 'fieldEquals' },
+    { label: 'Field not equal value', value: 'fieldNotEquals' }
+  ];
+
+  // Permissions dropdown options
+  fieldPermissionOptions: UiSmartOption<'all' | 'careManagers' | 'admins'>[] = [
+    { label: 'All Users', value: 'all' },
+    { label: 'Care Managers', value: 'careManagers' },
+    { label: 'Admins Only', value: 'admins' }
+  ];
+
+  // Reference field dropdown options (built from allFields)
+  referenceFieldOptions: UiSmartOption<string>[] = [];
 
   searchText: string = '';
   allCodes: { code: string; label: string }[] = [];
   filteredCodes: { code: string; label: string }[] = [];
 
-
-
   readonly separatorKeysCodes = [ENTER, COMMA];
-
-
 
   dropdownOptions: DropdownOption[] = [];
   private previousDatasource: string | null = null; // Prevents continuous API calls
@@ -84,15 +121,25 @@ export class UmauthtemplateFieldPropertiesComponent implements OnChanges {
     });
   }
 
-
   // Use this function instead of emitUpdate() directly in the options input field
   debouncedEmitUpdate() {
     this.optionUpdateSubject.next();
   }
 
+  private normalizeField(field: TemplateField): TemplateField {
+    return {
+      // Default values here
+      showWhen: field.showWhen ?? 'always',
+      requiredWhen: field.requiredWhen ?? 'always',
+
+      ...field
+    };
+  }
+
   ngOnChanges(changes: SimpleChanges) {
+
     if (changes['selectedField']?.currentValue) {
-      console.log("Field changed:", this.selectedField);
+      this.ensureAtLeastOneCondition();
       if (!this.selectedField?.authStatus) {
         this.selectedField!.authStatus = []; // Ensure it's an array
       }
@@ -111,16 +158,16 @@ export class UmauthtemplateFieldPropertiesComponent implements OnChanges {
         this.previousDatasource = currentDatasource; // Store current value safely
         this.onDatasourceChange();
       }
+
     }
 
     if (changes['selectedField']?.currentValue) {
       if (this.selectedField?.id === 'icd10Code' || this.selectedField?.id === 'serviceCode') {
-        console.log("Field changed:", this.selectedField);
+
         this.loadCodesForField();
       }
     }
   }
-
 
   emitUpdate() {
     if (this.selectedField) {
@@ -186,9 +233,6 @@ export class UmauthtemplateFieldPropertiesComponent implements OnChanges {
     }
   }
 
-
-
-
   /**
    * Converts a string to camel case (e.g., "treatmenttype" -> "treatmentType")
    */
@@ -209,7 +253,6 @@ export class UmauthtemplateFieldPropertiesComponent implements OnChanges {
         index === 0 ? letter.toLowerCase() : letter.toUpperCase() // First letter remains lowercase
       );
   }
-
 
 
   isAllSelected(): boolean {
@@ -375,4 +418,128 @@ export class UmauthtemplateFieldPropertiesComponent implements OnChanges {
 
   // Optional – if you want a list of other fields for "Reference Field"
   @Input() allFields: any[] = []; // populate from parent if needed
+
+
+  private buildReferenceFieldOptions(): void {
+    if (!this.allFields) {
+      this.referenceFieldOptions = [];
+      return;
+    }
+
+    this.referenceFieldOptions = this.allFields.map(f => ({
+      label: f.displayName || f.label || f.id,
+      value: f.id
+    }));
+  }
+
+
+
+
+
+  private initConditionsFromField(): void {
+    if (!this.selectedField) {
+      this.conditions = [];
+      return;
+    }
+
+    // If the field already has conditions (future-proof)
+    if ((this.selectedField as any).conditions?.length) {
+      this.conditions = (this.selectedField as any).conditions.map((c: FieldCondition, index: number) => ({
+        id: index + 1,
+        showWhen: c.showWhen ?? 'always',
+        referenceFieldId: c.referenceFieldId ?? null,
+        value: c.value ?? null,
+        operatorWithPrev: c.operatorWithPrev
+      }));
+      return;
+    }
+
+    // Backward-compatible: build first condition from existing single properties
+    this.conditions = [
+      {
+        id: 1,
+        showWhen: this.selectedField.showWhen || 'always',
+        referenceFieldId: this.selectedField.referenceFieldId ?? null,
+        value: this.selectedField.visibilityValue ?? null
+      }
+    ];
+  }
+
+  private syncConditionsToField(): void {
+    if (!this.selectedField) return;
+
+    // Persist as array for future use
+    (this.selectedField as any).conditions = this.conditions;
+
+    // For backward compatibility: map the FIRST condition back to the flat properties
+    const first = this.conditions[0];
+    if (first) {
+      this.selectedField.showWhen = first.showWhen;
+      this.selectedField.referenceFieldId = first.referenceFieldId;
+      this.selectedField.visibilityValue = first.value;
+    }
+
+    // Trigger your existing update
+    this.emitUpdate();
+  }
+
+  addCondition(afterIndex: number): void {
+    const newId = (this.conditions[this.conditions.length - 1]?.id || 0) + 1;
+
+    const operator: 'AND' | 'OR' = 'AND'; // default, user can change
+
+    const newCondition: FieldCondition = {
+      id: newId,
+      showWhen: 'fieldEquals',
+      referenceFieldId: null,
+      value: null,
+      operatorWithPrev: operator
+    };
+
+    // Insert after the given index
+    this.conditions.splice(afterIndex + 1, 0, newCondition);
+    this.syncConditionsToField();
+  }
+
+  removeCondition(index: number): void {
+    if (this.conditions.length === 1) {
+      // Instead of removing last one, just reset it
+      this.conditions[0] = {
+        ...this.conditions[0],
+        operatorWithPrev: undefined,
+        showWhen: 'always',
+        referenceFieldId: null,
+        value: null
+      };
+    } else {
+      this.conditions.splice(index, 1);
+
+      // Ensure first item has no operator
+      if (this.conditions.length && this.conditions[0].operatorWithPrev) {
+        this.conditions[0].operatorWithPrev = undefined;
+      }
+    }
+
+    this.syncConditionsToField();
+  }
+
+  // When any piece of a condition changes (showWhen, ref, value, operator)
+  onConditionChanged(): void {
+    this.syncConditionsToField();
+  }
+
+  private ensureAtLeastOneCondition(): void {
+    if (!this.conditions || this.conditions.length === 0) {
+      this.conditions = [
+        {
+          id: 1,
+          showWhen: (this.selectedField?.showWhen as any) || 'always',
+          referenceFieldId: this.selectedField?.referenceFieldId ?? null,
+          value: this.selectedField?.visibilityValue ?? null,
+          operatorWithPrev: undefined
+        }
+      ];
+    }
+  }
+
 }

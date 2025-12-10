@@ -81,7 +81,7 @@
   <mat-paginator [pageSizeOptions]="[10, 15, 20]" showFirstLastButtons></mat-paginator>
 </div>
 
-<div class="container" *ngIf="isVisible">
+<div class="builder-container" *ngIf="isVisible">
   <!-- Left Column: Available Fields -->
   <!-- Left Column: Available / Unavailable blocks with new UI -->
   <div class="left-column">
@@ -102,7 +102,7 @@
         </div>
         <div class="left-panel-right">
           <span class="left-panel-count-pill">
-            {{ availableFields?.length || 0 }}
+            {{ availableFields.length || 0 }}
           </span>
           <mat-icon class="left-panel-expand-icon">
             {{ leftPanelGroups.available ? 'expand_less' : 'expand_more' }}
@@ -157,7 +157,7 @@
         </div>
         <div class="left-panel-right">
           <span class="left-panel-count-pill">
-            {{ unavailableSections?.length || 0 }}
+            {{ unavailableSections.length || 0 }}
           </span>
           <mat-icon class="left-panel-expand-icon">
             {{ leftPanelGroups.unavailSections ? 'expand_less' : 'expand_more' }}
@@ -276,7 +276,7 @@
 
   <!-- Middle Column: Dynamic Template Builder -->
   <div class="middle-column">
-    <div class="accordion" style="padding:10px; display:flex;">
+    <div class="accordion middle-toolbar">
       <div class="form-outline">
         <label class="form-label">Auth Type</label>
         <input style="height: 35px; border-radius: 4px; width: 100%;"
@@ -289,7 +289,7 @@
         <span *ngIf="showTemplateNameError" style="color: red; font-size: 12px;">Auth Type is required</span>
       </div>
 
-      <div style="width:350px; padding-left:10px;" class="position-relative">
+      <div class="position-relative toolbar-select">
         <select class="form-select" id="authClass" name="Auth Case"
                 [(ngModel)]="selectedClassId"
                 (change)="onAuthClassChange()"
@@ -300,7 +300,8 @@
           </option>
         </select>
       </div>
-      <div style="width:350px; padding-left:10px;" class="position-relative">
+
+      <div class="position-relative toolbar-select">
         <select class="form-select" id="authType" name="Clone From"
                 [(ngModel)]="selectedTemplateId"
                 (change)="onAuthTypeChange()"
@@ -311,11 +312,21 @@
           </option>
         </select>
       </div>
-      <button mat-icon-button color="accent" (click)="openValidationDialog()" matTooltip="Manage Validations">
+
+      <button mat-icon-button
+              color="accent"
+              (click)="openValidationDialog()"
+              matTooltip="Manage Validations">
         <mat-icon>rule</mat-icon>
       </button>
 
+      <div class="toolbar-actions"
+           *ngIf="masterTemplate.sections && masterTemplate.sections.length">
+        <button mat-raised-button class="provider-button" (click)="saveTemplate()">Save</button>
+        <button mat-raised-button class="provider-button" (click)="cancel()">Cancel</button>
+      </div>
     </div>
+
 
     <!-- Drop target for whole sections -->
     <div cdkDropList
@@ -625,10 +636,7 @@
       </div>
     </div>
     <!-- Save Template Button with Fixed Position -->
-    <div class="save-button-container" *ngIf="masterTemplate.sections && masterTemplate.sections.length">
-      <button mat-raised-button class="provider-button" (click)="saveTemplate()">Save</button>
-      <button mat-raised-button class="provider-button" (click)="cancel()">Cancel</button>
-    </div>
+
 
   </div>
   <!-- Right Column: Field Properties -->

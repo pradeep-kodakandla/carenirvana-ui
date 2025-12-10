@@ -1,0 +1,160 @@
+.ui-smart-dropdown {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.ui-smart-dropdown--disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.ui-smart-dropdown__control {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 30px 6px 10px;
+  border-radius: 4px;
+  border: 1px solid #c4c4c4;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+  outline: none;
+}
+
+/* Strong active/focus ring around the dropdown */
+.ui-smart-dropdown__wrapper--focused .ui-smart-dropdown__control {
+  border-color: #0078d4; /* your primary/brand color */
+  box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
+}
+
+/* Optional: a softer hover state when not focused */
+.ui-smart-dropdown__control:hover {
+  border-color: #999;
+}
+
+
+.ui-smart-dropdown__placeholder {
+  color: #999;
+}
+
+.ui-smart-dropdown__value {
+  flex: 1;
+}
+
+.ui-smart-dropdown__clear {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0 4px;
+  margin-right: 4px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.ui-smart-dropdown__arrow {
+  position: absolute;
+  right: 8px;
+  font-size: 10px;
+  pointer-events: none;
+}
+
+.ui-smart-dropdown__panel {
+  position: absolute;
+  z-index: 1000;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  border-radius: 4px;
+  border: 1px solid #d4d4d4;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+}
+
+.ui-smart-dropdown__search {
+  border: none;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 6px 8px;
+  outline: none;
+  font-size: 13px;
+}
+
+.ui-smart-dropdown__options {
+  overflow-y: auto;
+  max-height: inherit;
+}
+
+.ui-smart-dropdown__option {
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.ui-smart-dropdown__option--disabled {
+  color: #aaa;
+  cursor: default;
+}
+
+.ui-smart-dropdown__option--selected {
+  font-weight: 600;
+  background-color: #f0f7ff;
+}
+
+.ui-smart-dropdown__option--highlighted {
+  background-color: #e5f1ff;
+}
+
+.ui-smart-dropdown__option:not(.ui-smart-dropdown__option--disabled):hover {
+  background-color: #f5f5f5;
+}
+
+.ui-smart-dropdown__empty {
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #777;
+}
+
+
+.ui-smart-dropdown__wrapper {
+  position: relative;
+  width: 100%;
+  /*padding-top: 0.75rem;*/ /* space for floating label */
+}
+
+.ui-smart-dropdown__wrapper--has-value .ui-smart-dropdown__label,
+.ui-smart-dropdown__wrapper--focused .ui-smart-dropdown__label {
+  top: 0; /* already have this */
+  transform: translateY(-50%) scale(0.9);
+}
+
+/* Floating label base */
+.ui-smart-dropdown__label {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.85rem;
+  color: #555;
+  pointer-events: none;
+  background: #ffffff;
+  padding: 0 4px;
+  transition: all 0.15s ease;
+}
+
+/* When value or focus: float label up */
+.ui-smart-dropdown__wrapper--has-value .ui-smart-dropdown__label,
+.ui-smart-dropdown__wrapper--focused .ui-smart-dropdown__label {
+  top: 0;
+  transform: translateY(-50%) scale(0.9);
+  font-size: 13px;
+  color: #555; /* your primary color */
+}

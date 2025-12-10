@@ -4,7 +4,6 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
 import { RouterModule, Routes } from '@angular/router';
-import { ShowLabelDirective } from './service/show-label.directive';
 import { ReactiveFormsModule } from '@angular/forms';
 import { AngularMaterialModule } from './shared/helpers/angular-material/angular-material.module';
 import { AppComponent } from './app.component';
@@ -151,13 +150,14 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
 import { UiDatetimePickerComponent } from './shared/ui/uidatetimepicker/uidatetimepicker.component';
 import { UiDropdownComponent } from './shared/ui/uidropdown/uidropdown.component';
 import { UiMultiCheckDropdownComponent } from './shared/ui/uimulticheckdropdown/uimulticheckdropdown.component';
+import { UiSmartDropdownComponent } from './shared/ui/uismartdropdown/uismartdropdown.component';
 
 @NgModule({
   declarations: [
     AppComponent,
     LoginComponent,
     CounterComponent,
-    FetchDataComponent, ShowLabelDirective,
+    FetchDataComponent,
     DashBoardComponent,
     MessagesComponent, HeaderComponent,
     FooterComponent,
@@ -198,7 +198,7 @@ import { UiMultiCheckDropdownComponent } from './shared/ui/uimulticheckdropdown/
     AgqocinvestigationoutcomeComponent, AgqocinvestigationreasonComponent, AgqocscoreComponent, AgresolutioncategoryComponent,
     AgresolutionsubcategoryComponent,
 
-    UiDatetimePickerComponent, UiDropdownComponent, UiMultiCheckDropdownComponent
+    UiDatetimePickerComponent, UiDropdownComponent, UiMultiCheckDropdownComponent, UiSmartDropdownComponent
   ],
   imports: [
     BrowserModule.withServerTransition({ appId: 'ng-cli-universal' }),
@@ -355,13 +355,14 @@ import { UiMultiCheckDropdownComponent } from './shared/ui/uimulticheckdropdown/
 
       { path: 'ui-datetime', component: UiDatetimePickerComponent },
       { path: 'ui-dropdown', component: UiDropdownComponent },
-      { path: 'ui-multicheckdropdown', component: UiMultiCheckDropdownComponent }
+      { path: 'ui-multicheckdropdown', component: UiMultiCheckDropdownComponent },
+      { path: 'ui-smartdropdown', component: UiSmartDropdownComponent }
 
     ])
   ],
   providers: [SidenavService, DatePipe],
   bootstrap: [AppComponent],
-  exports: [ShowLabelDirective]
+  exports: []
 })
 export class AppModule { }
 

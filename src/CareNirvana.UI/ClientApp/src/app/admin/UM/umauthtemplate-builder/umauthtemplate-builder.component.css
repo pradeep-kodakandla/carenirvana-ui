@@ -1,17 +1,31 @@
 /* ==========================================================================
    Global Layout & Container Styles
    ========================================================================== */
-.container {
+/*.container {
   display: flex;
   height: 100vh;
   gap: 5px;
   padding: 5px;
-  background: rgba(255, 255, 255, 0.1); /* Semi-transparent white */
-  backdrop-filter: blur(10px); /* Blur effect for glassiness */
-  border: 1px solid rgba(255, 255, 255, 0.2); /* Subtle border */
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1); /* Soft shadow */
-  max-width: 100%;
+  background: rgba(255, 255, 255, 0.1);*/ /* Semi-transparent white */
+/*backdrop-filter: blur(10px);*/ /* Blur effect for glassiness */
+/*border: 1px solid rgba(255, 255, 255, 0.2);*/ /* Subtle border */
+/*box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);*/ /* Soft shadow */
+/*max-width: 100%;
+}*/
+/* NEW – only for the template builder */
+.builder-container {
+  display: flex;
+  flex-direction: row;
+  gap: 5px;
+  padding: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  width: 100%;
+  box-sizing: border-box;
+  /* no horizontal scroll from the container itself */
+  overflow-x: hidden;
 }
+
+
 
 .card {
   border: 1px solid #dee2e6;
@@ -23,18 +37,17 @@
 .left-column,
 .middle-column,
 .right-column {
+  min-width: 0; /* 🔑 allows flex items to shrink instead of forcing horizontal scroll */
   overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 /* Left Column – merged & enhanced */
 .left-column {
-  flex: 2;
-  background: rgba(255, 255, 255, 0.2); /* Light glassy effect */
-  backdrop-filter: blur(12px);
-  border-radius: 5px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease-in-out;
+  flex: 0 0 20%;
+  max-width: 20%;
+  height: calc(100vh - 100px);
 }
 
   .left-column:hover {
@@ -234,17 +247,20 @@
 
 /* Middle Column – merged */
 .middle-column {
-  position: relative; /* Positioning context */
-  overflow-y: auto;
-  height: calc(100vh - 100px); /* Adjusted for header/footer */
-  flex: 6;
+  flex: 0 0 60%;
+  max-width: 60%;
+  position: relative;
+  height: calc(100vh - 100px);
 }
 
-/* Right Column */
 .right-column {
-  flex: 2;
-  /* (Additional right-column styling can be added here if needed) */
+  flex: 0 0 20%;
+  max-width: 20%;
+  height: calc(100vh - 100px);
 }
+
+
+
 
 /* ==========================================================================
    Drop Lists
@@ -544,7 +560,7 @@ select[disabled] {
    Additional Component Styles
    ========================================================================== */
 .master-template-content {
-  padding-bottom: 60px;
+  /*padding-bottom: 60px;*/
 }
 
 .save-button-container {
@@ -601,6 +617,7 @@ select[disabled] {
   background-color: #007BFF !important;
   color: white !important;
   border-radius: 5px;
+  height: 30px;
 }
 
 .card-header {
@@ -780,7 +797,7 @@ select[disabled] {
 .master-template-content .accordion-item {
   border: 1px solid #e3e7f0;
   border-radius: 16px;
-/*  background: #f5f7ff;*/
+  /*  background: #f5f7ff;*/
   margin-bottom: 10px;
   overflow: hidden;
 }
@@ -790,7 +807,7 @@ select[disabled] {
   align-items: center;
   justify-content: space-between;
   padding: 8px 14px;
-/*  background: #f5f7ff;*/
+  /*  background: #f5f7ff;*/
 }
 
 .accordion-header-left {
@@ -837,12 +854,13 @@ select[disabled] {
 }
 
 .accordion-header-btn {
-/*  width: 28px !important;
+  /*  width: 28px !important;
   height: 28px !important;
   border-radius: 999px !important;
   border: 1px solid #e5e7eb !important;*/
-/*  background: #ffffff !important;
-*/}
+  /*  background: #ffffff !important;
+*/
+}
 
   .accordion-header-btn.mat-icon-button {
     /* kill Material default padding and width */
@@ -879,3 +897,46 @@ select[disabled] {
     background: #e0f2fe;
     box-shadow: 0 4px 10px rgba(56, 189, 248, 0.4);
   }
+
+
+/* Sticky toolbar in middle column */
+.middle-column .middle-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background-color: #fff;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 5px;
+  /* 🔒 keep everything on one line */
+  flex-wrap: nowrap;
+  box-sizing: border-box;
+  overflow: hidden; /* don’t let child overflow create horizontal scroll */
+}
+
+/* Auth Type input – take remaining space */
+.middle-toolbar .form-outline {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* The two dropdowns – fixed but shrinkable chunks */
+.middle-toolbar .toolbar-select {
+  flex: 0 1 210px; /* base ~210px, but can shrink if needed */
+  min-width: 150px;
+}
+
+/* Validation icon: just its content */
+.middle-toolbar button[mat-icon-button] {
+  flex: 0 0 auto;
+}
+
+/* Save / Cancel on the right */
+.toolbar-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+}

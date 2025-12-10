@@ -45,7 +45,7 @@
           <span class="nav-info">
             {{ (currentIndex + 1) > 0 ? (currentIndex + 1) : 0 }}
             /
-            {{ dataSource?.data?.length || 0 }}
+            {{ dataSource.data.length || 0 }}
           </span>
 
           <button mat-icon-button
@@ -58,7 +58,7 @@
           <button mat-icon-button
                   matTooltip="Next"
                   (click)="showNext()"
-                  [disabled]="currentIndex < 0 || currentIndex >= (dataSource?.data?.length || 0) - 1">
+                  [disabled]="currentIndex < 0 || currentIndex >= (dataSource.data.length || 0) - 1">
             <mat-icon>chevron_right</mat-icon>
           </button>
         </div>
@@ -120,7 +120,7 @@
           <button mat-icon-button
                   matTooltip="Save"
                   (click)="saveRename(r)"
-                  [disabled]="saving || !tempFileName?.trim()">
+                  [disabled]="saving || !tempFileName.trim()">
             <mat-icon>check</mat-icon>
           </button>
 

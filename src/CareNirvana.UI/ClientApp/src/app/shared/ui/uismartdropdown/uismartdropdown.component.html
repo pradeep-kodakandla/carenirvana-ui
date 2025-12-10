@@ -1,0 +1,75 @@
+<!-- ui-smart-dropdown.component.html -->
+<div #container
+     class="ui-smart-dropdown"
+     [class.ui-smart-dropdown--disabled]="disabled"
+     >
+  <!-- Control (display selected value) -->
+  <div class="ui-smart-dropdown__wrapper"
+       [class.ui-smart-dropdown__wrapper--has-value]="selectedLabel"
+       [class.ui-smart-dropdown__wrapper--focused]="isOpen || isFocused">
+    <!-- Control (display selected value) -->
+    <div class="ui-smart-dropdown__control"
+         tabindex="0"
+         (click)="togglePanel()"
+         (keydown)="onControlKeydown($event)"
+         (focus)="onControlFocus()"
+         >
+      <!-- If using floating label, keep placeholder visually empty -->
+      <span class="ui-smart-dropdown__placeholder"
+            *ngIf="!selectedLabel && !label">
+        {{ placeholder }}
+      </span>
+
+      <span class="ui-smart-dropdown__value"
+            *ngIf="selectedLabel">
+        {{ selectedLabel }}
+      </span>
+
+      <button *ngIf="clearable && selectedLabel && !disabled"
+              class="ui-smart-dropdown__clear"
+              type="button"
+              aria-label="Clear selection"
+              (click)="clear($event)">
+        ✕
+      </button>
+
+      <span class="ui-smart-dropdown__arrow" aria-hidden="true">
+        ▾
+      </span>
+    </div>
+
+    <!-- Floating label -->
+    <label *ngIf="label" class="ui-smart-dropdown__label">
+      {{ label }}
+    </label>
+
+    <!-- Panel -->
+    <div class="ui-smart-dropdown__panel"
+         *ngIf="isOpen"
+         [style.maxHeight.px]="maxPanelHeight">
+      <input #searchInput
+             class="ui-smart-dropdown__search"
+             type="text"
+             [placeholder]="searchPlaceholder"
+             [(ngModel)]="searchTerm"
+             (ngModelChange)="onSearchChange($event)"
+             (keydown)="onSearchKeydown($event)" />
+
+      <div class="ui-smart-dropdown__options" role="listbox">
+        <div *ngFor="let opt of filteredOptions; let i = index; trackBy: trackByValue"
+             class="ui-smart-dropdown__option"
+             [class.ui-smart-dropdown__option--selected]="isSelected(opt)"
+             [class.ui-smart-dropdown__option--highlighted]="i === highlightedIndex"
+             [class.ui-smart-dropdown__option--disabled]="opt.disabled"
+             (click)="optionClick(opt)">
+          {{ opt.label }}
+        </div>
+
+        <div *ngIf="filteredOptions.length === 0"
+             class="ui-smart-dropdown__empty">
+          No results
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
