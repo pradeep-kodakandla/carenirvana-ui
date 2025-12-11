@@ -632,7 +632,7 @@ export class AuthorizationComponent {
             this.selectedAuthClassId = authClassId;
 
             // First load templates for this class, then continue
-            this.authService.getAuthTemplates(authClassId).subscribe({
+            this.authService.getAuthTemplates("UM", authClassId).subscribe({
               next: (templates: any[]) => {
                 this.authTemplates = [
                   { id: 0, templateName: 'Select Auth Type' },
@@ -761,7 +761,7 @@ export class AuthorizationComponent {
   }
 
   loadAuthTemplates(): void {
-    this.authService.getAuthTemplates(this.selectedAuthClassId).subscribe({
+    this.authService.getAuthTemplates("UM", this.selectedAuthClassId).subscribe({
       next: (data: any[]) => {
         this.authTemplates = [
           { Id: 0, TemplateName: 'Select Auth Type' },
@@ -783,7 +783,7 @@ export class AuthorizationComponent {
     if (this.selectedTemplateId !== null && this.selectedTemplateId !== 0) {
       this.authTypeSelect = this.selectedAuthType !== 'sel';
 
-      this.authService.getTemplate(this.selectedTemplateId).subscribe({
+      this.authService.getTemplate("UM", this.selectedTemplateId).subscribe({
         next: (data: any) => {
           if (!data || !data[0]?.jsonContent) {
             console.error('API returned invalid data:', data);

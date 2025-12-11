@@ -16,12 +16,12 @@ export class AuthService {
   constructor(private http: HttpClient) { }
 
   // Fetch auth templates from API
-  getAuthTemplates(authclassid: any): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/fetch/${authclassid}`);
+  getAuthTemplates(module: any, authclassid: any): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/fetch/${module}/${authclassid}`);
   }
 
-  getTemplate(id: any): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/template/${id}`);
+  getTemplate(module: any, id: any): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/template/${module}/${id}`);
   }
 
   // Save auth detail to API

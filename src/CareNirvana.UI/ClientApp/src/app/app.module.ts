@@ -65,6 +65,9 @@ import { PermissionManagerComponent } from 'src/app/admin/appfeaturesetup/permis
 import { WorkgroupComponent } from './admin/workgroup/workgroup.component';
 import { WorkbasketComponent } from './admin/workbasket/workbasket.component';
 import { UserDefinedCustomFieldsComponent } from './admin/userdefinedcustomfields/userdefinedcustomfields.component';
+import { TemplatebuilderComponent } from './admin/templatebuilder/templatebuilder/templatebuilder.component';
+import { TemplatebuilderpropertiesComponent } from './admin/templatebuilder/templatebuilderproperties/templatebuilderproperties.component';
+
 
 import { UmdocumenttypeComponent } from './admin/UM/umdocumenttype/umdocumenttype.component';
 import { UmactivitytypeComponent } from './admin/UM/umactivitytype/umactivitytype.component';
@@ -181,7 +184,7 @@ import { UiSmartDropdownComponent } from './shared/ui/uismartdropdown/uismartdro
     UmauthnotesComponent, UmauthdocumentsComponent, UmauthactivityComponent, ValidationErrorDialogComponent, MdreviewComponent,
     NewDashBoardComponent, NewDashboard2Component, MdreviewdashboardComponent, SmartauthcheckComponent, ConfirmationDialogComponent,
     ConfigurationComponent, UsermanagementComponent, RolemanagementComponent, ProfilemanagementComponent, AppfeaturesetupComponent, PermissionManagerComponent,
-    WorkgroupComponent, WorkbasketComponent, UserDefinedCustomFieldsComponent,
+    WorkgroupComponent, WorkbasketComponent, UserDefinedCustomFieldsComponent, TemplatebuilderComponent, TemplatebuilderpropertiesComponent,
     UmdocumenttypeComponent, SettingsDialogComponent, UmactivitytypeComponent, DecisionbulkdialogComponent, DialogContentComponent, UmnotetypeComponent, ExternallinksComponent,
     UmclaimtypeComponent, UmactivitypriorityComponent, UmadmissionlevelComponent, UmadmissiontypeComponent, UmadmitreasonComponent,
     UmcertificationtypeComponent, UmdenialtypeComponent, UmdeterminationtypeComponent, UmdischargetoComponent, UmdischargetypeComponent,
@@ -271,8 +274,8 @@ import { UiSmartDropdownComponent } from './shared/ui/uismartdropdown/uismartdro
       { path: 'admin-workgroup', component: WorkgroupComponent },
       { path: 'admin-workbasket', component: WorkbasketComponent },
       { path: 'admin-udcf', component: UserDefinedCustomFieldsComponent },
-
-
+      { path: 'admin-templatebuilder', component: TemplatebuilderComponent },
+      { path: 'admin-templatebuilderproperties', component: TemplatebuilderpropertiesComponent }, 
 
       { path: 'admin-umdocumenttype', component: UmdocumenttypeComponent },
       { path: 'admin-settingdialog', component: SettingsDialogComponent },

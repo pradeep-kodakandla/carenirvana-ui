@@ -153,7 +153,7 @@ export class SmartauthcheckComponent implements OnInit {
   }
 
   loadAuthTemplates(): void {
-    this.authService.getAuthTemplates(this.selectedAuthClassId).subscribe({
+    this.authService.getAuthTemplates("UM", this.selectedAuthClassId).subscribe({
       next: (data: any[]) => {
         this.authTemplates = [
           { Id: 0, TemplateName: 'Select Auth Type' },

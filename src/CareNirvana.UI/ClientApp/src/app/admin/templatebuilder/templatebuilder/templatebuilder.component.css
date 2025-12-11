@@ -1,0 +1,942 @@
+/* ==========================================================================
+   Global Layout & Container Styles
+   ========================================================================== */
+/*.container {
+  display: flex;
+  height: 100vh;
+  gap: 5px;
+  padding: 5px;
+  background: rgba(255, 255, 255, 0.1);*/ /* Semi-transparent white */
+/*backdrop-filter: blur(10px);*/ /* Blur effect for glassiness */
+/*border: 1px solid rgba(255, 255, 255, 0.2);*/ /* Subtle border */
+/*box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);*/ /* Soft shadow */
+/*max-width: 100%;
+}*/
+/* NEW – only for the template builder */
+.builder-container {
+  display: flex;
+  flex-direction: row;
+  gap: 5px;
+  padding: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  width: 100%;
+  box-sizing: border-box;
+  /* no horizontal scroll from the container itself */
+  overflow-x: hidden;
+}
+
+
+
+.card {
+  border: 1px solid #dee2e6;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* --- Column Base Styles --- */
+.left-column,
+.middle-column,
+.right-column {
+  min-width: 0; /* 🔑 allows flex items to shrink instead of forcing horizontal scroll */
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* Left Column – merged & enhanced */
+.left-column {
+  flex: 0 0 20%;
+  max-width: 20%;
+  height: calc(100vh - 100px);
+}
+
+  .left-column:hover {
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+  }
+  /* Left Column Section Header */
+  .left-column h4 {
+    font-size: 18px;
+    font-weight: bold;
+    color: #007BFF;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    text-align: center;
+  }
+
+/* Left panel sections (similar to screenshot) */
+.left-panel-section {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #e3e7f0;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  margin: 10px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+/* Header */
+.left-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  cursor: pointer;
+  background: #fffaf2; /* soft warm like your sample */
+}
+
+.left-panel-header-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.left-panel-header-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e3f2fd;
+  color: #1976d2;
+  flex-shrink: 0;
+}
+
+  .left-panel-header-icon.sections {
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+
+  .left-panel-header-icon.standards {
+    background: #fff3e0;
+    color: #ef6c00;
+  }
+
+.left-panel-header-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.left-panel-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.left-panel-subtitle {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.left-panel-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.left-panel-count-pill {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #0ea5e9;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.left-panel-expand-icon {
+  font-size: 18px;
+  color: #9ca3af;
+}
+
+/* Body / list */
+.left-panel-body {
+  padding: 8px 10px 10px 10px;
+}
+
+.left-panel-list {
+  border: none;
+  background: transparent;
+  padding: 0;
+  gap: 6px;
+}
+
+.left-panel-subsection {
+  margin-bottom: 10px;
+}
+
+.left-panel-subsection-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #4b5563;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 4px 2px 6px;
+}
+
+/* Item tiles */
+.left-panel-item {
+  background: #ffffff;
+  border-radius: 10px !important;
+  border: 1px solid #e5e7eb !important;
+  padding: 6px 8px !important;
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  cursor: grab;
+  transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+
+  .left-panel-item:hover {
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+    transform: translateY(-1px);
+    border-color: #cbd5f5 !important;
+  }
+
+  .left-panel-item.selected {
+    border-color: #0ea5e9 !important;
+    box-shadow: 0 0 0 1px rgba(14, 165, 233, 0.5);
+  }
+
+.left-panel-item-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: #eff6ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #2563eb;
+}
+
+  .left-panel-item-icon.sections {
+    background: #ecfdf3;
+    color: #16a34a;
+  }
+
+  .left-panel-item-icon.standards {
+    background: #fef3c7;
+    color: #d97706;
+  }
+
+.left-panel-item-text {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.left-panel-item-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.left-panel-item-subtitle {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+
+/* Middle Column – merged */
+.middle-column {
+  flex: 0 0 60%;
+  max-width: 60%;
+  position: relative;
+  height: calc(100vh - 100px);
+}
+
+.right-column {
+  flex: 0 0 20%;
+  max-width: 20%;
+  height: calc(100vh - 100px);
+}
+
+
+
+
+/* ==========================================================================
+   Drop Lists
+   ========================================================================== */
+/* Global Drop List (used if no column-specific override is needed) */
+.drop-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  min-height: 120px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: background 0.3s ease-in-out;
+}
+
+  .drop-list:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+
+/* Column-Specific Drop Lists */
+.left-column .drop-list {
+  gap: 10px;
+  min-height: 100px;
+}
+
+.middle-column .drop-list.horizontal-layout {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* Fixed 3 columns */
+  grid-auto-rows: 45px;
+  gap: 10px;
+  padding: 1px;
+  min-height: 100px;
+}
+
+/* ==========================================================================
+   Field Inputs & Items
+   ========================================================================== */
+/* Field Input Container */
+.field-input {
+  width: 200px;
+}
+
+  .field-input mat-form-field {
+    width: 100%;
+  }
+
+  .field-input .mat-form-field-outline {
+    border-radius: 4px;
+  }
+
+/* Generic Field Item (for use outside the left column) */
+.field-item {
+  width: 100%;
+  height: 35px; /* Fixed height */
+  border: none;
+  border-radius: 4px;
+  padding: 2px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  cursor: move;
+  position: relative;
+}
+
+  .field-item:hover .form-outline input {
+    border: 2px solid #007BFF;
+  }
+
+  .field-item:hover .form-outline .form-label {
+    color: #007BFF;
+  }
+
+  .field-item.selected .form-outline input {
+    border: 2px solid #007BFF;
+  }
+
+  .field-item.selected .form-outline .form-label {
+    color: #007BFF;
+  }
+
+  .field-item.selected:hover .form-outline input {
+    border: 2px solid #007BFF;
+  }
+
+  .field-item .form-outline {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+  }
+
+    .field-item .form-outline input {
+      width: 100%;
+      height: 100%;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: transparent;
+      padding: 0 5px;
+      box-sizing: border-box;
+      color: #333;
+      transition: border-color 0.3s ease;
+    }
+
+    .field-item .form-outline .form-label {
+      position: absolute;
+      top: -8px;
+      left: 8px;
+      background: #fff;
+      padding: 0 5px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #555;
+      transition: color 0.3s ease;
+    }
+
+/* Left Column Specific Field Items */
+.left-column .field-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #ffffff;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  cursor: grab;
+  transition: all 0.3s ease-in-out;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+  .left-column .field-item:hover {
+    background: #f8f9fa;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  }
+
+  .left-column .field-item.selected {
+    background: #007BFF;
+    color: white;
+    border: 1px solid #0056b3;
+  }
+
+    .left-column .field-item.selected:hover {
+      background: #0056b3;
+    }
+
+/* ==========================================================================
+   Draggable Elements (Angular CDK)
+   ========================================================================== */
+.cdk-drag-preview {
+  width: 150px;
+  height: 80px;
+  border-radius: 4px;
+  box-shadow: 0 5px 5px -3px rgba(0, 0, 0, 0.2), 0 8px 10px 1px rgba(0, 0, 0, 0.14), 0 3px 14px 2px rgba(0, 0, 0, 0.12);
+  border: 2px dashed #007BFF;
+  background: rgba(0, 123, 255, 0.1);
+  color: #007BFF;
+}
+
+.cdk-drag-placeholder {
+  opacity: 0.3;
+}
+
+/* ==========================================================================
+   Material Expansion Panel
+   ========================================================================== */
+.mat-expansion-panel-header-title {
+  color: #1976d2;
+}
+
+/* ==========================================================================
+   Responsive Adjustments
+   ========================================================================== */
+@media (max-width: 800px) {
+  .horizontal-layout {
+    flex-direction: column;
+  }
+
+  .field-input {
+    width: 100%;
+  }
+}
+
+@media (min-width: 1400px) {
+  .container {
+    max-width: 1980px; /* Increase the width */
+  }
+}
+
+
+/* ==========================================================================
+   Outlined Form Fields
+   ========================================================================== */
+.form-outline {
+  position: relative;
+  width: 100%;
+  margin-bottom: 0;
+}
+
+  .form-outline .form-label {
+    position: absolute;
+    top: -10px;
+    left: 12px;
+    background: white;
+    padding: 0 5px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #555;
+  }
+
+  .form-outline .form-control {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #ccc;
+    border-radius: 5px;
+    font-size: 12px;
+    outline: none;
+    background-color: white;
+    transition: border-color 0.3s ease-in-out;
+  }
+
+    .form-outline .form-control:focus {
+      border-color: lightgray;
+      box-shadow: 0px 0px 5px rgba(30, 120, 171, 0.3);
+    }
+
+/* ==========================================================================
+   Accordion
+   ========================================================================== */
+.accordion {
+  width: 100%;
+  overflow: hidden;
+}
+
+.accordion-item {
+  border-bottom: 1px solid #ccc;
+}
+
+  .accordion-item:last-child {
+    border-bottom: none;
+  }
+
+.accordion-header {
+  padding: 10px;
+  color: #007BFF;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  background-color: #e2e2e2;
+}
+
+  .accordion-header:hover {
+    background-color: #e2e2e2;
+  }
+
+.accordion-body {
+  max-height: 0;
+  overflow: hidden;
+  padding: 0;
+  transition: max-height 0.35s ease, padding 0.35s ease;
+}
+
+.accordion-item.active .accordion-body {
+  max-height: 1000px !important;
+  padding: 10px;
+}
+
+/* ==========================================================================
+   Search Box & Disabled Inputs
+   ========================================================================== */
+.search-box {
+  display: flex;
+  align-items: center;
+  width: 50%;
+}
+
+.search-input {
+  border: none;
+  outline: none;
+  flex: 1;
+}
+
+.search-box.active {
+  border-bottom: 2px solid #0078d7;
+}
+
+input[disabled],
+select[disabled] {
+  background-color: #f5f5f5;
+  color: #666;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Additional Component Styles
+   ========================================================================== */
+.master-template-content {
+  /*padding-bottom: 60px;*/
+}
+
+.save-button-container {
+  position: sticky;
+  bottom: 18px;
+  text-align: right;
+  padding: 10px;
+  background-color: #fff;
+  z-index: 100;
+}
+
+.label-container {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+  .label-container .form-label {
+    display: inline-block;
+    margin: 0;
+    padding-right: 1.2em;
+  }
+
+  /* Updated Delete Icon Design */
+  .label-container .delete-icon {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translate(50%, -50%);
+    width: 1.5em;
+    height: 1.5em;
+    /*    background-color:lightslategray;*/
+    color: red;
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transform: translate(50%, -50%) scale(1.1);
+  }
+
+    .label-container .delete-icon:hover {
+      background-color: lightslategray;
+      transform: translate(50%, -50%) scale(1.1);
+    }
+
+
+.provider-button {
+  margin-bottom: 5px;
+  background-color: #007BFF !important;
+  color: white !important;
+  border-radius: 5px;
+  height: 30px;
+}
+
+.card-header {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+
+.accordion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.section-title {
+  flex: 1;
+}
+
+.delete-section {
+  width: 30px;
+  height: 30px;
+  background-color: #c62828; /* material red tone */
+  color: #fff;
+  font-size: 20px;
+  font-weight: bold;
+  line-height: 10px; /* exactly match height for perfect centering */
+  text-align: center;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-block;
+  padding: 0;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  user-select: none;
+}
+
+  .delete-section:hover {
+    background-color: #b71c1c;
+    transform: scale(1.05);
+  }
+
+
+
+
+
+
+
+/*
+.field-content {
+  flex-grow: 1;
+}
+
+.field-input {
+  width: 100%;
+  height: 35px;
+  border-radius: 4px;
+}*/
+
+.delete-icon {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: red;
+  font-size: large;
+}
+
+
+/* Wrapper for better positioning */
+.custom-dropdown-container {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+/* Select field styling */
+.custom-dropdown {
+  appearance: none; /* Remove default browser styling */
+  /*  background-color: #f8f9fa;*/
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  width: 100%;
+  height: 32px;
+}
+
+/* Custom arrow for the select field */
+.custom-dropdown-arrow {
+  position: absolute;
+  right: 10px;
+  top: 55%;
+  transform: translateY(-50%);
+  pointer-events: none; /* Prevent interaction */
+  font-size: 14px;
+}
+
+/* Highlight on hover */
+.custom-dropdown:hover,
+.custom-dropdown:focus {
+  /*background-color: #e9ecef;*/
+  border-color: #0056b3;
+}
+
+/* Differentiate inputs and selects */
+.custom-input {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 14px;
+  width: 100%;
+  height: 35px;
+}
+
+.custom-dropdown {
+  /*background-color: #f0f8ff; */ /* Light blue to differentiate */
+}
+
+
+
+/* Highlight dragged item in middle column */
+.middle-column .field-item.active {
+  /*background: #007BFF !important;*/
+  color: white !important;
+  /*  border: 2px solid #0056b3 !important;
+ box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);*/
+}
+
+/* Ensure left column does not get highlighted */
+.left-column .field-item.active {
+  background: transparent !important;
+  color: inherit !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+
+/* When dragging, keep it highlighted */
+.cdk-drag-placeholder {
+  opacity: 0.8;
+  border: 2px dashed #0056b3 !important;
+  background: rgba(0, 123, 255, 0.2) !important;
+}
+
+
+/* Highlight when dragging over drop list */
+.cdk-drop-list.dragging-over {
+  background: rgba(0, 123, 255, 0.1);
+  border: 2px dashed #007BFF;
+}
+
+.search-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+}
+
+.search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  height: 40px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+
+
+/* === Master template accordion header (section bar) === */
+.master-template-content .accordion-item {
+  border: 1px solid #e3e7f0;
+  border-radius: 16px;
+  /*  background: #f5f7ff;*/
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.master-template-content .accordion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  /*  background: #f5f7ff;*/
+}
+
+.accordion-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.accordion-header-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  background: #e0ecff;
+}
+
+  .accordion-header-icon mat-icon {
+    font-size: 16px;
+    line-height: 16px;
+    color: #2563eb;
+  }
+
+.accordion-header-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.accordion-header-pill {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #0f766e;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.accordion-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.accordion-header-btn {
+  /*  width: 28px !important;
+  height: 28px !important;
+  border-radius: 999px !important;
+  border: 1px solid #e5e7eb !important;*/
+  /*  background: #ffffff !important;
+*/
+}
+
+  .accordion-header-btn.mat-icon-button {
+    /* kill Material default padding and width */
+    padding: 0 !important;
+    min-width: 0 !important;
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 999px !important;
+    border: 1px solid #e5e7eb !important;
+    background: #ffffff !important;
+    /* center the icon perfectly */
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .accordion-header-btn .mat-icon {
+    font-size: 16px;
+    line-height: 1;
+    color: #2563eb;
+  }
+
+  .accordion-header-btn.delete .mat-icon {
+    color: #dc2626;
+  }
+
+.left-panel-item.empty-section-tile {
+  border-style: dashed !important;
+  border-color: #38bdf8 !important;
+  background: #ecfeff;
+}
+
+  .left-panel-item.empty-section-tile:hover {
+    background: #e0f2fe;
+    box-shadow: 0 4px 10px rgba(56, 189, 248, 0.4);
+  }
+
+
+/* Sticky toolbar in middle column */
+.middle-column .middle-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background-color: #fff;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 5px;
+  /* 🔒 keep everything on one line */
+  flex-wrap: nowrap;
+  box-sizing: border-box;
+  overflow: hidden; /* don’t let child overflow create horizontal scroll */
+}
+
+/* Auth Type input – take remaining space */
+.middle-toolbar .form-outline {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* The two dropdowns – fixed but shrinkable chunks */
+.middle-toolbar .toolbar-select {
+  flex: 0 1 210px; /* base ~210px, but can shrink if needed */
+  min-width: 150px;
+}
+
+/* Validation icon: just its content */
+.middle-toolbar button[mat-icon-button] {
+  flex: 0 0 auto;
+}
+
+/* Save / Cancel on the right */
+.toolbar-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+}

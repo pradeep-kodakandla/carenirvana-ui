@@ -1,0 +1,244 @@
+.card {
+  border: 1px solid #dee2e6;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.form-label {
+  font-weight: 500;
+}
+
+.form-check-label {
+  cursor: pointer;
+}
+
+.btn-sm {
+  font-size: 0.8rem;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  border: none;
+}
+
+.btn-success {
+  background-color: #198754;
+  border: none;
+}
+
+.p-3 {
+  padding: 0px !important;
+}
+
+
+/* Outlined Form Fields */
+.form-outline {
+  position: relative;
+  margin-bottom: 0 !important;
+  width: 100%;
+}
+
+  .form-outline .form-label {
+    position: absolute;
+    top: -10px;
+    left: 12px;
+    background: white;
+    padding: 0 5px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #555;
+  }
+
+  .form-outline .form-control {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.3s ease-in-out;
+    background-color: white;
+  }
+
+    .form-outline .form-control:focus {
+      border-color: lightgray;
+      box-shadow: 0 0 5px rgba(30, 120, 171, 0.3);
+    }
+
+.info-label {
+  font-weight: bold;
+  font-size: 14px;
+  color: #007bff; /* Blue color for labels */
+  text-transform: uppercase;
+  /*min-width: 150px;*/ /* Ensures labels align properly */
+}
+
+.info-value {
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+}
+
+
+
+/* Tabs */
+.field-tabs {
+  display: flex;
+  gap: 12px;
+  border-bottom: 1px solid #e5e7eb;
+  margin: -10px -10px 12px;
+  padding: 8px 12px 0;
+  background-color: #fff;
+}
+
+.field-tab {
+  border: none;
+  background: transparent;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #6c757d;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+  .field-tab.active {
+    color: #0d6efd;
+    border-bottom-color: #0d6efd;
+    font-weight: 600;
+  }
+
+/* Panels inside Conditional / Advanced */
+.section-panel {
+  border-radius: 10px;
+  padding: 2px 4px;
+  margin-bottom: 6px;
+  background-color: #f9fafb;
+}
+
+.section-panel-header {
+  font-weight: 600;
+  font-size: 13px;
+  color: #4b5563;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 6px;
+}
+
+
+
+
+.field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+}
+
+.field-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.field-header-icon {
+  font-size: 18px;
+  color: #2563eb; /* blue icon */
+}
+
+.field-header-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.field-header-back {
+  border: 1px solid #e5e7eb;
+  background-color: #ffffff;
+  border-radius: 999px;
+  padding: 4px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+  .field-header-back i {
+    font-size: 14px;
+    color: #2563eb;
+  }
+
+  .field-header-back:hover {
+    background-color: #eff6ff;
+    border-color: #bfdbfe;
+  }
+
+
+
+.condition-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.condition-card {
+  padding: 10px 12px;
+  border-radius: 6px;
+  background-color: #f9fafb;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.condition-row-full {
+  width: 100%;
+}
+
+.condition-row-inline {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.condition-value {
+  flex: 1;
+}
+
+.condition-actions-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Connector between conditions (AND/OR) */
+.condition-connector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 6px 0;
+}
+
+.condition-connector-line {
+  flex: 1;
+  height: 1px;
+  background: #e0e0e0;
+}
+
+.condition-connector-operator {
+  margin: 0 8px;
+  min-width: 140px;
+}

@@ -1,4 +1,4 @@
-import { Component, ViewChild, OnInit, EventEmitter, Output } from '@angular/core';
+import { Component, ViewChild, OnInit, EventEmitter, Output, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { TemplateService } from 'src/app/service/template.service';
 import { KeyValue } from '@angular/common';
@@ -47,11 +47,11 @@ interface TemplateSectionModel {
 }
 
 @Component({
-  selector: 'app-umauthtemplate-builder',
-  templateUrl: './umauthtemplate-builder.component.html',
-  styleUrls: ['./umauthtemplate-builder.component.css'],
+  selector: 'app-templatebuilder',
+  templateUrl: './templatebuilder.component.html',
+  styleUrl: './templatebuilder.component.css'
 })
-export class UmauthtemplateBuilderComponent implements OnInit {
+export class TemplatebuilderComponent implements OnInit, OnChanges {
   // Our master template now holds a sections array.
   masterTemplate: { sections?: TemplateSectionModel[] } = {};
   availableFields: TemplateField[] = [];
@@ -63,7 +63,8 @@ export class UmauthtemplateBuilderComponent implements OnInit {
   selectedTemplateId: number = 0;
   newTemplateName: string = '';
   showTemplateNameError: boolean = false;
-  displayedColumns: string[] = ['Id', 'TemplateName', 'authClass', 'CreatedBy', 'CreatedOn', 'actions'];
+  //displayedColumns: string[] = ['Id', 'TemplateName', 'authClass', 'CreatedBy', 'CreatedOn', 'actions'];
+  displayedColumns: string[] = [];
   isFormVisible: boolean = false;
   formMode: 'add' | 'edit' | 'view' = 'add';
   selectedEntry: any = {};
@@ -82,7 +83,7 @@ export class UmauthtemplateBuilderComponent implements OnInit {
 
   emptySectionCounter = 1;
 
-
+  @Input() module: string = 'UM';
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
   @Output() menuCollapse: EventEmitter<void> = new EventEmitter<void>();
@@ -116,12 +117,36 @@ export class UmauthtemplateBuilderComponent implements OnInit {
   ) { }
 
   ngOnInit() {
+    this.setupColumns();
     this.loadAuthClass();
+    if (this.module == 'AG') {
+      this.loadAuthTemplates();
+    }
+  }
 
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['module']) {
+      this.setupColumns();
+    }
+  }
+
+
+  private setupColumns(): void {
+    // base columns
+    const cols = ['Id', 'TemplateName'];
+
+    // only add Auth Case for UM
+    if (this.module === 'UM') {
+      cols.push('authClass');
+    }
+
+    cols.push('CreatedBy', 'CreatedOn', 'actions');
+
+    this.displayedColumns = cols;
   }
 
   loadAuthTemplates(): void {
-    this.authService.getAuthTemplates("UM", this.selectedClassId).subscribe({
+    this.authService.getAuthTemplates(this.module, this.selectedClassId).subscribe({
       next: (data: any[]) => {
         this.authTemplates = [
           { Id: 0, TemplateName: 'Select Auth Type' },
@@ -153,7 +178,7 @@ export class UmauthtemplateBuilderComponent implements OnInit {
   }
 
   loadData() {
-    this.authService.getAuthTemplates("UM", 0).subscribe((response) => {
+    this.authService.getAuthTemplates(this.module, 0).subscribe((response) => {
       this.dataSource.data = response.map((item: any) => {
         const matchingClass = this.authClass.find(c => String(c.id) === String(item.authclassid));
         return {
@@ -209,10 +234,10 @@ export class UmauthtemplateBuilderComponent implements OnInit {
 
     if (mode === 'edit' && element) {
       this.newTemplateName = element.templateName;
-      this.selectedClassId = element.authclassid;
+      this.selectedClassId = element.id;
 
       // ✅ Load templates first, then set selectedTemplateId
-      this.authService.getAuthTemplates("UM", this.selectedClassId).subscribe({
+      this.authService.getAuthTemplates(this.module, this.selectedClassId).subscribe({
         next: (data: any[]) => {
           this.authTemplates = [{ Id: 0, TemplateName: 'Select Auth Type' }, ...data];
 
@@ -270,7 +295,7 @@ export class UmauthtemplateBuilderComponent implements OnInit {
   onAuthTypeChange(): void {
     console.log('Selected Template ID:', this.selectedTemplateId);
     if (this.selectedTemplateId && this.selectedTemplateId > 0) {
-      this.authService.getTemplate("UM", this.selectedTemplateId).subscribe({
+      this.authService.getTemplate(this.module, this.selectedTemplateId).subscribe({
         next: (data: any) => {
           if (!data || !data.length || !data[0] || !data[0].jsonContent) {
             console.error('API returned invalid data or missing JsonContent');
@@ -304,7 +329,7 @@ export class UmauthtemplateBuilderComponent implements OnInit {
               });
             }
             // Set the original master template for comparison.
-            this.authService.getTemplate("UM", 1).subscribe({
+            this.authService.getTemplate(this.module, 1).subscribe({
               next: (data: any) => {
                 if (!data || !data[0]?.jsonContent) {
                   console.error('API returned invalid data:', data);
@@ -642,10 +667,10 @@ export class UmauthtemplateBuilderComponent implements OnInit {
       TemplateName: this.newTemplateName,
       JsonContent: JSON.stringify(this.masterTemplate), // Ensuring subsections are included
       CreatedOn: new Date().toISOString(),
-      CreatedBy: Number(sessionStorage.getItem('loggedInUserid')) || 0,
+      CreatedBy: 1,
       authclassid: this.selectedClassId,
       Id: this.formMode === 'edit' ? this.selectedTemplateId : 0,
-      module: "UM",
+      module: this.module,
       EnrollmentHierarchyId: 1
     };
 
@@ -1133,9 +1158,6 @@ export class UmauthtemplateBuilderComponent implements OnInit {
     // Hook to a settings dialog here later if needed
   }
 
-
-
-
   private createEmptySection(): any {
     const name = `New Section ${this.emptySectionCounter++}`;
 
@@ -1153,6 +1175,4 @@ export class UmauthtemplateBuilderComponent implements OnInit {
       this.masterTemplate.sections = [];
     }
   }
-
-
 }

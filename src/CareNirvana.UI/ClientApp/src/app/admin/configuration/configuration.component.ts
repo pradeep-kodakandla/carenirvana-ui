@@ -9,6 +9,10 @@ import { PermissionManagerComponent } from 'src/app/admin/appfeaturesetup/permis
 import { WorkgroupComponent } from 'src/app/admin/workgroup/workgroup.component';
 import { WorkbasketComponent } from 'src/app/admin/workbasket/workbasket.component';
 import { UserDefinedCustomFieldsComponent } from 'src/app/admin/userdefinedcustomfields/userdefinedcustomfields.component';
+import { TemplatebuilderComponent } from 'src/app/admin/templatebuilder/templatebuilder/templatebuilder.component';
+import { TemplatebuilderpropertiesComponent } from 'src/app/admin/templatebuilder/templatebuilderproperties/templatebuilderproperties.component';
+
+
 // UM Components
 import { UmdocumenttypeComponent } from 'src/app/admin/UM/umdocumenttype/umdocumenttype.component';
 import { UmactivitytypeComponent } from 'src/app/admin/UM/umactivitytype/umactivitytype.component';
@@ -114,7 +118,8 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
     'Role Management': RolemanagementComponent,
     'Profile Management': ProfilemanagementComponent,
     'Application Features Setup': AppfeaturesetupComponent,
-    'Auth Template': UmauthtemplateBuilderComponent,
+    'Auth Template': TemplatebuilderComponent,
+    'Case Template': TemplatebuilderComponent,
     'UM Document Type': UmdocumenttypeComponent,
     'UM Activity Type': UmactivitytypeComponent,
     'UM Note Type': UmnotetypeComponent,
@@ -213,7 +218,7 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
     {
       name: 'Appeals & Grievances',
       children: [
-        'AG Document Type', 'AG Note Type', 'Complaint Class', 'Complaint Category', 'Complaint Sub Category',
+        'Case Template', 'AG Document Type', 'AG Note Type', 'Complaint Class', 'Complaint Category', 'Complaint Sub Category',
         'Complaint Credentials', 'Complaint Status Reason', 'Coordinator Type', 'Participant Role',
         'Participant Type', 'QOC Investigation Outcome', 'QOC Score', 'QOC Investigation Reason',
         'Resolution Category', 'Resolution Sub Category'
@@ -258,7 +263,7 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
     this.loadComponent(subMenuItem);
 
     // Collapse menu when "Auth Template" is selected
-    if (subMenuItem === 'Auth Template') {
+    if (subMenuItem === 'Auth Template' || 'Case Template') {
       this.isMenuCollapsed = true;
     } else {
       this.isMenuCollapsed = false;
@@ -309,10 +314,13 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
       this.dynamicContainer.clear();
       const componentRef = this.dynamicContainer.createComponent(componentFactory);
       // Check if the loaded component is UmauthtemplateBuilderComponent
-      if (componentKey === 'Auth Template') {
+      if (componentKey === 'Auth Template' || 'Case Template') {
         // Subscribe to the menuCollapse event to keep collapsing if needed
-        (componentRef.instance as UmauthtemplateBuilderComponent).menuCollapse.subscribe(() => {
-          this.isMenuCollapsed = true; // Collapse menu when "Edit" or "Add" is clicked
+        const tb = componentRef.instance as TemplatebuilderComponent;
+        tb.module = componentKey == 'Case Template' ? 'AG' : 'UM';
+        // you already had this subscription:
+        tb.menuCollapse.subscribe(() => {
+          this.isMenuCollapsed = true;
         });
       }
     } catch (error) {
