@@ -82,6 +82,8 @@
 </div>
 
 <div class="builder-container" *ngIf="isVisible">
+
+
   <!-- Left Column: Available Fields -->
   <!-- Left Column: Available / Unavailable blocks with new UI -->
   <div class="left-column">
@@ -304,7 +306,7 @@
       <div class="position-relative toolbar-select">
         <select class="form-select" id="authType" name="Clone From"
                 [(ngModel)]="selectedTemplateId"
-                (change)="onAuthTypeChange()"
+                (change)="onTemplateChange()"
                 appShowLabel
                 [disabled]="formMode === 'edit'">
           <option *ngFor="let template of authTemplates" [value]="template.id">
@@ -414,9 +416,17 @@
                        [cdkDropListData]="subSection.fields"
                        [cdkDropListConnectedTo]="allDropLists"
                        (cdkDropListDropped)="drop($event, section.sectionName + '.' + subSection.sectionName)"
-                       class="drop-list horizontal-layout">
-                    <div *ngFor="let field of subSection.fields" cdkDrag [cdkDragData]="field"
+                       class="drop-list middle-grid-drop" cdkDropListOrientation="mixed">
+                    <div *ngFor="let field of subSection.fields"
+                         cdkDrag
+                         [cdkDragData]="field"
+                         class="field-drag-item"
+                         [class.selected]="field === selectedField"
+                         [class.active]="field.isActive"
                          (click)="selectField(field, section.sectionName + '.' + subSection.sectionName)">
+                      <!--<div class="field-drag-handle" cdkDragHandle (click)="$event.stopPropagation()">
+                        <mat-icon>drag_indicator</mat-icon>
+                      </div>-->
                       <ng-container *ngIf="field.type !== 'checkbox'; else checkboxSubField">
                         <ng-container *ngIf="field.layout === 'row'; else normalSubField">
                           <div class="field-item row-container" style="display: flex; gap: 10px; align-items: center;">
@@ -492,12 +502,20 @@
               </div>
               <div cdkDropList
                    [id]="section.sectionName"
-                   [cdkDropListData]="getNonButtonFields(section.fields)"
+                   [cdkDropListData]="getProviderDropFields(section)"
                    [cdkDropListConnectedTo]="allDropLists"
                    (cdkDropListDropped)="drop($event, section.sectionName)"
-                   class="drop-list horizontal-layout">
-                <div *ngFor="let field of getNonButtonFields(section.fields)" cdkDrag [cdkDragData]="field"
+                   class="drop-list middle-grid-drop" cdkDropListOrientation="mixed">
+                <div *ngFor="let field of getProviderDropFields(section)"
+                     cdkDrag
+                     [cdkDragData]="field"
+                     class="field-drag-item"
+                     [class.selected]="field === selectedField"
+                     [class.active]="field.isActive"
                      (click)="selectField(field, section.sectionName)">
+                  <!--<div class="field-drag-handle" cdkDragHandle (click)="$event.stopPropagation()">
+                    <mat-icon>drag_indicator</mat-icon>
+                  </div>-->
                   <ng-container *ngIf="field.type !== 'checkbox'; else checkboxField">
                     <ng-container *ngIf="field.layout === 'row'; else normalField">
                       <div class="field-item row-container" style="display: flex; gap: 10px; align-items: center;">
@@ -563,11 +581,17 @@
                  [cdkDropListData]="section.fields"
                  [cdkDropListConnectedTo]="allDropLists"
                  (cdkDropListDropped)="drop($event, section.sectionName)"
-                 class="drop-list horizontal-layout">
-              <div *ngFor="let field of section.fields" cdkDrag [cdkDragData]="field"
-                   (click)="selectField(field, section.sectionName)" class="field-item"
+                 class="drop-list middle-grid-drop" cdkDropListOrientation="mixed">
+              <div *ngFor="let field of section.fields"
+                   cdkDrag
+                   [cdkDragData]="field"
+                   class="field-item field-drag-item"
                    [class.selected]="field === selectedField"
-                   [class.active]="field.isActive">
+                   [class.active]="field.isActive"
+                   (click)="selectField(field, section.sectionName)">
+                <!--<div class="field-drag-handle" cdkDragHandle (click)="$event.stopPropagation()">
+                  <mat-icon>drag_indicator</mat-icon>
+                </div>-->
                 <ng-container *ngIf="field.type !== 'checkbox'; else checkboxField2">
                   <ng-container *ngIf="field.layout === 'row'; else normalField2">
                     <div class="field-item row-container" style="display: flex; gap: 10px; align-items: center;">
@@ -645,7 +669,9 @@
       <app-templatebuilderproperties [selectedField]="selectedField"
                                      [selectedSection]="selectedSectionObject"
                                      (fieldUpdated)="updateField($event)"
-                                     (sectionUpdated)="updateSection($event)">
+                                     (sectionUpdated)="updateSection($event)"
+                                     [module]="module"
+                                     [masterTemplate]="masterTemplate">
       </app-templatebuilderproperties>
     </ng-container>
   </div>

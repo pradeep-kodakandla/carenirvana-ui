@@ -288,14 +288,37 @@
   min-height: 100px;
 }
 
-.middle-column .drop-list.horizontal-layout {
+.middle-column .drop-list.middle-grid-drop {
+  /* Grid drop zone: max 4 columns, responsive down to 1 */
   display: grid;
-  grid-template-columns: repeat(3, 1fr); /* Fixed 3 columns */
-  grid-auto-rows: 45px;
-  gap: 10px;
-  padding: 1px;
-  min-height: 100px;
+  grid-template-columns: repeat(4, minmax(20px, 1fr));
+  gap: 8px;
+  align-items: start;
+  padding: 5px;
+  min-height: 120px;
 }
+
+/* 3 columns */
+@media (max-width: 1400px) {
+  .middle-column .drop-list.middle-grid-drop {
+    grid-template-columns: repeat(3, minmax(240px, 1fr));
+  }
+}
+
+/* 2 columns */
+@media (max-width: 1100px) {
+  .middle-column .drop-list.middle-grid-drop {
+    grid-template-columns: repeat(2, minmax(240px, 1fr));
+  }
+}
+
+/* 1 column */
+@media (max-width: 780px) {
+  .middle-column .drop-list.middle-grid-drop {
+    grid-template-columns: repeat(1, minmax(240px, 1fr));
+  }
+}
+
 
 /* ==========================================================================
    Field Inputs & Items
@@ -939,4 +962,88 @@ select[disabled] {
   display: flex;
   gap: 8px;
   flex: 0 0 auto;
+}
+
+
+
+/* ==========================================================================
+   Middle column drag items (grid) - stable, list-like drag behavior
+   ========================================================================== */
+
+.middle-column .field-drag-item {
+  position: relative;
+  width: 100%;
+}
+
+/* Drag handle so inputs/selects don't accidentally start dragging */
+.middle-column .field-drag-handle {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: grab;
+  z-index: 2;
+  opacity: 0.75;
+}
+
+.middle-column .field-drag-item:hover .field-drag-handle {
+  opacity: 1;
+}
+
+.middle-column .field-drag-handle mat-icon {
+  font-size: 18px;
+  line-height: 18px;
+}
+
+/* Add spacing so handle doesn't overlap the label */
+/*.middle-column .field-drag-item .field-item,
+.middle-column .field-drag-item .form-outline,
+.middle-column .field-drag-item .field-card {
+  padding-left: 34px;
+}*/
+
+/* Placeholder keeps the grid "slot" stable */
+.middle-column .field-drag-item.cdk-drag-placeholder {
+  border: 2px dashed rgba(0, 0, 0, 0.25);
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 10px;
+  min-height: 58px;
+}
+
+/* Smoother, predictable animations like the left column */
+.middle-column .cdk-drop-list-dragging .field-drag-item:not(.cdk-drag-placeholder) {
+  transition: transform 160ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* Preview */
+.cdk-drag-preview {
+  box-sizing: border-box;
+  border-radius: 10px;
+}
+
+
+/* Base hidden state for delete icons */
+.delete-icon {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
+  color: #dc2626; /* subtle material red */
+}
+
+/* Show on hover or when field is selected */
+.field-item:hover .delete-icon,
+.field-item.selected .delete-icon {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Optional hover effect for the icon itself */
+.delete-icon:hover {
+  color: #b91c1c;
+  transform: scale(1.1);
 }

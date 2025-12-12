@@ -78,7 +78,7 @@ export class MemberAlertsComponent implements OnInit, OnChanges, OnDestroy {
       }
     }
 
-    this.load();
+    //this.load();
   }
 
   ngOnDestroy(): void {

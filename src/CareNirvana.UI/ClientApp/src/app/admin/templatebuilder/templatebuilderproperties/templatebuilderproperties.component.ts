@@ -65,8 +65,10 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
 
   @Input() selectedField: TemplateField | null = null;
   @Input() selectedSection: TemplateSectionModel | null = null;
+  @Input() masterTemplate: { sections?: TemplateSectionModel[] } = {};
   @Output() fieldUpdated = new EventEmitter<TemplateField>();
   @Output() sectionUpdated = new EventEmitter<TemplateSectionModel>();
+  @Input() module: string = 'UM';
 
   conditionOperatorOptions = [
     { label: 'AND', value: 'AND' as const },
@@ -136,6 +138,10 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
 
   ngOnChanges(changes: SimpleChanges) {
 
+    const selectedFieldChanged = !!changes['selectedField']?.currentValue;
+    const masterChanged = 'masterTemplate' in changes;
+    const allFieldsChanged = 'allFields' in changes;
+
     if (changes['selectedField']?.currentValue) {
       this.ensureAtLeastOneCondition();
       if (!this.selectedField?.authStatus) {
@@ -159,11 +165,17 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
 
     }
 
+    // ICD/Service code helpers
     if (changes['selectedField']?.currentValue) {
       if (this.selectedField?.id === 'icd10Code' || this.selectedField?.id === 'serviceCode') {
 
         this.loadCodesForField();
       }
+    }
+
+    // Rebuild ReferenceField dropdown whenever the template or selection changes
+    if (changes['selectedField'] || changes['masterTemplate']) {
+      this.buildReferenceFieldOptions();
     }
   }
 
@@ -194,11 +206,9 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
       return;
     }
 
-    console.log('Fetching data for datasource:', this.selectedField.datasource);
-
     const expectedKey = this.selectedField.datasource.toLowerCase(); // Convert datasource key to lowercase
-
-    this.crudService.getData('um', this.selectedField.datasource).subscribe(
+    console.log("Module", this.module, "Fetching datasource:", this.selectedField.datasource);
+    this.crudService.getData(this.module, this.selectedField.datasource).subscribe(
       (data: any[]) => {
         this.dropdownOptions = data.map(item => {
           // Find the actual key in the API response (ignoring case)
@@ -408,16 +418,60 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
   @Input() allFields: any[] = []; // populate from parent if needed
 
   private buildReferenceFieldOptions(): void {
-    if (!this.allFields) {
-      this.referenceFieldOptions = [];
-      return;
+    const excludeId = this.selectedField?.id;
+    const options: UiSmartOption<string>[] = [];
+
+    const fieldName = (x: TemplateField) => (x.displayName || x.label || x.id);
+
+    const push = (id: string | undefined, label: string) => {
+      if (!id) return;
+      if (excludeId && id === excludeId) return; // avoid self reference
+      options.push({ label, value: id });
+    };
+
+    const addField = (f: TemplateField, sectionPath: string) => {
+      if (f.type === 'button') return;
+
+      // row container => add its sub-fields
+      if (f.layout === 'row' && Array.isArray(f.fields) && f.fields.length) {
+        f.fields.forEach(sf => push(sf.id, `${sectionPath} • ${fieldName(sf)}`));
+        return;
+      }
+
+      push(f.id, `${sectionPath} • ${fieldName(f)}`);
+    };
+
+    const walkSection = (section: TemplateSectionModel, parentPath: string) => {
+      const sectionPath = parentPath ? `${parentPath} / ${section.sectionName}` : section.sectionName;
+
+      (section.fields || []).forEach(f => addField(f, sectionPath));
+
+      // subsections could be object-map OR array
+      const subs: any = (section as any).subsections;
+      if (Array.isArray(subs)) {
+        subs.forEach((s: TemplateSectionModel) => s && walkSection(s, sectionPath));
+      } else if (subs && typeof subs === 'object') {
+        Object.values(subs).forEach((s: any) => s && walkSection(s as TemplateSectionModel, sectionPath));
+      }
+    };
+
+    const sections = this.masterTemplate?.sections;
+    if (Array.isArray(sections)) {
+      sections.forEach(sec => sec && walkSection(sec, ''));
     }
 
-    this.referenceFieldOptions = this.allFields.map(f => ({
-      label: f.displayName || f.label || f.id,
-      value: f.id
-    }));
+    // De-dupe + sort
+    const unique = new Map<string, UiSmartOption<string>>();
+    options.forEach(o => { if (!unique.has(o.value)) unique.set(o.value, o); });
+
+    this.referenceFieldOptions = Array.from(unique.values()).sort((a, b) =>
+      a.label.localeCompare(b.label)
+    );
   }
+
+
+
+
 
   private initConditionsFromField(): void {
     if (!this.selectedField) {

@@ -54,6 +54,12 @@ interface TemplateSectionModel {
 export class TemplatebuilderComponent implements OnInit, OnChanges {
   // Our master template now holds a sections array.
   masterTemplate: { sections?: TemplateSectionModel[] } = {};
+
+  /** Middle-column special case: Provider Details renders non-button fields in the grid.
+   *  We keep a STABLE array reference for CDK drag/drop (do NOT use Array.filter() directly in the template).
+   */
+  private readonly PROVIDER_SECTION_NAME = 'Provider Details';
+  private providerNonButtonFieldsCache = new Map<string, TemplateField[]>();
   availableFields: TemplateField[] = [];
   selectedField: TemplateField | null = null;
   selectedSection: string = '';
@@ -243,8 +249,7 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
 
           // ✅ Set selectedTemplateId after dropdown is populated
           this.selectedTemplateId = element.id;
-          console.log("Selected Template ID", this.selectedTemplateId);
-          this.onAuthTypeChange(); // Load masterTemplate after setting TemplateId
+          this.onTemplateChange(); // Load masterTemplate after setting TemplateId
         },
         error: (err) => {
           console.error('Error fetching auth templates for edit mode:', err);
@@ -292,8 +297,8 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
     }
   }
 
-  onAuthTypeChange(): void {
-    console.log('Selected Template ID:', this.selectedTemplateId);
+  onTemplateChange(): void {
+
     if (this.selectedTemplateId && this.selectedTemplateId > 0) {
       this.authService.getTemplate(this.module, this.selectedTemplateId).subscribe({
         next: (data: any) => {
@@ -304,6 +309,7 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
           try {
             // Parse the new JSON format with a sections array.
             this.masterTemplate = JSON.parse(data[0].jsonContent);
+            this.providerNonButtonFieldsCache.clear();
 
             if (this.masterTemplate.sections && Array.isArray(this.masterTemplate.sections)) {
               // Sort sections by order (using 0 as default if order is missing).
@@ -329,7 +335,7 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
               });
             }
             // Set the original master template for comparison.
-            this.authService.getTemplate(this.module, 1).subscribe({
+            this.authService.getTemplate(this.module, (this.module == 'UM' ? 2 : 1)).subscribe({
               next: (data: any) => {
                 if (!data || !data[0]?.jsonContent) {
                   console.error('API returned invalid data:', data);
@@ -393,7 +399,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
 
     } else {
       this.masterTemplate = {};
-      console.log('No valid template selected');
     }
   }
 
@@ -508,26 +513,49 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
       }
     }
 
+
+    // ✅ Keep Provider Details (non-button grid) synced with masterTemplate.fields whenever it participates in a drop.
+    if (this.isProviderSectionId(event.container.id) || this.isProviderSectionId(event.previousContainer.id)) {
+      this.syncProviderSectionFields();
+    }
     // Ensure UI updates properly
     this.forceAngularChangeDetection();
   }
 
 
+
   addFieldToSection(field: TemplateField, sectionName: string) {
-    const section = this.masterTemplate.sections?.find(sec => sec.sectionName === sectionName);
-    if (section) {
-      // Prevent duplicates: Check if the field already exists in the section
-      const existingField = section.fields.find(f => f.id === field.id);
-      if (!existingField) {
-        section.fields.push(field);
-        console.log(`Field ${field.displayName} added to section ${sectionName}`);
-      } else {
-        console.warn(`Field ${field.displayName} already exists in section ${sectionName}`);
+    // Provider Details: fields are maintained via the cached non-button list + syncProviderSectionFields()
+    if (sectionName === this.PROVIDER_SECTION_NAME) {
+      if (field?.type !== 'button') {
+        const section = this.masterTemplate.sections?.find(s => s.sectionName === this.PROVIDER_SECTION_NAME);
+        if (section) {
+          const cache = this.getProviderDropFields(section); // ensures cache exists
+          if (!cache.some(f => f.id === field.id)) {
+            cache.push(field);
+          }
+          this.syncProviderSectionFields();
+        }
       }
-    } else {
+      return;
+    }
+
+    const fieldsArr = this.resolveFieldsArray(sectionName);
+    if (!fieldsArr) {
       console.warn(`Section ${sectionName} not found!`);
+      return;
+    }
+
+    // Prevent duplicates: Check if the field already exists in the target array
+    const existingField = fieldsArr.find(f => f.id === field.id);
+    if (!existingField) {
+      fieldsArr.push(field);
+    } else {
+      // No-op (already inserted by transferArrayItem). Keep log for debugging.
+      // console.warn(`Field ${field.displayName} already exists in section ${sectionName}`);
     }
   }
+
 
   selectField(field: TemplateField, section: string) {
     // Ensure selection only applies to middle column, not available fields
@@ -674,8 +702,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
       EnrollmentHierarchyId: 1
     };
 
-    console.log("jsonData", jsonData);
-
     this.authService.saveAuthTemplate(jsonData).subscribe({
       next: () => {
         this.isVisible = false;
@@ -731,6 +757,82 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
     return fields.filter(field => field.type !== 'button');
   }
 
+  /**
+   * ✅ Provider Details drop list uses ONLY non-button fields.
+   * Return a stable array reference so CDK can calculate indices correctly.
+   */
+  getProviderDropFields(section: TemplateSectionModel): TemplateField[] {
+    const key = section.sectionName || this.PROVIDER_SECTION_NAME;
+
+    let cached = this.providerNonButtonFieldsCache.get(key);
+    if (!cached) {
+      cached = [];
+      this.providerNonButtonFieldsCache.set(key, cached);
+      // initialize once from section.fields
+      (section.fields || []).forEach(f => {
+        if (f?.type !== 'button') cached!.push(f);
+      });
+    }
+    return cached;
+  }
+
+  private isProviderSectionId(listId: string): boolean {
+    return listId === this.PROVIDER_SECTION_NAME;
+  }
+
+  /** Keep masterTemplate.sections[].fields in sync with the Provider Details grid list (non-buttons). */
+  private syncProviderSectionFields(): void {
+    const section = this.masterTemplate.sections?.find(s => s.sectionName === this.PROVIDER_SECTION_NAME);
+    if (!section) return;
+
+    const nonButtons = this.providerNonButtonFieldsCache.get(this.PROVIDER_SECTION_NAME);
+    if (!nonButtons) return;
+
+    const buttons = (section.fields || []).filter(f => f?.type === 'button');
+
+    // Mutate in place to keep references stable for the rest of the UI
+    section.fields = section.fields || [];
+    section.fields.length = 0;
+    section.fields.push(...buttons, ...nonButtons);
+
+    // Re-apply sectionName tag for deletion/move logic
+    section.fields.forEach(f => (f.sectionName = section.sectionName));
+  }
+
+  /** Rebuild cached non-button list from masterTemplate for Provider Details (used after delete/move). */
+  private refreshProviderCacheFromTemplate(): void {
+    const section = this.masterTemplate.sections?.find(s => s.sectionName === this.PROVIDER_SECTION_NAME);
+    if (!section) return;
+
+    let cached = this.providerNonButtonFieldsCache.get(this.PROVIDER_SECTION_NAME);
+    if (!cached) {
+      cached = [];
+      this.providerNonButtonFieldsCache.set(this.PROVIDER_SECTION_NAME, cached);
+    } else {
+      cached.length = 0;
+    }
+
+    (section.fields || []).forEach(f => {
+      if (f?.type !== 'button') cached!.push(f);
+    });
+  }
+
+  /** Resolve main section vs subsection (sectionName can be "Main.Sub"). */
+  private resolveFieldsArray(sectionName: string): TemplateField[] | null {
+    if (!this.masterTemplate.sections) return null;
+
+    if (sectionName.includes('.')) {
+      const [mainSectionName, subSectionName] = sectionName.split('.');
+      const main = this.masterTemplate.sections.find(s => s.sectionName === mainSectionName);
+      const sub = main?.subsections?.[subSectionName];
+      return sub?.fields || null;
+    }
+
+    const section = this.masterTemplate.sections.find(s => s.sectionName === sectionName);
+    return section?.fields || null;
+  }
+
+
   deleteAccordionSection(sectionName: string, event: Event): void {
     event.stopPropagation();
     if (confirm('Are you sure you want to delete this section?')) {
@@ -751,7 +853,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
         }
       }
       delete this.activeSections[sectionName];
-      console.log(`Section ${sectionName} deleted.`);
     }
   }
   activeSubSections: { [key: string]: boolean } = {};
@@ -813,6 +914,12 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
       }
     }
 
+
+    // If removed from Provider Details, refresh cached list so the grid stays in sync
+    if (wasRemoved && sectionName === this.PROVIDER_SECTION_NAME) {
+      this.refreshProviderCacheFromTemplate();
+    }
+
     // Move field to the correct target if it was removed
     if (wasRemoved) {
       const displayName = field.displayName || field.label || field.id;
@@ -861,105 +968,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
       this.forceAngularChangeDetection();
     }
   }
-
-  //dropSection(event: CdkDragDrop<any[]>) {
-  //  const sectionName: string = event.item.data;
-
-  //  const data = event.item.data;
-  //  console.log('dropSection event:', event);
-  //  console.log('dropSection data:', data);
-
-  //  // Make sure our sections array exists
-  //  this.ensureMasterTemplateSections();
-
-  //  // 1) New Empty Section from left panel
-  //  if (data && data.kind === 'emptySection') {
-  //    const sectionName = `New Section ${this.emptySectionCounter++}`;
-
-  //    const newSection: any = {
-  //      sectionName,
-  //      fields: []
-  //    };
-
-  //    // Push into masterTemplate.sections so the accordion can render it
-  //    this.masterTemplate.sections = [
-  //      ...this.masterTemplate.sections,
-  //      newSection
-  //    ];
-
-  //    // Mark as active/open + select it so user can add fields
-  //    this.activeSections[sectionName] = true;
-  //    this.selectedSectionObject = newSection;
-
-  //    return;
-  //  }
-
-  //  if (data && data.kind === 'templateSection') {
-  //    const sectionName: string = data.sectionName;
-
-  //    // Only add if not already present (optional)
-  //    const alreadyExists = this.masterTemplate.sections.some(s => s.sectionName === sectionName);
-  //    if (!alreadyExists) {
-  //      const newSection: any = {
-  //        sectionName,
-  //        fields: []
-  //      };
-
-  //      this.masterTemplate.sections = [
-  //        ...this.masterTemplate.sections,
-  //        newSection
-  //      ];
-
-  //      this.activeSections[sectionName] = true;
-  //      this.selectedSectionObject = newSection;
-
-  //      // If you want to remove it from unavailableSections after use:
-  //      const idx = this.unavailableSections.indexOf(sectionName);
-  //      if (idx > -1) {
-  //        this.unavailableSections.splice(idx, 1);
-  //      }
-  //    }
-
-  //    return;
-  //  }
-
-  //  if (event.previousContainer === event.container) {
-  //    moveItemInArray(
-  //      event.container.data,
-  //      event.previousIndex,
-  //      event.currentIndex
-  //    );
-  //  }
-  //  //const sectionToRestore = this.originalMasterTemplate.sections?.find(
-  //  //  s => s.sectionName === sectionName
-  //  //);
-
-  //  //if (sectionToRestore) {
-  //  //  const alreadyExists = this.masterTemplate.sections?.some(
-  //  //    s => s.sectionName === sectionName
-  //  //  );
-  //  //  if (alreadyExists) {
-  //  //    console.warn(`Section '${sectionName}' already exists.`);
-  //  //    return;
-  //  //  }
-
-  //  //  this.masterTemplate.sections = this.masterTemplate.sections || [];
-  //  //  this.masterTemplate.sections.push(JSON.parse(JSON.stringify(sectionToRestore)));
-  //  //  this.activeSections[sectionName] = true;
-
-  //  //  const index = this.unavailableSections.indexOf(sectionName);
-  //  //  if (index > -1) this.unavailableSections.splice(index, 1);
-
-  //  //  if (this.unavailableFieldsGrouped[sectionName]) {
-  //  //    delete this.unavailableFieldsGrouped[sectionName];
-  //  //  }
-
-  //  //  this.unavailableFieldsList = this.unavailableFieldsList.filter(f => f.sectionName !== sectionName);
-
-  //  //  this.forceAngularChangeDetection();
-  //  //}
-  //}
-
 
   dropSection(event: CdkDragDrop<any[]>): void {
     const data = event.item.data;
@@ -1041,9 +1049,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
     }
   }
 
-
-
-
   openValidationDialog(): void {
     if (!this.selectedTemplateId || this.selectedTemplateId === 0) {
       this.snackBar.open('Please select a template to manage validations', 'Close', { duration: 3000 });
@@ -1111,8 +1116,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
   toggleLeftPanelGroup(key: 'available' | 'unavailSections' | 'unavailFields'): void {
     this.leftPanelGroups[key] = !this.leftPanelGroups[key];
   }
-
-
 
   getSectionFieldCount(section: TemplateSectionModel): number {
     if (!section) {
