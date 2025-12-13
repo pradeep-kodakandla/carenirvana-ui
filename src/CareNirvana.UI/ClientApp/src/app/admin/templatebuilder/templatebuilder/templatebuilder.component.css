@@ -607,41 +607,80 @@ select[disabled] {
     padding-right: 1.2em;
   }
 
-  /* Updated Delete Icon Design */
-  .label-container .delete-icon {
-    position: absolute;
-    top: 50%;
-    right: 0;
-    transform: translate(50%, -50%);
-    width: 1.5em;
-    height: 1.5em;
-    /*    background-color:lightslategray;*/
-    color: red;
-    border: none;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1em;
-    cursor: pointer;
-    transition: background-color 0.3s ease, transform 0.3s ease;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    transform: translate(50%, -50%) scale(1.1);
-  }
 
-    .label-container .delete-icon:hover {
-      background-color: lightslategray;
-      transform: translate(50%, -50%) scale(1.1);
-    }
-
-
-.provider-button {
-  margin-bottom: 5px;
-  background-color: #007BFF !important;
-  color: white !important;
-  border-radius: 5px;
-  height: 30px;
+/* Buttons container: wraps nicely like pills */
+.provider-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+  align-items: center;
 }
+
+
+/* Main button = pill chip */
+.provider-button.mat-mdc-raised-button {
+  /*border-radius: 999px !important;*/
+  height: 34px !important;
+  min-height: 34px !important;
+  line-height: 34px !important;
+  padding: 0 14px !important;
+  font-weight: 400;
+  letter-spacing: 0.2px;
+  text-transform: none;
+}
+
+/* Provider button row item: keep inline and neat */
+.provider-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px; /* spacing between button and delete */
+  position: relative; /* ok to keep, but delete won't be absolute */
+}
+
+/* Make delete button inline (beside), not floating */
+.provider-delete.mat-mdc-icon-button {
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  width: 28px !important;
+  height: 28px !important;
+  padding: 0 !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  /* hidden by default (same concept as your .delete-icon) */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: scale(0.95);
+  transition: opacity 150ms ease, transform 150ms ease, visibility 150ms ease;
+}
+
+/* Show delete on hover OR when selected */
+.provider-chip:hover .provider-delete,
+.provider-chip.selected .provider-delete,
+.provider-chip:focus-within .provider-delete {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+/* Nice hover state */
+.provider-delete:hover {
+  background: #fee2e2 !important;
+  border-color: #fecaca !important;
+}
+
+.provider-delete .mat-icon {
+  font-size: 16px;
+  line-height: 16px;
+  width: 16px;
+  height: 16px;
+  color: #dc2626;
+}
+
 
 .card-header {
   font-size: 1.2rem;
@@ -705,8 +744,7 @@ select[disabled] {
   background: transparent;
   border: none;
   cursor: pointer;
-  color: red;
-  font-size: large;
+
 }
 
 

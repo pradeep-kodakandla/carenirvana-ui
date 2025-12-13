@@ -691,6 +691,8 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
       });
     }
 
+    this.normalizeVisibilityForSave(this.masterTemplate);
+
     const jsonData = {
       TemplateName: this.newTemplateName,
       JsonContent: JSON.stringify(this.masterTemplate), // Ensuring subsections are included
@@ -1178,4 +1180,42 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
       this.masterTemplate.sections = [];
     }
   }
+
+
+  private normalizeVisibilityForSave(template: any) {
+    const walkFields = (fields: any[]) => {
+      for (const f of (fields || [])) {
+        // row containers
+        if (f.layout === 'row' && Array.isArray(f.fields)) walkFields(f.fields);
+
+        // normalize conditions
+        const conds = (f.conditions && Array.isArray(f.conditions)) ? f.conditions : [];
+        if (conds.length === 0) {
+          f.conditions = [{ showWhen: 'always', referenceFieldId: null, value: null }];
+        } else {
+          // ensure first is valid + first operator cleared
+          f.conditions[0].showWhen = f.conditions[0].showWhen ?? 'always';
+          delete f.conditions[0].operatorWithPrev;
+        }
+
+        // (optional) keep backward-compatible flat fields in sync
+        const first = f.conditions[0];
+        f.showWhen = first.showWhen ?? 'always';
+        f.referenceFieldId = first.referenceFieldId ?? null;
+        f.visibilityValue = first.value ?? null;
+      }
+    };
+
+    const walkSections = (sections: any[]) => {
+      for (const s of (sections || [])) {
+        walkFields(s.fields || []);
+        const subs = s.subsections;
+        if (Array.isArray(subs)) walkSections(subs);
+        else if (subs && typeof subs === 'object') walkSections(Object.values(subs));
+      }
+    };
+
+    walkSections(template?.sections || []);
+  }
+
 }

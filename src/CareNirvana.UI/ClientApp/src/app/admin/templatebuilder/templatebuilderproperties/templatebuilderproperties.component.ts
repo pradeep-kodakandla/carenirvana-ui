@@ -25,7 +25,7 @@ interface TemplateField {
   isEnabled?: boolean;
   dateOnly?: boolean;
 
-  showWhen?: 'always' | 'fieldEquals' | 'fieldNotEquals';
+  showWhen?: 'always' | 'fieldEquals' | 'fieldNotEquals' | 'fieldhasvalue';
   referenceFieldId?: string | null;
   visibilityValue?: string | number | null;
   requiredWhen?: 'always' | 'whenVisible' | 'never';
@@ -43,7 +43,7 @@ interface DropdownOption {
 
 export interface FieldCondition {
   id: number;
-  showWhen: 'always' | 'fieldEquals' | 'fieldNotEquals';
+  showWhen: 'always' | 'fieldEquals' | 'fieldNotEquals' | 'fieldhasvalue';
   referenceFieldId: string | null;
   value: string | number | null;
   operatorWithPrev?: 'AND' | 'OR'; // only meaningful for index > 0
@@ -88,10 +88,11 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
   ];
 
   // ShowWhen dropdown options
-  showWhenOptions: UiSmartOption<'always' | 'fieldEquals' | 'fieldNotEquals'>[] = [
+  showWhenOptions: UiSmartOption<'always' | 'fieldEquals' | 'fieldNotEquals' | 'fieldhasvalue'>[] = [
     { label: 'Always', value: 'always' },
     { label: 'Field equals value', value: 'fieldEquals' },
-    { label: 'Field not equal value', value: 'fieldNotEquals' }
+    { label: 'Field not equal value', value: 'fieldNotEquals' },
+    { label: 'Field has any value', value: 'fieldhasvalue' } 
   ];
 
   // Permissions dropdown options
@@ -417,61 +418,57 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
   // Optional – if you want a list of other fields for "Reference Field"
   @Input() allFields: any[] = []; // populate from parent if needed
 
-  private buildReferenceFieldOptions(): void {
-    const excludeId = this.selectedField?.id;
-    const options: UiSmartOption<string>[] = [];
+  //private buildReferenceFieldOptions(): void {
+  //  const excludeId = this.selectedField?.id;
+  //  const options: UiSmartOption<string>[] = [];
 
-    const fieldName = (x: TemplateField) => (x.displayName || x.label || x.id);
+  //  const fieldName = (x: TemplateField) => (x.displayName || x.label || x.id);
 
-    const push = (id: string | undefined, label: string) => {
-      if (!id) return;
-      if (excludeId && id === excludeId) return; // avoid self reference
-      options.push({ label, value: id });
-    };
+  //  const push = (id: string | undefined, label: string) => {
+  //    if (!id) return;
+  //    if (excludeId && id === excludeId) return; // avoid self reference
+  //    options.push({ label, value: id });
+  //  };
 
-    const addField = (f: TemplateField, sectionPath: string) => {
-      if (f.type === 'button') return;
+  //  const addField = (f: TemplateField, sectionPath: string) => {
+  //    if (f.type === 'button') return;
 
-      // row container => add its sub-fields
-      if (f.layout === 'row' && Array.isArray(f.fields) && f.fields.length) {
-        f.fields.forEach(sf => push(sf.id, `${sectionPath} • ${fieldName(sf)}`));
-        return;
-      }
+  //    // row container => add its sub-fields
+  //    if (f.layout === 'row' && Array.isArray(f.fields) && f.fields.length) {
+  //      f.fields.forEach(sf => push(sf.id, `${sectionPath} • ${fieldName(sf)}`));
+  //      return;
+  //    }
 
-      push(f.id, `${sectionPath} • ${fieldName(f)}`);
-    };
+  //    push(f.id, `${sectionPath} • ${fieldName(f)}`);
+  //  };
 
-    const walkSection = (section: TemplateSectionModel, parentPath: string) => {
-      const sectionPath = parentPath ? `${parentPath} / ${section.sectionName}` : section.sectionName;
+  //  const walkSection = (section: TemplateSectionModel, parentPath: string) => {
+  //    const sectionPath = parentPath ? `${parentPath} / ${section.sectionName}` : section.sectionName;
 
-      (section.fields || []).forEach(f => addField(f, sectionPath));
+  //    (section.fields || []).forEach(f => addField(f, sectionPath));
 
-      // subsections could be object-map OR array
-      const subs: any = (section as any).subsections;
-      if (Array.isArray(subs)) {
-        subs.forEach((s: TemplateSectionModel) => s && walkSection(s, sectionPath));
-      } else if (subs && typeof subs === 'object') {
-        Object.values(subs).forEach((s: any) => s && walkSection(s as TemplateSectionModel, sectionPath));
-      }
-    };
+  //    // subsections could be object-map OR array
+  //    const subs: any = (section as any).subsections;
+  //    if (Array.isArray(subs)) {
+  //      subs.forEach((s: TemplateSectionModel) => s && walkSection(s, sectionPath));
+  //    } else if (subs && typeof subs === 'object') {
+  //      Object.values(subs).forEach((s: any) => s && walkSection(s as TemplateSectionModel, sectionPath));
+  //    }
+  //  };
 
-    const sections = this.masterTemplate?.sections;
-    if (Array.isArray(sections)) {
-      sections.forEach(sec => sec && walkSection(sec, ''));
-    }
+  //  const sections = this.masterTemplate?.sections;
+  //  if (Array.isArray(sections)) {
+  //    sections.forEach(sec => sec && walkSection(sec, ''));
+  //  }
 
-    // De-dupe + sort
-    const unique = new Map<string, UiSmartOption<string>>();
-    options.forEach(o => { if (!unique.has(o.value)) unique.set(o.value, o); });
+  //  // De-dupe + sort
+  //  const unique = new Map<string, UiSmartOption<string>>();
+  //  options.forEach(o => { if (!unique.has(o.value)) unique.set(o.value, o); });
 
-    this.referenceFieldOptions = Array.from(unique.values()).sort((a, b) =>
-      a.label.localeCompare(b.label)
-    );
-  }
-
-
-
-
+  //  this.referenceFieldOptions = Array.from(unique.values()).sort((a, b) =>
+  //    a.label.localeCompare(b.label)
+  //  );
+  //}
 
   private initConditionsFromField(): void {
     if (!this.selectedField) {
@@ -578,4 +575,123 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
       ];
     }
   }
+
+
+
+  private buildReferenceFieldOptions(): void {
+    const excludeId = this.selectedField?.id;
+    const options: UiSmartOption<string>[] = [];
+
+    this.referenceFieldMap.clear();
+
+    const fieldName = (x: TemplateField) => (x.displayName || x.label || x.id);
+
+    const push = (field: TemplateField, sectionPath: string) => {
+      if (!field.id) return;
+      if (excludeId && field.id === excludeId) return;
+      if (field.type === 'button') return;
+
+      this.referenceFieldMap.set(field.id, field);
+
+      options.push({
+        value: field.id,
+        label: `${sectionPath} • ${fieldName(field)}`
+      });
+    };
+
+    const walkSection = (section: TemplateSectionModel, parentPath: string) => {
+      const sectionPath = parentPath ? `${parentPath} / ${section.sectionName}` : section.sectionName;
+
+      (section.fields || []).forEach(f => {
+        // row container => map subfields
+        if (f.layout === 'row' && Array.isArray(f.fields) && f.fields.length) {
+          f.fields.forEach(sf => push(sf, sectionPath));
+          return;
+        }
+        push(f, sectionPath);
+      });
+
+      const subs: any = (section as any).subsections;
+      if (Array.isArray(subs)) subs.forEach((s: TemplateSectionModel) => s && walkSection(s, sectionPath));
+      else if (subs && typeof subs === 'object') Object.values(subs).forEach((s: any) => s && walkSection(s as TemplateSectionModel, sectionPath));
+    };
+
+    const sections = this.masterTemplate?.sections;
+    if (Array.isArray(sections)) sections.forEach(sec => sec && walkSection(sec, ''));
+
+    const unique = new Map<string, UiSmartOption<string>>();
+    options.forEach(o => { if (!unique.has(o.value)) unique.set(o.value, o); });
+
+    this.referenceFieldOptions = Array.from(unique.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }
+
+
+  // Map referenceFieldId -> actual TemplateField (so we can read its type/options/datasource)
+  private referenceFieldMap = new Map<string, TemplateField>();
+
+  // If a reference field is "select" + datasource-based, cache its options per condition row
+  conditionSelectOptions: Record<number, UiSmartOption<string>[]> = {};
+
+  // Get the selected reference field object for a condition
+  getReferenceField(referenceFieldId: string | null): TemplateField | undefined {
+    if (!referenceFieldId) return undefined;
+    return this.referenceFieldMap.get(referenceFieldId);
+  }
+
+  // Decide which UI control to show for Value
+  getConditionValueKind(cond: FieldCondition): 'select' | 'datetime' | 'date' | 'number' | 'text' {
+    const ref = this.getReferenceField(cond.referenceFieldId);
+    if (!ref) return 'text';
+
+    if (ref.type === 'select') return 'select';
+    if (ref.type === 'datetime-local') return ref.dateOnly ? 'date' : 'datetime';
+    if (ref.type === 'number') return 'number';
+
+    return 'text';
+  }
+
+  // Options for Value dropdown (when reference field is select)
+  getConditionValueOptions(cond: FieldCondition): UiSmartOption<string>[] {
+    const ref = this.getReferenceField(cond.referenceFieldId);
+    if (!ref) return [];
+
+    // Static options on the field itself
+    if (Array.isArray(ref.options) && ref.options.length) {
+      return ref.options.map(o => ({ label: o, value: o }));
+    }
+
+    // Datasource-based select (loaded on demand)
+    return this.conditionSelectOptions[cond.id] ?? [];
+  }
+
+  // When Reference Field changes: clear value, and if select+datasource, load options
+  onReferenceFieldChanged(cond: FieldCondition): void {
+    // Clear current value whenever reference changes
+    cond.value = null;
+
+    const ref = this.getReferenceField(cond.referenceFieldId);
+
+    // If select field uses datasource and doesn't have static options, fetch dropdown options
+    if (ref?.type === 'select' && ref.datasource && (!ref.options || ref.options.length === 0)) {
+      const expectedKey = ref.datasource.toLowerCase();
+
+      this.crudService.getData(this.module, ref.datasource).subscribe((data: any[]) => {
+        const opts = data.map(item => {
+          const actualKey = Object.keys(item).find(k => k.toLowerCase() === expectedKey);
+          const label = actualKey ? item[actualKey] : 'Unknown';
+          return { label: String(label ?? ''), value: String(item.id) };
+        });
+
+        this.conditionSelectOptions[cond.id] = opts;
+        this.onConditionChanged();
+      });
+
+      return;
+    }
+
+    // Otherwise reset cached options for this row
+    this.conditionSelectOptions[cond.id] = [];
+    this.onConditionChanged();
+  }
+
 }

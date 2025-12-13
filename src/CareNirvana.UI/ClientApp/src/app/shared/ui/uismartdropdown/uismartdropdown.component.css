@@ -158,3 +158,12 @@
   font-size: 13px;
   color: #555; /* your primary color */
 }
+
+
+.ui-smart-dropdown__options .option-label {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

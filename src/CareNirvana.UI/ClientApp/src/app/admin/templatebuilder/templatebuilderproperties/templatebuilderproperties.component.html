@@ -249,7 +249,7 @@
               </div>
 
               <!-- Condition card -->
-              <div class="condition-card">
+              <div class="condition-card" style="padding-bottom:10px;">
                 <!-- Row 1: Show When -->
                 <div class="condition-row-full">
                   <ui-smart-dropdown label="Show When"
@@ -266,27 +266,75 @@
                                      [(ngModel)]="cond.referenceFieldId"
                                      [options]="referenceFieldOptions"
                                      placeholder="Select field"
-                                     (valueChange)="onConditionChanged()">
+                                     [disabled]="cond.showWhen === 'always'"
+                                     (valueChange)="onReferenceFieldChanged(cond)">
                   </ui-smart-dropdown>
                 </div>
 
                 <!-- Row 3: Value + Add/Remove -->
                 <div class="condition-row-inline">
-                  <div class="condition-value">
-                    <div class="mb-3 form-outline">
+                  <div class="mb-3 form-outline">
+
+                    <!-- SELECT -->
+                    <ui-smart-dropdown *ngIf="getConditionValueKind(cond) === 'select'"
+                                       label="Value"
+                                       [(ngModel)]="cond.value"
+                                       [options]="getConditionValueOptions(cond)"
+                                       placeholder="Select value"
+                                       [disabled]="cond.showWhen === 'always' || !cond.referenceFieldId"
+                                       (valueChange)="onConditionChanged()">
+                    </ui-smart-dropdown>
+
+                    <!-- DATETIME -->
+                    <ng-container *ngIf="getConditionValueKind(cond) === 'datetime'">
+                      <label class="form-label">Value</label>
+                      <input type="datetime-local"
+                             class="form-control"
+                             [(ngModel)]="cond.value"
+                             (change)="onConditionChanged()"
+                             [disabled]="cond.showWhen === 'always' || !cond.referenceFieldId"
+                             placeholder="Value">
+                    </ng-container>
+
+                    <!-- DATE -->
+                    <ng-container *ngIf="getConditionValueKind(cond) === 'date'">
+                      <label class="form-label">Value</label>
+                      <input type="date"
+                             class="form-control"
+                             [(ngModel)]="cond.value"
+                             (change)="onConditionChanged()"
+                             [disabled]="cond.showWhen === 'always' || !cond.referenceFieldId">
+                    </ng-container>
+
+                    <!-- NUMBER -->
+                    <ng-container *ngIf="getConditionValueKind(cond) === 'number'">
+                      <label class="form-label">Value</label>
+                      <input type="number"
+                             class="form-control"
+                             [(ngModel)]="cond.value"
+                             (change)="onConditionChanged()"
+                             [disabled]="cond.showWhen === 'always' || !cond.referenceFieldId"
+                             placeholder="Value">
+                    </ng-container>
+
+                    <!-- TEXT (default) -->
+                    <ng-container *ngIf="getConditionValueKind(cond) === 'text'">
                       <label class="form-label">Value</label>
                       <input type="text"
                              class="form-control"
                              [(ngModel)]="cond.value"
                              (change)="onConditionChanged()"
+                             [disabled]="cond.showWhen === 'always' || !cond.referenceFieldId"
                              placeholder="Value">
-                    </div>
+                    </ng-container>
+
                   </div>
 
                   <div class="condition-actions-inline">
                     <!-- Add: only on last condition -->
                     <button *ngIf="i === conditions.length - 1"
                             type="button"
+                            [disabled]="cond.showWhen === 'always'"
                             class="btn btn-outline-primary btn-sm me-2"
                             (click)="addCondition(i)">
                       <i class="bi bi-plus-circle"></i> Add
@@ -295,6 +343,7 @@
                     <!-- Remove: show if more than one condition -->
                     <button *ngIf="conditions.length > 1"
                             type="button"
+                            [disabled]="cond.showWhen === 'always'"
                             class="btn btn-outline-danger btn-sm"
                             (click)="removeCondition(i)">
                       <i class="bi bi-trash"></i>

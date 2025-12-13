@@ -56,7 +56,6 @@
 
   .form-outline .form-control {
     width: 100%;
-    padding: 10px;
     border: 2px solid #ccc;
     border-radius: 5px;
     font-size: 14px;
@@ -118,9 +117,9 @@
 /* Panels inside Conditional / Advanced */
 .section-panel {
   border-radius: 10px;
-  padding: 2px 4px;
+/*  padding: 2px 4px;
   margin-bottom: 6px;
-  background-color: #f9fafb;
+  background-color: #f9fafb;*/
 }
 
 .section-panel-header {
@@ -128,7 +127,7 @@
   font-size: 13px;
   color: #4b5563;
   margin-bottom: 8px;
-  border-bottom: 1px solid #e5e7eb;
+/*  border-bottom: 1px solid #e5e7eb;*/
   padding-bottom: 6px;
 }
 
@@ -194,13 +193,13 @@
 }
 
 .condition-card {
-  padding: 10px 12px;
+/*  padding: 10px 12px;*/
   border-radius: 6px;
-  background-color: #f9fafb;
-  border: 1px solid #e2e8f0;
+/*  background-color: #f9fafb;
+  border: 1px solid #e2e8f0;*/
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
 }
 
 .condition-row-full {
