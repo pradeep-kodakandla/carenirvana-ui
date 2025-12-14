@@ -389,44 +389,64 @@
               </mat-icon>
             </button>
 
-            <button mat-icon-button
-                    class="accordion-header-btn delete"
-                    (click)="deleteAccordionSection(section.sectionName, $event)"
-                    matTooltip="Delete Section">
-              <mat-icon>close</mat-icon>
+            <button mat-icon-button style="padding:0px;width:auto;" class="delete-icon" (click)="deleteAccordionSection(section.sectionName, $event)">
+              <span title="Delete" aria-label="Delete" role="button" tabindex="0">
+                <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
+                  <path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"></path>
+                </svg>
+              </span>
             </button>
           </div>
         </div>
         <div class="accordion-body">
           <!-- For Additional Details, render subsections if they exist -->
-          <ng-container *ngIf="section.sectionName === 'Additional Details' && section.subsections; else normalSection">
+          <!-- Main section fields (always) -->
+          <ng-container *ngTemplateOutlet="normalSection"></ng-container>
+
+          <!-- Subsections (auto-detected from JSON) -->
+          <ng-container *ngIf="section.subsections">
             <div class="sub-accordion">
-              <div class="accordion-item"
-                   *ngFor="let subSection of getSortedSubsections(section.subsections)"
-                   [class.active]="activeSubSections[section.sectionName + '.' + subSection.sectionName]">
-                <div class="accordion-header" (click)="toggleSubSection(section.sectionName + '.' + subSection.sectionName)">
-                  <span class="section-title">{{ subSection.sectionName }}</span>
-                  <button class="delete-section" (click)="deleteSubSection(section.sectionName, subSection.sectionName, $event)" matTooltip="Delete Subsection">
+              <div class="subsection-wrap">
+                <div class="subsection-group"
+                     *ngFor="let subSection of getSortedSubsections(section.subsections)">
+
+                  <!-- Floating label (left) -->
+                  <!--<div class="subsection-float-label">
+                    {{ subSection.sectionName }}
+                  </div>-->
+                  <div class="subsection-float-label"
+                       (click)="selectSubSection(section, subSection, $event)"
+                       [class.selected]="selectedSubSectionPath === (section.sectionName + '.' + (subSection.subsectionKey || subSection.sectionName))">
+                    {{ subSection.sectionName }}
+                  </div>
+
+                  <!-- Delete icon (right) -->
+                  <button mat-icon-button
+                          class="subsection-float-delete"
+                          matTooltip="Delete Subsection"
+                          (click)="deleteSubSection(section.sectionName, (subSection.subsectionKey || subSection.sectionName), $event)">
                     <mat-icon>close</mat-icon>
                   </button>
-                </div>
-                <div class="accordion-body">
+
+                  <!-- Fields -->
                   <div cdkDropList
-                       [id]="section.sectionName + '.' + subSection.sectionName"
+                       [id]="section.sectionName + '.' + (subSection.subsectionKey || subSection.sectionName)"
                        [cdkDropListData]="subSection.fields"
                        [cdkDropListConnectedTo]="allDropLists"
-                       (cdkDropListDropped)="drop($event, section.sectionName + '.' + subSection.sectionName)"
-                       class="drop-list middle-grid-drop" cdkDropListOrientation="mixed">
+                       (cdkDropListDropped)="drop($event, section.sectionName + '.' + (subSection.subsectionKey || subSection.sectionName))"
+                       class="drop-list middle-grid-drop"
+                       cdkDropListOrientation="mixed">
+
+                    <!-- keep your existing field rendering exactly as-is -->
                     <div *ngFor="let field of subSection.fields"
                          cdkDrag
                          [cdkDragData]="field"
                          class="field-drag-item"
                          [class.selected]="field === selectedField"
                          [class.active]="field.isActive"
-                         (click)="selectField(field, section.sectionName + '.' + subSection.sectionName)">
-                      <!--<div class="field-drag-handle" cdkDragHandle (click)="$event.stopPropagation()">
-                        <mat-icon>drag_indicator</mat-icon>
-                      </div>-->
+                         (click)="selectField(field, section.sectionName + '.' + (subSection.subsectionKey || subSection.sectionName))">
+
+
                       <ng-container *ngIf="field.type !== 'checkbox'; else checkboxSubField">
                         <ng-container *ngIf="field.layout === 'row'; else normalSubField">
                           <div class="field-item row-container" style="display: flex; gap: 10px; align-items: center;">
@@ -436,7 +456,7 @@
                                   <label class="form-label">{{ subField.displayName }}</label>
                                   <input [type]="getInputType(subField.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="subField.displayName" />
                                 </div>
-                                <button mat-icon-button style="padding:0px;width:auto;" class="delete-icon" (click)="moveFieldToAvailable(field, section.sectionName, $event)">
+                                <button mat-icon-button style="padding:0px;width:auto;" class="delete-icon" (click)="moveFieldToAvailable(field, section.sectionName + '.' + (subSection.subsectionKey || subSection.sectionName), $event)">
                                   <span title="Delete" aria-label="Delete" role="button" tabindex="0">
                                     <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
                                       <path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"></path>
@@ -452,12 +472,15 @@
                             </div>
                           </div>
                         </ng-container>
+
                         <ng-template #normalSubField>
                           <div class="field-item">
                             <div class="form-outline">
-                              <label class="form-label">{{ field.displayName }} <span *ngIf="field.required" style="color: red;"> * </span></label>
+                              <label class="form-label">
+                                {{ field.displayName }}
+                                <span *ngIf="field.required" style="color: red;">*</span>
+                              </label>
 
-                              <!-- Check field type -->
                               <ng-container *ngIf="field.type === 'select'; else normalField">
                                 <select class="custom-dropdown" [(ngModel)]="field.defaultValue">
                                   <option *ngFor="let option of field.options" [value]="option">
@@ -471,7 +494,9 @@
                                 <input [type]="getInputType(field.type)" class="custom-input" [placeholder]="field.displayName" />
                               </ng-template>
                             </div>
-                            <button mat-icon-button style="padding:0px;width:auto;" class="delete-icon" (click)="moveFieldToAvailable(field, section.sectionName, $event)">
+
+                            <button mat-icon-button class="delete-icon" style="padding: 0px; width: auto;"
+                                    (click)="moveFieldToAvailable(field, section.sectionName + '.' + (subSection.subsectionKey || subSection.sectionName), $event)">
                               <span title="Delete" aria-label="Delete" role="button" tabindex="0">
                                 <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
                                   <path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"></path>
@@ -481,6 +506,7 @@
                           </div>
                         </ng-template>
                       </ng-container>
+
                       <ng-template #checkboxSubField>
                         <div class="field-item">
                           <div class="form-outline">
@@ -488,13 +514,14 @@
                           </div>
                         </div>
                       </ng-template>
+
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           </ng-container>
-          <!-- Normal section rendering -->
+
           <ng-template #normalSection>
             <!-- Special handling for Provider Details -->
             <ng-container *ngIf="section.sectionName === 'Provider Details'; else otherSection">
@@ -717,14 +744,15 @@
   </div>
   <!-- Right Column: Field Properties -->
   <div class="right-column">
-    <ng-container *ngIf="selectedField">
-      <app-templatebuilderproperties [selectedField]="selectedField"
-                                     [selectedSection]="selectedSectionObject"
+    <ng-container *ngIf="selectedField || selectedSubSectionObject">
+      <app-templatebuilderproperties [selectedField]="selectedField || selectedSubSectionObject"
+                                     [selectedSection]="$any(selectedSectionObject)"
                                      (fieldUpdated)="updateField($event)"
                                      (sectionUpdated)="updateSection($event)"
                                      [module]="module"
-                                     [masterTemplate]="masterTemplate">
+                                     [masterTemplate]="$any(masterTemplate)">
       </app-templatebuilderproperties>
     </ng-container>
+
   </div>
 </div>

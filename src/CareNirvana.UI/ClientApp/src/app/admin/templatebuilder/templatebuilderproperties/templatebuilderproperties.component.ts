@@ -63,7 +63,7 @@ interface TemplateSectionModel {
 })
 export class TemplatebuilderpropertiesComponent implements OnChanges {
 
-  @Input() selectedField: TemplateField | null = null;
+  @Input() selectedField: any;// TemplateField | null = null;
   @Input() selectedSection: TemplateSectionModel | null = null;
   @Input() masterTemplate: { sections?: TemplateSectionModel[] } = {};
   @Output() fieldUpdated = new EventEmitter<TemplateField>();
@@ -92,7 +92,7 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
     { label: 'Always', value: 'always' },
     { label: 'Field equals value', value: 'fieldEquals' },
     { label: 'Field not equal value', value: 'fieldNotEquals' },
-    { label: 'Field has any value', value: 'fieldhasvalue' } 
+    { label: 'Field has any value', value: 'fieldhasvalue' }
   ];
 
   // Permissions dropdown options
@@ -196,7 +196,7 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
     if (event.target.checked) {
       this.selectedField.authStatus.push(status);
     } else {
-      this.selectedField.authStatus = this.selectedField.authStatus.filter(s => s !== status);
+      this.selectedField.authStatus = this.selectedField.authStatus.filter((s: any) => s !== status);
     }
 
     this.emitUpdate();
@@ -322,7 +322,7 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
         this.selectedField.selectedOptions.push(optionId);
       }
     } else {
-      this.selectedField.selectedOptions = this.selectedField.selectedOptions.filter(id => id !== optionId);
+      this.selectedField.selectedOptions = this.selectedField.selectedOptions.filter((id: any) => id !== optionId);
     }
 
     this.emitUpdate();
@@ -405,7 +405,7 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
 
   removeCode(code: string): void {
     if (!this.selectedField?.selectedOptions) return;
-    this.selectedField.selectedOptions = this.selectedField.selectedOptions.filter(c => c !== code);
+    this.selectedField.selectedOptions = this.selectedField.selectedOptions.filter((c: any) => c !== code);
     this.emitUpdate();
   }
 

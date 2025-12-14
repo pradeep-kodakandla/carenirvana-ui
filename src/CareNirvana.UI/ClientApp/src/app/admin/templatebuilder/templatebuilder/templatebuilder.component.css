@@ -271,8 +271,8 @@
   flex-direction: column;
   gap: 8px;
   padding: 10px;
-  min-height: 120px;
-  background: rgba(255, 255, 255, 0.15);
+/*  min-height: 120px;
+*/  background: rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.3);
   transition: background 0.3s ease-in-out;
@@ -295,8 +295,8 @@
   gap: 8px;
   align-items: start;
   padding: 5px;
-  min-height: 120px;
-}
+/*  min-height: 120px;
+*/}
 
 /* 3 columns */
 @media (max-width: 1400px) {
@@ -1085,3 +1085,51 @@ select[disabled] {
   color: #b91c1c;
   transform: scale(1.1);
 }
+
+
+/* Subsections: inline group with floating label + delete icon (no accordion header) */
+.subsection-wrap {
+  margin-top: 10px;
+}
+
+.subsection-group {
+  position: relative;
+  border: 1px solid #e3e7f0;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 18px 10px 10px 10px; /* top padding for floating label space */
+  margin-bottom: 14px;
+}
+
+/* floating label (left) – similar to .form-outline .form-label behavior */
+.subsection-float-label {
+  position: absolute;
+  top: -10px;
+  left: 12px;
+  background: #fff;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #555;
+}
+
+/* delete icon (right) */
+.subsection-float-delete {
+  position: absolute;
+  top: -12px;
+  right: 10px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+/*  width: 28px;
+*/  height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+  .subsection-float-delete mat-icon {
+    font-size: 16px;
+    line-height: 16px;
+    color: #dc2626;
+  }
