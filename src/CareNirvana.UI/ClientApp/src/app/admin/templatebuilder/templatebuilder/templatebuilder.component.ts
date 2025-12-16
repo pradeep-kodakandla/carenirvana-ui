@@ -36,7 +36,6 @@ interface TemplateField {
   isEnabled?: boolean;
   sectionName?: string;
   dateOnly?: boolean;
-  level?: string[];
 }
 
 type ShowWhen = 'always' | 'fieldEquals' | 'fieldNotEquals' | 'fieldhasvalue';
@@ -663,7 +662,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
       // Temporarily reset selection for smooth UI updates
       this.selectedField = null;
       this.selectedSection = '';
-      this.selectedSectionObject = null;
 
       setTimeout(() => {
         // Ensure displayName exists; if not, default to label
@@ -673,7 +671,7 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
 
         // Keep the new selection and highlight it
         this.selectedField = field;
-        //this.selectedSection = section;
+        this.selectedSection = section;
         field.isActive = true;
 
         // Ensure UI updates correctly
@@ -1335,7 +1333,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
     this.selectedSubSectionObject = subSection;
     this.selectedSubSectionPath = `${section.sectionName}.${subSection.subsectionKey || subSection.sectionName}`;
     this.selectedSectionObject = section;
-    this.selectedSectionObject = subSection;
     console.log('Selected subsection:', this.selectedSubSectionPath);
   }
 
@@ -1349,4 +1346,7 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
 
     Object.assign(sub, this.selectedSubSectionObject);
   }
+
+
+
 }

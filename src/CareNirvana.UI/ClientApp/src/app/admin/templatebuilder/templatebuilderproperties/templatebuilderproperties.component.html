@@ -41,15 +41,13 @@
       <div class="content-section" *ngIf="activeTab === 'basic'">
         <!-- everything you already had stays here -->
         <!-- Section Name -->
-        <div *ngIf="selectedSection">
-          <div style="padding:5px;"></div>
-          <div class="mb-3 form-outline">
-            <label class="form-label">Section Name</label>
-            <input type="text" class="form-control"
-                   [(ngModel)]="selectedSection.sectionName"
-                   (change)="emitSectionUpdate()">
-          </div>
+        <div *ngIf="selectedSection" class="mb-3 form-outline" style="padding-bottom:15px;">
+          <label class="form-label">Section Name</label>
+          <input type="text" class="form-control"
+                 [(ngModel)]="selectedSection.sectionName"
+                 (change)="emitSectionUpdate()">
         </div>
+
         <!-- Field Label (read only) -->
         <div *ngIf="selectedField.type !== 'button'" class="mb-3">
           <span class="info-label">Field Label: </span>
@@ -65,7 +63,7 @@
         </div>
 
         <!-- Field Type (ui-smart-dropdown) -->
-        <div class="mb-3 form-outline" style="padding-bottom:10px;">
+        <div class="mb-3 form-outline">
           <ui-smart-dropdown label="Field Type"
                              [(ngModel)]="selectedField.type"
                              [options]="fieldTypeOptions"
@@ -74,47 +72,10 @@
           </ui-smart-dropdown>
         </div>
 
-        <div class="mb-3 form-outline"
-             *ngIf="module === 'AG'"
-             style="padding-bottom:10px;">
-          <label class="form-label">Case Level</label>
 
-          <!-- alert message (only when user tries to uncheck last one) -->
-          <div *ngIf="caseLevelWarning" class="alert alert-warning py-1 px-2 mb-2">
-            {{ caseLevelWarning }}
-          </div>
 
-          <!-- side-by-side, auto-wrap -->
-          <div class="border rounded p-2 d-flex flex-wrap gap-3 align-items-center">
-            <label *ngFor="let opt of caseLevelOptions"
-                   class="form-check form-check-inline m-0 d-flex align-items-center">
-              <input type="checkbox"
-                     class="form-check-input me-2"
-                     [checked]="selectedField.level?.includes(opt.id)"
-                     (change)="toggleCaseLevel(opt, $event)">
-              <span class="form-check-label">{{ opt.label }}</span>
-            </label>
-          </div>
-        </div>
-        <!--<div class="mt-2" *ngIf="module === 'AG' && selectedField?.required">
-          <label class="form-label mb-1">Case Level</label>
-
-          <div class="caselevel-wrap">
-            <label class="form-check" *ngFor="let opt of caseLevelOptions">
-              <input class="form-check-input"
-                     type="checkbox"
-                     [checked]="(selectedField.level || []).includes(opt.id)"
-                     (change)="toggleCaseLevel(opt, $event)" />
-              <span class="form-check-label">{{ opt.label }}</span>
-            </label>
-          </div>
-
-          <div class="text-danger small mt-1" *ngIf="caseLevelWarning">
-            {{ caseLevelWarning }}
-          </div>
-        </div>-->
         <!-- Is Editable -->
-        <div class="form-check mb-3">
+        <div class="form-check mb-3" style="padding-top:10px;">
           <input type="checkbox"
                  class="form-check-input"
                  [(ngModel)]="selectedField.isEnabled"
@@ -124,49 +85,13 @@
 
         <!-- Default Value + Date Only (for datetime-local) -->
         <div *ngIf="selectedField.type === 'datetime-local'" class="mb-3 form-outline">
-          <!--<label class="form-label">Default Value (D, D+1, D+2)</label>
-    <input type="text"
-           class="form-control"
-           [(ngModel)]="selectedField.defaultValue"
-           (change)="emitUpdate()"
-           placeholder="Enter default (e.g., D, D+1)">-->
-
-          <div class="form-outline position-relative">
-            <label class="floating-label">
-              Default Value (D, D+1, D+2)
-            </label>
-            <ui-datetime-picker formControlName="selectedDateTime"
-                                [(ngModel)]="selectedField.defaultValue"
-                                placeholderDate="Select date"
-                                placeholderTime="Select time">
-            </ui-datetime-picker>
-          </div>
+          <label class="form-label">Default Value (D, D+1, D+2)</label>
+          <input type="text"
+                 class="form-control"
+                 [(ngModel)]="selectedField.defaultValue"
+                 (change)="emitUpdate()"
+                 placeholder="Enter default (e.g., D, D+1)">
         </div>
-
-
-
-        <!--<div *ngIf="selectedField.type === 'datetime-local'" class="mb-3 form-outline">
-  <label class="form-label">Default Value (D, D+1, D-1)</label>-->
-        <!-- Smart DateTime picker -->
-        <!--<app-uismartdatetime class="w-100"
-                       [mode]="'datetime'"
-                       [showTimezone]="true"
-                       [enableDShortcuts]="true"
-                       [commit]="'blur'"
-                       [timezone]="selectedField.defaultTimeZone || 'America/New_York'"
-                       (utcValueChange)="onDefaultDateTimeChanged($event)"
-                       (blur)="emitUpdate()">
-  </app-uismartdatetime>-->
-        <!-- Optional: keep the D shortcut text field so user can type D+1 explicitly -->
-        <!--<div class="mt-2">
-      <input type="text"
-             class="form-control"
-             [(ngModel)]="selectedField.defaultValue"
-             (blur)="emitUpdate()"
-             placeholder="Type shortcut e.g. D, D+1, D-1">
-    </div>
-  </div>-->
-
 
         <div *ngIf="selectedField.type === 'datetime-local'" class="form-check mb-3">
           <input type="checkbox"
@@ -177,7 +102,7 @@
         </div>
 
         <!-- Required -->
-        <div class="form-check mb-3">
+        <div class="form-check mb-3" style="padding-top:10px;">
           <input type="checkbox"
                  class="form-check-input"
                  [(ngModel)]="selectedField.required"
@@ -189,11 +114,9 @@
         <div class="mb-3 form-outline"
              *ngIf="selectedField.required"
              style="padding-bottom:15px;">
-          <label class="form-label">
-            {{ module === 'UM' ? 'Auth Status' : 'Case Status' }}
-          </label>
+          <label class="form-label">Auth Status</label>
           <div class="border rounded p-2">
-            <div *ngFor="let status of statusOptions" class="form-check">
+            <div *ngFor="let status of authStatusOptions" class="form-check">
               <input type="checkbox"
                      class="form-check-input"
                      [value]="status"
@@ -223,7 +146,7 @@
         <div *ngIf="selectedField.type === 'select' && selectedField.datasource" class="mb-3">
           <label class="form-label">Select Options (with default selection)</label>
           <!--Custom Multi-Select with Checkboxes
-    Dynamic Options with Radio Buttons for Default Selection-->
+          Dynamic Options with Radio Buttons for Default Selection-->
           <div class="border rounded p-2" style="max-height: 250px; overflow-y: auto;">
             <!--Select All Option-->
             <div class="form-check">
