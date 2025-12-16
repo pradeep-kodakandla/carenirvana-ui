@@ -1,0 +1,87 @@
+/* app-smart-datetime.component.scss */
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+/* Root */
+.smart-dt {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Label */
+.smart-dt__label {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  opacity: 0.85;
+  margin: 0;
+}
+
+/* Input row: picker + timezone */
+.smart-dt__row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+  /* Make Kendo inputs take full width */
+  .smart-dt__row :where(kendo-datepicker, kendo-datetimepicker) {
+    width: 100%;
+    display: block;
+  }
+
+    /* Make the Kendo wrapper full width (works for most themes) */
+    .smart-dt__row :where(kendo-datepicker, kendo-datetimepicker) :where(.k-picker, .k-input, .k-input-inner) {
+      width: 100%;
+    }
+
+/* Timezone dropdown sizing */
+.smart-dt__tz {
+  min-width: 220px;
+  width: 220px;
+}
+
+  /* Make dropdown fill its host width */
+  .smart-dt__tz :where(.k-dropdownlist, .k-picker, .k-input) {
+    width: 100%;
+  }
+
+/* Hint text */
+.smart-dt__hint {
+  font-size: 11px;
+  line-height: 1.2;
+  opacity: 0.7;
+}
+
+/* -------- Responsive -------- */
+@media (max-width: 768px) {
+  .smart-dt__row {
+    grid-template-columns: 1fr;
+  }
+
+  .smart-dt__tz {
+    width: 100%;
+    min-width: 100%;
+  }
+}
+
+/* -------- Optional: “compact” variant --------
+   Add class="smart-dt smart-dt--compact" on wrapper if needed */
+.smart-dt--compact .smart-dt__row {
+  gap: 8px;
+}
+
+.smart-dt--compact .smart-dt__label {
+  font-size: 11px;
+}
+
+.smart-dt--compact .smart-dt__hint {
+  font-size: 10px;
+}

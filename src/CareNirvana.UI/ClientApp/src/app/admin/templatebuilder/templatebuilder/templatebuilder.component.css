@@ -498,7 +498,7 @@
   .form-outline .form-control {
     width: 100%;
     padding: 10px;
-    border: 2px solid #ccc;
+    border: 1px solid #ccc;
     border-radius: 5px;
     font-size: 12px;
     outline: none;
@@ -867,7 +867,7 @@ select[disabled] {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 14px;
+  padding: 0px 7px;
   /*  background: #f5f7ff;*/
 }
 
