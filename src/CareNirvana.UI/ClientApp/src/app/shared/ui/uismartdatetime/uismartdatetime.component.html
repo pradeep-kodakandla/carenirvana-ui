@@ -1,0 +1,57 @@
+<div class="smart-dt">
+  <label class="smart-dt__label" *ngIf="label">{{ label }}</label>
+
+  <div class="smart-dt__row" (click)="openPicker($event)">
+    <ng-container [ngSwitch]="mode">
+
+      <kendo-datepicker *ngSwitchCase="'date'"
+                        #dp="kendo-datepicker"
+                        [value]="viewValue"
+                        (valueChange)="kendoValueChange($event)"
+                        (blur)="kendoBlur($event)"
+                        (keydown)="captureRaw($event)"
+                        (keyup)="captureRaw($event)"
+                        [disabled]="disabled"
+                        [min]="minView!"
+                        [max]="maxView!"
+                        [format]="format"
+                        [formatPlaceholder]="'formatPattern'"
+                        [placeholder]="placeholder"
+                        [inputAttributes]="inputAttrs">
+      </kendo-datepicker>
+
+      <kendo-datetimepicker *ngSwitchDefault
+                            #dtp="kendo-datetimepicker"
+                            [value]="viewValue"
+                            (valueChange)="kendoValueChange($event)"
+                            (blur)="kendoBlur($event)"
+                            (keydown)="captureRaw($event)"
+                            (keyup)="captureRaw($event)"
+                            [disabled]="disabled"
+                            [min]="minView!"
+                            [max]="maxView!"
+                            [format]="format"
+                            [steps]="steps"
+                            [formatPlaceholder]="'formatPattern'"
+                            [placeholder]="placeholder"
+                            [inputAttributes]="inputAttrs">
+      </kendo-datetimepicker>
+
+    </ng-container>
+
+    <kendo-dropdownlist *ngIf="showTimezone"
+                        class="smart-dt__tz"
+                        [data]="timezones"
+                        textField="label"
+                        valueField="id"
+                        [value]="timezone"
+                        [disabled]="disabled"
+                        (click)="$event.stopPropagation()"
+                        (valueChange)="timezoneChanged($event)">
+    </kendo-dropdownlist>
+  </div>
+
+  <div class="smart-dt__hint" *ngIf="enableDShortcuts">
+    Shortcuts: <b>D</b>, <b>D+1</b>, <b>D-1</b> (press Enter/Tab or blur)
+  </div>
+</div>

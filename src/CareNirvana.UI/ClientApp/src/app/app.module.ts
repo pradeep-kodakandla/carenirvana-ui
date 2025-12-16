@@ -4,6 +4,10 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
 import { RouterModule, Routes } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { DateInputsModule } from '@progress/kendo-angular-dateinputs';
+import { DropDownsModule } from '@progress/kendo-angular-dropdowns';
+import { IntlModule } from '@progress/kendo-angular-intl';
 import { ReactiveFormsModule } from '@angular/forms';
 import { AngularMaterialModule } from './shared/helpers/angular-material/angular-material.module';
 import { AppComponent } from './app.component';
@@ -154,6 +158,8 @@ import { UiDatetimePickerComponent } from './shared/ui/uidatetimepicker/uidateti
 import { UiDropdownComponent } from './shared/ui/uidropdown/uidropdown.component';
 import { UiMultiCheckDropdownComponent } from './shared/ui/uimulticheckdropdown/uimulticheckdropdown.component';
 import { UiSmartDropdownComponent } from './shared/ui/uismartdropdown/uismartdropdown.component';
+import { UismartdatetimeComponent } from './shared/ui/uismartdatetime/uismartdatetime.component';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
 @NgModule({
   declarations: [
@@ -201,13 +207,16 @@ import { UiSmartDropdownComponent } from './shared/ui/uismartdropdown/uismartdro
     AgqocinvestigationoutcomeComponent, AgqocinvestigationreasonComponent, AgqocscoreComponent, AgresolutioncategoryComponent,
     AgresolutionsubcategoryComponent,
 
-    UiDatetimePickerComponent, UiDropdownComponent, UiMultiCheckDropdownComponent, UiSmartDropdownComponent
+    UiDatetimePickerComponent, UiDropdownComponent, UiMultiCheckDropdownComponent, UiSmartDropdownComponent, UismartdatetimeComponent
   ],
   imports: [
     BrowserModule.withServerTransition({ appId: 'ng-cli-universal' }),
     HttpClientModule,
     FormsModule,
-    ReactiveFormsModule, AngularMaterialModule,
+    ReactiveFormsModule, AngularMaterialModule, CommonModule,
+    DateInputsModule,
+    DropDownsModule,
+    IntlModule, BrowserAnimationsModule,
     RouterModule.forRoot([
       { path: '', component: LoginComponent, pathMatch: 'full' },
       { path: 'login', component: LoginComponent, pathMatch: 'full' },
@@ -275,7 +284,7 @@ import { UiSmartDropdownComponent } from './shared/ui/uismartdropdown/uismartdro
       { path: 'admin-workbasket', component: WorkbasketComponent },
       { path: 'admin-udcf', component: UserDefinedCustomFieldsComponent },
       { path: 'admin-templatebuilder', component: TemplatebuilderComponent },
-      { path: 'admin-templatebuilderproperties', component: TemplatebuilderpropertiesComponent }, 
+      { path: 'admin-templatebuilderproperties', component: TemplatebuilderpropertiesComponent },
 
       { path: 'admin-umdocumenttype', component: UmdocumenttypeComponent },
       { path: 'admin-settingdialog', component: SettingsDialogComponent },
@@ -359,7 +368,8 @@ import { UiSmartDropdownComponent } from './shared/ui/uismartdropdown/uismartdro
       { path: 'ui-datetime', component: UiDatetimePickerComponent },
       { path: 'ui-dropdown', component: UiDropdownComponent },
       { path: 'ui-multicheckdropdown', component: UiMultiCheckDropdownComponent },
-      { path: 'ui-smartdropdown', component: UiSmartDropdownComponent }
+      { path: 'ui-smartdropdown', component: UiSmartDropdownComponent },
+      { path: 'ui-smartdatetime', component: UismartdatetimeComponent }
 
     ])
   ],
