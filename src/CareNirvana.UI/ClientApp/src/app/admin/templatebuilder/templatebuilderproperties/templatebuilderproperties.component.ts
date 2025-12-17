@@ -24,7 +24,7 @@ interface TemplateField {
   authStatus?: string[];
   isEnabled?: boolean;
   dateOnly?: boolean;
-  level?: string[];
+
   showWhen?: 'always' | 'fieldEquals' | 'fieldNotEquals' | 'fieldhasvalue';
   referenceFieldId?: string | null;
   visibilityValue?: string | number | null;
@@ -41,11 +41,6 @@ interface DropdownOption {
   value?: string; // Default field to hold dynamic data
 }
 
-interface CaseLevelOption {
-  id: string;   // store as string for consistent includes()
-  label: string;
-}
-
 export interface FieldCondition {
   id: number;
   showWhen: 'always' | 'fieldEquals' | 'fieldNotEquals' | 'fieldhasvalue';
@@ -59,13 +54,6 @@ interface TemplateSectionModel {
   order: number;
   fields: TemplateField[];
   subsections?: { [key: string]: TemplateSectionModel };
-  // same conditional props as field
-  showWhen?: 'always' | 'fieldEquals' | 'fieldNotEquals' | 'fieldhasvalue';
-  referenceFieldId?: string | null;
-  visibilityValue?: string | number | null;
-
-  // optional: if you already store array conditions like fields do
-  conditions?: FieldCondition[];
 }
 
 @Component({
@@ -125,12 +113,8 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
 
   dropdownOptions: DropdownOption[] = [];
   private previousDatasource: string | null = null; // Prevents continuous API calls
-  statusOptions: string[] = [];// ['Open', 'Close', 'Cancelled', 'Close and Adjusted', 'Reopen', 'Withdrawn'];
+  authStatusOptions: string[] = ['Open', 'Close', 'Cancelled', 'Close and Adjusted', 'Reopen', 'Withdrawn'];
   private optionUpdateSubject = new Subject<void>();
-  defaultTimeZone?: string;
-
-  caseLevelWarning: string = '';
-  caseLevelOptions: CaseLevelOption[] = [];
 
   constructor(private crudService: CrudService, private authService: AuthService) {
     this.optionUpdateSubject.pipe(debounceTime(500)).subscribe(() => {
@@ -158,17 +142,6 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
     const selectedFieldChanged = !!changes['selectedField']?.currentValue;
     const masterChanged = 'masterTemplate' in changes;
     const allFieldsChanged = 'allFields' in changes;
-
-    this.loadStatusOptions();
-    this.loadCaseLevelOptions();
-    if (changes['selectedField'] || changes['selectedSection']) {
-      this.initConditionsFromTarget();   // <-- loads existing rules
-    }
-
-    // Rebuild ReferenceField dropdown whenever the template or selection changes
-    if (changes['selectedField'] || changes['masterTemplate']) {
-      this.buildReferenceFieldOptions();
-    }
 
     if (changes['selectedField']?.currentValue) {
       this.ensureAtLeastOneCondition();
@@ -201,14 +174,16 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
       }
     }
 
-    this.selectAllCaseLevelsIfNeeded();
+    // Rebuild ReferenceField dropdown whenever the template or selection changes
+    if (changes['selectedField'] || changes['masterTemplate']) {
+      this.buildReferenceFieldOptions();
+    }
   }
 
   emitUpdate() {
     if (this.selectedField) {
       this.fieldUpdated.emit({ ...this.selectedField });
     }
-    console.log('Field updated emitted:', this.selectedField);
   }
 
   toggleAuthStatus(status: string, event: any) {
@@ -233,7 +208,7 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
     }
 
     const expectedKey = this.selectedField.datasource.toLowerCase(); // Convert datasource key to lowercase
-
+    console.log("Module", this.module, "Fetching datasource:", this.selectedField.datasource);
     this.crudService.getData(this.module, this.selectedField.datasource).subscribe(
       (data: any[]) => {
         this.dropdownOptions = data.map(item => {
@@ -245,6 +220,8 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
 
           return { id: item.id, value };
         });
+
+        console.log("Dropdown options loaded:", this.dropdownOptions);
 
         //  Remove Auto-Selection of Default Value
         if (this.selectedField!.defaultValue && !this.dropdownOptions.some(opt => opt.id === this.selectedField!.defaultValue)) {
@@ -440,6 +417,58 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
 
   // Optional – if you want a list of other fields for "Reference Field"
   @Input() allFields: any[] = []; // populate from parent if needed
+
+  //private buildReferenceFieldOptions(): void {
+  //  const excludeId = this.selectedField?.id;
+  //  const options: UiSmartOption<string>[] = [];
+
+  //  const fieldName = (x: TemplateField) => (x.displayName || x.label || x.id);
+
+  //  const push = (id: string | undefined, label: string) => {
+  //    if (!id) return;
+  //    if (excludeId && id === excludeId) return; // avoid self reference
+  //    options.push({ label, value: id });
+  //  };
+
+  //  const addField = (f: TemplateField, sectionPath: string) => {
+  //    if (f.type === 'button') return;
+
+  //    // row container => add its sub-fields
+  //    if (f.layout === 'row' && Array.isArray(f.fields) && f.fields.length) {
+  //      f.fields.forEach(sf => push(sf.id, `${sectionPath} • ${fieldName(sf)}`));
+  //      return;
+  //    }
+
+  //    push(f.id, `${sectionPath} • ${fieldName(f)}`);
+  //  };
+
+  //  const walkSection = (section: TemplateSectionModel, parentPath: string) => {
+  //    const sectionPath = parentPath ? `${parentPath} / ${section.sectionName}` : section.sectionName;
+
+  //    (section.fields || []).forEach(f => addField(f, sectionPath));
+
+  //    // subsections could be object-map OR array
+  //    const subs: any = (section as any).subsections;
+  //    if (Array.isArray(subs)) {
+  //      subs.forEach((s: TemplateSectionModel) => s && walkSection(s, sectionPath));
+  //    } else if (subs && typeof subs === 'object') {
+  //      Object.values(subs).forEach((s: any) => s && walkSection(s as TemplateSectionModel, sectionPath));
+  //    }
+  //  };
+
+  //  const sections = this.masterTemplate?.sections;
+  //  if (Array.isArray(sections)) {
+  //    sections.forEach(sec => sec && walkSection(sec, ''));
+  //  }
+
+  //  // De-dupe + sort
+  //  const unique = new Map<string, UiSmartOption<string>>();
+  //  options.forEach(o => { if (!unique.has(o.value)) unique.set(o.value, o); });
+
+  //  this.referenceFieldOptions = Array.from(unique.values()).sort((a, b) =>
+  //    a.label.localeCompare(b.label)
+  //  );
+  //}
 
   private initConditionsFromField(): void {
     if (!this.selectedField) {
@@ -663,238 +692,6 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
     // Otherwise reset cached options for this row
     this.conditionSelectOptions[cond.id] = [];
     this.onConditionChanged();
-  }
-
-  loadStatusOptions(): void {
-    const inputStatus = this.module == 'UM' ? 'authstatus' : 'casestatus';
-    this.crudService.getData(this.module, inputStatus).subscribe({
-      next: (data: any[]) => {
-        // if API returns [{ name: 'Open' }, ...] or [{ value: 'Open' }, ...]
-        this.statusOptions = (data ?? [])
-          .map(x => (x?.authStatus ?? x?.caseStatus ?? x))
-          .filter((v: any) => typeof v === 'string' && v.trim().length > 0);
-      },
-      error: (err) => {
-        console.error('Failed to load auth status options', err);
-        this.statusOptions = [];
-      }
-    });
-  }
-
-  private getConditionalTarget(): any {
-    // if a subsection is selected, pass that object into selectedSection from parent
-    console.log('Selected Field:', this.selectedField);
-    console.log('Selected Section:', this.selectedSection);
-    return this.selectedField ?? this.selectedSection;
-  }
-
-  private initConditionsFromTarget(): void {
-    const target = this.getConditionalTarget();
-    if (!target) { this.conditions = []; return; }
-
-    // preferred: array-based conditions (works for field/section/subsection)
-    if (Array.isArray(target.conditions) && target.conditions.length) {
-      this.conditions = target.conditions.map((c: FieldCondition, index: number) => ({
-        id: index + 1,
-        showWhen: c.showWhen ?? 'always',
-        referenceFieldId: c.referenceFieldId ?? null,
-        value: c.value ?? null,
-        operatorWithPrev: c.operatorWithPrev
-      }));
-      if (this.conditions[0]) this.conditions[0].operatorWithPrev = undefined;
-      return;
-    }
-
-    // fallback: flat props (showWhen/referenceFieldId/visibilityValue)
-    this.conditions = [{
-      id: 1,
-      showWhen: target.showWhen ?? 'always',
-      referenceFieldId: target.referenceFieldId ?? null,
-      value: target.visibilityValue ?? null,
-      operatorWithPrev: undefined
-    }];
-  }
-
-  private syncConditionsToTarget(): void {
-    const target = this.getConditionalTarget();
-    if (!target) return;
-
-    target.conditions = this.conditions;
-
-    const first = this.conditions[0];
-    if (first) {
-      target.showWhen = first.showWhen;
-      target.referenceFieldId = first.referenceFieldId;
-      target.visibilityValue = first.value;
-    }
-
-    // emit correct event
-    if (this.selectedField) this.emitUpdate();
-    else this.emitSectionUpdate();
-  }
-
-  onDefaultDateTimeChanged(utc: Date | null): void {
-    if (!utc) {
-      this.selectedField.defaultValue = '';
-      this.emitUpdate();
-      return;
-    }
-
-    const d = utc;
-    const pad = (n: number) => String(n).padStart(2, '0');
-
-    // NOTE: this formats in the browser's local timezone.
-    // If you want it formatted in selected timezone, I can adjust using Luxon.
-    const s =
-      `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()} ` +
-      `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-
-    this.selectedField.defaultValue = s;
-    this.emitUpdate();
-  }
-
-
-  level?: string[];
-  private caseLevelsLoaded = false;
-
-  private loadCaseLevelOptions(): void {
-    if (this.module !== 'AG') {
-      this.caseLevelOptions = [];
-      this.caseLevelsLoaded = false;
-      return;
-    }
-    if (this.caseLevelsLoaded) return;
-
-    this.crudService.getData(this.module, 'caselevel').subscribe({
-      next: (data: any[]) => {
-        this.caseLevelOptions = (data ?? [])
-          .map((x: any) => ({
-            id: String(x?.id ?? x?.caseLevelId ?? x?.levelId ?? ''),
-            label: String(
-              x?.caseLevel ?? x?.levelName ?? x?.name ?? x?.description ?? x?.id ?? ''
-            )
-          }))
-          .filter(o => o.id && o.label);
-
-        this.caseLevelsLoaded = true;
-
-        // ✅ default select all ONLY if field has none (don’t override edit selections)
-        this.selectAllCaseLevelsIfNeeded();
-      },
-      error: (err) => {
-        console.error('Failed to load case levels', err);
-        this.caseLevelOptions = [];
-        this.caseLevelsLoaded = false;
-      }
-    });
-  }
-
-  private normalizeSelectedLevelsToString(): void {
-    if (!this.selectedField) return;
-    const current = Array.isArray(this.selectedField.level) ? this.selectedField.level : [];
-    this.selectedField.level = current.map((x: any) => String(x));
-  }
-
-  private selectAllCaseLevelsIfNeeded(): void {
-    if (this.module !== 'AG') return;
-    if (!this.caseLevelOptions.length) return;
-
-    this.normalizeSelectedLevelsToString();
-
-    const current = this.selectedField.level ?? [];
-    if (current.length === 0) {
-      this.selectedField.level = this.caseLevelOptions.map(o => o.id); // ✅ default select all
-      this.emitUpdate();
-    }
-  }
-
-
-  toggleCaseLevel(opt: CaseLevelOption, event: any): void {
-    if (!this.selectedField) return;
-
-    this.normalizeSelectedLevelsToString();
-
-    const id = String(opt.id);
-    const checked = !!event?.target?.checked;
-
-    const levels = this.selectedField.level ?? [];
-    const has = levels.includes(id);
-
-    if (!checked) {
-      // prevent unselecting the last one
-      if (levels.length === 1 && has) {
-        this.caseLevelWarning = 'At least one level is required.';
-        event.target.checked = true;
-
-        setTimeout(() => (this.caseLevelWarning = ''), 2000);
-        return;
-      }
-      this.selectedField.level = levels.filter((x: any) => x !== id);
-    } else {
-      if (!has) this.selectedField.level = [...levels, id];
-    }
-
-    this.caseLevelWarning = '';
-    this.emitUpdate();
-  }
-
-  //private selectAllCaseLevelsIfNeeded(): void {
-  //  if (this.module !== 'AG') return;
-  //  if (!this.selectedField?.required) return;
-  //  if (!this.caseLevelOptions.length) return;
-
-  //  const allIds = this.caseLevelOptions.map(o => String(o.id));
-
-  //  if (!Array.isArray(this.selectedField.level)) {
-  //    this.selectedField.level = [];
-  //  } else {
-  //    this.selectedField.level = this.selectedField.level.map((x: any) => String(x));
-  //  }
-
-  //  // default select all ONLY when nothing is selected yet
-  //  if (this.selectedField.level.length === 0) {
-  //    this.selectedField.level = [...allIds];
-  //    this.emitUpdate();
-  //  }
-  //}
-
-  // tries to find the best "id" field from API row
-  private getAnyId(item: any): any {
-    if (!item) return '';
-    return (
-      item.id ??
-      item.levelId ??
-      item.caseLevelId ??
-      item.caselevelId ??
-      (() => {
-        const k =
-          Object.keys(item).find(x => x.toLowerCase() === 'id') ??
-          Object.keys(item).find(x => x.toLowerCase().endsWith('id'));
-        return k ? item[k] : '';
-      })()
-    );
-  }
-
-  onRequiredChanged(): void {
-    // if AG required -> force at least one level
-    if (this.module === 'AG') {
-      this.ensureAtLeastOneCaseLevelSelected();
-    }
-    this.emitUpdate();
-  }
-
-  private ensureAtLeastOneCaseLevelSelected(): void {
-    if (this.module !== 'AG') return;
-    if (!this.selectedField?.required) return;
-
-    if (!Array.isArray(this.selectedField.level)) {
-      this.selectedField.level = [];
-    }
-
-    if (this.selectedField.level.length === 0 && this.caseLevelOptions.length > 0) {
-      this.selectedField.level = [this.caseLevelOptions[0]];
-      this.emitUpdate();
-    }
   }
 
 }
