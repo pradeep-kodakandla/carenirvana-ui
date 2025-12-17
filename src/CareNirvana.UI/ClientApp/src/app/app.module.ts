@@ -133,7 +133,7 @@ import { CmclinicalindicatorsComponent } from './admin/CM/cmclinicalindicators/c
 
 import { AgnotetypeComponent } from './admin/AG/agnotetype/agnotetype.component';
 import { AgdocumenttypeComponent } from './admin/AG/agdocumenttype/agdocumenttype.component';
-
+import { CaseWizardModule } from './casewizard/casewizard/casewizard.module';
 
 import { AgcomplaintcategoryComponent } from './admin/AG/agcomplaintcategory/agcomplaintcategory.component';
 import { AgcomplaintclassComponent } from './admin/AG/agcomplaintclass/agcomplaintclass.component';
@@ -154,6 +154,19 @@ import { UiDatetimePickerComponent } from './shared/ui/uidatetimepicker/uidateti
 import { UiDropdownComponent } from './shared/ui/uidropdown/uidropdown.component';
 import { UiMultiCheckDropdownComponent } from './shared/ui/uimulticheckdropdown/uimulticheckdropdown.component';
 import { UiSmartDropdownComponent } from './shared/ui/uismartdropdown/uismartdropdown.component';
+
+const routes: Routes = [
+  {
+    path: '',
+    redirectTo: 'case/1/details',  // change this to your real default landing
+    pathMatch: 'full',
+  },
+  {
+    path: 'case',
+    loadChildren: () =>
+      import('./casewizard/casewizard/casewizard.module').then(m => m.CaseWizardModule),
+  },
+];
 
 @NgModule({
   declarations: [
@@ -199,7 +212,7 @@ import { UiSmartDropdownComponent } from './shared/ui/uismartdropdown/uismartdro
     CmclinicalindicatorsComponent, AgcomplaintcategoryComponent, AgcomplaintclassComponent, AgcomplaintcredentialsComponent, AgcomplaintstatusreasonComponent,
     AgcomplaintsubcategoryComponent, AgcoordinatortypeComponent, AgparticipantroleComponent, AgparticipanttypeComponent,
     AgqocinvestigationoutcomeComponent, AgqocinvestigationreasonComponent, AgqocscoreComponent, AgresolutioncategoryComponent,
-    AgresolutionsubcategoryComponent,
+    AgresolutionsubcategoryComponent, 
 
     UiDatetimePickerComponent, UiDropdownComponent, UiMultiCheckDropdownComponent, UiSmartDropdownComponent
   ],
@@ -207,7 +220,7 @@ import { UiSmartDropdownComponent } from './shared/ui/uismartdropdown/uismartdro
     BrowserModule.withServerTransition({ appId: 'ng-cli-universal' }),
     HttpClientModule,
     FormsModule,
-    ReactiveFormsModule, AngularMaterialModule,
+    ReactiveFormsModule, AngularMaterialModule, CaseWizardModule,
     RouterModule.forRoot([
       { path: '', component: LoginComponent, pathMatch: 'full' },
       { path: 'login', component: LoginComponent, pathMatch: 'full' },
@@ -275,7 +288,7 @@ import { UiSmartDropdownComponent } from './shared/ui/uismartdropdown/uismartdro
       { path: 'admin-workbasket', component: WorkbasketComponent },
       { path: 'admin-udcf', component: UserDefinedCustomFieldsComponent },
       { path: 'admin-templatebuilder', component: TemplatebuilderComponent },
-      { path: 'admin-templatebuilderproperties', component: TemplatebuilderpropertiesComponent }, 
+      { path: 'admin-templatebuilderproperties', component: TemplatebuilderpropertiesComponent },
 
       { path: 'admin-umdocumenttype', component: UmdocumenttypeComponent },
       { path: 'admin-settingdialog', component: SettingsDialogComponent },

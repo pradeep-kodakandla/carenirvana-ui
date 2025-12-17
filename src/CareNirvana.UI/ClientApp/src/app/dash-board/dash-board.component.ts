@@ -1,4 +1,4 @@
-import { Component, ViewChild, ViewContainerRef, AfterViewInit, ComponentFactoryResolver } from '@angular/core';
+import { Component, ViewChild, ViewContainerRef, ComponentFactoryResolver } from '@angular/core';
 import { MycaseloadComponent } from './mycaseload/mycaseload.component';
 import { AssignedauthsComponent } from './assignedauths/assignedauths.component';
 import { RequestsComponent } from './requests/requests.component';
@@ -9,6 +9,7 @@ import { RolepermissionService, CfgRole } from 'src/app/service/rolepermission.s
 import { MdreviewdashboardComponent } from './mdreviewdashboard/MdreviewdashboardComponent';
 import { DashboardServiceService } from 'src/app/service/dashboard.service.service';
 import { MembersearchComponent } from 'src/app/member/membersearch/membersearch.component';
+import { CasewizardshellComponent } from 'src/app/member/AG/components/casewizardshell/casewizardshell.component';
 
 interface DashboardWidget {
   key: string;
@@ -85,10 +86,10 @@ export class DashBoardComponent {
   }
 
   private loadCounts(): void {
-    
+
     this.dashboard.getdashboardCounts(sessionStorage.getItem('loggedInUserid'))
       .subscribe({
-        
+
         next: (res: DashboardCounts) => { this.dashboardCounts = res; },
         error: (err) => { console.error('Failed to load dashboard counts', err); }
       });
@@ -164,15 +165,18 @@ export class DashBoardComponent {
       case 'myActivities':
         this.loadComponent(MyactivitiesComponent);
         break;
-      case 'assignedComplaints':
-        this.loadComponent(MembersearchComponent);
+      case 'assignedComplaints': {
+        this.loadComponent(CasewizardshellComponent);
         break;
+      }
       case 'faxes':
         this.loadComponent(FaxesComponent);
         break;
       case 'mdreview':
         this.loadComponent(MdreviewdashboardComponent);
         break;
+
     }
   }
+
 }

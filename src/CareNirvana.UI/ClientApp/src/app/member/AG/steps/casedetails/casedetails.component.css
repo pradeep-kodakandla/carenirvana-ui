@@ -1,0 +1,196 @@
+/* ===== Page layout ===== */
+.case-details {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.section-card {
+  border: 1px solid #e3e7ef;
+  border-radius: 14px;
+  background: #fff;
+  padding: 14px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #eef1f6;
+}
+
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+/* Responsive grid: 4 → 3 → 2 → 1 */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 1400px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(220px, 1fr));
+  }
+}
+
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== Subsection block ===== */
+.sub-card {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px dashed #d9deea;
+  border-radius: 12px;
+  background: #fbfcff;
+}
+
+.sub-title {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #3b4a64;
+  background: #ffffff;
+  padding: 4px 10px;
+  border: 1px solid #e3e7ef;
+  border-radius: 999px;
+  margin-bottom: 10px;
+}
+
+/* =========================================================
+   FLOATING FIELD (ff) - for input/textarea + custom controls
+   ========================================================= */
+.ff {
+  position: relative;
+  border: 1px solid #d7dbe3;
+  border-radius: 12px;
+  background: #fff;
+  padding: 14px 12px 10px;
+  min-height: 54px;
+  transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+
+/* Floating label pill */
+.ff-label {
+  position: absolute;
+  top: 7px;
+  left: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5b6472;
+  background: #fff;
+  padding: 0 8px;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+/* General control area */
+.ff-control {
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  color: #111827;
+  padding-top: 12px; /* ensures content is below the floating label */
+  min-height: 30px;
+  box-sizing: border-box;
+}
+
+/* textarea */
+.ff-textarea {
+  resize: vertical;
+  line-height: 1.35;
+  padding-top: 12px;
+  min-height: 66px;
+}
+
+/* When wrapper is focused (set by CSS :focus-within) */
+.ff:focus-within {
+  border-color: #6b8cff;
+  box-shadow: 0 0 0 3px rgba(107, 140, 255, 0.18);
+}
+
+/* Disabled state */
+.ff.ff-disabled {
+  opacity: 0.65;
+  background: #f7f8fa;
+}
+
+/* Invalid state */
+.ff.ff-invalid {
+  border-color: #e53935;
+  box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.14);
+}
+
+/* Validation message */
+.ff-error {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #c62828;
+}
+
+/* Checkbox layout (no floating label) */
+.ff-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 10px;
+  min-height: 34px;
+}
+
+  .ff-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #6b8cff;
+  }
+
+.ff-checkbox-text {
+  font-size: 14px;
+  color: #111827;
+}
+
+/* =========================================================
+   Small compatibility tweaks for custom components
+   (ui-smart-dropdown / ui-datetime-picker)
+   ========================================================= */
+
+/* If these components render as inline elements, ensure full width */
+ui-smart-dropdown.ff-control,
+ui-datetime-picker.ff-control {
+  display: block;
+  width: 100%;
+}
+
+/* If inside these components there is an input, keep it clean */
+:host ::ng-deep ui-smart-dropdown .input,
+:host ::ng-deep ui-datetime-picker input {
+  border: 0 !important;
+  outline: none !important;
+  background: transparent !important;
+  width: 100%;
+}
+
+/* If the dropdown adds its own border, remove it visually */
+:host ::ng-deep ui-smart-dropdown .control,
+:host ::ng-deep ui-datetime-picker .control {
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}

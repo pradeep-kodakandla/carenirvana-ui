@@ -44,6 +44,9 @@
     <Folder Include="ClientApp\src\app\admin\AG\" />
     <Folder Include="ClientApp\src\app\admin\templatebuilder\" />
     <Folder Include="ClientApp\src\app\animations\" />
+    <Folder Include="ClientApp\src\app\member\AG\components\" />
+    <Folder Include="ClientApp\src\app\member\AG\services\" />
+    <Folder Include="ClientApp\src\app\member\AG\steps\" />
     <Folder Include="ClientApp\src\app\member\member-caregiver\" />
     <Folder Include="ClientApp\src\app\Provider\" />
     <Folder Include="ClientApp\src\app\login\" />
