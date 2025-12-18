@@ -134,6 +134,7 @@ import { CmclinicalindicatorsComponent } from './admin/CM/cmclinicalindicators/c
 import { AgnotetypeComponent } from './admin/AG/agnotetype/agnotetype.component';
 import { AgdocumenttypeComponent } from './admin/AG/agdocumenttype/agdocumenttype.component';
 import { CaseWizardModule } from './casewizard/casewizard/casewizard.module';
+import { SharedUiModule } from './casewizard/casewizard/sharedui.module';
 
 import { AgcomplaintcategoryComponent } from './admin/AG/agcomplaintcategory/agcomplaintcategory.component';
 import { AgcomplaintclassComponent } from './admin/AG/agcomplaintclass/agcomplaintclass.component';
@@ -150,10 +151,8 @@ import { AgresolutioncategoryComponent } from './admin/AG/agresolutioncategory/a
 import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcategory/agresolutionsubcategory.component';
 
 
-import { UiDatetimePickerComponent } from './shared/ui/uidatetimepicker/uidatetimepicker.component';
 import { UiDropdownComponent } from './shared/ui/uidropdown/uidropdown.component';
 import { UiMultiCheckDropdownComponent } from './shared/ui/uimulticheckdropdown/uimulticheckdropdown.component';
-import { UiSmartDropdownComponent } from './shared/ui/uismartdropdown/uismartdropdown.component';
 
 const routes: Routes = [
   {
@@ -214,13 +213,13 @@ const routes: Routes = [
     AgqocinvestigationoutcomeComponent, AgqocinvestigationreasonComponent, AgqocscoreComponent, AgresolutioncategoryComponent,
     AgresolutionsubcategoryComponent, 
 
-    UiDatetimePickerComponent, UiDropdownComponent, UiMultiCheckDropdownComponent, UiSmartDropdownComponent
+    UiDropdownComponent, UiMultiCheckDropdownComponent
   ],
   imports: [
     BrowserModule.withServerTransition({ appId: 'ng-cli-universal' }),
     HttpClientModule,
     FormsModule,
-    ReactiveFormsModule, AngularMaterialModule, CaseWizardModule,
+    ReactiveFormsModule, AngularMaterialModule, SharedUiModule, CaseWizardModule,
     RouterModule.forRoot([
       { path: '', component: LoginComponent, pathMatch: 'full' },
       { path: 'login', component: LoginComponent, pathMatch: 'full' },
@@ -369,10 +368,9 @@ const routes: Routes = [
 
       { path: 'admin-bre', component: BretestComponent },
 
-      { path: 'ui-datetime', component: UiDatetimePickerComponent },
       { path: 'ui-dropdown', component: UiDropdownComponent },
       { path: 'ui-multicheckdropdown', component: UiMultiCheckDropdownComponent },
-      { path: 'ui-smartdropdown', component: UiSmartDropdownComponent }
+
 
     ])
   ],

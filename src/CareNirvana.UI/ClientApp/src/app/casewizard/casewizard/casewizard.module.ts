@@ -2,7 +2,7 @@ import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CasewizardRoutingModule } from './casewizardrouting.module';
 import { ReactiveFormsModule } from '@angular/forms';
-
+import { SharedUiModule } from 'src/app/casewizard/casewizard/sharedui.module';
 
 import { CasewizardshellComponent } from 'src/app/member/AG/components/casewizardshell/casewizardshell.component';
 import { CaseChevronStepperComponent } from 'src/app/member/AG/components/case-chevron-stepper/case-chevron-stepper.component';
@@ -34,6 +34,7 @@ import { CasecloseComponent } from 'src/app/member/AG/steps/caseclose/caseclose.
     CommonModule,
     ReactiveFormsModule,
     CasewizardRoutingModule,
+    SharedUiModule
   ],
 })
 export class CaseWizardModule { }

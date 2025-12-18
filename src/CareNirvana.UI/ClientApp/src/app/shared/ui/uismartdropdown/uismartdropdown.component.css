@@ -167,3 +167,13 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
+/* When the dropdown is placed inside our ff-outline field (host has class ff-ui),
+   remove the dropdown's own border so you only see the outer border. */
+:host(.ff-ui) .ui-smart-dropdown__wrapper,
+:host(.ff-ui) .ui-smart-dropdown__control {
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  background: transparent !important;
+}

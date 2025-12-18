@@ -1,196 +1,179 @@
-/* ===== Page layout ===== */
+/* Layout */
 .case-details {
-  display: flex;
-  flex-direction: column;
+  width: 100%;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
 }
 
-.section-card {
-  border: 1px solid #e3e7ef;
-  border-radius: 14px;
-  background: #fff;
+/* Cards */
+.section-card, .sub-card {
+  border: 1px solid #e6e8ec;
+  border-radius: 10px;
   padding: 14px;
+  background: #fff;
+  margin-bottom: 14px;
 }
 
 .section-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding-bottom: 10px;
-  margin-bottom: 10px;
-  border-bottom: 1px solid #eef1f6;
+  /* header bar look */
+  background: #f3f4f6;
+  border-bottom: 1px solid #e6e8ec;
+  /* make it span full card width */
+  margin: -14px -14px 12px;
+  padding: 10px 14px;
+  /* match card top corners */
+  border-radius: 10px 10px 0 0;
 }
 
 .section-title {
-  font-size: 15px;
-  font-weight: 600;
+  font-weight: 800;
+  font-size: 14px;
   color: #111827;
 }
 
-/* Responsive grid: 4 → 3 → 2 → 1 */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(240px, 1fr));
-  gap: 12px;
-}
-
-@media (max-width: 1400px) {
-  .grid {
-    grid-template-columns: repeat(3, minmax(220px, 1fr));
-  }
-}
-
-@media (max-width: 1100px) {
-  .grid {
-    grid-template-columns: repeat(2, minmax(220px, 1fr));
-  }
-}
-
-@media (max-width: 760px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* ===== Subsection block ===== */
-.sub-card {
-  margin-top: 12px;
-  padding: 12px;
-  border: 1px dashed #d9deea;
-  border-radius: 12px;
-  background: #fbfcff;
-}
-
 .sub-title {
-  display: inline-block;
-  font-size: 12px;
-  font-weight: 600;
-  color: #3b4a64;
-  background: #ffffff;
-  padding: 4px 10px;
-  border: 1px solid #e3e7ef;
-  border-radius: 999px;
-  margin-bottom: 10px;
+  font-weight: 700;
+  font-size: 13px;
+  margin: 6px 0 10px;
 }
 
-/* =========================================================
-   FLOATING FIELD (ff) - for input/textarea + custom controls
-   ========================================================= */
-.ff {
+/* ============ Outlined Floating Field (like screenshot) ============ */
+.ff-outline {
   position: relative;
-  border: 1px solid #d7dbe3;
-  border-radius: 12px;
+  border: 1px solid #cfd4dc;
+  border-radius: 8px;
   background: #fff;
-  padding: 14px 12px 10px;
-  min-height: 54px;
-  transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+  /*padding: 14px 12px 10px;*/ /* top padding to make room for label */
+  min-height: 36px;
 }
 
-/* Floating label pill */
-.ff-label {
+  .ff-outline:hover {
+    border-color: #aeb6c2;
+  }
+
+  .ff-outline.ff-disabled {
+    opacity: 0.65;
+    pointer-events: none;
+  }
+
+  .ff-outline.ff-invalid {
+    border-color: #dc3545;
+  }
+
+.ff-float-label {
   position: absolute;
-  top: 7px;
+  top: -9px;
   left: 10px;
+  padding: 0 6px;
+  background: #fff;
   font-size: 12px;
   font-weight: 600;
-  color: #5b6472;
-  background: #fff;
-  padding: 0 8px;
-  border-radius: 999px;
-  pointer-events: none;
+  color: #6b7280;
+  line-height: 18px;
 }
 
-/* General control area */
-.ff-control {
+/* body holds the actual control */
+.ff-body {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+}
+
+/* Native inputs inside outlined */
+.ff-input {
   width: 100%;
   border: 0;
   outline: none;
   background: transparent;
-  font-size: 14px;
-  color: #111827;
-  padding-top: 12px; /* ensures content is below the floating label */
-  min-height: 30px;
-  box-sizing: border-box;
+  font-size: 16px;
+  line-height: 22px;
+  padding: 0;
 }
 
-/* textarea */
 .ff-textarea {
   resize: vertical;
-  line-height: 1.35;
-  padding-top: 12px;
-  min-height: 66px;
+  min-height: 72px;
+  padding-top: 2px;
 }
 
-/* When wrapper is focused (set by CSS :focus-within) */
-.ff:focus-within {
-  border-color: #6b8cff;
-  box-shadow: 0 0 0 3px rgba(107, 140, 255, 0.18);
-}
-
-/* Disabled state */
-.ff.ff-disabled {
-  opacity: 0.65;
-  background: #f7f8fa;
-}
-
-/* Invalid state */
-.ff.ff-invalid {
-  border-color: #e53935;
-  box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.14);
-}
-
-/* Validation message */
-.ff-error {
-  margin-top: 6px;
-  font-size: 12px;
-  color: #c62828;
-}
-
-/* Checkbox layout (no floating label) */
-.ff-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-top: 10px;
-  min-height: 34px;
-}
-
-  .ff-checkbox input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
-    accent-color: #6b8cff;
-  }
-
-.ff-checkbox-text {
-  font-size: 14px;
-  color: #111827;
-}
-
-/* =========================================================
-   Small compatibility tweaks for custom components
-   (ui-smart-dropdown / ui-datetime-picker)
-   ========================================================= */
-
-/* If these components render as inline elements, ensure full width */
-ui-smart-dropdown.ff-control,
-ui-datetime-picker.ff-control {
+/* Your UI controls should fill the width */
+.ff-ui {
   display: block;
   width: 100%;
 }
 
-/* If inside these components there is an input, keep it clean */
-:host ::ng-deep ui-smart-dropdown .input,
-:host ::ng-deep ui-datetime-picker input {
-  border: 0 !important;
-  outline: none !important;
-  background: transparent !important;
+/* Try to remove double-borders if ui-smart-dropdown / ui-datetime-picker render their own border */
+:host ::ng-deep .ff-outline ui-smart-dropdown,
+:host ::ng-deep .ff-outline ui-datetime-picker {
   width: 100%;
+  display: block;
 }
 
-/* If the dropdown adds its own border, remove it visually */
-:host ::ng-deep ui-smart-dropdown .control,
-:host ::ng-deep ui-datetime-picker .control {
+  :host ::ng-deep .ff-outline ui-smart-dropdown input,
+  :host ::ng-deep .ff-outline ui-datetime-picker input {
+    border: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    font-size: 16px !important;
+    background: transparent !important;
+  }
+
+/* Checkbox row (keep clean) */
+.ff-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 2px;
+}
+
+  .ff-checkbox .form-check-input {
+    margin: 0;
+    margin-top: 1px;
+  }
+
+  .ff-checkbox .form-check-label {
+    margin: 0;
+    cursor: pointer;
+  }
+
+/* Errors */
+.ff-error {
+  color: #dc3545;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.form-outline .ff-ui,
+.field-box .ff-ui {
+  border: 0 !important;
+}
+
+.ff-ui {
   border: 0 !important;
   box-shadow: none !important;
-  background: transparent !important;
+}
+
+/* Subsection card as an outlined block with floating title */
+.sub-card {
+  position: relative;
+  padding-top: 18px; /* space for floating label */
+}
+
+.sub-float-label {
+  position: absolute;
+  top: -9px;
+  left: 12px;
+  padding: 0 8px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7280;
+  line-height: 18px;
 }

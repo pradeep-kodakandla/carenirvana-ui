@@ -117,7 +117,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
 
   renderSections: RenderSection[] = [];
-  optionsByControlName: Record<string, UiOption[]> = {};
+  optionsByControlName: Record<string, UiSmartOption[]> = {};
 
   private destroy$ = new Subject<void>();
 
@@ -282,14 +282,14 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
       if (this.optionsByControlName[f.controlName]) continue;
 
       // adapt this call to your actual lookup API
-      this.crudService.getData('AG', f.datasource!)
+      this.crudService.getData('AG', f.datasource!.toLowerCase())
         .pipe(takeUntil(this.destroy$))
         .subscribe((rows: any[]) => {
-          this.optionsByControlName[f.controlName] =
-            (rows ?? []).map(r => ({
-              value: r.value ?? r.id ?? r.code,
-              text: r.text ?? r.name ?? r.description ?? String(r.value ?? r.id ?? r.code)
-            }));
+          this.optionsByControlName[f.controlName] = (rows ?? []).map(r => {
+            const value = r.value ?? r.id ?? r.code;
+            const label = r.text ?? r.name ?? r.description ?? String(value ?? '');
+            return { value, label } as UiSmartOption;
+          });
         });
     }
   }
@@ -332,4 +332,9 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
   trackBySection = (_: number, s: RenderSection) => s.title;
   trackBySub = (_: number, s: RenderSub) => s.key;
   trackByField = (_: number, f: any) => f.controlName;
+
+  getDropdownOptions(controlName: string): UiSmartOption[] {
+    console.log(`Getting options for control ${controlName}`);
+    return this.optionsByControlName[controlName] ?? [];
+  }
 }
