@@ -177,3 +177,10 @@
   color: #6b7280;
   line-height: 18px;
 }
+
+
+.case-savebar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 0;
+}

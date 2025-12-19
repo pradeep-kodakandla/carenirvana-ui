@@ -2,7 +2,6 @@ import { Component, ViewChild, ViewContainerRef, ComponentFactoryResolver, Compo
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { CaseUnsavedChangesAwareService } from '../../guards/services/caseunsavedchangesaware.service'; // adjust path
-
 import { CasedetailsComponent } from 'src/app/member/AG/steps/casedetails/casedetails.component';
 import { CasedispositionComponent } from 'src/app/member/AG/steps/casedisposition/casedisposition.component';
 import { CasemdreviewComponent } from 'src/app/member/AG/steps/casemdreview/casemdreview.component';
@@ -10,6 +9,11 @@ import { CaseactivitiesComponent } from 'src/app/member/AG/steps/caseactivities/
 import { CasenotesComponent } from 'src/app/member/AG/steps/casenotes/casenotes.component';
 import { CasedocumentsComponent } from 'src/app/member/AG/steps/casedocuments/casedocuments.component';
 import { CasecloseComponent } from 'src/app/member/AG/steps/caseclose/caseclose.component';
+import { CaseWizardStoreService } from 'src/app/member/AG/services/case-wizard-store.service';
+interface LevelTab {
+  levelId: number;
+  label: string;
+}
 
 export interface CaseStep {
   id: string;
@@ -40,6 +44,9 @@ export class CasewizardshellComponent {
 
   private currentStepRef?: ComponentRef<any>;
 
+  tabs$ = this.state.tabs$;
+  activeLevelId$ = this.state.activeLevelId$;
+
   private stepMap: Record<string, Type<any>> = {
     details: CasedetailsComponent,
     disposition: CasedispositionComponent,
@@ -50,7 +57,7 @@ export class CasewizardshellComponent {
     close: CasecloseComponent,
   };
 
-  constructor(private componentFactoryResolver: ComponentFactoryResolver) { }
+  constructor(private componentFactoryResolver: ComponentFactoryResolver, private state: CaseWizardStoreService) { }
 
   ngAfterViewInit(): void {
     this.loadStep(this.activeStepId);
@@ -79,5 +86,9 @@ export class CasewizardshellComponent {
 
     const factory = this.componentFactoryResolver.resolveComponentFactory(cmp);
     this.currentStepRef = this.stepContainer.createComponent(factory);
+  }
+
+  selectLevel(levelId: number) {
+    this.state.setActiveLevel(levelId);
   }
 }

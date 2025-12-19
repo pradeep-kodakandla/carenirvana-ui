@@ -1,3 +1,26 @@
+<!--<caseChevronStepper [steps]="steps"
+                    [activeStepId]="activeStepId"
+                    (stepSelected)="onStepSelected($event)">
+</caseChevronStepper>
+
+<div class="caseWizardBody">
+  <ng-template #stepContainer></ng-template>
+</div>-->
+<!-- Level Tabs -->
+<ul class="nav nav-tabs mb-2" *ngIf="(tabs$ | async) as tabs">
+  <li class="nav-item" *ngFor="let t of tabs">
+    <button class="nav-link"
+            type="button"
+            [class.active]="(activeLevelId$ | async) === t.levelId"
+            (click)="selectLevel(t.levelId)">
+      {{ t.title }}
+    </button>
+  </li>
+</ul>
+
+<!-- keep your existing stepper HTML as-is below -->
+
+
 <caseChevronStepper [steps]="steps"
                     [activeStepId]="activeStepId"
                     (stepSelected)="onStepSelected($event)">
