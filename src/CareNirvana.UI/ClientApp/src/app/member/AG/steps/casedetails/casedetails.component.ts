@@ -440,11 +440,13 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
   }
 
   visibleField(f: any, sec: RenderSection, sub?: RenderSubsection): boolean {
-    if (f.isEnabled === false) return false;
-    if (f.isActive === false) return false;
+    //if (f.isEnabled === false) return false;
+    //if (f.isActive === false) return false;
 
-    return this.evalShowWhen(f.showWhen ?? 'always', f.conditions ?? []);
+    return true;// this.evalShowWhen(f.showWhen ?? 'always', f.conditions ?? []);
   }
+
+
 
   private evalShowWhen(showWhen: ShowWhen, conditions: TplCondition[]): boolean {
     if (showWhen === 'always') return true;
