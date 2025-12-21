@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit, Input } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
 import { AuthService } from 'src/app/service/auth.service';
@@ -97,6 +97,22 @@ export interface UiOption {
 })
 export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnInit, OnDestroy {
 
+  @Input() stepId: string = 'details';   // <- injected by shell
+  private currentLevelId = 1;            // <- keep latest active level
+
+  // Step -> which sections belong to this step (UPDATE THESE NAMES after you log them)
+  private stepSectionNames: Record<string, string[]> = {
+    details: [], // empty => “all except other step sections” (we’ll handle below)
+    notes: ['Case Notes', 'Notes', 'Case_Notes'],
+    documents: ['Case Documents', 'Documents', 'Case_Documents'],
+    activities: ['Case Activity Type', 'Activities', 'Case_Activities'],
+    mdReview: ['MD Review', 'MD_Review'],
+    disposition: ['Disposition', 'Disposition Details', 'Case_Disposition'],
+    close: ['Close', 'Case Close', 'Case_Close'],
+  };
+
+
+
   form!: FormGroup;
   renderSections: RenderSection[] = [];
   optionsByControlName: Record<string, UiSmartOption[]> = {};
@@ -123,7 +139,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     this.form = this.fb.group({});
 
     // Build template-driven form
-    this.authService.getTemplate('AG', 3)
+    this.authService.getTemplate('AG', 1)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (res: any) => {
@@ -137,16 +153,69 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
           this.buildFormControls(this.renderSections);
           this.prefetchDropdownOptions(this.renderSections);
 
-          // Load active level data whenever tab/active level changes
+          console.table((normalized.sections ?? []).map(s => ({
+            sectionName: s.sectionName,
+            displayName: s.sectionDisplayName
+          })));
+
+          // ✅ Filter sections for the current step
+          const filtered = this.filterSectionsForStep(normalized, this.stepId);
+
+          this.renderSections = this.buildRenderModel(filtered);
+          this.buildFormControls(this.renderSections);
+          this.prefetchDropdownOptions(this.renderSections);
+
+          // ✅ track active level and load json into current step form
           this.state.activeLevelId$
             .pipe(takeUntil(this.destroy$))
             .subscribe(levelId => {
-              this.loadLevelIntoForm(levelId);
+              this.currentLevelId = levelId ?? 1;
+              this.loadLevelIntoForm(this.currentLevelId);
             });
+
+          //// Load active level data whenever tab/active level changes
+          //this.state.activeLevelId$
+          //  .pipe(takeUntil(this.destroy$))
+          //  .subscribe(levelId => {
+          //    this.loadLevelIntoForm(levelId);
+          //  });
         },
         error: (err: any) => console.error(err)
       });
   }
+
+  private filterSectionsForStep(root: TemplateJsonRoot, stepId: string): TemplateJsonRoot {
+    const sections = root?.sections ?? [];
+    const pickList = (this.stepSectionNames[stepId] ?? []).map(x => (x ?? '').toLowerCase()).filter(Boolean);
+
+    // If step has explicit list => include only those
+    if (pickList.length > 0) {
+      return {
+        sections: sections.filter(s => {
+          const a = (s.sectionName ?? '').toLowerCase();
+          const b = (s.sectionDisplayName ?? '').toLowerCase();
+          return pickList.includes(a) || pickList.includes(b);
+        })
+      };
+    }
+
+    // For "details": exclude sections owned by other steps (so details doesn’t show notes/docs/etc)
+    const exclude = new Set(
+      Object.entries(this.stepSectionNames)
+        .filter(([k, v]) => k !== 'details')
+        .flatMap(([_, v]) => v.map(x => (x ?? '').toLowerCase()))
+        .filter(Boolean)
+    );
+
+    return {
+      sections: sections.filter(s => {
+        const a = (s.sectionName ?? '').toLowerCase();
+        const b = (s.sectionDisplayName ?? '').toLowerCase();
+        return !exclude.has(a) && !exclude.has(b);
+      })
+    };
+  }
+
 
   ngOnDestroy(): void {
     this.destroy$.next();
@@ -163,13 +232,25 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     const levelId = this.getSelectedLevelId() ?? 1;
 
     // If this level already exists => update; else => add or create
-    const existingDetail = this.state.getDetailForLevel(levelId);
+    //const existingDetail = this.state.getDetailForLevel(levelId);
     const caseHeaderId = this.state.getHeaderId() ?? this.getHeaderIdFromRoute();
+    // ✅ only Details step should create a new case header
+    if (!caseHeaderId && this.stepId !== 'details') {
+      alert('Please save Case Details first to create the case.');
+      return;
+    }
     const caseNumber = this.authNumberService.generateAuthNumber(9, true, true, false, false); //this.state.getCaseNumber() ?? this.getCaseNumberFromRoute() ?? this.getValueByFieldId('caseNumber');
 
     const userId = this.getCurrentUserId();
 
-    const jsonData = JSON.stringify(this.form.getRawValue());
+    //const jsonData = JSON.stringify(this.form.getRawValue());
+    const existingDetail = this.state.getDetailForLevel(levelId);
+    const existingObj = this.safeParseJson(existingDetail?.jsonData);
+    const stepObj = this.form.getRawValue();
+
+    // ✅ MERGE (step values overwrite same keys, but keep other keys)
+    const merged = { ...(existingObj ?? {}), ...(stepObj ?? {}) };
+    const jsonData = JSON.stringify(merged);
 
     try {
       this.isSaving = true;
@@ -216,6 +297,15 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
       console.error(e);
     } finally {
       this.isSaving = false;
+    }
+  }
+
+  private safeParseJson(input: any): any | null {
+    if (!input) return null;
+    try {
+      return typeof input === 'string' ? JSON.parse(input) : input;
+    } catch {
+      return null;
     }
   }
 
@@ -414,16 +504,72 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
       if (this.optionsByControlName[f.controlName]) continue;
 
       // adapt this call to your actual lookup API
+      //this.crudService.getData('AG', f.datasource!.toLowerCase())
+      //  .pipe(takeUntil(this.destroy$))
+      //  .subscribe((rows: any[]) => {
+      //    console.log(`Fetched options for datasource '${f.datasource}':`, rows);
+      //    this.optionsByControlName[f.controlName] = (rows ?? []).map(r => {
+      //      const value = r.value ?? r.id ?? r.code;
+      //      const label = r.text ?? r.name ?? r.description ?? String(value ?? '');
+      //      return { value, label } as UiSmartOption;
+      //    });
+      //    console.log(`Mapped options for control '${f.controlName}':`, this.optionsByControlName[f.controlName]);
+      //  });
       this.crudService.getData('AG', f.datasource!.toLowerCase())
         .pipe(takeUntil(this.destroy$))
         .subscribe((rows: any[]) => {
+
+          const ds = (f.datasource ?? '').trim();
+          const dsKey = ds ? this.toCamelCase(ds) : '';
+
           this.optionsByControlName[f.controlName] = (rows ?? []).map(r => {
-            const value = r.value ?? r.id ?? r.code;
-            const label = r.text ?? r.name ?? r.description ?? String(value ?? '');
+            const value = r?.value ?? r?.id ?? r?.code;
+
+            const label =
+              r?.text ??
+              r?.name ??
+              r?.description ??
+              (dsKey ? (r?.[dsKey] ?? r?.[dsKey.charAt(0).toUpperCase() + dsKey.slice(1)] ?? r?.[ds]) : null) ??
+              this.pickDisplayField(r) ??
+              String(value ?? '');
+
             return { value, label } as UiSmartOption;
           });
+
         });
     }
+  }
+
+  private toCamelCase(input: string): string {
+    // caselevel -> caselevel, request_source -> requestSource, request-source -> requestSource
+    const parts = input
+      .trim()
+      .replace(/[^a-zA-Z0-9]+/g, ' ')
+      .split(' ')
+      .filter(Boolean);
+
+    if (parts.length === 0) return input;
+
+    return parts[0].toLowerCase() + parts.slice(1).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join('');
+  }
+
+  private pickDisplayField(row: any): string | null {
+    if (!row) return null;
+
+    const skip = new Set([
+      'id', 'value', 'code',
+      'activeFlag',
+      'createdBy', 'createdOn',
+      'updatedBy', 'updatedOn',
+      'deletedBy', 'deletedOn'
+    ]);
+
+    for (const k of Object.keys(row)) {
+      if (skip.has(k)) continue;
+      const v = row[k];
+      if (typeof v === 'string' && v.trim().length > 0) return v;
+    }
+    return null;
   }
 
   // ---------------- Visibility (keep your existing logic) ----------------
@@ -440,13 +586,14 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
   }
 
   visibleField(f: any, sec: RenderSection, sub?: RenderSubsection): boolean {
-    //if (f.isEnabled === false) return false;
-    //if (f.isActive === false) return false;
-
-    return true;// this.evalShowWhen(f.showWhen ?? 'always', f.conditions ?? []);
+    //if (f?.isEnabled === false) return false;
+    //if (f?.isActive === false) return false;
+    //console.log('visibleField called for', f.controlName);
+    //console.log('Conditions:', f.conditions);
+    //console.log('IsEnabled:', f.isEnabled);
+    //console.log('IsActive:', f.isActive);
+    return this.evalShowWhen(f.showWhen ?? 'always', f.conditions ?? []);
   }
-
-
 
   private evalShowWhen(showWhen: ShowWhen, conditions: TplCondition[]): boolean {
     if (showWhen === 'always') return true;
@@ -512,5 +659,26 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     return this.fieldIdToControlName[key] ?? key; // fallback (in case ids already match controlName)
   }
 
+
+  private openSections = new Set<string>();
+
+  private sectionKey(sec: any, index: number): string {
+    // Prefer a stable id if you have one; fallback to title+index
+    return String(sec?.id ?? sec?.sectionId ?? sec?.title ?? index) + ':' + index;
+  }
+
+  isSectionOpen(sec: any, index: number): boolean {
+    const key = this.sectionKey(sec, index);
+    // Default: OPEN unless user collapsed it
+    return !this.openSections.has(key + ':closed');
+  }
+
+  toggleSection(sec: any, index: number): void {
+    const base = this.sectionKey(sec, index);
+    const closedKey = base + ':closed';
+
+    if (this.openSections.has(closedKey)) this.openSections.delete(closedKey);
+    else this.openSections.add(closedKey);
+  }
 
 }

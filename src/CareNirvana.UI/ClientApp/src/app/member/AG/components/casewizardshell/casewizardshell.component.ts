@@ -34,7 +34,7 @@ export class CasewizardshellComponent {
     { id: 'details', label: 'Case Details', route: 'details' },
     { id: 'disposition', label: 'Disposition Details', route: 'disposition' },
     { id: 'mdReview', label: 'MD Review', route: 'mdReview' },
-    { id: 'activities', label: 'Activities', route: 'activities' },
+    { id: 'activities', label: 'Case Activity Type', route: 'activities' },
     { id: 'notes', label: 'Notes', route: 'notes' },
     { id: 'documents', label: 'Documents', route: 'documents' },
     { id: 'close', label: 'Close', route: 'close' },
@@ -86,6 +86,10 @@ export class CasewizardshellComponent {
 
     const factory = this.componentFactoryResolver.resolveComponentFactory(cmp);
     this.currentStepRef = this.stepContainer.createComponent(factory);
+
+    if (this.currentStepRef?.instance) {
+      (this.currentStepRef.instance as any).stepId = stepId;
+    }
   }
 
   selectLevel(levelId: number) {

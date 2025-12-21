@@ -31,6 +31,7 @@
   .ui-dt .btn {
     padding: 0.375rem 0.75rem;
     font-size: 0.875rem;
+    border: none;
   }
 
   .ui-dt .btn-outline-secondary {
@@ -51,3 +52,37 @@
       background-color: #dc3545;
       color: #fff;
     }
+
+/* Hidden native date/datetime input for showPicker() */
+/* FIX: must be .ui-dt (class), not ui-dt (element) */
+
+/* Hidden native date/datetime input used only for showPicker() */
+.native-picker {
+  position: absolute;
+  left: 0;
+  top: 6px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/*.ui-dt {
+  position: relative;
+}*/
+
+.picker-anchor {
+  position: relative;
+  height: 0; /* no layout space */
+}
+
+/* Put the native input just below the field (anchor point) */
+/*.native-picker {
+  position: absolute;
+  left: 0;
+  top: 6px;*/ /* small gap below the field */
+  /*width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}*/

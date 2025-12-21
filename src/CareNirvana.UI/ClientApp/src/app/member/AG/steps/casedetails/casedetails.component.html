@@ -9,199 +9,212 @@
     </button>
   </div>
   <!--[disabled]="isSaving || form.invalid || !form.dirty"-->
-  <ng-container *ngFor="let sec of renderSections; trackBy: trackBySection">
+  <!--<ng-container *ngFor="let sec of renderSections; trackBy: trackBySection">-->
+
+  <ng-container *ngFor="let sec of renderSections; let i = index; trackBy: trackBySection">
     <div class="section-card" *ngIf="visibleSection(sec)">
 
-      <div class="section-header">
+      <!--<div class="section-header">
+        <div class="section-title">{{ sec.title }}</div>
+      </div>-->
+      <div class="section-header"
+           role="button"
+           tabindex="0"
+           (click)="toggleSection(sec, i)"
+           (keydown.enter)="toggleSection(sec, i)"
+           (keydown.space)="$event.preventDefault(); toggleSection(sec, i)"
+           [attr.aria-expanded]="isSectionOpen(sec, i)">
+
+        <span class="section-acc-icon" [class.open]="isSectionOpen(sec, i)">▸</span>
         <div class="section-title">{{ sec.title }}</div>
       </div>
+      <ng-container *ngIf="isSectionOpen(sec, i)">
+        <!-- =========================
+        SECTION FIELDS
+        ========================= -->
+        <div class="grid" style="padding-bottom:15px;">
+          <ng-container *ngFor="let f of sec.fields; trackBy: trackByField">
+            <ng-container *ngIf="visibleField(f, sec)">
+              <ng-container *ngIf="form.get(f.controlName) as ctrl">
 
-      <!-- =========================
-           SECTION FIELDS
-           ========================= -->
-      <div class="grid" style="padding-bottom:15px;">
-        <ng-container *ngFor="let f of sec.fields; trackBy: trackByField">
-          <ng-container *ngIf="visibleField(f, sec)">
-            <ng-container *ngIf="form.get(f.controlName) as ctrl">
-
-              <!-- CHECKBOX -->
-              <ng-container *ngIf="f.type === 'checkbox'; else outlinedSec">
-                <div class="ff-checkbox">
-                  <input type="checkbox"
-                         class="form-check-input"
-                         [formControlName]="f.controlName" />
-                  <label class="form-check-label ff-checkbox-text">{{ f.label }}</label>
-                </div>
-
-                <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
-                  {{ f.requiredMsg || (f.label + ' is required') }}
-                </div>
-              </ng-container>
-
-              <!-- OUTLINED (text/select/datetime/textarea) -->
-              <ng-template #outlinedSec>
-                <div class="ff-outline"
-                     [class.ff-disabled]="ctrl.disabled"
-                     [class.ff-invalid]="ctrl.touched && ctrl.invalid">
-
-                  <div class="ff-float-label">{{ f.label }}</div>
-
-                  <div class="ff-body">
-                    <ng-container [ngSwitch]="f.type">
-
-                      <!-- Dropdown -->
-                      <!-- Dropdown -->
-                      <ng-container *ngSwitchCase="'select'">
-                        <ui-smart-dropdown class="ff-ui"
-                                           label=""
-                                           placeholder="Select..."
-                                           [options]="getDropdownOptions(f.controlName)"
-                                           [formControlName]="f.controlName">
-                        </ui-smart-dropdown>
-                      </ng-container>
-
-                      <!-- Datetime -->
-                      <ng-container *ngSwitchCase="'datetime-local'">
-                        <ui-datetime-picker class="ff-ui"
-                                            placeholderDate="mm/dd/yyyy"
-                                            placeholderDateTime="mm/dd/yyyy --:--"
-                                            [formControlName]="f.controlName">
-                        </ui-datetime-picker>
-                      </ng-container>
-
-                      <!-- JSON typo variant -->
-                      <ng-container *ngSwitchCase="'datatime-local'">
-                        <ui-datetime-picker class="ff-ui"
-                                            placeholderDate="mm/dd/yyyy"
-                                            placeholderDateTime="mm/dd/yyyy --:--"
-                                            [formControlName]="f.controlName">
-                        </ui-datetime-picker>
-                      </ng-container>
-
-
-                      <!-- Textarea -->
-                      <ng-container *ngSwitchCase="'textarea'">
-                        <textarea class="ff-input ff-textarea"
-                                  rows="3"
-                                  [formControlName]="f.controlName"></textarea>
-                      </ng-container>
-
-                      <!-- Default text -->
-                      <ng-container *ngSwitchDefault>
-                        <input class="ff-input"
-                               type="text"
-                               [formControlName]="f.controlName" />
-                      </ng-container>
-
-                    </ng-container>
+                <!-- CHECKBOX -->
+                <ng-container *ngIf="f.type === 'checkbox'; else outlinedSec">
+                  <div class="ff-checkbox">
+                    <input type="checkbox"
+                           class="form-check-input"
+                           [formControlName]="f.controlName" />
+                    <label class="form-check-label ff-checkbox-text">{{ f.label }}</label>
                   </div>
-                </div>
 
-                <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
-                  {{ f.requiredMsg || (f.label + ' is required') }}
-                </div>
-              </ng-template>
+                  <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
+                    {{ f.requiredMsg || (f.label + ' is required') }}
+                  </div>
+                </ng-container>
 
+                <!-- OUTLINED (text/select/datetime/textarea) -->
+                <ng-template #outlinedSec>
+                  <div class="ff-outline"
+                       [class.ff-disabled]="ctrl.disabled"
+                       [class.ff-invalid]="ctrl.touched && ctrl.invalid">
+
+                    <div class="ff-float-label">{{ f.label }}</div>
+
+                    <div class="ff-body">
+                      <ng-container [ngSwitch]="f.type">
+
+                        <!-- Dropdown -->
+                        <!-- Dropdown -->
+                        <ng-container *ngSwitchCase="'select'">
+                          <ui-smart-dropdown class="ff-ui"
+                                             label=""
+                                             placeholder="Select..."
+                                             [options]="getDropdownOptions(f.controlName)"
+                                             [formControlName]="f.controlName">
+                          </ui-smart-dropdown>
+                        </ng-container>
+
+                        <!-- Datetime -->
+                        <ng-container *ngSwitchCase="'datetime-local'">
+                          <ui-datetime-picker class="ff-ui"
+                                              placeholderDate="mm/dd/yyyy"
+                                              placeholderDateTime="mm/dd/yyyy --:--"
+                                              [formControlName]="f.controlName">
+                          </ui-datetime-picker>
+                        </ng-container>
+
+                        <!-- JSON typo variant -->
+                        <ng-container *ngSwitchCase="'datatime-local'">
+                          <ui-datetime-picker class="ff-ui"
+                                              placeholderDate="mm/dd/yyyy"
+                                              placeholderDateTime="mm/dd/yyyy --:--"
+                                              [formControlName]="f.controlName">
+                          </ui-datetime-picker>
+                        </ng-container>
+
+
+                        <!-- Textarea -->
+                        <ng-container *ngSwitchCase="'textarea'">
+                          <textarea class="ff-input ff-textarea"
+                                    rows="3"
+                                    [formControlName]="f.controlName"></textarea>
+                        </ng-container>
+
+                        <!-- Default text -->
+                        <ng-container *ngSwitchDefault>
+                          <input class="ff-input"
+                                 type="text"
+                                 [formControlName]="f.controlName" />
+                        </ng-container>
+
+                      </ng-container>
+                    </div>
+                  </div>
+
+                  <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
+                    {{ f.requiredMsg || (f.label + ' is required') }}
+                  </div>
+                </ng-template>
+
+              </ng-container>
             </ng-container>
           </ng-container>
-        </ng-container>
-      </div>
+        </div>
 
-      <!-- =========================
-           SUBSECTIONS
-           ========================= -->
-      <ng-container *ngFor="let sub of sec.subsections; trackBy: trackBySub">
-        <div class="sub-card" *ngIf="visibleSubsection(sub, sec)">
-          <div class="sub-float-label">{{ sub.title }}</div>
+        <!-- =========================
+        SUBSECTIONS
+        ========================= -->
+        <ng-container *ngFor="let sub of sec.subsections; trackBy: trackBySub">
+          <div class="sub-card" *ngIf="visibleSubsection(sub, sec)">
+            <div class="sub-float-label">{{ sub.title }}</div>
 
-          <div class="grid">
-            <ng-container *ngFor="let f of sub.fields; trackBy: trackByField">
-              <ng-container *ngIf="visibleField(f, sec, sub)">
-                <ng-container *ngIf="form.get(f.controlName) as ctrl">
+            <div class="grid">
+              <ng-container *ngFor="let f of sub.fields; trackBy: trackByField">
+                <ng-container *ngIf="visibleField(f, sec, sub)">
+                  <ng-container *ngIf="form.get(f.controlName) as ctrl">
 
-                  <!-- CHECKBOX -->
-                  <ng-container *ngIf="f.type === 'checkbox'; else outlinedSub">
-                    <div class="ff-checkbox">
-                      <input type="checkbox"
-                             class="form-check-input"
-                             [formControlName]="f.controlName" />
-                      <label class="form-check-label ff-checkbox-text">{{ f.label }}</label>
-                    </div>
-
-                    <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
-                      {{ f.requiredMsg || (f.label + ' is required') }}
-                    </div>
-                  </ng-container>
-
-                  <!-- OUTLINED -->
-                  <ng-template #outlinedSub>
-                    <div class="ff-outline"
-                         [class.ff-disabled]="ctrl.disabled"
-                         [class.ff-invalid]="ctrl.touched && ctrl.invalid">
-
-                      <div class="ff-float-label">{{ f.label }}</div>
-
-                      <div class="ff-body">
-                        <ng-container [ngSwitch]="f.type">
-
-                          <!-- Dropdown -->
-                          <ng-container *ngSwitchCase="'select'">
-                            <ui-smart-dropdown class="ff-ui" style="border: 0px !important;"
-                                               label=""
-                                               placeholder="Select..."
-                                               [options]="getDropdownOptions(f.controlName)"
-                                               [formControlName]="f.controlName">
-                            </ui-smart-dropdown>
-                          </ng-container>
-
-                          <!-- Datetime -->
-                          <ng-container *ngSwitchCase="'datetime-local'">
-                            <ui-datetime-picker class="ff-ui"
-                                                placeholderDate="mm/dd/yyyy"
-                                                placeholderDateTime="mm/dd/yyyy --:--"
-                                                [formControlName]="f.controlName">
-                            </ui-datetime-picker>
-                          </ng-container>
-
-                          <!-- JSON typo variant -->
-                          <ng-container *ngSwitchCase="'datatime-local'">
-                            <ui-datetime-picker class="ff-ui"
-                                                placeholderDate="mm/dd/yyyy"
-                                                placeholderDateTime="mm/dd/yyyy --:--"
-                                                [formControlName]="f.controlName">
-                            </ui-datetime-picker>
-                          </ng-container>
-
-
-                          <ng-container *ngSwitchCase="'textarea'">
-                            <textarea class="ff-input ff-textarea"
-                                      rows="3"
-                                      [formControlName]="f.controlName"></textarea>
-                          </ng-container>
-
-                          <ng-container *ngSwitchDefault>
-                            <input class="ff-input"
-                                   type="text"
-                                   [formControlName]="f.controlName" />
-                          </ng-container>
-
-                        </ng-container>
+                    <!-- CHECKBOX -->
+                    <ng-container *ngIf="f.type === 'checkbox'; else outlinedSub">
+                      <div class="ff-checkbox">
+                        <input type="checkbox"
+                               class="form-check-input"
+                               [formControlName]="f.controlName" />
+                        <label class="form-check-label ff-checkbox-text">{{ f.label }}</label>
                       </div>
-                    </div>
 
-                    <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
-                      {{ f.requiredMsg || (f.label + ' is required') }}
-                    </div>
-                  </ng-template>
+                      <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
+                        {{ f.requiredMsg || (f.label + ' is required') }}
+                      </div>
+                    </ng-container>
 
+                    <!-- OUTLINED -->
+                    <ng-template #outlinedSub>
+                      <div class="ff-outline"
+                           [class.ff-disabled]="ctrl.disabled"
+                           [class.ff-invalid]="ctrl.touched && ctrl.invalid">
+
+                        <div class="ff-float-label">{{ f.label }}</div>
+
+                        <div class="ff-body">
+                          <ng-container [ngSwitch]="f.type">
+
+                            <!-- Dropdown -->
+                            <ng-container *ngSwitchCase="'select'">
+                              <ui-smart-dropdown class="ff-ui" style="border: 0px !important;"
+                                                 label=""
+                                                 placeholder="Select..."
+                                                 [options]="getDropdownOptions(f.controlName)"
+                                                 [formControlName]="f.controlName">
+                              </ui-smart-dropdown>
+                            </ng-container>
+
+                            <!-- Datetime -->
+                            <ng-container *ngSwitchCase="'datetime-local'">
+                              <ui-datetime-picker class="ff-ui"
+                                                  placeholderDate="mm/dd/yyyy"
+                                                  placeholderDateTime="mm/dd/yyyy --:--"
+                                                  [formControlName]="f.controlName">
+                              </ui-datetime-picker>
+                            </ng-container>
+
+                            <!-- JSON typo variant -->
+                            <ng-container *ngSwitchCase="'datatime-local'">
+                              <ui-datetime-picker class="ff-ui"
+                                                  placeholderDate="mm/dd/yyyy"
+                                                  placeholderDateTime="mm/dd/yyyy --:--"
+                                                  [formControlName]="f.controlName">
+                              </ui-datetime-picker>
+                            </ng-container>
+
+
+                            <ng-container *ngSwitchCase="'textarea'">
+                              <textarea class="ff-input ff-textarea"
+                                        rows="3"
+                                        [formControlName]="f.controlName"></textarea>
+                            </ng-container>
+
+                            <ng-container *ngSwitchDefault>
+                              <input class="ff-input"
+                                     type="text"
+                                     [formControlName]="f.controlName" />
+                            </ng-container>
+
+                          </ng-container>
+                        </div>
+                      </div>
+
+                      <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
+                        {{ f.requiredMsg || (f.label + ' is required') }}
+                      </div>
+                    </ng-template>
+
+                  </ng-container>
                 </ng-container>
               </ng-container>
-            </ng-container>
+            </div>
+
           </div>
-
-        </div>
+        </ng-container>
       </ng-container>
-
     </div>
   </ng-container>
 

@@ -3,11 +3,11 @@
   width: 100%;
 }
 
-.grid {
+/*.grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
-}
+}*/
 
 /* Cards */
 .section-card, .sub-card {
@@ -120,7 +120,6 @@
     border: 0 !important;
     outline: none !important;
     box-shadow: none !important;
-    padding: 0 !important;
     font-size: 16px !important;
     background: transparent !important;
   }
@@ -184,3 +183,69 @@
   justify-content: flex-end;
   padding: 10px 0;
 }
+
+
+/* Responsive grid: max 5 columns, auto adjusts down on smaller screens */
+.grid {
+  display: grid;
+  gap: 14px;
+  /* default: up to 5 columns */
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+/* drop to 4 */
+@media (max-width: 1400px) {
+  .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* drop to 3 */
+@media (max-width: 1200px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* drop to 2 */
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* drop to 1 */
+@media (max-width: 600px) {
+  .grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+}
+
+
+/* Make section header clickable like accordion */
+.section-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+  .section-header:focus {
+    outline: 2px solid rgba(59, 130, 246, 0.35);
+    outline-offset: 2px;
+  }
+
+/* Chevron icon before title */
+.section-acc-icon {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+  font-size: 24px;
+  transition: transform 150ms ease;
+  color: #374151;
+}
+
+  .section-acc-icon.open {
+    transform: rotate(90deg);
+  }
