@@ -78,7 +78,7 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
   @Input() selectedField: any;// TemplateField | null = null;
   @Input() selectedSection: TemplateSectionModel | null = null;
   @Input() masterTemplate: { sections?: TemplateSectionModel[] } = {};
-  @Output() fieldUpdated = new EventEmitter<TemplateField>();
+  @Output() fieldUpdated = new EventEmitter<TemplateField | TemplateSectionModel>();
   @Output() sectionUpdated = new EventEmitter<TemplateSectionModel>();
   @Input() module: string = 'UM';
 
@@ -161,13 +161,21 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
 
     this.loadStatusOptions();
     this.loadCaseLevelOptions();
-    if (changes['selectedField'] || changes['selectedSection']) {
-      this.initConditionsFromTarget();   // <-- loads existing rules
+
+    const currentKey = this.getSelectionKey();
+    const selectionChanged = currentKey !== this.lastSelectionKey;
+
+    // Rebuild ReferenceField dropdown whenever the template changes OR the actual selection changes
+    if (masterChanged || selectionChanged) {
+      this.buildReferenceFieldOptions();
     }
 
-    // Rebuild ReferenceField dropdown whenever the template or selection changes
-    if (changes['selectedField'] || changes['masterTemplate']) {
-      this.buildReferenceFieldOptions();
+    // Only initialize conditions when user selects a different field/section/subsection
+    if (selectionChanged) {
+      this.lastSelectionKey = currentKey;
+      this.initConditionsFromTarget();
+      this.cacheConditionRefIds();
+      this.hydrateConditionValueOptions();
     }
 
     if (changes['selectedField']?.currentValue) {
@@ -208,7 +216,6 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
     if (this.selectedField) {
       this.fieldUpdated.emit({ ...this.selectedField });
     }
-    console.log('Field updated emitted:', this.selectedField);
   }
 
   toggleAuthStatus(status: string, event: any) {
@@ -261,7 +268,7 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
 
   emitSectionUpdate() {
     if (this.selectedSection) {
-      this.sectionUpdated.emit(this.selectedSection);
+      this.sectionUpdated.emit({ ...this.selectedSection });
     }
   }
 
@@ -503,7 +510,7 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
 
     // Insert after the given index
     this.conditions.splice(afterIndex + 1, 0, newCondition);
-    this.syncConditionsToField();
+    this.onConditionChanged();
   }
 
   removeCondition(index: number): void {
@@ -525,12 +532,12 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
       }
     }
 
-    this.syncConditionsToField();
+    this.onConditionChanged();
   }
 
   // When any piece of a condition changes (showWhen, ref, value, operator)
   onConditionChanged(): void {
-    this.syncConditionsToField();
+    this.syncConditionsToTarget();
   }
 
   private ensureAtLeastOneCondition(): void {
@@ -603,7 +610,84 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
   // If a reference field is "select" + datasource-based, cache its options per condition row
   conditionSelectOptions: Record<number, UiSmartOption<string>[]> = {};
 
+  // Prevent re-initializing conditions while editing the same selection (parent often passes new object references)
+  private lastSelectionKey: string | null = null;
+
+  // Track previous referenceFieldId per condition row (prevents clearing value on initial bind)
+  private lastRefByCondId = new Map<number, string | null>();
+
   // Get the selected reference field object for a condition
+
+  private ddValue(ev: any): any {
+    // ui-smart-dropdown may emit primitive OR {label,value}
+    if (ev && typeof ev === 'object' && 'value' in ev) return (ev as any).value;
+    return ev;
+  }
+
+  private toStrOrNull(v: any): string | null {
+    if (v === null || v === undefined || v === '') return null;
+    return String(v);
+  }
+
+  private getSelectionKey(): string {
+    if (this.selectedField?.id) return `field:${this.selectedField.id}`;
+    // subsection selection is passed as selectedSection from parent
+    if (this.selectedSection?.sectionName) return `section:${this.selectedSection.sectionName}`;
+    return '';
+  }
+
+  private cacheConditionRefIds(): void {
+    this.lastRefByCondId.clear();
+    (this.conditions ?? []).forEach(c => {
+      // normalize any object emitted into a string id
+      const refId = this.toStrOrNull(this.ddValue(c.referenceFieldId));
+      c.referenceFieldId = refId;
+      this.lastRefByCondId.set(c.id, refId);
+    });
+  }
+
+  // Pre-load datasource-backed select options for existing conditions (so Value dropdown can open while editing)
+  private hydrateConditionValueOptions(): void {
+    for (const cond of this.conditions ?? []) {
+      const refId = this.toStrOrNull(this.ddValue(cond.referenceFieldId));
+      cond.referenceFieldId = refId;
+
+      const ref = this.getReferenceField(refId);
+      if (!ref) continue;
+
+      if (ref.type === 'select') {
+        // normalize saved value to string so ui-smart-dropdown matches option.value
+        if (cond.value !== null && cond.value !== undefined) cond.value = String(this.ddValue(cond.value));
+      }
+
+      if (ref.type === 'select' && ref.datasource && (!ref.options || ref.options.length === 0)) {
+        // already loaded
+        if (Array.isArray(this.conditionSelectOptions[cond.id]) && this.conditionSelectOptions[cond.id].length) continue;
+
+        const expectedKey = ref.datasource.toLowerCase();
+        this.crudService.getData(this.module, ref.datasource).subscribe({
+          next: (data: any[]) => {
+            const opts = (data ?? []).map(item => {
+              const actualKey = Object.keys(item || {}).find(k => k.toLowerCase() === expectedKey);
+              const label = actualKey
+                ? item[actualKey]
+                : (item?.text ?? item?.name ?? item?.description ?? item?.value ?? item?.id ?? 'Unknown');
+
+              const value = item?.id ?? item?.value ?? item?.code ?? item?.key ?? label;
+
+              return { label: String(label ?? ''), value: String(value ?? '') } as UiSmartOption<string>;
+            });
+
+            this.conditionSelectOptions[cond.id] = opts;
+          },
+          error: () => {
+            this.conditionSelectOptions[cond.id] = [];
+          }
+        });
+      }
+    }
+  }
+
   getReferenceField(referenceFieldId: string | null): TemplateField | undefined {
     if (!referenceFieldId) return undefined;
     return this.referenceFieldMap.get(referenceFieldId);
@@ -636,32 +720,60 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
   }
 
   // When Reference Field changes: clear value, and if select+datasource, load options
-  onReferenceFieldChanged(cond: FieldCondition): void {
-    // Clear current value whenever reference changes
-    cond.value = null;
 
-    const ref = this.getReferenceField(cond.referenceFieldId);
+  // When Value changes for a select reference field: normalize dropdown output into a primitive and sync
+  onConditionValueChanged(cond: FieldCondition, ev: any): void {
+    const v = this.ddValue(ev);
+    cond.value = (v === null || v === undefined) ? null : String(v);
+    this.onConditionChanged();
+  }
+
+  onReferenceFieldChanged(cond: FieldCondition, ev: any): void {
+    const nextRefId = this.toStrOrNull(this.ddValue(ev));
+    const prevRefId = this.lastRefByCondId.get(cond.id) ?? this.toStrOrNull(this.ddValue(cond.referenceFieldId));
+
+    // Set normalized reference id on the model
+    cond.referenceFieldId = nextRefId;
+    this.lastRefByCondId.set(cond.id, nextRefId);
+
+    const userChangedRef = prevRefId !== nextRefId;
+
+    // Clear current value only when user actually changes the reference field
+    if (userChangedRef) {
+      cond.value = null;
+      this.conditionSelectOptions[cond.id] = [];
+    }
+
+    const ref = this.getReferenceField(nextRefId);
 
     // If select field uses datasource and doesn't have static options, fetch dropdown options
     if (ref?.type === 'select' && ref.datasource && (!ref.options || ref.options.length === 0)) {
       const expectedKey = ref.datasource.toLowerCase();
 
-      this.crudService.getData(this.module, ref.datasource).subscribe((data: any[]) => {
-        const opts = data.map(item => {
-          const actualKey = Object.keys(item).find(k => k.toLowerCase() === expectedKey);
-          const label = actualKey ? item[actualKey] : 'Unknown';
-          return { label: String(label ?? ''), value: String(item.id) };
-        });
+      this.crudService.getData(this.module, ref.datasource).subscribe({
+        next: (data: any[]) => {
+          const opts = (data ?? []).map(item => {
+            const actualKey = Object.keys(item || {}).find(k => k.toLowerCase() === expectedKey);
+            const label = actualKey
+              ? item[actualKey]
+              : (item?.text ?? item?.name ?? item?.description ?? item?.value ?? item?.id ?? 'Unknown');
 
-        this.conditionSelectOptions[cond.id] = opts;
-        this.onConditionChanged();
+            const value = item?.id ?? item?.value ?? item?.code ?? item?.key ?? label;
+
+            return { label: String(label ?? ''), value: String(value ?? '') } as UiSmartOption<string>;
+          });
+
+          this.conditionSelectOptions[cond.id] = opts;
+        },
+        error: () => {
+          this.conditionSelectOptions[cond.id] = [];
+        }
       });
-
-      return;
+    } else {
+      // reset cached options for this row when not datasource-based
+      this.conditionSelectOptions[cond.id] = [];
     }
 
-    // Otherwise reset cached options for this row
-    this.conditionSelectOptions[cond.id] = [];
     this.onConditionChanged();
   }
 
@@ -683,8 +795,6 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
 
   private getConditionalTarget(): any {
     // if a subsection is selected, pass that object into selectedSection from parent
-    console.log('Selected Field:', this.selectedField);
-    console.log('Selected Section:', this.selectedSection);
     return this.selectedField ?? this.selectedSection;
   }
 
@@ -719,13 +829,42 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
     const target = this.getConditionalTarget();
     if (!target) return;
 
-    target.conditions = this.conditions;
+    // Normalize + clone conditions so we never persist dropdown option objects
+    const normalized: FieldCondition[] = (this.conditions ?? []).map((c, idx) => {
+      const refId = this.toStrOrNull(this.ddValue(c.referenceFieldId));
+      let val: any = c.value;
 
-    const first = this.conditions[0];
+      // If the reference field is a select, store value as string (matches options)
+      const ref = this.getReferenceField(refId);
+      if (ref?.type === 'select') {
+        const vv = this.ddValue(val);
+        val = (vv === null || vv === undefined) ? null : String(vv);
+      }
+
+      return {
+        id: idx + 1,
+        showWhen: (this.ddValue(c.showWhen) ?? 'always') as any,
+        referenceFieldId: refId,
+        value: val,
+        operatorWithPrev: c.operatorWithPrev
+      } as FieldCondition;
+    });
+
+    if (normalized[0]) normalized[0].operatorWithPrev = undefined;
+
+    // Keep UI model in sync with normalized values too
+    this.conditions = normalized;
+    this.cacheConditionRefIds();
+
+    // Persist as array for field/section/subsection
+    (target as any).conditions = normalized;
+
+    // Backward compatibility: map FIRST condition back to flat props
+    const first = normalized[0];
     if (first) {
-      target.showWhen = first.showWhen;
-      target.referenceFieldId = first.referenceFieldId;
-      target.visibilityValue = first.value;
+      (target as any).showWhen = first.showWhen;
+      (target as any).referenceFieldId = first.referenceFieldId;
+      (target as any).visibilityValue = first.value;
     }
 
     // emit correct event

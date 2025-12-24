@@ -682,42 +682,144 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
     }
   }
 
+  //updateField(updatedField: TemplateField | TemplateSectionModel) {
+  //  // Section rename/update comes from properties component (no 'id' like a field)
+  //  if (this.selectedSectionObject && !('id' in updatedField) && 'sectionName' in updatedField) {
+  //    // Update section name
+  //    const sectionIndex = this.masterTemplate.sections?.findIndex(sec => sec.sectionName === this.selectedSectionObject!.sectionName);
+  //    if (sectionIndex !== undefined && sectionIndex > -1) {
+  //      this.masterTemplate.sections![sectionIndex].sectionName = updatedField.sectionName ?? '';
+  //    }
+  //    if ('sectionName' in updatedField && typeof updatedField.sectionName === 'string') {
+  //      this.selectedSectionObject = { ...updatedField } as TemplateSectionModel;
+  //    }
+
+  //  } else if ('id' in updatedField) {
+  //    // Handle subsections
+  //    if (this.selectedSection.includes('.')) {
+  //      const [mainSection, subSection] = this.selectedSection.split('.');
+  //      const section = this.masterTemplate.sections?.find(sec => sec.sectionName === mainSection);
+  //      const subs = section?.subsections;
+  //      if (subs && subs[subSection]) {
+  //        const fieldIndex = subs[subSection].fields.findIndex((f: TemplateField) => f.id === updatedField.id);
+  //        if (fieldIndex > -1) {
+  //          subs[subSection].fields[fieldIndex] = updatedField;
+  //        }
+  //      }
+  //    } else {
+  //      // Normal section field update
+  //      const section = this.masterTemplate.sections?.find(sec => sec.sectionName === this.selectedSection);
+  //      if (section && section.fields) {
+  //        const index = section.fields.findIndex(f => f.id === updatedField.id);
+  //        if (index > -1) {
+  //          section.fields[index] = updatedField;
+  //        }
+  //      }
+  //    }
+  //    this.selectedField = updatedField;
+  //  }
+  //}
+
   updateField(updatedField: TemplateField | TemplateSectionModel) {
-    // Section rename/update comes from properties component (no 'id' like a field)
-    if (this.selectedSectionObject && !('id' in updatedField) && 'sectionName' in updatedField) {
-      // Update section name
-      const sectionIndex = this.masterTemplate.sections?.findIndex(sec => sec.sectionName === this.selectedSectionObject!.sectionName);
-      if (sectionIndex !== undefined && sectionIndex > -1) {
-        this.masterTemplate.sections![sectionIndex].sectionName = updatedField.sectionName ?? '';
-      }
-      if ('sectionName' in updatedField && typeof updatedField.sectionName === 'string') {
-        this.selectedSectionObject = { ...updatedField } as TemplateSectionModel;
+    // SECTION / SUBSECTION update (no `id`)
+    if (!('id' in (updatedField as any))) {
+      const updatedSection = updatedField as TemplateSectionModel;
+
+      // If a subsection is currently selected, persist the whole object back into the master template
+      if (this.selectedSubSectionObject && this.selectedSubSectionPath) {
+        Object.assign(this.selectedSubSectionObject, updatedSection);
+        this.saveSelectedSubSection();
+        this.normalizeTemplateStructure();
+        this.rebuildAllDropLists();
+        this.forceAngularChangeDetection();
+        return;
       }
 
-    } else if ('id' in updatedField) {
-      // Handle subsections
-      if (this.selectedSection.includes('.')) {
-        const [mainSection, subSection] = this.selectedSection.split('.');
-        const section = this.masterTemplate.sections?.find(sec => sec.sectionName === mainSection);
-        const subs = section?.subsections;
-        if (subs && subs[subSection]) {
-          const fieldIndex = subs[subSection].fields.findIndex((f: TemplateField) => f.id === updatedField.id);
-          if (fieldIndex > -1) {
-            subs[subSection].fields[fieldIndex] = updatedField;
-          }
-        }
-      } else {
-        // Normal section field update
-        const section = this.masterTemplate.sections?.find(sec => sec.sectionName === this.selectedSection);
-        if (section && section.fields) {
-          const index = section.fields.findIndex(f => f.id === updatedField.id);
-          if (index > -1) {
-            section.fields[index] = updatedField;
+      // Main section update
+      if (this.selectedSectionObject) {
+        const oldName = this.selectedSectionObject.sectionName;
+        const sectionIndex = this.masterTemplate.sections?.findIndex(sec => sec.sectionName === oldName);
+
+        if (sectionIndex !== undefined && sectionIndex > -1) {
+          const current = this.masterTemplate.sections![sectionIndex];
+
+          // Merge ALL section props (including showWhen/referenceFieldId/visibilityValue/conditions)
+          const merged: TemplateSectionModel = {
+            ...current,
+            ...updatedSection,
+            // keep existing collections unless updatedSection provides them
+            fields: updatedSection.fields ?? current.fields,
+            subsections: (updatedSection as any).subsections ?? (current as any).subsections
+          } as any;
+
+          this.masterTemplate.sections![sectionIndex] = merged;
+          this.selectedSectionObject = merged;
+
+          // If name changed, keep selectedSection in sync
+          if (typeof updatedSection.sectionName === 'string' && this.selectedSection === oldName) {
+            this.selectedSection = updatedSection.sectionName;
           }
         }
       }
-      this.selectedField = updatedField;
+
+      this.normalizeTemplateStructure();
+      this.rebuildAllDropLists();
+      this.forceAngularChangeDetection();
+      return;
     }
+
+    // FIELD update (has `id`)
+    const updated = updatedField as TemplateField;
+
+    const isSub = this.selectedSection?.includes('.');
+    let sectionName = this.selectedSection;
+    let subKey: string | null = null;
+
+    if (isSub) {
+      const parts = this.selectedSection.split('.');
+      sectionName = parts[0];
+      subKey = parts[1] ?? null;
+    }
+
+    const section = this.masterTemplate.sections?.find(sec => sec.sectionName === sectionName);
+    if (!section) return;
+
+    let fields: TemplateField[] | null = null;
+
+    if (subKey) {
+      const subs: any = (section as any).subsections;
+      const sub = subs?.[subKey];
+      fields = sub?.fields ?? null;
+    } else {
+      fields = section.fields ?? null;
+    }
+
+    if (!fields) return;
+
+    const idx = fields.findIndex(f => f.id === updated.id);
+
+    if (idx > -1) {
+      const current = fields[idx];
+
+      // Merge so we never accidentally wipe conditional values if a partial payload comes in.
+      const merged: any = { ...current, ...updated };
+
+      // Override conditional props ONLY if they are present on the payload (null is a valid value)
+      if (Object.prototype.hasOwnProperty.call(updated, 'showWhen')) merged.showWhen = (updated as any).showWhen;
+      if (Object.prototype.hasOwnProperty.call(updated, 'referenceFieldId')) merged.referenceFieldId = (updated as any).referenceFieldId;
+      if (Object.prototype.hasOwnProperty.call(updated, 'visibilityValue')) merged.visibilityValue = (updated as any).visibilityValue;
+      if (Object.prototype.hasOwnProperty.call(updated, 'conditions')) merged.conditions = (updated as any).conditions;
+
+      fields[idx] = merged as TemplateField;
+      this.selectedField = fields[idx];
+    } else {
+      fields.push(updated);
+      this.selectedField = updated;
+    }
+
+    this.normalizeTemplateStructure();
+    this.rebuildAllDropLists();
+    this.forceAngularChangeDetection();
   }
 
   onFieldOrSubSectionUpdated(updatedItem: any) {
@@ -1311,8 +1413,26 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
       }
     };
 
+    const normalizeTarget = (t: any) => {
+      if (!t) return;
+      const conds = (t.conditions && Array.isArray(t.conditions)) ? t.conditions : [];
+      if (conds.length === 0) {
+        t.conditions = [{ showWhen: 'always', referenceFieldId: null, value: null }];
+      } else {
+        t.conditions[0].showWhen = t.conditions[0].showWhen ?? 'always';
+        delete t.conditions[0].operatorWithPrev;
+      }
+
+      const first = t.conditions[0];
+      t.showWhen = first.showWhen ?? 'always';
+      t.referenceFieldId = first.referenceFieldId ?? null;
+      t.visibilityValue = (first.value === undefined ? null : first.value);
+    };
+
     const walkSections = (sections: any[]) => {
       for (const s of (sections || [])) {
+        // normalize section/subsection conditional rules as well
+        normalizeTarget(s);
         walkFields(s.fields || []);
         const subs = s.subsections;
         if (Array.isArray(subs)) walkSections(subs);

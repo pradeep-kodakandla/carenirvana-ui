@@ -10,12 +10,14 @@ import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown
 import { CrudService } from 'src/app/service/crud.service';
 import { AuthNumberService } from 'src/app/service/auth-number-gen.service';
 
-type ShowWhen = 'always' | 'fieldEquals' | 'fieldNotEquals';
+type ShowWhen = 'always' | 'fieldEquals' | 'fieldNotEquals' | 'fieldhasvalue';
 
 interface TplCondition {
   referenceFieldId: string | null;
   showWhen: ShowWhen;
   value: any;
+  /** Optional: how this condition combines with the previous one (default AND) */
+  operatorWithPrev?: 'AND' | 'OR';
 }
 
 interface TplField {
@@ -139,7 +141,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     this.form = this.fb.group({});
 
     // Build template-driven form
-    this.authService.getTemplate('AG', 1)
+    this.authService.getTemplate('AG', 3)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (res: any) => {
@@ -596,28 +598,159 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
   }
 
   private evalShowWhen(showWhen: ShowWhen, conditions: TplCondition[]): boolean {
-    if (showWhen === 'always') return true;
+    // Backward compatible:
+    // - If no conditions exist => always visible
+    // - If conditions exist => evaluate them (even if showWhen is missing/always)
     if (!conditions || conditions.length === 0) return true;
 
-    return conditions.every(c => {
-      const resolved = this.resolveControlName(c?.referenceFieldId);
-      if (!resolved) return true;
+    // Support AND/OR chaining (defaults to AND)
+    let result: boolean | null = null;
 
-      const ctrl = this.form.get(resolved);
-      const refVal = ctrl?.value;
+    for (const c of conditions) {
+      const condResult = this.evalSingleCondition(c);
 
-      // If the referenced control isn't in the form yet, don't accidentally show things.
-      if (!ctrl) return false;
+      if (result === null) {
+        result = condResult;
+        continue;
+      }
 
-      // Normalize values for comparison
-      const left = refVal === undefined || refVal === null ? null : String(refVal);
-      const right = c.value === undefined || c.value === null ? null : String(c.value);
+      const op = ((c as any).operatorWithPrev ?? 'AND') as 'AND' | 'OR';
+      result = op === 'OR' ? (result || condResult) : (result && condResult);
+    }
 
-      if (c.showWhen === 'fieldEquals') return left === right;
-      if (c.showWhen === 'fieldNotEquals') return left !== right;
+    return result ?? true;
+  }
 
-      return true;
-    });
+  private evalSingleCondition(c: TplCondition): boolean {
+
+    if (!c) return true;
+    if ((c.showWhen ?? 'always') === 'always') return true;
+    console.log('Evaluating condition:', c);
+    const resolved = this.resolveControlName(c.referenceFieldId);
+    console.log('Resolved reference field id', c.referenceFieldId, 'to control name:', resolved);
+    if (!resolved) return true;
+
+    const ctrl = this.form.get(resolved);
+    if (!ctrl) return false; // referenced control not present in this step
+
+    const refValRaw = ctrl.value;
+    const refVal = this.unwrapValue(refValRaw);
+
+    if (c.showWhen === 'fieldhasvalue') {
+      console.log('Evaluating fieldhasvalue for', resolved, 'value:', refVal);
+      return this.hasValue(refVal);
+    }
+
+    const left = this.toComparable(refVal, c.value);
+    const right = this.toComparable(c.value, refVal);
+
+    // Arrays: treat equals as "contains"
+    if (Array.isArray(refVal)) {
+      const arr = refVal.map(v => this.toComparable(v, c.value));
+      if (c.showWhen === 'fieldEquals') return arr.some(v => v === right);
+      if (c.showWhen === 'fieldNotEquals') return !arr.some(v => v === right);
+    }
+
+    if (c.showWhen === 'fieldEquals') return left === right;
+    if (c.showWhen === 'fieldNotEquals') return left !== right;
+
+    return true;
+  }
+
+  private unwrapValue(val: any): any {
+    // ui-smart-dropdown may store { value, label } or an option object
+    if (val && typeof val === 'object') {
+      if (val instanceof Date) return val;
+      if ('value' in val) return (val as any).value;
+      if ('id' in val && (typeof (val as any).id === 'string' || typeof (val as any).id === 'number')) return (val as any).id;
+    }
+    return val;
+  }
+
+  private hasValue(val: any): boolean {
+    if (val === null || val === undefined) return false;
+    if (typeof val === 'string') return val.trim().length > 0;
+    if (Array.isArray(val)) return val.length > 0;
+    return true;
+  }
+
+  private toComparable(val: any, otherSide?: any): string | number | boolean | null {
+    if (val === undefined || val === null) return null;
+
+    const v = this.unwrapValue(val);
+
+    // Dates: normalize to match how the condition value is stored (date or datetime-local string)
+    if (v instanceof Date) {
+      const hint = typeof otherSide === 'string' ? otherSide : '';
+      if (this.looksLikeIsoDateOnly(hint)) return this.formatLocalDate(v);
+      if (this.looksLikeIsoDateTime(hint)) return this.formatLocalDateTime(v);
+      return v.toISOString(); // fallback
+    }
+
+    // If the value is a date/datetime string, normalize whitespace
+    if (typeof v === 'string') {
+      const s = v.trim();
+
+
+      // ISO date/datetime strings: normalize to match the condition value format
+      const hint = typeof otherSide === 'string' ? otherSide.trim() : '';
+      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)) {
+        // If condition is date-only, compare only date part
+        if (this.looksLikeIsoDateOnly(hint)) return s.slice(0, 10);
+        // Compare yyyy-mm-ddThh:mm
+        return s.slice(0, 16);
+      }
+      if (this.looksLikeIsoDateOnly(s)) {
+        return s;
+      }
+
+      // numeric-like strings: compare as numbers when both sides are numeric-like
+      const other = (typeof otherSide === 'string' || typeof otherSide === 'number') ? String(otherSide).trim() : '';
+      if (this.isNumericLike(s) && this.isNumericLike(other)) {
+        const n1 = Number(s);
+        const n2 = Number(other);
+        if (!Number.isNaN(n1) && !Number.isNaN(n2)) return n1; // caller will convert other too
+      }
+
+      return s.toLowerCase();
+    }
+
+    if (typeof v === 'number') return v;
+    if (typeof v === 'boolean') return v;
+
+    // Fallback for objects
+    try {
+      return String(v).trim().toLowerCase();
+    } catch {
+      return null;
+    }
+  }
+
+  private looksLikeIsoDateOnly(s: string): boolean {
+    return /^\d{4}-\d{2}-\d{2}$/.test((s ?? '').trim());
+  }
+
+  private looksLikeIsoDateTime(s: string): boolean {
+    // yyyy-mm-ddThh:mm (allow seconds)
+    return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test((s ?? '').trim());
+  }
+
+  private formatLocalDate(d: Date): string {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  private formatLocalDateTime(d: Date): string {
+    const date = this.formatLocalDate(d);
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${date}T${hh}:${mi}`;
+  }
+
+  private isNumericLike(s: string): boolean {
+    return /^-?\d+(\.\d+)?$/.test((s ?? '').trim());
   }
   // ---------------- TrackBy helpers ----------------
 

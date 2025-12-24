@@ -125,11 +125,11 @@
         <!-- Default Value + Date Only (for datetime-local) -->
         <div *ngIf="selectedField.type === 'datetime-local'" class="mb-3 form-outline">
           <!--<label class="form-label">Default Value (D, D+1, D+2)</label>
-    <input type="text"
-           class="form-control"
-           [(ngModel)]="selectedField.defaultValue"
-           (change)="emitUpdate()"
-           placeholder="Enter default (e.g., D, D+1)">-->
+          <input type="text"
+                 class="form-control"
+                 [(ngModel)]="selectedField.defaultValue"
+                 (change)="emitUpdate()"
+                 placeholder="Enter default (e.g., D, D+1)">-->
 
           <div class="form-outline position-relative">
             <label class="floating-label">
@@ -146,26 +146,26 @@
 
 
         <!--<div *ngIf="selectedField.type === 'datetime-local'" class="mb-3 form-outline">
-  <label class="form-label">Default Value (D, D+1, D-1)</label>-->
+        <label class="form-label">Default Value (D, D+1, D-1)</label>-->
         <!-- Smart DateTime picker -->
         <!--<app-uismartdatetime class="w-100"
-                       [mode]="'datetime'"
-                       [showTimezone]="true"
-                       [enableDShortcuts]="true"
-                       [commit]="'blur'"
-                       [timezone]="selectedField.defaultTimeZone || 'America/New_York'"
-                       (utcValueChange)="onDefaultDateTimeChanged($event)"
-                       (blur)="emitUpdate()">
-  </app-uismartdatetime>-->
+                             [mode]="'datetime'"
+                             [showTimezone]="true"
+                             [enableDShortcuts]="true"
+                             [commit]="'blur'"
+                             [timezone]="selectedField.defaultTimeZone || 'America/New_York'"
+                             (utcValueChange)="onDefaultDateTimeChanged($event)"
+                             (blur)="emitUpdate()">
+        </app-uismartdatetime>-->
         <!-- Optional: keep the D shortcut text field so user can type D+1 explicitly -->
         <!--<div class="mt-2">
-      <input type="text"
-             class="form-control"
-             [(ngModel)]="selectedField.defaultValue"
-             (blur)="emitUpdate()"
-             placeholder="Type shortcut e.g. D, D+1, D-1">
-    </div>
-  </div>-->
+            <input type="text"
+                   class="form-control"
+                   [(ngModel)]="selectedField.defaultValue"
+                   (blur)="emitUpdate()"
+                   placeholder="Type shortcut e.g. D, D+1, D-1">
+          </div>
+        </div>-->
 
 
         <div *ngIf="selectedField.type === 'datetime-local'" class="form-check mb-3">
@@ -223,7 +223,7 @@
         <div *ngIf="selectedField.type === 'select' && selectedField.datasource" class="mb-3">
           <label class="form-label">Select Options (with default selection)</label>
           <!--Custom Multi-Select with Checkboxes
-    Dynamic Options with Radio Buttons for Default Selection-->
+          Dynamic Options with Radio Buttons for Default Selection-->
           <div class="border rounded p-2" style="max-height: 250px; overflow-y: auto;">
             <!--Select All Option-->
             <div class="form-check">
@@ -318,7 +318,7 @@
                                      [(ngModel)]="cond.operatorWithPrev"
                                      [options]="conditionOperatorOptions"
                                      placeholder=""
-                                     (valueChange)="onConditionChanged()">
+                                     (valueChange)="onConditionValueChanged(cond, $event)">
                   </ui-smart-dropdown>
                 </div>
 
@@ -333,7 +333,7 @@
                                      [(ngModel)]="cond.showWhen"
                                      [options]="showWhenOptions"
                                      placeholder=""
-                                     (valueChange)="onConditionChanged()">
+                                     (valueChange)="onConditionValueChanged(cond, $event)">
                   </ui-smart-dropdown>
                 </div>
 
@@ -344,7 +344,7 @@
                                      [options]="referenceFieldOptions"
                                      placeholder="Select field"
                                      [disabled]="cond.showWhen === 'always'"
-                                     (valueChange)="onReferenceFieldChanged(cond)">
+                                     (valueChange)="onReferenceFieldChanged(cond, $event)">
                   </ui-smart-dropdown>
                 </div>
 
@@ -359,7 +359,7 @@
                                        [options]="getConditionValueOptions(cond)"
                                        placeholder="Select value"
                                        [disabled]="cond.showWhen === 'always' || !cond.referenceFieldId"
-                                       (valueChange)="onConditionChanged()">
+                                       (valueChange)="onConditionValueChanged(cond, $event)">
                     </ui-smart-dropdown>
 
                     <!-- DATETIME -->
@@ -368,7 +368,7 @@
                       <input type="datetime-local"
                              class="form-control"
                              [(ngModel)]="cond.value"
-                             (change)="onConditionChanged()"
+                             (ngModelChange)="onConditionChanged()"
                              [disabled]="cond.showWhen === 'always' || !cond.referenceFieldId"
                              placeholder="Value">
                     </ng-container>
@@ -379,7 +379,7 @@
                       <input type="date"
                              class="form-control"
                              [(ngModel)]="cond.value"
-                             (change)="onConditionChanged()"
+                             (ngModelChange)="onConditionChanged()"
                              [disabled]="cond.showWhen === 'always' || !cond.referenceFieldId">
                     </ng-container>
 
@@ -389,7 +389,7 @@
                       <input type="number"
                              class="form-control"
                              [(ngModel)]="cond.value"
-                             (change)="onConditionChanged()"
+                             (ngModelChange)="onConditionChanged()"
                              [disabled]="cond.showWhen === 'always' || !cond.referenceFieldId"
                              placeholder="Value">
                     </ng-container>
@@ -400,7 +400,7 @@
                       <input type="text"
                              class="form-control"
                              [(ngModel)]="cond.value"
-                             (change)="onConditionChanged()"
+                             (ngModelChange)="onConditionChanged()"
                              [disabled]="cond.showWhen === 'always' || !cond.referenceFieldId"
                              placeholder="Value">
                     </ng-container>
