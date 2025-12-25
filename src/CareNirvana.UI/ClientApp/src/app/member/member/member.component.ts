@@ -2,6 +2,7 @@ import { Component, Input, ViewEncapsulation } from '@angular/core';
 import { RolepermissionService, CfgRole } from 'src/app/service/rolepermission.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MemberService } from 'src/app/service/shared-member.service';
+import { CasewizardshellComponent } from 'src/app/member/AG/components/casewizardshell/casewizardshell.component';
 
 interface DashboardWidget {
   key: string;

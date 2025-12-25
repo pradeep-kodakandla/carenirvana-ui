@@ -36,6 +36,9 @@ import { CasecloseComponent } from 'src/app/member/AG/steps/caseclose/caseclose.
     CasewizardRoutingModule,
     SharedUiModule
   ],
+  exports: [
+    CasewizardshellComponent // ✅ this is the key
+  ]
 })
 export class CaseWizardModule { }
 

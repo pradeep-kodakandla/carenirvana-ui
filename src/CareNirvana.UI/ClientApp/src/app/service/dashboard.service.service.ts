@@ -106,9 +106,37 @@ export interface MemberSummary {
   zipCode?: string | null;
 }
 
+export interface AgCaseGridRow {
+  caseNumber: string;
+  memberDetailId: number;
+  caseType: string;
+  caseTypeText: string;
+
+  memberName: string;
+  memberId: string;
+
+  createdByUserName: string;
+  createdBy: number;
+  createdOn: string;       // ISO string from API
+
+  caseLevelId: number;
+  levelId: number;
+
+  casePriority: string;
+  casePriorityText: string;
+
+  receivedDateTime: string | null; // ISO string or null
+  caseStatusId: string;
+  caseStatusText: string;
+
+  lastDetailOn: string | null;     // ISO string or null
+}
+
+
 @Injectable({
   providedIn: 'root'
 })
+
 export class DashboardServiceService {
 
   private apiUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/dashboard';
@@ -205,5 +233,9 @@ export class DashboardServiceService {
     };
 
     return this.http.post<MemberSummary[]>(`${this.apiUrl}/search`, payload);
+  }
+
+  getAgCasesByUser(userId: number): Observable<AgCaseGridRow[]> {
+    return this.http.get<AgCaseGridRow[]>(`${this.apiUrl}/agcases/${userId}`);
   }
 }

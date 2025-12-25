@@ -1,37 +1,131 @@
 <mat-menu #menu="matMenu">
-  <button mat-menu-item>
-    <span>Activity</span>
-  </button>
-  <button mat-menu-item disabled>
-    <span>Run Assessment</span>
-  </button>
-  <button mat-menu-item>
-    <!--<mat-icon>notifications_off</mat-icon>-->
-    <span>Messages</span>
-  </button>
-  <button mat-menu-item>
-    <span>Add Notes</span>
-  </button>
-  <button mat-menu-item disabled>
-    <span>Send Letter</span>
-  </button>
-  <button mat-menu-item>
-    <!--<mat-icon>notifications_off</mat-icon>-->
-    <span>Unassign</span>
-  </button>
-  <button mat-menu-item>
-    <!--<mat-icon>notifications_off</mat-icon>-->
-    <span>Summary</span>
-  </button>
+  <button mat-menu-item><span>Add Activity</span></button>
+  <button mat-menu-item><span>Messages</span></button>
+  <button mat-menu-item><span>Add Notes</span></button>
+  <button mat-menu-item><span>Unassign</span></button>
+  <button mat-menu-item><span>Summary</span></button>
 </mat-menu>
 
 <mat-drawer-container class="sidenav-container" style="padding:5px;" autosize>
   <mat-drawer-content mode="side" opened>
 
-    <div class="search-section">
-      <input type="text" placeholder="🔍 Search..." (input)="applyFilter($event)" class="search-input" #input />
+    <!-- Top bar: search + filter toggle -->
+    <div class="top-bar" style="display:flex;align-items:center;gap:10px;margin:8px 0;">
+      <div class="search-section" style="display:flex;align-items:center;gap:8px;flex:1;">
+        <input type="text"
+               placeholder="🔍 Search complaints…"
+               (input)="onQuickSearch($event)"
+               class="search-input"
+               style="flex:1; padding:10px 12px; border:1px solid #e1e5ea; border-radius:10px; outline:none;" />
+
+        <button class="filter-btn"
+                type="button"
+                (click)="toggleFilters()"
+                title="Filters">
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 5h18v2l-7 7v5l-4 2v-7L3 7z"></path>
+          </svg>
+        </button>
+
+        <button matTooltip="Click to add a new complaint" class="btn btn-primary ms-2">
+          Add Complaint
+        </button>
+      </div>
+
+      <div class="filters-col">
+        <div class="chip-list">
+          <button type="button" class="pill green" [class.active]="isDueSelected('TODAY')" (click)="setDueChip('TODAY')">
+            <span class="dot green"></span> Due Today
+            <span class="count">{{ dueTodayCount }}</span>
+          </button>
+
+          <button type="button" class="pill red" [class.active]="isDueSelected('OVERDUE')" (click)="setDueChip('OVERDUE')">
+            <span class="dot red"></span> Over Due
+            <span class="count">{{ overDueCount }}</span>
+          </button>
+
+          <button type="button" class="pill blue" [class.active]="isDueSelected('FUTURE')" (click)="setDueChip('FUTURE')">
+            <span class="dot blue"></span> Due in Future
+            <span class="count">{{ dueFutureCount }}</span>
+          </button>
+        </div>
+      </div>
+
     </div>
 
+    <!-- Inline Filters Drawer -->
+    <section class="filters-wrapper" *ngIf="showFilters" style="margin:8px 0;">
+      <form [formGroup]="filtersForm" class="filters-panel"
+            style="border:1px solid #e1e5ea;border-radius:12px;padding:12px;background:#fff;">
+        <div class="filters-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <h3 style="margin:0;font-weight:600;">Filters</h3>
+          <div style="display:flex;gap:8px;">
+            <button type="button" (click)="resetFilters()" class="reset-btn"
+                    style="border:1px solid #e1e5ea;border-radius:10px;padding:6px 10px;background:#fff;cursor:pointer;">
+              Reset
+            </button>
+            <button type="button" (click)="applyAdvancedFilters()" class="apply-btn"
+                    style="border:0;border-radius:10px;padding:6px 12px;background:#1b72e8;color:#fff;cursor:pointer;">
+              Apply
+            </button>
+            <button type="button" (click)="toggleFilters()" class="close-btn"
+                    style="border:0;border-radius:10px;padding:6px 12px;background:#6b7280;color:#fff;cursor:pointer;">
+              Close
+            </button>
+          </div>
+        </div>
+
+        <div class="filters-grid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;">
+          <mat-form-field appearance="outline">
+            <mat-label>Case #</mat-label>
+            <input matInput formControlName="caseNumber" placeholder="e.g., 1000123">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Case Type</mat-label>
+            <input matInput formControlName="caseType" placeholder="e.g., Appeal">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Priority</mat-label>
+            <input matInput formControlName="casePriority" placeholder="e.g., High">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Status</mat-label>
+            <input matInput formControlName="caseStatus" placeholder="e.g., In Progress">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Received From</mat-label>
+            <input matInput [matDatepicker]="rcFrom" formControlName="receivedFrom">
+            <mat-datepicker-toggle matSuffix [for]="rcFrom"></mat-datepicker-toggle>
+            <mat-datepicker #rcFrom></mat-datepicker>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Received To</mat-label>
+            <input matInput [matDatepicker]="rcTo" formControlName="receivedTo">
+            <mat-datepicker-toggle matSuffix [for]="rcTo"></mat-datepicker-toggle>
+            <mat-datepicker #rcTo></mat-datepicker>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Created From</mat-label>
+            <input matInput [matDatepicker]="crFrom" formControlName="createdFrom">
+            <mat-datepicker-toggle matSuffix [for]="crFrom"></mat-datepicker-toggle>
+            <mat-datepicker #crFrom></mat-datepicker>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Created To</mat-label>
+            <input matInput [matDatepicker]="crTo" formControlName="createdTo">
+            <mat-datepicker-toggle matSuffix [for]="crTo"></mat-datepicker-toggle>
+            <mat-datepicker #crTo></mat-datepicker>
+          </mat-form-field>
+        </div>
+      </form>
+    </section>
 
     <mat-drawer-container class="sidenav-container" autosize>
       <mat-drawer-content mode="side" opened>
@@ -40,106 +134,103 @@
                  multiTemplateDataRows
                  class="mat-elevation-z1 full-width-table pro-table mng-table">
 
-            <ng-container matColumnDef="enrollmentStatus">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Module  </th>
+            <!-- Actions -->
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef></th>
               <td mat-cell *matCellDef="let row">
-                <div class="status-cell">
-                  <button mat-icon-button [matMenuTriggerFor]="menu">
-                    <mat-icon>list</mat-icon>
-                  </button>
-                  CM
-                </div>
-
+                <button mat-icon-button [matMenuTriggerFor]="menu">
+                  <mat-icon>list</mat-icon>
+                </button>
               </td>
             </ng-container>
 
+            <!-- Member -->
             <ng-container matColumnDef="memberId">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Member ID </th>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Member</th>
               <td mat-cell *matCellDef="let row">
-                <div class="example-element-weight">
-                  <a mat-button (click)="goToPage(row.memberId)">{{row.memberId}}</a>
+                <div class="name-cell">
+                  <div class="sub-name">
+                    <a href="#"
+                       (click)="onMemberClick(row.memberId || '', row.memberName || '', row.memberDetailId); $event.preventDefault()">
+                      {{ row.memberName || '-' }}
+                    </a>
+                  </div>
+                  <div class="sub-id">ID: {{ row.memberId || '-' }}</div>
                 </div>
               </td>
             </ng-container>
 
-            <ng-container matColumnDef="firstName">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> First Name </th>
-              <td mat-cell *matCellDef="let row"> {{row.firstName}} </td>
+            <!-- Case Number -->
+            <ng-container matColumnDef="caseNumber">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Case #</th>
+              <td mat-cell *matCellDef="let row">
+                <a href="#"
+                   (click)="onCaseClick(row.caseNumber || '', row.memberId || '', row.memberDetailId); $event.preventDefault()">
+                  {{ row.caseNumber || '-' }}
+                </a>
+              </td>
             </ng-container>
 
-            <ng-container matColumnDef="lastName">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Last Name </th>
-              <td mat-cell *matCellDef="let row"> {{row.lastName}} </td>
+            <!-- Case Type -->
+            <ng-container matColumnDef="caseType">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Case Type</th>
+              <td mat-cell *matCellDef="let row">{{ row.caseTypeText || row.caseType || '-' }}</td>
             </ng-container>
 
-            <ng-container matColumnDef="DOB">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Refer Date </th>
-              <td mat-cell *matCellDef="let row"> {{row.DOB}} </td>
+            <!-- Received Date -->
+            <ng-container matColumnDef="receivedDateTime">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Received</th>
+              <td mat-cell *matCellDef="let row">
+                {{ row.receivedDateTime ? (row.receivedDateTime | date:'MM/dd/yyyy HH:mm:ss') : '-' }}
+              </td>
             </ng-container>
 
-            <ng-container matColumnDef="risk">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Refer By </th>
-              <td mat-cell *matCellDef="let row"> {{row.risk}} </td>
+            <!-- Priority -->
+            <ng-container matColumnDef="priority">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Priority</th>
+              <td mat-cell *matCellDef="let row">{{ row.casePriorityText || row.casePriority || '-' }}</td>
             </ng-container>
 
-            <ng-container matColumnDef="nextContact">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Refer To </th>
-              <td mat-cell *matCellDef="let row"> {{row.nextContact}} </td>
+            <!-- Status -->
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+              <td mat-cell *matCellDef="let row">{{ row.caseStatusText || row.caseStatusId || '-' }}</td>
             </ng-container>
 
-            <ng-container matColumnDef="assignedDate">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Activity Type </th>
-              <td mat-cell *matCellDef="let row"> {{row.assignedDate}} </td>
+            <!-- Created On -->
+            <ng-container matColumnDef="createdOn">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Created</th>
+              <td mat-cell *matCellDef="let row">
+                {{ row.createdOn ? (row.createdOn | date:'MM/dd/yyyy HH:mm:ss') : '-' }}
+              </td>
             </ng-container>
 
-            <ng-container matColumnDef="programName">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Scheduled Date </th>
-              <td mat-cell *matCellDef="let row"> {{row.programName}} </td>
-            </ng-container>
-
-            <ng-container matColumnDef="description">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> Status </th>
-              <td mat-cell *matCellDef="let row"> {{row.description}} </td>
-            </ng-container>
-
-            <ng-container matColumnDef="WQ">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header> WB </th>
-              <td mat-cell *matCellDef="let row"><a mat-button>{{row.WQ}}</a>  </td>
-            </ng-container>
-
-            <!-- Expanded Content Column - The detail row is made up of this one column that spans across all columns -->
-
+            <!-- Expanded placeholder -->
             <ng-container matColumnDef="expandedDetail">
               <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns.length">
+                <!-- add expanded info if needed -->
               </td>
             </ng-container>
 
             <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+            <tr mat-row
+                *matRowDef="let row; columns: displayedColumns;"
                 class="example-element-row"
                 [class.example-expanded-row]="expandedElement === row"
                 (click)="expandedElement = expandedElement === row ? null : row">
             </tr>
             <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="example-detail-row"></tr>
-
-            <!--<tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;" (click)="expandedElement = expandedElement === row ? null : row"></tr>-->
-            <!-- Row shown when there is no matching data. -->
-            <tr class="mat-row" *matNoDataRow>
-              <td class="mat-cell" colspan="9">No data</td>
-            </tr>
             <tr class="mat-row" *matNoDataRow>
               <td class="mat-cell" [attr.colspan]="displayedColumns.length">No data</td>
             </tr>
           </table>
-          <mat-paginator [pageSizeOptions]="[10, 25, 100]" aria-label="Select page of users"></mat-paginator>
+
+          <mat-paginator [pageSizeOptions]="[10, 25, 100]" aria-label="Select page"></mat-paginator>
         </div>
       </mat-drawer-content>
-      <mat-drawer #drawer class="sidenav" style="width:22%;height:50%;align-content:center; " position="end" mode="side" opened="false">
 
+      <mat-drawer #drawer class="sidenav" style="width:22%;height:50%;align-content:center;" position="end" mode="side" opened="false">
       </mat-drawer>
     </mat-drawer-container>
   </mat-drawer-content>
-  <mat-drawer #mainDrawer class="sidenav" style="width:15%;" mode="side" opened="false">
-  </mat-drawer>
 </mat-drawer-container>

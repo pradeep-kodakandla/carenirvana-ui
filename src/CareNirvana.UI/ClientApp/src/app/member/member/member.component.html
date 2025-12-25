@@ -33,6 +33,9 @@
         </div>
       </div>
       <!---->
+      <div *ngIf="tab.name === 'Complaints'">
+        <app-casewizardshell></app-casewizardshell>
+      </div>
 
       <div *ngIf="tab.name === 'Member Journey'">
         <app-memberjourney></app-memberjourney>
@@ -41,7 +44,7 @@
         <app-member-summaryai></app-member-summaryai>
       </div>
       <!-- 🌟 Child Tabs and Content -->
-      <ng-container *ngIf="tab.name !== 'Authorization' && tab.name !== 'Member Journey' && tab.name !== 'Summarize AI'">
+      <ng-container *ngIf="tab.name !== 'Authorization' && tab.name !== 'Member Journey' && tab.name !== 'Summarize AI' && tab.name !== 'Complaints'">
 
         <!-- Child Tab Headers -->
         <ul class="child-tab-header nav nav-tabs mt-2" role="tablist" *ngIf="tab.pages.length > 0">

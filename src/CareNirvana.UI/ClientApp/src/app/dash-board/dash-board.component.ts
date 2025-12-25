@@ -166,7 +166,7 @@ export class DashBoardComponent {
         this.loadComponent(MyactivitiesComponent);
         break;
       case 'assignedComplaints': {
-        this.loadComponent(CasewizardshellComponent);
+        this.loadComponent(AssignedcomplaintsComponent);// CasewizardshellComponent);
         break;
       }
       case 'faxes':

@@ -1,90 +1,378 @@
-import { Component, ViewChild } from '@angular/core';
-import { Router } from '@angular/router';
+import { AfterViewInit, Component, EventEmitter, OnInit, Output, ViewChild } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { FormBuilder, FormGroup } from '@angular/forms';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
-import { MatMenuTrigger } from '@angular/material/menu';
+import { Observable, of } from 'rxjs';
 
-export interface UserData {
-  enrollmentStatus: 'Active' | 'Inactive' | 'Soon Ending' | string;
-  memberId: number | string;
-  firstName: string;
-  lastName: string;
-  DOB: string | Date;
-  risk?: string;
-  nextContact?: string | Date | null;
-  assignedDate?: string | Date | null;
-  programName?: string | null;
-  description?: string | null;
-  WQ?: number | string | null;
-  // Add any extra fields your template uses:
-  [key: string]: any;
+import { DashboardServiceService } from 'src/app/service/dashboard.service.service';
+import { HeaderService } from 'src/app/service/header.service';
+
+/**
+ * Matches the API shape returned by your AG case query.
+ * If you already have this model elsewhere, replace this interface import accordingly.
+ */
+export interface AgCaseGridRow {
+  caseNumber?: string | null;
+  memberDetailId?: number | string | null;
+
+  caseType?: string | null;
+  caseTypeText?: string | null;
+
+  memberName?: string | null;
+  memberId?: string | null;
+
+  createdByUserName?: string | null;
+  createdBy?: number | string | null;
+  createdOn?: string | Date | null;
+
+  caseLevelId?: number | null;
+  levelId?: number | null;
+
+  casePriority?: string | null;
+  casePriorityText?: string | null;
+
+  receivedDateTime?: string | Date | null;
+
+  caseStatusId?: string | null;
+  caseStatusText?: string | null;
+
+  lastDetailOn?: string | Date | null;
 }
 
 @Component({
   selector: 'app-assignedcomplaints',
   templateUrl: './assignedcomplaints.component.html',
-  styleUrl: './assignedcomplaints.component.css'
+  styleUrls: ['./assignedcomplaints.component.css']
 })
-export class AssignedcomplaintsComponent {
-
-  selectedDiv: number | null = 1; // Track the selected div
-
-  // Method to select a div and clear others
-  selectDiv(index: number) {
-    this.selectedDiv = index; // Set the selected div index
-  }
-  /*Div Selection Style change logic*/
-  displayedColumns: string[] = ['enrollmentStatus', 'memberId', 'firstName', 'lastName', 'DOB', 'risk', 'nextContact', 'assignedDate', 'programName', 'description', 'WQ'];
-  columnsToDisplayWithExpand = [...this.displayedColumns, 'expand'];
-
-
-  dataSource: MatTableDataSource<UserData>;
-  expandedElement!: UserData | null;
-
-
+export class AssignedcomplaintsComponent implements OnInit, AfterViewInit {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
-  loadPage(page: string) {
-    // Use Angular Router to navigate based on the page selection
-    // Assuming router has been injected in constructor
-    this.router.navigate([page]);
+  @Output() addClicked = new EventEmitter<string>();
+
+  displayedColumns: string[] = [
+    'actions',
+    'memberId',
+    'caseNumber',
+    'caseType',
+    'receivedDateTime',
+    'priority',
+    'status',
+    'createdOn'
+  ];
+
+  dataSource = new MatTableDataSource<AgCaseGridRow>([]);
+  rawData: AgCaseGridRow[] = [];
+  filteredBase: AgCaseGridRow[] = [];
+
+  // quick search + filters
+  quickSearchTerm = '';
+  showFilters = false;
+
+  /**
+   * Due chips (multi-select)
+   * NOTE: since we currently only have receivedDateTime available in the grid,
+   * we treat receivedDateTime as the "due date" for these chips.
+   */
+  selectedDue = new Set<'TODAY' | 'OVERDUE' | 'FUTURE'>();
+
+  dueTodayCount = 0;
+  overDueCount = 0;
+  dueFutureCount = 0;
+
+  filtersForm!: FormGroup;
+
+  expandedElement: AgCaseGridRow | null = null;
+
+  constructor(
+    private fb: FormBuilder,
+    private router: Router,
+    private dashboardService: DashboardServiceService,
+    private headerService: HeaderService,
+    private route: ActivatedRoute
+  ) { }
+
+  ngOnInit(): void {
+    this.filtersForm = this.fb.group({
+      caseNumber: [''],
+      caseType: [''],
+      casePriority: [''],
+      caseStatus: [''],
+      receivedFrom: [null],
+      receivedTo: [null],
+      createdFrom: [null],
+      createdTo: [null],
+    });
+
+    this.getComplaintDetails$().subscribe({
+      next: (rows) => {
+        this.rawData = rows ?? [];
+        this.recomputeAll();
+      },
+      error: () => {
+        this.rawData = [];
+        this.recomputeAll();
+      }
+    });
   }
 
-  constructor(private router: Router) {
-    // Create 100 users
-    const users = undefined;
-
-    // Assign the data to the data source for the table to render
-    this.dataSource = new MatTableDataSource(users);
-  }
-
-  ngAfterViewInit() {
+  ngAfterViewInit(): void {
     this.dataSource.paginator = this.paginator;
     this.dataSource.sort = this.sort;
+
+    // quick search across selected fields
+    this.dataSource.filterPredicate = (row: AgCaseGridRow, filter: string) => {
+      const q = (filter || '').trim().toLowerCase();
+      if (!q) return true;
+
+      const set = [
+        row?.caseNumber,
+        row?.caseTypeText ?? row?.caseType,
+        row?.caseStatusText ?? row?.caseStatusId,
+        row?.casePriorityText ?? row?.casePriority,
+        row?.memberName,
+        row?.memberId?.toString()
+      ];
+
+      return set.some(v => (v ?? '').toString().toLowerCase().includes(q));
+    };
   }
 
-  applyFilter(event: Event) {
-    const filterValue = (event.target as HTMLInputElement).value;
-    this.dataSource.filter = filterValue.trim().toLowerCase();
+  /** Replace with your real API call */
+  private getComplaintDetails$(): Observable<AgCaseGridRow[]> {
+    const userId = Number(sessionStorage.getItem('loggedInUserid') ?? 0);
+    console.log('Fetching AG cases for user ID:', userId);
 
-    if (this.dataSource.paginator) {
-      this.dataSource.paginator.firstPage();
+    if (!userId) return of([]);
+
+    // expects API: GET /api/dashboard/agcases/{userId}
+    return this.dashboardService.getAgCasesByUser(userId);
+  }
+
+  /** Top bar buttons */
+  toggleFilters(): void { this.showFilters = !this.showFilters; }
+
+  resetFilters(): void {
+    this.filtersForm.reset({
+      caseNumber: '',
+      caseType: '',
+      casePriority: '',
+      caseStatus: '',
+      receivedFrom: null,
+      receivedTo: null,
+      createdFrom: null,
+      createdTo: null,
+    });
+    this.recomputeAll();
+  }
+
+  applyAdvancedFilters(): void { this.recomputeAll(); }
+
+
+  /** ===== Due chips ===== */
+  setDueChip(kind: 'TODAY' | 'OVERDUE' | 'FUTURE'): void {
+    if (this.selectedDue.has(kind)) this.selectedDue.delete(kind);
+    else this.selectedDue.add(kind);
+
+    this.recomputeAll();
+  }
+
+  isDueSelected(kind: 'TODAY' | 'OVERDUE' | 'FUTURE'): boolean {
+    return this.selectedDue.has(kind);
+  }
+
+
+  /** Search box */
+  onQuickSearch(ev: Event): void {
+    const val = (ev.target as HTMLInputElement)?.value ?? '';
+    this.quickSearchTerm = val;
+    this.dataSource.filter = (val || '').trim().toLowerCase();
+    if (this.dataSource.paginator) this.dataSource.paginator.firstPage();
+  }
+
+
+
+  private computeDueCounts(): void {
+    const todayStart = this.startOfDay(new Date())!;
+    const todayEnd = this.endOfDay(new Date())!;
+
+    const counts = (this.rawData ?? []).reduce((acc, r) => {
+      const dt = this.toDate(r?.receivedDateTime);
+      if (!dt) return acc;
+
+      if (dt >= todayStart && dt <= todayEnd) acc.today++;
+      else if (dt < todayStart) acc.overdue++;
+      else acc.future++;
+
+      return acc;
+    }, { today: 0, overdue: 0, future: 0 });
+
+    this.dueTodayCount = counts.today;
+    this.overDueCount = counts.overdue;
+    this.dueFutureCount = counts.future;
+  }
+
+  /** Main recompute: advanced filters + feed table + reapply quick search */
+  private recomputeAll(): void {
+    let base = [...(this.rawData ?? [])];
+
+    // update chip counts (always from rawData)
+    this.computeDueCounts();
+
+    // filter by due chips (if any selected) using receivedDateTime as due date
+    if (this.selectedDue && this.selectedDue.size > 0) {
+      const todayStart = this.startOfDay(new Date())!;
+      const todayEnd = this.endOfDay(new Date())!;
+
+      base = base.filter(r => {
+        const dt = this.toDate(r?.receivedDateTime);
+        if (!dt) return false;
+
+        let match = false;
+        if (this.selectedDue.has('TODAY') && dt >= todayStart && dt <= todayEnd) match = true;
+        if (this.selectedDue.has('OVERDUE') && dt < todayStart) match = true;
+        if (this.selectedDue.has('FUTURE') && dt > todayEnd) match = true;
+
+        return match;
+      });
+    }
+
+
+    const f = this.filtersForm?.value ?? {};
+
+    // Case #
+    if (f.caseNumber) {
+      const q = ('' + f.caseNumber).toLowerCase();
+      base = base.filter(r => (r?.caseNumber ?? '').toString().toLowerCase().includes(q));
+    }
+
+    // Case Type
+    if (f.caseType) {
+      const q = ('' + f.caseType).toLowerCase();
+      base = base.filter(r => ((r?.caseTypeText ?? r?.caseType) ?? '')
+        .toString().toLowerCase().includes(q));
+    }
+
+    // Priority
+    if (f.casePriority) {
+      const q = ('' + f.casePriority).toLowerCase();
+      base = base.filter(r => ((r?.casePriorityText ?? r?.casePriority) ?? '')
+        .toString().toLowerCase().includes(q));
+    }
+
+    // Status
+    if (f.caseStatus) {
+      const q = ('' + f.caseStatus).toLowerCase();
+      base = base.filter(r => ((r?.caseStatusText ?? r?.caseStatusId) ?? '')
+        .toString().toLowerCase().includes(q));
+    }
+
+    // Received date range
+    if (f.receivedFrom || f.receivedTo) {
+      const from = f.receivedFrom ? this.startOfDay(this.toDate(f.receivedFrom)) : null;
+      const to = f.receivedTo ? this.endOfDay(this.toDate(f.receivedTo)) : null;
+      base = base.filter(r => {
+        const dt = this.toDate(r?.receivedDateTime);
+        if (!dt) return false;
+        if (from && dt < from) return false;
+        if (to && dt > to) return false;
+        return true;
+      });
+    }
+
+    // CreatedOn range
+    if (f.createdFrom || f.createdTo) {
+      const from = f.createdFrom ? this.startOfDay(this.toDate(f.createdFrom)) : null;
+      const to = f.createdTo ? this.endOfDay(this.toDate(f.createdTo)) : null;
+      base = base.filter(r => {
+        const dt = this.toDate(r?.createdOn);
+        if (!dt) return false;
+        if (from && dt < from) return false;
+        if (to && dt > to) return false;
+        return true;
+      });
+    }
+
+    this.filteredBase = base;
+    this.dataSource.data = base;
+
+    // re-apply quick search term
+    this.dataSource.filter = (this.quickSearchTerm || '').trim().toLowerCase();
+    if (this.dataSource.paginator) this.dataSource.paginator.firstPage();
+  }
+
+  /** ===== Navigation handlers ===== */
+  onMemberClick(memberId: string, memberName: string, memberDetailsId: any): void {
+    const tabLabel = `Member: ${memberName}`;
+    const tabRoute = `/member-info/${memberId}`;
+
+    const existingTab = this.headerService.getTabs().find(tab => tab.route === tabRoute);
+
+    if (existingTab) {
+      this.headerService.selectTab(tabRoute);
+      const mdId = existingTab.memberDetailsId ?? null;
+      if (mdId) sessionStorage.setItem('selectedMemberDetailsId', mdId);
+      this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+        this.router.navigate([tabRoute]);
+      });
+    } else {
+      this.headerService.addTab(tabLabel, tabRoute, String(memberId));
+      if (memberDetailsId != null) sessionStorage.setItem('selectedMemberDetailsId', String(memberDetailsId));
+      this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+        this.router.navigate([tabRoute]);
+      });
     }
   }
 
-  goToPage(memberId: string) {
-    this.router.navigate(['/member-info', memberId]);
+  onCaseClick(caseNumber: string = '', memId: string = '', memberDetailsId: any = null): void {
+    this.addClicked.emit(caseNumber);
+
+    if (!caseNumber) return;
+
+    const memberId = memId ?? String(this.route.parent?.snapshot.paramMap.get('id') ?? '');
+
+    // TODO: adjust this route to your actual complaint/case details route
+    const tabRoute = `/member-info/${memberId}/ag-case/${caseNumber}`;
+    const tabLabel = `Case ${caseNumber}`;
+
+    const existingTab = this.headerService.getTabs().find(t => t.route === tabRoute);
+
+    if (existingTab) {
+      this.headerService.selectTab(tabRoute);
+      const mdId = existingTab.memberDetailsId ?? null;
+      if (mdId) sessionStorage.setItem('selectedMemberDetailsId', mdId);
+
+    } else {
+      this.headerService.addTab(tabLabel, tabRoute, String(memberId));
+      if (memberDetailsId != null) sessionStorage.setItem('selectedMemberDetailsId', String(memberDetailsId));
+    }
+
+    this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+      this.router.navigate([tabRoute]);
+    });
   }
 
-  /*Table Context Menu*/
-  @ViewChild(MatMenuTrigger)
-  contextMenu!: MatMenuTrigger;
+  /** ===== helpers ===== */
+  private toDate(val: any): Date | null {
+    if (!val) return null;
+    if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d;
+  }
 
-  contextMenuPosition = { x: '0px', y: '0px' };
+  private startOfDay(d: Date | null): Date | null {
+    if (!d) return null;
+    const x = new Date(d);
+    x.setHours(0, 0, 0, 0);
+    return x;
+  }
 
- 
-
+  private endOfDay(d: Date | null): Date | null {
+    if (!d) return null;
+    const x = new Date(d);
+    x.setHours(23, 59, 59, 999);
+    return x;
+  }
 }
-

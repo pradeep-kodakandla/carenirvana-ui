@@ -1,4 +1,6 @@
 import { Component, ViewChild, ViewContainerRef, ComponentFactoryResolver, ComponentRef, Type } from '@angular/core';
+import { NgModule } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { CaseUnsavedChangesAwareService } from '../../guards/services/caseunsavedchangesaware.service'; // adjust path
@@ -23,7 +25,7 @@ export interface CaseStep {
 }
 
 @Component({
-  selector: 'casewizardshell', // no hyphen
+  selector: 'app-casewizardshell', // no hyphen
   templateUrl: './casewizardshell.component.html',
   styleUrls: ['./casewizardshell.component.css'],
 })
