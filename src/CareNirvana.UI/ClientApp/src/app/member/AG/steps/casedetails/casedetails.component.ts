@@ -24,6 +24,7 @@ interface TplField {
   id: string;
   type: string;
   label: string;
+  displayName: string;
   order?: number;
   required?: boolean;
   requiredMsg?: string;
@@ -433,10 +434,9 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
           .slice()
           .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
           .map(sub => {
-            const key = sub.subsectionKey ?? sub.sectionName ?? 'sub';
+            const key = sub.displayName ?? sub.sectionName ?? 'sub';
             const title = key;
             const subPrefix = sectionPrefix + this.safe(key) + '_';
-
             const subFields: RenderField[] = (sub.fields ?? [])
               .slice()
               .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
@@ -625,9 +625,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
     if (!c) return true;
     if ((c.showWhen ?? 'always') === 'always') return true;
-    console.log('Evaluating condition:', c);
     const resolved = this.resolveControlName(c.referenceFieldId);
-    console.log('Resolved reference field id', c.referenceFieldId, 'to control name:', resolved);
     if (!resolved) return true;
 
     const ctrl = this.form.get(resolved);
@@ -637,7 +635,6 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     const refVal = this.unwrapValue(refValRaw);
 
     if (c.showWhen === 'fieldhasvalue') {
-      console.log('Evaluating fieldhasvalue for', resolved, 'value:', refVal);
       return this.hasValue(refVal);
     }
 

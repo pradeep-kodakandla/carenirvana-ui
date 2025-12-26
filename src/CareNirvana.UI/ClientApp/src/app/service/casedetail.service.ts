@@ -73,6 +73,32 @@ export interface AddLevelResponse {
   caseLevelNumber?: string;
 }
 
+export interface AgCaseGridRow {
+  caseNumber: string;
+  memberDetailId: number;
+  caseType: string;
+  caseTypeText: string;
+
+  memberName: string;
+  memberId: string;
+
+  createdByUserName: string;
+  createdBy: number;
+  createdOn: string;       // ISO string from API
+
+  caseLevelId: number;
+  levelId: number;
+
+  casePriority: string;
+  casePriorityText: string;
+
+  receivedDateTime: string | null; // ISO string or null
+  caseStatusId: string;
+  caseStatusText: string;
+
+  lastDetailOn: string | null;     // ISO string or null
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -151,5 +177,9 @@ export class CasedetailService {
       `${this.baseUrl}/ByMember/${memberDetailId}`,
       { params }
     );
+  }
+
+  getAgCasesByMember(memberId: number): Observable<AgCaseGridRow[]> {
+    return this.http.get<AgCaseGridRow[]>(`${this.baseUrl}/AgCasesByMember/${memberId}`);
   }
 }

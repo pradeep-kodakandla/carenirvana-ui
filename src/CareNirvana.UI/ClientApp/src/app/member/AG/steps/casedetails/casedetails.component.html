@@ -43,11 +43,11 @@
                     <input type="checkbox"
                            class="form-check-input"
                            [formControlName]="f.controlName" />
-                    <label class="form-check-label ff-checkbox-text">{{ f.label }}</label>
+                    <label class="form-check-label ff-checkbox-text">{{ f.displayName }}</label>
                   </div>
 
                   <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
-                    {{ f.requiredMsg || (f.label + ' is required') }}
+                    {{ f.requiredMsg || (f.displayName + ' is required') }}
                   </div>
                 </ng-container>
 
@@ -57,7 +57,7 @@
                        [class.ff-disabled]="ctrl.disabled"
                        [class.ff-invalid]="ctrl.touched && ctrl.invalid">
 
-                    <div class="ff-float-label">{{ f.label }}</div>
+                    <div class="ff-float-label">{{ f.displayName }}</div>
 
                     <div class="ff-body">
                       <ng-container [ngSwitch]="f.type">
@@ -138,11 +138,11 @@
                         <input type="checkbox"
                                class="form-check-input"
                                [formControlName]="f.controlName" />
-                        <label class="form-check-label ff-checkbox-text">{{ f.label }}</label>
+                        <label class="form-check-label ff-checkbox-text">{{ f.displayName }}</label>
                       </div>
 
                       <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
-                        {{ f.requiredMsg || (f.label + ' is required') }}
+                        {{ f.requiredMsg || (f.displayName + ' is required') }}
                       </div>
                     </ng-container>
 
@@ -152,7 +152,7 @@
                            [class.ff-disabled]="ctrl.disabled"
                            [class.ff-invalid]="ctrl.touched && ctrl.invalid">
 
-                        <div class="ff-float-label">{{ f.label }}</div>
+                        <div class="ff-float-label">{{ f.displayName }}</div>
 
                         <div class="ff-body">
                           <ng-container [ngSwitch]="f.type">
@@ -203,7 +203,7 @@
                       </div>
 
                       <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
-                        {{ f.requiredMsg || (f.label + ' is required') }}
+                        {{ f.requiredMsg || (f.displayName + ' is required') }}
                       </div>
                     </ng-template>
 

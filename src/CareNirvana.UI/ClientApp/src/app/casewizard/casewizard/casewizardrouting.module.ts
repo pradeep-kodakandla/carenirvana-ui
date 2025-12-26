@@ -17,16 +17,17 @@ import { casependingchangesGuard } from 'src/app/member/AG/guards/guards/casepen
 
 const routes: Routes = [
   {
-    path: 'case/:caseId',
+    path: ':caseId',
     component: CasewizardshellComponent,
     children: [
-      { path: 'details', component: CasedetailsComponent, canDeactivate: [CasedetailsComponent] },
-      { path: 'disposition', component: CasedispositionComponent, canDeactivate: [CasedispositionComponent] },
-      { path: 'mdReview', component: CasemdreviewComponent, canDeactivate: [CasemdreviewComponent] },
-      { path: 'activities', component: CaseactivitiesComponent, canDeactivate: [CaseactivitiesComponent] },
-      { path: 'notes', component: CasenotesComponent, canDeactivate: [CasenotesComponent] },
-      { path: 'documents', component: CasedocumentsComponent, canDeactivate: [CasedocumentsComponent] },
-      { path: 'close', component: CasecloseComponent, canDeactivate: [CasecloseComponent] },
+      { path: 'details', component: CasedetailsComponent, canDeactivate: [casependingchangesGuard] },
+      { path: 'disposition', component: CasedispositionComponent, canDeactivate: [casependingchangesGuard] },
+      { path: 'mdReview', component: CasemdreviewComponent, canDeactivate: [casependingchangesGuard] },
+      { path: 'activities', component: CaseactivitiesComponent, canDeactivate: [casependingchangesGuard] },
+      { path: 'notes', component: CasenotesComponent, canDeactivate: [casependingchangesGuard] },
+      { path: 'documents', component: CasedocumentsComponent, canDeactivate: [casependingchangesGuard] },
+      { path: 'close', component: CasecloseComponent, canDeactivate: [casependingchangesGuard] },
+
       { path: '', pathMatch: 'full', redirectTo: 'details' },
     ],
   },

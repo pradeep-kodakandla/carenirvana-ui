@@ -135,6 +135,7 @@ import { AgnotetypeComponent } from './admin/AG/agnotetype/agnotetype.component'
 import { AgdocumenttypeComponent } from './admin/AG/agdocumenttype/agdocumenttype.component';
 import { CaseWizardModule } from './casewizard/casewizard/casewizard.module';
 import { SharedUiModule } from './casewizard/casewizard/sharedui.module';
+import { MembercasedetailsComponent } from './member/AG/components/membercasedetails/membercasedetails.component';
 
 import { AgcomplaintcategoryComponent } from './admin/AG/agcomplaintcategory/agcomplaintcategory.component';
 import { AgcomplaintclassComponent } from './admin/AG/agcomplaintclass/agcomplaintclass.component';
@@ -155,16 +156,7 @@ import { UiDropdownComponent } from './shared/ui/uidropdown/uidropdown.component
 import { UiMultiCheckDropdownComponent } from './shared/ui/uimulticheckdropdown/uimulticheckdropdown.component';
 
 const routes: Routes = [
-  {
-    path: '',
-    redirectTo: 'case/1/details',  // change this to your real default landing
-    pathMatch: 'full',
-  },
-  {
-    path: 'case',
-    loadChildren: () =>
-      import('./casewizard/casewizard/casewizard.module').then(m => m.CaseWizardModule),
-  },
+
 ];
 
 @NgModule({
@@ -211,7 +203,7 @@ const routes: Routes = [
     CmclinicalindicatorsComponent, AgcomplaintcategoryComponent, AgcomplaintclassComponent, AgcomplaintcredentialsComponent, AgcomplaintstatusreasonComponent,
     AgcomplaintsubcategoryComponent, AgcoordinatortypeComponent, AgparticipantroleComponent, AgparticipanttypeComponent,
     AgqocinvestigationoutcomeComponent, AgqocinvestigationreasonComponent, AgqocscoreComponent, AgresolutioncategoryComponent,
-    AgresolutionsubcategoryComponent, 
+    AgresolutionsubcategoryComponent, MembercasedetailsComponent,
 
     UiDropdownComponent, UiMultiCheckDropdownComponent
   ],
@@ -219,7 +211,7 @@ const routes: Routes = [
     BrowserModule.withServerTransition({ appId: 'ng-cli-universal' }),
     HttpClientModule,
     FormsModule,
-    ReactiveFormsModule, AngularMaterialModule, SharedUiModule, CaseWizardModule,
+    ReactiveFormsModule, AngularMaterialModule, SharedUiModule,
     RouterModule.forRoot([
       { path: '', component: LoginComponent, pathMatch: 'full' },
       { path: 'login', component: LoginComponent, pathMatch: 'full' },
@@ -235,7 +227,12 @@ const routes: Routes = [
         component: MemberDetailsComponent,           // shell with sidebar
         children: [
           { path: '', pathMatch: 'full', component: MemberComponent, runGuardsAndResolvers: 'always' },        // tabs page
-          { path: 'member-auth/:authNo', component: AuthorizationComponent, runGuardsAndResolvers: 'always' }  // full-page auth inside shell
+          { path: 'member-auth/:authNo', component: AuthorizationComponent, runGuardsAndResolvers: 'always' }, // full-page auth inside shell
+          {
+            path: 'case',
+            loadChildren: () =>
+              import('./casewizard/casewizard/casewizard.module').then(m => m.CaseWizardModule),
+          },
         ]
       },
       { path: 'dash-mycase', component: MycaseloadComponent },
@@ -268,7 +265,7 @@ const routes: Routes = [
       { path: 'member-summaryai', component: MemberSummaryaiComponent },
       { path: 'member-activity', component: MemberActivityComponent },
       { path: 'member-search', component: MembersearchComponent },
-
+      { path: 'member-case-details', component: MembercasedetailsComponent },
 
       { path: 'dash-newdash', component: NewDashBoardComponent },
       { path: 'dash-newdash2', component: NewDashboard2Component },
