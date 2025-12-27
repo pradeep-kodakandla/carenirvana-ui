@@ -421,7 +421,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     return s;
   }
 
-    private safeParseJson(input: any): any | null {
+  private safeParseJson(input: any): any | null {
     if (!input) return null;
     try {
       return typeof input === 'string' ? JSON.parse(input) : input;
@@ -704,14 +704,38 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
   // ---------------- Visibility (keep your existing logic) ----------------
   /** Visibility helpers used in HTML */
   visibleSection(sec: RenderSection): boolean {
-    return true;
+    if (!sec) return false;
+
+    // Show the section only if it has at least one visible field OR at least one
+    // visible subsection that itself contains a visible field.
+    const anyVisibleInSection = (sec.fields ?? []).some(f => this.visibleField(f, sec));
+    if (anyVisibleInSection) return true;
+
+    const anyVisibleInSubsections = (sec.subsections ?? []).some(sub => this.visibleSubsection(sub, sec));
+    return anyVisibleInSubsections;
   }
 
   visibleSubsection(sub: RenderSubsection, sec: RenderSection): boolean {
     // subsection has its own showWhen/conditions on raw
     const raw = sub.raw;
     if ((raw as any)?.isEnabled === false) return false;
-    return this.evalShowWhen(raw.showWhen ?? 'always', raw.conditions ?? []);
+
+    const isVisible = this.evalShowWhen(raw.showWhen ?? 'always', raw.conditions ?? []);
+    if (!isVisible) return false;
+
+    // Hide empty subsections (no visible fields)
+    return (sub.fields ?? []).some(f => this.visibleField(f, sec, sub));
+  }
+
+  /** Used by template to show a red '*' for required controls */
+  isRequired(ctrl: any, f: any): boolean {
+    if (f?.required === true) return true;
+    if (!ctrl) return false;
+    const c: any = ctrl as any;
+    if (typeof c.hasValidator === 'function') {
+      return c.hasValidator(Validators.required);
+    }
+    return false;
   }
 
   visibleField(f: any, sec: RenderSection, sub?: RenderSubsection): boolean {
@@ -937,5 +961,61 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     if (this.openSections.has(closedKey)) this.openSections.delete(closedKey);
     else this.openSections.add(closedKey);
   }
+
+  /************* Selected and changed field functionality and styles *********/
+  selectedFieldId: string | null = null;
+
+  selectField(f: any) {
+    this.selectedFieldId = f?.id ?? f?.controlName ?? null;
+  }
+
+  isSelected(f: any): boolean {
+    const id = f?.id ?? f?.controlName;
+    return !!id && this.selectedFieldId === id;
+  }
+
+  private initialSnapshot: any = null;
+  private changedFieldSet = new Set<string>();
+
+  private deepClone<T>(v: T): T {
+    return JSON.parse(JSON.stringify(v));
+  }
+
+  private normalizeValue(v: any) {
+    // normalize common patterns: dropdown objects etc.
+    if (v && typeof v === 'object') {
+      if ('value' in v) return v.value;
+      if ('id' in v) return v.id;
+      if ('code' in v) return v.code;
+    }
+    return v;
+  }
+
+  captureInitialSnapshot() {
+    this.initialSnapshot = this.deepClone(this.form.getRawValue());
+    this.changedFieldSet.clear();
+    this.form.markAsPristine(); // optional: keeps pristine UI clean after load
+  }
+
+  trackChangedFields() {
+    this.form.valueChanges.subscribe(() => {
+      this.changedFieldSet.clear();
+      const current = this.form.getRawValue();
+
+      Object.keys(current).forEach(key => {
+        const a = this.normalizeValue(current[key]);
+        const b = this.normalizeValue(this.initialSnapshot?.[key]);
+        if (JSON.stringify(a) !== JSON.stringify(b)) {
+          this.changedFieldSet.add(key);
+        }
+      });
+    });
+  }
+
+  isChangedField(f: any): boolean {
+    const key = f?.id ?? f?.controlName;
+    return !!key && this.changedFieldSet.has(key);
+  }
+
 
 }

@@ -49,8 +49,12 @@
   border: 1px solid #cfd4dc;
   border-radius: 8px;
   background: #fff;
-  /*padding: 14px 12px 10px;*/ /* top padding to make room for label */
-  min-height: 36px;
+  /* space for the floating label + consistent control padding */
+  padding: 1px 1px 1px;
+  /*min-height: 52px;*/
+  /* In grid rows with textareas, don't stretch this box to match row height */
+  align-self: start;
+  height: fit-content;
 }
 
   .ff-outline:hover {
@@ -82,7 +86,7 @@
 .ff-body {
   display: flex;
   align-items: center;
-  min-height: 28px;
+  min-height: 34px;
 }
 
 /* Native inputs inside outlined */
@@ -96,10 +100,22 @@
   padding: 0;
 }
 
+  /* Consistent height for non-textarea inputs */
+  .ff-input:not(.ff-textarea) {
+    height: 34px;
+  }
+
 .ff-textarea {
   resize: vertical;
   min-height: 72px;
   padding-top: 2px;
+}
+
+/* Required asterisk */
+.req-star {
+  color: #dc3545;
+  margin-left: 4px;
+  font-weight: 800;
 }
 
 /* Your UI controls should fill the width */
@@ -120,8 +136,10 @@
     border: 0 !important;
     outline: none !important;
     box-shadow: none !important;
-    font-size: 16px !important;
+    font-size: 14px !important;
     background: transparent !important;
+    height: 34px !important;
+    line-height: 22px !important;
   }
 
 /* Checkbox row (keep clean) */
@@ -130,6 +148,7 @@
   align-items: center;
   gap: 10px;
   padding: 6px 2px;
+  align-self: start;
 }
 
   .ff-checkbox .form-check-input {
@@ -189,6 +208,8 @@
 .grid {
   display: grid;
   gap: 14px;
+  /* Prevent tall controls (e.g., textarea) from stretching other fields in the same row */
+  align-items: start;
   /* default: up to 5 columns */
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
@@ -249,3 +270,77 @@
   .section-acc-icon.open {
     transform: rotate(90deg);
   }
+
+
+.ff-outline {
+  position: relative;
+  border: 1px solid #d7dde5;
+  border-radius: 10px;
+  background: #fff;
+  transition: box-shadow .15s ease, border-color .15s ease, background .15s ease;
+}
+
+/* Unchanged baseline */
+.ff-unchanged:hover {
+  border-color: #c7d0dc;
+}
+
+/* CHANGED: subtle cue always visible */
+.ff-changed {
+  border-color: #b9c7ff; /* soft accent */
+  background: #fbfcff; /* almost white tint */
+}
+
+  /* optional: tiny "edited" dot in the corner */
+  .ff-changed::after {
+    content: "";
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #4c6fff; /* accent dot */
+    opacity: .9;
+  }
+
+/* SELECTED: higher emphasis than changed */
+.ff-selected {
+  border-color: #4c6fff;
+  box-shadow: 0 0 0 3px rgba(76, 111, 255, .12);
+  background: #f7f9ff;
+}
+
+  /* optional: left accent bar for selected */
+  .ff-selected::before {
+    content: "";
+    position: absolute;
+    left: -1px;
+    top: 10px;
+    bottom: 10px;
+    width: 3px;
+    border-radius: 3px;
+    background: #4c6fff;
+  }
+
+  /* If selected + changed, keep selected dominant */
+  .ff-selected.ff-changed {
+    background: #f4f7ff;
+  }
+
+
+.edited-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  border: 1px solid rgba(76, 111, 255, .22);
+  background: rgba(76, 111, 255, .10);
+  color: #2f49d1;
+  vertical-align: middle;
+  transform: translateY(-1px);
+}

@@ -46,7 +46,7 @@
                 <button type="button"
                         class="btn btn-primary btn-sm"
                         (click)="saveFromTop()"
-                        [disabled]="!headerForm?.get('caseType')?.value || savingTop">
+                        [disabled]="!headerForm.get('caseType')?.value || savingTop">
                   {{ savingTop ? 'Saving...' : 'Save' }}
                 </button>
               </div>
