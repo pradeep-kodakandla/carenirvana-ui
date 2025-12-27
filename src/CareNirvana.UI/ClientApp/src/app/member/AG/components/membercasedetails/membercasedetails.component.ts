@@ -210,46 +210,7 @@ export class MembercasedetailsComponent implements OnInit {
     return this.globalActionPermissions[action.toLowerCase()] ?? false;
   }
 
-  //private openCaseWizardInTab(caseIdOrNumber: string, isNew: boolean = false) {
-  //  this.memberService.setIsCollapse(true);
-
-  //  const memberId = this.memberId ?? Number(this.route.parent?.snapshot.paramMap.get('id'));
-  //  const memberDetailsId = sessionStorage.getItem('selectedMemberDetailsId') || '0';
-
-  //  // ✅ Case wizard route pattern (matches your redirect example: case/1/details)
-  //  const caseKey = (caseIdOrNumber && caseIdOrNumber.trim()) ? caseIdOrNumber : '0';
-  //  const tabRoute = isNew
-  //    ? `/case/${caseKey}/details?mode=new`
-  //    : `/case/${caseKey}/details`;
-
-  //  const tabLabel = isNew ? `New Case` : `Case ${caseKey}`;
-
-  //  const existingTab = this.headerService.getTabs().find(t => t.route === tabRoute);
-
-  //  if (existingTab) {
-  //    this.headerService.selectTab(tabRoute);
-  //  } else {
-  //    this.headerService.addTab(tabLabel, tabRoute, String(memberId), memberDetailsId);
-  //  }
-
-  //  // ✅ same “refresh navigation” pattern you use for auth
-  //  this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
-  //    this.router.navigateByUrl(tabRoute);
-  //  });
-  //}
-
-  ///** Add Case button */
-  //onAddCaseClick() {
-  //  // use 0 (recommended) so your route stays numeric-friendly
-  //  this.openCaseWizardInTab('0', true);
-  //}
-
-  ///** Case number click */
-  //onCaseClick(caseNumber: string) {
-  //  this.openCaseWizardInTab(caseNumber, false);
-  //}
-
-  onAddCaseClick() {
+ onAddCaseClick() {
     this.openCaseTab('0', true);
   }
 
@@ -265,11 +226,11 @@ export class MembercasedetailsComponent implements OnInit {
 
     const urlTree = this.router.createUrlTree(
       ['/member-info', memberId, 'case', caseNumber, 'details']
-      /*{ queryParams: isNew ? { mode: 'new' } : {} }*/
+    //  { queryparams: isnew ? { mode: 'new' } : {} }
     );
 
     const tabRoute = this.router.serializeUrl(urlTree); // ✅ includes query params safely
-    const tabLabel = isNew ? `New Case` : `Case ${caseNumber}`;
+    const tabLabel = isNew ? `New Case` : `Case # ${caseNumber}`;
 
     const existingTab = this.headerService.getTabs().find(t => t.route === tabRoute);
 
@@ -278,7 +239,6 @@ export class MembercasedetailsComponent implements OnInit {
     } else {
       this.headerService.addTab(tabLabel, tabRoute, String(memberId), memberDetailsId);
     }
-    console.log('Navigating to case tab route:', tabRoute);
     // ✅ no skipLocationChange hack (this often causes weird “stuck” behavior)
     this.router.navigateByUrl(tabRoute);
   }

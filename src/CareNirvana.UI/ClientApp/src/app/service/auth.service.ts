@@ -11,12 +11,12 @@ export class AuthService {
   private apiUrlActivities = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/authactivity';
   //private apiUrl = 'https://localhost:7201/api/auth';
   //private apiUrlCodeSets = 'https://localhost:7201/api/codesets';
-  //private apiUrlActivities = 'https://localhost:7201/api/authactivity';
+ // private apiUrlActivities = 'https://localhost:7201/api/authactivity';
 
   constructor(private http: HttpClient) { }
 
   // Fetch auth templates from API
-  getAuthTemplates(module: any, authclassid: any): Observable<any> {
+  getTemplates(module: any, authclassid: any): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/fetch/${module}/${authclassid}`);
   }
 

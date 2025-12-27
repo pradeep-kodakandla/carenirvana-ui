@@ -20,3 +20,27 @@
     border-color: #6b8cff;
     box-shadow: 0 0 0 3px rgba(107, 140, 255, 0.18);
   }
+
+
+.cw-shell {
+  height: 100vh; /* full viewport */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* prevent page scrolling */
+}
+
+.cw-top {
+  flex: 0 0 auto;
+  background: #fff;
+  z-index: 10;
+}
+
+.cw-content {
+  flex: 1 1 auto;
+  overflow: auto; /* ✅ only content scrolls */
+  padding: 12px;
+}
+
+.card {
+  border: 0px !important;
+}

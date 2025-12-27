@@ -1,15 +1,13 @@
 
 <form class="case-details" [formGroup]="form">
 
-  <div class="case-savebar">
+  <!--<div class="case-savebar">
     <button type="button"
             class="btn btn-primary"
             (click)="save()">
       {{ isSaving ? 'Saving...' : 'Save' }}
     </button>
-  </div>
-  <!--[disabled]="isSaving || form.invalid || !form.dirty"-->
-  <!--<ng-container *ngFor="let sec of renderSections; trackBy: trackBySection">-->
+  </div>-->
 
   <ng-container *ngFor="let sec of renderSections; let i = index; trackBy: trackBySection">
     <div class="section-card" *ngIf="visibleSection(sec)">

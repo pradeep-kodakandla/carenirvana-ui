@@ -632,7 +632,7 @@ export class AuthorizationComponent {
             this.selectedAuthClassId = authClassId;
 
             // First load templates for this class, then continue
-            this.authService.getAuthTemplates("UM", authClassId).subscribe({
+            this.authService.getTemplates("UM", authClassId).subscribe({
               next: (templates: any[]) => {
                 this.authTemplates = [
                   { id: 0, templateName: 'Select Auth Type' },
@@ -761,7 +761,7 @@ export class AuthorizationComponent {
   }
 
   loadAuthTemplates(): void {
-    this.authService.getAuthTemplates("UM", this.selectedAuthClassId).subscribe({
+    this.authService.getTemplates("UM", this.selectedAuthClassId).subscribe({
       next: (data: any[]) => {
         this.authTemplates = [
           { Id: 0, TemplateName: 'Select Auth Type' },

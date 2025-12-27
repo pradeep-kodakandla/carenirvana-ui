@@ -236,7 +236,7 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
   }
 
   loadAuthTemplates(): void {
-    this.authService.getAuthTemplates(this.module, this.selectedClassId).subscribe({
+    this.authService.getTemplates(this.module, this.selectedClassId).subscribe({
       next: (data: any[]) => {
         this.authTemplates = [
           { Id: 0, TemplateName: 'Select Auth Type' },
@@ -268,7 +268,7 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
   }
 
   loadData() {
-    this.authService.getAuthTemplates(this.module, 0).subscribe((response) => {
+    this.authService.getTemplates(this.module, 0).subscribe((response) => {
       this.dataSource.data = response.map((item: any) => {
         const matchingClass = this.authClass.find(c => String(c.id) === String(item.authclassid));
         return {
@@ -327,7 +327,7 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
       this.selectedClassId = element.id;
 
       // ✅ Load templates first, then set selectedTemplateId
-      this.authService.getAuthTemplates(this.module, this.selectedClassId).subscribe({
+      this.authService.getTemplates(this.module, this.selectedClassId).subscribe({
         next: (data: any[]) => {
           this.authTemplates = [{ Id: 0, TemplateName: 'Select Auth Type' }, ...data];
 

@@ -17,7 +17,7 @@ import { casependingchangesGuard } from 'src/app/member/AG/guards/guards/casepen
 
 const routes: Routes = [
   {
-    path: ':caseId',
+    path: ':caseNumber',
     component: CasewizardshellComponent,
     children: [
       { path: 'details', component: CasedetailsComponent, canDeactivate: [casependingchangesGuard] },

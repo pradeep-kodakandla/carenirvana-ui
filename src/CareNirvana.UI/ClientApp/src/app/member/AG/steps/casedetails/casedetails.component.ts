@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit, Input } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
+import { distinctUntilChanged } from 'rxjs/operators';
 import { AuthService } from 'src/app/service/auth.service';
 import { CaseUnsavedChangesAwareService } from 'src/app/member/AG/guards/services/caseunsavedchangesaware.service';
 import { CasedetailService, CaseAggregateDto } from 'src/app/service/casedetail.service';
@@ -9,6 +10,9 @@ import { ActivatedRoute } from '@angular/router';
 import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
 import { CrudService } from 'src/app/service/crud.service';
 import { AuthNumberService } from 'src/app/service/auth-number-gen.service';
+
+
+export type WizardMode = 'new' | 'edit';
 
 type ShowWhen = 'always' | 'fieldEquals' | 'fieldNotEquals' | 'fieldhasvalue';
 
@@ -100,18 +104,50 @@ export interface UiOption {
 })
 export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnInit, OnDestroy {
 
-  @Input() stepId: string = 'details';   // <- injected by shell
-  private currentLevelId = 1;            // <- keep latest active level
+  @Input() wizardMode: WizardMode = 'new';
 
-  // Step -> which sections belong to this step (UPDATE THESE NAMES after you log them)
+  private _stepId: string = 'details';
+
+  /** Step id is injected by shell/wrappers. Use setter to rebuild when it changes. */
+  @Input()
+  set stepId(v: string) {
+    const next = (v ?? 'details').trim() || 'details';
+    if (next === this._stepId) return;
+    this._stepId = next;
+
+    // If template already loaded, rebuild for the new step without refetch.
+    if (this.normalizedTemplate) {
+      this.rebuildForStep();
+    }
+  }
+  get stepId(): string {
+    return this._stepId;
+  }
+
+  private currentLevelId = 1;            // <- keep latest active level
+  templateId: number | null = null;
+
+  caseNumberFromRoute = '';
+
+  /** Cache the last normalized template so we can rebuild when step changes. */
+  private normalizedTemplate: TemplateJsonRoot | null = null;
+  private templateLoaded = false;
+
+  // Step -> which sections belong to this step (match sectionName/sectionDisplayName from your template JSON)
+  // NOTE: update these strings if your console.table shows different names.
   private stepSectionNames: Record<string, string[]> = {
-    details: [], // empty => “all except other step sections” (we’ll handle below)
-    notes: ['Case Notes', 'Notes', 'Case_Notes'],
-    documents: ['Case Documents', 'Documents', 'Case_Documents'],
-    activities: ['Case Activity Type', 'Activities', 'Case_Activities'],
-    mdReview: ['MD Review', 'MD_Review'],
-    disposition: ['Disposition', 'Disposition Details', 'Case_Disposition'],
-    close: ['Close', 'Case Close', 'Case_Close'],
+    // details: empty => all sections EXCEPT the other steps below
+    details: [],
+
+    // common sectionName patterns seen in your JSON keys:
+    // Case_Notes_*, Case_Documents_*, Disposition_Details_*, Reviewer_Information_*, etc.
+    notes: ['Case_Notes', 'Case Notes', 'Notes'],
+    documents: ['Case_Documents', 'Case Documents', 'Documents'],
+    activities: ['Case_Activities', 'Case Activity Type', 'Activities'],
+    mdReview: ['Reviewer_Information', 'MD Review', 'MD_Review'],
+    disposition: ['Disposition_Details', 'Disposition', 'Disposition Details'],
+    // "close" typically lives under status/close sections (adjust as needed)
+    close: ['Case_Close', 'Case Close', 'Close', 'Case_Status_Details', 'Case Status Details'],
   };
 
 
@@ -141,8 +177,59 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
   ngOnInit(): void {
     this.form = this.fb.group({});
 
-    // Build template-driven form
-    this.authService.getTemplate('AG', 3)
+    // caseNumber is defined on the shell route (":caseNumber") - find it from any ancestor.
+    this.caseNumberFromRoute = this.getCaseNumberFromRoute() ?? '';
+    if (this.caseNumberFromRoute) {
+      console.log('✅ caseNumber from route:', this.caseNumberFromRoute);
+    }
+
+    // Track active level and load json into current step form (edit mode).
+    this.state.activeLevelId$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(levelId => {
+        this.currentLevelId = levelId ?? 1;
+
+        // Don't overwrite user edits
+        if (this.templateLoaded && this.form && !this.form.dirty) {
+          this.loadLevelIntoForm(this.currentLevelId);
+        }
+      });
+
+    // Keep in sync with the shell dropdown (fixes: first load shows blank until you navigate away/back)
+    this.state.templateId$
+      .pipe(takeUntil(this.destroy$), distinctUntilChanged())
+      .subscribe(tid => this.setTemplateId(tid));
+
+    // If templateId was set before OnInit (rare), load it
+    if (this.templateId) {
+      this.loadTemplateJson();
+    }
+  }
+
+  setTemplateId(id: number | string | null | undefined) {
+    const n = id == null ? NaN : Number(id);
+    const next = Number.isFinite(n) && n > 0 ? n : null;
+
+    if (next === this.templateId) return;
+
+    this.templateId = next;
+    this.normalizedTemplate = null;
+    this.templateLoaded = false;
+
+    if (this.templateId) {
+      this.loadTemplateJson();
+    } else {
+      this.renderSections = [];
+      this.optionsByControlName = {};
+      this.form.reset({}, { emitEvent: false });
+      this.form.markAsPristine();
+    }
+  }
+
+  private loadTemplateJson(): void {
+    if (!this.templateId) return;
+
+    this.authService.getTemplate('AG', this.templateId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (res: any) => {
@@ -152,40 +239,57 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
           const normalized = this.normalizeTemplate(jsonRoot);
 
-          this.renderSections = this.buildRenderModel(normalized);
-          this.buildFormControls(this.renderSections);
-          this.prefetchDropdownOptions(this.renderSections);
-
           console.table((normalized.sections ?? []).map(s => ({
             sectionName: s.sectionName,
             displayName: s.sectionDisplayName
           })));
 
-          // ✅ Filter sections for the current step
-          const filtered = this.filterSectionsForStep(normalized, this.stepId);
-
-          this.renderSections = this.buildRenderModel(filtered);
-          this.buildFormControls(this.renderSections);
-          this.prefetchDropdownOptions(this.renderSections);
-
-          // ✅ track active level and load json into current step form
-          this.state.activeLevelId$
-            .pipe(takeUntil(this.destroy$))
-            .subscribe(levelId => {
-              this.currentLevelId = levelId ?? 1;
-              this.loadLevelIntoForm(this.currentLevelId);
-            });
-
-          //// Load active level data whenever tab/active level changes
-          //this.state.activeLevelId$
-          //  .pipe(takeUntil(this.destroy$))
-          //  .subscribe(levelId => {
-          //    this.loadLevelIntoForm(levelId);
-          //  });
+          this.normalizedTemplate = normalized;
+          this.rebuildForStep();
         },
         error: (err: any) => console.error(err)
       });
   }
+
+  private rebuildForStep(): void {
+    if (!this.normalizedTemplate) return;
+
+    this.templateLoaded = false;
+    this.optionsByControlName = {};
+    this.renderSections = [];
+    this.fieldIdToControlName = {};
+
+    // rebuild form controls for the current step
+    this.form = this.fb.group({});
+
+    const filtered = this.filterSectionsForStep(this.normalizedTemplate, this.stepId);
+
+    this.renderSections = this.buildRenderModel(filtered);
+    this.buildFormControls(this.renderSections);
+    this.prefetchDropdownOptions(this.renderSections);
+
+    this.templateLoaded = true;
+
+    // push caseNumber into the form if the template has it
+    const ctrl = this.form.get('caseNumber');
+    if (ctrl && this.caseNumberFromRoute) {
+      ctrl.setValue(this.caseNumberFromRoute, { emitEvent: false });
+      ctrl.markAsPristine();
+    }
+
+    // load saved json for the current level (edit mode)
+    this.tryLoadSelectedLevel(true);
+  }
+
+  private tryLoadSelectedLevel(force: boolean): void {
+    if (!this.templateLoaded) return;
+    if (!force && (this.form?.dirty ?? false)) return;
+
+    const levelId = this.currentLevelId ?? 1;
+    this.loadLevelIntoForm(levelId);
+  }
+
+
 
   private filterSectionsForStep(root: TemplateJsonRoot, stepId: string): TemplateJsonRoot {
     const sections = root?.sections ?? [];
@@ -242,9 +346,14 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
       alert('Please save Case Details first to create the case.');
       return;
     }
-    const caseNumber = this.authNumberService.generateAuthNumber(9, true, true, false, false); //this.state.getCaseNumber() ?? this.getCaseNumberFromRoute() ?? this.getValueByFieldId('caseNumber');
+    const caseNumber =
+      this.normalizeCaseNumber(this.getCaseNumberFromRoute()) ??
+      this.normalizeCaseNumber(this.state.getCaseNumber()) ??
+      this.normalizeCaseNumber(this.getValueByFieldId('caseNumber')) ??
+      this.authNumberService.generateAuthNumber(9, true, true, false, false);
 
-    const userId = this.getCurrentUserId();
+
+    const userId = Number(sessionStorage.getItem('loggedInUserid')) || 0;
 
     //const jsonData = JSON.stringify(this.form.getRawValue());
     const existingDetail = this.state.getDetailForLevel(levelId);
@@ -303,7 +412,16 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     }
   }
 
-  private safeParseJson(input: any): any | null {
+  private normalizeCaseNumber(v: any): string | null {
+    const s = String(v ?? '').trim();
+    if (!s) return null;
+    if (s === '0') return null;         // ✅ important
+    if (s.toLowerCase() === 'null') return null;
+    if (s.toLowerCase() === 'undefined') return null;
+    return s;
+  }
+
+    private safeParseJson(input: any): any | null {
     if (!input) return null;
     try {
       return typeof input === 'string' ? JSON.parse(input) : input;
@@ -360,8 +478,17 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
   }
 
   private getCaseNumberFromRoute(): string | null {
-    return this.route.snapshot.paramMap.get('caseNumber') || this.route.snapshot.queryParamMap.get('caseNumber');
+    // caseNumber is on a parent route (shell path ':caseNumber')
+    let r: ActivatedRoute | null = this.route;
+    while (r) {
+      const v = r.snapshot?.paramMap?.get('caseNumber');
+      if (v) return v;
+      r = r.parent;
+    }
+    // fallback: query param (in case you ever switch to query-param style)
+    return this.route.snapshot.queryParamMap.get('caseNumber');
   }
+
 
   private getCurrentUserId(): number {
     const a: any = this.authService as any;
@@ -371,7 +498,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
       a?.currentUserValue?.userId ??
       a?.currentUserValue?.UserId ??
       Number(localStorage.getItem('userId'));
-    return Number.isFinite(Number(id)) ? Number(id) : 0;
+    return Number.isFinite(Number(id)) ? Number(id) : 1;
   }
 
   // ---------------- Template -> Render model ----------------

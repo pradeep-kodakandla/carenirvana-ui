@@ -121,7 +121,7 @@ export class UmauthtemplateBuilderComponent implements OnInit {
   }
 
   loadAuthTemplates(): void {
-    this.authService.getAuthTemplates("UM", this.selectedClassId).subscribe({
+    this.authService.getTemplates("UM", this.selectedClassId).subscribe({
       next: (data: any[]) => {
         this.authTemplates = [
           { Id: 0, TemplateName: 'Select Auth Type' },
@@ -153,7 +153,7 @@ export class UmauthtemplateBuilderComponent implements OnInit {
   }
 
   loadData() {
-    this.authService.getAuthTemplates("UM", 0).subscribe((response) => {
+    this.authService.getTemplates("UM", 0).subscribe((response) => {
       this.dataSource.data = response.map((item: any) => {
         const matchingClass = this.authClass.find(c => String(c.id) === String(item.authclassid));
         return {
@@ -212,7 +212,7 @@ export class UmauthtemplateBuilderComponent implements OnInit {
       this.selectedClassId = element.authclassid;
 
       // ✅ Load templates first, then set selectedTemplateId
-      this.authService.getAuthTemplates("UM", this.selectedClassId).subscribe({
+      this.authService.getTemplates("UM", this.selectedClassId).subscribe({
         next: (data: any[]) => {
           this.authTemplates = [{ Id: 0, TemplateName: 'Select Auth Type' }, ...data];
 

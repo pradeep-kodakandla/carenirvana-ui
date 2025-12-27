@@ -6,69 +6,134 @@ export interface CaseLevelTab {
   levelId: number;
   title: string;           // "Level 1"
   caseDetailId: number;
-  caseLevelNumber: string; // "51471L2"
+  caseLevelNumber: string; // "3HTUX2J0ZL2"
 }
 
-@Injectable({
-  providedIn: 'root'
-})
+/**
+ * Single source of truth for Case Wizard UI state.
+ * - templateId: selected Case Type (template)
+ * - aggregate: header + details (levels)
+ * - activeLevelId: selected level
+ */
+@Injectable({ providedIn: 'root' })
 export class CaseWizardStoreService {
+  // --- case number (header) ---
+  private readonly _caseNumber$ = new BehaviorSubject<string | null>(null);
+  caseNumber$ = this._caseNumber$.asObservable();
 
-  private caseIdSubject = new BehaviorSubject<number | null>(null);
-  caseId$ = this.caseIdSubject.asObservable();
-
-  private draftSubject = new BehaviorSubject<any>({});
-  draft$ = this.draftSubject.asObservable();
-
-  setCaseId(caseId: number) { this.caseIdSubject.next(caseId); }
-  patchDraft(patch: any) { this.draftSubject.next({ ...this.draftSubject.value, ...patch }); }
-
-  private readonly _caseAgg$ = new BehaviorSubject<CaseAggregateDto | null>(null);
-  readonly caseAgg$ = this._caseAgg$.asObservable();
-
-  private readonly _tabs$ = new BehaviorSubject<CaseLevelTab[]>([]);
-  readonly tabs$ = this._tabs$.asObservable();
-
-  private readonly _activeLevelId$ = new BehaviorSubject<number>(1);
-  readonly activeLevelId$ = this._activeLevelId$.asObservable();
-
-  setAggregate(agg: CaseAggregateDto) {
-    this._caseAgg$.next(agg);
-
-    const tabs = (agg.details || [])
-      .filter(d => !d.deletedOn)
-      .sort((a, b) => (a.caseLevelId ?? 0) - (b.caseLevelId ?? 0))
-      .map(d => ({
-        levelId: d.caseLevelId,
-        title: `Level ${d.caseLevelId}`,
-        caseDetailId: d.caseDetailId,
-        caseLevelNumber: d.caseLevelNumber
-      }));
-
-    this._tabs$.next(tabs);
-
-    // if active not present, fall back to lowest available
-    const active = this._activeLevelId$.value;
-    if (tabs.length && !tabs.some(t => t.levelId === active)) {
-      this._activeLevelId$.next(tabs[0].levelId);
-    }
-  }
-
-  setActiveLevel(levelId: number) {
-    this._activeLevelId$.next(levelId);
-  }
-
-  getDetailForLevel(levelId: number): CaseDetailDto | null {
-    const agg = this._caseAgg$.value;
-    if (!agg?.details?.length) return null;
-    return agg.details.find(d => d.caseLevelId === levelId && !d.deletedOn) ?? null;
-  }
-
-  getHeaderId(): number | null {
-    return this._caseAgg$.value?.header?.caseHeaderId ?? null;
+  setCaseNumber(v: string | null): void {
+    const next = (v ?? '').trim();
+    this._caseNumber$.next(next.length ? next : null);
   }
 
   getCaseNumber(): string | null {
-    return this._caseAgg$.value?.header?.caseNumber ?? null;
+    return this._caseNumber$.value;
   }
+
+  // --- template / case type (templateId) ---
+  private readonly _templateId$ = new BehaviorSubject<number | null>(null);
+  templateId$ = this._templateId$.asObservable();
+
+  setTemplateId(v: number | null): void {
+    const n = v == null ? NaN : Number(v);
+    const next = Number.isFinite(n) && n > 0 ? n : null;
+    this._templateId$.next(next);
+  }
+
+  getTemplateId(): number | null {
+    return this._templateId$.value;
+  }
+
+  // --- aggregate (header + details) ---
+  private readonly _aggregate$ = new BehaviorSubject<CaseAggregateDto | null>(null);
+  aggregate$ = this._aggregate$.asObservable();
+
+  setAggregate(agg: CaseAggregateDto | null): void {
+    this._aggregate$.next(agg);
+    // keep caseNumber in sync
+    const cn = agg?.header?.caseNumber ?? null;
+    this.setCaseNumber(cn);
+    // keep tabs in sync
+    this._tabs$.next(this.buildTabs(agg));
+  }
+
+  getAggregate(): CaseAggregateDto | null {
+    return this._aggregate$.value;
+  }
+
+  // --- tabs ---
+  private readonly _tabs$ = new BehaviorSubject<CaseLevelTab[]>([]);
+  tabs$ = this._tabs$.asObservable();
+
+  private buildTabs(agg: CaseAggregateDto | null): CaseLevelTab[] {
+    const details = (agg?.details ?? []) as CaseDetailDto[];
+    return details
+      .filter(d => !d.deletedOn)
+      .sort((a, b) => (a.caseLevelId ?? 0) - (b.caseLevelId ?? 0))
+      .map(d => ({
+        levelId: d.caseLevelId ?? 0,
+        title: `Level ${d.caseLevelId ?? 0}`,
+        caseDetailId: d.caseDetailId ?? 0,
+        caseLevelNumber: d.caseLevelNumber ?? ''
+      }))
+      .filter(t => t.levelId > 0);
+  }
+
+  // --- active level ---
+  private readonly _activeLevelId$ = new BehaviorSubject<number | null>(null);
+  activeLevelId$ = this._activeLevelId$.asObservable();
+
+  setActiveLevel(levelId: number | null): void {
+    const n = levelId == null ? NaN : Number(levelId);
+    const next = Number.isFinite(n) && n > 0 ? n : null;
+    this._activeLevelId$.next(next);
+  }
+
+  getActiveLevelId(): number | null {
+    return this._activeLevelId$.value;
+  }
+
+  resetForNew(): void {
+    this.setCaseNumber(null);
+    this.setTemplateId(null);
+    this.setAggregate(null);
+    this._tabs$.next([]);
+    this.setActiveLevel(null);
+  }
+
+  /** Returns current header id from aggregate. Supports your API shape: agg.header.caseHeaderId */
+  getHeaderId(): number | null {
+    const agg: any = this._aggregate$.value;
+    const raw =
+      agg?.header?.caseHeaderId ??
+      agg?.caseHeaderId ??
+      agg?.caseHeader?.caseHeaderId ??
+      agg?.caseHeader?.id ??
+      null;
+
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+
+  /** Returns the detail object for a given level from your API shape: agg.details[].caseLevelId */
+  getDetailForLevel(levelId: number): any | null {
+    const agg: any = this._aggregate$.value;
+    const details: any[] = agg?.details ?? agg?.caseDetails ?? agg?.caseDetailList ?? [];
+    const lvl = Number(levelId);
+
+    return (details ?? []).find(d => Number(d?.caseLevelId ?? d?.levelId) === lvl) ?? null;
+  }
+
+  upsertDetailForLevel(levelId: number, newDetail: any): void {
+    const agg: any = this._aggregate$.value ?? {};
+    const details: any[] = (agg.details ?? []).slice();
+
+    const idx = details.findIndex(d => Number(d?.caseLevelId ?? d?.levelId) === Number(levelId));
+    if (idx >= 0) details[idx] = { ...details[idx], ...newDetail };
+    else details.push(newDetail);
+
+    const nextAgg = { ...agg, details };
+    this.setAggregate(nextAgg);
+  }
+
 }

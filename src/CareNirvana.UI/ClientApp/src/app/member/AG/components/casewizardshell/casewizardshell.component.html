@@ -1,31 +1,84 @@
-<!--<caseChevronStepper [steps]="steps"
-                    [activeStepId]="activeStepId"
-                    (stepSelected)="onStepSelected($event)">
-</caseChevronStepper>
+<!-- Fixed shell layout -->
+<div class="cw-shell">
+  <div class="cw-top">
 
-<div class="caseWizardBody">
-  <ng-template #stepContainer></ng-template>
-</div>-->
-<!-- Level Tabs -->
-<ul class="nav nav-tabs mb-2" *ngIf="(tabs$ | async) as tabs">
-  <li class="nav-item" *ngFor="let t of tabs">
-    <button class="nav-link"
-            type="button"
-            [class.active]="(activeLevelId$ | async) === t.levelId"
-            (click)="selectLevel(t.levelId)">
-      {{ t.title }}
-    </button>
-  </li>
-</ul>
+    <!-- Case Header -->
+    <div class="caseWizardHeader card mb-2">
+      <div class="card-body py-2">
+        <div class="row g-2 align-items-end">
 
-<!-- keep your existing stepper HTML as-is below -->
+          <!-- Case Type -->
+          <div class="col-12 col-md-4">
+            <label class="form-label mb-1">Case Type</label>
+            <form [formGroup]="headerForm">
+              <ui-smart-dropdown label=""
+                                 placeholder="Select Case Type..."
+                                 [options]="caseTypeOptions"
+                                 formControlName="caseType">
+              </ui-smart-dropdown>
+            </form>
+          </div>
 
+          <!-- Case meta + Save -->
+          <div class="col-12 col-md-8">
+            <div class="d-flex flex-wrap justify-content-md-end gap-3 align-items-end">
 
-<caseChevronStepper [steps]="steps"
-                    [activeStepId]="activeStepId"
-                    (stepSelected)="onStepSelected($event)">
-</caseChevronStepper>
+              <div class="small">
+                <div class="text-muted">Case Number</div>
+                <div class="fw-semibold">{{ getCaseNumber(aggregate$ | async) || '-' }}</div>
+              </div>
 
-<div class="caseWizardBody">
-  <ng-template #stepContainer></ng-template>
+              <div class="small">
+                <div class="text-muted">Received Date</div>
+                <div class="fw-semibold">
+                  {{ getReceivedOn(aggregate$ | async) ? (getReceivedOn(aggregate$ | async) | date:'MM/dd/yyyy hh:mm a') : '-' }}
+                </div>
+              </div>
+
+              <div class="small d-flex align-items-end gap-2">
+                <div>
+                  <div class="text-muted">Created On</div>
+                  <div class="fw-semibold">
+                    {{ getCreatedOn(aggregate$ | async) ? (getCreatedOn(aggregate$ | async) | date:'MM/dd/yyyy hh:mm a') : '-' }}
+                  </div>
+                </div>
+
+                <button type="button"
+                        class="btn btn-primary btn-sm"
+                        (click)="saveFromTop()"
+                        [disabled]="!headerForm?.get('caseType')?.value || savingTop">
+                  {{ savingTop ? 'Saving...' : 'Save' }}
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Level Tabs -->
+    <ul class="nav nav-tabs mb-2" *ngIf="(tabs$ | async) as tabs">
+      <li class="nav-item" *ngFor="let t of tabs">
+        <button class="nav-link"
+                type="button"
+                [class.active]="(activeLevelId$ | async) === t.levelId"
+                (click)="selectLevel(t.levelId)">
+          {{ t.title }}
+        </button>
+      </li>
+    </ul>
+
+    <caseChevronStepper [steps]="steps"
+                        [activeStepId]="activeStepId"
+                        (stepSelected)="onStepSelected($event)">
+    </caseChevronStepper>
+
+  </div>
+
+  <!-- Scrollable content only -->
+  <div class="cw-content caseWizardBody">
+    <ng-template #stepContainer></ng-template>
+  </div>
 </div>
