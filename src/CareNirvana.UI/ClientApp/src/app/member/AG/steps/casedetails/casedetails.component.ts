@@ -147,7 +147,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     mdReview: ['Reviewer_Information', 'MD Review', 'MD_Review'],
     disposition: ['Disposition_Details', 'Disposition', 'Disposition Details'],
     // "close" typically lives under status/close sections (adjust as needed)
-    close: ['Case_Close', 'Case Close', 'Close', 'Case_Status_Details', 'Case Status Details'],
+  //  close: ['Case_Close', 'Case Close', 'Close', 'Case_Status_Details', 'Case Status Details'],
   };
 
 
@@ -179,9 +179,9 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
     // caseNumber is defined on the shell route (":caseNumber") - find it from any ancestor.
     this.caseNumberFromRoute = this.getCaseNumberFromRoute() ?? '';
-    if (this.caseNumberFromRoute) {
-      console.log('✅ caseNumber from route:', this.caseNumberFromRoute);
-    }
+    //if (this.caseNumberFromRoute) {
+    //  console.log('✅ caseNumber from route:', this.caseNumberFromRoute);
+    //}
 
     // Track active level and load json into current step form (edit mode).
     this.state.activeLevelId$
@@ -243,7 +243,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
             sectionName: s.sectionName,
             displayName: s.sectionDisplayName
           })));
-
+          console.log('Normalized template loaded:', normalized);
           this.normalizedTemplate = normalized;
           this.rebuildForStep();
         },
@@ -338,6 +338,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
     const levelId = this.getSelectedLevelId() ?? 1;
 
+    console.log('Saving for levelId:', levelId);
     // If this level already exists => update; else => add or create
     //const existingDetail = this.state.getDetailForLevel(levelId);
     const caseHeaderId = this.state.getHeaderId() ?? this.getHeaderIdFromRoute();
