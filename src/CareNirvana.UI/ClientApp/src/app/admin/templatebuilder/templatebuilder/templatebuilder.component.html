@@ -542,7 +542,7 @@
                         <ng-container *ngIf="field.layout === 'row'; else normalSubField">
                           <div class="field-item row-container" style="display: flex; gap: 10px; align-items: center;">
                             <div *ngFor="let subField of (field.fields || [])" style="display: flex; gap: 10px; align-items: center;">
-                              <ng-container *ngIf="subField.type !== 'checkbox'; else checkboxRowSubField">
+                              <ng-container *ngIf="subField.type !== 'checkbox'; else checkboxRowSubFieldMain">
                                 <div class="form-outline">
                                   <label class="form-label" *ngIf="subField.type !== 'search'">{{ subField.displayName }}</label>
                                   <ng-container [ngSwitch]="subField.type">
@@ -562,7 +562,7 @@
                                   </span>
                                 </button>
                               </ng-container>
-                              <ng-template #checkboxRowSubField>
+                              <ng-template #checkboxRowSubFieldMain>
                                 <div class="form-outline">
                                   <ng-container [ngSwitch]="subField.type">
                                     <div *ngSwitchCase="'search'" class="tb-search-control tb-search-control-compact">
@@ -586,7 +586,7 @@
                                 <span *ngIf="field.required" style="color: red;">*</span>
                               </label>
 
-                              <ng-container *ngIf="field.type === 'select'; else normalField">
+                              <ng-container *ngIf="field.type === 'select'; else normalFieldSub">
                                 <select class="custom-dropdown" [(ngModel)]="field.defaultValue">
                                   <option *ngFor="let option of field.options" [value]="option">
                                     {{ option }}
@@ -595,7 +595,7 @@
                                 <span class="custom-dropdown-arrow">▼</span>
                               </ng-container>
 
-                              <ng-template #normalField>
+                              <ng-template #normalFieldSub>
                                 <ng-container [ngSwitch]="field.type">
                                   <div *ngSwitchCase="'search'" class="tb-search-control">
                                     <mat-icon class="tb-search-icon">search</mat-icon>
@@ -695,7 +695,7 @@
                     <ng-container *ngIf="field.layout === 'row'; else normalField">
                       <div class="field-item row-container" style="display: flex; gap: 10px; align-items: center;">
                         <div *ngFor="let subField of (field.fields || [])">
-                          <ng-container *ngIf="subField.type !== 'checkbox'; else checkboxRowSubField">
+                          <ng-container *ngIf="subField.type !== 'checkbox'; else checkboxRowSubFieldProvider">
                             <div class="form-outline">
                               <label class="form-label" *ngIf="subField.type !== 'search'">{{ subField.displayName }}</label>
                               <ng-container [ngSwitch]="subField.type">
@@ -715,7 +715,7 @@
                               </span>
                             </button>
                           </ng-container>
-                          <ng-template #checkboxRowSubField>
+                          <ng-template #checkboxRowSubFieldProvider>
                             <div class="form-outline">
                               <ng-container [ngSwitch]="subField.type">
                                 <div *ngSwitchCase="'search'" class="tb-search-control tb-search-control-compact">
@@ -738,7 +738,7 @@
                             <span *ngIf="field.required" style="color: red;"> * </span>
                           </label>
                           <!-- Check field type -->
-                          <ng-container *ngIf="field.type === 'select'; else normalField">
+                          <ng-container *ngIf="field.type === 'select'; else normalFieldMain">
                             <select class="custom-dropdown" [(ngModel)]="field.defaultValue">
                               <option *ngFor="let option of field.options" [value]="option">
                                 {{ option }}
@@ -747,7 +747,7 @@
                             <span class="custom-dropdown-arrow">▼</span>
                           </ng-container>
 
-                          <ng-template #normalField>
+                          <ng-template #normalFieldMain>
                             <ng-container [ngSwitch]="field.type">
                               <div *ngSwitchCase="'search'" class="tb-search-control">
                                 <mat-icon class="tb-search-icon">search</mat-icon>
@@ -848,7 +848,7 @@
                           <span *ngIf="field.required" style="color: red;">*</span>
                         </label>
                         <!-- Check field type -->
-                        <ng-container *ngIf="field.type === 'select'; else normalField">
+                        <ng-container *ngIf="field.type === 'select'; else normalFieldCheckBox">
                           <select class="custom-dropdown" [(ngModel)]="field.defaultValue">
                             <option *ngFor="let option of field.options" [value]="option">
                               {{ option }}
@@ -857,7 +857,7 @@
                           <span class="custom-dropdown-arrow">▼</span>
                         </ng-container>
 
-                        <ng-template #normalField>
+                        <ng-template #normalFieldCheckBox>
                           <ng-container [ngSwitch]="field.type">
                             <div *ngSwitchCase="'search'" class="tb-search-control">
                               <mat-icon class="tb-search-icon">search</mat-icon>
