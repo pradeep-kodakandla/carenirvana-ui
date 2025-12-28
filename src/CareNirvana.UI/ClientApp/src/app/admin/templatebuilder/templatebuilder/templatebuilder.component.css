@@ -1,17 +1,6 @@
 /* ==========================================================================
    Global Layout & Container Styles
    ========================================================================== */
-/*.container {
-  display: flex;
-  height: 100vh;
-  gap: 5px;
-  padding: 5px;
-  background: rgba(255, 255, 255, 0.1);*/ /* Semi-transparent white */
-/*backdrop-filter: blur(10px);*/ /* Blur effect for glassiness */
-/*border: 1px solid rgba(255, 255, 255, 0.2);*/ /* Subtle border */
-/*box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);*/ /* Soft shadow */
-/*max-width: 100%;
-}*/
 /* NEW – only for the template builder */
 .builder-container {
   display: flex;
