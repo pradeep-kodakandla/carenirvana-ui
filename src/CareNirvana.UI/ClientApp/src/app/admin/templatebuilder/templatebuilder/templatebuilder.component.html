@@ -143,6 +143,50 @@
       </div>
     </div>
 
+
+    <!-- Predefined Subsections -->
+    <div class="left-panel-section">
+      <div class="left-panel-header" (click)="toggleLeftPanelGroup('predefinedSubsections')">
+        <div class="left-panel-header-main">
+          <div class="left-panel-header-icon sections">
+            <mat-icon>view_module</mat-icon>
+          </div>
+          <div class="left-panel-header-text">
+            <div class="left-panel-header-title">Predefined Subsections</div>
+            <div class="left-panel-header-subtitle">Drag into any section</div>
+          </div>
+        </div>
+        <div class="left-panel-header-right">
+          <mat-icon class="chevron">{{ leftPanelGroups.predefinedSubsections ? 'expand_less' : 'expand_more' }}</mat-icon>
+        </div>
+      </div>
+
+      <div class="left-panel-body" *ngIf="leftPanelGroups.predefinedSubsections">
+        <div cdkDropList
+             [id]="subsectionTemplatesDropId"
+             [cdkDropListData]="predefinedSubsections"
+             [cdkDropListConnectedTo]="subsectionDropTargets"
+             [cdkDropListEnterPredicate]="denyDropPredicate"
+             [cdkDropListSortingDisabled]="true"
+             class="drop-list left-panel-list">
+          <div *ngFor="let s of predefinedSubsections"
+               cdkDrag
+               (cdkDragStarted)="onSubsectionTemplateDragStart()"
+               (cdkDragEnded)="onSubsectionTemplateDragEnd()"
+               [cdkDragData]="{ kind: 'subsectionTemplate', templateKey: s.key }"
+               class="field-item left-panel-item">
+            <div class="left-panel-item-icon sections">
+              <mat-icon>{{ s.icon }}</mat-icon>
+            </div>
+            <div class="left-panel-item-text">
+              <div class="left-panel-item-title">{{ s.title }}</div>
+              <div class="left-panel-item-subtitle">{{ s.subtitle }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Unavailable Sections -->
     <div class="left-panel-section">
       <div class="left-panel-header" (click)="toggleLeftPanelGroup('unavailSections')">
@@ -366,42 +410,53 @@
 
           <!-- Right: actions -->
           <div class="accordion-header-right">
+
+
             <button mat-icon-button
-                    class="accordion-header-btn"
-                    matTooltip="Add field"
-                    (click)="onAddFieldClicked(section, $event)">
-              <mat-icon>add</mat-icon>
+                    class="accordion-header-btn section-move-btn"
+                    matTooltip="Move section up"
+                    (click)="moveMainSection(section.sectionName, 'up', $event)">
+              <mat-icon>keyboard_arrow_up</mat-icon>
             </button>
 
             <button mat-icon-button
-                    class="accordion-header-btn"
-                    matTooltip="Section settings"
-                    (click)="onSectionSettings(section, $event)">
-              <mat-icon>settings</mat-icon>
+                    class="accordion-header-btn section-move-btn"
+                    matTooltip="Move section down"
+                    (click)="moveMainSection(section.sectionName, 'down', $event)">
+              <mat-icon>keyboard_arrow_down</mat-icon>
             </button>
-
             <button mat-icon-button
-                    class="accordion-header-btn"
-                    (click)="toggleSection(section.sectionName); $event.stopPropagation()"
-                    [attr.aria-label]="activeSections[section.sectionName] ? 'Collapse section' : 'Expand section'">
-              <mat-icon>
-                {{ activeSections[section.sectionName] ? 'expand_less' : 'expand_more' }}
-              </mat-icon>
+                    class="subsection-move-btn"
+                    matTooltip="Delete Subsection"
+                    style="color:red"
+                    (click)="deleteAccordionSection(section.sectionName, $event)">
+              <mat-icon>close</mat-icon>
             </button>
 
-            <button mat-icon-button style="padding:0px;width:auto;" class="delete-icon" (click)="deleteAccordionSection(section.sectionName, $event)">
-              <span title="Delete" aria-label="Delete" role="button" tabindex="0">
-                <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
-                  <path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"></path>
-                </svg>
-              </span>
-            </button>
+
           </div>
         </div>
         <div class="accordion-body">
           <!-- For Additional Details, render subsections if they exist -->
           <!-- Main section fields (always) -->
           <ng-container *ngTemplateOutlet="normalSection"></ng-container>
+
+          <!-- Predefined subsection drop zone (hidden unless dragging) -->
+          <div class="subsection-dropzone"
+               [class.subsection-dropzone--active]="isDraggingSubsectionTemplate"
+               cdkDropList
+               [id]="getSubsectionZoneId(section.sectionName)"
+               [cdkDropListData]="subsectionDropDummy"
+               [cdkDropListConnectedTo]="[subsectionTemplatesDropId]"
+               [cdkDropListEnterPredicate]="subsectionEnterPredicate"
+               (cdkDropListDropped)="dropPredefinedSubsection($event, section)"
+               [cdkDropListSortingDisabled]="true">
+            <div class="subsection-dropzone-hint" *ngIf="isDraggingSubsectionTemplate">
+              <mat-icon>add_circle</mat-icon>
+              Drag <b>Provider</b>, <b>Member</b>, or <b>ICD</b> here to add a repeatable subsection
+            </div>
+          </div>
+
 
           <!-- Subsections (auto-detected from JSON) -->
           <ng-container *ngIf="section.subsections">
@@ -420,14 +475,30 @@
                     {{ subSection.sectionName }}
                   </div>
 
-                  <!-- Delete icon (right) -->
-                  <button mat-icon-button
-                          class="subsection-float-delete"
-                          matTooltip="Delete Subsection"
-                          (click)="deleteSubSection(section.sectionName, (subSection.subsectionKey || subSection.sectionName), $event)">
-                    <mat-icon>close</mat-icon>
-                  </button>
 
+                  <div class="subsection-actions">
+                    <button mat-icon-button
+                            class="subsection-move-btn"
+                            matTooltip="Move up"
+                            (click)="moveSubSection(section.sectionName, (subSection.subsectionKey || subSection.sectionName), 'up', $event)">
+                      <mat-icon>keyboard_arrow_up</mat-icon>
+                    </button>
+                    <button mat-icon-button
+                            class="subsection-move-btn"
+                            matTooltip="Move down"
+                            (click)="moveSubSection(section.sectionName, (subSection.subsectionKey || subSection.sectionName), 'down', $event)">
+                      <mat-icon>keyboard_arrow_down</mat-icon>
+                    </button>
+                    <button mat-icon-button
+                            class="subsection-move-btn"
+                            matTooltip="Delete Subsection"
+                            style="color:red"
+                            (click)="deleteSubSection(section.sectionName, (subSection.subsectionKey || subSection.sectionName), $event)">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
+
+                  <!-- Delete icon (right) -->
                   <!-- Fields -->
                   <div cdkDropList
                        [id]="section.sectionName + '.' + (subSection.subsectionKey || subSection.sectionName)"
@@ -438,23 +509,50 @@
                        cdkDropListOrientation="mixed">
 
                     <!-- keep your existing field rendering exactly as-is -->
-                    <div *ngFor="let field of subSection.fields"
+                    <div *ngFor="let field of subSection.fields; let i = index"
                          cdkDrag
                          [cdkDragData]="field"
                          class="field-drag-item"
+                         [class.has-repeat-controls]="subSection.repeat?.enabled && subSection.repeat?.showControls && i === (subSection.fields.length - 1)"
                          [class.selected]="field === selectedField"
                          [class.active]="field.isActive"
                          (click)="selectField(field, section.sectionName + '.' + (subSection.subsectionKey || subSection.sectionName))">
 
 
+
+                      <div class="repeat-inline-controls"
+                           *ngIf="subSection.repeat?.enabled && subSection.repeat?.showControls && i === (subSection.fields.length - 1)"
+                           (click)="$event.stopPropagation()">
+                        <button mat-icon-button
+                                class="repeat-inline-btn"
+                                matTooltip="Add another"
+                                (click)="incRepeatDefaultCount(section.sectionName, (subSection.subsectionKey || subSection.sectionName), $event)">
+                          <mat-icon>add</mat-icon>
+                        </button>
+                        <button mat-icon-button
+                                class="repeat-inline-btn"
+                                matTooltip="Remove one"
+                                [disabled]="(subSection.repeat?.defaultCount ?? 1) <= (subSection.repeat?.min ?? 1)"
+                                (click)="decRepeatDefaultCount(section.sectionName, (subSection.subsectionKey || subSection.sectionName), $event)">
+                          <mat-icon>remove</mat-icon>
+                        </button>
+                        <span class="repeat-inline-count">{{ subSection.repeat?.defaultCount ?? 1 }}</span>
+                      </div>
                       <ng-container *ngIf="field.type !== 'checkbox'; else checkboxSubField">
                         <ng-container *ngIf="field.layout === 'row'; else normalSubField">
                           <div class="field-item row-container" style="display: flex; gap: 10px; align-items: center;">
                             <div *ngFor="let subField of (field.fields || [])" style="display: flex; gap: 10px; align-items: center;">
                               <ng-container *ngIf="subField.type !== 'checkbox'; else checkboxRowSubField">
                                 <div class="form-outline">
-                                  <label class="form-label">{{ subField.displayName }}</label>
-                                  <input [type]="getInputType(subField.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="subField.displayName" />
+                                  <label class="form-label" *ngIf="subField.type !== 'search'">{{ subField.displayName }}</label>
+                                  <ng-container [ngSwitch]="subField.type">
+                                    <div *ngSwitchCase="'search'" class="tb-search-control tb-search-control-compact">
+                                      <mat-icon class="tb-search-icon">search</mat-icon>
+                                      <input type="text" class="tb-search-input" [placeholder]="subField.displayName" />
+                                      <mat-icon class="tb-search-info" title="Info">info</mat-icon>
+                                    </div>
+                                    <input *ngSwitchDefault [type]="getInputType(subField.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="subField.displayName" />
+                                  </ng-container>
                                 </div>
                                 <button mat-icon-button style="padding:0px;width:auto;" class="delete-icon" (click)="moveFieldToAvailable(field, section.sectionName + '.' + (subSection.subsectionKey || subSection.sectionName), $event)">
                                   <span title="Delete" aria-label="Delete" role="button" tabindex="0">
@@ -466,7 +564,14 @@
                               </ng-container>
                               <ng-template #checkboxRowSubField>
                                 <div class="form-outline">
-                                  <input [type]="getInputType(subField.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="subField.displayName" />
+                                  <ng-container [ngSwitch]="subField.type">
+                                    <div *ngSwitchCase="'search'" class="tb-search-control tb-search-control-compact">
+                                      <mat-icon class="tb-search-icon">search</mat-icon>
+                                      <input type="text" class="tb-search-input" [placeholder]="subField.displayName" />
+                                      <mat-icon class="tb-search-info" title="Info">info</mat-icon>
+                                    </div>
+                                    <input *ngSwitchDefault [type]="getInputType(subField.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="subField.displayName" />
+                                  </ng-container>
                                 </div>
                               </ng-template>
                             </div>
@@ -476,7 +581,7 @@
                         <ng-template #normalSubField>
                           <div class="field-item">
                             <div class="form-outline">
-                              <label class="form-label">
+                              <label class="form-label" *ngIf="field.type !== 'search'">
                                 {{ field.displayName }}
                                 <span *ngIf="field.required" style="color: red;">*</span>
                               </label>
@@ -491,7 +596,14 @@
                               </ng-container>
 
                               <ng-template #normalField>
-                                <input [type]="getInputType(field.type)" class="custom-input" [placeholder]="field.displayName" />
+                                <ng-container [ngSwitch]="field.type">
+                                  <div *ngSwitchCase="'search'" class="tb-search-control">
+                                    <mat-icon class="tb-search-icon">search</mat-icon>
+                                    <input type="text" class="tb-search-input" [placeholder]="field.displayName" />
+                                    <mat-icon class="tb-search-info" title="Info">info</mat-icon>
+                                  </div>
+                                  <input *ngSwitchDefault [type]="getInputType(field.type)" class="custom-input" [placeholder]="field.displayName" />
+                                </ng-container>
                               </ng-template>
                             </div>
 
@@ -585,8 +697,15 @@
                         <div *ngFor="let subField of (field.fields || [])">
                           <ng-container *ngIf="subField.type !== 'checkbox'; else checkboxRowSubField">
                             <div class="form-outline">
-                              <label class="form-label">{{ subField.displayName }}</label>
-                              <input [type]="getInputType(subField.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="subField.displayName" />
+                              <label class="form-label" *ngIf="subField.type !== 'search'">{{ subField.displayName }}</label>
+                              <ng-container [ngSwitch]="subField.type">
+                                <div *ngSwitchCase="'search'" class="tb-search-control tb-search-control-compact">
+                                  <mat-icon class="tb-search-icon">search</mat-icon>
+                                  <input type="text" class="tb-search-input" [placeholder]="subField.displayName" />
+                                  <mat-icon class="tb-search-info" title="Info">info</mat-icon>
+                                </div>
+                                <input *ngSwitchDefault [type]="getInputType(subField.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="subField.displayName" />
+                              </ng-container>
                             </div>
                             <button mat-icon-button style="padding:0px;width:auto;" class="delete-icon" (click)="moveFieldToAvailable(field, section.sectionName, $event)">
                               <span title="Delete" aria-label="Delete" role="button" tabindex="0">
@@ -598,7 +717,14 @@
                           </ng-container>
                           <ng-template #checkboxRowSubField>
                             <div class="form-outline">
-                              <input [type]="getInputType(subField.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="subField.displayName" />
+                              <ng-container [ngSwitch]="subField.type">
+                                <div *ngSwitchCase="'search'" class="tb-search-control tb-search-control-compact">
+                                  <mat-icon class="tb-search-icon">search</mat-icon>
+                                  <input type="text" class="tb-search-input" [placeholder]="subField.displayName" />
+                                  <mat-icon class="tb-search-info" title="Info">info</mat-icon>
+                                </div>
+                                <input *ngSwitchDefault [type]="getInputType(subField.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="subField.displayName" />
+                              </ng-container>
                             </div>
                           </ng-template>
                         </div>
@@ -607,7 +733,7 @@
                     <ng-template #normalField>
                       <div class="field-item">
                         <div class="form-outline">
-                          <label class="form-label">
+                          <label class="form-label" *ngIf="field.type !== 'search'">
                             {{ field.displayName }}
                             <span *ngIf="field.required" style="color: red;"> * </span>
                           </label>
@@ -622,7 +748,14 @@
                           </ng-container>
 
                           <ng-template #normalField>
-                            <input [type]="getInputType(field.type)" class="custom-input" [placeholder]="field.displayName" />
+                            <ng-container [ngSwitch]="field.type">
+                              <div *ngSwitchCase="'search'" class="tb-search-control">
+                                <mat-icon class="tb-search-icon">search</mat-icon>
+                                <input type="text" class="tb-search-input" [placeholder]="field.displayName" />
+                                <mat-icon class="tb-search-info" title="Info">info</mat-icon>
+                              </div>
+                              <input *ngSwitchDefault [type]="getInputType(field.type)" class="custom-input" [placeholder]="field.displayName" />
+                            </ng-container>
                           </ng-template>
                         </div>
                         <button mat-icon-button style="padding:0px;width:auto;" class="delete-icon" (click)="moveFieldToAvailable(field, section.sectionName, $event)">
@@ -674,7 +807,14 @@
                               {{ subField.displayName }}
                               <span *ngIf="subField.required" style="color: red;">*</span>
                             </label>
-                            <input [type]="getInputType(subField.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="subField.displayName" />
+                            <ng-container [ngSwitch]="subField.type">
+                              <div *ngSwitchCase="'search'" class="tb-search-control tb-search-control-compact">
+                                <mat-icon class="tb-search-icon">search</mat-icon>
+                                <input type="text" class="tb-search-input" [placeholder]="subField.displayName" />
+                                <mat-icon class="tb-search-info" title="Info">info</mat-icon>
+                              </div>
+                              <input *ngSwitchDefault [type]="getInputType(subField.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="subField.displayName" />
+                            </ng-container>
                           </div>
                           <button mat-icon-button style="padding:0px;width:auto;" class="delete-icon" (click)="moveFieldToAvailable(field, section.sectionName, $event)">
                             <span title="Delete" aria-label="Delete" role="button" tabindex="0">
@@ -686,7 +826,14 @@
                         </ng-container>
                         <ng-template #checkboxRowSubField2>
                           <div class="form-outline">
-                            <input [type]="getInputType(subField.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="subField.displayName" />
+                            <ng-container [ngSwitch]="subField.type">
+                              <div *ngSwitchCase="'search'" class="tb-search-control tb-search-control-compact">
+                                <mat-icon class="tb-search-icon">search</mat-icon>
+                                <input type="text" class="tb-search-input" [placeholder]="subField.displayName" />
+                                <mat-icon class="tb-search-info" title="Info">info</mat-icon>
+                              </div>
+                              <input *ngSwitchDefault [type]="getInputType(subField.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="subField.displayName" />
+                            </ng-container>
                           </div>
                         </ng-template>
                       </div>
@@ -696,7 +843,7 @@
                     <div class="field-item">
                       <div class="form-outline">
 
-                        <label class="form-label">
+                        <label class="form-label" *ngIf="field.type !== 'search'">
                           {{ field.displayName }}
                           <span *ngIf="field.required" style="color: red;">*</span>
                         </label>
@@ -711,7 +858,14 @@
                         </ng-container>
 
                         <ng-template #normalField>
-                          <input [type]="getInputType(field.type)" class="custom-input" [placeholder]="field.displayName" />
+                          <ng-container [ngSwitch]="field.type">
+                            <div *ngSwitchCase="'search'" class="tb-search-control">
+                              <mat-icon class="tb-search-icon">search</mat-icon>
+                              <input type="text" class="tb-search-input" [placeholder]="field.displayName" />
+                              <mat-icon class="tb-search-info" title="Info">info</mat-icon>
+                            </div>
+                            <input *ngSwitchDefault [type]="getInputType(field.type)" class="custom-input" [placeholder]="field.displayName" />
+                          </ng-container>
                         </ng-template>
                       </div>
                       <button mat-icon-button class="delete-icon" style="padding: 0px; width: auto;" (click)="moveFieldToAvailable(field, section.sectionName, $event)">

@@ -37,9 +37,36 @@ interface TemplateField {
   sectionName?: string;
   dateOnly?: boolean;
   level?: string[];
+  // Conditional visibility (used in your JSON)
+  showWhen?: ShowWhen;
+  referenceFieldId?: string | null;
+  visibilityValue?: string | number | null;
+  conditions?: any[];
+  isVisible?: boolean | null;
+  info?: string;
+  primary?: boolean;
+  caseStatus?: string[];
 }
 
 type ShowWhen = 'always' | 'fieldEquals' | 'fieldNotEquals' | 'fieldhasvalue';
+
+interface RepeatConfig {
+  enabled?: boolean;
+  min?: number;
+  max?: number;
+  defaultCount?: number;
+  showControls?: boolean;
+  instanceLabel?: string;
+}
+
+interface PredefinedSubsectionTemplate {
+  key: 'provider' | 'member' | 'icd';
+  title: string;
+  subtitle: string;
+  icon: string;
+  subsection: Partial<TemplateSectionModel>;
+}
+
 // Define an interface for a section.
 interface TemplateSectionModel {
   sectionName: string;
@@ -50,6 +77,12 @@ interface TemplateSectionModel {
   subsections?: { [key: string]: TemplateSectionModel };
   /** Optional stable key for subsection maps */
   subsectionKey?: string;
+  /** Repeatable group config for runtime (FormArray) */
+  repeat?: RepeatConfig;
+  /** Optional base key for predefined subsection types */
+  baseKey?: string;
+  parentSectionName?: string;
+
 
   showWhen?: ShowWhen;
   referenceFieldId?: string | null;
@@ -133,7 +166,180 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
         );
       }
     });
+
+    // Predefined subsection drop zones (one per section)
+    this.subsectionDropTargets = (this.masterTemplate.sections || [])
+      .filter((s: any) => !!s?.sectionName)
+      .map((s: any) => this.getSubsectionZoneId(s.sectionName));
   }
+
+  /** Safe ID for CDK droplist ids (no spaces/special chars) */
+  private safeId(val: string): string {
+    return (val ?? '')
+      .toString()
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9\-_]/g, '');
+  }
+
+  getSubsectionZoneId(sectionName: string): string {
+    return `subsection-zone-${this.safeId(sectionName)}`;
+  }
+
+  // Predicate: deny dropping back into the template palette
+  denyDropPredicate = (_drag: any, _drop: any): boolean => false;
+
+  // Predicate: allow only subsection templates to enter section drop zones
+  subsectionEnterPredicate = (drag: any, _drop: any): boolean => {
+    const data = drag?.data;
+    return !!data && data.kind === 'subsectionTemplate';
+  };
+
+  onSubsectionTemplateDragStart(): void {
+    this.isDraggingSubsectionTemplate = true;
+    this.forceAngularChangeDetection();
+  }
+
+  onSubsectionTemplateDragEnd(): void {
+    this.isDraggingSubsectionTemplate = false;
+    this.forceAngularChangeDetection();
+  }
+
+  private getNextSubsectionOrder(section: any): number {
+    const subs = section?.subsections;
+    if (!subs || typeof subs !== 'object') return 10;
+    const orders = Object.values(subs).map((s: any) => Number(s?.order ?? 0));
+    const maxOrder = orders.length ? Math.max(...orders) : 0;
+    return maxOrder + 10;
+  }
+
+  private generateUniqueSubsectionKey(section: any, baseKey: string): string {
+    if (!section.subsections) section.subsections = {};
+    let key = baseKey;
+    if (!section.subsections[key]) return key;
+
+    let n = 2;
+    while (section.subsections[`${baseKey}_${n}`]) n++;
+    return `${baseKey}_${n}`;
+  }
+
+  dropPredefinedSubsection(event: CdkDragDrop<any>, section: any): void {
+    const data = event?.item?.data;
+    if (!data || data.kind !== 'subsectionTemplate') return;
+
+    const tpl = this.predefinedSubsections.find(x => x.key === data.templateKey);
+    if (!tpl) return;
+
+    if (!section.subsections) section.subsections = {};
+
+    const baseKey = tpl.key;
+    const newKey = this.generateUniqueSubsectionKey(section, baseKey);
+
+    // Deep clone to avoid sharing references
+    const newSub: any = JSON.parse(JSON.stringify(tpl.subsection));
+    newSub.subsectionKey = newKey;
+    newSub.baseKey = baseKey;
+    newSub.parentSectionName = section.sectionName;
+    newSub.sectionName = newSub.sectionName || tpl.title;
+    newSub.order = this.getNextSubsectionOrder(section);
+    if (!Array.isArray(newSub.fields)) newSub.fields = [];
+
+    // IMPORTANT: tag sectionName for each field so your existing move/delete logic works
+    newSub.fields = (newSub.fields || []).map((f: any) => ({
+      ...f,
+      sectionName: `${section.sectionName}.${newKey}`
+    }));
+
+    section.subsections[newKey] = newSub;
+
+    this.normalizeTemplateStructure();
+    this.rebuildAllDropLists();
+    this.forceAngularChangeDetection();
+  }
+
+  moveSubSection(mainSectionName: string, subKey: string, direction: 'up' | 'down', event: Event): void {
+    event.stopPropagation();
+    const main = this.masterTemplate.sections?.find(sec => sec.sectionName === mainSectionName);
+    if (!main?.subsections) return;
+
+    const entries = Object.keys(main.subsections)
+      .map(k => ({ key: k, sub: main.subsections![k] }))
+      .sort((a, b) => (a.sub?.order ?? 0) - (b.sub?.order ?? 0));
+
+    const idx = entries.findIndex(x => x.key === subKey);
+    if (idx < 0) return;
+
+    const swapWith = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapWith < 0 || swapWith >= entries.length) return;
+
+    // ensure both have order
+    if (entries[idx].sub.order == null) entries[idx].sub.order = idx * 10;
+    if (entries[swapWith].sub.order == null) entries[swapWith].sub.order = swapWith * 10;
+
+    const tmp = entries[idx].sub.order;
+    entries[idx].sub.order = entries[swapWith].sub.order;
+    entries[swapWith].sub.order = tmp;
+
+    this.forceAngularChangeDetection();
+  }
+
+  /**
+   * Move a MAIN section up/down by swapping its `order` with neighbor.
+   * Keeps JSON stable and works with your existing `order`-based sorting.
+   */
+  moveMainSection(sectionName: string, direction: 'up' | 'down', event: Event): void {
+    event.stopPropagation();
+    if (!this.masterTemplate?.sections || this.masterTemplate.sections.length === 0) return;
+
+    // Ensure every section has an order (use current array order as fallback)
+    this.masterTemplate.sections.forEach((s: any, idx: number) => {
+      if (s?.order == null) s.order = (idx + 1) * 10;
+    });
+
+    const sorted = [...this.masterTemplate.sections].sort((a: any, b: any) => (a?.order ?? 0) - (b?.order ?? 0));
+    const idx = sorted.findIndex((s: any) => s.sectionName === sectionName);
+    if (idx < 0) return;
+
+    const swapWith = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapWith < 0 || swapWith >= sorted.length) return;
+
+    const a = sorted[idx];
+    const b = sorted[swapWith];
+    const tmp = a.order;
+    a.order = b.order;
+    b.order = tmp;
+
+    // Write back sorted array so *ngFor reflects the new order
+    this.masterTemplate.sections = [...this.masterTemplate.sections].sort((x: any, y: any) => (x?.order ?? 0) - (y?.order ?? 0));
+
+    // Drop lists don't depend on order, but keep it safe
+    this.rebuildAllDropLists();
+    this.forceAngularChangeDetection();
+  }
+
+  incRepeatDefaultCount(mainSectionName: string, subKey: string, event: Event): void {
+    event.stopPropagation();
+    const main = this.masterTemplate.sections?.find(sec => sec.sectionName === mainSectionName);
+    const sub = main?.subsections?.[subKey];
+    if (!sub?.repeat?.enabled) return;
+
+    const max = sub.repeat.max ?? 999;
+    sub.repeat.defaultCount = Math.min((sub.repeat.defaultCount ?? 1) + 1, max);
+    this.forceAngularChangeDetection();
+  }
+
+  decRepeatDefaultCount(mainSectionName: string, subKey: string, event: Event): void {
+    event.stopPropagation();
+    const main = this.masterTemplate.sections?.find(sec => sec.sectionName === mainSectionName);
+    const sub = main?.subsections?.[subKey];
+    if (!sub?.repeat?.enabled) return;
+
+    const min = sub.repeat.min ?? 1;
+    sub.repeat.defaultCount = Math.max((sub.repeat.defaultCount ?? 1) - 1, min);
+    this.forceAngularChangeDetection();
+  }
+
   // Our master template now holds a sections array.
   masterTemplate: { sections?: TemplateSectionModel[] } = {};
 
@@ -146,6 +352,69 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
   selectedField: TemplateField | null = null;
   selectedSection: string = '';
   allDropLists: string[] = ['available'];
+  // Predefined subsections drag/drop
+  readonly subsectionTemplatesDropId = 'subsection-templates';
+  subsectionDropTargets: string[] = [];
+  subsectionDropDummy: any[] = [];
+  isDraggingSubsectionTemplate: boolean = false;
+
+  predefinedSubsections: PredefinedSubsectionTemplate[] = [
+    {
+      key: 'provider',
+      title: 'Provider',
+      subtitle: 'Search + First/Last/Phone/Fax',
+      icon: 'local_hospital',
+      subsection: {
+        sectionName: 'Provider',
+        subsectionKey: 'provider',
+        order: 0,
+        repeat: { enabled: true, min: 1, max: 10, defaultCount: 1, showControls: true, instanceLabel: 'Provider' },
+        fields: [
+          { id: 'providerSearch', label: 'Search Provider', displayName: 'Search Provider', type: 'text', order: 0, isEnabled: true, info: 'Search by NPI/Name/Phone' },
+          { id: 'providerFirstName', label: 'First Name', displayName: 'First Name', type: 'text', order: 1, isEnabled: true },
+          { id: 'providerLastName', label: 'Last Name', displayName: 'Last Name', type: 'text', order: 2, isEnabled: true },
+          { id: 'providerPhone', label: 'Phone', displayName: 'Phone', type: 'text', order: 3, isEnabled: true },
+          { id: 'providerFax', label: 'Fax', displayName: 'Fax', type: 'text', order: 4, isEnabled: true }
+        ]
+      }
+    },
+    {
+      key: 'member',
+      title: 'Member',
+      subtitle: 'Search + First/Last/Phone',
+      icon: 'person',
+      subsection: {
+        sectionName: 'Member',
+        subsectionKey: 'member',
+        order: 0,
+        repeat: { enabled: true, min: 1, max: 5, defaultCount: 1, showControls: true, instanceLabel: 'Member' },
+        fields: [
+          { id: 'memberSearch', label: 'Search Member', displayName: 'Search Member', type: 'text', order: 0, isEnabled: true, info: 'Search by Member ID/Name/Phone' },
+          { id: 'memberFirstName', label: 'First Name', displayName: 'First Name', type: 'text', order: 1, isEnabled: true },
+          { id: 'memberLastName', label: 'Last Name', displayName: 'Last Name', type: 'text', order: 2, isEnabled: true },
+          { id: 'memberPhone', label: 'Phone', displayName: 'Phone', type: 'text', order: 3, isEnabled: true }
+        ]
+      }
+    },
+    {
+      key: 'icd',
+      title: 'ICD',
+      subtitle: 'Search + ICD Code/Description',
+      icon: 'assignment',
+      subsection: {
+        sectionName: 'ICD',
+        subsectionKey: 'icd',
+        order: 0,
+        repeat: { enabled: true, min: 1, max: 30, defaultCount: 1, showControls: true, instanceLabel: 'ICD' },
+        fields: [
+          { id: 'icdSearch', label: 'Search ICD', displayName: 'Search ICD', type: 'text', order: 0, isEnabled: true, info: 'Search ICD code/description' },
+          { id: 'icdCode', label: 'ICD Code', displayName: 'ICD Code', type: 'text', order: 1, isEnabled: true },
+          { id: 'icdDescription', label: 'Description', displayName: 'Description', type: 'text', order: 2, isEnabled: true }
+        ]
+      }
+    }
+  ];
+
   defaultFieldIds: string[] = [];
   authTemplates: any[] = [];
   selectedTemplateId: number = 0;
@@ -374,6 +643,8 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
         return 'text';
       case 'textarea':
         return 'textarea';
+      case 'search':
+        return 'text';
       case 'checkbox':
         return 'checkbox';
       default:
@@ -1313,6 +1584,7 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
   // Left panel collapse state
   leftPanelGroups = {
     available: true,
+    predefinedSubsections: true,
     unavailSections: true,
     unavailFields: true
   };
@@ -1323,7 +1595,7 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
       .reduce((sum, key) => sum + (this.unavailableFieldsGrouped[key]?.length || 0), 0);
   }
 
-  toggleLeftPanelGroup(key: 'available' | 'unavailSections' | 'unavailFields'): void {
+  toggleLeftPanelGroup(key: 'available' | 'predefinedSubsections' | 'unavailSections' | 'unavailFields'): void {
     this.leftPanelGroups[key] = !this.leftPanelGroups[key];
   }
 
