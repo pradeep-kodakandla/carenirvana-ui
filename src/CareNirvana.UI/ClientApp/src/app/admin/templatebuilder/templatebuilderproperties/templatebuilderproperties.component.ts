@@ -4,6 +4,8 @@ import { debounceTime, Subject } from 'rxjs';
 import { COMMA, ENTER } from '@angular/cdk/keycodes';
 import { AuthService } from 'src/app/service/auth.service';
 import { UiSmartDropdownComponent, UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
+import { of } from 'rxjs';
+import { catchError, map, switchMap } from 'rxjs/operators';
 
 interface TemplateField {
   label: string;
@@ -92,6 +94,7 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
 
   fieldTypeOptions: UiSmartOption<string>[] = [
     { label: 'Text', value: 'text' },
+    { label: 'Search', value: 'search' },
     { label: 'Number', value: 'number' },
     { label: 'DateTime', value: 'datetime-local' },
     { label: 'Select', value: 'select' },
@@ -234,36 +237,80 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
     this.emitUpdate();
   }
 
+  //onDatasourceChange() {
+  //  if (!this.selectedField?.datasource) {
+  //    return;
+  //  }
+
+  //  const expectedKey = this.selectedField.datasource.toLowerCase(); // Convert datasource key to lowercase
+
+  //  this.crudService.getData(this.module, this.selectedField.datasource).subscribe(
+  //    (data: any[]) => {
+  //      this.dropdownOptions = data.map(item => {
+  //        // Find the actual key in the API response (ignoring case)
+  //        const actualKey = Object.keys(item).find(key => key.toLowerCase() === expectedKey);
+
+  //        // If found, use the actual key; otherwise, default to "Unknown"
+  //        const value = actualKey ? item[actualKey] : 'Unknown';
+
+  //        return { id: item.id, value };
+  //      });
+
+  //      //  Remove Auto-Selection of Default Value
+  //      if (this.selectedField!.defaultValue && !this.dropdownOptions.some(opt => opt.id === this.selectedField!.defaultValue)) {
+  //        this.selectedField!.defaultValue = undefined; // ✅ Corrected
+  //      }
+
+  //      this.emitUpdate();
+  //    },
+  //    (error) => {
+  //      console.error("Error fetching datasource:", error);
+  //    }
+  //  );
+  //}
+
   onDatasourceChange() {
-    if (!this.selectedField?.datasource) {
-      return;
-    }
+    const ds = this.selectedField?.datasource;
+    if (!ds) return;
 
-    const expectedKey = this.selectedField.datasource.toLowerCase(); // Convert datasource key to lowercase
+    const expectedKey = ds.toLowerCase();
 
-    this.crudService.getData(this.module, this.selectedField.datasource).subscribe(
-      (data: any[]) => {
-        this.dropdownOptions = data.map(item => {
-          // Find the actual key in the API response (ignoring case)
-          const actualKey = Object.keys(item).find(key => key.toLowerCase() === expectedKey);
+    const mapOptions = (data: any[]) => {
+      const rows = Array.isArray(data) ? data : [];
 
-          // If found, use the actual key; otherwise, default to "Unknown"
-          const value = actualKey ? item[actualKey] : 'Unknown';
+      this.dropdownOptions = rows.map(item => {
+        const actualKey = Object.keys(item || {}).find(k => k.toLowerCase() === expectedKey);
+        const value = actualKey ? item[actualKey] : 'Unknown';
+        return { id: item?.id, value };
+      });
 
-          return { id: item.id, value };
-        });
-
-        //  Remove Auto-Selection of Default Value
-        if (this.selectedField!.defaultValue && !this.dropdownOptions.some(opt => opt.id === this.selectedField!.defaultValue)) {
-          this.selectedField!.defaultValue = undefined; // ✅ Corrected
-        }
-
-        this.emitUpdate();
-      },
-      (error) => {
-        console.error("Error fetching datasource:", error);
+      // Remove auto-selection if defaultValue is no longer valid
+      if (
+        this.selectedField?.defaultValue &&
+        !this.dropdownOptions.some(opt => opt.id === this.selectedField!.defaultValue)
+      ) {
+        this.selectedField!.defaultValue = undefined;
       }
-    );
+
+      this.emitUpdate();
+    };
+
+    const getSafe = (moduleName: string) =>
+      this.crudService.getData(moduleName, ds).pipe(
+        map(res => (Array.isArray(res) ? res : [])),
+        catchError(err => {
+          console.error(`Error fetching datasource for module '${moduleName}':`, err);
+          return of([] as any[]);
+        })
+      );
+
+    // 1) current module -> 2) Admin -> 3) Provider
+    getSafe(this.module).pipe(
+      switchMap(rows => (rows.length ? of(rows) : getSafe('Admin'))),
+      switchMap(rows => (rows.length ? of(rows) : getSafe('Provider')))
+    ).subscribe(rows => {
+      mapOptions(rows);
+    });
   }
 
   emitSectionUpdate() {
