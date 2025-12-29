@@ -82,6 +82,8 @@
 </div>
 
 <div class="builder-container" *ngIf="isVisible">
+
+
   <!-- Left Column: Available Fields -->
   <!-- Left Column: Available / Unavailable blocks with new UI -->
   <div class="left-column">
@@ -435,7 +437,7 @@
           </div>
         </div>
         <div class="accordion-body">
-          <!-- For Additional Details, render subsections if they exist (cdkDropListDropped)="dropPredefinedSubsection($event, section)"-->
+          <!-- For Additional Details, render subsections if they exist -->
           <!-- Main section fields (always) -->
           <ng-container *ngTemplateOutlet="normalSection"></ng-container>
 
@@ -447,7 +449,7 @@
                [cdkDropListData]="subsectionDropDummy"
                [cdkDropListConnectedTo]="[subsectionTemplatesDropId]"
                [cdkDropListEnterPredicate]="subsectionEnterPredicate"
-               (cdkDropListDropped)="dropPredefinedSubsection($event, section, section.sectionName)"
+               (cdkDropListDropped)="dropPredefinedSubsection($event, section.sectionName)"
                [cdkDropListSortingDisabled]="true">
             <div class="subsection-dropzone-hint" *ngIf="isDraggingSubsectionTemplate">
               <mat-icon>add_circle</mat-icon>
@@ -459,53 +461,63 @@
           <!-- Subsections (auto-detected from JSON) -->
           <ng-container *ngIf="section.subsections">
             <div class="sub-accordion">
-              <div class="subsection-wrap">
-                <div class="subsection-group"
-                     *ngFor="let subSection of getSortedSubsections(section.subsections)">
+              <ng-container *ngTemplateOutlet="renderSubsections; context: { subsections: section.subsections, parentPath: section.sectionName }"></ng-container>
+            </div>
 
-                  <ng-container *ngIf="true"
-                                [ngTemplateOutlet]="subsectionNode"
-                                [ngTemplateOutletContext]="{
-                                  container: subSection,
-                                  containerPath: section.sectionName + '.' + (subSection.subsectionKey || subSection.sectionName)
-                                }">
-                  </ng-container>
+            <ng-template #renderSubsections let-subsections="subsections" let-parentPath="parentPath">
+              <div class="subsection-wrap" [class.nested]="parentPath?.includes('.')">
+                <div class="subsection-group" *ngFor="let subSection of getSortedSubsections(subsections)">
+
                   <div class="subsection-float-label"
-                       (click)="selectSubSection(section, subSection, $event)"
-                       [class.selected]="selectedSubSectionPath === (section.sectionName + '.' + (subSection.subsectionKey || subSection.sectionName))">
+                       (click)="selectSubSectionByPath(getSubPath(parentPath, subSection), subSection, $event)"
+                       [class.selected]="selectedSubSectionPath === getSubPath(parentPath, subSection)">
                     {{ subSection.sectionName }}
                   </div>
-
 
                   <div class="subsection-actions">
                     <button mat-icon-button
                             class="subsection-move-btn"
                             matTooltip="Move up"
-                            (click)="moveSubSection(section.sectionName, (subSection.subsectionKey || subSection.sectionName), 'up', $event)">
+                            (click)="moveSubSectionByPath(parentPath, getSubKey(subSection), 'up', $event)">
                       <mat-icon>keyboard_arrow_up</mat-icon>
                     </button>
                     <button mat-icon-button
                             class="subsection-move-btn"
                             matTooltip="Move down"
-                            (click)="moveSubSection(section.sectionName, (subSection.subsectionKey || subSection.sectionName), 'down', $event)">
+                            (click)="moveSubSectionByPath(parentPath, getSubKey(subSection), 'down', $event)">
                       <mat-icon>keyboard_arrow_down</mat-icon>
                     </button>
                     <button mat-icon-button
                             class="subsection-move-btn"
                             matTooltip="Delete Subsection"
                             style="color:red"
-                            (click)="deleteSubSection(section.sectionName, (subSection.subsectionKey || subSection.sectionName), $event)">
+                            (click)="deleteSubSectionByPath(parentPath, getSubKey(subSection), $event)">
                       <mat-icon>close</mat-icon>
                     </button>
                   </div>
 
-                  <!-- Delete icon (right) -->
+                  <!-- Predefined subsection drop zone INSIDE this subsection -->
+                  <div class="subsection-dropzone"
+                       [class.subsection-dropzone--active]="isDraggingSubsectionTemplate"
+                       cdkDropList
+                       [id]="getSubsectionZoneId(getSubPath(parentPath, subSection))"
+                       [cdkDropListData]="subsectionDropDummy"
+                       [cdkDropListConnectedTo]="[subsectionTemplatesDropId]"
+                       [cdkDropListEnterPredicate]="subsectionEnterPredicate"
+                       (cdkDropListDropped)="dropPredefinedSubsection($event, getSubPath(parentPath, subSection))"
+                       [cdkDropListSortingDisabled]="true">
+                    <div class="subsection-dropzone-hint" *ngIf="isDraggingSubsectionTemplate">
+                      <mat-icon>add_circle</mat-icon>
+                      Drop predefined subsection here
+                    </div>
+                  </div>
+
                   <!-- Fields -->
                   <div cdkDropList
-                       [id]="section.sectionName + '.' + (subSection.subsectionKey || subSection.sectionName)"
+                       [id]="getSubPath(parentPath, subSection)"
                        [cdkDropListData]="subSection.fields"
                        [cdkDropListConnectedTo]="allDropLists"
-                       (cdkDropListDropped)="drop($event, section.sectionName + '.' + (subSection.subsectionKey || subSection.sectionName))"
+                       (cdkDropListDropped)="drop($event, getSubPath(parentPath, subSection))"
                        class="drop-list middle-grid-drop"
                        cdkDropListOrientation="mixed">
 
@@ -517,7 +529,7 @@
                          [class.has-repeat-controls]="subSection.repeat?.enabled && subSection.repeat?.showControls && i === (subSection.fields.length - 1)"
                          [class.selected]="field === selectedField"
                          [class.active]="field.isActive"
-                         (click)="selectField(field, section.sectionName + '.' + (subSection.subsectionKey || subSection.sectionName))">
+                         (click)="selectField(field, getSubPath(parentPath, subSection))">
 
 
 
@@ -527,17 +539,17 @@
                         <button mat-icon-button
                                 class="repeat-inline-btn"
                                 matTooltip="Add another"
-                                (click)="incRepeatDefaultCount(section.sectionName, (subSection.subsectionKey || subSection.sectionName), $event)">
+                                (click)="incRepeatDefaultCount(parentPath, getSubKey(subSection), $event)">
                           <mat-icon>add</mat-icon>
                         </button>
                         <button mat-icon-button
                                 class="repeat-inline-btn"
                                 matTooltip="Remove one"
-                                [disabled]="(subSection.repeat?.defaultCount ?? 1) <= (subSection.repeat?.min ?? 1)"
-                                (click)="decRepeatDefaultCount(section.sectionName, (subSection.subsectionKey || subSection.sectionName), $event)">
+                                [disabled]="getRepeatDefaultCount(subSection) <= getRepeatMin(subSection)"
+                                (click)="decRepeatDefaultCount(parentPath, getSubKey(subSection), $event)">
                           <mat-icon>remove</mat-icon>
                         </button>
-                        <span class="repeat-inline-count">{{ subSection.repeat?.defaultCount ?? 1 }}</span>
+                        <span class="repeat-inline-count">{{ getRepeatDefaultCount(subSection) }}</span>
                       </div>
                       <ng-container *ngIf="field.type !== 'checkbox'; else checkboxSubField">
                         <ng-container *ngIf="field.layout === 'row'; else normalSubField">
@@ -555,7 +567,7 @@
                                     <input *ngSwitchDefault [type]="getInputType(subField.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="subField.displayName" />
                                   </ng-container>
                                 </div>
-                                <button mat-icon-button style="padding:0px;width:auto;" class="delete-icon" (click)="moveFieldToAvailable(field, section.sectionName + '.' + (subSection.subsectionKey || subSection.sectionName), $event)">
+                                <button mat-icon-button style="padding:0px;width:auto;" class="delete-icon" (click)="moveFieldToAvailable(field, getSubPath(parentPath, subSection), $event)">
                                   <span title="Delete" aria-label="Delete" role="button" tabindex="0">
                                     <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
                                       <path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"></path>
@@ -609,7 +621,7 @@
                             </div>
 
                             <button mat-icon-button class="delete-icon" style="padding: 0px; width: auto;"
-                                    (click)="moveFieldToAvailable(field, section.sectionName + '.' + (subSection.subsectionKey || subSection.sectionName), $event)">
+                                    (click)="moveFieldToAvailable(field, getSubPath(parentPath, subSection), $event)">
                               <span title="Delete" aria-label="Delete" role="button" tabindex="0">
                                 <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
                                   <path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"></path>
@@ -630,9 +642,15 @@
 
                     </div>
                   </div>
+
+                  <!-- Nested subsections -->
+                  <ng-container *ngIf="subSection.subsections">
+                    <ng-container *ngTemplateOutlet="renderSubsections; context: { subsections: subSection.subsections, parentPath: getSubPath(parentPath, subSection) }"></ng-container>
+                  </ng-container>
+
                 </div>
               </div>
-            </div>
+            </ng-template>
           </ng-container>
 
           <ng-template #normalSection>
@@ -649,7 +667,6 @@
                 </div>
               </div>-->
               <div class="provider-buttons">
-                *n
                 <div *ngFor="let field of getFieldsByType(section.fields, 'button')"
                      class="provider-chip"
                      [class.selected]="field === selectedField">
@@ -895,53 +912,6 @@
       </div>
     </div>
     <!-- Save Template Button with Fixed Position -->
-    <ng-template #subsectionNode let-container="container" let-containerPath="containerPath">
-
-      <!-- your existing subsection header/label/buttons stay the same -->
-      <!-- ✅ dropzone to add predefined subsections INSIDE this subsection -->
-      <div class="subsection-dropzone"
-           [class.subsection-dropzone--active]="isDraggingSubsectionTemplate"
-           cdkDropList
-           [id]="getSubsectionZoneId(containerPath)"
-           [cdkDropListData]="subsectionDropDummy"
-           [cdkDropListConnectedTo]="[subsectionTemplatesDropId]"
-           [cdkDropListEnterPredicate]="subsectionEnterPredicate"
-           (cdkDropListDropped)="dropPredefinedSubsection($event, container, containerPath)"
-           [cdkDropListSortingDisabled]="true">
-
-        <div class="subsection-dropzone-hint" *ngIf="isDraggingSubsectionTemplate">
-          <mat-icon>add_circle</mat-icon>
-          Drop here to add Provider / Member / ICD under this subsection
-        </div>
-      </div>
-
-      <!-- existing fields drop list (keep yours) -->
-      <div cdkDropList
-           [id]="containerPath"
-           [cdkDropListData]="container.fields"
-           [cdkDropListConnectedTo]="allDropLists"
-           (cdkDropListDropped)="drop($event, containerPath)"
-           class="drop-list middle-grid-drop"
-           cdkDropListOrientation="mixed">
-        <!-- your fields rendering -->
-      </div>
-
-      <!-- ✅ render nested subsections (recursion) -->
-      <ng-container *ngIf="container.subsections">
-        <div class="subsection-wrap nested">
-          <div class="subsection-group"
-               *ngFor="let child of getSortedSubsections(container.subsections)">
-            <ng-container [ngTemplateOutlet]="subsectionNode"
-                          [ngTemplateOutletContext]="{
-            container: child,
-            containerPath: containerPath + '.' + (child.subsectionKey || child.sectionName)
-          }">
-            </ng-container>
-          </div>
-        </div>
-      </ng-container>
-
-    </ng-template>
 
 
   </div>
