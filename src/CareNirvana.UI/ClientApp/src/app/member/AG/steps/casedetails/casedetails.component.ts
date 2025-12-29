@@ -8,7 +8,7 @@ import { CasedetailService, CaseAggregateDto } from 'src/app/service/casedetail.
 import { CaseWizardStoreService } from 'src/app/member/AG/services/case-wizard-store.service';
 import { ActivatedRoute } from '@angular/router';
 import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
-import { CrudService } from 'src/app/service/crud.service';
+import { CrudService, DatasourceLookupService } from 'src/app/service/crud.service';
 import { AuthNumberService } from 'src/app/service/auth-number-gen.service';
 
 
@@ -40,6 +40,7 @@ interface TplField {
   // dropdown
   selectedOptions?: any[];
 
+  options?: any[];
   // visibility
   showWhen?: ShowWhen;
   referenceFieldId?: string | null;
@@ -147,7 +148,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     mdReview: ['Reviewer_Information', 'MD Review', 'MD_Review'],
     disposition: ['Disposition_Details', 'Disposition', 'Disposition Details'],
     // "close" typically lives under status/close sections (adjust as needed)
-  //  close: ['Case_Close', 'Case Close', 'Close', 'Case_Status_Details', 'Case Status Details'],
+    //  close: ['Case_Close', 'Case Close', 'Close', 'Case_Status_Details', 'Case Status Details'],
   };
 
 
@@ -167,7 +168,8 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     private state: CaseWizardStoreService,
     private route: ActivatedRoute,
     private crudService: CrudService,
-    private authNumberService: AuthNumberService
+    private authNumberService: AuthNumberService,
+    private dsLookup: DatasourceLookupService
   ) { }
 
   caseHasUnsavedChanges(): boolean {
@@ -622,53 +624,113 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     return v ?? null;
   }
 
+  //prefetchDropdownOptions(sections: RenderSection[]): void {
+  //  const allFields = [
+  //    ...sections.flatMap(s => s.fields),
+  //    ...sections.flatMap(s => s.subsections.flatMap(sub => sub.fields))
+  //  ];
+
+  //  const selects = allFields.filter(f => f.type === 'select' && !!f.datasource);
+
+  //  for (const f of selects) {
+  //    if (this.optionsByControlName[f.controlName]) continue;
+
+  //    this.crudService.getData('AG', f.datasource!.toLowerCase())
+  //      .pipe(takeUntil(this.destroy$))
+  //      .subscribe((rows: any[]) => {
+
+  //        const ds = (f.datasource ?? '').trim();
+  //        const dsKey = ds ? this.toCamelCase(ds) : '';
+
+  //        this.optionsByControlName[f.controlName] = (rows ?? []).map(r => {
+  //          const value = r?.value ?? r?.id ?? r?.code;
+
+  //          const label =
+  //            r?.text ??
+  //            r?.name ??
+  //            r?.description ??
+  //            (dsKey ? (r?.[dsKey] ?? r?.[dsKey.charAt(0).toUpperCase() + dsKey.slice(1)] ?? r?.[ds]) : null) ??
+  //            this.pickDisplayField(r) ??
+  //            String(value ?? '');
+
+  //          return { value, label } as UiSmartOption;
+  //        });
+
+  //      });
+  //  }
+  //}
+
   prefetchDropdownOptions(sections: RenderSection[]): void {
     const allFields = [
-      ...sections.flatMap(s => s.fields),
-      ...sections.flatMap(s => s.subsections.flatMap(sub => sub.fields))
+      ...sections.flatMap((s: RenderSection) => s.fields ?? []),
+      ...sections.flatMap((s: RenderSection) => (s.subsections ?? []).flatMap((sub: any) => sub.fields ?? []))
     ];
 
-    const selects = allFields.filter(f => f.type === 'select' && !!f.datasource);
+    // 1) Static dropdowns (no datasource)
+    for (const f of allFields as any[]) {
+      const hasDs = !!String(f.datasource ?? '').trim();
+      if (f.type === 'select' && !hasDs) {
+        const staticOpts = this.mapStaticOptions(f.options);
+        if (staticOpts.length) {
+          this.optionsByControlName[f.controlName] = staticOpts;
+        }
+      }
+    }
 
+    // 2) Datasource dropdowns 
+    const selects = allFields.filter((f: any) => f.type === 'select' && !!f.datasource);
+
+    // Group fields by datasource so we resolve each datasource only once
+    const byDatasource = new Map<string, any[]>();
     for (const f of selects) {
-      if (this.optionsByControlName[f.controlName]) continue;
+      const ds = String(f.datasource ?? '').trim();
+      if (!ds) continue;
 
-      // adapt this call to your actual lookup API
-      //this.crudService.getData('AG', f.datasource!.toLowerCase())
-      //  .pipe(takeUntil(this.destroy$))
-      //  .subscribe((rows: any[]) => {
-      //    console.log(`Fetched options for datasource '${f.datasource}':`, rows);
-      //    this.optionsByControlName[f.controlName] = (rows ?? []).map(r => {
-      //      const value = r.value ?? r.id ?? r.code;
-      //      const label = r.text ?? r.name ?? r.description ?? String(value ?? '');
-      //      return { value, label } as UiSmartOption;
-      //    });
-      //    console.log(`Mapped options for control '${f.controlName}':`, this.optionsByControlName[f.controlName]);
-      //  });
-      this.crudService.getData('AG', f.datasource!.toLowerCase())
-        .pipe(takeUntil(this.destroy$))
-        .subscribe((rows: any[]) => {
+      const list = byDatasource.get(ds) ?? [];
+      list.push(f);
+      byDatasource.set(ds, list);
+    }
 
-          const ds = (f.datasource ?? '').trim();
-          const dsKey = ds ? this.toCamelCase(ds) : '';
-
-          this.optionsByControlName[f.controlName] = (rows ?? []).map(r => {
+    for (const [ds, fields] of byDatasource.entries()) {
+      const allLoaded = fields.every((f: any) => !!this.optionsByControlName?.[f.controlName]);
+      if (allLoaded) continue;
+     // console.log(`Prefetching options for datasource "${ds}" for fields:`, fields.map((f: any) => f.controlName));
+      this.dsLookup
+        .getOptionsWithFallback(
+          ds,
+          (r: any) => {
+            const dsKey = ds ? this.toCamelCase(ds) : '';
             const value = r?.value ?? r?.id ?? r?.code;
 
             const label =
               r?.text ??
               r?.name ??
               r?.description ??
-              (dsKey ? (r?.[dsKey] ?? r?.[dsKey.charAt(0).toUpperCase() + dsKey.slice(1)] ?? r?.[ds]) : null) ??
+              (dsKey
+                ? (r?.[dsKey] ??
+                  r?.[dsKey.charAt(0).toUpperCase() + dsKey.slice(1)] ??
+                  r?.[ds])
+                : null) ??
               this.pickDisplayField(r) ??
               String(value ?? '');
-
+            console.log('Mapping row to option:', { row: r, value, label });
             return { value, label } as UiSmartOption;
-          });
-
+          },
+          ['AG', 'Admin', 'Provider']
+        )
+        .pipe(takeUntil(this.destroy$))
+        .subscribe((opts: UiSmartOption[] | null) => {
+          for (const f of fields) {
+         //   console.log(`Setting options for field "${f.controlName}":`, opts);
+            if (this.optionsByControlName[f.controlName]) continue;
+            this.optionsByControlName[f.controlName] = opts ?? [];
+          }
         });
     }
   }
+
+
+
 
   private toCamelCase(input: string): string {
     // caselevel -> caselevel, request_source -> requestSource, request-source -> requestSource
@@ -1018,5 +1080,21 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     return !!key && this.changedFieldSet.has(key);
   }
 
+  private mapStaticOptions(options: any[] | undefined): UiSmartOption[] {
+    if (!Array.isArray(options)) return [];
+
+    return options
+      .filter(o => o !== null && o !== undefined && o !== '')
+      .map(o => {
+        if (typeof o === 'object') {
+          const value =
+            (o as any).value ?? (o as any).id ?? (o as any).code ?? (o as any).key ?? o;
+          const label =
+            (o as any).label ?? (o as any).text ?? (o as any).name ?? (o as any).description ?? String(value ?? '');
+          return { value, label } as UiSmartOption;
+        }
+        return { value: o, label: String(o) } as UiSmartOption;
+      });
+  }
 
 }

@@ -344,3 +344,66 @@
   vertical-align: middle;
   transform: translateY(-1px);
 }
+
+
+/* Wrap a field + its validation message so error never flows beside */
+.ff-field {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Ensure checkbox stays on one line and error below */
+.ff-checkbox, .ff-outline {
+  width: 100%;
+}
+
+
+/* Make search span the full grid width */
+.ff-span-all {
+  grid-column: 1 / -1;
+}
+
+/* Search bar styling to match screenshot */
+.ff-searchbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #d0d0d0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  min-height: 44px;
+}
+
+  .ff-searchbar:focus-within {
+    border-color: #6aa9ff;
+    box-shadow: 0 0 0 3px rgba(106,169,255,.18);
+  }
+
+.ff-search-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: #6b7280;
+}
+
+  .ff-search-icon svg {
+    fill: currentColor;
+  }
+
+.ff-search-input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+}
+
+  .ff-search-input::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+  }

@@ -39,6 +39,8 @@
   flex: 1 1 auto;
   overflow: auto; /* ✅ only content scrolls */
   padding: 12px;
+  min-height: 0; 
+  overflow-y: auto
 }
 
 .card {
