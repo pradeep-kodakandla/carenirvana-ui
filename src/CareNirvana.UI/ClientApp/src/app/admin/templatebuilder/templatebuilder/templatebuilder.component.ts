@@ -91,7 +91,7 @@ interface TemplateSectionModel {
 @Component({
   selector: 'app-templatebuilder',
   templateUrl: './templatebuilder.component.html',
-  styleUrls: ['./templatebuilder.component.css']
+  styleUrl: './templatebuilder.component.css'
 })
 export class TemplatebuilderComponent implements OnInit, OnChanges {
 
@@ -101,96 +101,146 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
    * Also ensures fields arrays exist and tags field.sectionName for move/delete logic.
    * This lets the UI "auto-detect" structure from JSON.
    */
+  //private normalizeTemplateStructure(): void {
+  //  if (!this.masterTemplate?.sections || !Array.isArray(this.masterTemplate.sections)) return;
+
+  //  const normalizeSection = (sec: any, parentName?: string) => {
+  //    if (!sec) return;
+
+  //    // Ensure fields is an array
+  //    if (!Array.isArray(sec.fields)) {
+  //      sec.fields = [];
+  //    }
+
+  //    // Tag sectionName for fields (used by move logic)
+  //    (sec.fields as any[]).forEach((f: any) => {
+  //      if (f && typeof f === 'object' && !f.sectionName) {
+  //        f.sectionName = parentName ? `${parentName}.${sec.sectionName}` : sec.sectionName;
+  //      }
+  //    });
+
+  //    // Normalize subsections: array -> map
+  //    const subs = sec.subsections;
+  //    if (Array.isArray(subs)) {
+  //      const map: { [key: string]: any } = {};
+  //      subs.forEach((s: any, idx: number) => {
+  //        const key = (s?.subsectionKey || s?.sectionName || `Subsection${idx}`).toString();
+  //        map[key] = s;
+  //        // Keep sectionName display stable
+  //        if (!map[key].sectionName) map[key].sectionName = key;
+  //        map[key].subsectionKey = key;
+  //        normalizeSection(map[key], sec.sectionName);
+  //      });
+  //      sec.subsections = map;
+  //    } else if (subs && typeof subs === 'object') {
+  //      // If it's already a map, normalize children
+  //      Object.keys(subs).forEach((key: string) => {
+  //        const child = subs[key];
+  //        if (child && typeof child === 'object') {
+  //          if (!child.sectionName) child.sectionName = key;
+  //          if (!child.subsectionKey) child.subsectionKey = key;
+  //          normalizeSection(child, sec.sectionName);
+  //        }
+  //      });
+  //    } else {
+  //      // No subsections
+  //      delete sec.subsections;
+  //    }
+  //  };
+
+  //  this.masterTemplate.sections.forEach((s: any) => normalizeSection(s));
+  //}
+
+  /** Rebuild droplist IDs based on normalized sections + subsections */
+  //private rebuildAllDropLists(): void {
+  //  this.allDropLists = ['available'];
+  //  if (!this.masterTemplate?.sections) return;
+
+  //  this.masterTemplate.sections.forEach((section: any) => {
+  //    if (!section?.sectionName) return;
+  //    this.allDropLists.push(section.sectionName);
+
+  //    if (section.subsections && typeof section.subsections === 'object' && !Array.isArray(section.subsections)) {
+  //      this.allDropLists.push(
+  //        ...Object.keys(section.subsections).map((subKey: string) => `${section.sectionName}.${subKey}`)
+  //      );
+  //    }
+  //  });
+
+  //  // Predefined subsection drop zones (one per section)
+  //  this.subsectionDropTargets = (this.masterTemplate.sections || [])
+  //    .filter((s: any) => !!s?.sectionName)
+  //    .map((s: any) => this.getSubsectionZoneId(s.sectionName));
+  //}
+
   private normalizeTemplateStructure(): void {
     if (!this.masterTemplate?.sections || !Array.isArray(this.masterTemplate.sections)) return;
 
-    const normalizeNode = (node: any, parentPath?: string) => {
-      if (!node) return;
+    const normalizeSection = (sec: any, parentPath?: string) => {
+      if (!sec) return;
 
-      // Ensure fields is an array
-      if (!Array.isArray(node.fields)) {
-        node.fields = [];
-      }
+      if (!Array.isArray(sec.fields)) sec.fields = [];
 
-      const thisPath = parentPath ? `${parentPath}.${node.sectionName}` : node.sectionName;
+      const thisPath = parentPath ? `${parentPath}.${sec.sectionName}` : sec.sectionName;
 
-      // Tag sectionName for fields (used by move/delete logic)
-      (node.fields as any[]).forEach((f: any) => {
-        if (f && typeof f === 'object') {
-          f.sectionName = f.sectionName ?? thisPath;
+      (sec.fields as any[]).forEach((f: any) => {
+        if (f && typeof f === 'object' && !f.sectionName) {
+          f.sectionName = thisPath; // ✅ full path
         }
       });
 
-      const subs = node.subsections;
-
-      // Normalize subsections to an object map, then recurse
+      const subs = sec.subsections;
       if (Array.isArray(subs)) {
         const map: { [key: string]: any } = {};
         subs.forEach((s: any, idx: number) => {
           const key = (s?.subsectionKey || s?.sectionName || `Subsection${idx}`).toString();
           map[key] = s;
+          if (!map[key].sectionName) map[key].sectionName = key;
+          map[key].subsectionKey = key;
+          normalizeSection(map[key], thisPath); // ✅ pass full path
         });
-        node.subsections = map;
-      }
-
-      if (node.subsections && typeof node.subsections === 'object' && !Array.isArray(node.subsections)) {
-        Object.keys(node.subsections).forEach((key: string) => {
-          const child = node.subsections[key];
+        sec.subsections = map;
+      } else if (subs && typeof subs === 'object') {
+        Object.keys(subs).forEach((key: string) => {
+          const child = subs[key];
           if (child && typeof child === 'object') {
-            child.subsectionKey = child.subsectionKey ?? key;
-            child.sectionName = child.sectionName ?? key;
-            normalizeNode(child, thisPath);
+            if (!child.sectionName) child.sectionName = key;
+            if (!child.subsectionKey) child.subsectionKey = key;
+            normalizeSection(child, thisPath); // ✅ pass full path
           }
         });
       } else {
-        delete node.subsections;
+        delete sec.subsections;
       }
     };
 
-    this.masterTemplate.sections.forEach((s: any) => {
-      if (!s?.sectionName) return;
-      s.sectionName = s.sectionName;
-      normalizeNode(s);
-    });
+    this.masterTemplate.sections.forEach((s: any) => normalizeSection(s));
   }
 
-
-  /** Rebuild droplist IDs based on normalized sections + subsections (recursive) */
   private rebuildAllDropLists(): void {
-    const all = new Set<string>(['available', 'unavailable']);
-    const targets = new Set<string>();
-
-    if (!this.masterTemplate?.sections) {
-      this.allDropLists = Array.from(all);
-      this.subsectionDropTargets = Array.from(targets);
-      return;
-    }
+    this.allDropLists = ['available'];
+    this.subsectionDropTargets = [];
 
     const walk = (container: any, path: string) => {
       if (!container || !path) return;
 
-      // Field drop list IDs
-      all.add(path);
+      // droplist for fields drag/drop
+      this.allDropLists.push(path);
 
-      // Predefined-subsection drop zone IDs
-      targets.add(this.getSubsectionZoneId(path));
+      // ✅ droplist for “add predefined subsection here”
+      this.subsectionDropTargets.push(this.getSubsectionZoneId(path));
 
       const subs = container.subsections;
       if (subs && typeof subs === 'object' && !Array.isArray(subs)) {
-        Object.keys(subs).forEach((subKey: string) => {
-          const child = subs[subKey];
-          walk(child, `${path}.${subKey}`);
+        Object.keys(subs).forEach(subKey => {
+          walk(subs[subKey], `${path}.${subKey}`);
         });
       }
     };
 
-    this.masterTemplate.sections.forEach((section: any) => {
-      if (!section?.sectionName) return;
-      walk(section, section.sectionName);
-    });
-
-    this.allDropLists = Array.from(all);
-    this.subsectionDropTargets = Array.from(targets);
+    (this.masterTemplate.sections || [])
+      .filter((s: any) => !!s?.sectionName)
+      .forEach((s: any) => walk(s, s.sectionName));
   }
 
 
@@ -207,96 +257,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
   getSubsectionZoneId(sectionName: string): string {
     return `subsection-zone-${this.safeId(sectionName)}`;
   }
-  /** Returns subsection key for a subsection node */
-  getSubKey(subSection: any): string {
-    return (subSection?.subsectionKey || subSection?.sectionName || '').toString();
-  }
-
-  /** Returns full path (e.g., "CaseInfo.Provider") */
-  getSubPath(parentPath: string, subSection: any): string {
-    const key = this.getSubKey(subSection);
-    return parentPath ? `${parentPath}.${key}` : key;
-  }
-
-  /** Resolve a section/subsection container by its path (sectionName[.subKey[.childKey...]]). */
-  private resolveContainerByPath(path: string): any | null {
-    if (!path || !this.masterTemplate?.sections) return null;
-
-    const parts = path.split('.').filter(Boolean);
-    if (parts.length === 0) return null;
-
-    const mainName = parts[0];
-    const main = this.masterTemplate.sections.find((s: any) => s.sectionName === mainName);
-    if (!main) return null;
-
-    let container: any = main;
-    for (let i = 1; i < parts.length; i++) {
-      const key = parts[i];
-      if (!container?.subsections?.[key]) return null;
-      container = container.subsections[key];
-    }
-    return container;
-  }
-
-  selectSubSectionByPath(subPath: string, subSection: any, event?: Event): void {
-    event?.stopPropagation();
-    if (this.selectedField) this.selectedField.isActive = false;
-
-    this.selectedField = null;
-    this.selectedSubSectionObject = subSection;
-    this.selectedSubSectionPath = subPath;
-
-    const mainName = subPath?.split('.')?.[0];
-    this.selectedSectionObject = this.masterTemplate.sections?.find((s: any) => s.sectionName === mainName) ?? null;
-
-    console.log('Selected subsection:', this.selectedSubSectionPath);
-  }
-
-  moveSubSectionByPath(parentPath: string, subKey: string, direction: 'up' | 'down', event: Event): void {
-    event.stopPropagation();
-
-    const parent = this.resolveContainerByPath(parentPath);
-    if (!parent?.subsections) return;
-
-    const keys = Object.keys(parent.subsections);
-    // sort by current order
-    const sorted = keys
-      .map(k => ({ key: k, order: Number(parent.subsections[k]?.order ?? 0) }))
-      .sort((a, b) => a.order - b.order)
-      .map(x => x.key);
-
-    const idx = sorted.indexOf(subKey);
-    if (idx < 0) return;
-
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= sorted.length) return;
-
-    const aKey = sorted[idx];
-    const bKey = sorted[swapIdx];
-
-    const a = parent.subsections[aKey];
-    const b = parent.subsections[bKey];
-
-    const tmp = Number(a?.order ?? 0);
-    a.order = Number(b?.order ?? 0);
-    b.order = tmp;
-
-    this.forceAngularChangeDetection();
-  }
-
-  deleteSubSectionByPath(parentPath: string, subKey: string, event: Event): void {
-    event.stopPropagation();
-
-    const parent = this.resolveContainerByPath(parentPath);
-    if (!parent?.subsections?.[subKey]) return;
-
-    delete parent.subsections[subKey];
-
-    this.normalizeTemplateStructure();
-    this.rebuildAllDropLists();
-    this.forceAngularChangeDetection();
-  }
-
 
   // Predicate: deny dropping back into the template palette
   denyDropPredicate = (_drag: any, _drop: any): boolean => false;
@@ -317,62 +277,85 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
     this.forceAngularChangeDetection();
   }
 
-  private getNextSubsectionOrder(container: any): number {
-    const subs = container?.subsections;
+  private getNextSubsectionOrder(section: any): number {
+    const subs = section?.subsections;
     if (!subs || typeof subs !== 'object') return 10;
-    const orders = Object.values(subs).map((s: any) => Number((s as any)?.order ?? 0));
+    const orders = Object.values(subs).map((s: any) => Number(s?.order ?? 0));
     const maxOrder = orders.length ? Math.max(...orders) : 0;
     return maxOrder + 10;
   }
 
-
-  private generateUniqueSubsectionKey(container: any, baseKey: string): string {
-    const subs = container?.subsections || {};
+  private generateUniqueSubsectionKey(section: any, baseKey: string): string {
+    if (!section.subsections) section.subsections = {};
     let key = baseKey;
+    if (!section.subsections[key]) return key;
+
     let n = 2;
-    while (subs && subs[key]) {
-      key = `${baseKey}_${n}`;
-      n++;
-    }
-    return key;
+    while (section.subsections[`${baseKey}_${n}`]) n++;
+    return `${baseKey}_${n}`;
   }
 
+  //dropPredefinedSubsection(event: CdkDragDrop<any>, section: any): void {
+  //  const data = event?.item?.data;
+  //  if (!data || data.kind !== 'subsectionTemplate') return;
 
-  dropPredefinedSubsection(event: CdkDragDrop<any>, containerPath: string): void {
+  //  const tpl = this.predefinedSubsections.find(x => x.key === data.templateKey);
+  //  if (!tpl) return;
+
+  //  if (!section.subsections) section.subsections = {};
+
+  //  const baseKey = tpl.key;
+  //  const newKey = this.generateUniqueSubsectionKey(section, baseKey);
+
+  //  // Deep clone to avoid sharing references
+  //  const newSub: any = JSON.parse(JSON.stringify(tpl.subsection));
+  //  newSub.subsectionKey = newKey;
+  //  newSub.baseKey = baseKey;
+  //  newSub.parentSectionName = section.sectionName;
+  //  newSub.sectionName = newSub.sectionName || tpl.title;
+  //  newSub.order = this.getNextSubsectionOrder(section);
+  //  if (!Array.isArray(newSub.fields)) newSub.fields = [];
+
+  //  // IMPORTANT: tag sectionName for each field so your existing move/delete logic works
+  //  newSub.fields = (newSub.fields || []).map((f: any) => ({
+  //    ...f,
+  //    sectionName: `${section.sectionName}.${newKey}`
+  //  }));
+
+  //  section.subsections[newKey] = newSub;
+
+  //  this.normalizeTemplateStructure();
+  //  this.rebuildAllDropLists();
+  //  this.forceAngularChangeDetection();
+  //}
+
+  dropPredefinedSubsection(event: CdkDragDrop<any>, container: any, containerPath: string): void {
     const data = event?.item?.data;
     if (!data || data.kind !== 'subsectionTemplate') return;
 
     const tpl = this.predefinedSubsections.find(x => x.key === data.templateKey);
     if (!tpl) return;
 
-    const container = this.resolveContainerByPath(containerPath);
-    if (!container) return;
-
     if (!container.subsections) container.subsections = {};
 
     const baseKey = tpl.key;
     const newKey = this.generateUniqueSubsectionKey(container, baseKey);
 
-    // Deep clone to avoid shared references
     const newSub: any = JSON.parse(JSON.stringify(tpl.subsection));
     newSub.subsectionKey = newKey;
     newSub.baseKey = baseKey;
+
+    // ✅ parent is now a subsection path too
     newSub.parentSectionName = containerPath;
 
-    // Use template label if sectionName missing
-    newSub.sectionName = newSub.sectionName ?? tpl.title ?? newKey;
-
-    // Order within THIS container
+    newSub.sectionName = newSub.sectionName || tpl.title;
     newSub.order = this.getNextSubsectionOrder(container);
-
     if (!Array.isArray(newSub.fields)) newSub.fields = [];
 
-    const newPath = `${containerPath}.${newKey}`;
-
-    // Tag sectionName for each field so move/delete logic works
+    // ✅ IMPORTANT: tag fields with FULL PATH
     newSub.fields = (newSub.fields || []).map((f: any) => ({
       ...f,
-      sectionName: newPath
+      sectionName: `${containerPath}.${newKey}`
     }));
 
     container.subsections[newKey] = newSub;
@@ -381,7 +364,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
     this.rebuildAllDropLists();
     this.forceAngularChangeDetection();
   }
-
 
   moveSubSection(mainSectionName: string, subKey: string, direction: 'up' | 'down', event: Event): void {
     event.stopPropagation();
@@ -443,44 +425,27 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
     this.forceAngularChangeDetection();
   }
 
-  incRepeatDefaultCount(parentPath: string, subKey: string, event: Event): void {
+  incRepeatDefaultCount(mainSectionName: string, subKey: string, event: Event): void {
     event.stopPropagation();
-    const parent = this.resolveContainerByPath(parentPath);
-    const sub = parent?.subsections?.[subKey];
-    if (!sub) return;
+    const main = this.masterTemplate.sections?.find(sec => sec.sectionName === mainSectionName);
+    const sub = main?.subsections?.[subKey];
+    if (!sub?.repeat?.enabled) return;
 
-    sub.repeat = sub.repeat ?? {};
-    const current = Number(sub.repeat.defaultCount ?? 1);
-    const max = Number(sub.repeat.max ?? 99);
-    sub.repeat.defaultCount = Math.min(current + 1, max);
-
+    const max = sub.repeat.max ?? 999;
+    sub.repeat.defaultCount = Math.min((sub.repeat.defaultCount ?? 1) + 1, max);
     this.forceAngularChangeDetection();
   }
 
-
-  decRepeatDefaultCount(parentPath: string, subKey: string, event: Event): void {
+  decRepeatDefaultCount(mainSectionName: string, subKey: string, event: Event): void {
     event.stopPropagation();
-    const parent = this.resolveContainerByPath(parentPath);
-    const sub = parent?.subsections?.[subKey];
-    if (!sub) return;
+    const main = this.masterTemplate.sections?.find(sec => sec.sectionName === mainSectionName);
+    const sub = main?.subsections?.[subKey];
+    if (!sub?.repeat?.enabled) return;
 
-    sub.repeat = sub.repeat ?? {};
-    const current = Number(sub.repeat.defaultCount ?? 1);
-    const min = Number(sub.repeat.min ?? 1);
-    sub.repeat.defaultCount = Math.max(current - 1, min);
-
+    const min = sub.repeat.min ?? 1;
+    sub.repeat.defaultCount = Math.max((sub.repeat.defaultCount ?? 1) - 1, min);
     this.forceAngularChangeDetection();
   }
-
-  /** Template-safe helpers (avoid strict template 'possibly undefined' errors) */
-  getRepeatDefaultCount(subSection: any): number {
-    return Number(subSection?.repeat?.defaultCount ?? 1);
-  }
-
-  getRepeatMin(subSection: any): number {
-    return Number(subSection?.repeat?.min ?? 1);
-  }
-
 
   // Our master template now holds a sections array.
   masterTemplate: { sections?: TemplateSectionModel[] } = {};
@@ -1184,7 +1149,29 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
     // FIELD update (has `id`)
     const updated = updatedField as TemplateField;
 
-    const fields: TemplateField[] | null = this.resolveFieldsArray(this.selectedSection);
+    const isSub = this.selectedSection?.includes('.');
+    let sectionName = this.selectedSection;
+    let subKey: string | null = null;
+
+    if (isSub) {
+      const parts = this.selectedSection.split('.');
+      sectionName = parts[0];
+      subKey = parts[1] ?? null;
+    }
+
+    const section = this.masterTemplate.sections?.find(sec => sec.sectionName === sectionName);
+    if (!section) return;
+
+    let fields: TemplateField[] | null = null;
+
+    if (subKey) {
+      const subs: any = (section as any).subsections;
+      const sub = subs?.[subKey];
+      fields = sub?.fields ?? null;
+    } else {
+      fields = section.fields ?? null;
+    }
+
     if (!fields) return;
 
     const idx = fields.findIndex(f => f.id === updated.id);
@@ -1419,11 +1406,19 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
   }
 
   /** Resolve main section vs subsection (sectionName can be "Main.Sub"). */
-  private resolveFieldsArray(sectionPath: string): TemplateField[] | null {
-    const container = this.resolveContainerByPath(sectionPath);
-    return container?.fields ?? null;
-  }
+  private resolveFieldsArray(sectionName: string): TemplateField[] | null {
+    if (!this.masterTemplate.sections) return null;
 
+    if (sectionName.includes('.')) {
+      const [mainSectionName, subSectionName] = sectionName.split('.');
+      const main = this.masterTemplate.sections.find(s => s.sectionName === mainSectionName);
+      const sub = main?.subsections?.[subSectionName];
+      return sub?.fields || null;
+    }
+
+    const section = this.masterTemplate.sections.find(s => s.sectionName === sectionName);
+    return section?.fields || null;
+  }
 
 
   deleteAccordionSection(sectionName: string, event: Event): void {
@@ -1827,6 +1822,10 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
     walkSections(template?.sections || []);
   }
 
+  getSubKey(sub: TemplateSectionModel): string {
+    return sub.subsectionKey || sub.sectionName;
+  }
+
   selectSubSection(section: any, subSection: any, event?: Event): void {
     event?.stopPropagation();
     if (this.selectedField) this.selectedField.isActive = false;
@@ -1842,11 +1841,11 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
 
   saveSelectedSubSection(): void {
     if (!this.selectedSubSectionObject || !this.selectedSubSectionPath) return;
+    const [mainName, subKey] = this.selectedSubSectionPath.split('.');
+    const main = this.masterTemplate.sections?.find(s => s.sectionName === mainName);
+    const sub = main?.subsections?.[subKey];
+    if (!main || !sub) return;
 
-    const container = this.resolveContainerByPath(this.selectedSubSectionPath);
-    if (!container) return;
-
-    Object.assign(container, this.selectedSubSectionObject);
+    Object.assign(sub, this.selectedSubSectionObject);
   }
-
 }

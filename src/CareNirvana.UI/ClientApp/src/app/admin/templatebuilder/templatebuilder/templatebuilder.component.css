@@ -539,7 +539,7 @@
 }
 
 .accordion-item.active .accordion-body {
-  max-height: 3000px !important;
+  max-height: 1000px !important;
   padding: 10px;
 }
 
@@ -1086,8 +1086,8 @@ select[disabled] {
   border: 1px solid #e3e7f0;
   border-radius: 14px;
   background: #ffffff;
-  /*padding: 18px 10px 10px 10px;  top padding for floating label space */
-  margin-bottom: 16px;
+  padding: 18px 10px 10px 10px; /* top padding for floating label space */
+  margin-bottom: 14px;
 }
 
 /* floating label (left) – similar to .form-outline .form-label behavior */
@@ -1332,19 +1332,9 @@ select[disabled] {
   box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.35);
 }
 
-
-/* Nested subsections */
 .subsection-wrap.nested {
-  margin-left: 18px;
-  padding-left: 12px;
-  border-left: 2px dashed #e6eaf3;
-}
-
-  .subsection-wrap.nested .subsection-group {
-    background: #fbfcff;
-  }
-
-.subsection-dropzone {
+  margin-left: 14px;
   margin-top: 10px;
-  margin-bottom: 10px;
+  border-left: 2px dashed #e5e7eb;
+  padding-left: 12px;
 }
