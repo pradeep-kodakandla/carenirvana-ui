@@ -95,7 +95,7 @@ code {
 
 body {
   margin: 0;
-  font-family: Calibri,Arial, Helvetica, sans-serif;
+  font-family: 'Open Sans',sans-serif;
   --mat-toolbar-container-background-color: ghostwhite;
 }
 
@@ -111,7 +111,7 @@ body {
   width: 100%;
   /*  border-collapse: separate;
 */ border-spacing: 0;
-  font-family: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", system-ui, -apple-system, sans-serif;
+  font-family: 'Open Sans',sans-serif;
   font-size: 14px;
 }
 

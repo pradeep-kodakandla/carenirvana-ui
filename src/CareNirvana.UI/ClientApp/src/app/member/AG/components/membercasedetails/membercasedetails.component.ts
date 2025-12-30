@@ -230,7 +230,7 @@ export class MembercasedetailsComponent implements OnInit {
     );
 
     const tabRoute = this.router.serializeUrl(urlTree); // ✅ includes query params safely
-    const tabLabel = isNew ? `New Case` : `Case # ${caseNumber}`;
+    const tabLabel = isNew ? `Case # DRAFT` : `Case # ${caseNumber}`;
 
     const existingTab = this.headerService.getTabs().find(t => t.route === tabRoute);
 

@@ -14,7 +14,8 @@
               <ui-smart-dropdown label="Select Case Type"
                                  placeholder="Select Case Type..."
                                  [options]="caseTypeOptions"
-                                 formControlName="caseType">
+                                 formControlName="caseType"
+                                 [disabled]="isCaseTypeLocked(aggregate$ | async)">
               </ui-smart-dropdown>
             </form>
           </div>

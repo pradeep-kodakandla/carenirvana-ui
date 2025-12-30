@@ -77,8 +77,8 @@
   padding: 0 6px;
   background: #fff;
   font-size: 12px;
-  font-weight: 600;
-  color: #6b7280;
+  font-weight: 700;
+  color: #444;
   line-height: 18px;
 }
 
@@ -108,7 +108,7 @@
 .ff-textarea {
   resize: vertical;
   min-height: 72px;
-  padding-top: 2px;
+  padding-top: 5px;
 }
 
 /* Required asterisk */
@@ -210,8 +210,8 @@
   gap: 14px;
   /* Prevent tall controls (e.g., textarea) from stretching other fields in the same row */
   align-items: start;
-  /* default: up to 5 columns */
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  /* default: up to 4 columns */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 /* drop to 4 */
@@ -274,7 +274,7 @@
 
 .ff-outline {
   position: relative;
-  border: 1px solid #d7dde5;
+  border: 1px solid #ccc;
   border-radius: 10px;
   background: #fff;
   transition: box-shadow .15s ease, border-color .15s ease, background .15s ease;
@@ -363,7 +363,7 @@
 
 /* Make search span the full grid width */
 .ff-span-all {
-  grid-column: 1 / -1;
+  grid-column: 1 / -8;
 }
 
 /* Search bar styling to match screenshot */
@@ -371,8 +371,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid #d0d0d0;
-  border-radius: 10px;
+/*  border: 1px solid #d0d0d0;
+*/  border-radius: 10px;
   padding: 10px 12px;
   background: #fff;
   min-height: 44px;
@@ -401,9 +401,129 @@
   border: none;
   outline: none;
   background: transparent;
-  font-size: 14px;
+  font-size: 12px;
 }
 
   .ff-search-input::-webkit-search-cancel-button {
     -webkit-appearance: none;
   }
+/* =========================
+   Repeat groups (+ / −)
+========================= */
+.ff-repeat-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.ff-repeat-group {
+  border: 1px dashed #e1e5ee;
+  border-radius: 12px;
+  padding: 12px;
+  background: #fcfcfd;
+}
+
+.ff-repeat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.ff-repeat-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+  letter-spacing: .2px;
+}
+
+.grid.ff-repeat-grid {
+  /* add an extra "actions" column as the LAST cell */
+  grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
+}
+
+/* Keep responsiveness: repeat(N) + auto actions col */
+@media (max-width: 1400px) {
+  .grid.ff-repeat-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  }
+}
+
+@media (max-width: 1200px) {
+  .grid.ff-repeat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .grid.ff-repeat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .grid.ff-repeat-grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) auto;
+  }
+}
+
+/* In repeat grids, a full-width field should NOT cover the actions column */
+.grid.ff-repeat-grid .ff-span-all {
+  grid-column: 1 / -8;
+}
+
+.ff-repeat-cell {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 1px;
+}
+
+.ff-repeat-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid #d7dde5;
+  background: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+  user-select: none;
+  transition: box-shadow .15s ease, border-color .15s ease, transform .05s ease;
+}
+
+  .ff-repeat-btn:hover {
+    border-color: #aeb6c2;
+    box-shadow: 0 2px 10px rgba(17,24,39,.06);
+  }
+
+  .ff-repeat-btn:active {
+    transform: translateY(1px);
+  }
+
+  .ff-repeat-btn:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .ff-repeat-btn.danger {
+    border-color: rgba(220,53,69,.32);
+  }
+
+    .ff-repeat-btn.danger:hover {
+      border-color: rgba(220,53,69,.6);
+    }
+
+/* Nested subsection visual hint */
+.sub-card.sub-nested {
+  border-style: dashed;
+  background: #fff;
+  margin-top: 14px;
+}

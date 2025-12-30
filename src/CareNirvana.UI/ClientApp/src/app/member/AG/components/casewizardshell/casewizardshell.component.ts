@@ -296,6 +296,11 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     return agg?.header?.caseNumber ?? agg?.caseNumber ?? '';
   }
 
+  public isCaseTypeLocked(agg: any): boolean {
+    const cn = (this.getCaseNumber(agg));
+    return !!cn; // true when real caseNumber exists (not '', not '0')
+  }
+
   getCreatedOn(agg: any): any {
     return agg?.header?.createdOn ?? agg?.createdOn ?? null;
   }
