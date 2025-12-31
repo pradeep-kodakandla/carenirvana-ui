@@ -1,0 +1,40 @@
+<div class="sl-wrap">
+  <label class="sl-label" *ngIf="label">{{ label }}</label>
+
+  <div class="sl-input" [class.isDisabled]="disabled">
+    <span class="sl-icon" aria-hidden="true">🔍</span>
+    <input class="sl-text"
+           type="text"
+           [formControl]="inputCtrl"
+           [attr.placeholder]="placeholder"
+           [disabled]="disabled"
+           autocomplete="off" />
+
+    <button type="button"
+            class="sl-clear"
+            *ngIf="!disabled && inputCtrl.value"
+            (mousedown)="$event.preventDefault()"
+            (click)="onClear()"
+            aria-label="Clear">
+      ✕
+    </button>
+
+    <span class="sl-spinner" *ngIf="loading"></span>
+  </div>
+
+  <div class="sl-panel" *ngIf="open">
+    <div class="sl-empty" *ngIf="loading">Searching...</div>
+
+    <div class="sl-empty" *ngIf="!loading && results.length === 0 && (lastQuery?.length || 0) >= minChars">
+      No results
+    </div>
+
+    <button type="button"
+            class="sl-item"
+            *ngFor="let item of results; trackBy: trackByIndex"
+            (mousedown)="$event.preventDefault()"
+            (click)="onPick(item)">
+      {{ displayWith(item) }}
+    </button>
+  </div>
+</div>

@@ -1348,3 +1348,20 @@ select[disabled] {
   margin-top: 10px;
   margin-bottom: 10px;
 }
+
+
+.lookup-map-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+  .lookup-map-row .form-control {
+    flex: 1;
+  }
+
+  .lookup-map-row button {
+    flex: 0 0 auto;
+  }
+

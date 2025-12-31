@@ -1,6 +1,25 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+
+export interface CodeSearchResult {
+  id?: number | null;
+  code?: string | null;
+  codeDesc?: string | null;
+  codeShortDesc?: string | null;
+  type?: string | null;
+}
+
+export interface MemberSearchResult {
+  memberdetailsid: number;
+  memberid?: string | null;
+  firstname?: string | null;
+  lastname?: string | null;
+  birthdate?: string | null;
+  city?: string | null;
+  phone?: string | null;
+  gender?: string | null;
+}
 
 @Injectable({
   providedIn: 'root'
@@ -11,7 +30,7 @@ export class AuthService {
   private apiUrlActivities = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/authactivity';
   //private apiUrl = 'https://localhost:7201/api/auth';
   //private apiUrlCodeSets = 'https://localhost:7201/api/codesets';
- // private apiUrlActivities = 'https://localhost:7201/api/authactivity';
+  //private apiUrlActivities = 'https://localhost:7201/api/authactivity';
 
   constructor(private http: HttpClient) { }
 
@@ -126,5 +145,22 @@ export class AuthService {
   updateMdReviewLine(lineId: number, lineUpdate: any) {
     return this.http.put<any>(`${this.apiUrlActivities}/mdreview/line/${lineId}`, lineUpdate);
   }
+
+  /****** auto complete search *********/
+  searchIcd(q: string, limit = 25): Observable<CodeSearchResult[]> {
+    const params = new HttpParams().set('q', q).set('limit', String(limit));
+    return this.http.get<CodeSearchResult[]>(`${this.apiUrlCodeSets}/search/icd`, { params });
+  }
+
+  searchMedicalCodes(q: string, limit = 25): Observable<CodeSearchResult[]> {
+    const params = new HttpParams().set('q', q).set('limit', String(limit));
+    return this.http.get<CodeSearchResult[]>(`${this.apiUrlCodeSets}/search/medicalcodes`, { params });
+  }
+
+  searchMembers(q: string, limit = 25): Observable<MemberSearchResult[]> {
+    const params = new HttpParams().set('q', q).set('limit', String(limit));
+    return this.http.get<MemberSearchResult[]>(`${this.apiUrlCodeSets}/search/members`, { params });
+  }
+
 
 }

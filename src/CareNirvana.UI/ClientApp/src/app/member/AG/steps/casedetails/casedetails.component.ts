@@ -1,6 +1,6 @@
 import { Component, OnDestroy, OnInit, Input } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, takeUntil, Observable, of } from 'rxjs';
 import { distinctUntilChanged } from 'rxjs/operators';
 import { AuthService } from 'src/app/service/auth.service';
 import { CaseUnsavedChangesAwareService } from 'src/app/member/AG/guards/services/caseunsavedchangesaware.service';
@@ -10,6 +10,7 @@ import { ActivatedRoute } from '@angular/router';
 import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
 import { CrudService, DatasourceLookupService } from 'src/app/service/crud.service';
 import { AuthNumberService } from 'src/app/service/auth-number-gen.service';
+import { AuthenticateService } from 'src/app/service/authentication.service';
 
 export type WizardMode = 'new' | 'edit';
 
@@ -254,8 +255,9 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     private state: CaseWizardStoreService,
     private route: ActivatedRoute,
     private crudService: CrudService,
-    private authNumberService: AuthNumberService,
-    private dsLookup: DatasourceLookupService
+    private caseNumberService: AuthNumberService,
+    private dsLookup: DatasourceLookupService,
+    private userService: AuthenticateService
   ) { }
 
   caseHasUnsavedChanges(): boolean {
@@ -290,7 +292,8 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     this.state.templateId$
       .pipe(takeUntil(this.destroy$), distinctUntilChanged())
       .subscribe(tid => this.setTemplateId(tid));
-
+    // Load users for Case Owner dropdown
+    this.loadAllUsers();
     // If templateId was set before OnInit (rare), load it
     if (this.templateId) {
       this.loadTemplateJson();
@@ -374,12 +377,15 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     // rebuild form controls for the current step
     this.form = this.fb.group({});
 
+    // Load users for Case Owner dropdown
+    this.loadAllUsers();
+
     const filtered = this.filterSectionsForStep(this.normalizedTemplate, this.stepId);
 
     this.renderSections = this.buildRenderModel(filtered, this.persistedForBuild);
     this.buildFormControls(this.renderSections);
     this.prefetchDropdownOptions(this.renderSections);
-
+    this.applyCaseOwnerOptions();
     this.templateLoaded = true;
 
     // push caseNumber into the form if the template has it
@@ -467,7 +473,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
       this.normalizeCaseNumber(this.getCaseNumberFromRoute()) ??
       this.normalizeCaseNumber(this.state.getCaseNumber()) ??
       this.normalizeCaseNumber(this.getValueByFieldId('caseNumber')) ??
-      this.authNumberService.generateAuthNumber(9, true, true, false, false);
+      this.caseNumberService.generateAuthNumber(9, true, true, false, false);
 
     const userId = Number(sessionStorage.getItem('loggedInUserid')) || 0;
 
@@ -1376,8 +1382,275 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     return this.optionsByControlName[controlName] ?? [];
   }
 
+  private isCaseOwnerField(f: any): boolean {
+    const id = String(f?._rawId ?? f?.id ?? f?.controlName ?? '').toLowerCase();
+    const name = String(f?.displayName ?? f?.label ?? '').toLowerCase();
+    return id.includes('caseowner') || name.includes('case owner');
+  }
+
+  private applyCaseOwnerOptions(): void {
+    if (!this.caseOwnerOptions?.length) return;
+    if (!this.renderSections?.length) return;
+
+    // Set options for any "Case Owner" select in this render model (section or subsection).
+    for (const sec of this.renderSections) {
+      for (const f of (sec.fields ?? [])) {
+        if (f.type === 'select' && this.isCaseOwnerField(f)) {
+          this.optionsByControlName[f.controlName] = this.caseOwnerOptions;
+        }
+      }
+      for (const sub of (sec.subsections ?? [])) {
+        for (const f of (sub.fields ?? [])) {
+          if (f.type === 'select' && this.isCaseOwnerField(f)) {
+            this.optionsByControlName[f.controlName] = this.caseOwnerOptions;
+          }
+        }
+      }
+    }
+  }
+
   // maps template field id -> actual reactive form controlName (first occurrence / first instance)
   private fieldIdToControlName: Record<string, string> = {};
+
+  // ==========================
+  // Lookup (ui-smart-lookup) helpers
+  // ==========================
+  private lookupSearchFnCache = new Map<string, (q: string, limit: number) => Observable<any[]>>();
+  private lookupDisplayFnCache = new Map<string, (item: any) => string>();
+  private lookupTrackByFnCache = new Map<string, (item: any) => any>();
+
+  /** Template-driven lookup config lives under field.lookup in JSON (optional). */
+  private getLookupCfg(f: any): any {
+    return (f as any)?.lookup ?? null;
+  }
+
+  /** Decide lookup "entity" (icd / members / medicalcodes / provider etc.) */
+  private getLookupEntity(f: any): string | null {
+    const cfg = this.getLookupCfg(f);
+    const raw = (cfg?.entity || cfg?.datasource || f?.datasource || f?.lookupEntity || f?.id || '').toString();
+    const k = raw.trim().toLowerCase();
+    if (!k) return null;
+    if (k.includes('icd')) return 'icd';
+    if (k.includes('member')) return 'members';
+    if (k.includes('provider')) return 'providers';
+    if (k.includes('medical') || k.includes('cpt')) return 'medicalcodes';
+    return k;
+  }
+
+  getLookupPlaceholder(f: any): string {
+    const cfg = this.getLookupCfg(f);
+    return (cfg?.placeholder || f?.info || f?.label || 'Search...')?.toString();
+  }
+
+  getLookupMinChars(f: any): number {
+    const cfg = this.getLookupCfg(f);
+    const n = Number(cfg?.minChars ?? 2);
+    return Number.isFinite(n) ? n : 2;
+  }
+
+  getLookupDebounceMs(f: any): number {
+    const cfg = this.getLookupCfg(f);
+    const n = Number(cfg?.debounceMs ?? 250);
+    return Number.isFinite(n) ? n : 250;
+  }
+
+  getLookupLimit(f: any): number {
+    const cfg = this.getLookupCfg(f);
+    const n = Number(cfg?.limit ?? 25);
+    return Number.isFinite(n) ? n : 25;
+  }
+
+  getLookupSearchFn(f: any): (q: string, limit: number) => Observable<any[]> {
+    const key = (f?.controlName || f?.id || Math.random().toString()).toString();
+    const cached = this.lookupSearchFnCache.get(key);
+    if (cached) return cached;
+
+    const entity = this.getLookupEntity(f);
+    const svc: any = this.authService as any;
+
+    const fn = (q: string, limit: number): Observable<any[]> => {
+      if (!entity) return of([]);
+      switch (entity) {
+        case 'icd':
+          return (svc.searchIcd ? svc.searchIcd(q, limit) : of([]));
+        case 'medicalcodes':
+          return (svc.searchMedicalCodes ? svc.searchMedicalCodes(q, limit) : of([]));
+        case 'members':
+          return (svc.searchMembers ? svc.searchMembers(q, limit) : of([]));
+        case 'providers':
+          // if you add providers later, wire it similarly (svc.searchProviders)
+          return (svc.searchProviders ? svc.searchProviders(q, limit) : of([]));
+        default:
+          // support custom function name if provided in lookup config
+          const cfg = this.getLookupCfg(f);
+          const method = cfg?.serviceMethod ? String(cfg.serviceMethod) : null;
+          const callable = method && typeof (svc as any)[method] === 'function' ? (svc as any)[method] : null;
+          return callable ? callable.call(svc, q, limit) : of([]);
+      }
+    };
+
+    this.lookupSearchFnCache.set(key, fn);
+    return fn;
+  }
+
+  getLookupDisplayWith(f: any): (item: any) => string {
+    const key = (f?.controlName || f?.id || Math.random().toString()).toString();
+    const cached = this.lookupDisplayFnCache.get(key);
+    if (cached) return cached;
+
+    const cfg = this.getLookupCfg(f);
+    const tpl = cfg?.displayTemplate ? String(cfg.displayTemplate) : null;
+    const entity = this.getLookupEntity(f);
+
+    const fn = (item: any): string => {
+      if (!item) return '';
+      if (tpl) return this.applyLookupTemplate(tpl, item);
+
+      // sensible defaults
+      if (entity === 'icd' || entity === 'medicalcodes') {
+        const code = item.code ?? item.Code ?? item.icdcode ?? item.cptcode ?? '';
+        const desc = item.codeDesc ?? item.codedescription ?? item.description ?? '';
+        return [code, desc].filter(Boolean).join(' - ');
+      }
+      if (entity === 'members') {
+        const memberId = item.memberid ?? item.memberId ?? item.id ?? '';
+        const name = [item.firstname ?? item.firstName ?? '', item.lastname ?? item.lastName ?? ''].filter(Boolean).join(' ');
+        const phone = item.phone ?? item.phonenumber ?? '';
+        const parts = [memberId, name].filter(Boolean);
+        return phone ? `${parts.join(' - ')} (${phone})` : parts.join(' - ');
+      }
+      if (entity === 'providers') {
+        const npi = item.npi ?? item.NPI ?? '';
+        const name = [item.lastname ?? item.lastName ?? '', item.firstname ?? item.firstName ?? ''].filter(Boolean).join(', ');
+        return npi ? `${name} (NPI: ${npi})` : name;
+      }
+
+      return (item.display ?? item.label ?? item.name ?? item.code ?? '').toString();
+    };
+
+    this.lookupDisplayFnCache.set(key, fn);
+    return fn;
+  }
+
+  getLookupTrackBy(f: any): (item: any) => any {
+    const key = (f?.controlName || f?.id || Math.random().toString()).toString();
+    const cached = this.lookupTrackByFnCache.get(key);
+    if (cached) return cached;
+
+    const cfg = this.getLookupCfg(f);
+    const path = cfg?.trackByPath ? String(cfg.trackByPath) : null;
+
+    const fn = (item: any): any => {
+      if (!item) return item;
+      if (path) return this.pickPath(item, path);
+      return item.id ?? item.code ?? item.memberdetailsid ?? item.memberdetailsId ?? item.npi ?? item;
+    };
+
+    this.lookupTrackByFnCache.set(key, fn);
+    return fn;
+  }
+
+  onLookupSelected(f: any, item: any, ctx?: RepeatContext): void {
+    if (!f || !item) return;
+
+    // store a stable string value into the bound control (prevents saving full objects)
+    const cfg = this.getLookupCfg(f);
+    const valueField = cfg?.valueField ? String(cfg.valueField) : null;
+    const storeValue = valueField ? this.pickPath(item, valueField) : this.getLookupDisplayWith(f)(item);
+
+    const ctrl = this.form.get(f.controlName);
+    if (ctrl) {
+      ctrl.setValue(storeValue ?? null, { emitEvent: true });
+      ctrl.markAsDirty();
+    }
+
+    const fill = (cfg?.fill && Array.isArray(cfg.fill)) ? cfg.fill : this.defaultLookupFill(f);
+    for (const m of (fill ?? [])) {
+      const targetId = m?.targetFieldId || m?.target || m?.fieldId;
+      const sourcePath = m?.sourcePath || m?.source || m?.path;
+      if (!targetId || !sourcePath) continue;
+
+      const targetControlName = this.resolveControlName(String(targetId), ctx) ?? this.findControlNameByRawId(String(targetId));
+      if (!targetControlName) continue;
+
+      const v = this.pickPath(item, String(sourcePath));
+      const tctrl = this.form.get(targetControlName);
+      if (tctrl) {
+        tctrl.setValue(v ?? null, { emitEvent: true });
+        tctrl.markAsDirty();
+      }
+    }
+
+    // Update conditional visibility (showWhen rules) after programmatic fill
+    this.syncFormControlVisibility();
+  }
+
+  onLookupTextChange(_f: any, _text: string, _ctx?: RepeatContext): void {
+    // optional hook (kept for future: you can clear dependent fields when user edits the search term)
+  }
+
+  onLookupCleared(f: any, ctx?: RepeatContext): void {
+    const cfg = this.getLookupCfg(f);
+    const fill = (cfg?.fill && Array.isArray(cfg.fill)) ? cfg.fill : this.defaultLookupFill(f);
+    for (const m of (fill ?? [])) {
+      const targetId = m?.targetFieldId || m?.target || m?.fieldId;
+      if (!targetId) continue;
+      const targetControlName = this.resolveControlName(String(targetId), ctx) ?? this.findControlNameByRawId(String(targetId));
+      const tctrl = targetControlName ? this.form.get(targetControlName) : null;
+      if (tctrl) {
+        tctrl.setValue(null, { emitEvent: true });
+        tctrl.markAsDirty();
+      }
+    }
+    this.syncFormControlVisibility();
+  }
+
+  private defaultLookupFill(f: any): Array<{ targetFieldId: string; sourcePath: string }> {
+    const id = String(f?._rawId || f?.id || '').toLowerCase();
+
+    // ✅ sensible fallbacks if lookup.fill not provided in JSON
+    if (id.includes('icd') && id.includes('search')) {
+      return [
+        { targetFieldId: 'icdCode', sourcePath: 'code' },
+        { targetFieldId: 'icdDescription', sourcePath: 'codeDesc' }
+      ];
+    }
+    if (id.includes('member') && id.includes('search')) {
+      return [
+        { targetFieldId: 'memberFirstName', sourcePath: 'firstname' },
+        { targetFieldId: 'memberLastName', sourcePath: 'lastname' },
+        { targetFieldId: 'memberPhone', sourcePath: 'phone' }
+      ];
+    }
+    if (id.includes('provider') && id.includes('search')) {
+      return [
+        { targetFieldId: 'providerFirstName', sourcePath: 'firstname' },
+        { targetFieldId: 'providerLastName', sourcePath: 'lastname' },
+        { targetFieldId: 'providerPhone', sourcePath: 'phone' },
+        { targetFieldId: 'providerFax', sourcePath: 'fax' },
+        { targetFieldId: 'providerNpi', sourcePath: 'npi' }
+      ];
+    }
+    return [];
+  }
+
+  private pickPath(obj: any, path: string): any {
+    if (!obj || !path) return null;
+    const parts = String(path).split('.').map(p => p.trim()).filter(Boolean);
+    let cur: any = obj;
+    for (const p of parts) {
+      if (cur == null) return null;
+      cur = cur[p];
+    }
+    return cur;
+  }
+
+  private applyLookupTemplate(tpl: string, item: any): string {
+    return String(tpl).replace(/\{\{\s*([^}]+)\s*\}\}/g, (_m, p1) => {
+      const v = this.pickPath(item, String(p1).trim());
+      return v == null ? '' : String(v);
+    });
+  }
 
   private registerFieldControlName(fieldId: string, controlName: string): void {
     const key = this.safe(fieldId);
@@ -1615,5 +1888,38 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
         return { value: o, label: String(o) } as UiSmartOption;
       });
   }
+
+
+  allUsers: any[] = [];
+
+  usersLoaded: boolean = false;
+  private caseOwnerOptions: UiSmartOption[] = [];
+
+  loadAllUsers(): void {
+
+    if (this.usersLoaded) {
+      this.applyCaseOwnerOptions();
+      return;
+    }
+
+    this.userService.getAllUsers().subscribe({
+      next: (users: any[]) => {
+        this.allUsers = users || [];
+        this.usersLoaded = true;
+
+        this.caseOwnerOptions = this.allUsers.map(u => ({
+          value: u.userId,
+          label: u.userName
+        })) as UiSmartOption[];
+
+        this.applyCaseOwnerOptions(); 
+      },
+      error: (err) => {
+        console.error('Failed to load users:', err);
+        this.usersLoaded = false;
+      }
+    });
+  }
+
 
 }

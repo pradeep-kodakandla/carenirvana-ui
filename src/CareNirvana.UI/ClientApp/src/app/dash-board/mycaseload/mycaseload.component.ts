@@ -15,6 +15,9 @@ import { MemberJourneyComponent } from 'src/app/member/memberjourney/memberjourn
 import { MemberSummaryaiComponent } from 'src/app/member/member-summaryai/member-summaryai.component';
 import { MessagesComponent } from 'src/app/messages/messages.component';
 import { MemberActivityComponent } from 'src/app/member/memberactivity/memberactivity.component';
+import { UiSmartLookupComponent } from 'src/app/shared/ui/uismartlookup/uismartlookup.component';
+import { CodeSearchResult, AuthService } from 'src/app/service/auth.service';
+
 
 type PaneType = 'notes' | 'document' | 'journey' | 'summary' | 'activity' | 'messages' | null;
 
@@ -694,12 +697,4 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     this.openMenuForMemberId = null;
   }
 
-
 }
-
-
-
-
-
-
-

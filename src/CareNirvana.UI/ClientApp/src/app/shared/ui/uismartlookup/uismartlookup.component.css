@@ -1,0 +1,111 @@
+/* Minimal, professional styling that matches your existing 'search' look */
+.sl-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.sl-label {
+  display: inline-block;
+  margin: 0 0 6px 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #3a3f46;
+}
+
+.sl-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 10px;
+/*  border: 1px solid rgba(0,0,0,.18);*/
+  border-radius: 10px;
+/*  background: #fff;
+*/}
+
+  .sl-input.isDisabled {
+    background: #f6f7f9;
+    color: #7a808a;
+    opacity: .9;
+  }
+
+  .sl-input:focus-within {
+    border-color: rgba(0,0,0,.35);
+    box-shadow: 0 0 0 3px rgba(0,0,0,.06);
+  }
+
+.sl-icon {
+  opacity: .7;
+}
+
+.sl-text {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 14px;
+  background: transparent;
+}
+
+.sl-clear {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  opacity: .65;
+}
+
+  .sl-clear:hover {
+    opacity: 1;
+  }
+
+.sl-spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(0,0,0,.25);
+  border-top-color: rgba(0,0,0,.55);
+  animation: slspin 0.8s linear infinite;
+}
+
+@keyframes slspin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sl-panel {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid rgba(0,0,0,.18);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(0,0,0,.10);
+  padding: 6px;
+}
+
+.sl-item {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 10px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+  .sl-item:hover {
+    background: rgba(0,0,0,.05);
+  }
+
+.sl-empty {
+  padding: 10px;
+  font-size: 13px;
+  opacity: .7;
+}

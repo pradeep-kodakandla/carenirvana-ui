@@ -37,7 +37,25 @@ interface TemplateField {
   enableAuditTrail?: boolean;
   includeInExport?: boolean;
   fieldPermission?: 'all' | 'careManagers' | 'admins';
+  lookup?: LookupConfig;
 }
+
+interface LookupFillMap {
+  targetFieldId: string;
+  sourcePath: string;
+}
+
+interface LookupConfig {
+  enabled?: boolean;
+  entity?: string;        // icd | provider | member | medication | procedure | ...
+  datasource?: string;    // API datasource name
+  minChars?: number;
+  debounceMs?: number;
+  displayTemplate?: string;
+  valueField?: string;
+  fill?: LookupFillMap[];
+}
+
 interface DropdownOption {
   id: string;
   value?: string; // Default field to hold dynamic data
@@ -164,6 +182,7 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
 
     this.loadStatusOptions();
     this.loadCaseLevelOptions();
+    this.ensureLookupDefaults();
 
     const currentKey = this.getSelectionKey();
     const selectionChanged = currentKey !== this.lastSelectionKey;
@@ -1082,5 +1101,48 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
       this.emitUpdate();
     }
   }
+
+  /******************Lookup Fields ****************/
+  private ensureLookupDefaults(): void {
+    if (!this.selectedField || this.selectedField.type !== 'search') return;
+
+    if (!this.selectedField.lookup) {
+      this.selectedField.lookup = {
+        enabled: false,
+        entity: 'member',
+        datasource: '',
+        minChars: 2,
+        debounceMs: 250,
+        displayTemplate: '',
+        valueField: '',
+        fill: []
+      };
+    }
+
+    if (!Array.isArray(this.selectedField.lookup.fill)) {
+      this.selectedField.lookup.fill = [];
+    }
+  }
+
+  addLookupFillRow(): void {
+    this.ensureLookupDefaults();
+    this.selectedField.lookup.fill.push({ targetFieldId: '', sourcePath: '' });
+    this.emitUpdate();
+  }
+
+  removeLookupFillRow(i: number): void {
+    this.selectedField.lookup.fill.splice(i, 1);
+    this.emitUpdate();
+  }
+
+  lookupEntityOptions: UiSmartOption<string>[] = [
+    { label: 'ICD', value: 'icd' },
+    { label: 'Member', value: 'member' },
+    { label: 'Provider', value: 'provider' },
+    { label: 'Medication', value: 'medication' },
+    { label: 'Procedure', value: 'procedure' }
+  ];
+
+
 
 }

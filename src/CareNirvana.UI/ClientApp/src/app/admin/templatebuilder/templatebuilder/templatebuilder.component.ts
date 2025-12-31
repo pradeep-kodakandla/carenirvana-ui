@@ -46,6 +46,23 @@ interface TemplateField {
   info?: string;
   primary?: boolean;
   caseStatus?: string[];
+  lookup?: LookupConfig;
+}
+
+interface LookupFillMap {
+  targetFieldId: string;
+  sourcePath: string;
+}
+
+interface LookupConfig {
+  enabled?: boolean;
+  entity?: string;        // icd | provider | member | medication | procedure | ...
+  datasource?: string;    // API datasource name
+  minChars?: number;
+  debounceMs?: number;
+  displayTemplate?: string;
+  valueField?: string;
+  fill?: LookupFillMap[];
 }
 
 type ShowWhen = 'always' | 'fieldEquals' | 'fieldNotEquals' | 'fieldhasvalue';

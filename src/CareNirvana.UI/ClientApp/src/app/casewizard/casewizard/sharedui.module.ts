@@ -5,11 +5,14 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 
 import { UiSmartDropdownComponent } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
 import { UiDatetimePickerComponent } from 'src/app/shared/ui/uidatetimepicker/uidatetimepicker.component';
+import { UiSmartLookupComponent } from 'src/app/shared/ui/uismartlookup/uismartlookup.component';
+
 
 @NgModule({
   declarations: [
     UiSmartDropdownComponent,
-    UiDatetimePickerComponent
+    UiDatetimePickerComponent,
+    UiSmartLookupComponent
   ],
   imports: [
     CommonModule,
@@ -18,7 +21,8 @@ import { UiDatetimePickerComponent } from 'src/app/shared/ui/uidatetimepicker/ui
   ],
   exports: [
     UiSmartDropdownComponent,
-    UiDatetimePickerComponent
+    UiDatetimePickerComponent,
+    UiSmartLookupComponent
   ]
 })
 export class SharedUiModule { }

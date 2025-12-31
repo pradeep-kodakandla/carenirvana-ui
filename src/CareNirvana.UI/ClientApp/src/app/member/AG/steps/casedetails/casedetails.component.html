@@ -112,20 +112,19 @@
                             <!-- SEARCH (full width) -->
                             <ng-container *ngSwitchCase="'search'">
                               <div class="ff-field ff-span-all">
-                                <div class="ff-searchbar"
-                                     (click)="selectField(f)"
-                                     (focusin)="selectField(f)">
-                                  <span class="ff-search-icon" aria-hidden="true">
-                                    <svg viewBox="0 0 24 24" width="18" height="18" focusable="false">
-                                      <path d="M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Zm11.7 2.3-5.4-5.4a9.5 9.5 0 1 0-1.4 1.4l5.4 5.4a1 1 0 0 0 1.4-1.4Z"></path>
-                                    </svg>
-                                  </span>
-
-                                  <input class="ff-search-input"
-                                         type="search"
-                                         [attr.placeholder]="(f.label || '').trim() || 'Search...'"
-                                         [formControlName]="f.controlName" />
-                                </div>
+                                <ui-smart-lookup class="ff-ui ff-lookup"
+                                                 [placeholder]="getLookupPlaceholder(f)"
+                                                 [minChars]="getLookupMinChars(f)"
+                                                 [debounceMs]="getLookupDebounceMs(f)"
+                                                 [limit]="getLookupLimit(f)"
+                                                 [searchFn]="getLookupSearchFn(f)"
+                                                 [displayWith]="getLookupDisplayWith(f)"
+                                                 [trackBy]="getLookupTrackBy(f)"
+                                                 [formControlName]="f.controlName"
+                                                 (selected)="onLookupSelected(f, $event)"
+                                                 (textChange)="onLookupTextChange(f, $event)"
+                                                 (cleared)="onLookupCleared(f)">
+                                </ui-smart-lookup>
                               </div>
                             </ng-container>
 
@@ -246,20 +245,19 @@
 
                                   <!-- SEARCH -->
                                   <ng-container *ngSwitchCase="'search'">
-                                    <div class="ff-searchbar"
-                                         (click)="selectField(f)"
-                                         (focusin)="selectField(f)">
-                                      <span class="ff-search-icon" aria-hidden="true">
-                                        <svg viewBox="0 0 24 24" width="18" height="18" focusable="false">
-                                          <path d="M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Zm11.7 2.3-5.4-5.4a9.5 9.5 0 1 0-1.4 1.4l5.4 5.4a1 1 0 0 0 1.4-1.4Z"></path>
-                                        </svg>
-                                      </span>
-
-                                      <input class="ff-search-input"
-                                             type="search"
-                                             [attr.placeholder]="(f.label || '').trim() || 'Search...'"
-                                             [formControlName]="f.controlName" />
-                                    </div>
+                                    <ui-smart-lookup class="ff-ui ff-lookup"
+                                                     [placeholder]="getLookupPlaceholder(f)"
+                                                     [minChars]="getLookupMinChars(f)"
+                                                     [debounceMs]="getLookupDebounceMs(f)"
+                                                     [limit]="getLookupLimit(f)"
+                                                     [searchFn]="getLookupSearchFn(f)"
+                                                     [displayWith]="getLookupDisplayWith(f)"
+                                                     [trackBy]="getLookupTrackBy(f)"
+                                                     [formControlName]="f.controlName"
+                                                     (selected)="onLookupSelected(f, $event, { repeatPrefix: sec.repeatPrefix!, repeatIndex: inst.index })"
+                                                     (textChange)="onLookupTextChange(f, $event, { repeatPrefix: sec.repeatPrefix!, repeatIndex: inst.index })"
+                                                     (cleared)="onLookupCleared(f, { repeatPrefix: sec.repeatPrefix!, repeatIndex: inst.index })">
+                                    </ui-smart-lookup>
                                   </ng-container>
 
                                   <!-- Default text -->
@@ -411,21 +409,19 @@
                           </ng-container>
 
                           <ng-container *ngSwitchCase="'search'">
-                            <div class="ff-searchbar"
-                                 (click)="selectField(f)"
-                                 (focusin)="selectField(f)">
-                              <span class="ff-search-icon" aria-hidden="true">
-                                <!--<svg viewBox="0 0 24 24" width="18" height="18" focusable="false">
-                              <path d="M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Zm11.7 2.3-5.4-5.4a9.5 9.5 0 1 0-1.4 1.4l5.4 5.4a1 1 0 0 0 1.4-1.4Z"></path>
-                            </svg>-->
-                                🔍
-                              </span>
-
-                              <input class="ff-search-input"
-                                     type="search"
-                                     [attr.placeholder]="(f.label || '').trim() || 'Search...'"
-                                     [formControlName]="f.controlName" />
-                            </div>
+                            <ui-smart-lookup class="ff-ui ff-lookup"
+                                             [placeholder]="getLookupPlaceholder(f)"
+                                             [minChars]="getLookupMinChars(f)"
+                                             [debounceMs]="getLookupDebounceMs(f)"
+                                             [limit]="getLookupLimit(f)"
+                                             [searchFn]="getLookupSearchFn(f)"
+                                             [displayWith]="getLookupDisplayWith(f)"
+                                             [trackBy]="getLookupTrackBy(f)"
+                                             [formControlName]="f.controlName"
+                                             (selected)="onLookupSelected(f, $event)"
+                                             (textChange)="onLookupTextChange(f, $event)"
+                                             (cleared)="onLookupCleared(f)">
+                            </ui-smart-lookup>
                           </ng-container>
 
                           <ng-container *ngSwitchDefault>
@@ -540,21 +536,19 @@
                                 </ng-container>
 
                                 <ng-container *ngSwitchCase="'search'">
-                                  <div class="ff-searchbar"
-                                       (click)="selectField(f)"
-                                       (focusin)="selectField(f)">
-                                    <span class="ff-search-icon" aria-hidden="true">
-                                      <!--<svg viewBox="0 0 24 24" width="18" height="18" focusable="false">
-                                    <path d="M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Zm11.7 2.3-5.4-5.4a9.5 9.5 0 1 0-1.4 1.4l5.4 5.4a1 1 0 0 0 1.4-1.4Z"></path>
-                                  </svg>-->
-                                      🔍
-                                    </span>
-
-                                    <input class="ff-search-input"
-                                           type="search"
-                                           [attr.placeholder]="(f.label || '').trim() || 'Search...'"
-                                           [formControlName]="f.controlName" />
-                                  </div>
+                                  <ui-smart-lookup class="ff-ui ff-lookup"
+                                                   [placeholder]="getLookupPlaceholder(f)"
+                                                   [minChars]="getLookupMinChars(f)"
+                                                   [debounceMs]="getLookupDebounceMs(f)"
+                                                   [limit]="getLookupLimit(f)"
+                                                   [searchFn]="getLookupSearchFn(f)"
+                                                   [displayWith]="getLookupDisplayWith(f)"
+                                                   [trackBy]="getLookupTrackBy(f)"
+                                                   [formControlName]="f.controlName"
+                                                   (selected)="onLookupSelected(f, $event, { repeatPrefix: sub.repeatPrefix!, repeatIndex: inst.index })"
+                                                   (textChange)="onLookupTextChange(f, $event, { repeatPrefix: sub.repeatPrefix!, repeatIndex: inst.index })"
+                                                   (cleared)="onLookupCleared(f, { repeatPrefix: sub.repeatPrefix!, repeatIndex: inst.index })">
+                                  </ui-smart-lookup>
                                 </ng-container>
 
                                 <ng-container *ngSwitchDefault>

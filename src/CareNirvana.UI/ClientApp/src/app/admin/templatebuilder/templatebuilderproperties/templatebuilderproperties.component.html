@@ -474,6 +474,94 @@
           </ui-smart-dropdown>
         </div>
 
+        <div class="section-panel" *ngIf="selectedField?.type === 'search'">
+          <div class="section-panel-header">Lookup / Autocomplete</div>
+
+          <div class="form-check mb-2">
+            <input class="form-check-input"
+                   type="checkbox"
+                   [(ngModel)]="selectedField.lookup.enabled"
+                   (change)="emitUpdate()">
+            <label class="form-check-label">Enable autocomplete</label>
+          </div>
+
+          <div *ngIf="selectedField.lookup.enabled">
+            <div class="mb-3">
+              <ui-smart-dropdown label="Lookup Entity"
+                                 [(ngModel)]="selectedField.lookup.entity"
+                                 [options]="lookupEntityOptions"
+                                 (valueChange)="emitUpdate()">
+              </ui-smart-dropdown>
+            </div>
+
+            <div class="mb-3 form-outline">
+              <label class="form-label">Datasource</label>
+              <input type="text" class="form-control"
+                     [(ngModel)]="selectedField.lookup.datasource"
+                     (change)="emitUpdate()"
+                     placeholder="e.g., providersearch / membersearch / icd10">
+            </div>
+
+            <div class="row g-2">
+              <div class="col-md-6">
+                <label class="form-label">Min Characters</label>
+                <input type="number" class="form-control"
+                       [(ngModel)]="selectedField.lookup.minChars"
+                       (change)="emitUpdate()">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Debounce (ms)</label>
+                <input type="number" class="form-control"
+                       [(ngModel)]="selectedField.lookup.debounceMs"
+                       (change)="emitUpdate()">
+              </div>
+            </div>
+
+            <div class="mb-3 form-outline mt-2">
+              <label class="form-label">Display Template</label>
+              <input type="text" class="form-control"
+                     [(ngModel)]="selectedField.lookup.displayTemplate"
+                     (change)="emitUpdate()"
+                     [attr.placeholder]="'{{lastName}}, {{firstName}} (NPI: {{npi}})'" />
+            </div>
+
+            <div class="mb-3 form-outline">
+              <label class="form-label">Value Field</label>
+              <input type="text" class="form-control"
+                     [(ngModel)]="selectedField.lookup.valueField"
+                     (change)="emitUpdate()"
+                     placeholder="e.g., memberId / providerId / code">
+            </div>
+
+            <div class="mt-3">
+              <div class="fw-semibold mb-2">Fill Mapping (populate other fields)</div>
+
+              <div class="lookup-map-row"
+                   *ngFor="let m of selectedField.lookup.fill; let i = index">
+                <input class="form-control"
+                       [(ngModel)]="m.targetFieldId"
+                       (change)="emitUpdate()"
+                       placeholder="Target Field ID (e.g., providerPhone)">
+
+                <input class="form-control"
+                       [(ngModel)]="m.sourcePath"
+                       (change)="emitUpdate()"
+                       placeholder="Source Path (e.g., phone or address.zip)">
+
+                <button type="button" class="btn btn-outline-danger"
+                        (click)="removeLookupFillRow(i)">
+                  ✕
+                </button>
+              </div>
+
+              <button type="button" class="btn btn-outline-primary mt-2"
+                      (click)="addLookupFillRow()">
+                + Add Mapping
+              </button>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
