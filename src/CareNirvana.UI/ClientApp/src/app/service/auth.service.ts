@@ -21,6 +21,22 @@ export interface MemberSearchResult {
   gender?: string | null;
 }
 
+export interface MedicationLookupRow {
+  drugName?: string | null;
+  ndc?: string | null;
+}
+
+export interface StaffLookupRow {
+  userdetailid: number;
+  username?: string | null;
+}
+
+export interface ProviderLookupRow {
+  providerId: number;
+  firstName?: string | null;
+  lastName?: string | null;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -162,5 +178,19 @@ export class AuthService {
     return this.http.get<MemberSearchResult[]>(`${this.apiUrlCodeSets}/search/members`, { params });
   }
 
+  searchMedications(q: string, limit = 25): Observable<MedicationLookupRow[]> {
+    const params = new HttpParams().set('q', q).set('limit', String(limit));
+    return this.http.get<MedicationLookupRow[]>(`${this.apiUrlCodeSets}/search/medications`, { params });
+  }
+
+  searchStaff(q: string, limit = 25): Observable<StaffLookupRow[]> {
+    const params = new HttpParams().set('q', q).set('limit', String(limit));
+    return this.http.get<StaffLookupRow[]>(`${this.apiUrlCodeSets}/search/staff`, { params });
+  }
+
+  searchProviders(q: string, limit = 25): Observable<ProviderLookupRow[]> {
+    const params = new HttpParams().set('q', q).set('limit', String(limit));
+    return this.http.get<ProviderLookupRow[]>(`${this.apiUrlCodeSets}/search/providers`, { params });
+  }
 
 }

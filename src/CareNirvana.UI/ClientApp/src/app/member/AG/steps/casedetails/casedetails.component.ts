@@ -11,6 +11,7 @@ import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown
 import { CrudService, DatasourceLookupService } from 'src/app/service/crud.service';
 import { AuthNumberService } from 'src/app/service/auth-number-gen.service';
 import { AuthenticateService } from 'src/app/service/authentication.service';
+import { tap, catchError } from 'rxjs/operators';
 
 export type WizardMode = 'new' | 'edit';
 
@@ -337,11 +338,11 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
           const normalized = this.normalizeTemplate(jsonRoot);
 
-          console.table((normalized.sections ?? []).map(s => ({
-            sectionName: s.sectionName,
-            displayName: s.sectionDisplayName
-          })));
-          console.log('Normalized template loaded:', normalized);
+          //console.table((normalized.sections ?? []).map(s => ({
+          //  sectionName: s.sectionName,
+          //  displayName: s.sectionDisplayName
+          //})));
+          //console.log('Normalized template loaded:', normalized);
           this.normalizedTemplate = normalized;
           this.rebuildForStep();
         },
@@ -462,7 +463,6 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
     const levelId = this.getSelectedLevelId() ?? 1;
 
-    console.log('Saving for levelId:', levelId);
     const caseHeaderId = this.state.getHeaderId() ?? this.getHeaderIdFromRoute();
     // ✅ only Details step should create a new case header
     if (!caseHeaderId && this.stepId !== 'details') {
@@ -500,11 +500,11 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
         // CREATE header + first detail
         if (!caseNumber) throw new Error('caseNumber is required to create a new case.');
 
-        const caseType = this.getValueByFieldId('caseType') ?? '';
+        const caseType = String(this.templateId) || "0";// this.getValueByFieldId('caseType') ?? '';
         const status = this.getValueByFieldId('status') ?? '';
 
-        const memberDetailIdRaw = this.getValueByFieldId('memberDetailId');
-        const memberDetailId = memberDetailIdRaw ? Number(memberDetailIdRaw) : 1;
+        // const memberDetailIdRaw = Number(sessionStorage.getItem('selectedMemberDetailsId') || 0);// this.getValueByFieldId('memberDetailId');
+        const memberDetailId = Number(sessionStorage.getItem('selectedMemberDetailsId') || 0); //memberDetailIdRaw ? Number(memberDetailIdRaw) : 1;
 
         await this.caseApi.createCase(
           { caseNumber, caseType, status, memberDetailId, levelId, jsonData },
@@ -932,7 +932,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
             const hasStatic = Array.isArray((f as any).options) && ((f as any).options?.length ?? 0) > 0;
             if (!hasStatic && this.hasNonBooleanSelectedOptions(f) && this.looksLikeYesNo(opts)) {
               // eslint-disable-next-line no-console
-              console.warn(`[CaseDetails] Datasource '${ds}' returned Yes/No options for '${f.controlName}'. Ignoring because field has selectedOptions (>2). Verify datasource mapping/data.`);
+
               this.optionsByControlName[f.controlName] = [];
               continue;
             }
@@ -1215,6 +1215,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     if ((c.showWhen ?? 'always') === 'always') return true;
 
     const resolved = this.resolveControlName(c.referenceFieldId, ctx);
+
     if (!resolved) return true;
 
     const ctrl = this.form.get(resolved);
@@ -1433,7 +1434,9 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     if (k.includes('icd')) return 'icd';
     if (k.includes('member')) return 'members';
     if (k.includes('provider')) return 'providers';
-    if (k.includes('medical') || k.includes('cpt')) return 'medicalcodes';
+    //if (k.includes('medical') || k.includes('cpt')) return 'medicalcodes';
+    //if (k.includes('staff')) return 'staff';
+    //if (k.includes('medication') || k.includes('medications')) return 'medication';
     return k;
   }
 
@@ -1478,8 +1481,12 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
         case 'members':
           return (svc.searchMembers ? svc.searchMembers(q, limit) : of([]));
         case 'providers':
-          // if you add providers later, wire it similarly (svc.searchProviders)
           return (svc.searchProviders ? svc.searchProviders(q, limit) : of([]));
+        case 'staff':
+          return (svc.searchStaff ? svc.searchStaff(q, limit) : of([]));
+
+        case 'medication':
+          return (svc.searchMedications ? svc.searchMedications(q, limit) : of([]));
         default:
           // support custom function name if provided in lookup config
           const cfg = this.getLookupCfg(f);
@@ -1507,7 +1514,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
       if (tpl) return this.applyLookupTemplate(tpl, item);
 
       // sensible defaults
-      if (entity === 'icd' || entity === 'medicalcodes') {
+      if (entity === 'icd' || entity === 'medicalcodes' || entity === 'medication') {
         const code = item.code ?? item.Code ?? item.icdcode ?? item.cptcode ?? '';
         const desc = item.codeDesc ?? item.codedescription ?? item.description ?? '';
         return [code, desc].filter(Boolean).join(' - ');
@@ -1557,7 +1564,6 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     const cfg = this.getLookupCfg(f);
     const valueField = cfg?.valueField ? String(cfg.valueField) : null;
     const storeValue = valueField ? this.pickPath(item, valueField) : this.getLookupDisplayWith(f)(item);
-
     const ctrl = this.form.get(f.controlName);
     if (ctrl) {
       ctrl.setValue(storeValue ?? null, { emitEvent: true });
@@ -1571,6 +1577,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
       if (!targetId || !sourcePath) continue;
 
       const targetControlName = this.resolveControlName(String(targetId), ctx) ?? this.findControlNameByRawId(String(targetId));
+
       if (!targetControlName) continue;
 
       const v = this.pickPath(item, String(sourcePath));
@@ -1622,15 +1629,27 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
         { targetFieldId: 'memberPhone', sourcePath: 'phone' }
       ];
     }
-    if (id.includes('provider') && id.includes('search')) {
-      return [
-        { targetFieldId: 'providerFirstName', sourcePath: 'firstname' },
-        { targetFieldId: 'providerLastName', sourcePath: 'lastname' },
-        { targetFieldId: 'providerPhone', sourcePath: 'phone' },
-        { targetFieldId: 'providerFax', sourcePath: 'fax' },
-        { targetFieldId: 'providerNpi', sourcePath: 'npi' }
-      ];
-    }
+    //if (id.includes('provider') && id.includes('search')) {
+    //  return [
+    //    { targetFieldId: 'providerFirstName', sourcePath: 'firstname' },
+    //    { targetFieldId: 'providerLastName', sourcePath: 'lastname' },
+    //    { targetFieldId: 'providerPhone', sourcePath: 'phone' },
+    //    { targetFieldId: 'providerFax', sourcePath: 'fax' },
+    //    { targetFieldId: 'providerNpi', sourcePath: 'npi' }
+    //  ];
+    //}
+    //if (id.includes('medication') && id.includes('search')) {
+    //  return [
+    //    { targetFieldId: 'medicationCode', sourcePath: 'code' },
+    //    { targetFieldId: 'medicationDescription', sourcePath: 'codeDesc' }
+    //  ];
+    //}
+    //if (id.includes('staff') && id.includes('search')) {
+    //  return [
+    //    { "targetFieldId": "staffUserName", "sourcePath": "username" }
+    //  ];
+    //}
+
     return [];
   }
 
@@ -1660,10 +1679,11 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
   }
 
   private resolveControlName(fieldId: string | null | undefined, ctx?: RepeatContext): string | null {
+
     if (!fieldId) return null;
 
     // If we are rendering inside a repeat instance, bind reference to the same instance.
-    if (ctx?.repeatPrefix && ctx?.repeatIndex) {
+    if (ctx?.repeatPrefix && ctx.repeatIndex != null) {
       return this.repeatControlName(ctx.repeatPrefix, ctx.repeatIndex, fieldId);
     }
 
@@ -1912,7 +1932,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
           label: u.userName
         })) as UiSmartOption[];
 
-        this.applyCaseOwnerOptions(); 
+        this.applyCaseOwnerOptions();
       },
       error: (err) => {
         console.error('Failed to load users:', err);

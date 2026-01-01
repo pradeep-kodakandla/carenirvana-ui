@@ -256,38 +256,6 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
     this.emitUpdate();
   }
 
-  //onDatasourceChange() {
-  //  if (!this.selectedField?.datasource) {
-  //    return;
-  //  }
-
-  //  const expectedKey = this.selectedField.datasource.toLowerCase(); // Convert datasource key to lowercase
-
-  //  this.crudService.getData(this.module, this.selectedField.datasource).subscribe(
-  //    (data: any[]) => {
-  //      this.dropdownOptions = data.map(item => {
-  //        // Find the actual key in the API response (ignoring case)
-  //        const actualKey = Object.keys(item).find(key => key.toLowerCase() === expectedKey);
-
-  //        // If found, use the actual key; otherwise, default to "Unknown"
-  //        const value = actualKey ? item[actualKey] : 'Unknown';
-
-  //        return { id: item.id, value };
-  //      });
-
-  //      //  Remove Auto-Selection of Default Value
-  //      if (this.selectedField!.defaultValue && !this.dropdownOptions.some(opt => opt.id === this.selectedField!.defaultValue)) {
-  //        this.selectedField!.defaultValue = undefined; // ✅ Corrected
-  //      }
-
-  //      this.emitUpdate();
-  //    },
-  //    (error) => {
-  //      console.error("Error fetching datasource:", error);
-  //    }
-  //  );
-  //}
-
   onDatasourceChange() {
     const ds = this.selectedField?.datasource;
     if (!ds) return;
@@ -1043,27 +1011,7 @@ export class TemplatebuilderpropertiesComponent implements OnChanges {
     this.emitUpdate();
   }
 
-  //private selectAllCaseLevelsIfNeeded(): void {
-  //  if (this.module !== 'AG') return;
-  //  if (!this.selectedField?.required) return;
-  //  if (!this.caseLevelOptions.length) return;
-
-  //  const allIds = this.caseLevelOptions.map(o => String(o.id));
-
-  //  if (!Array.isArray(this.selectedField.level)) {
-  //    this.selectedField.level = [];
-  //  } else {
-  //    this.selectedField.level = this.selectedField.level.map((x: any) => String(x));
-  //  }
-
-  //  // default select all ONLY when nothing is selected yet
-  //  if (this.selectedField.level.length === 0) {
-  //    this.selectedField.level = [...allIds];
-  //    this.emitUpdate();
-  //  }
-  //}
-
-  // tries to find the best "id" field from API row
+ // tries to find the best "id" field from API row
   private getAnyId(item: any): any {
     if (!item) return '';
     return (

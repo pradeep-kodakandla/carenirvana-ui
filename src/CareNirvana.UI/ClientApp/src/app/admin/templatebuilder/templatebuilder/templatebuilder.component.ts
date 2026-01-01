@@ -49,20 +49,58 @@ interface TemplateField {
   lookup?: LookupConfig;
 }
 
-interface LookupFillMap {
-  targetFieldId: string;
-  sourcePath: string;
+export type LookupEntity =
+  | 'icd'
+  | 'medicalcodes'   // procedures/CPT from cfgmedicalcodesmaster
+  | 'procedure'      // alias if you prefer (map it to medicalcodes in runtime)
+  | 'medication'
+  | 'member'
+  | 'provider'
+  | 'staff'
+  | (string & {});   // allow future entities without changing typings
+
+export interface LookupFillMap {
+  targetFieldId: string;   // field id in same subsection/repeat instance
+  sourcePath: string;      // property path from selected item e.g. "codeDesc" or "address.city"
+  transform?: 'trim' | 'upper' | 'lower' | 'phoneDigits'; // optional simple transform
+  defaultValue?: any;      // optional when sourcePath is missing/null
 }
 
-interface LookupConfig {
+export interface LookupConfig {
   enabled?: boolean;
-  entity?: string;        // icd | provider | member | medication | procedure | ...
-  datasource?: string;    // API datasource name
-  minChars?: number;
-  debounceMs?: number;
-  displayTemplate?: string;
-  valueField?: string;
+
+  /** what kind of lookup */
+  entity?: LookupEntity;
+
+  /**
+   * optional backend key; if you use a router map in code you can keep this empty.
+   * Example: 'icd', 'members', 'medicalcodes'
+   */
+  datasource?: string;
+
+  /** UX controls */
+  minChars?: number;        // default 2
+  debounceMs?: number;      // default 250
+  limit?: number;           // default 25
+  placeholder?: string;
+
+  /** how dropdown rows should display */
+  displayTemplate?: string; // e.g. "{{code}} - {{codeDesc}}"
+  displayFields?: string[]; // optional simple fallback if template not set
+
+  /** what gets stored in the FormControl (if you store scalar value) */
+  valueField?: string;      // e.g. "code" or "memberdetailsid"
+
+  /** advanced: when selected, fill other fields in that same repeat instance */
   fill?: LookupFillMap[];
+
+  /** optional: allow clearing selection resets filled targets */
+  clearOnEmpty?: boolean;   // if true, clearing lookup clears fill targets
+  clearTargets?: string[];  // explicit targetFieldIds to clear (if not using fill)
+
+  /** optional: for API param variations */
+  queryParam?: string;      // default "q"
+  limitParam?: string;      // default "limit"
 }
 
 type ShowWhen = 'always' | 'fieldEquals' | 'fieldNotEquals' | 'fieldhasvalue';
@@ -76,13 +114,22 @@ interface RepeatConfig {
   instanceLabel?: string;
 }
 
+type PredefinedSubsectionKey =
+  | 'provider'
+  | 'member'
+  | 'icd'
+  | 'procedure'
+  | 'medication'
+  | 'staff';
+
 interface PredefinedSubsectionTemplate {
-  key: 'provider' | 'member' | 'icd';
+  key: PredefinedSubsectionKey;
   title: string;
   subtitle: string;
   icon: string;
   subsection: Partial<TemplateSectionModel>;
 }
+
 
 // Define an interface for a section.
 interface TemplateSectionModel {
@@ -529,14 +576,36 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
         order: 0,
         repeat: { enabled: true, min: 1, max: 10, defaultCount: 1, showControls: true, instanceLabel: 'Provider' },
         fields: [
-          { id: 'providerSearch', label: 'Search Provider', displayName: 'Search Provider', type: 'text', order: 0, isEnabled: true, info: 'Search by NPI/Name/Phone' },
+          {
+            id: 'providerSearch',
+            label: 'Search Provider',
+            displayName: 'Search Provider',
+            type: 'search',
+            order: 0,
+            isEnabled: true,
+            info: 'Search by NPI/Name/Phone',
+            "lookup": {
+              "enabled": true,
+              "entity": "provider",
+              "datasource": "providers",
+              "minChars": 2,
+              "debounceMs": 250,
+              "limit": 25,
+              "placeholder": "Search Provider (Last/First Name)",
+              "valueField": "providerid",
+              "displayTemplate": "{{lastName}}, {{firstName}} (ID: {{providerId}})",
+              "fill": [
+                { "targetFieldId": "providerFirstName", "sourcePath": "firstName" },
+                { "targetFieldId": "providerLastName", "sourcePath": "lastName" }
+              ]
+            }
+          },
           { id: 'providerFirstName', label: 'First Name', displayName: 'First Name', type: 'text', order: 1, isEnabled: true },
-          { id: 'providerLastName', label: 'Last Name', displayName: 'Last Name', type: 'text', order: 2, isEnabled: true },
-          { id: 'providerPhone', label: 'Phone', displayName: 'Phone', type: 'text', order: 3, isEnabled: true },
-          { id: 'providerFax', label: 'Fax', displayName: 'Fax', type: 'text', order: 4, isEnabled: true }
+          { id: 'providerLastName', label: 'Last Name', displayName: 'Last Name', type: 'text', order: 2, isEnabled: true }
         ]
       }
     },
+
     {
       key: 'member',
       title: 'Member',
@@ -548,17 +617,42 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
         order: 0,
         repeat: { enabled: true, min: 1, max: 5, defaultCount: 1, showControls: true, instanceLabel: 'Member' },
         fields: [
-          { id: 'memberSearch', label: 'Search Member', displayName: 'Search Member', type: 'text', order: 0, isEnabled: true, info: 'Search by Member ID/Name/Phone' },
+          {
+            id: 'memberSearch',
+            label: 'Search Member',
+            displayName: 'Search Member',
+            type: 'search',
+            order: 0,
+            isEnabled: true,
+            info: 'Search by Member ID/Name/Phone',
+            lookup: {
+              enabled: true,
+              entity: 'member',
+              minChars: 2,
+              debounceMs: 250,
+              limit: 25,
+              placeholder: 'Search by Member ID / Name / Phone',
+              valueField: 'memberdetailsid',
+              displayTemplate: '{{memberid}} - {{firstname}} {{lastname}} ({{phone}})',
+              fill: [
+                { targetFieldId: 'memberFirstName', sourcePath: 'firstname' },
+                { targetFieldId: 'memberLastName', sourcePath: 'lastname' },
+                { targetFieldId: 'memberPhone', sourcePath: 'phone' }
+              ]
+            }
+          },
           { id: 'memberFirstName', label: 'First Name', displayName: 'First Name', type: 'text', order: 1, isEnabled: true },
           { id: 'memberLastName', label: 'Last Name', displayName: 'Last Name', type: 'text', order: 2, isEnabled: true },
           { id: 'memberPhone', label: 'Phone', displayName: 'Phone', type: 'text', order: 3, isEnabled: true }
         ]
       }
     },
+
+    // ✅ ICD: remove icdSearch and use icdCode as the lookup field
     {
       key: 'icd',
       title: 'ICD',
-      subtitle: 'Search + ICD Code/Description',
+      subtitle: 'ICD Code (search) + Description',
       icon: 'assignment',
       subsection: {
         sectionName: 'ICD',
@@ -566,9 +660,149 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
         order: 0,
         repeat: { enabled: true, min: 1, max: 30, defaultCount: 1, showControls: true, instanceLabel: 'ICD' },
         fields: [
-          { id: 'icdSearch', label: 'Search ICD', displayName: 'Search ICD', type: 'text', order: 0, isEnabled: true, info: 'Search ICD code/description' },
-          { id: 'icdCode', label: 'ICD Code', displayName: 'ICD Code', type: 'text', order: 1, isEnabled: true },
+          {
+            id: 'icdCode',
+            label: 'ICD Code',
+            displayName: 'ICD Code',
+            type: 'search',
+            order: 1,
+            isEnabled: true,
+            info: 'Search ICD code/description',
+            lookup: {
+              enabled: true,
+              entity: 'icd',
+              minChars: 2,
+              debounceMs: 250,
+              limit: 25,
+              placeholder: 'Search ICD (Code / Description)',
+              valueField: 'code',
+              displayTemplate: '{{code}} - {{codeDesc}}',
+              fill: [
+                { targetFieldId: 'icdCode', sourcePath: 'code' },
+                { targetFieldId: 'icdDescription', sourcePath: 'codeDesc' }
+              ]
+            }
+          },
           { id: 'icdDescription', label: 'Description', displayName: 'Description', type: 'text', order: 2, isEnabled: true }
+        ]
+      }
+    },
+
+    // ✅ Procedure: same pattern as ICD, calls your cfgmedicalcodesmaster endpoint
+    {
+      key: 'procedure',
+      title: 'Procedure',
+      subtitle: 'Procedure Code (search)',
+      icon: 'fact_check',
+      subsection: {
+        sectionName: 'Procedure',
+        subsectionKey: 'procedure',
+        order: 0,
+        repeat: { enabled: true, min: 1, max: 30, defaultCount: 1, showControls: true, instanceLabel: 'Procedure' },
+        fields: [
+          {
+            id: 'procedureCode',
+            label: 'Procedure Code',
+            displayName: 'Procedure Code',
+            type: 'search',
+            order: 1,
+            isEnabled: true,
+            info: 'Search procedure code/description',
+            lookup: {
+              enabled: true,
+              entity: 'medicalcodes',   // aligns to /search/medicalcodes
+              minChars: 2,
+              debounceMs: 250,
+              limit: 25,
+              placeholder: 'Search Procedure (Code / Description)',
+              valueField: 'code',
+              displayTemplate: '{{code}} - {{codeDesc}}',
+              fill: [
+                { targetFieldId: 'procedureCode', sourcePath: 'code' },
+                { targetFieldId: 'procedureDescription', sourcePath: 'codeDesc' }
+              ]
+            }
+          },
+          { id: 'procedureDescription', label: 'Description', displayName: 'Description', type: 'text', order: 2, isEnabled: true }
+        ]
+      }
+    },
+
+    // ✅ Medication: same UI as ICD; backend must support /search/medications
+    {
+      key: 'medication',
+      title: 'Medication',
+      subtitle: 'Medication Code/Name (search)',
+      icon: 'medication',
+      subsection: {
+        sectionName: 'Medication',
+        subsectionKey: 'medication',
+        order: 0,
+        repeat: { enabled: true, min: 1, max: 30, defaultCount: 1, showControls: true, instanceLabel: 'Medication' },
+        fields: [
+          {
+            id: 'medicationCode',
+            label: 'Medication',
+            displayName: 'Medication',
+            type: 'search',
+            order: 1,
+            isEnabled: true,
+            info: 'Search medication code/name/description',
+            lookup: {
+              enabled: true,
+              entity: 'medication',
+              minChars: 2,
+              debounceMs: 250,
+              limit: 25,
+              placeholder: 'Search Medication',
+              valueField: 'ndc',
+              displayTemplate: '{{ndc}} - {{drugName}}',
+              fill: [
+                { targetFieldId: 'medicationCode', sourcePath: 'ndc' },
+                { targetFieldId: 'medicationDescription', sourcePath: 'drugName' }
+              ]
+            }
+          },
+          { id: 'medicationDescription', label: 'Description', displayName: 'Description', type: 'text', order: 2, isEnabled: true }
+        ]
+      }
+    },
+
+    // ✅ Staff: Username (search) + First/Last/Username/Phone/Email
+    {
+      key: 'staff',
+      title: 'Staff',
+      subtitle: 'Search + First/Last/Username',
+      icon: 'badge',
+      subsection: {
+        sectionName: 'Staff',
+        subsectionKey: 'staff',
+        order: 0,
+        repeat: { enabled: true, min: 1, max: 10, defaultCount: 1, showControls: true, instanceLabel: 'Staff' },
+        fields: [
+          {
+            id: 'staffSearch',
+            label: 'Search Staff',
+            displayName: 'Search Staff',
+            type: 'search',
+            order: 0,
+            isEnabled: true,
+            info: 'Search staff by username/name/email',
+            lookup: {
+              enabled: true,
+              entity: 'staff',
+              minChars: 2,
+              debounceMs: 250,
+              limit: 25,
+              placeholder: 'Search Staff (Username / Name / Email)',
+              valueField: 'userdetailid',
+              displayTemplate: '{{userdetailid}} - {{username}}',
+              fill: [
+                { "targetFieldId": "staffUserName", "sourcePath": "username" }
+              ]
+            }
+          },
+          { id: 'staffUserName', label: 'Username', displayName: 'Username', type: 'text', order: 1, isEnabled: true }
         ]
       }
     }
@@ -1112,44 +1346,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
     }
   }
 
-  //updateField(updatedField: TemplateField | TemplateSectionModel) {
-  //  // Section rename/update comes from properties component (no 'id' like a field)
-  //  if (this.selectedSectionObject && !('id' in updatedField) && 'sectionName' in updatedField) {
-  //    // Update section name
-  //    const sectionIndex = this.masterTemplate.sections?.findIndex(sec => sec.sectionName === this.selectedSectionObject!.sectionName);
-  //    if (sectionIndex !== undefined && sectionIndex > -1) {
-  //      this.masterTemplate.sections![sectionIndex].sectionName = updatedField.sectionName ?? '';
-  //    }
-  //    if ('sectionName' in updatedField && typeof updatedField.sectionName === 'string') {
-  //      this.selectedSectionObject = { ...updatedField } as TemplateSectionModel;
-  //    }
-
-  //  } else if ('id' in updatedField) {
-  //    // Handle subsections
-  //    if (this.selectedSection.includes('.')) {
-  //      const [mainSection, subSection] = this.selectedSection.split('.');
-  //      const section = this.masterTemplate.sections?.find(sec => sec.sectionName === mainSection);
-  //      const subs = section?.subsections;
-  //      if (subs && subs[subSection]) {
-  //        const fieldIndex = subs[subSection].fields.findIndex((f: TemplateField) => f.id === updatedField.id);
-  //        if (fieldIndex > -1) {
-  //          subs[subSection].fields[fieldIndex] = updatedField;
-  //        }
-  //      }
-  //    } else {
-  //      // Normal section field update
-  //      const section = this.masterTemplate.sections?.find(sec => sec.sectionName === this.selectedSection);
-  //      if (section && section.fields) {
-  //        const index = section.fields.findIndex(f => f.id === updatedField.id);
-  //        if (index > -1) {
-  //          section.fields[index] = updatedField;
-  //        }
-  //      }
-  //    }
-  //    this.selectedField = updatedField;
-  //  }
-  //}
-
   updateField(updatedField: TemplateField | TemplateSectionModel) {
     // SECTION / SUBSECTION update (no `id`)
     if (!('id' in (updatedField as any))) {
@@ -1494,7 +1690,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
       }
     }
   }
-
 
   moveFieldToAvailable(field: TemplateField, sectionName: string, event: Event): void {
     event.stopPropagation();

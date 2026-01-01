@@ -236,13 +236,13 @@ mat-card-title {
   max-width: 200px;
   padding: 8px;
   background: #fff;
-  color: rgba(98, 108, 113, 1);
+  color: #444;/*rgb(98, 108, 113, 1);*/
   border-radius: 10px;
   border: 1px solid #ddd; /* subtle border */
   box-shadow: 0 2px 6px rgba(0,0,0,0.05);
   cursor: pointer;
   transition: all 0.3s ease;
-  font-size: 14px;
+  font-size: 12px;
 }
 
   .rounded-box:hover {
