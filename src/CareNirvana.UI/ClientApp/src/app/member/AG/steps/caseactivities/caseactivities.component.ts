@@ -15,6 +15,10 @@ export class CaseactivitiesComponent implements CaseUnsavedChangesAwareService {
     return this.details?.caseHasUnsavedChanges?.() ?? false;
   }
 
+  hasUnsavedChanges(): boolean {
+    return this.caseHasUnsavedChanges();
+  }
+
   // optional: if you want Save button at Notes component level
   save(): void {
     this.details?.save();

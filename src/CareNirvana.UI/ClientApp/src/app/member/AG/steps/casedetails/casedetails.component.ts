@@ -6,12 +6,13 @@ import { AuthService } from 'src/app/service/auth.service';
 import { CaseUnsavedChangesAwareService } from 'src/app/member/AG/guards/services/caseunsavedchangesaware.service';
 import { CasedetailService, CaseAggregateDto } from 'src/app/service/casedetail.service';
 import { CaseWizardStoreService } from 'src/app/member/AG/services/case-wizard-store.service';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
 import { CrudService, DatasourceLookupService } from 'src/app/service/crud.service';
 import { AuthNumberService } from 'src/app/service/auth-number-gen.service';
 import { AuthenticateService } from 'src/app/service/authentication.service';
 import { tap, catchError } from 'rxjs/operators';
+import { HeaderService } from 'src/app/service/header.service';
 
 export type WizardMode = 'new' | 'edit';
 
@@ -258,7 +259,9 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     private crudService: CrudService,
     private caseNumberService: AuthNumberService,
     private dsLookup: DatasourceLookupService,
-    private userService: AuthenticateService
+    private userService: AuthenticateService,
+    private headerService: HeaderService,
+    private router: Router
   ) { }
 
   caseHasUnsavedChanges(): boolean {
@@ -510,6 +513,24 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
           { caseNumber, caseType, status, memberDetailId, levelId, jsonData },
           userId
         ).toPromise();
+
+        const memberId = this.headerService.getMemberId(this.headerService.getSelectedTab() || '') || '';
+        const currentRoute = `/case/0/details/${memberId}`;
+
+        const urlTree = this.router.createUrlTree(
+          ['/member-info', memberId, 'case', caseNumber, 'details']
+        );
+
+        const newRoute = this.router.serializeUrl(urlTree);
+        const newLabel = `Case # ${caseNumber}`;
+
+        this.headerService.updateTab(currentRoute, {
+          label: newLabel,
+          route: newRoute,
+          memberId: String(memberId)
+        });
+
+        this.headerService.selectTab(newRoute);
       }
 
       // Reload aggregate + publish tabs
@@ -1941,5 +1962,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     });
   }
 
-
+  hasUnsavedChanges(): boolean {
+    return this.caseHasUnsavedChanges();
+  }
 }

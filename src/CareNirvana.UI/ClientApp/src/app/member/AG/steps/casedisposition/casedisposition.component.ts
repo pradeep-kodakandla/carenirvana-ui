@@ -33,4 +33,8 @@ export class CasedispositionComponent {
   caseHasUnsavedChanges(): boolean {
     return this.detailsComp?.caseHasUnsavedChanges() ?? false;
   }
+
+  hasUnsavedChanges(): boolean {
+    return this.caseHasUnsavedChanges();
+  }
 }

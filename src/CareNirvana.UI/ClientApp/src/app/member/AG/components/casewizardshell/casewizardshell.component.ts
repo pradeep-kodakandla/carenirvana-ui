@@ -27,6 +27,7 @@ import { CaseactivitiesComponent } from 'src/app/member/AG/steps/caseactivities/
 import { CasenotesComponent } from 'src/app/member/AG/steps/casenotes/casenotes.component';
 import { CasedocumentsComponent } from 'src/app/member/AG/steps/casedocuments/casedocuments.component';
 import { CasecloseComponent } from 'src/app/member/AG/steps/caseclose/caseclose.component';
+import { CaseUnsavedChangesAwareService } from 'src/app/member/AG/guards/services/caseunsavedchangesaware.service';
 
 export interface CaseStep {
   id: string;
@@ -40,7 +41,7 @@ export interface CaseStep {
   templateUrl: './casewizardshell.component.html',
   styleUrls: ['./casewizardshell.component.css']
 })
-export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestroy {
+export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestroy, CaseUnsavedChangesAwareService {
 
   @ViewChild('stepContainer', { read: ViewContainerRef }) stepContainer!: ViewContainerRef;
 
@@ -171,6 +172,13 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
   selectLevel(levelId: number): void {
     if (!this.canNavigateAway()) return;
     this.state.setActiveLevel(levelId);
+
+    // ✅ push new level into current step (notes/documents should reload)
+    this.currentStepRef?.setInput?.('levelId', levelId);
+
+    const inst: any = this.currentStepRef?.instance;
+    if (typeof inst?.onLevelChanged === 'function') inst.onLevelChanged(levelId);
+    if (typeof inst?.reload === 'function') inst.reload(); // if you built reload()
   }
 
   onStepSelected(step: any): void {
@@ -223,9 +231,37 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
       inst.setTemplateId(templateId);
     }
 
+    this.pushContextIntoCurrentStep();
+
     // ✅ Force immediate CD so inputs are applied before user sees it
     this.currentStepRef.changeDetectorRef.detectChanges();
   }
+
+  private pushContextIntoCurrentStep(): void {
+    if (!this.currentStepRef) return;
+
+    const inst: any = this.currentStepRef.instance;
+
+    const caseHeaderId = this.state.getHeaderId?.() ?? null;
+    const caseTemplateId = this.state.getTemplateId?.() ?? null;
+    const levelId = this.state.getActiveLevelId() ?? 1;
+
+    // from your shell header you already display case number via aggregate$ :contentReference[oaicite:0]{index=0}
+    const agg: any = (this.state as any).getAggregate?.() ?? null;
+    const caseNumber = agg?.header?.caseNumber ?? agg?.caseNumber ?? null;
+
+    // ✅ Only set inputs if the component declares them
+    if ('caseHeaderId' in inst) this.currentStepRef.setInput('caseHeaderId', caseHeaderId);
+    if ('caseTemplateId' in inst) this.currentStepRef.setInput('caseTemplateId', caseTemplateId);
+    if ('levelId' in inst) this.currentStepRef.setInput('levelId', levelId);
+    if ('caseNumber' in inst) this.currentStepRef.setInput('caseNumber', caseNumber);
+
+    // optional hook
+    if (typeof inst?.setContext === 'function') {
+      inst.setContext({ caseHeaderId, caseTemplateId, levelId, caseNumber });
+    }
+  }
+
 
   private pushTemplateIdIntoCurrentStep(templateId: number | null): void {
     const inst: any = this.currentStepRef?.instance;
@@ -324,4 +360,20 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
       return null;
     }
   }
+
+  caseHasUnsavedChanges(): boolean {
+    const inst: any = this.currentStepRef?.instance;
+
+    // support both naming styles so all steps work
+    return !!(
+      inst?.caseHasUnsavedChanges?.() ??
+      inst?.hasUnsavedChanges?.() ??
+      false
+    );
+  }
+
+  //private canNavigateAway(): boolean {
+  //  if (!this.caseHasUnsavedChanges()) return true;
+  //  return confirm('You have unsaved changes. Do you want to continue?');
+  //}
 }

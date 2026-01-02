@@ -95,9 +95,9 @@
   border: 0;
   outline: none;
   background: transparent;
-  font-size: 16px;
+  font-size: 12px;
   line-height: 22px;
-  padding: 0;
+  padding-left: 5px;
 }
 
   /* Consistent height for non-textarea inputs */

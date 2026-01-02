@@ -1,1 +1,152 @@
-<app-casedetails [stepId]="'notes'"></app-casedetails>
+<div class="d-flex align-items-center justify-content-between mb-2">
+  <div>
+    <div class="h6 mb-0">Case Notes</div>
+    <small class="text-muted" *ngIf="resolved">Level: {{ resolved.levelId }}</small>
+  </div>
+
+  <button class="btn btn-sm btn-primary" (click)="onAddClick()" [disabled]="loading || saving">
+    + Add Note
+  </button>
+</div>
+
+<div class="alert alert-danger py-2" *ngIf="errorMsg">
+  {{ errorMsg }}
+</div>
+
+<div *ngIf="loading" class="py-3">
+  Loading...
+</div>
+
+<!-- Editor -->
+<div class="section-card" *ngIf="showEditor">
+  <div class="section-header">
+    <div class="section-title">{{ editing ? 'Edit Note' : 'Add Note' }}</div>
+    <div class="ms-auto">
+      <button type="button" class="btn btn-sm btn-outline-secondary" (click)="closeEditor()">Close</button>
+    </div>
+  </div>
+
+  <form [formGroup]="form">
+    <div class="grid">
+      <ng-container *ngFor="let f of noteEditorFields; trackBy: trackByField">
+        <ng-container *ngIf="form.get(f.controlName) as ctrl">
+
+          <!-- CHECKBOX -->
+          <ng-container *ngIf="f.type === 'checkbox'; else outlinedTpl">
+            <div class="ff-field">
+              <div class="ff-checkbox">
+                <input type="checkbox"
+                       class="form-check-input"
+                       [formControlName]="f.controlName" />
+                <label class="form-check-label">
+                  {{ f.displayName }}
+                  <span class="req-star" *ngIf="isRequired(ctrl, f)">*</span>
+                </label>
+              </div>
+
+              <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
+                {{ f.requiredMsg || (f.displayName + ' is required') }}
+              </div>
+            </div>
+          </ng-container>
+
+          <!-- OUTLINED (text/select/textarea/datetime/search) -->
+          <ng-template #outlinedTpl>
+            <div class="ff-field" [class.ff-span-all]="f.type === 'search'">
+              <div class="ff-outline"
+                   [class.ff-disabled]="ctrl.disabled"
+                   [class.ff-invalid]="ctrl.touched && ctrl.invalid">
+
+                <div class="ff-float-label">
+                  {{ f.displayName }}
+                  <span class="req-star" *ngIf="isRequired(ctrl, f)">*</span>
+                </div>
+
+                <div class="ff-body">
+                  <ng-container [ngSwitch]="f.type">
+
+                    <!-- Dropdown -->
+                    <ng-container *ngSwitchCase="'select'">
+                      <ui-smart-dropdown class="ff-ui"
+                                         label=""
+                                         placeholder="Select..."
+                                         [options]="getDropdownOptions(f.controlName)"
+                                         [formControlName]="f.controlName">
+                      </ui-smart-dropdown>
+                    </ng-container>
+
+                    <!-- Datetime -->
+                    <ng-container *ngSwitchCase="'datetime-local'">
+                      <ui-datetime-picker class="ff-ui"
+                                          placeholderDate="mm/dd/yyyy"
+                                          placeholderDateTime="mm/dd/yyyy --:--"
+                                          [formControlName]="f.controlName">
+                      </ui-datetime-picker>
+                    </ng-container>
+
+                    <!-- Textarea -->
+                    <ng-container *ngSwitchCase="'textarea'">
+                      <textarea class="ff-input ff-textarea"
+                                rows="3"
+                                [formControlName]="f.controlName"></textarea>
+                    </ng-container>
+
+                    <!-- Default text -->
+                    <ng-container *ngSwitchDefault>
+                      <input class="ff-input" type="text" [formControlName]="f.controlName" />
+                    </ng-container>
+
+                  </ng-container>
+                </div>
+              </div>
+
+              <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
+                {{ f.requiredMsg || (f.displayName + ' is required') }}
+              </div>
+            </div>
+          </ng-template>
+
+        </ng-container>
+      </ng-container>
+    </div>
+
+    <div class="case-savebar">
+      <button type="button" class="btn btn-outline-secondary me-2" (click)="closeEditor()">Cancel</button>
+      <button type="button" class="btn btn-primary" [disabled]="saving" (click)="onSave()">Save</button>
+    </div>
+  </form>
+</div>
+
+
+<!-- Notes cards -->
+<div *ngIf="!loading && (!notes || notes.length === 0)" class="text-muted py-3">
+  No notes yet.
+</div>
+
+<div class="row g-3" *ngIf="notes && notes.length > 0">
+  <div class="col-12" *ngFor="let n of notes; trackBy: trackByNoteId">
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <span class="badge bg-secondary">Type: {{ getNoteType(n) }}</span>
+          <span class="badge bg-info text-dark">Level: {{ getNoteLevel(n) }}</span>
+          <span class="badge bg-warning text-dark" *ngIf="isAlert(n)">Alert</span>
+          <small class="text-muted ms-2">
+            {{ formatDt(getCreatedOn(n)) }}
+          </small>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button class="btn btn-sm btn-outline-primary" (click)="onEdit(n)" [disabled]="saving">Edit</button>
+          <button class="btn btn-sm btn-outline-danger" (click)="onDelete(n)" [disabled]="saving">Delete</button>
+        </div>
+      </div>
+
+      <div class="card-body">
+        <div style="white-space: pre-line;">
+          {{ getNoteText(n) }}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
