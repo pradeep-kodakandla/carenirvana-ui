@@ -215,7 +215,10 @@ export class CasedocumentsComponent implements OnInit, OnDestroy {
       const hasDs = !!String(f.datasource ?? '').trim();
       if (f.type === 'select' && !hasDs) {
         const opts = this.mapStaticOptions(f.options ?? f.selectedOptions ?? []);
-        if (opts.length) this.dropdownOptions[f.controlName] = opts;
+        if (opts.length) {
+          this.dropdownOptions[f.controlName] = opts;
+          this.reconcileControlValue(f.controlName);
+        }
       }
     }
 
@@ -246,12 +249,13 @@ export class CasedocumentsComponent implements OnInit, OnDestroy {
               String(value ?? '');
             return { value, label } as UiSmartOption;
           },
-          ['AG', 'Admin', 'Provider']
+          ['AG']
         )
         .pipe(takeUntil(this.destroy$))
         .subscribe((opts: UiSmartOption[] | null) => {
           for (const f of dsFields) {
             this.dropdownOptions[f.controlName] = opts ?? [];
+            this.reconcileControlValue(f.controlName);
           }
         });
     }
@@ -315,8 +319,14 @@ export class CasedocumentsComponent implements OnInit, OnDestroy {
     this.selectedFileNames = (doc?.files ?? []).map(x => String(x));
 
     // patch using field IDs (template-driven)
-    this.setValueByFieldId('caseDocumentType', doc.documentType);
-    this.setValueByFieldId('documentLevel', doc.documentLevel);
+    const typeCn = this.getControlNameByFieldId('caseDocumentType');
+    const levelCn = this.getControlNameByFieldId('documentLevel');
+
+    const typeVal = typeCn ? (this.findOption(typeCn, doc.documentType)?.value ?? doc.documentType) : doc.documentType;
+    const levelVal = levelCn ? (this.findOption(levelCn, doc.documentLevel)?.value ?? doc.documentLevel) : doc.documentLevel;
+
+    this.setValueByFieldId('caseDocumentType', typeVal);
+    this.setValueByFieldId('documentLevel', levelVal);
     this.setValueByFieldId('caseDocumentDesc', doc.documentDescription);
   }
 
@@ -423,4 +433,59 @@ export class CasedocumentsComponent implements OnInit, OnDestroy {
   // trackBy
   trackByDoc = (i: number, d: any) => d?.documentId ?? i;
   trackByField = (_: number, f: AnyField) => f.controlName;
+
+
+
+  private findOption(controlName: string, rawValue: any): UiSmartOption | null {
+    const opts = this.dropdownOptions?.[controlName] ?? [];
+    if (!opts.length) return null;
+
+    // strict match first
+    const exact = opts.find(o => o.value === rawValue);
+    if (exact) return exact;
+
+    // then loose match (string/number mismatch)
+    const loose = opts.find(o => String(o.value) === String(rawValue));
+    return loose ?? null;
+  }
+
+  private reconcileControlValue(controlName: string): void {
+    const ctrl = this.form?.get(controlName);
+    if (!ctrl) return;
+
+    const val = ctrl.value;
+    if (val == null || val === '') return;
+
+    const found = this.findOption(controlName, val);
+    if (!found) return;
+
+    // Force the control value to EXACT option.value (fixes "2" vs 2)
+    if (found.value !== val) {
+      ctrl.setValue(found.value, { emitEvent: false });
+    }
+
+    ctrl.updateValueAndValidity({ emitEvent: false });
+  }
+
+  // For cards: show label instead of id
+  getDocTypeLabel(d: CaseDocumentDto): string {
+    const cn = this.getControlNameByFieldId('caseDocumentType');
+    const opt = cn ? this.findOption(cn, d?.documentType) : null;
+    return opt?.label ?? String(d?.documentType ?? '');
+  }
+
+  getDocLevelLabel(d: CaseDocumentDto): string {
+    const cn = this.getControlNameByFieldId('documentLevel');
+    const opt = cn ? this.findOption(cn, d?.documentLevel) : null;
+    return opt?.label ?? String(d?.documentLevel ?? '');
+  }
+
+
+
+
+
 }
+
+
+
+

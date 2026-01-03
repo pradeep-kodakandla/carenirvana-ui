@@ -119,34 +119,35 @@
 
 
 <!-- Notes cards -->
-<div *ngIf="!loading && (!notes || notes.length === 0)" class="text-muted py-3">
+<div *ngIf="!loading && (!notes || notes.length === 0)" class="text-muted py-3 px-2">
   No notes yet.
 </div>
 
-<div class="row g-3" *ngIf="notes && notes.length > 0">
-  <div class="col-12" *ngFor="let n of notes; trackBy: trackByNoteId">
-    <div class="card">
-      <div class="card-header d-flex align-items-center justify-content-between">
-        <div class="d-flex flex-wrap gap-2 align-items-center">
-          <span class="badge bg-secondary">Type: {{ getNoteType(n) }}</span>
-          <span class="badge bg-info text-dark">Level: {{ getNoteLevel(n) }}</span>
-          <span class="badge bg-warning text-dark" *ngIf="isAlert(n)">Alert</span>
-          <small class="text-muted ms-2">
-            {{ formatDt(getCreatedOn(n)) }}
-          </small>
-        </div>
-
-        <div class="d-flex gap-2">
-          <button class="btn btn-sm btn-outline-primary" (click)="onEdit(n)" [disabled]="saving">Edit</button>
-          <button class="btn btn-sm btn-outline-danger" (click)="onDelete(n)" [disabled]="saving">Delete</button>
-        </div>
+<div class="resp-list" *ngIf="notes && notes.length > 0">
+  <article class="resp-card" *ngFor="let n of notes; trackBy: trackByNoteId">
+    <div class="resp-head">
+      <div class="resp-meta">
+        <span class="pill pill-primary">Type · {{ getNoteTypeLabel(n) }}</span>
+        <span class="pill">Level · {{ getNoteLevelLabel(n) }}</span>
+        <span class="pill pill-warn" *ngIf="isAlert(n)">Alert</span>
+        <span class="resp-time">{{ getCreatedOn(n) | date: 'short' }}</span>
       </div>
 
-      <div class="card-body">
-        <div style="white-space: pre-line;">
-          {{ getNoteText(n) }}
-        </div>
+      <div class="resp-actions">
+        <button class="icon-btn" type="button" title="Edit" (click)="onEdit(n)" [disabled]="saving">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm2.92 2.83H5v-.92l8.06-8.06.92.92L5.92 20.08zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"></path>
+          </svg>
+        </button>
+
+        <button class="icon-btn danger" type="button" title="Delete" (click)="onDelete(n)" [disabled]="saving">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 7h12v14H6V7zm3-3h6l1 1h4v2H4V5h4l1-1zm1 6h2v9H10v-9zm4 0h2v9h-2v-9z"></path>
+          </svg>
+        </button>
       </div>
     </div>
-  </div>
+
+    <div class="resp-body">{{ getNoteText(n) }}</div>
+  </article>
 </div>

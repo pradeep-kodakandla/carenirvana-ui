@@ -1,7 +1,7 @@
-import { Component, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
+import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
 import { AbstractControl, FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
-import { forkJoin, Observable, of, throwError } from 'rxjs';
-import { catchError, finalize, map, switchMap, tap } from 'rxjs/operators';
+import { forkJoin, Observable, of, Subject, throwError } from 'rxjs';
+import { catchError, finalize, map, switchMap, takeUntil, tap } from 'rxjs/operators';
 
 import { CaseUnsavedChangesAwareService } from 'src/app/member/AG/guards/services/caseunsavedchangesaware.service';
 import {
@@ -9,6 +9,8 @@ import {
   CaseNoteDto,
   CaseNotesTemplateResponse
 } from 'src/app/service/casedetail.service';
+import { DatasourceLookupService } from 'src/app/service/crud.service';
+import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
 
 type NotesContext = { caseHeaderId: number; caseTemplateId: number; levelId: number };
 
@@ -33,7 +35,7 @@ type AnyField = {
   templateUrl: './casenotes.component.html',
   styleUrls: ['./casenotes.component.css']
 })
-export class CasenotesComponent implements OnInit, OnChanges, CaseUnsavedChangesAwareService {
+export class CasenotesComponent implements OnInit, OnChanges, OnDestroy, CaseUnsavedChangesAwareService {
   @Input() caseHeaderId?: number = 27;
   @Input() caseTemplateId?: number = 2;
   @Input() levelId: number = 1;
@@ -53,20 +55,28 @@ export class CasenotesComponent implements OnInit, OnChanges, CaseUnsavedChanges
 
   resolved?: NotesContext;
 
-  // ✅ now dynamic
+  // ✅ template-driven
   form: FormGroup = this.fb.group({});
 
   // template-driven editor fields
   noteEditorFields: AnyField[] = [];
 
-
   // dropdown options cache by controlName for ui-smart-dropdown
-  private selectOptions: Record<string, Array<{ label: string; value: any }>> = {};
+  dropdownOptions: Record<string, UiSmartOption[]> = {};
 
-  constructor(private fb: FormBuilder, private api: CasedetailService) { }
+  // cached controlNames for card label resolution
+  private noteTypeControlName: string | null = null;
+  private noteLevelControlName: string | null = null;
+
+  private destroy$ = new Subject<void>();
+
+  constructor(
+    private fb: FormBuilder,
+    private api: CasedetailService,
+    private dsLookup: DatasourceLookupService
+  ) { }
 
   ngOnInit(): void {
-    console.log('CasenotesComponent initialized with');
     this.reload();
   }
 
@@ -74,6 +84,11 @@ export class CasenotesComponent implements OnInit, OnChanges, CaseUnsavedChanges
     if (changes['caseHeaderId'] || changes['caseTemplateId'] || changes['levelId'] || changes['caseNumber']) {
       this.reload();
     }
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   // --- Unsaved changes guard ---
@@ -97,6 +112,7 @@ export class CasenotesComponent implements OnInit, OnChanges, CaseUnsavedChanges
 
     this.form.reset();
     this.patchDefaultsForAdd();
+    this.reconcileAllSelectControls();
     this.form.markAsPristine();
   }
 
@@ -107,6 +123,7 @@ export class CasenotesComponent implements OnInit, OnChanges, CaseUnsavedChanges
 
     this.form.reset();
     this.patchFormFromNote(n);
+    this.reconcileAllSelectControls();
     this.form.markAsPristine();
   }
 
@@ -131,7 +148,7 @@ export class CasenotesComponent implements OnInit, OnChanges, CaseUnsavedChanges
     // ✅ map template-driven controls -> API payload (keep API stable)
     const payload = {
       noteText: String(this.readValueByCandidates(['caseNotes', 'noteText']) ?? ''),
-      noteLevel: 1,//Number(this.readValueByCandidates(['noteLevel']) ?? 1),
+      noteLevel: Number(this.readValueByCandidates(['noteLevel']) ?? (this.levelId ?? 1)),
       noteType: Number(this.readValueByCandidates(['caseNoteType', 'noteType']) ?? 1),
       caseAlertNote: !!this.readValueByCandidates(['caseAlertNote', 'isAlertNote'])
     };
@@ -144,7 +161,6 @@ export class CasenotesComponent implements OnInit, OnChanges, CaseUnsavedChanges
     if (this.getNoteId(this.editing)) {
       req$ = this.api.updateNote(ctx.caseHeaderId, ctx.levelId, this.getNoteId(this.editing)!, payload);
     } else {
-      // create returns {noteId} -> convert to void
       req$ = this.api.createNote(ctx.caseHeaderId, ctx.levelId, payload).pipe(
         switchMap(() => of(void 0))
       );
@@ -193,7 +209,7 @@ export class CasenotesComponent implements OnInit, OnChanges, CaseUnsavedChanges
   }
 
   // --------------------------
-  // Notes cards helpers (no "as any" in HTML)
+  // Notes cards helpers
   // --------------------------
   getNoteId(n?: CaseNoteDto): string | null {
     if (!n) return null;
@@ -210,6 +226,16 @@ export class CasenotesComponent implements OnInit, OnChanges, CaseUnsavedChanges
 
   getNoteLevel(n: CaseNoteDto): any {
     return (n as any)?.noteLevel ?? '';
+  }
+
+  getNoteTypeLabel(n: CaseNoteDto): string {
+    const v = this.getNoteType(n);
+    return this.getLabelFromControlOptions(this.noteTypeControlName, v);
+  }
+
+  getNoteLevelLabel(n: CaseNoteDto): string {
+    const v = this.getNoteLevel(n);
+    return this.getLabelFromControlOptions(this.noteLevelControlName, v);
   }
 
   isAlert(n: CaseNoteDto): boolean {
@@ -230,42 +256,19 @@ export class CasenotesComponent implements OnInit, OnChanges, CaseUnsavedChanges
   }
 
   // --------------------------
-  // Template-driven rendering (same control types as CaseDetails)
+  // Template-driven rendering
   // --------------------------
   isRequired(ctrl: AbstractControl, f: AnyField): boolean {
-    // match multiple template conventions
     const req = !!(f.required ?? f.isRequired);
-    // if validators already applied, this still works
     return req || (ctrl.validator ? !!ctrl.errors?.['required'] : false);
   }
 
-  getDropdownOptions(controlName: string): Array<{ label: string; value: any }> {
-    return this.selectOptions[controlName] ?? [];
+  getDropdownOptions(controlName: string): UiSmartOption[] {
+    return this.dropdownOptions?.[controlName] ?? [];
   }
-
-  // search helpers (keep safe defaults unless your notes template actually uses "search")
-  getLookupPlaceholder(_f: AnyField): string { return 'Search...'; }
-  getLookupMinChars(f: AnyField): number { return Number(f.lookup?.minChars ?? 2); }
-  getLookupDebounceMs(f: AnyField): number { return Number(f.lookup?.debounceMs ?? 250); }
-  getLookupLimit(f: AnyField): number { return Number(f.lookup?.limit ?? 25); }
-
-  // NOTE: wire this if/when notes template uses lookup
-  getLookupSearchFn(_f: AnyField): ((term: string) => Observable<any[]>) {
-    return (_term: string) => of([]);
-  }
-  getLookupDisplayWith(_f: AnyField): ((x: any) => string) {
-    return (x: any) => (x == null ? '' : String(x?.label ?? x?.name ?? x));
-  }
-  getLookupTrackBy(_f: AnyField): ((x: any) => any) {
-    return (x: any) => x?.id ?? x?.code ?? x;
-  }
-
-  onLookupSelected(_f: AnyField, _ev: any): void { }
-  onLookupTextChange(_f: AnyField, _ev: any): void { }
-  onLookupCleared(_f: AnyField): void { }
 
   // --------------------------
-  // Loading notes: this.api.getNotes(ctx.caseHeaderId, ctx.levelId).pipe(
+  // Loading
   // --------------------------
   reload(): void {
     this.loading = true;
@@ -273,22 +276,26 @@ export class CasenotesComponent implements OnInit, OnChanges, CaseUnsavedChanges
     this.resolved = undefined;
     this.notes = [];
     this.template = undefined;
+    this.dropdownOptions = {};
+    this.noteEditorFields = [];
+    this.noteTypeControlName = null;
+    this.noteLevelControlName = null;
     this.showEditor = false;
     this.editing = undefined;
-    console.log('Loaded notes ');
+
     this.resolveContext$()
       .pipe(
         switchMap((ctx) => {
           this.resolved = ctx;
           return forkJoin({
             notes: this.api.getNotes(ctx.caseHeaderId, ctx.levelId).pipe(
-              catchError(err => {
+              catchError((err) => {
                 console.error('getNotes failed', err);
-                return of({ notes: [] } as any); // keep shape: {notes: CaseNoteDto[]}
+                return of({ notes: [] } as any);
               })
             ),
-            template: this.api.getNotesTemplate(2).pipe(
-              catchError(err => {
+            template: this.api.getNotesTemplate(ctx.caseTemplateId).pipe(
+              catchError((err) => {
                 console.error('getNotesTemplate failed', err);
                 return of(undefined);
               })
@@ -298,8 +305,6 @@ export class CasenotesComponent implements OnInit, OnChanges, CaseUnsavedChanges
         tap((res) => {
           this.notes = res.notes?.notes ?? [];
           this.template = res.template;
-          console.log('Loaded notes template:', this.template);
-          // ✅ build dynamic fields + form from template
           this.applyNotesTemplate(this.template?.section ?? (this.template as any)?.Section);
         }),
         finalize(() => (this.loading = false)),
@@ -331,60 +336,44 @@ export class CasenotesComponent implements OnInit, OnChanges, CaseUnsavedChanges
   }
 
   private applyNotesTemplate(section: any): void {
-    // If template isn't available, fallback to minimum shape so UI still works
+    // If template isn't available, fallback so UI still works
     const fields = this.extractFieldsDeep(section);
 
-    // don’t render the grid itself inside editor (we show cards separately)
+    // don't render grid fields in the editor
     const editorFields = fields.filter((f) => !this.isGridField(f));
 
     this.noteEditorFields = editorFields.map((x) => this.enrichField(section, x));
 
-    // build dropdown options cache
-    this.selectOptions = {};
-    for (const f of this.noteEditorFields) {
-      if ((f.type ?? '').toLowerCase() === 'select') {
-        const raw = (f.options ?? f.level ?? []) as any[];
-        this.selectOptions[f.controlName!] = raw.map((x) => {
-          // support ["Yes","No"] or [{id,name}] etc.
-          if (x && typeof x === 'object') {
-            const value = (x.id ?? x.value ?? x.code ?? x);
-            const label = String(x.name ?? x.label ?? x.codeDesc ?? x.code ?? value);
-            return { label, value };
-          }
-          return { label: String(x), value: x };
-        });
-      }
-    }
+    // capture controlName for Type/Level for card mapping
+    this.noteTypeControlName = this.findControlNameByFieldIds(['caseNoteType', 'noteType']);
+    this.noteLevelControlName = this.findControlNameByFieldIds(['noteLevel']);
 
-    // rebuild form group
+    // build form group
     const group: Record<string, FormControl> = {};
     for (const f of this.noteEditorFields) {
       const v = this.defaultValueForType(f.type);
       const validators = this.fieldIsRequired(f) ? [Validators.required] : [];
-      group[f.controlName!] = new FormControl(v, validators);
+      group[f.controlName] = new FormControl(v, validators);
     }
     this.form = this.fb.group(group);
 
-    // if editor is open, keep values consistent
+    // dropdowns (static + datasource)
+    this.prefetchDropdownOptions(this.noteEditorFields);
+
+    // keep editor values consistent if open
     if (this.showEditor) {
       if (this.editing) this.patchFormFromNote(this.editing);
       else this.patchDefaultsForAdd();
+      this.reconcileAllSelectControls();
     }
   }
 
   private extractFieldsDeep(node: any): AnyField[] {
     if (!node) return [];
-
     const out: AnyField[] = [];
-
     if (Array.isArray(node.fields)) out.push(...node.fields);
-    if (Array.isArray(node.subsections)) {
-      for (const s of node.subsections) out.push(...this.extractFieldsDeep(s));
-    }
-    if (Array.isArray(node.sections)) {
-      for (const s of node.sections) out.push(...this.extractFieldsDeep(s));
-    }
-
+    if (Array.isArray(node.subsections)) for (const s of node.subsections) out.push(...this.extractFieldsDeep(s));
+    if (Array.isArray(node.sections)) for (const s of node.sections) out.push(...this.extractFieldsDeep(s));
     return out;
   }
 
@@ -394,25 +383,22 @@ export class CasenotesComponent implements OnInit, OnChanges, CaseUnsavedChanges
     const type = String(f?.type ?? 'text');
 
     const secKey = this.toSectionKey(String(section?.sectionName ?? 'Case Notes'));
-
     const controlName = `${secKey}_${id}`; // ✅ always defined
 
-    return {
-      ...f,
-      id,
-      displayName,
-      type,
-      controlName
-    };
+    return { ...f, id, displayName, type, controlName };
   }
 
+  private findControlNameByFieldIds(fieldIds: string[]): string | null {
+    const set = new Set(fieldIds.map((x) => x.toLowerCase()));
+    const f = this.noteEditorFields.find((x) => set.has(String(x.id ?? '').toLowerCase()));
+    return f?.controlName ?? null;
+  }
 
   private isGridField(f: any): boolean {
     const id = String(f?.id ?? f?.fieldId ?? '').toLowerCase();
     const t = String(f?.type ?? '').toLowerCase();
     return t === 'grid' || t === 'table' || id.endsWith('grid') || id.includes('grid');
   }
-
 
   private fieldIsRequired(f: AnyField): boolean {
     return !!(f.required ?? f.isRequired);
@@ -446,7 +432,6 @@ export class CasenotesComponent implements OnInit, OnChanges, CaseUnsavedChanges
   }
 
   private readValueByCandidates(ids: string[]): any {
-    // find a control matching any candidate field id
     const byId = (cand: string) =>
       this.noteEditorFields.find((f) => String(f.id ?? '').toLowerCase() === cand.toLowerCase())?.controlName;
 
@@ -455,7 +440,7 @@ export class CasenotesComponent implements OnInit, OnChanges, CaseUnsavedChanges
       if (cn && this.form.get(cn)) return this.form.get(cn)!.value;
     }
 
-    // fallback: if asking for note text and there is a textarea field, use it
+    // fallback: if asking for note text and there is a textarea, use it
     if (ids.some((x) => x.toLowerCase().includes('note'))) {
       const textarea = this.noteEditorFields.find((f) => String(f.type ?? '').toLowerCase() === 'textarea');
       if (textarea?.controlName && this.form.get(textarea.controlName)) return this.form.get(textarea.controlName)!.value;
@@ -465,7 +450,6 @@ export class CasenotesComponent implements OnInit, OnChanges, CaseUnsavedChanges
   }
 
   private patchDefaultsForAdd(): void {
-    // set common defaults if these fields exist in template
     this.setValueById('noteLevel', this.levelId ?? 1);
     this.setValueById('noteType', 1);
     this.setValueById('caseNoteType', 1);
@@ -477,8 +461,8 @@ export class CasenotesComponent implements OnInit, OnChanges, CaseUnsavedChanges
 
   private patchFormFromNote(n: CaseNoteDto): void {
     const noteText = (n as any)?.noteText ?? '';
-    const noteLevel = Number((n as any)?.noteLevel ?? (this.levelId ?? 1));
-    const noteType = Number((n as any)?.noteType ?? (n as any)?.caseNoteType ?? 1);
+    const noteLevel = (n as any)?.noteLevel ?? (this.levelId ?? 1);
+    const noteType = (n as any)?.noteType ?? (n as any)?.caseNoteType ?? 1;
     const alertFlag = !!((n as any)?.caseAlertNote ?? (n as any)?.isAlertNote ?? false);
 
     this.setValueById('caseNotes', noteText);
@@ -495,11 +479,10 @@ export class CasenotesComponent implements OnInit, OnChanges, CaseUnsavedChanges
     if (!f?.controlName) return;
     const ctrl = this.form.get(f.controlName);
     if (!ctrl) return;
-    ctrl.setValue(value);
+    ctrl.setValue(value, { emitEvent: false });
   }
 
   private resolveContext$(): Observable<NotesContext> {
-    // ✅ best: pass IDs
     if (this.caseHeaderId && this.caseTemplateId) {
       return of({
         caseHeaderId: this.caseHeaderId,
@@ -508,7 +491,6 @@ export class CasenotesComponent implements OnInit, OnChanges, CaseUnsavedChanges
       });
     }
 
-    // optional: resolve via caseNumber
     if (this.caseNumber?.trim()) {
       return this.api.getCaseByNumber(this.caseNumber.trim()).pipe(
         map((agg: any) => {
@@ -521,5 +503,140 @@ export class CasenotesComponent implements OnInit, OnChanges, CaseUnsavedChanges
     }
 
     return throwError(() => new Error('Pass caseHeaderId + caseTemplateId (recommended) OR caseNumber.'));
+  }
+
+  // --------------------------
+  // Dropdowns (same approach as Case Documents)
+  // --------------------------
+  private prefetchDropdownOptions(fields: AnyField[]): void {
+    this.dropdownOptions = this.dropdownOptions ?? {};
+
+    // 1) static dropdowns (no datasource) -> options[] / level[]
+    for (const f of fields) {
+      const hasDs = !!String(f.datasource ?? '').trim();
+      if (String(f.type ?? '').toLowerCase() === 'select' && !hasDs) {
+        const raw = (f.options ?? f.level ?? []) as any[];
+        const opts = this.mapStaticOptions(raw);
+        if (opts.length) this.dropdownOptions[f.controlName] = opts;
+      }
+    }
+
+    // 2) datasource dropdowns -> getOptionsWithFallback()
+    const selects = fields.filter((f) => String(f.type ?? '').toLowerCase() === 'select' && !!String(f.datasource ?? '').trim());
+
+    const byDs = new Map<string, AnyField[]>();
+    for (const f of selects) {
+      const ds = String(f.datasource ?? '').trim();
+      if (!ds) continue;
+      const list = byDs.get(ds) ?? [];
+      list.push(f);
+      byDs.set(ds, list);
+    }
+
+    for (const [ds, dsFields] of byDs.entries()) {
+      this.dsLookup
+        .getOptionsWithFallback(
+          ds,
+          (r: any) => {
+            // support already-mapped rows: {value,label/text}
+            const value = r?.value ?? r?.id ?? r?.code ?? r?.key;
+            const label = this.extractLabel(r, value);
+            return this.toUiOption(value, label);
+          },
+          ['AG']
+        )
+        .pipe(takeUntil(this.destroy$))
+        .subscribe((opts: any) => {
+          const arr = (opts ?? []) as UiSmartOption[];
+          for (const f of dsFields) {
+            this.dropdownOptions[f.controlName] = arr.map(o => this.toUiOption((o as any).value, (o as any).label ?? (o as any).text ?? String((o as any).value ?? '')));
+          }
+          // ✅ important: after options arrive, coerce values so edit shows the correct selected label
+          this.reconcileAllSelectControls();
+        });
+    }
+
+    // also reconcile static selects
+    this.reconcileAllSelectControls();
+  }
+
+  private mapStaticOptions(raw: any[]): UiSmartOption[] {
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .map((x) => {
+        if (x == null) return null;
+        if (typeof x === 'string' || typeof x === 'number') return this.toUiOption(x, String(x));
+
+        const value = x?.value ?? x?.id ?? x?.code ?? x?.key;
+        const label = x?.label ?? x?.text ?? x?.name ?? x?.description ?? String(value ?? '');
+        return this.toUiOption(value, label);
+      })
+      .filter(Boolean) as UiSmartOption[];
+  }
+
+  private toUiOption(value: any, label: string): UiSmartOption {
+    // many custom dropdowns use {value,label}; some use {value,text}
+    // keep BOTH so it renders either way
+    return { value, label, text: label } as any;
+  }
+
+  private extractLabel(row: any, value: any): string {
+    if (!row) return String(value ?? '');
+    const direct =
+      row?.label ??
+      row?.text ??
+      row?.name ??
+      row?.displayName ??
+      row?.description ??
+      row?.title ??
+      row?.typeName ??
+      row?.levelName;
+    if (typeof direct === 'string' && direct.trim().length) return direct;
+
+    // pick first useful string field
+    const skip = new Set([
+      'id', 'value', 'code', 'key',
+      'activeFlag', 'createdBy', 'createdOn', 'updatedBy', 'updatedOn',
+      'deletedBy', 'deletedOn'
+    ]);
+    for (const k of Object.keys(row)) {
+      if (skip.has(k)) continue;
+      const v = row[k];
+      if (typeof v === 'string' && v.trim().length > 0) return v.trim();
+    }
+    return String(value ?? '');
+  }
+
+  // Coerce form values to match option value types so edit shows correct selection
+  private reconcileAllSelectControls(): void {
+    for (const f of this.noteEditorFields) {
+      if (String(f.type ?? '').toLowerCase() !== 'select') continue;
+      this.reconcileSelectControl(f.controlName);
+    }
+  }
+
+  private reconcileSelectControl(controlName: string): void {
+    const ctrl = this.form.get(controlName);
+    if (!ctrl) return;
+    const v = ctrl.value;
+    if (v == null || v === '') return;
+
+    const opts = this.dropdownOptions?.[controlName] ?? [];
+    if (!opts.length) return;
+
+    // strict match
+    if (opts.some(o => (o as any).value === v)) return;
+
+    // loose string match
+    const match = opts.find(o => String((o as any).value) === String(v));
+    if (match) ctrl.setValue((match as any).value, { emitEvent: false });
+  }
+
+  private getLabelFromControlOptions(controlName: string | null, rawValue: any): string {
+    if (!controlName) return String(rawValue ?? '');
+    const opts = this.dropdownOptions?.[controlName] ?? [];
+    if (!opts.length) return String(rawValue ?? '');
+    const match = opts.find(o => String((o as any).value) === String(rawValue));
+    return match ? String((match as any).label ?? (match as any).text ?? (match as any).value ?? '') : String(rawValue ?? '');
   }
 }
