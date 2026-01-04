@@ -13,6 +13,7 @@ import { AuthNumberService } from 'src/app/service/auth-number-gen.service';
 import { AuthenticateService } from 'src/app/service/authentication.service';
 import { tap, catchError } from 'rxjs/operators';
 import { HeaderService } from 'src/app/service/header.service';
+import { WorkbasketService } from 'src/app/service/workbasket.service';
 
 export type WizardMode = 'new' | 'edit';
 
@@ -261,7 +262,8 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     private dsLookup: DatasourceLookupService,
     private userService: AuthenticateService,
     private headerService: HeaderService,
-    private router: Router
+    private router: Router,
+    private wbService: WorkbasketService
   ) { }
 
   caseHasUnsavedChanges(): boolean {
@@ -298,6 +300,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
       .subscribe(tid => this.setTemplateId(tid));
     // Load users for Case Owner dropdown
     this.loadAllUsers();
+    this.loadWorkBasket();
     // If templateId was set before OnInit (rare), load it
     if (this.templateId) {
       this.loadTemplateJson();
@@ -390,6 +393,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     this.buildFormControls(this.renderSections);
     this.prefetchDropdownOptions(this.renderSections);
     this.applyCaseOwnerOptions();
+    this.applyWorkGroupAndBasketOptions();
     this.templateLoaded = true;
 
     // push caseNumber into the form if the template has it
@@ -881,11 +885,21 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
   private computeDefaultValue(field: TplField): any {
     const v = field.defaultValue;
+
+    if (this.isNewCaseFlow() && this.isCaseOwnerField(field)) {
+      const uid = Number(sessionStorage.getItem('loggedInUserid'));
+      const hasValue = v !== null && v !== undefined && String(v).trim() !== '';
+      if (!hasValue && !isNaN(uid) && uid > 0) return uid;
+    }
+
     if (typeof v === 'string') {
       const s = v.trim().toUpperCase();
       if (s === 'D') return new Date().toISOString();
     }
     if (field.type === 'checkbox') return !!field.isEnabled;
+
+
+
     return v ?? null;
   }
 
@@ -1650,27 +1664,6 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
         { targetFieldId: 'memberPhone', sourcePath: 'phone' }
       ];
     }
-    //if (id.includes('provider') && id.includes('search')) {
-    //  return [
-    //    { targetFieldId: 'providerFirstName', sourcePath: 'firstname' },
-    //    { targetFieldId: 'providerLastName', sourcePath: 'lastname' },
-    //    { targetFieldId: 'providerPhone', sourcePath: 'phone' },
-    //    { targetFieldId: 'providerFax', sourcePath: 'fax' },
-    //    { targetFieldId: 'providerNpi', sourcePath: 'npi' }
-    //  ];
-    //}
-    //if (id.includes('medication') && id.includes('search')) {
-    //  return [
-    //    { targetFieldId: 'medicationCode', sourcePath: 'code' },
-    //    { targetFieldId: 'medicationDescription', sourcePath: 'codeDesc' }
-    //  ];
-    //}
-    //if (id.includes('staff') && id.includes('search')) {
-    //  return [
-    //    { "targetFieldId": "staffUserName", "sourcePath": "username" }
-    //  ];
-    //}
-
     return [];
   }
 
@@ -1961,6 +1954,124 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
       }
     });
   }
+
+  private workBasketOptions: UiSmartOption[] = [];
+  private workGroupOptions: UiSmartOption[] = [];
+
+  loadWorkBasket(): void {
+    this.wbService.getByUserId(Number(sessionStorage.getItem('loggedInUserid')) || 0).subscribe({
+      next: (res: any) => {
+        if (!Array.isArray(res)) {
+          console.warn('wbService.getByUserId did not return an array', res);
+          this.workBasketOptions = [];
+          this.workGroupOptions = [];
+          this.applyWorkGroupAndBasketOptions();
+          return;
+        }
+        const distinctWB = res.filter(
+          (item: any, index: number, self: any[]) =>
+            index === self.findIndex((t: any) => t.workBasketId === item.workBasketId)
+        );
+
+        const distinctWG = res.filter(
+          (item: any, index: number, self: any[]) =>
+            index === self.findIndex((t: any) => t.workGroupId === item.workGroupId)
+        );
+
+        const distinctWBUsers = res.filter(
+          (item: any, index: number, self: any[]) =>
+            index === self.findIndex((t: any) => t.userId === item.userId)
+        );
+
+        // Work Baskets – IMPORTANT: use workGroupWorkBasketId if available
+        this.workBasketOptions = distinctWB
+          .filter((r: any) => r.activeFlag !== false)
+          .map((r: any) => ({
+            value: Number(r.workGroupWorkBasketId ?? r.workBasketId),
+            label:
+              r.workBasketName ||
+              r.workBasketCode ||
+              `WB #${r.workBasketId}`
+          }))
+          .filter(o => !isNaN(o.value));
+
+        // Work Groups
+        this.workGroupOptions = distinctWG
+          .filter((r: any) => r.activeFlag !== false)
+          .map((r: any) => ({
+            value: Number(r.workGroupId),
+            label:
+              r.workGroupName ||
+              r.workGroupCode ||
+              `WG #${r.workGroupId}`
+          }))
+          .filter(o => !isNaN(o.value));
+        this.applyWorkGroupAndBasketOptions();
+      },
+      error: (err: any) => {
+        console.error('Error fetching user workgroups/workbaskets', err);
+        this.workBasketOptions = [];
+        this.workGroupOptions = [];
+        this.applyWorkGroupAndBasketOptions();
+      }
+    });
+  }
+
+  private isWorkGroupField(f: any): boolean {
+    const id = String(f?._rawId ?? f?.id ?? f?.controlName ?? '').toLowerCase();
+    const name = String(f?.displayName ?? f?.label ?? '').toLowerCase();
+
+    // Prefer explicit lookup metadata when available
+    const lookupEntity = String(f?.lookup?.entity ?? f?.lookupEntity ?? '').toLowerCase();
+    if (lookupEntity.includes('workgroup')) return true;
+
+    // Text matches
+    return id.includes('workgroup') || name.includes('work group');
+  }
+
+  private isWorkBasketField(f: any): boolean {
+    const id = String(f?._rawId ?? f?.id ?? f?.controlName ?? '').toLowerCase();
+    const name = String(f?.displayName ?? f?.label ?? '').toLowerCase();
+
+    const lookupEntity = String(f?.lookup?.entity ?? f?.lookupEntity ?? '').toLowerCase();
+    if (lookupEntity.includes('workbasket')) return true;
+
+    return id.includes('workbasket') || id.includes('work_basket') || name.includes('work basket');
+  }
+
+
+  private applyWorkGroupAndBasketOptions(): void {
+    if (!this.renderSections?.length) return;
+
+    const wbOpts = this.workBasketOptions ?? [];
+    const wgOpts = this.workGroupOptions ?? [];
+
+    // helper: set options only if we have something
+    const setIf = (f: any, opts: any[]) => {
+      if (!f?.controlName) return;
+      if (!opts?.length) return;
+      this.optionsByControlName[f.controlName] = opts;
+    };
+
+    for (const sec of this.renderSections) {
+      for (const f of (sec.fields ?? [])) {
+        if (f.type === 'select') {
+          if (this.isWorkBasketField(f)) setIf(f, wbOpts);
+          if (this.isWorkGroupField(f)) setIf(f, wgOpts);
+        }
+      }
+
+      for (const sub of (sec.subsections ?? [])) {
+        for (const f of (sub.fields ?? [])) {
+          if (f.type === 'select') {
+            if (this.isWorkBasketField(f)) setIf(f, wbOpts);
+            if (this.isWorkGroupField(f)) setIf(f, wgOpts);
+          }
+        }
+      }
+    }
+  }
+
 
   hasUnsavedChanges(): boolean {
     return this.caseHasUnsavedChanges();
