@@ -173,6 +173,70 @@ export interface CaseDocumentDto {
   deletedOn?: string;
 }
 
+
+export type CaseActivityStatusFilter = 'all' | 'open' | 'requested' | 'accepted' | 'rejected';
+
+export interface CaseActivityRowDto {
+  caseActivityId: number;
+  caseHeaderId: number;
+  memberDetailsId: number;
+  caseLevelId: number;
+
+  activityTypeId?: number | null;
+  priorityId?: number | null;
+  followUpDateTime?: string | null; // ISO string
+  dueDate?: string | null;          // ISO string
+  referTo?: number | null;
+  comment?: string | null;
+
+  requestStatus: 'OPEN' | 'REQUESTED' | 'ACCEPTED' | 'REJECTED';
+}
+
+export interface CaseActivityCreateDto {
+  caseHeaderId: number;
+  memberDetailsId: number;
+  caseLevelId: number;
+
+  activityTypeId?: number | null;
+  priorityId?: number | null;
+  followUpDateTime?: string | null;
+  dueDate?: string | null;
+  comment?: string | null;
+  statusId?: number | null;
+
+  isGroupRequest: boolean;
+  workGroupWorkBasketIds?: number[] | null;
+
+  createdBy: number;
+}
+
+export interface CaseActivityUpdateDto {
+  caseActivityId: number;
+
+  activityTypeId?: number | null;
+  priorityId?: number | null;
+  followUpDateTime?: string | null;
+  dueDate?: string | null;
+  comment?: string | null;
+  statusId?: number | null;
+  isGroupRequest: boolean;
+  workGroupWorkBasketIds?: number[] | null;
+  updatedBy: number;
+}
+
+export interface WorkgroupActionDto {
+  caseWorkgroupId: number;
+  userId: number;
+  caseLevelId: number;
+  comment?: string | null;
+}
+
+export interface CaseActivityTemplateResponse {
+  caseTemplateId: number;
+  sectionName: string;
+  section: any; // JsonElement serialized -> plain JSON
+}
+
 export interface CaseDocumentsResponse {
   caseHeaderId: number;
   levelId: number;
@@ -187,10 +251,13 @@ export class CasedetailService {
   private baseUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/case';
   private baseNotesUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/casenotes';
   private baseDocsUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/casedocuments';
+  private baseActivityUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/caseactivity';
 
   //private baseUrl = 'https://localhost:7201/api/case';
   //private baseNotesUrl = 'https://localhost:7201/api/casenotes';
   //private baseDocsUrl = 'https://localhost:7201/api/casedocuments';
+  //private baseActivityUrl = 'https://localhost:7201/api/caseactivity';
+
   constructor(private http: HttpClient) { }
 
   getCaseByNumber(caseNumber: string, includeDeleted = false): Observable<CaseAggregateDto> {
@@ -321,6 +388,93 @@ export class CasedetailService {
 
   deleteDocument(caseHeaderId: number, levelId: number, documentId: string) {
     return this.http.delete<void>(`${this.baseDocsUrl}/cases/${caseHeaderId}/levels/${levelId}/documents/${documentId}`);
+  }
+
+
+
+  // Case Activity Methods
+  // ✅ GET: /api/caseactivity?caseHeaderId=&memberDetailsId=&caseLevelId=&status=
+  getByCase(
+    caseHeaderId: number,
+    memberDetailsId: number,
+    caseLevelId: number,
+    status: CaseActivityStatusFilter = 'all'
+  ): Observable<CaseActivityRowDto[]> {
+    let params = new HttpParams()
+      .set('caseHeaderId', String(caseHeaderId))
+      .set('memberDetailsId', String(memberDetailsId))
+      .set('caseLevelId', String(caseLevelId))
+      .set('status', status);
+
+    return this.http.get<CaseActivityRowDto[]>(this.baseActivityUrl, { params });
+  }
+
+  // ✅ GET: /api/caseactivity/{caseActivityId}
+  getById(caseActivityId: number): Observable<CaseActivityRowDto> {
+    return this.http.get<CaseActivityRowDto>(`${this.baseActivityUrl}/${caseActivityId}`);
+  }
+
+  // ✅ POST: /api/caseactivity  => returns new ID
+  insert(dto: CaseActivityCreateDto): Observable<number> {
+    return this.http.post<number>(this.baseActivityUrl, dto);
+  }
+
+  // ✅ PUT: /api/caseactivity
+  update(dto: CaseActivityUpdateDto): Observable<void> {
+    return this.http.put<void>(this.baseActivityUrl, dto);
+  }
+
+  // ✅ DELETE: /api/caseactivity/{caseActivityId}?deletedBy=
+  delete(caseActivityId: number, deletedBy: number): Observable<void> {
+    const params = new HttpParams().set('deletedBy', String(deletedBy));
+    return this.http.delete<void>(`${this.baseActivityUrl}/${caseActivityId}`, { params });
+  }
+
+  // ✅ POST: /api/caseactivity/{caseActivityId}/accept
+  accept(caseActivityId: number, dto: WorkgroupActionDto): Observable<void> {
+    return this.http.post<void>(`${this.baseActivityUrl}/${caseActivityId}/accept`, dto);
+  }
+
+  // ✅ POST: /api/caseactivity/{caseActivityId}/reject
+  reject(caseActivityId: number, dto: WorkgroupActionDto): Observable<void> {
+    return this.http.post<void>(`${this.baseActivityUrl}/${caseActivityId}/reject`, dto);
+  }
+
+  // ✅ GET: /api/caseactivity/workgroup/pending?userId=&caseHeaderId=&memberDetailsId=&caseLevelId=
+  getPendingForUser(
+    userId: number,
+    caseHeaderId: number,
+    memberDetailsId: number,
+    caseLevelId: number
+  ): Observable<CaseActivityRowDto[]> {
+    const params = new HttpParams()
+      .set('userId', String(userId))
+      .set('caseHeaderId', String(caseHeaderId))
+      .set('memberDetailsId', String(memberDetailsId))
+      .set('caseLevelId', String(caseLevelId));
+
+    return this.http.get<CaseActivityRowDto[]>(`${this.baseActivityUrl}/workgroup/pending`, { params });
+  }
+
+  // ✅ GET: /api/caseactivity/workgroup/accepted?userId=&caseHeaderId=&memberDetailsId=&caseLevelId=
+  getAcceptedForUser(
+    userId: number,
+    caseHeaderId: number,
+    memberDetailsId: number,
+    caseLevelId: number
+  ): Observable<CaseActivityRowDto[]> {
+    const params = new HttpParams()
+      .set('userId', String(userId))
+      .set('caseHeaderId', String(caseHeaderId))
+      .set('memberDetailsId', String(memberDetailsId))
+      .set('caseLevelId', String(caseLevelId));
+
+    return this.http.get<CaseActivityRowDto[]>(`${this.baseActivityUrl}/workgroup/accepted`, { params });
+  }
+
+  // ✅ GET: /api/caseactivity/template/{caseTemplateId}
+  getCaseActivityTemplate(caseTemplateId: number): Observable<CaseActivityTemplateResponse> {
+    return this.http.get<CaseActivityTemplateResponse>(`${this.baseActivityUrl}/template/${caseTemplateId}`);
   }
 }
 

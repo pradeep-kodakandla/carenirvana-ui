@@ -249,16 +249,17 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     // from your shell header you already display case number via aggregate$ :contentReference[oaicite:0]{index=0}
     const agg: any = (this.state as any).getAggregate?.() ?? null;
     const caseNumber = agg?.header?.caseNumber ?? agg?.caseNumber ?? null;
-
+    const memeberDetailsId = Number(sessionStorage.getItem('selectedMemberDetailsId') || 0);
     // ✅ Only set inputs if the component declares them
     if ('caseHeaderId' in inst) this.currentStepRef.setInput('caseHeaderId', caseHeaderId);
     if ('caseTemplateId' in inst) this.currentStepRef.setInput('caseTemplateId', caseTemplateId);
     if ('levelId' in inst) this.currentStepRef.setInput('levelId', levelId);
     if ('caseNumber' in inst) this.currentStepRef.setInput('caseNumber', caseNumber);
+    if ('memberDetailsId' in inst) this.currentStepRef.setInput('memberDetailsId', memeberDetailsId);
 
     // optional hook
     if (typeof inst?.setContext === 'function') {
-      inst.setContext({ caseHeaderId, caseTemplateId, levelId, caseNumber });
+      inst.setContext({ caseHeaderId, caseTemplateId, levelId, caseNumber, memeberDetailsId });
     }
   }
 
