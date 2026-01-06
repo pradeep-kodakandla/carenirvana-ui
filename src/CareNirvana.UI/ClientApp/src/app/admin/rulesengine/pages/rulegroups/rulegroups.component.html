@@ -8,19 +8,19 @@
 
   <form [formGroup]="form">
     <div class="formgrid">
-      <!--<div class="flfield">
+      <div class="flfield">
         <input class="flinput" placeholder=" " formControlName="name" />
         <label class="fllabel">Rule Group Name</label>
-      </div>-->
+      </div>
 
       <div class="flfield filled">
         <ui-smart-dropdown class="flcontrol"
-                           label="Rule Group Name"
+                           label="Schedule"
                            placeholder="Select..."
                            [options]="scheduleUiOptions"
                            formControlName="scheduleType">
         </ui-smart-dropdown>
-        <label class="fllabel">Schedule</label>
+        <!--<label class="fllabel">Schedule</label>-->
       </div>
 
       <div class="flfield full">

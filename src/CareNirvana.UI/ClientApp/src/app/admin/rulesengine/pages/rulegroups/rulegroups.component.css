@@ -322,8 +322,8 @@
 .flcontrol {
   border: 2px solid #e2e8f0;
   border-radius: 12px;
-  padding: 18px 12px 10px 12px;
-  background: #ffffff;
+/*  padding: 18px 12px 10px 12px;
+*/  background: #ffffff;
 }
 
 .flfield:focus-within .flcontrol {
