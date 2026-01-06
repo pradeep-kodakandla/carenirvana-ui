@@ -45,8 +45,18 @@
     <button class="collapse-btn" (click)="toggleMenu()" *ngIf="isMenuCollapsed">
       {{ isMenuCollapsed ? '>' : '<' }}
     </button>
-    <ng-container *ngIf="selectedSubMenu">
+    <!--<ng-container *ngIf="selectedSubMenu">
       <div #dynamicContainer></div>
+    </ng-container>-->
+    <ng-container *ngIf="selectedSubMenu">
+      <ng-container *ngIf="showRulesEngine; else dynamicTpl">
+        <router-outlet></router-outlet>
+      </ng-container>
+
+      <ng-template #dynamicTpl>
+        <div #dynamicContainer></div>
+      </ng-template>
     </ng-container>
+
   </div>
 </div>

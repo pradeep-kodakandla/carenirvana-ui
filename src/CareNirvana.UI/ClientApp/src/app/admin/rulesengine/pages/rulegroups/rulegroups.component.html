@@ -1,0 +1,79 @@
+<div class="rghead">
+  <div class="h2">Rule Groups</div>
+  <button class="btn btnprimary" (click)="onNewGroup()">+ New Group</button>
+</div>
+
+<div class="card formcard" *ngIf="showForm">
+  <div class="formtitle">{{ isEditMode ? 'Edit Rule Group' : 'Create Rule Group' }}</div>
+
+  <form [formGroup]="form">
+    <div class="formgrid">
+      <!--<div class="flfield">
+        <input class="flinput" placeholder=" " formControlName="name" />
+        <label class="fllabel">Rule Group Name</label>
+      </div>-->
+
+      <div class="flfield filled">
+        <ui-smart-dropdown class="flcontrol"
+                           label="Rule Group Name"
+                           placeholder="Select..."
+                           [options]="scheduleUiOptions"
+                           formControlName="scheduleType">
+        </ui-smart-dropdown>
+        <label class="fllabel">Schedule</label>
+      </div>
+
+      <div class="flfield full">
+        <textarea class="fltextarea" rows="4" placeholder=" " formControlName="description"></textarea>
+        <label class="fllabel">Description</label>
+      </div>
+
+      <div class="flfield full">
+        <textarea class="fltextarea" rows="4" placeholder=" " formControlName="purpose"></textarea>
+        <label class="fllabel">Purpose</label>
+      </div>
+    </div>
+
+    <div class="formactions">
+      <button type="button" class="btn" (click)="onCancel()">Cancel</button>
+      <button type="button" class="btn btnprimary" (click)="onSave()">
+        {{ isEditMode ? 'Update' : 'Save' }}
+      </button>
+    </div>
+  </form>
+</div>
+
+<div class="empty" *ngIf="!showForm && groups.length === 0">
+  <div class="emptytitle">No Rule Groups</div>
+  <div class="emptytext">Click New Group to create your first rule group.</div>
+</div>
+
+<div class="rggrid" *ngIf="groups.length > 0">
+  <div class="card rgcard" *ngFor="let g of groups">
+    <div class="rgtitle">{{ g.name }}</div>
+
+    <div class="rgmeta">
+      <div class="metarow"><b>Schedule:</b> {{ scheduleLabel(g.scheduleType) }}</div>
+      <div class="metarow"><b>Description:</b> {{ g.description }}</div>
+      <div class="metarow"><b>Purpose:</b> {{ g.purpose }}</div>
+    </div>
+
+    <div class="assigned">
+      <div class="assignedtitle">Assigned Rules ({{ getAssignedRules(g.id).length }})</div>
+
+      <div class="assignedempty" *ngIf="getAssignedRules(g.id).length === 0">No rules assigned</div>
+
+      <div class="assignedlist" *ngIf="getAssignedRules(g.id).length > 0">
+        <div class="assigneditem" *ngFor="let r of getAssignedRules(g.id)">
+          <div class="assignedname">{{ r.name }}</div>
+          <div><span class="pill">{{ r.ruleType }}</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rgactions">
+      <button class="btnwide" (click)="onEdit(g)">Edit</button>
+      <button class="btnwide" (click)="onSchedule(g)">Schedule</button>
+    </div>
+  </div>
+</div>

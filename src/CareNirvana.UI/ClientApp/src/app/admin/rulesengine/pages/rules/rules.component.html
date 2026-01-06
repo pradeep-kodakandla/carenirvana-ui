@@ -1,0 +1,78 @@
+<div class="pagehead">
+  <div class="h2">Business Rules</div>
+  <button class="btn btnprimary" (click)="onNewRule()">+ New Rule</button>
+</div>
+
+<div class="card formcard" *ngIf="showForm">
+  <div class="formtitle">{{ isEditMode ? 'Edit Rule' : 'Create Rule' }}</div>
+
+  <div class="formgrid">
+    <div class="flfield">
+      <input class="flinput" placeholder=" " [(ngModel)]="form.name" />
+      <label class="fllabel">Rule Name</label>
+    </div>
+
+    <div class="flfield" [class.filled]="!!form.ruleType">
+      <ui-smart-dropdown class="flcontrol"
+                         [options]="ruleTypeUiOptions"
+                         [(ngModel)]="form.ruleType">
+      </ui-smart-dropdown>
+      <label class="fllabel">Rule Type</label>
+    </div>
+
+    <div class="flfield full" [class.filled]="!!form.ruleGroupId">
+      <ui-smart-dropdown class="flcontrol"
+                         [options]="groupUiOptions"
+                         [(ngModel)]="form.ruleGroupId">
+      </ui-smart-dropdown>
+      <label class="fllabel">Rule Group</label>
+
+      <div class="hint" *ngIf="groups.length === 0">
+        Create a Rule Group first to assign rules.
+      </div>
+    </div>
+
+    <div class="flfield full">
+      <textarea class="fltextarea" rows="4" placeholder=" " [(ngModel)]="form.description"></textarea>
+      <label class="fllabel">Description</label>
+    </div>
+  </div>
+
+  <div class="formactions">
+    <button class="btn" (click)="onCancel()">Cancel</button>
+    <button class="btn btnprimary" (click)="onSave()" [disabled]="groups.length === 0">
+      {{ isEditMode ? 'Update' : 'Save' }}
+    </button>
+  </div>
+</div>
+
+<div class="rulestop">
+  <div class="search">
+    <span class="sicon">🔎</span>
+    <input [(ngModel)]="searchText" placeholder="Search rules." />
+  </div>
+</div>
+
+<div class="empty" *ngIf="!showForm && rules.length === 0">
+  <div class="emptytitle">No Rules</div>
+  <div class="emptytext">Create a rule and assign it to a rule group.</div>
+</div>
+
+<div class="rulegrid" *ngIf="filteredRules.length > 0">
+  <div class="card rulecard" *ngFor="let r of filteredRules">
+    <div class="ruletitle">{{ r.name }}</div>
+
+    <div class="rulemeta">📦 {{ groupName(r.ruleGroupId) }}</div>
+
+    <div class="ruledesc">{{ r.description }}</div>
+
+    <div class="rulebadges">
+      <span class="pill">{{ r.ruleType }}</span>
+    </div>
+
+    <div class="ruleactions">
+      <button class="btnoutline" (click)="onEdit(r)">Edit</button>
+      <button class="btndanger" (click)="onDelete(r)">Delete</button>
+    </div>
+  </div>
+</div>

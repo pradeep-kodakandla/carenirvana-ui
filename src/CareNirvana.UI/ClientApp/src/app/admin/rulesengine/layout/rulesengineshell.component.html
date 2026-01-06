@@ -1,0 +1,47 @@
+<div class="app">
+  <aside class="sidebar" style="display:none;" >
+    <div class="brand">
+      <div class="gear">⚙</div>
+      <div>Rules Engine</div>
+    </div>
+
+    <nav class="nav">
+      <div class="navsection">MAIN</div>
+
+      <a routerLink="/rulesengine/dashboard" routerLinkActive="active">
+        <span class="icon">▦</span>Dashboard
+      </a>
+
+      <a routerLink="/rulesengine/rules" routerLinkActive="active">
+        <span class="icon">📄</span>Rules
+      </a>
+
+      <a routerLink="/rulesengine/rulegroups" routerLinkActive="active">
+        <span class="icon">📦</span>Rule Groups
+      </a>
+
+      <div class="navsection">CREATION</div>
+      <a href="javascript:void(0)"><span class="icon">🧩</span>Rule Designer</a>
+      <a href="javascript:void(0)"><span class="icon">🏷</span>Data Fields</a>
+      <a href="javascript:void(0)"><span class="icon">ƒx</span>Functions</a>
+      <a href="javascript:void(0)"><span class="icon">📊</span>Decision Tables</a>
+
+      <div class="navsection">EXECUTION</div>
+      <a href="javascript:void(0)"><span class="icon">⏱</span>Scheduling</a>
+      <a href="javascript:void(0)"><span class="icon">🧾</span>Logs</a>
+      <a href="javascript:void(0)"><span class="icon">✅</span>Reports</a>
+    </nav>
+  </aside>
+
+  <main class="content">
+    <header class="topbar" *ngIf="showHeader">
+      <div class="title">{{ pageTitle }}</div>
+      <div class="actions">
+        <button class="btn btnsoft" (click)="onHelp()">❓ Help</button>
+        <button class="btn btnprimary" (click)="onCreateNewRule()">+ Create New Rule</button>
+      </div>
+    </header>
+
+    <router-outlet></router-outlet>
+  </main>
+</div>

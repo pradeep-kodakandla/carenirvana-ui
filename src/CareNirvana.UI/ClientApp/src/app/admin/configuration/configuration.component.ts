@@ -1,4 +1,5 @@
 import { Component, ViewChild, ViewContainerRef, ComponentFactoryResolver, OnInit, AfterViewInit } from '@angular/core';
+import { Router } from '@angular/router';
 
 // Administration Components
 import { UsermanagementComponent } from 'src/app/admin/usermanagement/usermanagement.component';
@@ -89,6 +90,7 @@ import { AgqocscoreComponent } from 'src/app/admin/AG/agqocscore/agqocscore.comp
 import { AgresolutioncategoryComponent } from 'src/app/admin/AG/agresolutioncategory/agresolutioncategory.component';
 import { AgresolutionsubcategoryComponent } from 'src/app/admin/AG/agresolutionsubcategory/agresolutionsubcategory.component';
 
+import { BretestComponent } from 'src/app/admin/UM/bretest/bretest.component';
 // Interfaces
 interface MenuItem {
   name: string;
@@ -112,6 +114,7 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
   selectedMenu: MenuItem | null = null;
   selectedSubMenu: string | null = null;
   isMenuCollapsed: boolean = false;
+  showRulesEngine: boolean = false;
 
   private readonly componentMap: ComponentMap = {
     'User Management': UsermanagementComponent,
@@ -189,10 +192,12 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
     'Resolution Sub Category': AgresolutionsubcategoryComponent,
     'Work Group': WorkgroupComponent,
     'Work Basket': WorkbasketComponent,
-    'Custom Field': UserDefinedCustomFieldsComponent
+    'Custom Field': UserDefinedCustomFieldsComponent,
+    'Bre Test': BretestComponent
   };
 
   private readonly mainMenu: MenuItem[] = [
+    { name: 'Business Rules Engine', children: ['Dashboard', 'Rule Groups', 'Rules', 'Data Fields', 'Functions', 'Decision Tables'] },
     {
       name: 'Utilization Management',
       children: [
@@ -229,14 +234,16 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
       name: 'Administration',
       children: ['Role Management', 'User Management', 'Profile Management', 'Application Features Setup', 'Work Group', 'Work Basket', 'Custom Field']
     },
-    { name: 'Configuration Management', children: ['Config Push'] },
-    { name: 'Business Rules Engine', children: ['Rules'] }
+    { name: 'Configuration Management', children: ['Config Push'] }
+
+
   ];
 
   filteredMainMenu: MenuItem[] = [];
   filteredSubMenu: string[] = [];
 
-  constructor(private componentFactoryResolver: ComponentFactoryResolver) {
+  constructor(private componentFactoryResolver: ComponentFactoryResolver,
+    private router: Router) {
     this.filteredMainMenu = [...this.mainMenu];
   }
 
@@ -248,27 +255,105 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
     this.loadInitialComponent();
   }
 
+  //selectMainMenu(menuItem: MenuItem): void {
+  //  this.selectedMenu = menuItem;
+
+  //  if ((menuItem?.name ?? '').toLowerCase() === 'business rules engine') {
+  //    if (this.dynamicContainer) this.dynamicContainer.clear();
+  //    this.selectedSubMenu = null;
+  //    this.isMenuCollapsed = false;
+  //    this.router.navigate(['/rulesengine', 'dashboard']);
+  //    return;
+  //  }
+
+  //  this.filterSubMenu();
+  //  this.selectedSubMenu = this.filteredSubMenu[0] || null;
+  //  this.isMenuCollapsed = false;
+
+  //  if (this.selectedSubMenu) {
+  //    this.loadComponent(this.selectedSubMenu);
+  //  }
+  //}
+
   selectMainMenu(menuItem: MenuItem): void {
     this.selectedMenu = menuItem;
     this.filterSubMenu();
     this.selectedSubMenu = this.filteredSubMenu[0] || null;
-    this.isMenuCollapsed = false; // Expand menu when selecting main menu
+    this.isMenuCollapsed = false;
+
+    const isRulesEngine = (menuItem?.name ?? '').toLowerCase() === 'business rules engine';
+    this.showRulesEngine = isRulesEngine;
+
+    if (isRulesEngine) {
+      // loads inside the Details Section router outlet
+      this.router.navigate(['configuration', 'rulesengine', 'dashboard']);
+      return;
+    }
+
+    // existing workflow stays the same
     if (this.selectedSubMenu) {
       this.loadComponent(this.selectedSubMenu);
     }
   }
 
+
+
+  //selectMainMenu(menuItem: MenuItem): void {
+  //  this.selectedMenu = menuItem;
+  //  this.filterSubMenu();
+  //  this.selectedSubMenu = this.filteredSubMenu[0] || null;
+  //  this.isMenuCollapsed = false; // Expand menu when selecting main menu
+  //  if (this.selectedSubMenu) {
+  //    this.loadComponent(this.selectedSubMenu);
+  //  }
+  //}
+
+  //selectSubMenu(subMenuItem: string): void {
+  //  this.selectedSubMenu = subMenuItem;
+  //  this.loadComponent(subMenuItem);
+
+  //  // Collapse menu when "Auth Template" is selected
+  //  if (subMenuItem === 'Auth Template' || 'Case Template') {
+  //    this.isMenuCollapsed = true;
+  //  } else {
+  //    this.isMenuCollapsed = false;
+  //  }
+  //}
+
   selectSubMenu(subMenuItem: string): void {
     this.selectedSubMenu = subMenuItem;
+
+    const isRulesEngine = (this.selectedMenu?.name ?? '').toLowerCase() === 'business rules engine';
+    this.showRulesEngine = isRulesEngine;
+
+    if (isRulesEngine) {
+      const key = (subMenuItem ?? '').toLowerCase();
+
+
+      if (key === 'dashboard') this.router.navigate(['configuration', 'rulesengine', 'dashboard']);
+      else if (key === 'rule groups') this.router.navigate(['configuration', 'rulesengine', 'rulegroups']);
+      else if (key === 'rules') this.router.navigate(['configuration', 'rulesengine', 'rules']);
+      else if (key === 'data fields') this.router.navigate(['configuration', 'rulesengine', 'datafields']);
+      else if (key === 'functions') this.router.navigate(['configuration', 'rulesengine', 'functions']);
+      else if (key === 'decision tables') this.router.navigate(['configuration', 'rulesengine', 'decisiontable']);
+
+      else this.router.navigate(['configuration', 'rulesengine', 'dashboard']);
+
+      return;
+    }
+
+    // existing workflow (dynamic component load)
     this.loadComponent(subMenuItem);
 
-    // Collapse menu when "Auth Template" is selected
-    if (subMenuItem === 'Auth Template' || 'Case Template') {
+    // FIX: your current code has a bug and always collapses
+    if (subMenuItem === 'Auth Template' || subMenuItem === 'Case Template') {
       this.isMenuCollapsed = true;
     } else {
       this.isMenuCollapsed = false;
     }
   }
+
+
 
   filterMenus(): void {
     const query = this.searchQuery.toLowerCase().trim();

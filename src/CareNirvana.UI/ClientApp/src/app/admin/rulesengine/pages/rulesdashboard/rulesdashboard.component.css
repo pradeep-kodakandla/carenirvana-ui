@@ -1,0 +1,135 @@
+.grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 18px;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 18px;
+}
+
+.spacer {
+  height: 18px;
+}
+
+.card {
+  background: var(--card);
+/*  border: 1px solid var(--border);
+*/  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+  .card.pad {
+    padding: 18px;
+  }
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 104px;
+}
+
+  .kpi .value {
+    font-size: 38px;
+    font-weight: 900;
+    color: var(--green);
+    letter-spacing: -.6px;
+  }
+
+  .kpi .label {
+    font-weight: 800;
+    color: #334155;
+  }
+
+  .kpi .sub {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+.records {
+  max-width: 520px;
+}
+
+.sectiontitle {
+  margin: 22px 0 10px;
+  font-size: 16px;
+  font-weight: 900;
+  color: #111827;
+}
+
+.tbl {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+th, td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+th {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: #64748b;
+  background: #F9FBFF;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+.strong {
+  font-weight: 900;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .02em;
+}
+
+  .pill.blue {
+    background: var(--chipbluebg);
+    color: var(--chipbluetx);
+  }
+
+  .pill.green {
+    background: var(--chipgreenbg);
+    color: var(--chipgreentx);
+  }
+
+@media (max-width:1200px) {
+  .grid3 {
+    grid-template-columns: repeat(2, minmax(0,1fr));
+  }
+}
+
+@media (max-width:860px) {
+  .grid3, .grid2 {
+    grid-template-columns: 1fr;
+  }
+
+  th, td {
+    white-space: normal;
+  }
+}

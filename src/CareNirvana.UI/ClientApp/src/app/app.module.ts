@@ -367,6 +367,22 @@ const routes: Routes = [
 
       { path: 'ui-dropdown', component: UiDropdownComponent },
       { path: 'ui-multicheckdropdown', component: UiMultiCheckDropdownComponent },
+      //{
+      //  path: 'rulesengine',
+      //  loadChildren: () =>
+      //    import('src/app/admin/rulesengine/rulesengine.module').then(m => m.RulesEngineModule),
+      //},
+      {
+        path: 'configuration',
+        component: ConfigurationComponent,
+        children: [
+          {
+            path: 'rulesengine',
+            loadChildren: () =>
+              import('src/app/admin/rulesengine/rulesengine.module').then(m => m.RulesEngineModule)
+          }
+        ]
+      }
 
 
     ])
