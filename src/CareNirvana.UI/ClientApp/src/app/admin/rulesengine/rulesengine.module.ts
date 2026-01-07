@@ -13,7 +13,7 @@ import { FunctionsComponent } from './pages/functions/functions.component';
 import { DecisiontableComponent } from './pages/decisiontable/decisiontable.component';
 import { ReactiveFormsModule } from '@angular/forms';
 import { SharedUiModule } from 'src/app/casewizard/casewizard/sharedui.module';
-
+import { DecisionTableBuilderComponent } from './pages/decisiontablebuilder/decisiontablebuilder.component';
 
 @NgModule({
   declarations: [
@@ -23,7 +23,8 @@ import { SharedUiModule } from 'src/app/casewizard/casewizard/sharedui.module';
     RulesComponent,
     DatafieldsComponent,
     FunctionsComponent,
-    DecisiontableComponent
+    DecisiontableComponent,
+    DecisionTableBuilderComponent
   ],
   imports: [
     CommonModule,

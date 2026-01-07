@@ -1,0 +1,228 @@
+<!-- src/app/rulesengine/decisiontable/decisiontablebuilder.component.html -->
+
+<form class="page" [formGroup]="form">
+  <div class="topbar">
+    <div class="left">
+      <div class="title">Decision Table Template Builder</div>
+      <div class="hint">Create Inputs + Outputs. Rows are not authored here.</div>
+      <div class="status">{{ statusText }}</div>
+    </div>
+
+    <div class="right">
+      <select class="select" [value]="selectedTableId ?? ''" (change)="loadTable(($any($event.target)).value)">
+        <option value="" disabled>Select template</option>
+        <option *ngFor="let t of tables; trackBy: trackByTable" [value]="t.id">{{ t.name }}</option>
+      </select>
+
+      <button class="btn" type="button" (click)="createNewTable()">New</button>
+      <button class="btn primary" type="button" (click)="saveTable()">Save</button>
+      <button class="btn danger" type="button" (click)="deleteCurrent()">Delete</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div class="field">
+        <label>Name</label>
+        <input class="input" type="text" formControlName="name" />
+      </div>
+
+      <div class="field">
+        <label>Hit Policy</label>
+        <select class="select" formControlName="hitPolicy">
+          <option *ngFor="let hp of hitPolicies" [value]="hp">{{ hp }}</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Status</label>
+        <select class="select" formControlName="status">
+          <option value="DRAFT">DRAFT</option>
+          <option value="PUBLISHED">PUBLISHED</option>
+          <option value="ARCHIVED">ARCHIVED</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Version</label>
+        <input class="input" type="number" formControlName="version" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Description</label>
+      <input class="input" type="text" formControlName="description" />
+    </div>
+  </div>
+
+  <!-- Inputs / Outputs definition -->
+  <div class="split">
+    <div class="card">
+      <div class="cardhead">
+        <div class="cardtitle">Inputs</div>
+        <button class="btn" type="button" (click)="addInput()">+ Add Input</button>
+      </div>
+
+      <div formArrayName="inputs">
+        <div class="param"
+             *ngFor="let p of inputsFA.controls; let i = index; trackBy: trackByParam"
+             [formGroupName]="i">
+          <div class="paramrow">
+            <input class="input" type="text" formControlName="key" placeholder="Key (unique) e.g. ServiceCode" />
+            <input class="input" type="text" formControlName="label" placeholder="Label e.g. Service Code" />
+
+            <select class="select" formControlName="dataType" (change)="onParamTypeChanged(p)">
+              <option *ngFor="let dt of dataTypes" [value]="dt">{{ dt }}</option>
+            </select>
+
+            <select class="select" formControlName="inputType" (change)="onParamTypeChanged(p)">
+              <option *ngFor="let it of inputTypes" [value]="it">{{ it }}</option>
+            </select>
+
+            <button class="iconbtn danger" type="button" title="Remove" (click)="removeInput(i)">✕</button>
+          </div>
+
+          <div class="paramrow">
+            <input class="input" type="text" formControlName="operatorsCsv" placeholder="operators (=,!=,in,between)" />
+            <input *ngIf="isEnumOrSelect(p)" class="input" type="text" formControlName="optionsCsv" placeholder="options (A,B,C)" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="cardhead">
+        <div class="cardtitle">Outputs</div>
+        <button class="btn" type="button" (click)="addOutput()">+ Add Output</button>
+      </div>
+
+      <div formArrayName="outputs">
+        <div class="param"
+             *ngFor="let p of outputsFA.controls; let i = index; trackBy: trackByParam"
+             [formGroupName]="i">
+          <div class="paramrow">
+            <input class="input" type="text" formControlName="key" placeholder="Key (unique) e.g. AuthRequired" />
+            <input class="input" type="text" formControlName="label" placeholder="Label e.g. Auth Required" />
+
+            <select class="select" formControlName="dataType" (change)="onParamTypeChanged(p)">
+              <option *ngFor="let dt of dataTypes" [value]="dt">{{ dt }}</option>
+            </select>
+
+            <select class="select" formControlName="inputType" (change)="onParamTypeChanged(p)">
+              <option *ngFor="let it of inputTypes" [value]="it">{{ it }}</option>
+            </select>
+
+            <button class="iconbtn danger" type="button" title="Remove" (click)="removeOutput(i)">✕</button>
+          </div>
+
+          <div class="paramrow">
+            <input *ngIf="isEnumOrSelect(p)" class="input" type="text" formControlName="optionsCsv" placeholder="options (True,False)" />
+            <span class="muted">Outputs do not use operators.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Bottom View: Table (default) / JSON -->
+  <div class="card">
+    <div class="cardhead">
+      <div class="cardtitle">Preview</div>
+
+      <div class="actions">
+        <div class="segmented">
+          <button type="button"
+                  class="segbtn"
+                  [class.active]="viewMode === 'table'"
+                  (click)="setView('table')">
+            Table
+          </button>
+          <button type="button"
+                  class="segbtn"
+                  [class.active]="viewMode === 'json'"
+                  (click)="setView('json')">
+            JSON
+          </button>
+        </div>
+
+        <button class="btn" type="button" (click)="copyJson()" [disabled]="viewMode !== 'json'">Copy</button>
+        <button class="btn" type="button" (click)="downloadJson()" [disabled]="viewMode !== 'json'">Download</button>
+      </div>
+    </div>
+
+    <!-- TABLE VIEW -->
+    <div *ngIf="viewMode === 'table'" class="previewwrap">
+      <div class="previewsection">
+        <div class="previewtitle">Inputs</div>
+
+        <div class="tablewrap" *ngIf="inputParams.length; else noinputs">
+          <table class="previewtable">
+            <thead>
+              <tr>
+                <th>Key</th>
+                <th>Label</th>
+                <th>Data Type</th>
+                <th>UI Type</th>
+                <th>Operators</th>
+                <th>Options</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let p of inputParams">
+                <td class="mono">{{ p.key }}</td>
+                <td>{{ p.label }}</td>
+                <td>{{ p.dataType }}</td>
+                <td>{{ p.inputType }}</td>
+                <td class="mutedcell">{{ operatorsText(p.operators) }}</td>
+                <td class="mutedcell">{{ optionsText(p.options) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <ng-template #noinputs>
+          <div class="emptystate">No inputs defined.</div>
+        </ng-template>
+      </div>
+
+      <div class="previewsection">
+        <div class="previewtitle">Outputs</div>
+
+        <div class="tablewrap" *ngIf="outputParams.length; else nooutputs">
+          <table class="previewtable">
+            <thead>
+              <tr>
+                <th>Key</th>
+                <th>Label</th>
+                <th>Data Type</th>
+                <th>UI Type</th>
+                <th>Options</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let p of outputParams">
+                <td class="mono">{{ p.key }}</td>
+                <td>{{ p.label }}</td>
+                <td>{{ p.dataType }}</td>
+                <td>{{ p.inputType }}</td>
+                <td class="mutedcell">{{ optionsText(p.options) }}</td>
+
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <ng-template #nooutputs>
+          <div class="emptystate">No outputs defined.</div>
+        </ng-template>
+      </div>
+    </div>
+
+    <!-- JSON VIEW -->
+    <div *ngIf="viewMode === 'json'">
+      <pre class="pre">{{ jsonPreview }}</pre>
+    </div>
+  </div>
+
+</form>
