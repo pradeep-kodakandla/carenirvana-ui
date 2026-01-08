@@ -1,51 +1,53 @@
 .grid3 {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0,1fr));
-  gap: 18px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .grid2 {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0,1fr));
-  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .spacer {
-  height: 18px;
+  height: 14px;
 }
 
 .card {
   background: var(--card);
-/*  border: 1px solid var(--border);
-*/  border-radius: var(--radius);
+  border-radius: var(--radius);
   box-shadow: var(--shadow);
+  border: 1px solid rgba(15, 23, 42, 0.08);
 }
 
   .card.pad {
-    padding: 18px;
+    padding: 14px;
   }
 
 .kpi {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  min-height: 104px;
+  gap: 6px;
+  min-height: 92px;
 }
 
   .kpi .value {
-    font-size: 38px;
-    font-weight: 900;
-    color: var(--green);
-    letter-spacing: -.6px;
+    font-size: 28px; /* was 38 */
+    font-weight: 700; /* was 900 */
+    color: #0f172a; /* calmer than green */
+    letter-spacing: -0.2px;
+    line-height: 1.05;
   }
 
   .kpi .label {
-    font-weight: 800;
+    font-size: 13px;
+    font-weight: 600; /* was 800 */
     color: #334155;
   }
 
   .kpi .sub {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--muted);
   }
 
@@ -54,14 +56,15 @@
 }
 
 .sectiontitle {
-  margin: 22px 0 10px;
-  font-size: 16px;
-  font-weight: 900;
-  color: #111827;
+  margin: 18px 0 10px;
+  font-size: 14px; /* was 16 */
+  font-weight: 700; /* was 900 */
+  color: #0f172a;
 }
 
+/* Table */
 .tbl {
-  border: 1px solid var(--border);
+  border: 1px solid rgba(15, 23, 42, 0.10);
   background: #fff;
   border-radius: 12px;
   overflow: hidden;
@@ -74,19 +77,21 @@ table {
 }
 
 th, td {
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border);
-  font-size: 14px;
+  padding: 12px 14px; /* was 14px 16px */
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  font-size: 13px; /* was 14 */
   text-align: left;
   white-space: nowrap;
+  color: #0f172a;
 }
 
 th {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: .08em;
+  font-size: 11px; /* was 12 */
+  font-weight: 600; /* new */
+  text-transform: none; /* remove “shouty” headers */
+  letter-spacing: 0;
   color: #64748b;
-  background: #F9FBFF;
+  background: #f8fafc; /* softer than #F9FBFF */
 }
 
 tr:last-child td {
@@ -94,18 +99,19 @@ tr:last-child td {
 }
 
 .strong {
-  font-weight: 900;
+  font-weight: 600; /* was 900 */
 }
 
+/* Pills */
 .pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 6px 10px;
+  padding: 5px 10px;
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 800;
-  letter-spacing: .02em;
+  font-weight: 600; /* was 800 */
+  letter-spacing: 0;
 }
 
   .pill.blue {
@@ -118,13 +124,13 @@ tr:last-child td {
     color: var(--chipgreentx);
   }
 
-@media (max-width:1200px) {
+@media (max-width: 1200px) {
   .grid3 {
-    grid-template-columns: repeat(2, minmax(0,1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (max-width:860px) {
+@media (max-width: 860px) {
   .grid3, .grid2 {
     grid-template-columns: 1fr;
   }

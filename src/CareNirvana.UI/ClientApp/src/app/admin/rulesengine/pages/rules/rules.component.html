@@ -1,6 +1,6 @@
 <div class="pagehead">
   <div class="h2">Business Rules</div>
-  <button class="btn btnprimary" (click)="onNewRule()">+ New Rule</button>
+  <button class="btn primary" (click)="onNewRule()">+ New Rule</button>
 </div>
 
 <div class="card formcard" *ngIf="showForm">
@@ -42,7 +42,7 @@
 
   <div class="formactions">
     <button class="btn" (click)="onCancel()">Cancel</button>
-    <button class="btn btnprimary" (click)="onSave()" [disabled]="groups.length === 0">
+    <button class="btn primary" (click)="onSave()" [disabled]="groups.length === 0">
       {{ isEditMode ? 'Update' : 'Save' }}
     </button>
   </div>

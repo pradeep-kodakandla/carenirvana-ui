@@ -1,14 +1,16 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { forkJoin } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
 
 import {
-  RulesEngineSampleDataService,
+  RulesengineService,
   RuleGroupModel,
   RuleModel,
   ScheduleType,
   DropdownOption
-} from '../../data/rulesengine.sampledata.service';
+} from 'src/app/service/rulesengine.service';
 
 @Component({
   selector: 'appRuleGroups',
@@ -26,8 +28,9 @@ export class RuleGroupsComponent implements OnInit {
   private scheduleOptions: DropdownOption<ScheduleType>[] = [];
 
   form: FormGroup;
+  loading = false;
 
-  constructor(private data: RulesEngineSampleDataService, private fb: FormBuilder) {
+  constructor(private api: RulesengineService, private fb: FormBuilder) {
     this.form = this.fb.group({
       name: ['', Validators.required],
       scheduleType: ['DailyOnce' as ScheduleType, Validators.required],
@@ -37,18 +40,34 @@ export class RuleGroupsComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.scheduleOptions = this.data.getScheduleOptions();
+    this.scheduleOptions = this.api.getScheduleOptions();
     this.scheduleUiOptions = this.scheduleOptions.map(x => ({ value: x.value, label: x.label }));
     this.refresh();
   }
 
-  refresh(): void {
-    this.groups = this.data.getRuleGroups();
-    this.rules = this.data.getRules();
-  }
-
+  // ✅ HTML uses this: {{ isEditMode ? ... }} :contentReference[oaicite:2]{index=2}
   get isEditMode(): boolean {
     return this.editGroupId != null;
+  }
+
+  refresh(): void {
+    this.loading = true;
+    forkJoin({
+      groups: this.api.getRuleGroups(),
+      rules: this.api.getRules()
+    }).subscribe({
+      next: (res) => {
+        this.groups = res.groups ?? [];
+        this.rules = res.rules ?? [];
+        this.loading = false;
+      },
+      error: (err: any) => {
+        console.error('Failed to load rule groups/rules', err);
+        this.groups = [];
+        this.rules = [];
+        this.loading = false;
+      }
+    });
   }
 
   scheduleLabel(t: ScheduleType): string {
@@ -79,7 +98,6 @@ export class RuleGroupsComponent implements OnInit {
     });
   }
 
-  // for now: schedule button opens edit form (focused on schedule)
   onSchedule(g: RuleGroupModel): void {
     this.onEdit(g);
   }
@@ -102,25 +120,33 @@ export class RuleGroupsComponent implements OnInit {
       purpose: string;
     };
 
-    if (this.editGroupId != null) {
-      this.data.updateRuleGroup(this.editGroupId, {
-        name: v.name,
-        scheduleType: v.scheduleType,
-        description: v.description,
-        purpose: v.purpose
-      });
-    } else {
-      this.data.addRuleGroup({
-        name: v.name,
-        scheduleType: v.scheduleType,
-        description: v.description,
-        purpose: v.purpose
-      });
-    }
+    const req = {
+      name: (v.name ?? '').trim(),
+      scheduleType: v.scheduleType,
+      description: (v.description ?? '').trim(),
+      purpose: (v.purpose ?? '').trim()
+    };
 
-    this.showForm = false;
-    this.editGroupId = null;
-    this.refresh();
+    if (!req.name || !req.description || !req.purpose) return;
+
+    this.loading = true;
+
+    // ✅ Make call$ ALWAYS Observable<void> to avoid union-type subscribe error
+    const call$ = this.editGroupId != null
+      ? this.api.updateRuleGroup(this.editGroupId, req)
+      : this.api.createRuleGroup(req).pipe(map(() => void 0));
+
+    call$.subscribe({
+      next: () => {
+        this.showForm = false;
+        this.editGroupId = null;
+        this.refresh();
+      },
+      error: (err: any) => {
+        console.error('Save rule group failed', err);
+        this.loading = false;
+      }
+    });
   }
 
   getAssignedRules(groupId: number): RuleModel[] {

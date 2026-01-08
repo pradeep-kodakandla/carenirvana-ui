@@ -3,167 +3,212 @@
   background: #ffffff;
 }
 
+/* Header */
 .rghead {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
   margin-bottom: 14px;
 }
 
 .h2 {
-  font-size: 26px;
-  font-weight: 900;
+  font-size: 22px;
+  font-weight: 600;
   color: #0f172a;
 }
 
+/* Buttons */
 .btn {
-  border: 1px solid #cbd5e1;
+  border: 1px solid #d0d5dd;
   background: #ffffff;
-  color: #0f172a;
-  padding: 10px 14px;
+  color: #111827;
+  padding: 9px 12px;
   border-radius: 10px;
-  font-weight: 800;
+  font-weight: 600;
   cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease, transform 80ms ease;
 }
 
-.btnprimary {
-  border-color: #22c55e;
-  background: #22c55e;
+  .btn:hover {
+    background: #f9fafb;
+    border-color: #cbd5e1;
+  }
+
+  .btn:active {
+    transform: translateY(1px);
+  }
+
+  .btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+/* ✅ Primary button (use: class="btn primary") */
+.primary {
+  background: #2563eb;
+  border-color: #2563eb;
   color: #ffffff;
 }
 
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+  .primary:hover {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+  }
 
+  .btn:focus-visible,
+  .primary:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18);
+  }
+
+/* Cards */
 .card {
   background: #ffffff;
-  border: 1px solid #dbe7f5;
+  border: 1px solid #e5e7eb;
   border-radius: 14px;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
 }
 
 .formcard {
-  padding: 18px;
-  margin-bottom: 18px;
-  border-color: #cfe5ff;
+  padding: 16px;
+  margin-bottom: 16px;
 }
 
 .formtitle {
-  font-weight: 950;
-  font-size: 18px;
+  font-weight: 600;
+  font-size: 16px;
   color: #0f172a;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .formgrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0,1fr));
-  gap: 14px;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-  .field label {
-    font-size: 13px;
-    font-weight: 900;
-    color: #1f2937;
-  }
-
-  .field input,
-  .field select,
-  .field textarea {
-    border: 2px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 12px 12px;
-    outline: none;
-    font-size: 14px;
-    background: #ffffff;
-    color: #0f172a;
-  }
-
-    .field input:focus,
-    .field select:focus,
-    .field textarea:focus {
-      border-color: #60a5fa;
-      box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.20);
-    }
-
-  .field textarea {
-    resize: vertical;
-    min-height: 120px;
-  }
-
-  .field.full {
-    grid-column: 1 / -1;
-  }
-
-.formactions {
-  margin-top: 16px;
-  display: flex;
-  justify-content: flex-end;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
+.formactions {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* -------------------------------
+   ✅ Floating label (outlined style like your screenshot)
+   ------------------------------- */
+.flfield {
+  position: relative;
+}
+
+.flinput,
+.fltextarea {
+  width: 100%;
+  border: 1px solid #c4c4c4; /* soft blue border like screenshot */
+  border-radius: 5px;
+  padding: 6px 30px 10px 10px;
+  outline: none;
+  font-size: 14px;
+  background: #ffffff;
+  color: #111827;
+}
+
+.fltextarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+/* label sits on border */
+.fllabel {
+  position: absolute;
+  left: 14px;
+  top: -10px;
+  padding: 0 8px;
+  background: #ffffff;
+  color: #555;
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+/* focus ring */
+.flfield:focus-within .flinput,
+.flfield:focus-within .fltextarea,
+.flfield:focus-within .flcontrol {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.14);
+}
+
+.flfield:focus-within .fllabel {
+  color: #2563eb;
+}
+
+/* ui-smart-dropdown in outlined container */
+.flcontrol {
+  border: 1px solid #c7d2fe;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+/* Keep your existing full width rule */
+.full {
+  grid-column: 1 / -1;
+}
+
+/* Empty */
 .empty {
-  padding: 24px;
-  border: 2px dashed #cbd5e1;
+  padding: 20px;
+  border: 1px dashed #d0d5dd;
   border-radius: 14px;
   background: #ffffff;
 }
 
 .emptytitle {
-  font-weight: 950;
+  font-weight: 600;
   margin-bottom: 6px;
   color: #0f172a;
 }
 
 .emptytext {
-  color: #475569;
+  color: #667085;
   font-size: 13px;
 }
 
 /* Cards list */
 .rggrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0,1fr));
-  gap: 18px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .rgcard {
-  padding: 18px;
+  padding: 16px;
   position: relative;
-  border-color: #dbe7f5;
 }
 
-  /* Accent bar on left */
+  /* softer accent bar (no green) */
   .rgcard:before {
     content: "";
     position: absolute;
     left: 0;
     top: 12px;
     bottom: 12px;
-    width: 6px;
+    width: 4px;
     border-radius: 10px;
-    background: #22c55e;
-    opacity: 0.9;
+    background: #dbeafe;
   }
 
 .rgtitle {
-  font-size: 18px;
-  font-weight: 950;
+  font-size: 16px;
+  font-weight: 600;
   color: #0f172a;
   padding-left: 10px;
 }
 
 .rgmeta {
-  margin-top: 10px;
-  color: #475569;
+  margin-top: 8px;
+  color: #667085;
   font-size: 13px;
   display: grid;
   gap: 8px;
@@ -172,17 +217,18 @@
 
 .metarow b {
   color: #0f172a;
+  font-weight: 600;
 }
 
 .assigned {
   margin-top: 14px;
   padding-top: 12px;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid #eef2f7;
   padding-left: 10px;
 }
 
 .assignedtitle {
-  font-weight: 950;
+  font-weight: 600;
   font-size: 13px;
   margin-bottom: 8px;
   color: #0f172a;
@@ -190,7 +236,7 @@
 
 .assignedempty {
   font-size: 13px;
-  color: #64748b;
+  color: #667085;
 }
 
 .assignedlist {
@@ -204,13 +250,13 @@
   justify-content: space-between;
   gap: 10px;
   padding: 10px 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #eef2f7;
   border-radius: 12px;
   background: #ffffff;
 }
 
 .assignedname {
-  font-weight: 900;
+  font-weight: 600;
   font-size: 13px;
   color: #0f172a;
 }
@@ -219,44 +265,46 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 6px 10px;
+  padding: 5px 10px;
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 900;
-  letter-spacing: .02em;
-  border: 1px solid #dbeafe;
-  background: #eff6ff;
-  color: #1d4ed8;
+  font-weight: 600;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #344054;
 }
 
 .rgactions {
   display: flex;
-  gap: 12px;
-  margin-top: 16px;
+  gap: 10px;
+  margin-top: 14px;
   padding-left: 10px;
 }
 
 .btnwide {
   flex: 1;
-  padding: 10px 12px;
+  padding: 9px 12px;
   border-radius: 12px;
-  font-weight: 900;
+  font-weight: 600;
   background: #ffffff;
-  border: 2px solid #dbe7f5;
+  border: 1px solid #d0d5dd;
   cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
 }
 
   .btnwide:hover {
-    border-color: #94a3b8;
+    background: #f9fafb;
+    border-color: #cbd5e1;
   }
 
-@media (max-width:1200px) {
+/* Responsive */
+@media (max-width: 1200px) {
   .rggrid {
-    grid-template-columns: repeat(2, minmax(0,1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (max-width:860px) {
+@media (max-width: 860px) {
   .rggrid {
     grid-template-columns: 1fr;
   }
@@ -265,74 +313,3 @@
     grid-template-columns: 1fr;
   }
 }
-
-
-/* Floating fields */
-.flfield {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.flinput,
-.fltextarea {
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 18px 12px 10px 12px;
-  outline: none;
-  font-size: 14px;
-  background: #ffffff;
-  color: #0f172a;
-}
-
-.fltextarea {
-  resize: vertical;
-  min-height: 120px;
-}
-
-.flfield:focus-within .flinput,
-.flfield:focus-within .fltextarea {
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.20);
-}
-
-.fllabel {
-  position: absolute;
-  left: 12px;
-  top: 14px;
-  color: #64748b;
-  font-weight: 900;
-  font-size: 13px;
-  pointer-events: none;
-  transform-origin: left top;
-  transition: transform 140ms ease, top 140ms ease, color 140ms ease;
-}
-
-.flinput:not(:placeholder-shown) + .fllabel,
-.fltextarea:not(:placeholder-shown) + .fllabel,
-.flfield:focus-within .fllabel,
-.flfield.filled .fllabel {
-  top: 6px;
-  transform: scale(0.85);
-  color: #1d4ed8;
-}
-
-/* ui-smart-dropdown inside floating field */
-.flcontrol {
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
-/*  padding: 18px 12px 10px 12px;
-*/  background: #ffffff;
-}
-
-.flfield:focus-within .flcontrol {
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.20);
-}
-
-/* Keep your existing grid rules */
-.full {
-  grid-column: 1 / -1;
-}
-

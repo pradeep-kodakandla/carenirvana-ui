@@ -1,6 +1,6 @@
 <div class="rghead">
   <div class="h2">Rule Groups</div>
-  <button class="btn btnprimary" (click)="onNewGroup()">+ New Group</button>
+  <button class="btn primary" (click)="onNewGroup()">+ New Group</button>
 </div>
 
 <div class="card formcard" *ngIf="showForm">
@@ -36,7 +36,7 @@
 
     <div class="formactions">
       <button type="button" class="btn" (click)="onCancel()">Cancel</button>
-      <button type="button" class="btn btnprimary" (click)="onSave()">
+      <button type="button" class="btn primary" (click)="onSave()">
         {{ isEditMode ? 'Update' : 'Save' }}
       </button>
     </div>

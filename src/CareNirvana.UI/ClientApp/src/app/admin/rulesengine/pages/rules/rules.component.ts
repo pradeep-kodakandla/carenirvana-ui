@@ -1,12 +1,14 @@
 import { Component, OnInit } from '@angular/core';
+import { forkJoin } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
+
 import {
-  RulesEngineSampleDataService,
+  RulesengineService,
   RuleModel,
   RuleGroupModel,
   RuleType
-} from '../../data/rulesengine.sampledata.service';
-import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
-
+} from 'src/app/service/rulesengine.service';
 
 @Component({
   selector: 'appRules',
@@ -17,14 +19,13 @@ export class RulesComponent implements OnInit {
   showForm = false;
   editRuleId: number | null = null;
   searchText = '';
+  loading = false;
 
   rules: RuleModel[] = [];
   groups: RuleGroupModel[] = [];
 
-  ruleTypeOptions = this.data.getRuleTypeOptions();
   ruleTypeUiOptions: UiSmartOption<RuleType>[] = [];
   groupUiOptions: UiSmartOption<number>[] = [];
-
 
   form: {
     name: string;
@@ -38,21 +39,38 @@ export class RulesComponent implements OnInit {
       description: ''
     };
 
-  constructor(private data: RulesEngineSampleDataService) { }
+  constructor(private api: RulesengineService) { }
 
   ngOnInit(): void {
-    this.ruleTypeUiOptions = this.ruleTypeOptions.map(x => ({ value: x.value, label: x.label }));
+    this.ruleTypeUiOptions = this.api.getRuleTypeOptions().map(x => ({ value: x.value, label: x.label }));
     this.refresh();
   }
 
+  // ✅ HTML uses this: {{ isEditMode ? ... }} :contentReference[oaicite:3]{index=3}
   get isEditMode(): boolean {
     return this.editRuleId != null;
   }
 
   refresh(): void {
-    this.groups = this.data.getRuleGroups();
-    this.rules = this.data.getRules();
-    this.groupUiOptions = this.groups.map(g => ({ value: g.id, label: g.name }));
+    this.loading = true;
+    forkJoin({
+      groups: this.api.getRuleGroups(),
+      rules: this.api.getRules()
+    }).subscribe({
+      next: (res) => {
+        this.groups = res.groups ?? [];
+        this.rules = res.rules ?? [];
+        this.groupUiOptions = this.groups.map(g => ({ value: g.id, label: g.name }));
+        this.loading = false;
+      },
+      error: (err: any) => {
+        console.error('Failed to load rules/groups', err);
+        this.groups = [];
+        this.rules = [];
+        this.groupUiOptions = [];
+        this.loading = false;
+      }
+    });
   }
 
   get filteredRules(): RuleModel[] {
@@ -106,34 +124,47 @@ export class RulesComponent implements OnInit {
     const description = (this.form.description ?? '').trim();
     const ruleGroupId = Number(this.form.ruleGroupId) || 0;
 
-    if (!name) return;
-    if (!description) return;
-    if (!ruleGroupId) return;
+    if (!name || !description || !ruleGroupId) return;
 
-    if (this.editRuleId != null) {
-      this.data.updateRule(this.editRuleId, {
-        name,
-        ruleGroupId,
-        ruleType: this.form.ruleType,
-        description
-      });
-    } else {
-      this.data.addRule({
-        name,
-        ruleGroupId,
-        ruleType: this.form.ruleType,
-        description
-      });
-    }
+    const req = {
+      name,
+      ruleGroupId,
+      ruleType: this.form.ruleType,
+      description
+    };
 
-    this.showForm = false;
-    this.editRuleId = null;
-    this.refresh();
+    this.loading = true;
+
+    // ✅ Make call$ ALWAYS Observable<void> to avoid union-type subscribe error
+    const call$ = this.editRuleId != null
+      ? this.api.updateRule(this.editRuleId, req)
+      : this.api.createRule(req).pipe(map(() => void 0));
+
+    call$.subscribe({
+      next: () => {
+        this.showForm = false;
+        this.editRuleId = null;
+        this.refresh();
+      },
+      error: (err: any) => {
+        console.error('Save rule failed', err);
+        this.loading = false;
+      }
+    });
   }
 
   onDelete(r: RuleModel): void {
-    this.data.deleteRule(r.id);
-    this.refresh();
+    const ok = confirm(`Delete rule "${r.name}"? This is a soft delete.`);
+    if (!ok) return;
+
+    this.loading = true;
+    this.api.deleteRule(r.id).subscribe({
+      next: () => this.refresh(),
+      error: (err: any) => {
+        console.error('Delete rule failed', err);
+        this.loading = false;
+      }
+    });
   }
 
   groupName(ruleGroupId: number): string {

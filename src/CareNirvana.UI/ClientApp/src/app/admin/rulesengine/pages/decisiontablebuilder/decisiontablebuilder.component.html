@@ -1,10 +1,9 @@
-<!-- src/app/rulesengine/decisiontable/decisiontablebuilder.component.html -->
-
+<!-- decisiontablebuilder.component.html -->
 <form class="page" [formGroup]="form">
   <div class="topbar">
     <div class="left">
-      <div class="title">Decision Table Template Builder</div>
-      <div class="hint">Create Inputs + Outputs. Rows are not authored here.</div>
+      <div class="title">Decision Table Builder</div>
+      <div class="hint">Add columns + enter rows like a real decision table.</div>
       <div class="status">{{ statusText }}</div>
     </div>
 
@@ -20,209 +19,206 @@
     </div>
   </div>
 
-  <div class="card">
-    <div class="row">
-      <div class="field">
-        <label>Name</label>
-        <input class="input" type="text" formControlName="name" />
-      </div>
-
-      <div class="field">
-        <label>Hit Policy</label>
-        <select class="select" formControlName="hitPolicy">
-          <option *ngFor="let hp of hitPolicies" [value]="hp">{{ hp }}</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label>Status</label>
-        <select class="select" formControlName="status">
-          <option value="DRAFT">DRAFT</option>
-          <option value="PUBLISHED">PUBLISHED</option>
-          <option value="ARCHIVED">ARCHIVED</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label>Version</label>
-        <input class="input" type="number" formControlName="version" />
-      </div>
+  <!-- Meta -->
+  <div class="card meta">
+    <div class="field">
+      <label>Name</label>
+      <input class="input" type="text" formControlName="name" />
     </div>
 
     <div class="field">
-      <label>Description</label>
-      <input class="input" type="text" formControlName="description" />
+      <label>Hit Policy</label>
+      <select class="select" formControlName="hitPolicy">
+        <option *ngFor="let hp of hitPolicies" [value]="hp">{{ hp }}</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Status</label>
+      <select class="select" formControlName="status">
+        <option value="DRAFT">DRAFT</option>
+        <option value="PUBLISHED">PUBLISHED</option>
+        <option value="ARCHIVED">ARCHIVED</option>
+      </select>
+    </div>
+
+    <div class="field small">
+      <label>Version</label>
+      <input class="input" type="number" formControlName="version" />
     </div>
   </div>
 
-  <!-- Inputs / Outputs definition -->
-  <div class="split">
-    <div class="card">
-      <div class="cardhead">
-        <div class="cardtitle">Inputs</div>
-        <button class="btn" type="button" (click)="addInput()">+ Add Input</button>
+  <!-- Decision table grid -->
+  <div class="card dtcard">
+    <div class="dttoolbar">
+      <div class="chips">
+        <span class="chip cond">Conditions {{ conditionCols.length }}</span>
+        <span class="chip calc">Calculations {{ calculationCols.length }}</span>
+        <span class="chip res">Results {{ resultCols.length }}</span>
       </div>
 
-      <div formArrayName="inputs">
-        <div class="param"
-             *ngFor="let p of inputsFA.controls; let i = index; trackBy: trackByParam"
-             [formGroupName]="i">
-          <div class="paramrow">
-            <input class="input" type="text" formControlName="key" placeholder="Key (unique) e.g. ServiceCode" />
-            <input class="input" type="text" formControlName="label" placeholder="Label e.g. Service Code" />
-
-            <select class="select" formControlName="dataType" (change)="onParamTypeChanged(p)">
-              <option *ngFor="let dt of dataTypes" [value]="dt">{{ dt }}</option>
-            </select>
-
-            <select class="select" formControlName="inputType" (change)="onParamTypeChanged(p)">
-              <option *ngFor="let it of inputTypes" [value]="it">{{ it }}</option>
-            </select>
-
-            <button class="iconbtn danger" type="button" title="Remove" (click)="removeInput(i)">✕</button>
-          </div>
-
-          <div class="paramrow">
-            <input class="input" type="text" formControlName="operatorsCsv" placeholder="operators (=,!=,in,between)" />
-            <input *ngIf="isEnumOrSelect(p)" class="input" type="text" formControlName="optionsCsv" placeholder="options (A,B,C)" />
-          </div>
-        </div>
+      <div class="tools">
+        <button class="btn" type="button" (click)="addRow()">+ Add Row</button>
+        <button class="btn" type="button" (click)="toggleJson()">{{ viewMode === 'table' ? '{}' : 'Table' }}</button>
       </div>
     </div>
 
-    <div class="card">
-      <div class="cardhead">
-        <div class="cardtitle">Outputs</div>
-        <button class="btn" type="button" (click)="addOutput()">+ Add Output</button>
-      </div>
+    <!-- JSON view -->
+    <div class="jsonwrap" *ngIf="viewMode === 'json'">
+      <pre class="json">{{ jsonPreview }}</pre>
+    </div>
 
-      <div formArrayName="outputs">
-        <div class="param"
-             *ngFor="let p of outputsFA.controls; let i = index; trackBy: trackByParam"
-             [formGroupName]="i">
-          <div class="paramrow">
-            <input class="input" type="text" formControlName="key" placeholder="Key (unique) e.g. AuthRequired" />
-            <input class="input" type="text" formControlName="label" placeholder="Label e.g. Auth Required" />
+    <!-- TABLE view -->
+    <div class="dtwrap" *ngIf="viewMode === 'table'">
 
-            <select class="select" formControlName="dataType" (change)="onParamTypeChanged(p)">
-              <option *ngFor="let dt of dataTypes" [value]="dt">{{ dt }}</option>
-            </select>
+      <!-- backdrop to close menus -->
+      <div class="menubackdrop"
+           *ngIf="showAddMenu || showRowMenu || showColMenu"
+           (click)="closeMenus()"></div>
 
-            <select class="select" formControlName="inputType" (change)="onParamTypeChanged(p)">
-              <option *ngFor="let it of inputTypes" [value]="it">{{ it }}</option>
-            </select>
+      <div class="dtgrid" [style.gridTemplateColumns]="gridTemplateColumns">
 
-            <button class="iconbtn danger" type="button" title="Remove" (click)="removeOutput(i)">✕</button>
+        <!-- Group header row -->
+        <div class="cell grouphead rowhead"></div>
+
+        <div class="cell grouphead condhead" [style.gridColumn]="condGroupSpan">Condition</div>
+
+        <div class="cell grouphead calchead"
+             *ngIf="calculationCols.length > 0"
+             [style.gridColumn]="calcGroupSpan">Calculation</div>
+
+        <div class="cell grouphead reshead" [style.gridColumn]="resGroupSpan">Result</div>
+
+        <!-- Column header row -->
+        <div class="cell colhead rowhead"></div>
+
+        <!-- Condition columns -->
+        <ng-container *ngFor="let c of conditionCols; let i = index; trackBy: trackByCol">
+          <div class="cell colhead">
+            <div class="coltitle">
+              <input class="colinput"
+                     [value]="c.label"
+                     (input)="setColLabel(c, $any($event.target).value)"
+                     placeholder="Condition" />
+              <button class="iconbtn" type="button" (click)="openColMenu('condition', i, $event)">▾</button>
+            </div>
+            <div class="colsub">{{ c.key }}</div>
           </div>
+        </ng-container>
 
-          <div class="paramrow">
-            <input *ngIf="isEnumOrSelect(p)" class="input" type="text" formControlName="optionsCsv" placeholder="options (True,False)" />
-            <span class="muted">Outputs do not use operators.</span>
-          </div>
+        <!-- Add column (+) spacer column header -->
+        <div class="cell colhead addcol">
+          <button class="addbtn" type="button" (click)="openAddMenu($event)">＋</button>
         </div>
+
+        <!-- Calculation columns -->
+        <ng-container *ngFor="let c of calculationCols; let i = index; trackBy: trackByCol">
+          <div class="cell colhead">
+            <div class="coltitle">
+              <input class="colinput"
+                     [value]="c.label"
+                     (input)="setColLabel(c, $any($event.target).value)"
+                     placeholder="Calculation" />
+              <button class="iconbtn" type="button" (click)="openColMenu('calculation', i, $event)">▾</button>
+            </div>
+            <div class="colsub">{{ c.key }}</div>
+          </div>
+        </ng-container>
+
+        <!-- Result columns -->
+        <ng-container *ngFor="let c of resultCols; let i = index; trackBy: trackByCol">
+          <div class="cell colhead">
+            <div class="coltitle">
+              <input class="colinput"
+                     [value]="c.label"
+                     (input)="setColLabel(c, $any($event.target).value)"
+                     placeholder="Result" />
+              <button class="iconbtn" type="button" (click)="openColMenu('result', i, $event)">▾</button>
+            </div>
+            <div class="colsub">{{ c.key }}</div>
+          </div>
+        </ng-container>
+
+        <!-- Data rows -->
+        <ng-container *ngFor="let r of rows; let ri = index; trackBy: trackByRow">
+
+          <!-- row head -->
+          <div class="cell rowhead">
+            <div class="rowheadinner">
+              <div class="rindex">{{ ri + 1 }}</div>
+              <button class="playbtn" type="button" title="Run row">▶</button>
+
+              <label class="switch">
+                <input type="checkbox" [checked]="r.enabled" (change)="setRowEnabled(ri, $any($event.target).checked)" />
+                <span class="slider"></span>
+              </label>
+
+              <button class="iconbtn" type="button" (click)="openRowMenu(ri, $event)">⋮</button>
+            </div>
+          </div>
+
+          <!-- condition cells -->
+          <ng-container *ngFor="let c of conditionCols; trackBy: trackByCol">
+            <div class="cell">
+              <input class="cellinput"
+                     [value]="getCell(r, c.id)"
+                     (input)="setCell(r, c.id, $any($event.target).value)"
+                     placeholder="Empty..." />
+            </div>
+          </ng-container>
+
+          <!-- spacer cell under + column -->
+          <div class="cell spacer"></div>
+
+          <!-- calculation cells -->
+          <ng-container *ngFor="let c of calculationCols; trackBy: trackByCol">
+            <div class="cell">
+              <div class="fncell">
+                <span class="fnpill">Fn</span>
+                <input class="cellinput"
+                       [value]="getCell(r, c.id)"
+                       (input)="setCell(r, c.id, $any($event.target).value)"
+                       placeholder="Expression..." />
+              </div>
+            </div>
+          </ng-container>
+
+          <!-- result cells -->
+          <ng-container *ngFor="let c of resultCols; trackBy: trackByCol">
+            <div class="cell">
+              <input class="cellinput"
+                     [value]="getCell(r, c.id)"
+                     (input)="setCell(r, c.id, $any($event.target).value)"
+                     placeholder="Value..." />
+            </div>
+          </ng-container>
+
+        </ng-container>
       </div>
+
+      <!-- Add column dropdown -->
+      <div class="menu" *ngIf="showAddMenu" [ngStyle]="addMenuStyle">
+        <button type="button" class="menuitem" (click)="addColumn('condition')">＋ Add Condition Column</button>
+        <button type="button" class="menuitem" (click)="addColumn('calculation')">＋ Add Calculation Column</button>
+        <button type="button" class="menuitem" (click)="addColumn('result')">＋ Add Result Column</button>
+      </div>
+
+      <!-- Column menu -->
+      <div class="menu" *ngIf="showColMenu" [ngStyle]="colMenuStyle">
+        <button type="button" class="menuitem dangerItem" (click)="removeColumn()">🗑 Remove Column</button>
+      </div>
+
+      <!-- Row menu -->
+      <div class="menu" *ngIf="showRowMenu" [ngStyle]="rowMenuStyle">
+        <button type="button" class="menuitem" (click)="moveRow(-1)">↕ Move Up</button>
+        <button type="button" class="menuitem" (click)="moveRow(1)">↕ Move Down</button>
+        <button type="button" class="menuitem" (click)="insertRow(true)">＋ Insert Above</button>
+        <button type="button" class="menuitem" (click)="insertRow(false)">＋ Insert Below</button>
+        <button type="button" class="menuitem" (click)="copyRow()">⧉ Copy</button>
+        <button type="button" class="menuitem" (click)="clearRow()">⌫ Clear row</button>
+        <button type="button" class="menuitem dangerItem" (click)="deleteRow()">🗑 Delete row</button>
+      </div>
+
     </div>
   </div>
-
-
-  <!-- Bottom View: Table (default) / JSON -->
-  <div class="card">
-    <div class="cardhead">
-      <div class="cardtitle">Preview</div>
-
-      <div class="actions">
-        <div class="segmented">
-          <button type="button"
-                  class="segbtn"
-                  [class.active]="viewMode === 'table'"
-                  (click)="setView('table')">
-            Table
-          </button>
-          <button type="button"
-                  class="segbtn"
-                  [class.active]="viewMode === 'json'"
-                  (click)="setView('json')">
-            JSON
-          </button>
-        </div>
-
-        <button class="btn" type="button" (click)="copyJson()" [disabled]="viewMode !== 'json'">Copy</button>
-        <button class="btn" type="button" (click)="downloadJson()" [disabled]="viewMode !== 'json'">Download</button>
-      </div>
-    </div>
-
-    <!-- TABLE VIEW -->
-    <div *ngIf="viewMode === 'table'" class="previewwrap">
-      <div class="previewsection">
-        <div class="previewtitle">Inputs</div>
-
-        <div class="tablewrap" *ngIf="inputParams.length; else noinputs">
-          <table class="previewtable">
-            <thead>
-              <tr>
-                <th>Key</th>
-                <th>Label</th>
-                <th>Data Type</th>
-                <th>UI Type</th>
-                <th>Operators</th>
-                <th>Options</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let p of inputParams">
-                <td class="mono">{{ p.key }}</td>
-                <td>{{ p.label }}</td>
-                <td>{{ p.dataType }}</td>
-                <td>{{ p.inputType }}</td>
-                <td class="mutedcell">{{ operatorsText(p.operators) }}</td>
-                <td class="mutedcell">{{ optionsText(p.options) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <ng-template #noinputs>
-          <div class="emptystate">No inputs defined.</div>
-        </ng-template>
-      </div>
-
-      <div class="previewsection">
-        <div class="previewtitle">Outputs</div>
-
-        <div class="tablewrap" *ngIf="outputParams.length; else nooutputs">
-          <table class="previewtable">
-            <thead>
-              <tr>
-                <th>Key</th>
-                <th>Label</th>
-                <th>Data Type</th>
-                <th>UI Type</th>
-                <th>Options</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let p of outputParams">
-                <td class="mono">{{ p.key }}</td>
-                <td>{{ p.label }}</td>
-                <td>{{ p.dataType }}</td>
-                <td>{{ p.inputType }}</td>
-                <td class="mutedcell">{{ optionsText(p.options) }}</td>
-
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <ng-template #nooutputs>
-          <div class="emptystate">No outputs defined.</div>
-        </ng-template>
-      </div>
-    </div>
-
-    <!-- JSON VIEW -->
-    <div *ngIf="viewMode === 'json'">
-      <pre class="pre">{{ jsonPreview }}</pre>
-    </div>
-  </div>
-
 </form>
