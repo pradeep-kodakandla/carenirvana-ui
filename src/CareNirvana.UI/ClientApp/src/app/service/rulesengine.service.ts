@@ -68,7 +68,7 @@ export interface DropdownOption<T> { value: T; label: string; }
 
 @Injectable({ providedIn: 'root' })
 export class RulesengineService {
-  private baseUrl = 'https://carenirvana-microservices-xxxxx.azurewebsites.net/api/rulesengine';
+  private baseUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/rulesengine';
   //private baseUrl = 'https://localhost:7201/api/rulesengine';
 
   constructor(private http: HttpClient) { }
