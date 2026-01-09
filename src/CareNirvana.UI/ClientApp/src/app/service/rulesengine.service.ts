@@ -3,7 +3,6 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 export type RuleType = 'REALTIME' | 'BATCH';
-
 export interface RuleGroupModel {
   id: number;
   name: string;
@@ -40,7 +39,6 @@ export interface RuleModel {
   deletedOn?: string;
   deletedBy?: number;
 }
-
 export interface DecisionTableListItem {
   id: string;
   name: string;
@@ -66,7 +64,6 @@ export interface RuleDataFieldRow {
   deletedOn?: string;
   deletedBy?: number;
 }
-
 export interface DropdownOption<T> { value: T; label: string; }
 
 @Injectable({ providedIn: 'root' })
