@@ -104,7 +104,7 @@
 .fltextarea {
   width: 100%;
   border: 1px solid #c4c4c4;
-  border-radius: 14px;
+  border-radius: 5px;
   padding: 6px 30px 10px 10px;
   outline: none;
   font-size: 14px;
@@ -114,21 +114,20 @@
 
 .fllabel {
   position: absolute;
-  left: 14px;
+  left: 12px;
   top: -10px;
-  padding: 0 8px;
+  padding: 0 4px;
   background: #ffffff;
   color: #555;
-  font-weight: 600;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 18px;
 }
 
-.flcontrol {
+/*.flcontrol {
   border: 1px solid #c7d2fe;
   border-radius: 14px;
   background: #ffffff;
-}
+}*/
 
 .flfield:focus-within .flinput,
 .flfield:focus-within .fltextarea,

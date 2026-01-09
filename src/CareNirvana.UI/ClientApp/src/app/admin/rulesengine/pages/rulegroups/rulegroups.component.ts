@@ -2,14 +2,11 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
 
 import {
   RulesengineService,
   RuleGroupModel,
-  RuleModel,
-  ScheduleType,
-  DropdownOption
+  RuleModel
 } from 'src/app/service/rulesengine.service';
 
 @Component({
@@ -24,28 +21,21 @@ export class RuleGroupsComponent implements OnInit {
   showForm = false;
   editGroupId: number | null = null;
 
-  scheduleUiOptions: UiSmartOption<ScheduleType>[] = [];
-  private scheduleOptions: DropdownOption<ScheduleType>[] = [];
-
   form: FormGroup;
   loading = false;
 
   constructor(private api: RulesengineService, private fb: FormBuilder) {
     this.form = this.fb.group({
       name: ['', Validators.required],
-      scheduleType: ['DailyOnce' as ScheduleType, Validators.required],
       description: ['', Validators.required],
-      purpose: ['', Validators.required]
+      activeFlag: [true]
     });
   }
 
   ngOnInit(): void {
-    this.scheduleOptions = this.api.getScheduleOptions();
-    this.scheduleUiOptions = this.scheduleOptions.map(x => ({ value: x.value, label: x.label }));
     this.refresh();
   }
 
-  // ✅ HTML uses this: {{ isEditMode ? ... }} :contentReference[oaicite:2]{index=2}
   get isEditMode(): boolean {
     return this.editGroupId != null;
   }
@@ -70,19 +60,14 @@ export class RuleGroupsComponent implements OnInit {
     });
   }
 
-  scheduleLabel(t: ScheduleType): string {
-    return this.scheduleOptions.find(x => x.value === t)?.label ?? String(t ?? '');
-  }
-
   onNewGroup(): void {
     this.showForm = true;
     this.editGroupId = null;
 
     this.form.reset({
       name: '',
-      scheduleType: 'DailyOnce',
       description: '',
-      purpose: ''
+      activeFlag: true
     });
   }
 
@@ -92,14 +77,9 @@ export class RuleGroupsComponent implements OnInit {
 
     this.form.reset({
       name: g.name ?? '',
-      scheduleType: g.scheduleType,
       description: g.description ?? '',
-      purpose: g.purpose ?? ''
+      activeFlag: g.activeFlag ?? true
     });
-  }
-
-  onSchedule(g: RuleGroupModel): void {
-    this.onEdit(g);
   }
 
   onCancel(): void {
@@ -115,23 +95,21 @@ export class RuleGroupsComponent implements OnInit {
 
     const v = this.form.value as {
       name: string;
-      scheduleType: ScheduleType;
       description: string;
-      purpose: string;
+      activeFlag: boolean;
     };
 
     const req = {
       name: (v.name ?? '').trim(),
-      scheduleType: v.scheduleType,
       description: (v.description ?? '').trim(),
-      purpose: (v.purpose ?? '').trim()
+      activeFlag: v.activeFlag ?? true
     };
 
-    if (!req.name || !req.description || !req.purpose) return;
+    if (!req.name || !req.description) return;
 
     this.loading = true;
 
-    // ✅ Make call$ ALWAYS Observable<void> to avoid union-type subscribe error
+    // keep call$ as Observable<void> to avoid union type subscribe issues
     const call$ = this.editGroupId != null
       ? this.api.updateRuleGroup(this.editGroupId, req)
       : this.api.createRuleGroup(req).pipe(map(() => void 0));
@@ -144,6 +122,19 @@ export class RuleGroupsComponent implements OnInit {
       },
       error: (err: any) => {
         console.error('Save rule group failed', err);
+        this.loading = false;
+      }
+    });
+  }
+
+  onDelete(g: RuleGroupModel): void {
+    if (!g?.id) return;
+    this.loading = true;
+
+    this.api.deleteRuleGroup(g.id).subscribe({
+      next: () => this.refresh(),
+      error: (err: any) => {
+        console.error('Delete rule group failed', err);
         this.loading = false;
       }
     });

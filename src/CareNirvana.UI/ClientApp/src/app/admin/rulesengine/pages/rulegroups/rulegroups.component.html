@@ -14,23 +14,18 @@
       </div>
 
       <div class="flfield filled">
-        <ui-smart-dropdown class="flcontrol"
-                           label="Schedule"
-                           placeholder="Select..."
-                           [options]="scheduleUiOptions"
-                           formControlName="scheduleType">
-        </ui-smart-dropdown>
-        <!--<label class="fllabel">Schedule</label>-->
+        <div class="activeRow">
+          <label class="activeLabel">Active</label>
+          <label class="switch">
+            <input type="checkbox" formControlName="activeFlag" />
+            <span class="slider"></span>
+          </label>
+        </div>
       </div>
 
       <div class="flfield full">
         <textarea class="fltextarea" rows="4" placeholder=" " formControlName="description"></textarea>
         <label class="fllabel">Description</label>
-      </div>
-
-      <div class="flfield full">
-        <textarea class="fltextarea" rows="4" placeholder=" " formControlName="purpose"></textarea>
-        <label class="fllabel">Purpose</label>
       </div>
     </div>
 
@@ -53,9 +48,11 @@
     <div class="rgtitle">{{ g.name }}</div>
 
     <div class="rgmeta">
-      <div class="metarow"><b>Schedule:</b> {{ scheduleLabel(g.scheduleType) }}</div>
+      <div class="metarow">
+        <b>Status:</b>
+        <span class="pill" [class.off]="!g.activeFlag">{{ g.activeFlag ? 'Active' : 'Inactive' }}</span>
+      </div>
       <div class="metarow"><b>Description:</b> {{ g.description }}</div>
-      <div class="metarow"><b>Purpose:</b> {{ g.purpose }}</div>
     </div>
 
     <div class="assigned">
@@ -73,7 +70,7 @@
 
     <div class="rgactions">
       <button class="btnwide" (click)="onEdit(g)">Edit</button>
-      <button class="btnwide" (click)="onSchedule(g)">Schedule</button>
+      <button class="btnwide danger" (click)="onDelete(g)">Delete</button>
     </div>
   </div>
 </div>

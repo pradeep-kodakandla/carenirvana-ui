@@ -1,0 +1,395 @@
+
+.df-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.df-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.df-subtitle {
+  font-size: 12px;
+  color: #667085;
+  margin-top: 2px;
+}
+
+.df-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.card {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(15,23,42,0.06);
+  padding: 14px;
+  margin-bottom: 10px;
+}
+
+.btn {
+  border: 1px solid #d0d5dd;
+  background: #fff;
+  color: #111827;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+  .btn:hover {
+    background: #f9fafb;
+    border-color: #cbd5e1;
+  }
+
+/* Filters */
+.filters-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 2fr) minmax(220px, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+@media (max-width: 980px) {
+  .filters-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Floating label (same pattern as your rules/rulegroups pages) */
+.flfield {
+  position: relative;
+}
+
+.flcontrol {
+  width: 100%;
+  display: block;
+}
+
+.flinput {
+  width: 100%;
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 14px;
+  outline: none;
+  padding: 18px 36px 10px 12px;
+  box-sizing: border-box;
+}
+
+  .flinput:focus {
+    border-color: #93c5fd;
+    box-shadow: 0 0 0 4px rgba(59,130,246,0.14);
+  }
+
+.fllabel {
+  position: absolute;
+  left: 12px;
+  top: 14px;
+  font-size: 13px;
+  color: #667085;
+  font-weight: 700;
+  pointer-events: none;
+  transition: 0.15s ease;
+  background: #fff;
+  padding: 0 4px;
+}
+
+.flinput:focus + .fllabel,
+.flfield.filled .fllabel {
+  top: 6px;
+  font-size: 11px;
+  color: #475467;
+}
+
+.xbtn {
+  position: absolute;
+  right: 10px;
+  top: 12px;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 900;
+  color: #667085;
+}
+
+  .xbtn:hover {
+    background: #f9fafb;
+  }
+
+/* Table */
+.df-tablehead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.df-count {
+  font-size: 13px;
+  color: #344054;
+}
+
+.muted {
+  color: #667085;
+  margin-left: 6px;
+}
+
+.df-tablewrap {
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid #eef2f7;
+}
+
+.dftable {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 720px;
+}
+
+  .dftable thead th {
+    text-align: left;
+    font-size: 12px;
+    font-weight: 800;
+    color: #475467;
+    padding: 12px 12px;
+    background: #f9fafb;
+    border-bottom: 1px solid #eef2f7;
+  }
+
+  .dftable tbody td {
+    padding: 12px 12px;
+    border-bottom: 1px solid #eef2f7;
+    vertical-align: top;
+    background: #fff;
+  }
+
+.dsrow {
+  cursor: pointer;
+}
+
+  .dsrow:hover td {
+    background: #fcfcfd;
+  }
+
+.modulecell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chev {
+  font-size: 14px;
+  color: #667085;
+  transition: transform 120ms ease;
+}
+
+  .chev.open {
+    transform: rotate(90deg);
+  }
+
+.mname {
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.datasetcell .dname {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.datasetcell .dkey {
+  font-size: 12px;
+  color: #667085;
+  margin-top: 3px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.badge {
+  font-size: 12px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #344054;
+  white-space: nowrap;
+}
+
+.expandrow td {
+  padding: 0;
+  background: #fff;
+}
+
+.expandbox {
+  padding: 12px 12px 14px;
+  background: #ffffff;
+}
+
+.expandtitle {
+  font-size: 13px;
+  font-weight: 900;
+  color: #344054;
+  margin-bottom: 10px;
+}
+
+/* nested fields table */
+.fieldsWrap {
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  overflow: auto;
+}
+
+.fieldstable {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 900px;
+}
+
+  .fieldstable thead th {
+    font-size: 12px;
+    font-weight: 900;
+    color: #475467;
+    background: #fcfcfd;
+    padding: 10px 10px;
+    border-bottom: 1px solid #eef2f7;
+  }
+
+  .fieldstable tbody td {
+    padding: 10px 10px;
+    border-bottom: 1px solid #eef2f7;
+  }
+
+.fname {
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.fsmall {
+  font-size: 12px;
+  color: #667085;
+  margin-top: 2px;
+}
+
+.fmono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: #0f172a;
+}
+
+.pill {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #f3f0ff;
+  border: 1px solid #e7dcff;
+  color: #5b3dd6;
+}
+
+.metaLine {
+  font-size: 12px;
+  color: #475467;
+  margin-top: 2px;
+}
+
+.mini {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #667085;
+  font-weight: 800;
+  margin-right: 6px;
+}
+
+  .mini.on {
+    background: #ecfdf3;
+    border-color: #a7f3d0;
+    color: #067647;
+  }
+
+.empty {
+  padding: 18px 12px;
+  text-align: center;
+  color: #667085;
+  font-weight: 700;
+}
+
+/* JSON card */
+.df-jsoncard .jsonhead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.jtitle {
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.jhint {
+  font-size: 12px;
+  color: #667085;
+}
+
+.jsonbox {
+  margin: 0;
+  background: #0b1220;
+  color: #e2e8f0;
+  border-radius: 14px;
+  padding: 14px;
+  overflow: auto;
+  font-size: 12px;
+}
+
+
+
+.search {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #d0d5dd;
+  border-radius: 5px;
+  padding: 6px 5px;
+  gap: 10px;
+}
+
+  .search:focus-within {
+    border-color: #93c5fd;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.14);
+  }
+
+.sicon {
+  opacity: 0.55;
+}
+
+.search input {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 14px;
+  background: #ffffff;
+  color: #111827;
+}

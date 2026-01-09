@@ -32,11 +32,13 @@ export class RulesComponent implements OnInit {
     ruleGroupId: number;
     ruleType: RuleType;
     description: string;
+    activeFlag: boolean;   // ✅ NEW
   } = {
       name: '',
       ruleGroupId: 0,
       ruleType: 'REALTIME',
-      description: ''
+      description: '',
+      activeFlag: true
     };
 
   constructor(private api: RulesengineService) { }
@@ -46,7 +48,6 @@ export class RulesComponent implements OnInit {
     this.refresh();
   }
 
-  // ✅ HTML uses this: {{ isEditMode ? ... }} :contentReference[oaicite:3]{index=3}
   get isEditMode(): boolean {
     return this.editRuleId != null;
   }
@@ -79,11 +80,13 @@ export class RulesComponent implements OnInit {
 
     return this.rules.filter(r => {
       const g = this.groupName(r.ruleGroupId).toLowerCase();
+      const status = (r.activeFlag ? 'active' : 'inactive');
       return (
         (r.name ?? '').toLowerCase().includes(q) ||
         (r.description ?? '').toLowerCase().includes(q) ||
         g.includes(q) ||
-        (r.ruleType ?? '').toLowerCase().includes(q)
+        (r.ruleType ?? '').toLowerCase().includes(q) ||
+        status.includes(q)
       );
     });
   }
@@ -98,7 +101,8 @@ export class RulesComponent implements OnInit {
       name: '',
       ruleGroupId: firstGroupId,
       ruleType: 'REALTIME',
-      description: ''
+      description: '',
+      activeFlag: true
     };
   }
 
@@ -110,7 +114,8 @@ export class RulesComponent implements OnInit {
       name: r.name ?? '',
       ruleGroupId: r.ruleGroupId,
       ruleType: r.ruleType,
-      description: r.description ?? ''
+      description: r.description ?? '',
+      activeFlag: r.activeFlag ?? true
     };
   }
 
@@ -126,16 +131,19 @@ export class RulesComponent implements OnInit {
 
     if (!name || !description || !ruleGroupId) return;
 
+    // ✅ include activeFlag so it matches cfgrule + UpsertRuleRequest
     const req = {
       name,
       ruleGroupId,
       ruleType: this.form.ruleType,
-      description
+      description,
+      activeFlag: this.form.activeFlag ?? true
+      // ruleJson is optional; service will send null if not provided
     };
 
     this.loading = true;
 
-    // ✅ Make call$ ALWAYS Observable<void> to avoid union-type subscribe error
+    // keep call$ always Observable<void>
     const call$ = this.editRuleId != null
       ? this.api.updateRule(this.editRuleId, req)
       : this.api.createRule(req).pipe(map(() => void 0));

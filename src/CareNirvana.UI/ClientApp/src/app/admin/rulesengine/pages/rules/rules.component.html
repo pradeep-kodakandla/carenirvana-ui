@@ -18,7 +18,6 @@
                          [options]="ruleTypeUiOptions"
                          [(ngModel)]="form.ruleType">
       </ui-smart-dropdown>
-      <!--<label class="fllabel"></label>-->
     </div>
 
     <div class="flfield full" [class.filled]="!!form.ruleGroupId">
@@ -27,10 +26,20 @@
                          [options]="groupUiOptions"
                          [(ngModel)]="form.ruleGroupId">
       </ui-smart-dropdown>
-      <!--<label class="fllabel">Rule Group</label>-->
 
       <div class="hint" *ngIf="groups.length === 0">
         Create a Rule Group first to assign rules.
+      </div>
+    </div>
+
+    <!-- ✅ NEW: ActiveFlag -->
+    <div class="flfield full filled">
+      <div class="activeRow">
+        <label class="activeLabel">Active</label>
+        <label class="switch">
+          <input type="checkbox" [(ngModel)]="form.activeFlag" />
+          <span class="slider"></span>
+        </label>
       </div>
     </div>
 
@@ -70,6 +79,7 @@
 
     <div class="rulebadges">
       <span class="pill">{{ r.ruleType }}</span>
+      <span class="pill" [class.off]="!r.activeFlag">{{ r.activeFlag ? 'Active' : 'Inactive' }}</span>
     </div>
 
     <div class="ruleactions">

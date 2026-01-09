@@ -1,1 +1,152 @@
-<p>datafields works!</p>
+<div class="df-page">
+  <div class="df-header">
+    <div class="df-titlewrap">
+      <div class="df-title">Rule Data Fields</div>
+      <div class="df-subtitle">Browse datasets by module. Click a dataset to view its datafields.</div>
+    </div>
+
+    <!--<div class="df-actions">
+      <button class="btn" type="button" (click)="loadAll()">Refresh</button>
+    </div>-->
+  </div>
+
+  <!-- Filters -->
+  <div class="card df-filters">
+    <div class="filters-grid">
+      <div class="search">
+        <span class="sicon">🔎</span>
+        <input [(ngModel)]="searchText" placeholder="Search (Module / Dataset / Field)." />
+        <button class="xbtn" type="button" *ngIf="searchText" (click)="clearSearch()">×</button>
+      </div>
+      <!--<div class="flfield" [class.filled]="(searchText?.length || 0) > 0">
+        <input class="flinput" placeholder=" " [(ngModel)]="searchText" />
+        <label class="fllabel">Search (Module / Dataset / Field)</label>
+        <button class="xbtn" type="button" *ngIf="searchText" (click)="clearSearch()">×</button>
+      </div>-->
+
+      <div class="flfield" [class.filled]="selectedModuleId !== -1">
+        <ui-smart-dropdown class="flcontrol"
+                           label="Module"
+                           [options]="moduleOptions"
+                           [(ngModel)]="selectedModuleId"
+                           (ngModelChange)="onModuleChange($event)">
+        </ui-smart-dropdown>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="card df-tablecard">
+    <div class="df-tablehead">
+      <div class="df-count">
+        Showing <b>{{ filteredRows.length }}</b> datasets
+        <span class="muted" *ngIf="selectedModuleId === -1">(ALL modules)</span>
+      </div>
+    </div>
+
+    <div class="df-tablewrap">
+      <table class="dftable">
+        <thead>
+          <tr>
+            <th style="width: 38%;">Module</th>
+            <th>Dataset</th>
+          </tr>
+        </thead>
+
+        <tbody *ngIf="filteredRows.length > 0">
+          <ng-container *ngFor="let r of filteredRows; trackBy: trackById">
+            <!-- Dataset row -->
+            <tr class="dsrow" (click)="toggleRow(r)">
+              <td>
+                <div class="modulecell">
+                  <span class="chev" [class.open]="isExpanded(r)">▸</span>
+                  <span class="mname">{{ r.moduleName }}</span>
+                </div>
+              </td>
+
+              <td>
+                <div class="datasetcell">
+                  <div class="dname">
+                    {{ r.datasetName }}
+                    <span class="badge">{{ r.fieldsCount }} fields</span>
+                  </div>
+                  <div class="dkey">{{ r.datasetKey }}</div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Expanded fields -->
+            <tr class="expandrow" *ngIf="isExpanded(r)">
+              <td colspan="2">
+                <div class="expandbox">
+                  <div class="expandtitle">Datafields</div>
+
+                  <div class="fieldsWrap" *ngIf="(r.dataFields?.length || 0) > 0">
+                    <table class="fieldstable">
+                      <thead>
+                        <tr>
+                          <th style="width: 28%;">Field</th>
+                          <th style="width: 38%;">Key / Path</th>
+                          <th style="width: 16%;">Type</th>
+                          <th>Meta</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr *ngFor="let f of r.dataFields; trackBy: trackByField">
+                          <td>
+                            <div class="fname">{{ f.fieldName || '(no name)' }}</div>
+                            <div class="fsmall">{{ f.valueType }}</div>
+                          </td>
+
+                          <td>
+                            <div class="fmono">{{ f.fieldKey }}</div>
+                            <div class="fsmall">{{ f.path }}</div>
+                          </td>
+
+                          <td>
+                            <span class="pill">{{ f.uiType || 'text' }}</span>
+                          </td>
+
+                          <td>
+                            <div class="metaLine" *ngIf="f.datasource">Datasource: <b>{{ f.datasource }}</b></div>
+                            <div class="metaLine">
+                              <span class="mini" [class.on]="f.required">Required</span>
+                              <span class="mini" [class.on]="f.isEnabled">Enabled</span>
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div class="empty" *ngIf="(r.dataFields?.length || 0) === 0">
+                    No datafields found in this dataset.
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </ng-container>
+        </tbody>
+
+        <tbody *ngIf="filteredRows.length === 0">
+          <tr>
+            <td colspan="2">
+              <div class="empty">
+                No datasets match your filter.
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Raw JSON (shows “all jsons data” for current filter) -->
+  <!--<div class="card df-jsoncard">
+    <div class="jsonhead">
+      <div class="jtitle">Raw JSON (current filter)</div>
+      <div class="jhint">This is the exact payload you can use for mapping/debug.</div>
+    </div>
+    <pre class="jsonbox">{{ jsonPreview }}</pre>
+  </div>-->
+</div>

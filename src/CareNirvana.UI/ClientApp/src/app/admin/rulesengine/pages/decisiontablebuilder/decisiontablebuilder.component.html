@@ -1,52 +1,179 @@
 <!-- decisiontablebuilder.component.html -->
-<form class="page" [formGroup]="form">
+<form class="page">
   <div class="topbar">
     <div class="left">
       <div class="title">Decision Table Builder</div>
       <div class="hint">Add columns + enter rows like a real decision table.</div>
-      <div class="status">{{ statusText }}</div>
+      <!--<div class="status">{{ statusText }}</div>-->
     </div>
 
     <div class="right">
-      <select class="select" [value]="selectedTableId ?? ''" (change)="loadTable(($any($event.target)).value)">
-        <option value="" disabled>Select template</option>
-        <option *ngFor="let t of tables; trackBy: trackByTable" [value]="t.id">{{ t.name }}</option>
-      </select>
+      <div class="tplrow">
+        <div class="flfield compact" [class.filled]="!!selectedTableId">
+          <ui-smart-dropdown class="flcontrol"
+                             label="Templates"
+                             [options]="tableUiOptions"
+                             [(ngModel)]="selectedTableId"
+                             [ngModelOptions]="{ standalone: true }"
+                             (ngModelChange)="onTemplateChange($event)">
+          </ui-smart-dropdown>
+        </div>
 
-      <button class="btn" type="button" (click)="createNewTable()">New</button>
-      <button class="btn primary" type="button" (click)="saveTable()">Save</button>
-      <button class="btn danger" type="button" (click)="deleteCurrent()">Delete</button>
+        <button class="btn" type="button" (click)="createNewTable()">New</button>
+        <button class="btn primary" type="button" (click)="saveTable()">Save</button>
+        <!-- + Rule button with hover flyout -->
+        <div class="rulebtnwrap"
+             (mouseenter)="openRuleFlyout()"
+             (mouseleave)="scheduleCloseRuleFlyout()">
+
+          <button class="btn primary btnrule"
+                  type="button"
+                  (click)="toggleRuleFlyout($event)"
+                  [disabled]="savingRule || !isTableSaved"
+                  [title]="!isTableSaved ? 'Save the Decision Table first' : (linkedRuleId ? 'Update linked rule' : 'Create rule from this Decision Table')">
+            {{ savingRule ? 'Saving...' : (linkedRuleId ? 'Update Rule' : '+ Rule') }}
+          </button>
+
+
+          <div class="ruleflyout"
+               *ngIf="showRuleFlyout"
+               (mouseenter)="cancelCloseRuleFlyout()"
+               (mouseleave)="scheduleCloseRuleFlyout()">
+
+            <div class="flytitle">Create Rule from this Decision Table</div>
+            <div class="flyhint">This will save a REALTIME rule with generated ruleJson.</div>
+
+            <div class="flygrid">
+              <div class="flfield">
+                <input class="flinput" placeholder=" " [(ngModel)]="ruleDraft.name" [ngModelOptions]="{standalone:true}" />
+                <label class="fllabel">Rule Name</label>
+              </div>
+
+              <div class="flfield filled">
+                <ui-smart-dropdown class="flcontrol"
+                                   label="Rule Type"
+                                   [options]="ruleTypeUiOptions"
+                                   [(ngModel)]="ruleDraft.ruleType"
+                                   [ngModelOptions]="{standalone:true}">
+                </ui-smart-dropdown>
+              </div>
+
+              <div class="flfield full filled">
+                <ui-smart-dropdown class="flcontrol"
+                                   label="Rule Group"
+                                   [options]="groupUiOptions"
+                                   [(ngModel)]="ruleDraft.ruleGroupId"
+                                   [ngModelOptions]="{standalone:true}">
+                </ui-smart-dropdown>
+
+                <div class="hint" *ngIf="groupUiOptions.length <= 0">
+                  Create a Rule Group first.
+                </div>
+              </div>
+
+              <div class="flfield full filled">
+                <div class="activeRow">
+                  <label class="activeLabel">Active</label>
+                  <label class="switch">
+                    <input type="checkbox" [(ngModel)]="ruleDraft.activeFlag" [ngModelOptions]="{standalone:true}" />
+                    <span class="slider"></span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="flfield full">
+                <textarea class="fltextarea" rows="3" placeholder=" "
+                          [(ngModel)]="ruleDraft.description"
+                          [ngModelOptions]="{standalone:true}"></textarea>
+                <label class="fllabel">Description</label>
+              </div>
+            </div>
+
+            <div class="flyactions">
+              <button class="btn" type="button" (click)="closeRuleFlyout()">Cancel</button>
+              <button class="btn primary"
+                      type="button"
+                      (click)="saveOrUpdateRuleFromDecisionTable()"
+                      [disabled]="savingRule || groupUiOptions.length<=0 || !ruleDraft.name?.trim()">
+                {{ savingRule ? 'Saving...' : (linkedRuleId ? 'Update Rule' : 'Save Rule') }}
+              </button>
+
+            </div>
+
+            <div class="flymsg ok" *ngIf="ruleSaveOk">{{ ruleSaveOk }}</div>
+            <div class="flymsg err" *ngIf="ruleSaveErr">{{ ruleSaveErr }}</div>
+          </div>
+        </div>
+
+        <button class="btn danger" type="button" (click)="deleteCurrent()">Delete</button>
+
+
+      </div>
+    </div>
+
+  </div>
+
+  <div class="ruleprompt" *ngIf="showUpdateRulePrompt">
+    <div class="ptext">
+      Decision Table changed. Update linked rule <b>{{ linkedRuleName || ('#' + linkedRuleId) }}</b>?
+    </div>
+    <div class="pactions">
+      <button class="btn primary" type="button" (click)="updateLinkedRuleNow()">Update Rule</button>
+      <button class="btn" type="button" (click)="dismissRulePrompt()">Later</button>
     </div>
   </div>
 
   <!-- Meta -->
+  <!-- Meta -->
   <div class="card meta">
-    <div class="field">
-      <label>Name</label>
-      <input class="input" type="text" formControlName="name" />
-    </div>
+    <div class="formgrid">
+      <div class="flfield">
+        <input class="flinput" placeholder=" " [(ngModel)]="meta.name" [ngModelOptions]="{ standalone: true }" />
+        <label class="fllabel">Name</label>
+      </div>
 
-    <div class="field">
-      <label>Hit Policy</label>
-      <select class="select" formControlName="hitPolicy">
-        <option *ngFor="let hp of hitPolicies" [value]="hp">{{ hp }}</option>
-      </select>
-    </div>
+      <div class="flfield filled">
+        <ui-smart-dropdown class="flcontrol"
+                           label="Hit Policy"
+                           [options]="hitPolicyUiOptions"
+                           [(ngModel)]="meta.hitPolicy"
+                           [ngModelOptions]="{ standalone: true }">
+        </ui-smart-dropdown>
+      </div>
 
-    <div class="field">
-      <label>Status</label>
-      <select class="select" formControlName="status">
-        <option value="DRAFT">DRAFT</option>
-        <option value="PUBLISHED">PUBLISHED</option>
-        <option value="ARCHIVED">ARCHIVED</option>
-      </select>
-    </div>
+      <div class="flfield filled">
+        <ui-smart-dropdown class="flcontrol"
+                           label="Status"
+                           [options]="statusUiOptions"
+                           [(ngModel)]="meta.status"
+                           [ngModelOptions]="{ standalone: true }">
+        </ui-smart-dropdown>
+      </div>
 
-    <div class="field small">
-      <label>Version</label>
-      <input class="input" type="number" formControlName="version" />
+      <div class="flfield small">
+        <input class="flinput" type="number" placeholder=" " [(ngModel)]="meta.version" [ngModelOptions]="{ standalone: true }" />
+        <label class="fllabel">Version</label>
+      </div>
+
+      <!-- ✅ Active in first row -->
+      <div class="flfield small filled">
+        <div class="activeBox">
+          <span class="activeText">Active</span>
+          <label class="switch">
+            <input type="checkbox" [(ngModel)]="meta.activeFlag" [ngModelOptions]="{ standalone: true }" />
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- ✅ Description only in next row -->
+      <div class="flfield full">
+        <textarea class="fltextarea" rows="2" placeholder=" " [(ngModel)]="meta.description" [ngModelOptions]="{ standalone: true }"></textarea>
+        <label class="fllabel">Description</label>
+      </div>
     </div>
   </div>
+
 
   <!-- Decision table grid -->
   <div class="card dtcard">
@@ -70,14 +197,12 @@
 
     <!-- TABLE view -->
     <div class="dtwrap" *ngIf="viewMode === 'table'">
-
       <!-- backdrop to close menus -->
       <div class="menubackdrop"
            *ngIf="showAddMenu || showRowMenu || showColMenu"
            (click)="closeMenus()"></div>
 
       <div class="dtgrid" [style.gridTemplateColumns]="gridTemplateColumns">
-
         <!-- Group header row -->
         <div class="cell grouphead rowhead"></div>
 
@@ -95,14 +220,32 @@
         <!-- Condition columns -->
         <ng-container *ngFor="let c of conditionCols; let i = index; trackBy: trackByCol">
           <div class="cell colhead">
-            <div class="coltitle">
+            <div class="coltitle" style="padding-bottom:10px;">
               <input class="colinput"
                      [value]="c.label"
                      (input)="setColLabel(c, $any($event.target).value)"
                      placeholder="Condition" />
               <button class="iconbtn" type="button" (click)="openColMenu('condition', i, $event)">▾</button>
             </div>
-            <div class="colsub">{{ c.key }}</div>
+            <!--<div class="colsub">{{ c.key }}</div>-->
+            <!-- ✅ DataField mapping for this condition column -->
+            <!-- ✅ DataField mapping for this condition column (autocomplete inside dropdown) -->
+            <div class="mapwrap">
+              <ui-smart-dropdown class="mapdd"
+                                 label="Data Field"
+                                 [options]="allFieldUiOptions"
+                                 [(ngModel)]="c.mappedFieldKey"
+                                 [ngModelOptions]="{ standalone: true }"
+                                 (ngModelChange)="onCondFieldSelect(c, $event)">
+              </ui-smart-dropdown>
+
+              <!--<div class="mapmeta" *ngIf="c.mappedFieldKey">
+                <span class="pillmini">Mapped</span>
+                <span class="maptext">{{ c.mappedFieldLabel }}</span>
+              </div>-->
+            </div>
+
+
           </div>
         </ng-container>
 
@@ -141,7 +284,6 @@
 
         <!-- Data rows -->
         <ng-container *ngFor="let r of rows; let ri = index; trackBy: trackByRow">
-
           <!-- row head -->
           <div class="cell rowhead">
             <div class="rowheadinner">
@@ -192,7 +334,6 @@
                      placeholder="Value..." />
             </div>
           </ng-container>
-
         </ng-container>
       </div>
 
@@ -218,7 +359,6 @@
         <button type="button" class="menuitem" (click)="clearRow()">⌫ Clear row</button>
         <button type="button" class="menuitem dangerItem" (click)="deleteRow()">🗑 Delete row</button>
       </div>
-
     </div>
   </div>
 </form>
