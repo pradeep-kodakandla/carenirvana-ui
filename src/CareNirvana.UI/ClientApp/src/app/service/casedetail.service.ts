@@ -248,15 +248,15 @@ export interface CaseDocumentsResponse {
 })
 export class CasedetailService {
 
-  //private baseUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/case';
-  //private baseNotesUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/casenotes';
-  //private baseDocsUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/casedocuments';
-  //private baseActivityUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/caseactivity';
+  private baseurl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/case';
+  private basenotesurl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/casenotes';
+  private basedocsurl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/casedocuments';
+  private baseactivityurl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/caseactivity';
 
-  private baseUrl = 'https://localhost:7201/api/case';
-  private baseNotesUrl = 'https://localhost:7201/api/casenotes';
-  private baseDocsUrl = 'https://localhost:7201/api/casedocuments';
-  private baseActivityUrl = 'https://localhost:7201/api/caseactivity';
+  //private baseUrl = 'https://localhost:7201/api/case';
+  //private baseNotesUrl = 'https://localhost:7201/api/casenotes';
+  //private baseDocsUrl = 'https://localhost:7201/api/casedocuments';
+  //private baseActivityUrl = 'https://localhost:7201/api/caseactivity';
 
   constructor(private http: HttpClient) { }
 
