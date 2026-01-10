@@ -14,6 +14,7 @@ import { DecisiontableComponent } from './pages/decisiontable/decisiontable.comp
 import { ReactiveFormsModule } from '@angular/forms';
 import { SharedUiModule } from 'src/app/casewizard/casewizard/sharedui.module';
 import { DecisionTableBuilderComponent } from './pages/decisiontablebuilder/decisiontablebuilder.component';
+import { RuleDesignerComponent } from './pages/rulesdesigner/rulesdesigner.component';
 
 @NgModule({
   declarations: [
@@ -24,7 +25,8 @@ import { DecisionTableBuilderComponent } from './pages/decisiontablebuilder/deci
     DatafieldsComponent,
     FunctionsComponent,
     DecisiontableComponent,
-    DecisionTableBuilderComponent
+    DecisionTableBuilderComponent,
+    RuleDesignerComponent
   ],
   imports: [
     CommonModule,

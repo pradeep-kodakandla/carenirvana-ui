@@ -9,6 +9,7 @@ import { DatafieldsComponent } from './pages/datafields/datafields.component';
 import { FunctionsComponent } from './pages/functions/functions.component';
 import { DecisiontableComponent } from './pages/decisiontable/decisiontable.component';
 import { DecisionTableBuilderComponent } from './pages/decisiontablebuilder/decisiontablebuilder.component';
+import { RuleDesignerComponent } from './pages/rulesdesigner/rulesdesigner.component';
 
 const routes: Routes = [
   {
@@ -22,7 +23,9 @@ const routes: Routes = [
       { path: 'datafields', component: DatafieldsComponent, data: { title: 'Data Fields' } },
       { path: 'functions', component: FunctionsComponent, data: { title: 'Functions' } },
       { path: 'decision', component: DecisiontableComponent, data: { title: 'Decision Table' } },
-      { path: 'decisiontable', component: DecisionTableBuilderComponent, data: { title: 'Decision Table' } }
+      { path: 'decisiontable', component: DecisionTableBuilderComponent, data: { title: 'Decision Table' } },
+      { path: 'designer/:id', component: RuleDesignerComponent }
+
     ]
   }
 ];

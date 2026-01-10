@@ -1,364 +1,427 @@
 <!-- decisiontablebuilder.component.html -->
-<form class="page">
-  <div class="topbar">
-    <div class="left">
-      <div class="title">Decision Table Builder</div>
-      <div class="hint">Add columns + enter rows like a real decision table.</div>
-      <!--<div class="status">{{ statusText }}</div>-->
+<div class="pagewrap">
+
+  <!-- LIST VIEW (default) -->
+  <!-- LIST VIEW (Rules-style) -->
+  <ng-container *ngIf="pageMode === 'list'; else builderTpl">
+    <div class="dtlist">
+      <div class="pagehead">
+        <div class="h2">Decision Tables</div>
+        <button class="btn primary" type="button" (click)="addNewFromList()">+ New Table</button>
+      </div>
+
+      <div class="rulestop">
+        <div class="search">
+          <span class="sicon">🔎</span>
+          <input [(ngModel)]="searchText" placeholder="Search decision tables." [ngModelOptions]="{standalone:true}" />
+        </div>
+      </div>
+
+      <div class="empty" *ngIf="filteredTables.length === 0">
+        <div class="emptytitle">No Decision Tables</div>
+        <div class="emptytext">Create a decision table to start building rules.</div>
+      </div>
+
+      <div class="rulegrid" *ngIf="filteredTables.length > 0">
+        <div class="card rulecard"
+             *ngFor="let t of filteredTables; trackBy: trackByTable"
+             (click)="editTable(t.id)">
+
+          <div class="ruletitle">{{ t.name || 'Untitled Decision Table' }}</div>
+
+          <div class="rulemeta">
+            ⚙️ {{ ($any(t).hitPolicy || '—') }} &nbsp; • &nbsp; 🏷️ {{ ($any(t).status || '—') }}
+          </div>
+
+          <!--<div class="ruledesc">{{ t.description || '—' }}</div>-->
+
+          <div class="rulebadges">
+            <span class="pill">v{{ $any(t).version ?? 1 }}</span>
+            <span class="pill" [class.off]="!($any(t).activeFlag ?? false)">
+              {{ (!$any(t).activeFlag ?? true) ? 'Active' : 'Inactive' }}
+            </span>
+            <span class="pill">{{ t.id }}</span>
+          </div>
+
+          <div class="ruleactions" (click)="$event.stopPropagation()">
+            <button class="btnoutline" type="button" (click)="editTable(t.id)">Edit</button>
+            <button class="btndanger" type="button" (click)="deleteTableFromList(t)">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+
+  <!-- BUILDER VIEW -->
+  <ng-template #builderTpl>
+    <div class="backrow">
+      <button class="btn btnsmall" type="button" (click)="goToList()">← Back to list</button>
     </div>
 
-    <div class="right">
-      <div class="tplrow">
-        <div class="flfield compact" [class.filled]="!!selectedTableId">
-          <ui-smart-dropdown class="flcontrol"
-                             label="Templates"
-                             [options]="tableUiOptions"
-                             [(ngModel)]="selectedTableId"
-                             [ngModelOptions]="{ standalone: true }"
-                             (ngModelChange)="onTemplateChange($event)">
-          </ui-smart-dropdown>
+    <form class="page">
+      <div class="topbar">
+        <div class="left">
+          <div class="title">Decision Table Builder</div>
+          <div class="hint">Add columns + enter rows like a real decision table.</div>
+          <!--<div class="status">{{ statusText }}</div>-->
         </div>
 
-        <button class="btn" type="button" (click)="createNewTable()">New</button>
-        <button class="btn primary" type="button" (click)="saveTable()">Save</button>
-        <!-- + Rule button with hover flyout -->
-        <div class="rulebtnwrap"
-             (mouseenter)="openRuleFlyout()"
-             (mouseleave)="scheduleCloseRuleFlyout()">
-
-          <button class="btn primary btnrule"
-                  type="button"
-                  (click)="toggleRuleFlyout($event)"
-                  [disabled]="savingRule || !isTableSaved"
-                  [title]="!isTableSaved ? 'Save the Decision Table first' : (linkedRuleId ? 'Update linked rule' : 'Create rule from this Decision Table')">
-            {{ savingRule ? 'Saving...' : (linkedRuleId ? 'Update Rule' : '+ Rule') }}
-          </button>
-
-
-          <div class="ruleflyout"
-               *ngIf="showRuleFlyout"
-               (mouseenter)="cancelCloseRuleFlyout()"
-               (mouseleave)="scheduleCloseRuleFlyout()">
-
-            <div class="flytitle">Create Rule from this Decision Table</div>
-            <div class="flyhint">This will save a REALTIME rule with generated ruleJson.</div>
-
-            <div class="flygrid">
-              <div class="flfield">
-                <input class="flinput" placeholder=" " [(ngModel)]="ruleDraft.name" [ngModelOptions]="{standalone:true}" />
-                <label class="fllabel">Rule Name</label>
-              </div>
-
-              <div class="flfield filled">
-                <ui-smart-dropdown class="flcontrol"
-                                   label="Rule Type"
-                                   [options]="ruleTypeUiOptions"
-                                   [(ngModel)]="ruleDraft.ruleType"
-                                   [ngModelOptions]="{standalone:true}">
-                </ui-smart-dropdown>
-              </div>
-
-              <div class="flfield full filled">
-                <ui-smart-dropdown class="flcontrol"
-                                   label="Rule Group"
-                                   [options]="groupUiOptions"
-                                   [(ngModel)]="ruleDraft.ruleGroupId"
-                                   [ngModelOptions]="{standalone:true}">
-                </ui-smart-dropdown>
-
-                <div class="hint" *ngIf="groupUiOptions.length <= 0">
-                  Create a Rule Group first.
-                </div>
-              </div>
-
-              <div class="flfield full filled">
-                <div class="activeRow">
-                  <label class="activeLabel">Active</label>
-                  <label class="switch">
-                    <input type="checkbox" [(ngModel)]="ruleDraft.activeFlag" [ngModelOptions]="{standalone:true}" />
-                    <span class="slider"></span>
-                  </label>
-                </div>
-              </div>
-
-              <div class="flfield full">
-                <textarea class="fltextarea" rows="3" placeholder=" "
-                          [(ngModel)]="ruleDraft.description"
-                          [ngModelOptions]="{standalone:true}"></textarea>
-                <label class="fllabel">Description</label>
-              </div>
+        <div class="right">
+          <div class="tplrow">
+            <div class="flfield compact" [class.filled]="!!selectedTableId">
+              <ui-smart-dropdown class="flcontrol"
+                                 label="Templates"
+                                 [options]="tableUiOptions"
+                                 [(ngModel)]="selectedTableId"
+                                 [ngModelOptions]="{ standalone: true }"
+                                 (ngModelChange)="onTemplateChange($event)">
+              </ui-smart-dropdown>
             </div>
 
-            <div class="flyactions">
-              <button class="btn" type="button" (click)="closeRuleFlyout()">Cancel</button>
-              <button class="btn primary"
+            <button class="btn" type="button" (click)="createNewTable()">New</button>
+            <button class="btn primary" type="button" (click)="saveTable()">Save</button>
+            <!-- + Rule button with hover flyout -->
+            <div class="rulebtnwrap"
+                 (mouseenter)="openRuleFlyout()"
+                 (mouseleave)="scheduleCloseRuleFlyout()">
+
+              <button class="btn primary btnrule"
                       type="button"
-                      (click)="saveOrUpdateRuleFromDecisionTable()"
-                      [disabled]="savingRule || groupUiOptions.length<=0 || !ruleDraft.name?.trim()">
-                {{ savingRule ? 'Saving...' : (linkedRuleId ? 'Update Rule' : 'Save Rule') }}
+                      (click)="toggleRuleFlyout($event)"
+                      [disabled]="savingRule || !isTableSaved"
+                      [title]="!isTableSaved ? 'Save the Decision Table first' : (linkedRuleId ? 'Update linked rule' : 'Create rule from this Decision Table')">
+                {{ savingRule ? 'Saving...' : (linkedRuleId ? 'Update Rule' : '+ Rule') }}
               </button>
 
-            </div>
 
-            <div class="flymsg ok" *ngIf="ruleSaveOk">{{ ruleSaveOk }}</div>
-            <div class="flymsg err" *ngIf="ruleSaveErr">{{ ruleSaveErr }}</div>
-          </div>
-        </div>
+              <div class="ruleflyout"
+                   *ngIf="showRuleFlyout"
+                   (mouseenter)="cancelCloseRuleFlyout()"
+                   (mouseleave)="scheduleCloseRuleFlyout()">
 
-        <button class="btn danger" type="button" (click)="deleteCurrent()">Delete</button>
+                <div class="flytitle">Create Rule from this Decision Table</div>
+                <div class="flyhint">This will save a REALTIME rule with generated ruleJson.</div>
 
+                <div class="flygrid">
+                  <div class="flfield">
+                    <input class="flinput" placeholder=" " [(ngModel)]="ruleDraft.name" [ngModelOptions]="{standalone:true}" />
+                    <label class="fllabel">Rule Name</label>
+                  </div>
 
-      </div>
-    </div>
+                  <div class="flfield filled">
+                    <ui-smart-dropdown class="flcontrol"
+                                       label="Rule Type"
+                                       [options]="ruleTypeUiOptions"
+                                       [(ngModel)]="ruleDraft.ruleType"
+                                       [ngModelOptions]="{standalone:true}">
+                    </ui-smart-dropdown>
+                  </div>
 
-  </div>
+                  <div class="flfield full filled">
+                    <ui-smart-dropdown class="flcontrol"
+                                       label="Rule Group"
+                                       [options]="groupUiOptions"
+                                       [(ngModel)]="ruleDraft.ruleGroupId"
+                                       [ngModelOptions]="{standalone:true}">
+                    </ui-smart-dropdown>
 
-  <div class="ruleprompt" *ngIf="showUpdateRulePrompt">
-    <div class="ptext">
-      Decision Table changed. Update linked rule <b>{{ linkedRuleName || ('#' + linkedRuleId) }}</b>?
-    </div>
-    <div class="pactions">
-      <button class="btn primary" type="button" (click)="updateLinkedRuleNow()">Update Rule</button>
-      <button class="btn" type="button" (click)="dismissRulePrompt()">Later</button>
-    </div>
-  </div>
+                    <div class="hint" *ngIf="groupUiOptions.length <= 0">
+                      Create a Rule Group first.
+                    </div>
+                  </div>
 
-  <!-- Meta -->
-  <!-- Meta -->
-  <div class="card meta">
-    <div class="formgrid">
-      <div class="flfield">
-        <input class="flinput" placeholder=" " [(ngModel)]="meta.name" [ngModelOptions]="{ standalone: true }" />
-        <label class="fllabel">Name</label>
-      </div>
+                  <div class="flfield full filled">
+                    <div class="activeRow">
+                      <label class="activeLabel">Active</label>
+                      <label class="switch">
+                        <input type="checkbox" [(ngModel)]="ruleDraft.activeFlag" [ngModelOptions]="{standalone:true}" />
+                        <span class="slider"></span>
+                      </label>
+                    </div>
+                  </div>
 
-      <div class="flfield filled">
-        <ui-smart-dropdown class="flcontrol"
-                           label="Hit Policy"
-                           [options]="hitPolicyUiOptions"
-                           [(ngModel)]="meta.hitPolicy"
-                           [ngModelOptions]="{ standalone: true }">
-        </ui-smart-dropdown>
-      </div>
+                  <div class="flfield full">
+                    <textarea class="fltextarea" rows="3" placeholder=" "
+                              [(ngModel)]="ruleDraft.description"
+                              [ngModelOptions]="{standalone:true}"></textarea>
+                    <label class="fllabel">Description</label>
+                  </div>
+                </div>
 
-      <div class="flfield filled">
-        <ui-smart-dropdown class="flcontrol"
-                           label="Status"
-                           [options]="statusUiOptions"
-                           [(ngModel)]="meta.status"
-                           [ngModelOptions]="{ standalone: true }">
-        </ui-smart-dropdown>
-      </div>
+                <div class="flyactions">
+                  <button class="btn" type="button" (click)="closeRuleFlyout()">Cancel</button>
+                  <button class="btn primary"
+                          type="button"
+                          (click)="saveOrUpdateRuleFromDecisionTable()"
+                          [disabled]="savingRule || groupUiOptions.length<=0 || !ruleDraft.name?.trim()">
+                    {{ savingRule ? 'Saving...' : (linkedRuleId ? 'Update Rule' : 'Save Rule') }}
+                  </button>
 
-      <div class="flfield small">
-        <input class="flinput" type="number" placeholder=" " [(ngModel)]="meta.version" [ngModelOptions]="{ standalone: true }" />
-        <label class="fllabel">Version</label>
-      </div>
+                </div>
 
-      <!-- ✅ Active in first row -->
-      <div class="flfield small filled">
-        <div class="activeBox">
-          <span class="activeText">Active</span>
-          <label class="switch">
-            <input type="checkbox" [(ngModel)]="meta.activeFlag" [ngModelOptions]="{ standalone: true }" />
-            <span class="slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <!-- ✅ Description only in next row -->
-      <div class="flfield full">
-        <textarea class="fltextarea" rows="2" placeholder=" " [(ngModel)]="meta.description" [ngModelOptions]="{ standalone: true }"></textarea>
-        <label class="fllabel">Description</label>
-      </div>
-    </div>
-  </div>
-
-
-  <!-- Decision table grid -->
-  <div class="card dtcard">
-    <div class="dttoolbar">
-      <div class="chips">
-        <span class="chip cond">Conditions {{ conditionCols.length }}</span>
-        <span class="chip calc">Calculations {{ calculationCols.length }}</span>
-        <span class="chip res">Results {{ resultCols.length }}</span>
-      </div>
-
-      <div class="tools">
-        <button class="btn" type="button" (click)="addRow()">+ Add Row</button>
-        <button class="btn" type="button" (click)="toggleJson()">{{ viewMode === 'table' ? '{}' : 'Table' }}</button>
-      </div>
-    </div>
-
-    <!-- JSON view -->
-    <div class="jsonwrap" *ngIf="viewMode === 'json'">
-      <pre class="json">{{ jsonPreview }}</pre>
-    </div>
-
-    <!-- TABLE view -->
-    <div class="dtwrap" *ngIf="viewMode === 'table'">
-      <!-- backdrop to close menus -->
-      <div class="menubackdrop"
-           *ngIf="showAddMenu || showRowMenu || showColMenu"
-           (click)="closeMenus()"></div>
-
-      <div class="dtgrid" [style.gridTemplateColumns]="gridTemplateColumns">
-        <!-- Group header row -->
-        <div class="cell grouphead rowhead"></div>
-
-        <div class="cell grouphead condhead" [style.gridColumn]="condGroupSpan">Condition</div>
-
-        <div class="cell grouphead calchead"
-             *ngIf="calculationCols.length > 0"
-             [style.gridColumn]="calcGroupSpan">Calculation</div>
-
-        <div class="cell grouphead reshead" [style.gridColumn]="resGroupSpan">Result</div>
-
-        <!-- Column header row -->
-        <div class="cell colhead rowhead"></div>
-
-        <!-- Condition columns -->
-        <ng-container *ngFor="let c of conditionCols; let i = index; trackBy: trackByCol">
-          <div class="cell colhead">
-            <div class="coltitle" style="padding-bottom:10px;">
-              <input class="colinput"
-                     [value]="c.label"
-                     (input)="setColLabel(c, $any($event.target).value)"
-                     placeholder="Condition" />
-              <button class="iconbtn" type="button" (click)="openColMenu('condition', i, $event)">▾</button>
-            </div>
-            <!--<div class="colsub">{{ c.key }}</div>-->
-            <!-- ✅ DataField mapping for this condition column -->
-            <!-- ✅ DataField mapping for this condition column (autocomplete inside dropdown) -->
-            <div class="mapwrap">
-              <ui-smart-dropdown class="mapdd"
-                                 label="Data Field"
-                                 [options]="allFieldUiOptions"
-                                 [(ngModel)]="c.mappedFieldKey"
-                                 [ngModelOptions]="{ standalone: true }"
-                                 (ngModelChange)="onCondFieldSelect(c, $event)">
-              </ui-smart-dropdown>
-
-              <!--<div class="mapmeta" *ngIf="c.mappedFieldKey">
-                <span class="pillmini">Mapped</span>
-                <span class="maptext">{{ c.mappedFieldLabel }}</span>
-              </div>-->
-            </div>
-
-
-          </div>
-        </ng-container>
-
-        <!-- Add column (+) spacer column header -->
-        <div class="cell colhead addcol">
-          <button class="addbtn" type="button" (click)="openAddMenu($event)">＋</button>
-        </div>
-
-        <!-- Calculation columns -->
-        <ng-container *ngFor="let c of calculationCols; let i = index; trackBy: trackByCol">
-          <div class="cell colhead">
-            <div class="coltitle">
-              <input class="colinput"
-                     [value]="c.label"
-                     (input)="setColLabel(c, $any($event.target).value)"
-                     placeholder="Calculation" />
-              <button class="iconbtn" type="button" (click)="openColMenu('calculation', i, $event)">▾</button>
-            </div>
-            <div class="colsub">{{ c.key }}</div>
-          </div>
-        </ng-container>
-
-        <!-- Result columns -->
-        <ng-container *ngFor="let c of resultCols; let i = index; trackBy: trackByCol">
-          <div class="cell colhead">
-            <div class="coltitle">
-              <input class="colinput"
-                     [value]="c.label"
-                     (input)="setColLabel(c, $any($event.target).value)"
-                     placeholder="Result" />
-              <button class="iconbtn" type="button" (click)="openColMenu('result', i, $event)">▾</button>
-            </div>
-            <div class="colsub">{{ c.key }}</div>
-          </div>
-        </ng-container>
-
-        <!-- Data rows -->
-        <ng-container *ngFor="let r of rows; let ri = index; trackBy: trackByRow">
-          <!-- row head -->
-          <div class="cell rowhead">
-            <div class="rowheadinner">
-              <div class="rindex">{{ ri + 1 }}</div>
-              <button class="playbtn" type="button" title="Run row">▶</button>
-
-              <label class="switch">
-                <input type="checkbox" [checked]="r.enabled" (change)="setRowEnabled(ri, $any($event.target).checked)" />
-                <span class="slider"></span>
-              </label>
-
-              <button class="iconbtn" type="button" (click)="openRowMenu(ri, $event)">⋮</button>
-            </div>
-          </div>
-
-          <!-- condition cells -->
-          <ng-container *ngFor="let c of conditionCols; trackBy: trackByCol">
-            <div class="cell">
-              <input class="cellinput"
-                     [value]="getCell(r, c.id)"
-                     (input)="setCell(r, c.id, $any($event.target).value)"
-                     placeholder="Empty..." />
-            </div>
-          </ng-container>
-
-          <!-- spacer cell under + column -->
-          <div class="cell spacer"></div>
-
-          <!-- calculation cells -->
-          <ng-container *ngFor="let c of calculationCols; trackBy: trackByCol">
-            <div class="cell">
-              <div class="fncell">
-                <span class="fnpill">Fn</span>
-                <input class="cellinput"
-                       [value]="getCell(r, c.id)"
-                       (input)="setCell(r, c.id, $any($event.target).value)"
-                       placeholder="Expression..." />
+                <div class="flymsg ok" *ngIf="ruleSaveOk">{{ ruleSaveOk }}</div>
+                <div class="flymsg err" *ngIf="ruleSaveErr">{{ ruleSaveErr }}</div>
               </div>
             </div>
-          </ng-container>
 
-          <!-- result cells -->
-          <ng-container *ngFor="let c of resultCols; trackBy: trackByCol">
-            <div class="cell">
-              <input class="cellinput"
-                     [value]="getCell(r, c.id)"
-                     (input)="setCell(r, c.id, $any($event.target).value)"
-                     placeholder="Value..." />
+            <button class="btn danger" type="button" (click)="deleteCurrent()">Delete</button>
+
+
+          </div>
+        </div>
+
+      </div>
+
+      <div class="ruleprompt" *ngIf="showUpdateRulePrompt">
+        <div class="ptext">
+          Decision Table changed. Update linked rule <b>{{ linkedRuleName || ('#' + linkedRuleId) }}</b>?
+        </div>
+        <div class="pactions">
+          <button class="btn primary" type="button" (click)="updateLinkedRuleNow()">Update Rule</button>
+          <button class="btn" type="button" (click)="dismissRulePrompt()">Later</button>
+        </div>
+      </div>
+
+      <!-- Meta -->
+      <!-- Meta -->
+      <div class="card meta">
+        <div class="formgrid">
+          <div class="flfield">
+            <input class="flinput" placeholder=" " [(ngModel)]="meta.name" [ngModelOptions]="{ standalone: true }" />
+            <label class="fllabel">Name</label>
+          </div>
+
+          <div class="flfield filled">
+            <ui-smart-dropdown class="flcontrol"
+                               label="Hit Policy"
+                               [options]="hitPolicyUiOptions"
+                               [(ngModel)]="meta.hitPolicy"
+                               [ngModelOptions]="{ standalone: true }">
+            </ui-smart-dropdown>
+          </div>
+
+          <div class="flfield filled">
+            <ui-smart-dropdown class="flcontrol"
+                               label="Status"
+                               [options]="statusUiOptions"
+                               [(ngModel)]="meta.status"
+                               [ngModelOptions]="{ standalone: true }">
+            </ui-smart-dropdown>
+          </div>
+
+          <div class="flfield small">
+            <input class="flinput" type="number" placeholder=" " [(ngModel)]="meta.version" [ngModelOptions]="{ standalone: true }" />
+            <label class="fllabel">Version</label>
+          </div>
+
+          <!-- ✅ Active in first row -->
+          <div class="flfield small filled">
+            <div class="activeBox">
+              <span class="activeText">Active</span>
+              <label class="switch">
+                <input type="checkbox" [(ngModel)]="meta.activeFlag" [ngModelOptions]="{ standalone: true }" />
+                <span class="slider"></span>
+              </label>
             </div>
-          </ng-container>
-        </ng-container>
+          </div>
+
+          <!-- ✅ Description only in next row -->
+          <div class="flfield full">
+            <textarea class="fltextarea" rows="2" placeholder=" " [(ngModel)]="meta.description" [ngModelOptions]="{ standalone: true }"></textarea>
+            <label class="fllabel">Description</label>
+          </div>
+        </div>
       </div>
 
-      <!-- Add column dropdown -->
-      <div class="menu" *ngIf="showAddMenu" [ngStyle]="addMenuStyle">
-        <button type="button" class="menuitem" (click)="addColumn('condition')">＋ Add Condition Column</button>
-        <button type="button" class="menuitem" (click)="addColumn('calculation')">＋ Add Calculation Column</button>
-        <button type="button" class="menuitem" (click)="addColumn('result')">＋ Add Result Column</button>
-      </div>
 
-      <!-- Column menu -->
-      <div class="menu" *ngIf="showColMenu" [ngStyle]="colMenuStyle">
-        <button type="button" class="menuitem dangerItem" (click)="removeColumn()">🗑 Remove Column</button>
-      </div>
+      <!-- Decision table grid -->
+      <div class="card dtcard">
+        <div class="dttoolbar">
+          <div class="chips">
+            <span class="chip cond">Conditions {{ conditionCols.length }}</span>
+            <span class="chip calc">Calculations {{ calculationCols.length }}</span>
+            <span class="chip res">Results {{ resultCols.length }}</span>
+          </div>
 
-      <!-- Row menu -->
-      <div class="menu" *ngIf="showRowMenu" [ngStyle]="rowMenuStyle">
-        <button type="button" class="menuitem" (click)="moveRow(-1)">↕ Move Up</button>
-        <button type="button" class="menuitem" (click)="moveRow(1)">↕ Move Down</button>
-        <button type="button" class="menuitem" (click)="insertRow(true)">＋ Insert Above</button>
-        <button type="button" class="menuitem" (click)="insertRow(false)">＋ Insert Below</button>
-        <button type="button" class="menuitem" (click)="copyRow()">⧉ Copy</button>
-        <button type="button" class="menuitem" (click)="clearRow()">⌫ Clear row</button>
-        <button type="button" class="menuitem dangerItem" (click)="deleteRow()">🗑 Delete row</button>
+          <div class="tools">
+            <button class="btn" type="button" (click)="addRow()">+ Add Row</button>
+            <button class="btn" type="button" (click)="toggleJson()">{{ viewMode === 'table' ? '{}' : 'Table' }}</button>
+          </div>
+        </div>
+
+        <!-- JSON view -->
+        <div class="jsonwrap" *ngIf="viewMode === 'json'">
+          <pre class="json">{{ jsonPreview }}</pre>
+        </div>
+
+        <!-- TABLE view -->
+        <div class="dtwrap" *ngIf="viewMode === 'table'">
+          <!-- backdrop to close menus -->
+          <div class="menubackdrop"
+               *ngIf="showAddMenu || showRowMenu || showColMenu"
+               (click)="closeMenus()"></div>
+
+          <div class="dtgrid" [style.gridTemplateColumns]="gridTemplateColumns">
+            <!-- Group header row -->
+            <div class="cell grouphead rowhead"></div>
+
+            <div class="cell grouphead condhead" [style.gridColumn]="condGroupSpan">Condition</div>
+
+            <div class="cell grouphead calchead"
+                 *ngIf="calculationCols.length > 0"
+                 [style.gridColumn]="calcGroupSpan">Calculation</div>
+
+            <div class="cell grouphead reshead" [style.gridColumn]="resGroupSpan">Result</div>
+
+            <!-- Column header row -->
+            <div class="cell colhead rowhead"></div>
+
+            <!-- Condition columns -->
+            <ng-container *ngFor="let c of conditionCols; let i = index; trackBy: trackByCol">
+              <div class="cell colhead">
+                <div class="coltitle" style="padding-bottom:10px;">
+                  <input class="colinput"
+                         [value]="c.label"
+                         (input)="setColLabel(c, $any($event.target).value)"
+                         placeholder="Condition" />
+                  <button class="iconbtn" type="button" (click)="openColMenu('condition', i, $event)">▾</button>
+                </div>
+                <!--<div class="colsub">{{ c.key }}</div>-->
+                <!-- ✅ DataField mapping for this condition column -->
+                <!-- ✅ DataField mapping for this condition column (autocomplete inside dropdown) -->
+                <div class="mapwrap">
+                  <ui-smart-dropdown class="mapdd"
+                                     label="Data Field"
+                                     [options]="allFieldUiOptions"
+                                     [(ngModel)]="c.mappedFieldKey"
+                                     [ngModelOptions]="{ standalone: true }"
+                                     (ngModelChange)="onCondFieldSelect(c, $event)">
+                  </ui-smart-dropdown>
+
+                  <!--<div class="mapmeta" *ngIf="c.mappedFieldKey">
+                    <span class="pillmini">Mapped</span>
+                    <span class="maptext">{{ c.mappedFieldLabel }}</span>
+                  </div>-->
+                </div>
+
+
+              </div>
+            </ng-container>
+
+            <!-- Add column (+) spacer column header -->
+            <div class="cell colhead addcol">
+              <button class="addbtn" type="button" (click)="openAddMenu($event)">＋</button>
+            </div>
+
+            <!-- Calculation columns -->
+            <ng-container *ngFor="let c of calculationCols; let i = index; trackBy: trackByCol">
+              <div class="cell colhead">
+                <div class="coltitle">
+                  <input class="colinput"
+                         [value]="c.label"
+                         (input)="setColLabel(c, $any($event.target).value)"
+                         placeholder="Calculation" />
+                  <button class="iconbtn" type="button" (click)="openColMenu('calculation', i, $event)">▾</button>
+                </div>
+                <div class="colsub">{{ c.key }}</div>
+              </div>
+            </ng-container>
+
+            <!-- Result columns -->
+            <ng-container *ngFor="let c of resultCols; let i = index; trackBy: trackByCol">
+              <div class="cell colhead">
+                <div class="coltitle">
+                  <input class="colinput"
+                         [value]="c.label"
+                         (input)="setColLabel(c, $any($event.target).value)"
+                         placeholder="Result" />
+                  <button class="iconbtn" type="button" (click)="openColMenu('result', i, $event)">▾</button>
+                </div>
+                <div class="colsub">{{ c.key }}</div>
+              </div>
+            </ng-container>
+
+            <!-- Data rows -->
+            <ng-container *ngFor="let r of rows; let ri = index; trackBy: trackByRow">
+              <!-- row head -->
+              <div class="cell rowhead">
+                <div class="rowheadinner">
+                  <div class="rindex">{{ ri + 1 }}</div>
+                  <button class="playbtn" type="button" title="Run row">▶</button>
+
+                  <label class="switch">
+                    <input type="checkbox" [checked]="r.enabled" (change)="setRowEnabled(ri, $any($event.target).checked)" />
+                    <span class="slider"></span>
+                  </label>
+
+                  <button class="iconbtn" type="button" (click)="openRowMenu(ri, $event)">⋮</button>
+                </div>
+              </div>
+
+              <!-- condition cells -->
+              <ng-container *ngFor="let c of conditionCols; trackBy: trackByCol">
+                <div class="cell">
+                  <input class="cellinput"
+                         [value]="getCell(r, c.id)"
+                         (input)="setCell(r, c.id, $any($event.target).value)"
+                         placeholder="Empty..." />
+                </div>
+              </ng-container>
+
+              <!-- spacer cell under + column -->
+              <div class="cell spacer"></div>
+
+              <!-- calculation cells -->
+              <ng-container *ngFor="let c of calculationCols; trackBy: trackByCol">
+                <div class="cell">
+                  <div class="fncell">
+                    <span class="fnpill">Fn</span>
+                    <input class="cellinput"
+                           [value]="getCell(r, c.id)"
+                           (input)="setCell(r, c.id, $any($event.target).value)"
+                           placeholder="Expression..." />
+                  </div>
+                </div>
+              </ng-container>
+
+              <!-- result cells -->
+              <ng-container *ngFor="let c of resultCols; trackBy: trackByCol">
+                <div class="cell">
+                  <input class="cellinput"
+                         [value]="getCell(r, c.id)"
+                         (input)="setCell(r, c.id, $any($event.target).value)"
+                         placeholder="Value..." />
+                </div>
+              </ng-container>
+            </ng-container>
+          </div>
+
+          <!-- Add column dropdown -->
+          <div class="menu" *ngIf="showAddMenu" [ngStyle]="addMenuStyle">
+            <button type="button" class="menuitem" (click)="addColumn('condition')">＋ Add Condition Column</button>
+            <button type="button" class="menuitem" (click)="addColumn('calculation')">＋ Add Calculation Column</button>
+            <button type="button" class="menuitem" (click)="addColumn('result')">＋ Add Result Column</button>
+          </div>
+
+          <!-- Column menu -->
+          <div class="menu" *ngIf="showColMenu" [ngStyle]="colMenuStyle">
+            <button type="button" class="menuitem dangerItem" (click)="removeColumn()">🗑 Remove Column</button>
+          </div>
+
+          <!-- Row menu -->
+          <div class="menu" *ngIf="showRowMenu" [ngStyle]="rowMenuStyle">
+            <button type="button" class="menuitem" (click)="moveRow(-1)">↕ Move Up</button>
+            <button type="button" class="menuitem" (click)="moveRow(1)">↕ Move Down</button>
+            <button type="button" class="menuitem" (click)="insertRow(true)">＋ Insert Above</button>
+            <button type="button" class="menuitem" (click)="insertRow(false)">＋ Insert Below</button>
+            <button type="button" class="menuitem" (click)="copyRow()">⧉ Copy</button>
+            <button type="button" class="menuitem" (click)="clearRow()">⌫ Clear row</button>
+            <button type="button" class="menuitem dangerItem" (click)="deleteRow()">🗑 Delete row</button>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-</form>
+    </form>
+  </ng-template>
+
+</div>

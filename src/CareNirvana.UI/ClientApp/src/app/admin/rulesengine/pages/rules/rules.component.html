@@ -32,7 +32,7 @@
       </div>
     </div>
 
-    <!-- ✅ NEW: ActiveFlag -->
+    <!-- ✅ ActiveFlag -->
     <div class="flfield full filled">
       <div class="activeRow">
         <label class="activeLabel">Active</label>
@@ -51,6 +51,10 @@
 
   <div class="formactions">
     <button class="btn" (click)="onCancel()">Cancel</button>
+
+    <!-- ✅ NEW: open designer for create/edit form -->
+    <button class="btn" (click)="openDesignerForForm()">Designer</button>
+
     <button class="btn primary" (click)="onSave()" [disabled]="groups.length === 0">
       {{ isEditMode ? 'Update' : 'Save' }}
     </button>
@@ -80,11 +84,59 @@
     <div class="rulebadges">
       <span class="pill">{{ r.ruleType }}</span>
       <span class="pill" [class.off]="!r.activeFlag">{{ r.activeFlag ? 'Active' : 'Inactive' }}</span>
+      <span class="pill" *ngIf="hasRuleJson(r)">Designer</span>
+      <span class="pill" *ngIf="!hasRuleJson(r)">No Designer</span>
     </div>
 
     <div class="ruleactions">
-      <button class="btnoutline" (click)="onEdit(r)">Edit</button>
+      <button class="btnoutline" (click)="openDesigner(r)">Designer</button>
+      <button class="btnoutline" (click)="openDesigner(r)">Edit</button>
       <button class="btndanger" (click)="onDelete(r)">Delete</button>
     </div>
+
+  </div>
+</div>
+
+<!-- ========================= -->
+<!-- ✅ Rule Designer Modal -->
+<!-- ========================= -->
+<div class="modalbackdrop" *ngIf="designerOpen" (click)="closeDesigner()"></div>
+
+<div class="modal" *ngIf="designerOpen" (click)="$event.stopPropagation()">
+  <div class="modalhead">
+    <div class="modaltitle">Rule Designer</div>
+    <button class="iconbtn" (click)="closeDesigner()">✕</button>
+  </div>
+
+  <div class="modalmeta">
+    <div class="metaitem"><b>Name:</b> {{ designerHeaderName }}</div>
+    <div class="metaitem"><b>Group:</b> {{ designerHeaderGroup }}</div>
+    <div class="metaitem"><b>Type:</b> {{ designerHeaderType }}</div>
+  </div>
+
+  <div class="modalbody">
+    <div class="hint">
+      Paste/edit the rule JSON. If empty, the rule will be saved with no <code>ruleJson</code>.
+      The <code>input</code> is automatically extracted from JSON (if present) and sent along on save.
+    </div>
+
+    <textarea class="jsonarea"
+              rows="16"
+              [(ngModel)]="designerText"
+              (ngModelChange)="designerDirty = true"
+              placeholder="{ }"></textarea>
+
+    <div class="err" *ngIf="designerError">{{ designerError }}</div>
+  </div>
+
+  <div class="modalactions">
+    <button class="btn" (click)="validateDesigner()">Validate</button>
+    <button class="btn" (click)="formatDesigner()" [disabled]="!(designerText || '').trim()">Format</button>
+
+    <button class="btn primary"
+            (click)="saveDesigner()"
+            [disabled]="designerSaving">
+      {{ designerSaving ? 'Saving...' : 'Save' }}
+    </button>
   </div>
 </div>

@@ -560,12 +560,12 @@
   }
 
 
-/* if any global style is forcing fixed width/height on buttons, override */
-.tplrow .btn {
-  min-width: auto !important;
-  width: auto !important;
-  height: auto !important;
-}
+  /* if any global style is forcing fixed width/height on buttons, override */
+  .tplrow .btn {
+    min-width: auto !important;
+    width: auto !important;
+    height: auto !important;
+  }
 
 @media (max-width: 1100px) {
   .tplrow {
@@ -727,3 +727,350 @@
     align-items: center;
     white-space: nowrap;
   }
+
+
+/* ---------------------------
+   List page
+--------------------------- */
+.pagewrap {
+  display: block;
+}
+
+.btnsmall {
+  padding: 8px 12px;
+  font-size: 12px;
+  border-radius: 10px;
+}
+
+.backrow {
+  margin: 0 0 10px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.cardsgrid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.dtitem {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  padding: 14px;
+  cursor: pointer;
+  transition: box-shadow 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+
+  .dtitem:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.10);
+    transform: translateY(-1px);
+  }
+
+.dtitemhead {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.dtitemtitle {
+  font-size: 15px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.dtitemsub {
+  margin-top: 3px;
+  font-size: 12px;
+  color: #667085;
+  font-weight: 700;
+}
+
+.dtitemright {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.dtmeta {
+  margin-top: 10px;
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: #344054;
+  font-weight: 700;
+}
+
+.badges.counts {
+  margin-top: 10px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #344054;
+  white-space: nowrap;
+}
+
+  .badge.gray {
+    background: #f8fafc;
+    border-color: #e5e7eb;
+    color: #475467;
+  }
+
+  .badge.draft {
+    background: #fefce8;
+    border-color: #fde68a;
+    color: #92400e;
+  }
+
+  .badge.active {
+    background: #ecfdf3;
+    border-color: #a7f3d0;
+    color: #067647;
+  }
+
+  .badge.inactive {
+    background: #fff1f2;
+    border-color: #fecdd3;
+    color: #b42318;
+  }
+
+.actions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.emptystate {
+  margin-top: 14px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+  padding: 18px;
+  background: #fcfcfd;
+  text-align: center;
+}
+
+.emptitle {
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.emphint {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #667085;
+  font-weight: 700;
+}
+
+
+
+/* =========================================================
+   Decision Tables LIST VIEW (match Rules component styling)
+   Scoped so it won't affect the builder mode.
+   ========================================================= */
+
+.dtlist .pagehead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.dtlist .h2 {
+  font-size: 22px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+/* Search */
+.dtlist .rulestop {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.dtlist .search {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #d0d5dd;
+  border-radius: 12px;
+  padding: 10px 12px;
+  gap: 10px;
+}
+
+  .dtlist .search:focus-within {
+    border-color: #93c5fd;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.14);
+  }
+
+.dtlist .sicon {
+  opacity: 0.55;
+}
+
+.dtlist .search input {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 14px;
+  background: #ffffff;
+  color: #111827;
+}
+
+/* Empty state */
+.dtlist .empty {
+  padding: 20px;
+  border: 1px dashed #d0d5dd;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.dtlist .emptytitle {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #0f172a;
+}
+
+.dtlist .emptytext {
+  color: #667085;
+  font-size: 13px;
+}
+
+/* Cards grid */
+.dtlist .rulegrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.dtlist .rulecard {
+  padding: 16px;
+  position: relative;
+  cursor: pointer;
+}
+
+  .dtlist .rulecard:before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 12px;
+    bottom: 12px;
+    width: 4px;
+    border-radius: 10px;
+    background: #dbeafe;
+  }
+
+.dtlist .ruletitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+  padding-left: 10px;
+}
+
+.dtlist .rulemeta {
+  margin-top: 6px;
+  color: #667085;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  padding-left: 10px;
+}
+
+.dtlist .ruledesc {
+  margin-top: 12px;
+  color: #344054;
+  font-size: 14px;
+  min-height: 36px;
+  padding-left: 10px;
+}
+
+.dtlist .rulebadges {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-left: 10px;
+}
+
+.dtlist .pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #344054;
+}
+
+  /* same behavior as Rules: allow a visual "off" state */
+  .dtlist .pill.off {
+    opacity: 0.65;
+  }
+
+/* Actions (Edit/Delete) */
+.dtlist .ruleactions {
+  margin-top: 14px;
+  display: flex;
+  gap: 10px;
+  padding-left: 10px;
+}
+
+.dtlist .btnoutline,
+.dtlist .btndanger {
+  flex: 1;
+  background: #ffffff;
+  border: 1px solid #d0d5dd;
+  border-radius: 12px;
+  padding: 9px 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+  .dtlist .btnoutline:hover {
+    background: #f9fafb;
+    border-color: #cbd5e1;
+  }
+
+.dtlist .btndanger {
+  border-color: #fda4af;
+  color: #b42318;
+}
+
+  .dtlist .btndanger:hover {
+    background: #fff1f2;
+    border-color: #fb7185;
+  }
+
+/* Responsive like Rules */
+@media (max-width: 1200px) {
+  .dtlist .rulegrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .dtlist .rulegrid {
+    grid-template-columns: 1fr;
+  }
+}

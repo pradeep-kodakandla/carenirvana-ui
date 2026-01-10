@@ -70,6 +70,10 @@ export class DecisionTableBuilderComponent implements OnInit {
   tables: DecisionTableListItem[] = [];
   selectedTableId: string | null = null;
 
+  // list view
+  pageMode: 'list' | 'builder' = 'list';
+  searchText = '';
+
   tableUiOptions: UiSmartOption<string>[] = [];
   hitPolicyUiOptions: UiSmartOption<HitPolicy>[] = [
     { value: 'FIRST', label: 'FIRST' },
@@ -136,7 +140,7 @@ export class DecisionTableBuilderComponent implements OnInit {
   constructor(private svc: RulesengineService) { }
 
   ngOnInit(): void {
-    this.refreshTables(true);
+    this.refreshTables(false);
     this.loadAllRuleDataFieldsForMapping();
     this.ruleTypeUiOptions = this.svc.getRuleTypeOptions().map(x => ({ value: x.value, label: x.label }));
     this.loadRuleGroups();
@@ -218,7 +222,77 @@ export class DecisionTableBuilderComponent implements OnInit {
     });
   }
 
+
+  // ---------------------------
+  // List view helpers
+  // ---------------------------
+  get filteredTables(): DecisionTableListItem[] {
+    const q = (this.searchText || '').trim().toLowerCase();
+    if (!q) return this.tables || [];
+    return (this.tables || []).filter(t =>
+      (t.name || '').toLowerCase().includes(q) ||
+      (t.id || '').toLowerCase().includes(q)
+    );
+  }
+
+  trackByTable = (_: number, t: DecisionTableListItem) => t.id;
+
+  addNewFromList(): void {
+    this.pageMode = 'builder';
+    this.createNewTable();
+  }
+
+  editTable(id: string): void {
+    if (!id) return;
+    this.pageMode = 'builder';
+    this.loadTable(id);
+  }
+
+  goToList(): void {
+    this.pageMode = 'list';
+    this.closeMenus();
+    this.closeRuleFlyout();
+  }
+
+  deleteTableFromList(t: DecisionTableListItem): void {
+    const id = t?.id;
+    if (!id) return;
+
+    const name = (t as any)?.name || id;
+    const ok = window.confirm(`Delete decision table "${name}"?`);
+    if (!ok) return;
+
+    this.svc.deleteTable(id).subscribe({
+      next: () => {
+        this.statusText = 'Deleted.';
+        this.refreshTables(false);
+        this.pageMode = 'list';
+      },
+      error: (err: any) => {
+        console.error(err);
+        this.statusText = 'Delete failed.';
+      }
+    });
+  }
+
+  badgeStatusClass(status: any): string {
+    const s = (status ?? '').toString().toLowerCase();
+    if (s === 'draft') return 'draft';
+    if (s === 'active' || s === 'deployed' || s === 'published') return 'active';
+    if (s === 'inactive' || s === 'disabled') return 'inactive';
+    return 'gray';
+  }
+
+  formatDate(val: any): string {
+    if (!val) return '';
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return String(val);
+    return d.toLocaleString();
+  }
+
+
   createNewTable(): void {
+    this.pageMode = 'builder';
     const id = this.svc.newId('dt');
 
     const payload: DecisionTableDefinition = {
@@ -252,6 +326,7 @@ export class DecisionTableBuilderComponent implements OnInit {
   }
 
   loadTable(id: string): void {
+    this.pageMode = 'builder';
     if (!id) return;
 
     this.svc.getTableJson(id).subscribe({
@@ -320,14 +395,14 @@ export class DecisionTableBuilderComponent implements OnInit {
     const id = this.meta.id || this.selectedTableId;
     if (!id) return;
 
+    const ok = window.confirm('Delete this decision table?');
+    if (!ok) return;
+
     this.svc.deleteTable(id).subscribe({
       next: () => {
         this.statusText = 'Deleted.';
         this.refreshTables(false);
-
-        const next = this.tables.filter(t => t.id !== id)[0];
-        if (next) this.loadTable(next.id);
-        else this.createNewTable();
+        this.goToList();
       },
       error: (err: any) => {
         console.error(err);
@@ -522,7 +597,7 @@ export class DecisionTableBuilderComponent implements OnInit {
   }
 
   // ------------ TrackBy ------------
-  trackByTable(_: number, t: any): any { return t?.id; }
+  //trackByTable(_: number, t: any): any { return t?.id; }
   trackByRow(_: number, r: DtRow): any { return r.id; }
   trackByCol(_: number, c: DtColumn): any { return c.id; }
 
@@ -844,7 +919,7 @@ export class DecisionTableBuilderComponent implements OnInit {
     };
   }
 
- 
+
   // call after loadTable + after refreshTables + after saveTable
   private checkLinkedRuleForCurrentTable(): void {
     const dtId = this.meta?.id || this.selectedTableId;
