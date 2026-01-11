@@ -49,8 +49,8 @@ main {
 
 .app-main {
   flex: 1 1 auto;
-  overflow-y: auto; /* scroll only here */
-  /*padding: 10px;*/
+  min-height: 0; /* ✅ required for nested scrolling */
+  overflow-y: auto;
 }
 
 .app-footer {

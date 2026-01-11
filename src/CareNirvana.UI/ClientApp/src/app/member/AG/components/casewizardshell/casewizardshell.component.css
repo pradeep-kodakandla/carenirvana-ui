@@ -23,8 +23,9 @@
 
 
 .cw-shell {
-  height: 100vh; /* full viewport */
+  height: 91vh; /* full viewport */
   display: flex;
+  min-height: 0;
   flex-direction: column;
   overflow: hidden; /* prevent page scrolling */
 }

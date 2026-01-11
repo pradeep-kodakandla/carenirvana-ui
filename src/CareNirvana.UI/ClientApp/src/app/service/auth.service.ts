@@ -29,13 +29,58 @@ export interface MedicationLookupRow {
 export interface StaffLookupRow {
   userdetailid: number;
   username?: string | null;
+
+  // NEW (matches updated API output)
+  firstname?: string | null;
+  lastname?: string | null;
+  role?: string | null;
+  email?: string | null;
+  fullName?: string | null;
 }
 
 export interface ProviderLookupRow {
   providerId: number;
+
+  // NEW (matches updated API output)
   firstName?: string | null;
+  middleName?: string | null;
   lastName?: string | null;
+
+  providerName?: string | null;        // full name / org name
+  npi?: string | null;
+  taxid?: string | null;
+
+  addressline1?: string | null;
+  addressline2?: string | null;
+  city?: string | null;
+  state?: string | null;               // stateid::text
+  zipcode?: string | null;
+
+  phone?: string | null;
+  fax?: string | null;
+  email?: string | null;
+  organizationname?: string | null;
 }
+
+export interface ClaimLookupRow {
+  memberclaimheaderid: number;         // if you return bigint and it can exceed JS safe int, change this to string
+  claimnumber?: string | null;
+
+  providerid?: number | null;
+  providername?: string | null;
+
+  dos_from?: string | null;            // API will typically return ISO string
+  dos_to?: string | null;
+
+  visittypeid?: number | null;
+  reasonforvisit?: string | null;
+
+  billed?: number | null;
+  allowedamount?: number | null;
+  copayamount?: number | null;
+  paid?: number | null;
+}
+
 
 @Injectable({
   providedIn: 'root'
@@ -192,5 +237,11 @@ export class AuthService {
     const params = new HttpParams().set('q', q).set('limit', String(limit));
     return this.http.get<ProviderLookupRow[]>(`${this.apiUrlCodeSets}/search/providers`, { params });
   }
+
+  searchClaims(q: string, limit = 25): Observable<ClaimLookupRow[]> {
+    const params = new HttpParams().set('q', q).set('limit', String(limit));
+    return this.http.get<ClaimLookupRow[]>(`${this.apiUrlCodeSets}/search/claims`, { params });
+  }
+
 
 }

@@ -57,6 +57,8 @@ export type LookupEntity =
   | 'member'
   | 'provider'
   | 'staff'
+  | 'authorization'
+  | 'claim'
   | (string & {});   // allow future entities without changing typings
 
 export interface LookupFillMap {
@@ -120,7 +122,9 @@ type PredefinedSubsectionKey =
   | 'icd'
   | 'procedure'
   | 'medication'
-  | 'staff';
+  | 'staff'
+  | 'authorization'
+  | 'claim';
 
 interface PredefinedSubsectionTemplate {
   key: PredefinedSubsectionKey;
@@ -584,24 +588,46 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
             order: 0,
             isEnabled: true,
             info: 'Search by NPI/Name/Phone',
-            "lookup": {
-              "enabled": true,
-              "entity": "provider",
-              "datasource": "providers",
-              "minChars": 2,
-              "debounceMs": 250,
-              "limit": 25,
-              "placeholder": "Search Provider (Last/First Name)",
-              "valueField": "providerid",
-              "displayTemplate": "{{lastName}}, {{firstName}} (ID: {{providerId}})",
-              "fill": [
-                { "targetFieldId": "providerFirstName", "sourcePath": "firstName" },
-                { "targetFieldId": "providerLastName", "sourcePath": "lastName" }
+            lookup: {
+              enabled: true,
+              entity: 'provider',
+              datasource: 'providers',
+              minChars: 2,
+              debounceMs: 250,
+              limit: 25,
+              placeholder: 'Search Provider (Last/First Name / Org / NPI)',
+              valueField: 'providerId',
+              displayTemplate: '{{fullName}} (ID: {{providerId}})',
+              fill: [
+                { targetFieldId: 'providerFirstName', sourcePath: 'firstName' },
+                { targetFieldId: 'providerLastName', sourcePath: 'lastName' },
+                { targetFieldId: 'providerName', sourcePath: 'fullName' },
+                { targetFieldId: 'providerNPI', sourcePath: 'npi' },
+                { targetFieldId: 'providerTaxId', sourcePath: 'taxId' },
+                { targetFieldId: 'providerAddressLine1', sourcePath: 'addressLine1' },
+                { targetFieldId: 'providerAddressLine2', sourcePath: 'addressLine2' },
+                { targetFieldId: 'providerCity', sourcePath: 'city' },
+                { targetFieldId: 'providerState', sourcePath: 'state' },
+                { targetFieldId: 'providerZipCode', sourcePath: 'zipCode' }
+                //// optional if you add fields
+                //{ targetFieldId: 'providerPhone', sourcePath: 'phone' },
+                //{ targetFieldId: 'providerFax', sourcePath: 'fax' },
+                //{ targetFieldId: 'providerEmail', sourcePath: 'email' },
+                //{ targetFieldId: 'providerOrganization', sourcePath: 'organizationName' },
               ]
             }
+
           },
           { id: 'providerFirstName', label: 'First Name', displayName: 'First Name', type: 'text', order: 1, isEnabled: true },
-          { id: 'providerLastName', label: 'Last Name', displayName: 'Last Name', type: 'text', order: 2, isEnabled: true }
+          { id: 'providerLastName', label: 'Last Name', displayName: 'Last Name', type: 'text', order: 2, isEnabled: true },
+          { id: 'providerName', label: 'Provider Name', displayName: 'Provider Name', type: 'text', order: 3, isEnabled: true },
+          { id: 'providerNPI', label: 'NPI', displayName: 'NPI', type: 'text', order: 4, isEnabled: true },
+          { id: 'providerTaxId', label: 'Tax ID', displayName: 'Tax ID', type: 'text', order: 5, isEnabled: true },
+          { id: 'providerAddressLine1', label: 'Address Line1', displayName: 'Address Line1', type: 'text', order: 6, isEnabled: true },
+          { id: 'providerAddressLine2', label: 'Address Line2', displayName: 'Address Line2', type: 'text', order: 7, isEnabled: true },
+          { id: 'providerCity', label: 'City', displayName: 'City', type: 'text', order: 8, isEnabled: true },
+          { id: 'providerState', label: 'State', displayName: 'State', type: 'text', order: 9, isEnabled: true },
+          { id: 'providerZipCode', label: 'ZipCode', displayName: 'ZipCode', type: 'text', order: 10, isEnabled: true }
         ]
       }
     },
@@ -637,18 +663,19 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
               fill: [
                 { targetFieldId: 'memberFirstName', sourcePath: 'firstname' },
                 { targetFieldId: 'memberLastName', sourcePath: 'lastname' },
-                { targetFieldId: 'memberPhone', sourcePath: 'phone' }
+                { targetFieldId: 'memberPhone', sourcePath: 'phone' },
+                { targetFieldId: 'memberId', sourcePath: 'memberid' }
               ]
             }
           },
           { id: 'memberFirstName', label: 'First Name', displayName: 'First Name', type: 'text', order: 1, isEnabled: true },
           { id: 'memberLastName', label: 'Last Name', displayName: 'Last Name', type: 'text', order: 2, isEnabled: true },
-          { id: 'memberPhone', label: 'Phone', displayName: 'Phone', type: 'text', order: 3, isEnabled: true }
+          { id: 'memberPhone', label: 'Phone', displayName: 'Phone', type: 'text', order: 3, isEnabled: true },
+          { id: 'memberId', label: 'Member ID', displayName: 'Member ID', type: 'text', order: 4, isEnabled: true }
         ]
       }
     },
 
-    // ✅ ICD: remove icdSearch and use icdCode as the lookup field
     {
       key: 'icd',
       title: 'ICD',
@@ -688,7 +715,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
       }
     },
 
-    // ✅ Procedure: same pattern as ICD, calls your cfgmedicalcodesmaster endpoint
     {
       key: 'procedure',
       title: 'Procedure',
@@ -710,7 +736,7 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
             info: 'Search procedure code/description',
             lookup: {
               enabled: true,
-              entity: 'medicalcodes',   // aligns to /search/medicalcodes
+              entity: 'medicalcodes',
               minChars: 2,
               debounceMs: 250,
               limit: 25,
@@ -728,7 +754,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
       }
     },
 
-    // ✅ Medication: same UI as ICD; backend must support /search/medications
     {
       key: 'medication',
       title: 'Medication',
@@ -768,7 +793,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
       }
     },
 
-    // ✅ Staff: Username (search) + First/Last/Username/Phone/Email
     {
       key: 'staff',
       title: 'Staff',
@@ -798,15 +822,150 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
               valueField: 'userdetailid',
               displayTemplate: '{{userdetailid}} - {{username}}',
               fill: [
-                { "targetFieldId": "staffUserName", "sourcePath": "username" }
+                { targetFieldId: 'staffUserName', sourcePath: 'username' },
+                { targetFieldId: 'staffFirstName', sourcePath: 'firstName' },
+                { targetFieldId: 'staffLastName', sourcePath: 'lastName' },
+                { targetFieldId: 'staffEmail', sourcePath: 'email' },
+                { targetFieldId: 'staffRole', sourcePath: 'role' }
               ]
             }
           },
-          { id: 'staffUserName', label: 'Username', displayName: 'Username', type: 'text', order: 1, isEnabled: true }
+          { id: 'staffUserName', label: 'Username', displayName: 'Username', type: 'text', order: 1, isEnabled: true },
+          { id: 'staffFirstName', label: 'Staff First Name', displayName: 'Staff First Name', type: 'text', order: 2, isEnabled: true },
+          { id: 'staffLastName', label: 'Staff Last Name', displayName: 'Staff Last Name', type: 'text', order: 3, isEnabled: true },
+          { id: 'staffRole', label: 'Staff Role', displayName: 'Staff Role', type: 'text', order: 4, isEnabled: true }
+        ]
+      }
+    },
+
+    {
+      key: 'authorization',
+      title: 'Authorization',
+      subtitle: 'Search + Auth#/Type/Decisions',
+      icon: 'assignment_turned_in',
+      subsection: {
+        sectionName: 'Authorization',
+        subsectionKey: 'authorization',
+        order: 0,
+        repeat: { enabled: true, min: 1, max: 10, defaultCount: 1, showControls: true, instanceLabel: 'Authorization' },
+        fields: [
+          {
+            id: 'authorizationSearch',
+            label: 'Search Authorizations',
+            displayName: 'Search Authorizations',
+            type: 'search',
+            order: 0,
+            isEnabled: true,
+            info: 'Search authorization by authnumber/authtype',
+            lookup: {
+              enabled: true,
+              entity: 'authorization',
+              minChars: 2,
+              debounceMs: 250,
+              limit: 25,
+              placeholder: 'Search Authorization (Auth Number / Auth Type)',
+              valueField: 'authnumber',
+              displayTemplate: '{{authnumber}} - {{authtype}}',
+              fill: [
+                { targetFieldId: 'authNumber', sourcePath: 'authnumber' },
+                { targetFieldId: 'authType', sourcePath: 'authtype' },
+                { targetFieldId: 'authEnrollment', sourcePath: 'enrollmenthierarchy' },
+                { targetFieldId: 'overallStatus', sourcePath: 'overallstatus' },
+                { targetFieldId: 'ICDCode', sourcePath: 'icdcode' },
+                { targetFieldId: 'ICDDescription', sourcePath: 'icddescription' },
+                { targetFieldId: 'serviceCode', sourcePath: 'servicecode' },
+                { targetFieldId: 'serviceDescription', sourcePath: 'servicedescription' },
+                { targetFieldId: 'reviewType', sourcePath: 'reviewtype' },
+                { targetFieldId: 'serviceFromDate', sourcePath: 'fromdate' },
+                { targetFieldId: 'serviceToDate', sourcePath: 'todate' },
+                { targetFieldId: 'decisionStatus', sourcePath: 'decisionstatus' },
+                { targetFieldId: 'denialType', sourcePath: 'denialtype' },
+                { targetFieldId: 'denialReason', sourcePath: 'denialreason' }
+              ]
+            }
+          },
+          { id: 'authNumber', label: 'Auth Number', displayName: 'Auth Number', type: 'text', order: 1, isEnabled: true },
+          { id: 'authType', label: 'Auth Type', displayName: 'Auth Type', type: 'text', order: 2, isEnabled: true },
+          { id: 'authEnrollment', label: 'Auth Enrollment', displayName: 'Auth Enrollment', type: 'text', order: 3, isEnabled: true },
+          { id: 'overallStatus', label: 'Overall Status', displayName: 'Overall Status', type: 'text', order: 4, isEnabled: true },
+          { id: 'ICDCode', label: 'ICD Code', displayName: 'ICD Code', type: 'text', order: 5, isEnabled: true },
+          { id: 'ICDDescription', label: 'ICD Description', displayName: 'ICD Description', type: 'text', order: 6, isEnabled: true },
+          { id: 'serviceCode', label: 'Service Code', displayName: 'Service Code', type: 'text', order: 7, isEnabled: true },
+          { id: 'serviceDescription', label: 'Service Description', displayName: 'Service Description', type: 'text', order: 8, isEnabled: true },
+          { id: 'reviewType', label: 'Review Type', displayName: 'Review Type', type: 'text', order: 9, isEnabled: true },
+          { id: 'serviceFromDate', label: 'Service From Date', displayName: 'Service From Date', type: 'text', order: 10, isEnabled: true },
+          { id: 'serviceToDate', label: 'Service To Date', displayName: 'Service To Date', type: 'text', order: 11, isEnabled: true },
+          { id: 'decisionStatus', label: 'Decision Status', displayName: 'Decision Status', type: 'text', order: 12, isEnabled: true },
+          { id: 'denialType', label: 'Denial Type', displayName: 'Denial Type', type: 'text', order: 13, isEnabled: true },
+          { id: 'denialReason', label: 'Denial Reason', displayName: 'Denial Reason', type: 'text', order: 14, isEnabled: true }
+        ]
+      }
+    },
+
+    {
+      key: 'claim',
+      title: 'Claim',
+      subtitle: 'Search + Claim Number/Dates',
+      icon: 'receipt_long',
+      subsection: {
+        sectionName: 'Claim',
+        subsectionKey: 'claim',
+        order: 0,
+        repeat: { enabled: true, min: 1, max: 10, defaultCount: 1, showControls: true, instanceLabel: 'Claim' },
+        fields: [
+          {
+            id: 'claimSearch',
+            label: 'Search Claims',
+            displayName: 'Search Claims',
+            type: 'search',
+            order: 0,
+            isEnabled: true,
+            info: 'Search claims by claimnumber/fromdate/todate/providername',
+            lookup: {
+              enabled: true,
+              entity: 'claim',
+              minChars: 2,
+              debounceMs: 250,
+              limit: 25,
+              placeholder: 'Search Claim (Claim Number / From Date / To Date / Provider Name)',
+              valueField: 'claimNumber',
+              displayTemplate: '{{claimNumber}}',
+              fill: [
+                { targetFieldId: 'claimNumber', sourcePath: 'claimNumber' },
+                { targetFieldId: 'providerName', sourcePath: 'providerName' },
+                { targetFieldId: 'visitType', sourcePath: 'visitTypeId' },
+                { targetFieldId: 'reasonForVisit', sourcePath: 'reasonForVisit' },
+                { targetFieldId: 'serviceFromDate', sourcePath: 'dosFrom' },
+                { targetFieldId: 'serviceToDate', sourcePath: 'dosTo' },
+                { targetFieldId: 'billed', sourcePath: 'billed' },
+                { targetFieldId: 'allowed', sourcePath: 'allowedAmount' },
+                { targetFieldId: 'copay', sourcePath: 'copayAmount' },
+                { targetFieldId: 'paid', sourcePath: 'paid' }
+              ]
+            }
+          },
+          { id: 'claimNumber', label: 'Claim Number', displayName: 'Claim Number', type: 'text', order: 1, isEnabled: true },
+          { id: 'providerName', label: 'Provider Name', displayName: 'Provider Name', type: 'text', order: 2, isEnabled: true },
+          { id: 'claimProviderType', label: 'Claim Provider Type', displayName: 'Claim Provider Type', type: 'text', order: 3, isEnabled: true },
+          { id: 'visitType', label: 'Visit Type', displayName: 'Visit Type', type: 'text', order: 4, isEnabled: true },
+          { id: 'reasonForVisit', label: 'Reason For Visit', displayName: 'Reason For Visit', type: 'text', order: 5, isEnabled: true },
+          //{ id: 'ICDCode', label: 'ICD Code', displayName: 'ICD Code', type: 'text', order: 6, isEnabled: true },
+          //{ id: 'ICDDescription', label: 'ICD Description', displayName: 'ICD Description', type: 'text', order: 7, isEnabled: true },
+          //{ id: 'lineNumber', label: 'Line Number', displayName: 'Line Number', type: 'text', order: 8, isEnabled: true },
+          //{ id: 'serviceCode', label: 'Service Code', displayName: 'Service Code', type: 'text', order: 9, isEnabled: true },
+          //{ id: 'serviceDescription', label: 'Service Description', displayName: 'Service Description', type: 'text', order: 10, isEnabled: true },
+          { id: 'serviceFromDate', label: 'Service From Date', displayName: 'Service From Date', type: 'text', order: 11, isEnabled: true },
+          { id: 'serviceToDate', label: 'Service To Date', displayName: 'Service To Date', type: 'text', order: 12, isEnabled: true },
+          //{ id: 'initialDenialDate', label: 'Initial Denial Date', displayName: 'Initial Denial Date', type: 'text', order: 13, isEnabled: true },
+          { id: 'billed', label: 'Billed', displayName: 'Billed', type: 'text', order: 14, isEnabled: true },
+          { id: 'allowed', label: 'Allowed', displayName: 'Allowed', type: 'text', order: 15, isEnabled: true },
+          { id: 'copay', label: 'Copay', displayName: 'Copay', type: 'text', order: 16, isEnabled: true },
+          { id: 'paid', label: 'Paid', displayName: 'Paid', type: 'text', order: 17, isEnabled: true }
         ]
       }
     }
   ];
+
 
   defaultFieldIds: string[] = [];
   authTemplates: any[] = [];
@@ -874,6 +1033,7 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
     if (this.module == 'AG') {
       this.loadAuthTemplates();
     }
+    this.validatePredefinedSubsections();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -2060,5 +2220,51 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
 
     Object.assign(container, this.selectedSubSectionObject);
   }
+
+
+  private validatePredefinedSubsections(): void {
+    for (const tpl of this.predefinedSubsections) {
+      const sub: any = tpl?.subsection ?? {};
+      const fields: any[] = Array.isArray(sub.fields) ? sub.fields : [];
+
+      // Ensure subsectionKey exists
+      sub.subsectionKey = sub.subsectionKey ?? tpl.key;
+
+      // Ensure unique field ids + fix lookup.fill targets if needed
+      const seen = new Map<string, number>();
+      const renameMap = new Map<string, string>();
+
+      for (const f of fields) {
+        const id = String(f?.id ?? '').trim();
+        if (!id) continue;
+
+        const count = (seen.get(id) ?? 0) + 1;
+        seen.set(id, count);
+
+        if (count > 1) {
+          const newId = `${id}_${count}`;
+          renameMap.set(id, newId);
+          f.id = newId;
+          console.warn(`[TemplateBuilder] Duplicate field id '${id}' in '${tpl.key}'. Renamed to '${newId}'.`);
+        }
+      }
+
+      // If we renamed ids, update lookup.fill targets
+      for (const f of fields) {
+        const fill = f?.lookup?.fill;
+        if (!Array.isArray(fill)) continue;
+
+        for (const m of fill) {
+          const t = String(m?.targetFieldId ?? '').trim();
+          if (!t) continue;
+          if (renameMap.has(t)) m.targetFieldId = renameMap.get(t);
+        }
+      }
+
+      // Write back normalized subsection object (in case it was missing props)
+      (tpl as any).subsection = sub;
+    }
+  }
+
 
 }

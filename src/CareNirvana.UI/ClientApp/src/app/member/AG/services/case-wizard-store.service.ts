@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { CaseAggregateDto, CaseDetailDto } from 'src/app/service/casedetail.service';
-
+import { MatSnackBar } from '@angular/material/snack-bar';
 export interface CaseLevelTab {
   levelId: number;
   title: string;           // "Level 1"
@@ -136,4 +136,25 @@ export class CaseWizardStoreService {
     this.setAggregate(nextAgg);
   }
 
+}
+
+@Injectable({ providedIn: 'root' })
+export class CaseWizardNotifyService {
+  constructor(private snack: MatSnackBar) { }
+
+  success(message: string, durationMs = 2500): void {
+    this.snack.open(message, 'OK', {
+      duration: durationMs,
+      panelClass: ['success-snackbar'],
+      verticalPosition: 'top' // keep it near your wizard header
+    });
+  }
+
+  error(message: string, durationMs = 4000): void {
+    this.snack.open(message, 'Close', {
+      duration: durationMs,
+      panelClass: ['error-snackbar'],
+      verticalPosition: 'top'
+    });
+  }
 }

@@ -58,6 +58,12 @@
         </div>
       </div>
     </div>
+    <!-- Save banner (global) -->
+    <div *ngIf="saveBannerText"
+         class="cw-save-banner alert alert-success py-1 px-2 mb-2 d-flex align-items-center justify-content-between">
+      <span>{{ saveBannerText }}</span>
+      <button type="button" class="btn-close" aria-label="Close" (click)="clearSaveBanner()"></button>
+    </div>
 
     <!-- Level Tabs -->
     <ul class="nav nav-tabs mb-2" *ngIf="(tabs$ | async) as tabs">

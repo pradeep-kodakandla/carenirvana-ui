@@ -343,6 +343,7 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
           next: () => {
             this.closeEditor();
             this.reload();
+            (this as any).showSavedMessage?.('Activity updated successfully');
           },
           error: (e) => (this.errorMsg = this.normalizeError(e))
         });
@@ -371,6 +372,7 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
         next: () => {
           this.closeEditor();
           this.reload();
+          (this as any).showSavedMessage?.('Activity saved successfully');
         },
         error: (e) => (this.errorMsg = this.normalizeError(e))
       });

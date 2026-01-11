@@ -376,6 +376,7 @@ export class CasedocumentsComponent implements OnInit, OnDestroy {
           next: () => {
             this.closeEditor();
             this.reload();
+            (this as any).showSavedMessage?.('Document saved successfully');
           },
           error: (err) => (this.errorMsg = err?.error?.message ?? 'Unable to save document.'),
         });
@@ -392,6 +393,7 @@ export class CasedocumentsComponent implements OnInit, OnDestroy {
           next: () => {
             this.closeEditor();
             this.reload();
+            (this as any).showSavedMessage?.('Document updated successfully');
           },
           error: (err) => (this.errorMsg = err?.error?.message ?? 'Unable to update document.'),
         });

@@ -38,7 +38,7 @@
           <div class="rulebadges">
             <span class="pill">v{{ $any(t).version ?? 1 }}</span>
             <span class="pill" [class.off]="!($any(t).activeFlag ?? false)">
-              {{ (!$any(t).activeFlag ?? true) ? 'Active' : 'Inactive' }}
+              {{ ($any(t).activeFlag !== false) ? 'Active' : 'Inactive' }}
             </span>
             <span class="pill">{{ t.id }}</span>
           </div>
@@ -154,7 +154,7 @@
                   <button class="btn primary"
                           type="button"
                           (click)="saveOrUpdateRuleFromDecisionTable()"
-                          [disabled]="savingRule || groupUiOptions.length<=0 || !ruleDraft.name?.trim()">
+                          [disabled]="savingRule || groupUiOptions.length <= 0 || !ruleDraft.name.trim()">
                     {{ savingRule ? 'Saving...' : (linkedRuleId ? 'Update Rule' : 'Save Rule') }}
                   </button>
 

@@ -219,7 +219,7 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     this.currentStepRef = this.stepContainer.createComponent(factory);
 
     const inst: any = this.currentStepRef.instance;
-
+    inst.showSavedMessage = (msg: string) => this.showSaveBanner(msg);
     // ✅ Set stepId FIRST (prevents "empty" on first load)
     if (inst && 'stepId' in inst) {
       inst.stepId = stepId;
@@ -377,4 +377,19 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
   //  if (!this.caseHasUnsavedChanges()) return true;
   //  return confirm('You have unsaved changes. Do you want to continue?');
   //}
+
+  saveBannerText: string | null = null;
+  private saveBannerTimer: any;
+
+  showSaveBanner(text: string, autoHideMs = 2500): void {
+    this.saveBannerText = text;
+    clearTimeout(this.saveBannerTimer);
+    this.saveBannerTimer = setTimeout(() => this.saveBannerText = null, autoHideMs);
+  }
+
+  clearSaveBanner(): void {
+    this.saveBannerText = null;
+    clearTimeout(this.saveBannerTimer);
+  }
+
 }

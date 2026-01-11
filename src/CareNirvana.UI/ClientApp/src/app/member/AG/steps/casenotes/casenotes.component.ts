@@ -160,10 +160,12 @@ export class CasenotesComponent implements OnInit, OnChanges, OnDestroy, CaseUns
 
     if (this.getNoteId(this.editing)) {
       req$ = this.api.updateNote(ctx.caseHeaderId, ctx.levelId, this.getNoteId(this.editing)!, payload);
+      (this as any).showSavedMessage?.('Notes updated successfully');
     } else {
       req$ = this.api.createNote(ctx.caseHeaderId, ctx.levelId, payload).pipe(
         switchMap(() => of(void 0))
       );
+      (this as any).showSavedMessage?.('Notes saved successfully');
     }
 
     req$

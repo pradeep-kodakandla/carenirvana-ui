@@ -5,7 +5,7 @@ import { distinctUntilChanged } from 'rxjs/operators';
 import { AuthService } from 'src/app/service/auth.service';
 import { CaseUnsavedChangesAwareService } from 'src/app/member/AG/guards/services/caseunsavedchangesaware.service';
 import { CasedetailService, CaseAggregateDto } from 'src/app/service/casedetail.service';
-import { CaseWizardStoreService } from 'src/app/member/AG/services/case-wizard-store.service';
+import { CaseWizardStoreService, CaseWizardNotifyService } from 'src/app/member/AG/services/case-wizard-store.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
 import { CrudService, DatasourceLookupService } from 'src/app/service/crud.service';
@@ -19,6 +19,10 @@ export type WizardMode = 'new' | 'edit';
 
 type ShowWhen = 'always' | 'fieldEquals' | 'fieldNotEquals' | 'fieldhasvalue';
 
+type DepDropdownCfg = {
+  parentControlName: string;
+  linkProp: string;           // property present in the child datasource rows (caseCategoryId / caseStatusId)
+};
 interface TplCondition {
   referenceFieldId: string | null;
   showWhen: ShowWhen;
@@ -263,7 +267,8 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     private userService: AuthenticateService,
     private headerService: HeaderService,
     private router: Router,
-    private wbService: WorkbasketService
+    private wbService: WorkbasketService,
+    private notify: CaseWizardNotifyService
   ) { }
 
   caseHasUnsavedChanges(): boolean {
@@ -391,6 +396,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
     this.renderSections = this.buildRenderModel(filtered, this.persistedForBuild);
     this.buildFormControls(this.renderSections);
+    this.setupDependentDropdowns(this.renderSections);
     this.prefetchDropdownOptions(this.renderSections);
     this.applyCaseOwnerOptions();
     this.applyWorkGroupAndBasketOptions();
@@ -494,8 +500,16 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
     try {
       this.isSaving = true;
+      // ✅ decide message based on path
+      let successMsg = 'Saved successfully.';
+      let action: 'update' | 'addLevel' | 'create' = 'update';
+
       console.log('Saving case detail...', { caseHeaderId, levelId, existingDetail, jsonData });
       if (existingDetail) {
+        action = 'update';
+        successMsg = 'Case updated successfully.';
+        (this as any).showSavedMessage?.('Case updated successfully.');
+
         // UPDATE existing level row
         await this.caseApi.updateCaseDetail({ caseDetailId: existingDetail.caseDetailId, jsonData }, userId).toPromise();
       } else if (caseHeaderId) {
@@ -505,6 +519,9 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
       } else {
         // CREATE header + first detail
+        action = 'addLevel';
+        successMsg = 'Case saved successfully.';
+        (this as any).showSavedMessage?.('Case saved successfully');
         if (!caseNumber) throw new Error('caseNumber is required to create a new case.');
 
         const caseType = String(this.templateId) || "0";// this.getValueByFieldId('caseType') ?? '';
@@ -554,9 +571,10 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
       // Re-apply persisted identity into the form and re-sync enable/disable state so newly shown fields are editable.
       this.applyPersistedIdentityToForm();
       this.syncFormControlVisibility();
-
+      this.notify.success(successMsg);
       this.form.markAsPristine();
-    } catch (e) {
+    } catch (e: any) {
+      this.notify.error(e?.message ? `Save failed: ${e.message}` : 'Save failed. Please try again.');
       console.error(e);
     } finally {
       this.isSaving = false;
@@ -596,6 +614,12 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     if (!parsed || typeof parsed !== 'object') return;
 
     this.form.patchValue(parsed, { emitEvent: false });
+    // apply enable/disable + validate child values using the loaded parent values
+    Object.keys(this.dependentDropdowns).forEach(cn => this.updateDependentChild(cn));
+
+    this.form.markAsPristine();
+    this.syncFormControlVisibility();
+
     this.form.markAsPristine();
     this.syncFormControlVisibility();
   }
@@ -953,7 +977,8 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
                 : null) ??
               this.pickDisplayField(r) ??
               String(value ?? '');
-            return { value, label } as UiSmartOption;
+            //return { value, label } as UiSmartOption;
+            return { value, label, raw: r } as any;
           },
           ['AG', 'Admin', 'Provider']
         )
@@ -1415,7 +1440,9 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
   }
 
   getDropdownOptions(controlName: string): UiSmartOption[] {
-    return this.optionsByControlName[controlName] ?? [];
+    //return this.optionsByControlName[controlName] ?? [];
+    const all = this.optionsByControlName[controlName] ?? [];
+    return this.filterDependentOptions(controlName, all);
   }
 
   private isCaseOwnerField(f: any): boolean {
@@ -1469,9 +1496,9 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     if (k.includes('icd')) return 'icd';
     if (k.includes('member')) return 'members';
     if (k.includes('provider')) return 'providers';
-    //if (k.includes('medical') || k.includes('cpt')) return 'medicalcodes';
-    //if (k.includes('staff')) return 'staff';
-    //if (k.includes('medication') || k.includes('medications')) return 'medication';
+    if (k.includes('claim')) return 'claims';
+    if (k.includes('medication')) return 'medication';
+    if (k.includes('staff') || k.includes('user')) return 'staff';
     return k;
   }
 
@@ -1522,6 +1549,9 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
         case 'medication':
           return (svc.searchMedications ? svc.searchMedications(q, limit) : of([]));
+        case 'claims':
+        case 'claim':
+          return (svc.searchClaims ? svc.searchClaims(q, limit) : of([]));
         default:
           // support custom function name if provided in lookup config
           const cfg = this.getLookupCfg(f);
@@ -1544,8 +1574,26 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     const tpl = cfg?.displayTemplate ? String(cfg.displayTemplate) : null;
     const entity = this.getLookupEntity(f);
 
+    const valueField = cfg?.valueField ? String(cfg.valueField) : null;
+
     const fn = (item: any): string => {
-      if (!item) return '';
+      if (item == null) return '';
+
+      // ✅ If the value is primitive (ID), render using cached selected object
+      if (typeof item !== 'object') {
+        const selected = this.lookupSelectedByControl?.[f?.controlName];
+        if (selected && valueField) {
+          const selectedId = this.pickPath(selected, valueField);
+          if (String(selectedId ?? '') === String(item ?? '')) {
+            item = selected; // switch to full object for rendering below
+          }
+        }
+
+        // still primitive and no cached match => show nothing (prevents showing ID in input)
+        if (typeof item !== 'object') return '';
+      }
+
+      // Now item is an object
       if (tpl) return this.applyLookupTemplate(tpl, item);
 
       // sensible defaults
@@ -1562,9 +1610,35 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
         return phone ? `${parts.join(' - ')} (${phone})` : parts.join(' - ');
       }
       if (entity === 'providers') {
-        const npi = item.npi ?? item.NPI ?? '';
-        const name = [item.lastname ?? item.lastName ?? '', item.firstname ?? item.firstName ?? ''].filter(Boolean).join(', ');
-        return npi ? `${name} (NPI: ${npi})` : name;
+        const display = item.providerName
+          ?? item.organizationname
+          ?? [item.lastName ?? '', item.firstName ?? ''].filter(Boolean).join(', ');
+        const npi = item.npi ?? '';
+        return npi ? `${display} (NPI: ${npi})` : display;
+      }
+      if (entity === 'staff') {
+        const uname = item.username ?? '';
+        const name = item.fullName ?? [item.firstname ?? '', item.lastname ?? ''].filter(Boolean).join(' ');
+        const role = item.role ? ` (${item.role})` : '';
+        return name ? `${uname} - ${name}${role}` : uname;
+      }
+      if (entity === 'claim') {
+        const code = item.claimNumber ?? item.claimnumber ?? '';
+        const p = item.providername ?? '';
+        const df = item.dos_from ?? '';
+        const dt = item.dos_to ?? '';
+        const datePart = (df || dt) ? ` (${df}${dt ? ' - ' + dt : ''})` : '';
+
+        return [code].filter(Boolean).join(' - ') + datePart;
+      }
+      if (entity === 'claims') {
+        const code = item.claimNumber ?? item.claimnumber ?? '';
+        const p = item.providername ?? '';
+        const df = item.dos_from ?? '';
+        const dt = item.dos_to ?? '';
+        const datePart = (df || dt) ? ` (${df}${dt ? ' - ' + dt : ''})` : '';
+
+        return [code].filter(Boolean).join(' - ') + datePart;
       }
 
       return (item.display ?? item.label ?? item.name ?? item.code ?? '').toString();
@@ -1573,6 +1647,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     this.lookupDisplayFnCache.set(key, fn);
     return fn;
   }
+
 
   getLookupTrackBy(f: any): (item: any) => any {
     const key = (f?.controlName || f?.id || Math.random().toString()).toString();
@@ -1585,20 +1660,39 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     const fn = (item: any): any => {
       if (!item) return item;
       if (path) return this.pickPath(item, path);
-      return item.id ?? item.code ?? item.memberdetailsid ?? item.memberdetailsId ?? item.npi ?? item;
+      return (
+        item.id ??
+        item.userdetailid ??
+        item.providerId ??
+        item.memberclaimheaderid ??
+        item.code ??
+        item.memberdetailsid ??
+        item.memberdetailsId ??
+        item.npi ??
+        item
+      );
+
     };
 
     this.lookupTrackByFnCache.set(key, fn);
     return fn;
   }
 
+  private lookupSelectedByControl: Record<string, any> = {};
+
+
   onLookupSelected(f: any, item: any, ctx?: RepeatContext): void {
     if (!f || !item) return;
 
-    // store a stable string value into the bound control (prevents saving full objects)
     const cfg = this.getLookupCfg(f);
     const valueField = cfg?.valueField ? String(cfg.valueField) : null;
+
+    // ✅ store id in control, but cache the full object for displayWith
     const storeValue = valueField ? this.pickPath(item, valueField) : this.getLookupDisplayWith(f)(item);
+
+    // cache for display purposes (so input doesn't show ID)
+    this.lookupSelectedByControl[f.controlName] = item;
+
     const ctrl = this.form.get(f.controlName);
     if (ctrl) {
       ctrl.setValue(storeValue ?? null, { emitEvent: true });
@@ -1611,7 +1705,8 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
       const sourcePath = m?.sourcePath || m?.source || m?.path;
       if (!targetId || !sourcePath) continue;
 
-      const targetControlName = this.resolveControlName(String(targetId), ctx) ?? this.findControlNameByRawId(String(targetId));
+      const targetControlName =
+        this.resolveControlName(String(targetId), ctx) ?? this.findControlNameByRawId(String(targetId));
 
       if (!targetControlName) continue;
 
@@ -1623,7 +1718,6 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
       }
     }
 
-    // Update conditional visibility (showWhen rules) after programmatic fill
     this.syncFormControlVisibility();
   }
 
@@ -1634,6 +1728,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
   onLookupCleared(f: any, ctx?: RepeatContext): void {
     const cfg = this.getLookupCfg(f);
     const fill = (cfg?.fill && Array.isArray(cfg.fill)) ? cfg.fill : this.defaultLookupFill(f);
+    delete this.lookupSelectedByControl[f.controlName];
     for (const m of (fill ?? [])) {
       const targetId = m?.targetFieldId || m?.target || m?.fieldId;
       if (!targetId) continue;
@@ -2076,4 +2171,125 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
   hasUnsavedChanges(): boolean {
     return this.caseHasUnsavedChanges();
   }
+  /******* Dropdown Dependencies ********/
+
+  private dependentDropdowns: Record<string, DepDropdownCfg> = {};
+
+  // child datasource -> parent datasource + link property in child rows
+  private readonly dependentDatasourceRules = [
+    { child: 'casereason', parent: 'casecategory', linkProp: 'caseCategoryId' },
+    { child: 'casestatusreason', parent: 'casestatus', linkProp: 'caseStatusId' },
+  ];
+
+  private normDs(ds: string): string {
+    return String(ds ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+
+  private toStr(v: any): string {
+    return v == null ? '' : String(v);
+  }
+
+  private asIdArray(v: any): string[] {
+    if (Array.isArray(v)) return v.map(x => this.toStr(x)).filter(Boolean);
+    const s = this.toStr(v).trim();
+    return s ? [s] : [];
+  }
+
+  private setupDependentDropdowns(sections: RenderSection[]): void {
+    this.dependentDropdowns = {};
+
+    // map datasource -> controlNames using that datasource in this step
+    const allFields = this.collectAllRenderFields(sections);
+    const dsToControls = new Map<string, string[]>();
+
+    for (const f of allFields as any[]) {
+      if (f.type !== 'select') continue;
+      const ds = String(f.datasource ?? '').trim();
+      if (!ds) continue;
+
+      const key = this.normDs(ds);
+      const list = dsToControls.get(key) ?? [];
+      list.push(f.controlName);
+      dsToControls.set(key, list);
+    }
+
+    // build controlName-based dependency map
+    for (const rule of this.dependentDatasourceRules) {
+      const parentControls = dsToControls.get(this.normDs(rule.parent)) ?? [];
+      const childControls = dsToControls.get(this.normDs(rule.child)) ?? [];
+
+      const parentControlName = parentControls[0]; // assume first one is the driver
+      if (!parentControlName || childControls.length === 0) continue;
+
+      for (const childControlName of childControls) {
+        this.dependentDropdowns[childControlName] = {
+          parentControlName,
+          linkProp: rule.linkProp
+        };
+
+        // wire change handler (enable/disable + clear invalid)
+        const parentCtrl = this.form.get(parentControlName);
+        if (parentCtrl) {
+          parentCtrl.valueChanges
+            .pipe(distinctUntilChanged(), takeUntil(this.destroy$))
+            .subscribe(() => this.updateDependentChild(childControlName));
+        }
+
+        // apply initial state
+        this.updateDependentChild(childControlName);
+      }
+    }
+  }
+
+  private filterDependentOptions(controlName: string, all: UiSmartOption[]): UiSmartOption[] {
+    const dep = this.dependentDropdowns[controlName];
+    if (!dep) return all ?? [];
+
+    const parentVal = this.form.get(dep.parentControlName)?.value;
+    const pv = this.toStr(parentVal).trim();
+    if (!pv) return [];
+
+    return (all ?? []).filter(o => {
+      const raw = (o as any)?.raw;
+      const linkVal = raw?.[dep.linkProp];
+
+      // linkVal can be string OR array (your json has both patterns)
+      const ids = this.asIdArray(linkVal);
+      return ids.includes(pv);
+    });
+  }
+
+  private updateDependentChild(childControlName: string): void {
+    const dep = this.dependentDropdowns[childControlName];
+    if (!dep) return;
+
+    const parentCtrl = this.form.get(dep.parentControlName);
+    const childCtrl = this.form.get(childControlName);
+    if (!parentCtrl || !childCtrl) return;
+
+    const parentVal = this.toStr(parentCtrl.value).trim();
+
+    // Disable child until parent chosen
+    if (!parentVal) {
+      if (!childCtrl.disabled) childCtrl.disable({ emitEvent: false });
+      if (this.toStr(childCtrl.value).trim()) {
+        childCtrl.setValue(null, { emitEvent: false });
+      }
+      return;
+    }
+
+    if (childCtrl.disabled) childCtrl.enable({ emitEvent: false });
+
+    // If current child value is not valid under new parent, clear it
+    const all = this.optionsByControlName[childControlName] ?? [];
+    const filtered = this.filterDependentOptions(childControlName, all);
+    const allowed = new Set(filtered.map(x => this.toStr(x.value)));
+
+    const cv = this.toStr(childCtrl.value).trim();
+    if (cv && !allowed.has(cv)) {
+      childCtrl.setValue(null, { emitEvent: false });
+    }
+  }
+
+
 }
