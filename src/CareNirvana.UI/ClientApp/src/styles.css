@@ -203,7 +203,7 @@ body {
 }
 
 .mat-mdc-card {
-  background-color: transparent;
+  background-color: transparent !important;
   border-color: none;
   border-radius: 0;
   box-shadow: none;

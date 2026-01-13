@@ -1,0 +1,347 @@
+/* Page + card */
+.validation-page {
+  
+}
+
+.validation-shell{
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.validation-header{
+  padding-bottom: 10px;
+  border-bottom: 1px solid #efefef;
+}
+
+.validation-content{
+  padding-top: 12px;
+}
+
+
+/* Header */
+.validation-header {
+  width: 100%;
+  padding: 10px 12px 0 12px;
+}
+
+.header-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+/* Title row */
+.header-left .header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.title-icon {
+  font-size: 22px;
+  height: 22px;
+  width: 22px;
+  opacity: 0.85;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.subtitle {
+  font-size: 12px;
+  color: #6b6b6b;
+  line-height: 1.2;
+}
+
+/* Toolbar row: fields + actions aligned */
+.header-right {
+  display: grid;
+  grid-template-columns: 180px 260px 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+
+/* consistent sizing */
+.header-field {
+  width: 100%;
+  min-width: 160px;
+}
+
+.name-field {
+  width: 100%;
+}
+
+/* action buttons: fixed alignment, no wrap chaos */
+.header-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  align-items: center;
+  white-space: nowrap;
+}
+
+/* error */
+.header-error {
+  margin: 4px 0 0 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(176, 0, 32, 0.25);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #b00020;
+  font-size: 13px;
+}
+
+/* ===== Builder panels (no bg color) ===== */
+.builder-tabs {
+  margin-top: 6px;
+}
+
+.builder-panel {
+  margin-top: 12px;
+  border: 1px solid #e6e6e6;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+  /* Keep bootstrap inputs but make them match */
+  .builder-panel .form-select,
+  .builder-panel .form-control {
+    border-radius: 10px;
+    border: 1px solid #d9d9d9;
+    font-size: 13px;
+  }
+
+  .builder-panel label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #444;
+    margin-bottom: 6px;
+  }
+
+/* Expression preview */
+.preview-box {
+  border: 1px solid #e6e6e6;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+/* ===== Table area ===== */
+.table-container {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid #efefef;
+}
+
+.table-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 10px;
+}
+
+/* search */
+.search-box {
+  display: flex;
+  align-items: center;
+  width: 420px;
+  max-width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 999px;
+}
+
+  .search-box.active {
+    border-color: #bdbdbd;
+  }
+
+.search-input {
+  border: none;
+  outline: none;
+  flex: 1;
+  background: transparent;
+  font-size: 13px;
+}
+
+/* textareas inside table */
+.textarea-auto {
+  width: 100%;
+  font-size: 13px;
+  padding: 10px;
+  resize: vertical;
+  border: 1px solid #d9d9d9;
+  border-radius: 10px;
+  box-sizing: border-box;
+  background-color: transparent; /* no background blocks */
+  min-height: 44px;
+}
+
+/* Remove the old "common-button" forced blue (let Material theme handle it) */
+.common-button {
+  border-radius: 10px;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .header-right {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .header-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+
+  .search-box {
+    width: 100%;
+  }
+}
+
+/* Floating label input (matches your screenshot) */
+.float-input {
+  position: relative;
+  width: 100%;
+}
+
+.float-control {
+  width: 100%;
+  height: 36px;
+  padding: 12px 12px 10px 12px;
+  border: 1px solid #d6dbe3;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  background: transparent;
+  box-sizing: border-box;
+}
+
+  .float-control:focus {
+    border-color: #b9c2cf;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.03);
+  }
+
+.float-label {
+  position: absolute;
+  top: -6px;
+  left: 12px;
+  padding: 0 3px;
+  font-size: 12px;
+  color: #2b2f36;
+  background: #fff; /* makes label sit cleanly on border */
+  line-height: 1;
+  font-weight: 500;
+}
+
+.required {
+  color: #d32f2f;
+  font-weight: 700;
+}
+
+/* Ensure name field aligns perfectly with dropdowns in header */
+.name-field {
+  align-self: stretch;
+}
+
+/* Header row: give name field more width */
+.header-right {
+  display: grid;
+  grid-template-columns: 200px minmax(420px, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+/* Make name field wider and consistent */
+.name-field {
+  min-width: 420px;
+}
+
+/* Force actions to the far right */
+.header-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  align-items: center;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap; /* allows wrap on smaller screens */
+}
+
+/* search box fixed size */
+.search-box {
+  flex: 1 1 360px;
+  max-width: 520px;
+}
+
+/* dropdown sized nicely */
+.table-toolbar ui-smart-dropdown {
+  flex: 0 0 280px;
+  min-width: 260px;
+}
+
+/* Add rule aligned to right */
+.table-toolbar button {
+  margin-left: auto;
+}
+
+.search-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+}
+
+.search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  height: 40px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+.filter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  fill: #007BFF;
+}
+
+.no-data {
+  padding: 18px 12px;
+  text-align: center;
+  color: #6b6b6b;
+  font-size: 13px;
+  border: 1px dashed #e0e0e0;
+  border-radius: 10px;
+  margin-top: 10px;
+}
+
+
+@media (max-width: 600px) {
+  .validation-header {
+    padding: 10px 10px 0 10px;
+  }
+}

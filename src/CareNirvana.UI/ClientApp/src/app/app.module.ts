@@ -67,6 +67,7 @@ import { WorkbasketComponent } from './admin/workbasket/workbasket.component';
 import { UserDefinedCustomFieldsComponent } from './admin/userdefinedcustomfields/userdefinedcustomfields.component';
 import { TemplatebuilderComponent } from './admin/templatebuilder/templatebuilder/templatebuilder.component';
 import { TemplatebuilderpropertiesComponent } from './admin/templatebuilder/templatebuilderproperties/templatebuilderproperties.component';
+import { ValidationComponent } from './admin/templatebuilder/validation/validation.component';
 
 
 import { UmdocumenttypeComponent } from './admin/UM/umdocumenttype/umdocumenttype.component';
@@ -188,7 +189,7 @@ const routes: Routes = [
     UmauthnotesComponent, UmauthdocumentsComponent, UmauthactivityComponent, ValidationErrorDialogComponent, MdreviewComponent,
     NewDashBoardComponent, NewDashboard2Component, MdreviewdashboardComponent, SmartauthcheckComponent, ConfirmationDialogComponent,
     ConfigurationComponent, UsermanagementComponent, RolemanagementComponent, ProfilemanagementComponent, AppfeaturesetupComponent, PermissionManagerComponent,
-    WorkgroupComponent, WorkbasketComponent, UserDefinedCustomFieldsComponent, TemplatebuilderComponent, TemplatebuilderpropertiesComponent,
+    WorkgroupComponent, WorkbasketComponent, UserDefinedCustomFieldsComponent, TemplatebuilderComponent, TemplatebuilderpropertiesComponent, ValidationComponent,
     UmdocumenttypeComponent, SettingsDialogComponent, UmactivitytypeComponent, DecisionbulkdialogComponent, DialogContentComponent, UmnotetypeComponent, ExternallinksComponent,
     UmclaimtypeComponent, UmactivitypriorityComponent, UmadmissionlevelComponent, UmadmissiontypeComponent, UmadmitreasonComponent,
     UmcertificationtypeComponent, UmdenialtypeComponent, UmdeterminationtypeComponent, UmdischargetoComponent, UmdischargetypeComponent,
@@ -285,7 +286,7 @@ const routes: Routes = [
       { path: 'admin-udcf', component: UserDefinedCustomFieldsComponent },
       { path: 'admin-templatebuilder', component: TemplatebuilderComponent },
       { path: 'admin-templatebuilderproperties', component: TemplatebuilderpropertiesComponent },
-
+      { path: 'admin-validation', component: ValidationComponent }, 
       { path: 'admin-umdocumenttype', component: UmdocumenttypeComponent },
       { path: 'admin-settingdialog', component: SettingsDialogComponent },
       { path: 'admin-umactivitytype', component: UmactivitytypeComponent },

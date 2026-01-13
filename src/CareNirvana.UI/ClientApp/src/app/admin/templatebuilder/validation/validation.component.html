@@ -1,0 +1,426 @@
+<div class="validation-page">
+  <div class="validation-shell" style="background-color: transparent !important; box-shadow:none;">
+    <div class="validation-header">
+      <div class="header-grid">
+        <div class="header-left">
+          <div class="header-title">
+            <mat-icon class="title-icon">rule</mat-icon>
+            <div>
+              <div class="title">Validations</div>
+              <div class="subtitle">Create and manage validation rules by module</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <!-- Module dropdown (ui-smart-dropdown) -->
+          <!--<ui-smart-dropdown class="header-field"
+                             [options]="moduleOptions"
+                             [(ngModel)]="selectedModuleId"
+                             (valueChange)="onModuleChanged($event)"
+                             label="Module"
+                             [disabled]="isModuleLocked"
+                             [clearable]="false">
+          </ui-smart-dropdown>-->
+          <!-- Select existing validation (also using ui-smart-dropdown for consistency) -->
+          <ui-smart-dropdown class="header-field"
+                             [options]="validationOptions"
+                             [(ngModel)]="selectedValidationId"
+                             (valueChange)="onValidationSelected($event)"
+                             label="Select Validation"
+                             placeholder="Choose..."
+                             [clearable]="true">
+          </ui-smart-dropdown>
+
+          <div class="header-field name-field">
+            <div class="float-input">
+              <label class="float-label">
+                Validation Name <span class="required">*</span>
+              </label>
+              <input class="float-control"
+                     type="text"
+                     [(ngModel)]="validationName"
+                     placeholder=""
+                     autocomplete="off" />
+            </div>
+          </div>
+
+
+          <div class="header-actions">
+            <button mat-stroked-button color="primary" (click)="newValidation()">
+              <mat-icon>add</mat-icon>
+              New
+            </button>
+
+            <button mat-stroked-button color="warn"
+                    [disabled]="!selectedValidationId || deleting"
+                    (click)="deleteValidation()">
+              <mat-icon>delete</mat-icon>
+              Delete
+            </button>
+
+            <!--<button mat-stroked-button
+                    [disabled]="saving"
+                    (click)="cancelChanges()">
+              <mat-icon>undo</mat-icon>
+              Clear
+            </button>-->
+
+            <button mat-raised-button color="primary"
+                    [disabled]="saving || !selectedModuleId || !validationName.trim()"
+                    (click)="saveValidation()">
+              <mat-icon>save</mat-icon>
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="headerError" class="header-error">
+        <mat-icon>error</mat-icon>
+        <span>{{ headerError }}</span>
+      </div>
+    </div>
+
+    <div class="validation-content">
+      <!-- Builder Tabs (moved from dialog) -->
+      <mat-tab-group *ngIf="showTabs" class="builder-tabs">
+        <mat-tab label="Structured Builder">
+          <div class="builder-panel">
+            <div class="mb-3">
+              <label class="me-3">Expression Mode:</label>
+              <mat-radio-group [(ngModel)]="builder.mode">
+                <mat-radio-button value="simple" class="me-2">Simple Expression</mat-radio-button>
+                <mat-radio-button value="conditional">Conditional (IF-THEN-ELSE)</mat-radio-button>
+              </mat-radio-group>
+            </div>
+
+            <!-- Simple -->
+            <div *ngIf="builder.mode === 'simple'" class="row mb-3">
+              <div class="col-md-4">
+                <label>Left Field</label>
+                <select class="form-select" [(ngModel)]="builder.leftField">
+                  <option value="">-- Select Field --</option>
+                  <option *ngFor="let field of allFields" [value]="field.id">{{ field.label }}</option>
+                </select>
+              </div>
+
+              <div class="col-md-2">
+                <label>Operator</label>
+                <select class="form-select" [(ngModel)]="builder.operator">
+                  <option value=">">Greater than</option>
+                  <option value="<">Less than</option>
+                  <option value="==">Equal to</option>
+                  <option value="!=">Not Equal to</option>
+                  <option value=">=">>= (Not less than)</option>
+                  <option value="<="><= (Not greater than)</option>
+                  <option value="== null">Is NULL</option>
+                  <option value="!= null">Is NOT NULL</option>
+                </select>
+              </div>
+
+              <div class="col-md-4" *ngIf="builder.operator !== '== null' && builder.operator !== '!= null'">
+                <label>Right Value</label>
+                <select class="form-select"
+                        [(ngModel)]="builder.rightField"
+                        (change)="builder.rightConstant = ''; onRightValueChange()">
+                  <option value="">-- Select Value --</option>
+                  <option value="now">Now</option>
+                  <option value="constant">Constant</option>
+                  <option *ngFor="let field of allFields" [value]="field.id">{{ field.label }}</option>
+                </select>
+
+                <input *ngIf="builder.rightField === 'constant'"
+                       type="number"
+                       class="form-control mt-2"
+                       [(ngModel)]="builder.rightConstant"
+                       placeholder="Enter number (e.g., 1000)" />
+              </div>
+            </div>
+
+            <!-- Conditional first condition -->
+            <div *ngIf="builder.mode === 'conditional'" class="row mb-3">
+              <div class="col-md-4">
+                <label>Left Condition</label>
+                <select class="form-select" [(ngModel)]="builder.leftField">
+                  <option value="">-- Select Field --</option>
+                  <option *ngFor="let field of allFields" [value]="field.id">{{ field.label }}</option>
+                </select>
+              </div>
+
+              <div class="col-md-2">
+                <label>Operator</label>
+                <select class="form-select" [(ngModel)]="builder.operator">
+                  <option value=">">Greater than</option>
+                  <option value="<">Less than</option>
+                  <option value="==">Equal to</option>
+                  <option value="!=">Not Equal to</option>
+                  <option value=">=">>= (Not less than)</option>
+                  <option value="<="><= (Not greater than)</option>
+                  <option value="== null">Is NULL</option>
+                  <option value="!= null">Is NOT NULL</option>
+                </select>
+              </div>
+
+              <div class="col-md-4" *ngIf="builder.operator !== '== null' && builder.operator !== '!= null'">
+                <label>Right Value</label>
+                <select class="form-select"
+                        [(ngModel)]="builder.rightField"
+                        (change)="builder.rightConstant = ''; onRightValueChange()">
+                  <option value="">-- Select Value --</option>
+                  <option value="now">Now</option>
+                  <option value="constant">Constant</option>
+                  <option *ngFor="let field of allFields" [value]="field.id">{{ field.label }}</option>
+                </select>
+                <input *ngIf="builder.rightField === 'constant'"
+                       type="number"
+                       class="form-control mt-2"
+                       [(ngModel)]="builder.rightConstant"
+                       placeholder="Enter number (e.g., 1000)" />
+              </div>
+
+              <div class="col-md-2">
+                <label>Logical</label>
+                <select class="form-select" [(ngModel)]="builder.logical">
+                  <option value="">--</option>
+                  <option value="&&">AND</option>
+                  <option value="||">OR</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Conditional second condition -->
+            <div *ngIf="builder.mode === 'conditional' && builder.logical" class="row mb-3">
+              <div class="col-md-4">
+                <label>Left Field 2</label>
+                <select class="form-select" [(ngModel)]="builder.leftField2">
+                  <option value="">-- Select Field --</option>
+                  <option *ngFor="let field of allFields" [value]="field.id">{{ field.label }}</option>
+                </select>
+              </div>
+
+              <div class="col-md-2">
+                <label>Op 2</label>
+                <select class="form-select" [(ngModel)]="builder.operator2">
+                  <option value=">">Greater than</option>
+                  <option value="<">Less than</option>
+                  <option value="==">Equal to</option>
+                  <option value="!=">Not Equal to</option>
+                  <option value=">=">>= (Not less than)</option>
+                  <option value="<="><= (Not greater than)</option>
+                  <option value="== null">Is NULL</option>
+                  <option value="!= null">Is NOT NULL</option>
+                </select>
+              </div>
+
+              <div class="col-md-4" *ngIf="builder.operator2 !== '== null' && builder.operator2 !== '!= null'">
+                <label>Right Value 2</label>
+                <select class="form-select"
+                        [(ngModel)]="builder.rightField2"
+                        (change)="builder.rightConstant2 = ''; onRightValueChange(true)">
+                  <option value="">-- Select Value --</option>
+                  <option value="now">Now</option>
+                  <option value="constant">Constant</option>
+                  <option *ngFor="let field of allFields" [value]="field.id">{{ field.label }}</option>
+                </select>
+                <input *ngIf="builder.rightField2 === 'constant'"
+                       type="number"
+                       class="form-control mt-2"
+                       [(ngModel)]="builder.rightConstant2"
+                       placeholder="Enter number (e.g., 0)" />
+              </div>
+            </div>
+
+            <!-- Expression Preview -->
+            <div class="mb-3">
+              <label>Expression Preview</label>
+              <div class="preview-box">
+                {{ buildStructuredExpression() || 'Complete the form to preview expression.' }}
+              </div>
+            </div>
+
+            <div class="d-flex gap-2">
+              <button mat-raised-button color="primary"
+                      (click)="addStructuredValidation()"
+                      [disabled]="!isValidStructuredRule()">
+                Add Rule
+              </button>
+
+              <button mat-stroked-button color="accent"
+                      (click)="testStructuredRule()">
+                Test Rule
+              </button>
+
+              <button mat-button (click)="showTabs = false">
+                Close
+              </button>
+            </div>
+
+            <div *ngIf="testResult" class="alert alert-info mt-3">
+              <strong>Test Result:</strong> {{ testResult }}
+            </div>
+          </div>
+        </mat-tab>
+
+        <mat-tab label="Natural Language">
+          <div class="builder-panel">
+            <div class="d-flex align-items-start gap-2">
+              <div class="autocomplete-container position-relative w-100">
+                <input type="text"
+                       class="form-control"
+                       #inputElement
+                       [formControl]="autoCompleteControl"
+                       (focus)="onInputFocus()"
+                       (blur)="onInputBlur()" />
+
+                <div class="autocomplete-list border bg-white position-absolute shadow-sm z-10"
+                     *ngIf="showAutocomplete && (filteredOptions$ | async)?.length"
+                     style="bottom: 100%; left: 0; width: 100%; max-height: 200px; overflow-y: auto;">
+                  <div *ngFor="let option of filteredOptions$ | async"
+                       class="px-2 py-1 autocomplete-item"
+                       (click)="onOptionSelected(option)">
+                    {{ option }}
+                  </div>
+                </div>
+              </div>
+
+              <button mat-raised-button color="primary" (click)="addGeneratedValidation()">
+                Generate & Add
+              </button>
+            </div>
+
+            <mat-error *ngIf="generateError" class="text-danger">
+              Could not generate validation from input. Please check your statement.
+            </mat-error>
+          </div>
+        </mat-tab>
+
+        <mat-tab label="Presets">
+          <div class="builder-panel">
+            <div class="row mb-3" *ngFor="let preset of presets">
+              <div class="col-md-4">
+                <label>{{ preset.label }}</label>
+              </div>
+              <div class="col-md-8">
+                <select class="form-select mb-2" (change)="onPresetFieldAChange($event)">
+                  <option value="">-- Select Field A --</option>
+                  <option *ngFor="let field of allFields" [value]="field.id">{{ field.label }}</option>
+                </select>
+
+                <select class="form-select mb-2"
+                        *ngIf="preset.dependsOn.includes('{B}')"
+                        (change)="onPresetFieldBChange($event)">
+                  <option value="">-- Select Field B --</option>
+                  <option *ngFor="let field of allFields" [value]="field.id">{{ field.label }}</option>
+                </select>
+
+                <select class="form-select mb-2"
+                        *ngIf="preset.dependsOn.includes('{C}')"
+                        (change)="onPresetFieldCChange($event)">
+                  <option value="">-- Select Field C --</option>
+                  <option *ngFor="let field of allFields" [value]="field.id">{{ field.label }}</option>
+                </select>
+
+                <input *ngIf="preset.dependsOn.includes('{CONST}')"
+                       type="text"
+                       class="form-control mb-2"
+                       [(ngModel)]="preset.tempConstant"
+                       placeholder="Enter value" />
+
+                <input *ngIf="preset.dependsOn.includes('{CONST2}')"
+                       type="text"
+                       class="form-control mb-2"
+                       [(ngModel)]="preset.tempConstant2"
+                       placeholder="Enter value 2" />
+
+                <button mat-raised-button color="primary"
+                        (click)="applyPreset(
+                          preset.label,
+                          builder.presetFieldA,
+                          builder.presetFieldB,
+                          builder.presetFieldC,
+                          preset.tempConstant,
+                          preset.tempConstant2,
+                          preset
+                        )"
+                        [disabled]="!isValidPreset(preset)">
+                  Apply Preset
+                </button>
+              </div>
+            </div>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+
+      <!-- Rules Table -->
+      <div class="table-container mt-3">
+        <div class="d-flex justify-content-between align-items-center table-toolbar">
+
+          <div class="search-section">
+            <input type="text" placeholder="🔍 Search..." (input)="applyFilter($event)" class="search-input" />
+          </div>
+
+
+
+          <button mat-raised-button color="primary" (click)="showTabs = true">
+            <mat-icon>add</mat-icon>
+            Add Rule
+          </button>
+        </div>
+        <div class="table-wrapper">
+          <table mat-table [dataSource]="dataSource"
+                 matSort
+                 multiTemplateDataRows
+                 class="mat-elevation-z1 full-width-table pro-table mng-table">
+            <ng-container matColumnDef="enabled">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Enable</th>
+              <td mat-cell *matCellDef="let rule">
+                <mat-checkbox [(ngModel)]="rule.enabled"></mat-checkbox>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="isError">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Error?</th>
+              <td mat-cell *matCellDef="let rule">
+                <mat-checkbox [(ngModel)]="rule.isError"></mat-checkbox>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="errorMessage">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Error Message</th>
+              <td mat-cell *matCellDef="let rule">
+                <textarea class="form-control textarea-auto" [(ngModel)]="rule.errorMessage" rows="2"></textarea>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="expression">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Expression</th>
+              <td mat-cell *matCellDef="let rule">
+                <textarea class="form-control textarea-auto" [(ngModel)]="rule.expression" rows="2"></textarea>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Actions</th>
+              <td mat-cell *matCellDef="let rule; let i = index">
+                <button mat-icon-button color="warn" (click)="removeValidation(i)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+          </table>
+          <!-- No data state -->
+          <div class="no-data"
+               *ngIf="dataSource.filteredData.length === 0">
+            No rules found.
+          </div>
+
+          <mat-paginator [pageSizeOptions]="[5, 10, 20]" showFirstLastButtons></mat-paginator>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

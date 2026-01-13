@@ -12,7 +12,7 @@ import { WorkbasketComponent } from 'src/app/admin/workbasket/workbasket.compone
 import { UserDefinedCustomFieldsComponent } from 'src/app/admin/userdefinedcustomfields/userdefinedcustomfields.component';
 import { TemplatebuilderComponent } from 'src/app/admin/templatebuilder/templatebuilder/templatebuilder.component';
 import { TemplatebuilderpropertiesComponent } from 'src/app/admin/templatebuilder/templatebuilderproperties/templatebuilderproperties.component';
-
+import { ValidationComponent } from 'src/app/admin/templatebuilder/validation/validation.component';
 
 // UM Components
 import { UmdocumenttypeComponent } from 'src/app/admin/UM/umdocumenttype/umdocumenttype.component';
@@ -40,9 +40,8 @@ import { UmtreatmenttypeComponent } from 'src/app/admin/UM/umtreatmenttype/umtre
 import { UmunittypeComponent } from 'src/app/admin/UM/umunittype/umunittype.component';
 import { UmdecisionstatuscodeComponent } from 'src/app/admin/UM/umdecisionstatuscode/umdecisionstatuscode.component';
 import { UmdenialreasonComponent } from 'src/app/admin/UM/umdenialreason/umdenialreason.component';
-import { UmauthtemplateComponent } from 'src/app/admin/UM/umauthtemplate/umauthtemplate.component';
 import { UmauthstatusreasonComponent } from 'src/app/admin/UM/umauthstatusreason/umauthstatusreason.component';
-import { UmauthtemplateBuilderComponent } from 'src/app/admin/UM/umauthtemplate-builder/umauthtemplate-builder.component';
+
 
 // CM Components
 import { CmdocumenttypeComponent } from 'src/app/admin/CM/cmdocumenttype/cmdocumenttype.component';
@@ -193,7 +192,8 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
     'Work Group': WorkgroupComponent,
     'Work Basket': WorkbasketComponent,
     'Custom Field': UserDefinedCustomFieldsComponent,
-    'Bre Test': BretestComponent
+    'Auth Validation': ValidationComponent,
+    'Case Validation': ValidationComponent
   };
 
   private readonly mainMenu: MenuItem[] = [
@@ -201,7 +201,7 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
     {
       name: 'Utilization Management',
       children: [
-        'Auth Template', 'External Links', 'UM Activity Type', 'UM Document Type', 'UM Note Type', 'Claim Type',
+        'Auth Template', 'Auth Validation', 'External Links', 'UM Activity Type', 'UM Document Type', 'UM Note Type', 'Claim Type',
         'Activity Priority', 'Admission Level', 'Admission Type', 'Admit Reason', 'Certification Type',
         'Denial Type', 'Determination Type', 'Discharge To', 'Discharge Type', 'Medication Frequency',
         'Notification Type', 'Out Of Area Indicator', 'Place Of Service', 'Prescription Quantity',
@@ -223,8 +223,8 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
     {
       name: 'Appeals & Grievances',
       children: [
-        'Case Template', 'AG Document Type', 'AG Note Type', 'Complaint Class', 'Complaint Category', 'Complaint Sub Category',
-        'Complaint Credentials', 'Complaint Status Reason', 'Coordinator Type', 'Participant Role',
+        'Case Template', 'Case Validation', 'Case Document Type', 'Case Note Type', 'Complaint Class', 'Case Category', 'Case Sub Category',
+        'Case Credentials', 'Case Status Reason', 'Coordinator Type', 'Participant Role',
         'Participant Type', 'QOC Investigation Outcome', 'QOC Score', 'QOC Investigation Reason',
         'Resolution Category', 'Resolution Sub Category'
       ]
@@ -398,16 +398,35 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
       const componentFactory = this.componentFactoryResolver.resolveComponentFactory(component);
       this.dynamicContainer.clear();
       const componentRef = this.dynamicContainer.createComponent(componentFactory);
-      // Check if the loaded component is UmauthtemplateBuilderComponent
-      if (componentKey === 'Auth Template' || 'Case Template') {
-        // Subscribe to the menuCollapse event to keep collapsing if needed
-        const tb = componentRef.instance as TemplatebuilderComponent;
-        tb.module = componentKey == 'Case Template' ? 'AG' : 'UM';
-        // you already had this subscription:
-        tb.menuCollapse.subscribe(() => {
-          this.isMenuCollapsed = true;
-        });
+
+      if (componentKey === 'Auth Validation' || componentKey === 'Case Validation') {
+        const v = componentRef.instance as ValidationComponent;
+
+        if (componentKey === 'Auth Validation') {
+          console.log('Setting Validation Context to AUTH');
+          v.setValidationContext('AUTH');   // UM + lock
+        } else {
+          v.setValidationContext('CASE');   // AG + lock
+        }
+
+        componentRef.changeDetectorRef.detectChanges();
       }
+
+      // Check if the loaded component is UmauthtemplateBuilderComponent
+      if (componentKey === 'Auth Template' || componentKey === 'Case Template') {
+        const templateBuilderComponent = componentRef.instance as TemplatebuilderComponent;
+
+        templateBuilderComponent.module = componentKey === 'Case Template' ? 'AG' : 'UM';
+
+        // guard for safety
+        if (templateBuilderComponent.menuCollapse) {
+          templateBuilderComponent.menuCollapse.subscribe(() => {
+            this.isMenuCollapsed = true;
+          });
+        }
+      }
+
+
     } catch (error) {
       console.error(`Error loading component ${componentKey}:`, error);
     }
