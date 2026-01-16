@@ -45,7 +45,6 @@ import { MembersearchComponent } from './member/membersearch/membersearch.compon
 import { AuthorizationComponent } from './member/UM/authorization/authorization.component';
 import { DecisiondetailsComponent } from './member/UM/decisiondetails/decisiondetails.component';
 import { DecisionbulkdialogComponent } from './member/UM/decisionbulkdialog/decisionbulkdialog.component';
-import { AuthdetailsComponent } from './member/UM/authdetails/authdetails.component';
 import { AuthdynamicComponent } from './member/UM/authdynamic/authdynamic.component';
 import { ProviderSearchComponent } from './Provider/provider-search/provider-search.component';
 import { UmauthnotesComponent } from './member/UM/umauthnotes/umauthnotes.component';
@@ -103,6 +102,7 @@ import { BretestComponent } from './admin/UM/bretest/bretest.component';
 import { UmauthtemplateBuilderComponent } from './admin/UM/umauthtemplate-builder/umauthtemplate-builder.component';
 import { UmauthtemplateFieldPropertiesComponent } from './admin/UM/umauthtemplate-field-properties/umauthtemplate-field-properties.component';
 import { ValidationDialogComponent } from './admin/UM/validation-dialog/validation-dialog.component';
+import { MemberauthdetailsComponent } from './member/UM/components/memberauthdetails/memberauthdetails.component';
 
 import { CmnotetypeComponent } from './admin/CM/cmnotetype/cmnotetype.component';
 import { CmdocumenttypeComponent } from './admin/CM/cmdocumenttype/cmdocumenttype.component';
@@ -134,7 +134,7 @@ import { CmclinicalindicatorsComponent } from './admin/CM/cmclinicalindicators/c
 
 import { AgnotetypeComponent } from './admin/AG/agnotetype/agnotetype.component';
 import { AgdocumenttypeComponent } from './admin/AG/agdocumenttype/agdocumenttype.component';
-import { CaseWizardModule } from './casewizard/casewizard/casewizard.module';
+
 import { SharedUiModule } from './casewizard/casewizard/sharedui.module';
 import { MembercasedetailsComponent } from './member/AG/components/membercasedetails/membercasedetails.component';
 
@@ -185,7 +185,7 @@ const routes: Routes = [
     MemberNotesComponent,
     MemberProgramComponent,
     MemberTasksummaryComponent,
-    MemberInfoComponent, AuthorizationComponent, DecisiondetailsComponent, AuthdetailsComponent, AuthdynamicComponent, ProviderSearchComponent,
+    MemberInfoComponent, AuthorizationComponent, DecisiondetailsComponent, AuthdynamicComponent, ProviderSearchComponent,
     UmauthnotesComponent, UmauthdocumentsComponent, UmauthactivityComponent, ValidationErrorDialogComponent, MdreviewComponent,
     NewDashBoardComponent, NewDashboard2Component, MdreviewdashboardComponent, SmartauthcheckComponent, ConfirmationDialogComponent,
     ConfigurationComponent, UsermanagementComponent, RolemanagementComponent, ProfilemanagementComponent, AppfeaturesetupComponent, PermissionManagerComponent,
@@ -204,7 +204,7 @@ const routes: Routes = [
     CmclinicalindicatorsComponent, AgcomplaintcategoryComponent, AgcomplaintclassComponent, AgcomplaintcredentialsComponent, AgcomplaintstatusreasonComponent,
     AgcomplaintsubcategoryComponent, AgcoordinatortypeComponent, AgparticipantroleComponent, AgparticipanttypeComponent,
     AgqocinvestigationoutcomeComponent, AgqocinvestigationreasonComponent, AgqocscoreComponent, AgresolutioncategoryComponent,
-    AgresolutionsubcategoryComponent, MembercasedetailsComponent,
+    AgresolutionsubcategoryComponent, MembercasedetailsComponent, MemberauthdetailsComponent,
 
     UiDropdownComponent, UiMultiCheckDropdownComponent
   ],
@@ -228,7 +228,12 @@ const routes: Routes = [
         component: MemberDetailsComponent,           // shell with sidebar
         children: [
           { path: '', pathMatch: 'full', component: MemberComponent, runGuardsAndResolvers: 'always' },        // tabs page
-          { path: 'member-auth/:authNo', component: AuthorizationComponent, runGuardsAndResolvers: 'always' }, // full-page auth inside shell
+          //{ path: 'member-auth/:authNo', component: AuthorizationComponent, runGuardsAndResolvers: 'always' }, // full-page auth inside shell
+          {
+            path: 'auth',
+            loadChildren: () =>
+              import('./member/UM/umwizard/authwizard/authwizard.module').then(m => m.authWizardModule),
+          },
           {
             path: 'case',
             loadChildren: () =>
@@ -257,7 +262,6 @@ const routes: Routes = [
       { path: 'member-auth', component: AuthorizationComponent },
       { path: 'member-auth/:authNo/:memberId', component: AuthorizationComponent },
       { path: 'member-decision/:id', component: DecisiondetailsComponent },
-      { path: 'member-authdetails', component: AuthdetailsComponent },
       { path: 'member-um-validation', component: ValidationErrorDialogComponent },
       { path: 'member-decisionbulk', component: DecisionbulkdialogComponent },
       { path: 'member-mdreview', component: MdreviewComponent },
@@ -267,6 +271,7 @@ const routes: Routes = [
       { path: 'member-activity', component: MemberActivityComponent },
       { path: 'member-search', component: MembersearchComponent },
       { path: 'member-case-details', component: MembercasedetailsComponent },
+      { path: 'member-authdetailsdialog', component: MemberauthdetailsComponent },
 
       { path: 'dash-newdash', component: NewDashBoardComponent },
       { path: 'dash-newdash2', component: NewDashboard2Component },
@@ -286,7 +291,7 @@ const routes: Routes = [
       { path: 'admin-udcf', component: UserDefinedCustomFieldsComponent },
       { path: 'admin-templatebuilder', component: TemplatebuilderComponent },
       { path: 'admin-templatebuilderproperties', component: TemplatebuilderpropertiesComponent },
-      { path: 'admin-validation', component: ValidationComponent }, 
+      { path: 'admin-validation', component: ValidationComponent },
       { path: 'admin-umdocumenttype', component: UmdocumenttypeComponent },
       { path: 'admin-settingdialog', component: SettingsDialogComponent },
       { path: 'admin-umactivitytype', component: UmactivitytypeComponent },

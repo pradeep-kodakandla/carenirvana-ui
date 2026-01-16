@@ -1,1 +1,11 @@
-<p>authwizardshell works!</p>
+<div class="authWizardShell">
+  <app-authchevronstepper [steps]="steps"
+                          [activeStepId]="activeStepId"
+                          (stepSelected)="onStepSelected($event)">
+  </app-authchevronstepper>
+
+  <div class="wizardBody">
+    <router-outlet></router-outlet>
+  </div>
+</div>
+

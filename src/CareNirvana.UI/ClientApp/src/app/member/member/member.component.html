@@ -25,12 +25,13 @@
 
       <!-- 🌟 Special Authorization Handling -->
       <div *ngIf="tab.name === 'Authorization'">
-        <div *ngIf="!showAuthorizationComponent">
+        <!--<div *ngIf="!showAuthorizationComponent">
           <app-authdetails [memberId]="memberId" (addClicked)="onAddClick($event)"></app-authdetails>
         </div>
         <div *ngIf="showAuthorizationComponent">
           <app-authorization [authNumber]="authNumber" [memberId]="memberId" (cancel)="onCancel()"></app-authorization>
-        </div>
+        </div>-->
+        <app-memberauthdetails></app-memberauthdetails>
       </div>
       <!---->
       <div *ngIf="tab.name === 'Complaints'">

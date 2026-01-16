@@ -1,0 +1,585 @@
+/* Layout */
+.auth-details {
+  width: 100%;
+}
+
+/*.grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}*/
+
+/* Cards */
+.section-card, .sub-card {
+  border: 1px solid #e6e8ec;
+  border-radius: 10px;
+  padding: 14px;
+  background: #fff;
+  margin-bottom: 14px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  /* header bar look */
+  background: #f3f4f6;
+  border-bottom: 1px solid #e6e8ec;
+  /* make it span full card width */
+  margin: -14px -14px 12px;
+  padding: 10px 14px;
+  /* match card top corners */
+  border-radius: 10px 10px 0 0;
+}
+
+.section-title {
+  font-weight: 800;
+  font-size: 14px;
+  color: #111827;
+}
+
+.sub-title {
+  font-weight: 700;
+  font-size: 13px;
+  margin: 6px 0 10px;
+}
+
+/* ============ Outlined Floating Field (like screenshot) ============ */
+.ff-outline {
+  position: relative;
+  border: 1px solid #cfd4dc;
+  border-radius: 8px;
+  background: #fff;
+  /* space for the floating label + consistent control padding */
+  padding: 1px 1px 1px;
+  /*min-height: 52px;*/
+  /* In grid rows with textareas, don't stretch this box to match row height */
+  align-self: start;
+  height: fit-content;
+}
+
+  .ff-outline:hover {
+    border-color: #aeb6c2;
+  }
+
+  .ff-outline.ff-disabled {
+    opacity: 0.65;
+    pointer-events: none;
+  }
+
+  .ff-outline.ff-invalid {
+    border-color: #dc3545;
+  }
+
+.ff-float-label {
+  position: absolute;
+  top: -9px;
+  left: 10px;
+  padding: 0 6px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  color: #444;
+  line-height: 18px;
+}
+
+/* body holds the actual control */
+.ff-body {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+}
+
+/* Native inputs inside outlined */
+.ff-input {
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-size: 12px;
+  line-height: 22px;
+  padding-left: 5px;
+}
+
+  /* Consistent height for non-textarea inputs */
+  .ff-input:not(.ff-textarea) {
+    height: 34px;
+  }
+
+.ff-textarea {
+  resize: vertical;
+  min-height: 72px;
+  padding-top: 5px;
+}
+
+/* Required asterisk */
+.req-star {
+  color: #dc3545;
+  margin-left: 4px;
+  font-weight: 800;
+}
+
+/* Your UI controls should fill the width */
+.ff-ui {
+  display: block;
+  width: 100%;
+}
+
+/* Try to remove double-borders if ui-smart-dropdown / ui-datetime-picker render their own border */
+:host ::ng-deep .ff-outline ui-smart-dropdown,
+:host ::ng-deep .ff-outline ui-datetime-picker {
+  width: 100%;
+  display: block;
+}
+
+  :host ::ng-deep .ff-outline ui-smart-dropdown input,
+  :host ::ng-deep .ff-outline ui-datetime-picker input {
+    border: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    font-size: 14px !important;
+    background: transparent !important;
+    height: 34px !important;
+    line-height: 22px !important;
+  }
+
+/* Checkbox row (keep clean) */
+.ff-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 2px;
+  align-self: start;
+}
+
+  .ff-checkbox .form-check-input {
+    margin: 0;
+    margin-top: 1px;
+  }
+
+  .ff-checkbox .form-check-label {
+    margin: 0;
+    cursor: pointer;
+  }
+
+/* Errors */
+.ff-error {
+  color: #dc3545;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.form-outline .ff-ui,
+.field-box .ff-ui {
+  border: 0 !important;
+}
+
+.ff-ui {
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Subsection card as an outlined block with floating title */
+.sub-card {
+  position: relative;
+  padding-top: 18px; /* space for floating label */
+}
+
+.sub-float-label {
+  position: absolute;
+  top: -9px;
+  left: 12px;
+  padding: 0 8px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7280;
+  line-height: 18px;
+}
+
+
+.case-savebar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 0;
+}
+
+
+/* Responsive grid: max 5 columns, auto adjusts down on smaller screens */
+.grid {
+  display: grid;
+  gap: 14px;
+  /* Prevent tall controls (e.g., textarea) from stretching other fields in the same row */
+  align-items: start;
+  /* default: up to 4 columns */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* drop to 4 */
+@media (max-width: 1400px) {
+  .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* drop to 3 */
+@media (max-width: 1200px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* drop to 2 */
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* drop to 1 */
+@media (max-width: 600px) {
+  .grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+}
+
+
+/* Make section header clickable like accordion */
+.section-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+  .section-header:focus {
+    outline: 2px solid rgba(59, 130, 246, 0.35);
+    outline-offset: 2px;
+  }
+
+/* Chevron icon before title */
+.section-acc-icon {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+  font-size: 24px;
+  transition: transform 150ms ease;
+  color: #374151;
+}
+
+  .section-acc-icon.open {
+    transform: rotate(90deg);
+  }
+
+
+.ff-outline {
+  position: relative;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  background: #fff;
+  transition: box-shadow .15s ease, border-color .15s ease, background .15s ease;
+}
+
+/* Unchanged baseline */
+.ff-unchanged:hover {
+  border-color: #c7d0dc;
+}
+
+/* CHANGED: subtle cue always visible */
+.ff-changed {
+  border-color: #b9c7ff; /* soft accent */
+  background: #fbfcff; /* almost white tint */
+}
+
+  /* optional: tiny "edited" dot in the corner */
+  .ff-changed::after {
+    content: "";
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #4c6fff; /* accent dot */
+    opacity: .9;
+  }
+
+/* SELECTED: higher emphasis than changed */
+.ff-selected {
+  border-color: #4c6fff;
+  box-shadow: 0 0 0 3px rgba(76, 111, 255, .12);
+  background: #f7f9ff;
+}
+
+  /* optional: left accent bar for selected */
+  .ff-selected::before {
+    content: "";
+    position: absolute;
+    left: -1px;
+    top: 10px;
+    bottom: 10px;
+    width: 3px;
+    border-radius: 3px;
+    background: #4c6fff;
+  }
+
+  /* If selected + changed, keep selected dominant */
+  .ff-selected.ff-changed {
+    background: #f4f7ff;
+  }
+
+
+.edited-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  border: 1px solid rgba(76, 111, 255, .22);
+  background: rgba(76, 111, 255, .10);
+  color: #2f49d1;
+  vertical-align: middle;
+  transform: translateY(-1px);
+}
+
+
+/* Wrap a field + its validation message so error never flows beside */
+.ff-field {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Ensure checkbox stays on one line and error below */
+.ff-checkbox, .ff-outline {
+  width: 100%;
+}
+
+
+/* Make search span the full grid width */
+.ff-span-all {
+  grid-column: 1 / -8;
+}
+
+/* Search bar styling to match screenshot */
+.ff-searchbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /*  border: 1px solid #d0d0d0;
+*/ border-radius: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  min-height: 44px;
+}
+
+  .ff-searchbar:focus-within {
+    border-color: #6aa9ff;
+    box-shadow: 0 0 0 3px rgba(106,169,255,.18);
+  }
+
+.ff-search-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: #6b7280;
+}
+
+  .ff-search-icon svg {
+    fill: currentColor;
+  }
+
+.ff-search-input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 12px;
+}
+
+  .ff-search-input::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+  }
+/* =========================
+   Repeat groups (+ / −)
+========================= */
+.ff-repeat-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.ff-repeat-group {
+  border: 1px dashed #e1e5ee;
+  border-radius: 12px;
+  padding: 12px;
+  background: #fcfcfd;
+}
+
+.ff-repeat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.ff-repeat-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+  letter-spacing: .2px;
+}
+
+.grid.ff-repeat-grid {
+  /* add an extra "actions" column as the LAST cell */
+  grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
+}
+
+/* Keep responsiveness: repeat(N) + auto actions col */
+@media (max-width: 1400px) {
+  .grid.ff-repeat-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  }
+}
+
+@media (max-width: 1200px) {
+  .grid.ff-repeat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .grid.ff-repeat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .grid.ff-repeat-grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) auto;
+  }
+}
+
+/* In repeat grids, a full-width field should NOT cover the actions column */
+.grid.ff-repeat-grid .ff-span-all {
+  grid-column: 1 / -8;
+}
+
+.ff-repeat-cell {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 1px;
+}
+
+.ff-repeat-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid #d7dde5;
+  background: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+  user-select: none;
+  transition: box-shadow .15s ease, border-color .15s ease, transform .05s ease;
+}
+
+  .ff-repeat-btn:hover {
+    border-color: #aeb6c2;
+    box-shadow: 0 2px 10px rgba(17,24,39,.06);
+  }
+
+  .ff-repeat-btn:active {
+    transform: translateY(1px);
+  }
+
+  .ff-repeat-btn:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .ff-repeat-btn.danger {
+    border-color: rgba(220,53,69,.32);
+  }
+
+    .ff-repeat-btn.danger:hover {
+      border-color: rgba(220,53,69,.6);
+    }
+
+/* Nested subsection visual hint */
+.sub-card.sub-nested {
+  border-style: dashed;
+  background: #fff;
+  margin-top: 14px;
+}
+
+/* Enrollment cards */
+.selection-container {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.rounded-box {
+  border: 1px solid #e6e8ec;
+  border-radius: 12px;
+  padding: 12px;
+  background: #fff;
+  cursor: pointer;
+  transition: box-shadow .15s ease, border-color .15s ease, transform .05s ease;
+}
+
+  .rounded-box:hover {
+    border-color: #c7d0dc;
+    box-shadow: 0 6px 18px rgba(17, 24, 39, 0.06);
+  }
+
+  .rounded-box.selected {
+    border-color: #4c6fff;
+    box-shadow: 0 0 0 3px rgba(76, 111, 255, .12);
+    background: #f7f9ff;
+  }
+
+.pairs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pair-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 10px;
+}
+
+.label {
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+  .label.key {
+    font-weight: 700;
+    color: #374151;
+  }
+
+  .label.value {
+    color: #111827;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }

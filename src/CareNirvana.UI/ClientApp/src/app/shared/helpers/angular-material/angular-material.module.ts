@@ -46,7 +46,6 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatRadioModule } from '@angular/material/radio';
 
-import { BrowserModule } from '@angular/platform-browser';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatAccordion } from '@angular/material/expansion';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -79,7 +78,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
     MatGridListModule,
     MatSidenavModule,
     BaseChartDirective, MatBadgeModule, MatButtonToggleModule, MatAutocompleteModule, MatCheckboxModule, MatStepperModule, MatTooltipModule, MatDialogModule,
-    MatSnackBarModule, MatDatepickerModule, MatNativeDateModule, MatRadioModule, BrowserModule, DragDropModule, MatAccordion, MatProgressSpinnerModule, 
+    MatSnackBarModule, MatDatepickerModule, MatNativeDateModule, MatRadioModule, DragDropModule, MatAccordion, MatProgressSpinnerModule, 
   ],
   exports: [MatFormFieldModule, 
     FormsModule,
@@ -104,7 +103,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
     MatTabsModule,
     MatGridListModule,
     MatSidenavModule, BaseChartDirective, MatBadgeModule, MatButtonToggleModule, MatAutocompleteModule, MatCheckboxModule, MatStepperModule, MatTooltipModule, MatDialogModule,
-    MatSnackBarModule, MatDatepickerModule, MatNativeDateModule, MatRadioModule, BrowserModule, DragDropModule, MatAccordion, MatProgressSpinnerModule, 
+    MatSnackBarModule, MatDatepickerModule, MatNativeDateModule, MatRadioModule, DragDropModule, MatAccordion, MatProgressSpinnerModule, 
   ]
 })
 export class AngularMaterialModule { }

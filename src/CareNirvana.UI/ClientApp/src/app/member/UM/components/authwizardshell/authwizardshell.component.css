@@ -1,0 +1,89 @@
+.level-tabs {
+  display: flex;
+  gap: 10px;
+  padding: 10px 0 8px;
+  border-bottom: 1px solid #e6e8ec;
+  margin-bottom: 10px;
+}
+
+.level-tab {
+  border: 1px solid #e3e7ef;
+  background: #fff;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+  .level-tab.active {
+    border-color: #6b8cff;
+    box-shadow: 0 0 0 3px rgba(107, 140, 255, 0.18);
+  }
+
+
+.cw-shell {
+  height: 91vh; /* full viewport */
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden; /* prevent page scrolling */
+}
+
+.cw-top {
+  flex: 0 0 auto;
+  background: #fff;
+  z-index: 10;
+}
+
+.cw-content {
+  flex: 1 1 auto;
+  overflow: auto; /* ✅ only content scrolls */
+  padding: 12px;
+  min-height: 0;
+  overflow-y: auto
+}
+
+.card {
+  border: 0px !important;
+}
+
+
+/* Search field (rounded + left icon) */
+.ff-searchbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #d7dde5;
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px 14px;
+  height: 44px;
+}
+
+.ff-searchbox-icon {
+  font-size: 18px;
+  opacity: .75;
+  line-height: 1;
+}
+
+.ff-searchbox-info {
+  font-size: 16px;
+  opacity: .65;
+  line-height: 1;
+  cursor: help;
+}
+
+.ff-searchbox-input {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 14px;
+  padding: 0;
+}
+
+.ff-searchbox:focus-within {
+  border-color: #aab4c2;
+  box-shadow: 0 0 0 3px rgba(60,130,246,.10);
+}

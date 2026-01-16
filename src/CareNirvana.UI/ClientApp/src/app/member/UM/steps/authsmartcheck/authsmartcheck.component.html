@@ -1,0 +1,223 @@
+<!-- authsmartcheck.component.html -->
+<mat-card class="page-shell">
+
+  <header class="page-header">
+    <div class="title-wrap">
+      <h2 class="page-title">Smart Authorization</h2>
+      <p class="page-subtitle">Select an LOB & fill service details to continue.</p>
+    </div>
+
+    <div class="stepper-mini" aria-label="Progress">
+      <span class="step active">1</span>
+      <span class="line"></span>
+      <span class="step">2</span>
+      <span class="line"></span>
+      <span class="step">3</span>
+    </div>
+  </header>
+
+  <mat-divider></mat-divider>
+
+  <!-- Coverage Context -->
+  <section class="section">
+    <div class="section-head">
+      <h3 class="section-title">Choose Coverage Context</h3>
+      <span class="section-help">Pick the applicable LOB/account period.</span>
+    </div>
+
+    <div class="selection-container">
+      <div class="rounded-box tooltip-wrapper"
+           *ngFor="let enr of memberEnrollments; let i = index"
+           (click)="selectEnrollment(i)"
+           [ngClass]="{ 'selected': selectedDiv === i + 1 }">
+
+        <div class="pairs">
+          <div class="pair-row" *ngFor="let pair of getEnrollmentDisplayPairs(enr)">
+            <label class="label key">{{ pair.label }}</label>
+            <label class="label value" [title]="pair.value">{{ pair.value || '—' }}</label>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <mat-divider></mat-divider>
+
+  <!-- Form -->
+  <section class="section">
+    <div class="section-head">
+      <h3 class="section-title">Service Details</h3>
+      <span class="section-help">Dates accept <code>D</code>, <code>D+1</code>, <code>D-1</code> or use the picker.</span>
+    </div>
+
+    <form [formGroup]="smartAuthCheckForm" class="form-surface">
+
+      <!-- Row 1: Auth Case + Auth Type -->
+      <div class="row-2">
+
+        <div class="form-field">
+          <label class="floating-label">Auth Case <span class="req">*</span></label>
+
+          <!-- IMPORTANT: adjust inputs/outputs to match your UiSmartDropdown API -->
+          <ui-smart-dropdown name="authClass"
+                             [options]="authClassOptions"
+                             [(ngModel)]="selectedAuthClassId"
+                             [ngModelOptions]="{ standalone: true }"
+                             (valueChange)="onAuthClassChanged($event)"
+                             label="Auth Case"
+                             placeholder="Choose..."
+                             [clearable]="true">
+          </ui-smart-dropdown>
+
+
+
+          <div *ngIf="smartAuthCheckForm.get('authClassId')?.touched && smartAuthCheckForm.get('authClassId')?.invalid"
+               class="field-error">
+            Auth Case is required.
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label class="floating-label">Auth Type <span class="req">*</span></label>
+
+          <ui-smart-dropdown name="authType"
+                             [options]="authTypeOptions"
+                             [(ngModel)]="selectedAuthTypeId"
+                             [ngModelOptions]="{ standalone: true }"
+                             (valueChange)="onAuthTypeChanged($event)"
+                             label="Auth Type"
+                             placeholder="Choose..."
+                             [clearable]="true"
+                             [disabled]="!selectedAuthClassId || selectedAuthClassId === 0">
+          </ui-smart-dropdown>
+
+          <div *ngIf="smartAuthCheckForm.get('authTypeId')?.touched && smartAuthCheckForm.get('authTypeId')?.invalid"
+               class="field-error">
+            Auth Type is required.
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Row 2: From + To -->
+      <div class="row-2">
+        <!-- From -->
+        <!-- From -->
+        <div class="form-field">
+          <label class="floating-label">From Date <span class="req">*</span></label>
+
+          <ui-datetime-picker formControlName="scheduledDateTime"
+                              [dateOnly]="false"
+                              placeholderDateTime="Enter D, D+1, D-1 or select"
+                              tabindex="-1">
+          </ui-datetime-picker>
+
+          <div *ngIf="smartAuthCheckForm.get('scheduledDateTime')?.touched && smartAuthCheckForm.get('scheduledDateTime')?.invalid"
+               class="field-error">
+            From date is required.
+          </div>
+        </div>
+
+        <!-- To -->
+        <div class="form-field">
+          <label class="floating-label">To Date <span class="req">*</span></label>
+
+          <ui-datetime-picker formControlName="dueDateTime"
+                              [dateOnly]="false"
+                              placeholderDateTime="Enter D, D+1, D-1 or select"
+                              tabindex="-1">
+          </ui-datetime-picker>
+
+          <div *ngIf="smartAuthCheckForm.get('dueDateTime')?.touched && smartAuthCheckForm.get('dueDateTime')?.invalid"
+               class="field-error">
+            To date is required.
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ICD rows -->
+      <div formArrayName="icds" class="stacked-rows">
+        <div class="row-2" *ngFor="let g of icds.controls; let i = index" [formGroupName]="i">
+          <div class="form-field">
+            <label class="floating-label">ICD-10</label>
+            <input class="form-control"
+                   formControlName="icd10"
+                   [matAutocomplete]="icdAuto"
+                   placeholder="Type ICD-10 (code or description)"
+                   (focus)="loadCodesForField()" />
+
+            <mat-autocomplete #icdAuto="matAutocomplete"
+                              [displayWith]="displayCode"
+                              (optionSelected)="onCptSelected(i, $event.option.value)"
+                              autoActiveFirstOption>
+              <mat-option *ngFor="let opt of filteredCpt$ | async" [value]="opt">
+                <div class="opt-row">
+                  <span class="opt-code">{{ opt.code }}</span>
+                  <span class="opt-desc">{{ opt.desc }}</span>
+                </div>
+              </mat-option>
+            </mat-autocomplete>
+          </div>
+
+          <div class="form-field with-actions">
+            <label class="floating-label">ICD-10 Description</label>
+            <div class="inline-field">
+              <input class="form-control" formControlName="icd10Desc" placeholder="ICD-10 Description" />
+              <div class="row-actions">
+                <button type="button" class="icon-btn" (click)="addIcdRow()" title="Add another ICD">＋</button>
+                <button type="button" class="icon-btn danger" (click)="removeIcdRow(i)" [disabled]="icds.length === 1" title="Remove">−</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Service rows -->
+      <div formArrayName="services" class="stacked-rows">
+        <div class="row-2" *ngFor="let g of services.controls; let i = index" [formGroupName]="i">
+          <div class="form-field">
+            <label class="floating-label">Service Code</label>
+            <input class="form-control"
+                   formControlName="serviceCode"
+                   [matAutocomplete]="svcAuto"
+                   placeholder="Type Service Code (code or description)"
+                   (focus)="loadCodesForField()" />
+
+            <mat-autocomplete #svcAuto="matAutocomplete"
+                              [displayWith]="displayCode"
+                              (optionSelected)="onServiceSelected(i, $event.option.value)"
+                              autoActiveFirstOption>
+              <mat-option *ngFor="let opt of filteredService$ | async" [value]="opt">
+                <div class="opt-row">
+                  <span class="opt-code">{{ opt.code }}</span>
+                  <span class="opt-desc">{{ opt.desc }}</span>
+                </div>
+              </mat-option>
+            </mat-autocomplete>
+          </div>
+
+          <div class="form-field with-actions">
+            <label class="floating-label">Service Description</label>
+            <div class="inline-field">
+              <input class="form-control" formControlName="serviceDesc" placeholder="Service Description" />
+              <div class="row-actions">
+                <button type="button" class="icon-btn" (click)="addServiceRow()" title="Add another Service">＋</button>
+                <button type="button" class="icon-btn danger" (click)="removeServiceRow(i)" [disabled]="services.length === 1" title="Remove">−</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="sticky-bar">
+        <div class="bar-right">
+          <button type="button" class="btn-primary" (click)="onNextContinue()">Next / Continue</button>
+        </div>
+      </div>
+
+    </form>
+  </section>
+</mat-card>

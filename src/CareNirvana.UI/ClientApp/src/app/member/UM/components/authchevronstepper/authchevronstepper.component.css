@@ -1,0 +1,64 @@
+.caseChevronStepper {
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+.step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 14px 28px 14px 42px;
+  font-weight: 600;
+  text-decoration: none;
+  /*  border: 1px solid #2c74b7;
+*/ border-right: none;
+  background: #f3f6fb;
+  color: #1f3b57;
+  cursor: pointer;
+  user-select: none;
+}
+
+  .step:first-child {
+    padding-left: 22px;
+  }
+
+  .step::after {
+    content: '';
+    position: absolute;
+    top: -1px;
+    right: -34px;
+    width: 0;
+    height: 0;
+    border-top: 27px solid transparent;
+    border-bottom: 27px solid transparent;
+    border-left: 34px solid #f3f6fb;
+    z-index: 2;
+  }
+
+  .step::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    right: -35px;
+    width: 0;
+    height: 0;
+    border-top: 27px solid transparent;
+    border-bottom: 27px solid transparent;
+    border-left: 35px solid #2c74b7;
+    z-index: 1;
+  }
+
+  .step.active {
+    background: #1f6fb7;
+    color: #fff;
+  }
+
+    .step.active::after {
+      border-left-color: #1f6fb7;
+    }
+
+  .step.disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }

@@ -1,3 +1,3 @@
 export interface AuthunsavedchangesawareService {
-  caseHasUnsavedChanges(): boolean;
+  authHasUnsavedChanges(): boolean;
 }

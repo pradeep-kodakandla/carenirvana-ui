@@ -1,1 +1,15 @@
-<p>authconfirmleavedialog works!</p>
+<h2 class="dialogTitle">{{ title }}</h2>
+
+<div class="dialogBody">
+  <p>{{ message }}</p>
+</div>
+
+<div class="dialogActions">
+  <button type="button" class="btn secondary" (click)="stay()">
+    {{ cancelText }}
+  </button>
+
+  <button type="button" class="btn primary" (click)="leave()">
+    {{ confirmText }}
+  </button>
+</div>
