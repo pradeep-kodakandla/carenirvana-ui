@@ -77,6 +77,11 @@ export class AuthdocumentsComponent implements OnDestroy {
   // --------------------------
   // Context (called by WizardShell)
   // --------------------------
+  // add these private fields
+  private resolvingCtx = false;
+  private lastLoadedKey: string | null = null;
+
+  // inside setContext()
   setContext(ctx: any): void {
     const nextDetailId = Number(ctx?.authDetailId ?? 0) || null;
     const nextTemplateId = Number(ctx?.authTemplateId ?? 0) || null;
@@ -89,12 +94,65 @@ export class AuthdocumentsComponent implements OnDestroy {
     this.authDetailId = nextDetailId;
     this.authTemplateId = nextTemplateId;
 
-    // Only load when both ids exist (same as AuthNotes)
-    if (changed && this.authDetailId && this.authTemplateId) {
-      this.reload(this.authDetailId, this.authTemplateId);
+    // Load when both ids exist.
+    // NOTE: Shell may set authDetailId/authTemplateId as plain fields BEFORE calling setContext.
+    // In that case `changed` can be false even though this step has never loaded; guard with lastLoadedKey.
+    if (this.authDetailId && this.authTemplateId) {
+      const key = this.makeCtxKey(this.authDetailId, this.authTemplateId);
+      if (changed || this.lastLoadedKey !== key) {
+        this.reload(this.authDetailId, this.authTemplateId);
+        return;
+      }
+    }
+
+    // Fallback: resolve missing context from authNumber (same idea as AuthNotes)
+    if (changed && (!this.authDetailId || !this.authTemplateId)) {
+      this.tryResolveContextFromAuthNumber();
+      this.tryResolveContextFromAuthNumber();
     }
   }
 
+  private tryResolveContextFromAuthNumber(): void {
+    if (this.resolvingCtx) return;
+    const num = String(this.authNumber ?? '').trim();
+    if (!num || num === '0') return;
+
+    this.resolvingCtx = true;
+    this.api.getByNumber(num)
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => (this.resolvingCtx = false)),
+        catchError((e) => {
+          console.error('AuthDocuments: failed to resolve context by authNumber', num, e);
+          return of(null as any);
+        })
+      )
+      .subscribe((row: any) => {
+        if (!row) return;
+
+        const detailId = this.toNum(row?.authDetailId ?? row?.authDetailID ?? row?.id);
+        const templateId = this.toNum((row as any)?.authTemplateId ?? (row as any)?.authTemplateID ?? row?.authClassId);
+
+        // Only patch missing values to avoid flapping.
+        this.authDetailId = this.authDetailId ?? detailId;
+        this.authTemplateId = this.authTemplateId ?? templateId;
+
+        if (this.authDetailId && this.authTemplateId) {
+          this.reload(this.authDetailId, this.authTemplateId);
+        } else {
+          this.errorMsg = 'Missing authorization context (authDetailId/authTemplateId).';
+        }
+      });
+  }
+
+  private toNum(v: any): number | null {
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+
+  private makeCtxKey(authDetailId: number, authTemplateId: number): string {
+    return `${authDetailId}|${authTemplateId}`;
+  }
   // --------------------------
   // Load
   // --------------------------
@@ -105,7 +163,8 @@ export class AuthdocumentsComponent implements OnDestroy {
     this.fields = [];
     this.dropdownOptions = {};
     this.closeEditor();
-
+    this.lastLoadedKey = this.makeCtxKey(authDetailId, authTemplateId);
+    
     forkJoin({
       docs: this.api.getDocuments(authDetailId).pipe(catchError(() => of([] as any))),
       tmpl: this.api.getAuthDocumentsTemplate(authTemplateId).pipe(catchError(() => of(undefined)))
@@ -392,7 +451,7 @@ export class AuthdocumentsComponent implements OnDestroy {
       (d as any)?.docType ??
       (d as any)?.documentTypeId ??
       null;
-    console.log('openEdit docTypeRaw=', docTypeRaw);
+    
     this.setValueByFieldId('authorizationDocumentType', docTypeRaw != null ? String(docTypeRaw) : null);
 
 

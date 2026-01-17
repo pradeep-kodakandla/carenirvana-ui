@@ -254,9 +254,6 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
 
   getNoteTypeLabel(n: AuthNoteDto): string {
     const v = this.getNoteType(n);
-    console.log('noteTypeControlName', this.noteTypeControlName);
-    console.log('opts', this.dropdownOptions?.[this.noteTypeControlName!]);
-    console.log('firstNoteType', this.getNoteType(this.notes?.[0]));
     return this.getLabelFromControlOptions(this.noteTypeControlName, v);
   }
 
@@ -720,7 +717,7 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
     if (changed && this.authDetailId && this.authTemplateId) {
       this.reloadWithIds(this.authDetailId, this.authTemplateId);
     }
-    console.log('AuthNotesComponent setContext', ctx, changed);
+    
   }
 
   private reloadWithIds(authDetailId: number, authTemplateId: number): void {

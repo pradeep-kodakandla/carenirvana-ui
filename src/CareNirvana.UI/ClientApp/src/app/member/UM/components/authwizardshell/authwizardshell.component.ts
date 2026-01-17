@@ -248,13 +248,13 @@ export class AuthwizardshellComponent implements OnInit, OnDestroy {
     if (!inst) return;
 
     const ctx = this.ctx;
-    console.log('AuthWizardShell: pushing context into step', this.activeStepId, ctx);
+    
     // Set common fields only if the step declares them (safe)
     if ('authNumber' in inst) inst.authNumber = ctx.authNumber;
     if ('isNewAuth' in inst) inst.isNewAuth = ctx.isNewAuth;
 
     if ('authDetailId' in inst) inst.authDetailId = ctx.authDetailId;
-    if ('authTemplateId' in inst) inst.authTypeId = ctx.authTypeId;
+    if ('authTemplateId' in inst) inst.authTemplateId = ctx.authTemplateId;
 
     if ('authClassId' in inst) inst.authClassId = ctx.authClassId;
     if ('authTypeId' in inst) inst.authTypeId = ctx.authTypeId;
@@ -264,15 +264,16 @@ export class AuthwizardshellComponent implements OnInit, OnDestroy {
 
     if ('userId' in inst) inst.userId = ctx.userId;
 
-    console.log('AuthWizardShell: pushed context into step', this.activeStepId, ctx);
+    
     // Preferred hook
     if (typeof inst?.setContext === 'function') {
       inst.setContext(ctx);
     }
 
     // Optional reload hook
-    if (typeof inst?.reload === 'function') {
+    if (typeof inst?.reload === 'function' && inst.reload.length === 0) {
       inst.reload();
     }
+
   }
 }

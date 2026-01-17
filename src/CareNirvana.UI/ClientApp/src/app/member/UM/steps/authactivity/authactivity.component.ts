@@ -48,7 +48,10 @@ export class AuthactivityComponent {
   dueDateText: string = '';
   assignToDisplay: string = '';
 
+  @Input()
   authDetailId: number | null = null;
+
+  private lastLoadedAuthDetailId: number | null = null;
   canAdd = true;
   canEdit = true;
   canView = true;
@@ -108,7 +111,13 @@ export class AuthactivityComponent {
     this.filteredActivities = this.activities;
     this.priorityDisplay = 'Select';
     this.workBasketDisplay = 'Select';
-    this.authDetailId = 178;
+
+    // If Shell/parent already provided authDetailId, load immediately.
+    const existingId = this.toNum(this.authDetailId);
+    if (existingId) {
+      this.lastLoadedAuthDetailId = existingId;
+      this.loadActivitiesForAuth(existingId);
+    }
 
     this.loadActivityTypes();
     this.loadUsers();
@@ -123,14 +132,40 @@ export class AuthactivityComponent {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['authDetailId']) {
-      const newId = changes['authDetailId'].currentValue;
-      if (newId != null) {
-        this.loadActivitiesForAuth(178);
+      const newIdRaw = changes['authDetailId'].currentValue;
+      const newId = this.toNum(newIdRaw);
+      if (newId && newId !== this.lastLoadedAuthDetailId) {
+        this.authDetailId = newId;
+        this.loadActivitiesForAuth(newId);
+        this.lastLoadedAuthDetailId = newId;
       }
     }
-
   }
 
+
+  // --------------------------
+  // Context (called by WizardShell)
+  // --------------------------
+  setContext(ctx: any): void {
+    const id = this.toNum(ctx?.authDetailId);
+    if (!id) return;
+
+    const changed = id !== this.authDetailId;
+    this.authDetailId = id;
+
+    // Load on first set, or when authDetailId changes
+    if (changed || this.lastLoadedAuthDetailId !== id || (this.activities?.length ?? 0) === 0) {
+      this.lastLoadedAuthDetailId = id;
+      this.loadActivitiesForAuth(id);
+    }
+  }
+
+ reload(): void {
+    const id = this.toNum(this.authDetailId);
+    if (!id) return;
+    this.lastLoadedAuthDetailId = id;
+    this.loadActivitiesForAuth(id);
+  }
   private loadWorkBaskets(): void {
 
     this.filteredPriorities = [
@@ -141,7 +176,9 @@ export class AuthactivityComponent {
     this.priorityOptions = this.filteredPriorities.map(p => ({ value: Number(p.value), label: p.label }));
     console.log('Priority options loaded:', this.priorityOptions);
 
-    this.wbService.getByUserId(1).subscribe({
+    const uid = Number(sessionStorage.getItem('loggedInUserid') || 0) || 0;
+
+    this.wbService.getByUserId(uid || 1).subscribe({
       next: (res: any) => {
 
         if (!Array.isArray(res)) {
@@ -405,6 +442,13 @@ export class AuthactivityComponent {
     this.activityTypeDisplay = 'Select';
     this.priorityDisplay = 'Select';
     this.workBasketDisplay = 'Select';
+
+    // If Shell/parent already provided authDetailId, load immediately.
+    const existingId = this.toNum(this.authDetailId);
+    if (existingId) {
+      this.lastLoadedAuthDetailId = existingId;
+      this.loadActivitiesForAuth(existingId);
+    }
     this.scheduledDateText = '';
     this.dueDateText = '';
     this.assignToDisplay = sessionStorage.getItem('loggedInUsername') || 'Select';
