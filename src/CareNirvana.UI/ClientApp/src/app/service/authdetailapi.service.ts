@@ -12,7 +12,9 @@ import {
   UpdateAuthNoteRequest,
   AuthDocumentDto,
   CreateAuthDocumentRequest,
-  UpdateAuthDocumentRequest
+  UpdateAuthDocumentRequest,
+  TemplateSectionResponse,
+  TemplateSectionsResponse
 } from 'src/app/member/UM/services/authdetail';
 
 @Injectable({ providedIn: 'root' })
@@ -84,6 +86,7 @@ export class AuthDetailApiService {
   // Documents APIs
   // --------------------------
 
+  // Documents
   getDocuments(authDetailId: number): Observable<AuthDocumentDto[]> {
     return this.http.get<AuthDocumentDto[]>(`${this.baseUrl}/${authDetailId}/documents`);
   }
@@ -102,4 +105,23 @@ export class AuthDetailApiService {
     const params = new HttpParams().set('userId', userId);
     return this.http.delete<void>(`${this.baseUrl}/${authDetailId}/documents/${documentId}`, { params });
   }
+
+
+
+  // --------------------------
+  // Template APIs
+  // --------------------------
+
+  getDecisionTemplate(authTemplateId: number): Observable<TemplateSectionsResponse> {
+    return this.http.get<TemplateSectionsResponse>(`${this.baseUrl}/template/${authTemplateId}/decision`);
+  }
+
+  getAuthNotesTemplate(authTemplateId: number): Observable<TemplateSectionResponse> {
+    return this.http.get<TemplateSectionResponse>(`${this.baseUrl}/template/${authTemplateId}/notes`);
+  }
+
+  getAuthDocumentsTemplate(authTemplateId: number): Observable<TemplateSectionResponse> {
+    return this.http.get<TemplateSectionResponse>(`${this.baseUrl}/template/${authTemplateId}/documents`);
+  }
+
 }

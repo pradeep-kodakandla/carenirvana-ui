@@ -7,12 +7,16 @@ import { UiSmartDropdownComponent } from 'src/app/shared/ui/uismartdropdown/uism
 import { UiDatetimePickerComponent } from 'src/app/shared/ui/uidatetimepicker/uidatetimepicker.component';
 import { UiSmartLookupComponent } from 'src/app/shared/ui/uismartlookup/uismartlookup.component';
 
+import { UiMultiCheckDropdownComponent } from 'src/app/shared/ui/uimulticheckdropdown/uimulticheckdropdown.component';
+
+
 
 @NgModule({
   declarations: [
     UiSmartDropdownComponent,
     UiDatetimePickerComponent,
-    UiSmartLookupComponent
+    UiSmartLookupComponent,
+    UiMultiCheckDropdownComponent
   ],
   imports: [
     CommonModule,
@@ -22,7 +26,8 @@ import { UiSmartLookupComponent } from 'src/app/shared/ui/uismartlookup/uismartl
   exports: [
     UiSmartDropdownComponent,
     UiDatetimePickerComponent,
-    UiSmartLookupComponent
+    UiSmartLookupComponent,
+    UiMultiCheckDropdownComponent
   ]
 })
 export class SharedUiModule { }

@@ -2,8 +2,7 @@ import {
   ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, Output, OnInit, OnChanges, SimpleChanges,
   ViewChild, forwardRef, HostListener, signal, computed
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule, NG_VALUE_ACCESSOR, ReactiveFormsModule } from '@angular/forms';
+import { NG_VALUE_ACCESSOR } from '@angular/forms';
 import { ValueAccessorBase } from '../shared/valueaccessorbase';
 import { UiOption } from '../shared/uioption.model';
 

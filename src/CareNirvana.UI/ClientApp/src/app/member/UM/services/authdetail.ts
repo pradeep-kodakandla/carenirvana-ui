@@ -52,9 +52,13 @@ export interface UpdateAuthRequest {
 export interface AuthNoteDto {
   noteId: string; // guid
   noteText: string;
-  noteLevel?: number | null;
+
   noteType?: number | null;
+  noteLevel?: number | null;
   authAlertNote?: boolean | null;
+
+  encounteredOn?: string | null;
+  alertEndDate?: string | null;
 
   createdBy: number;
   createdOn: string;
@@ -66,24 +70,30 @@ export interface AuthNoteDto {
 
 export interface CreateAuthNoteRequest {
   noteText?: string | null;
-  noteLevel?: number | null;
   noteType?: number | null;
+  noteLevel?: number | null;
   authAlertNote?: boolean | null;
+  encounteredOn?: string | null;  // ISO string
+  alertEndDate?: string | null;   // ISO string
 }
 
 export interface UpdateAuthNoteRequest {
   noteText?: string | null;
-  noteLevel?: number | null;
   noteType?: number | null;
+  noteLevel?: number | null;
   authAlertNote?: boolean | null;
+  encounteredOn?: string | null;  // ISO string
+  alertEndDate?: string | null;   // ISO string
 }
 
+
 // ---------- Documents ----------
+
 export interface AuthDocumentDto {
-  documentId: string; // guid
+  documentId: string;
+
   documentType?: number | null;
-  documentLevel?: number | null;
-  documentDescription: string;
+  documentDescription?: string | null;
   fileNames: string[];
 
   createdBy: number;
@@ -96,14 +106,26 @@ export interface AuthDocumentDto {
 
 export interface CreateAuthDocumentRequest {
   documentType?: number | null;
-  documentLevel?: number | null;
   documentDescription?: string | null;
   fileNames?: string[] | null;
 }
 
 export interface UpdateAuthDocumentRequest {
   documentType?: number | null;
-  documentLevel?: number | null;
   documentDescription?: string | null;
   fileNames?: string[] | null;
 }
+
+
+export interface TemplateSectionResponse {
+  authTemplateId: number;
+  sectionName: string;
+  section: any; // section json
+}
+
+export interface TemplateSectionsResponse {
+  authTemplateId: number;
+  groupName: string;
+  sections: any; // typically an array of sections
+}
+

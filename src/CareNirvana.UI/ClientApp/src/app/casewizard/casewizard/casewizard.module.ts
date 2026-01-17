@@ -1,7 +1,7 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CasewizardRoutingModule } from './casewizardrouting.module';
-import { ReactiveFormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { SharedUiModule } from 'src/app/casewizard/casewizard/sharedui.module';
 
 import { CasewizardshellComponent } from 'src/app/member/AG/components/casewizardshell/casewizardshell.component';
@@ -32,6 +32,7 @@ import { CasecloseComponent } from 'src/app/member/AG/steps/caseclose/caseclose.
   ],
   imports: [
     CommonModule,
+    FormsModule,
     ReactiveFormsModule,
     CasewizardRoutingModule,
     SharedUiModule

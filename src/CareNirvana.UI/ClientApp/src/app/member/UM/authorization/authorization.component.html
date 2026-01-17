@@ -850,13 +850,13 @@
       </mat-step>
 
 
-      <mat-step label="Activity" *ngIf="hasPagePermission('Auth Activity', 'View')" [completed]="!!authNumber" [editable]="!!authNumber">
+      <!--<mat-step label="Activity" *ngIf="hasPagePermission('Auth Activity', 'View')" [completed]="!!authNumber" [editable]="!!authNumber">
         <app-umauthactivity *ngIf="authDetailId"
                             [authDetailId]="authDetailId"
                             [canAdd]="hasPagePermission('Auth Activity', 'Add')"
                             [canEdit]="hasPagePermission('Auth Activity', 'Edit')">
         </app-umauthactivity>
-      </mat-step>
+      </mat-step>-->
 
       <mat-step label="Notes"
                 *ngIf="hasPagePermission('Auth Notes', 'View')"

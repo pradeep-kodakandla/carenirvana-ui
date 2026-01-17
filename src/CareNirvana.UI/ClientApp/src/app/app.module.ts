@@ -49,7 +49,6 @@ import { AuthdynamicComponent } from './member/UM/authdynamic/authdynamic.compon
 import { ProviderSearchComponent } from './Provider/provider-search/provider-search.component';
 import { UmauthnotesComponent } from './member/UM/umauthnotes/umauthnotes.component';
 import { UmauthdocumentsComponent } from './member/UM/umauthdocuments/umauthdocuments.component';
-import { UmauthactivityComponent } from './member/UM/umauthactivity/umauthactivity.component';
 import { ValidationErrorDialogComponent } from './member/validation-error-dialog/validation-error-dialog.component';
 import { MdreviewComponent } from './member/UM/mdreview/mdreview.component';
 import { SmartauthcheckComponent } from './member/UM/smartauthcheck/smartauthcheck.component';
@@ -154,7 +153,7 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
 
 
 import { UiDropdownComponent } from './shared/ui/uidropdown/uidropdown.component';
-import { UiMultiCheckDropdownComponent } from './shared/ui/uimulticheckdropdown/uimulticheckdropdown.component';
+
 
 const routes: Routes = [
 
@@ -186,7 +185,7 @@ const routes: Routes = [
     MemberProgramComponent,
     MemberTasksummaryComponent,
     MemberInfoComponent, AuthorizationComponent, DecisiondetailsComponent, AuthdynamicComponent, ProviderSearchComponent,
-    UmauthnotesComponent, UmauthdocumentsComponent, UmauthactivityComponent, ValidationErrorDialogComponent, MdreviewComponent,
+    UmauthnotesComponent, UmauthdocumentsComponent, ValidationErrorDialogComponent, MdreviewComponent,
     NewDashBoardComponent, NewDashboard2Component, MdreviewdashboardComponent, SmartauthcheckComponent, ConfirmationDialogComponent,
     ConfigurationComponent, UsermanagementComponent, RolemanagementComponent, ProfilemanagementComponent, AppfeaturesetupComponent, PermissionManagerComponent,
     WorkgroupComponent, WorkbasketComponent, UserDefinedCustomFieldsComponent, TemplatebuilderComponent, TemplatebuilderpropertiesComponent, ValidationComponent,
@@ -206,7 +205,7 @@ const routes: Routes = [
     AgqocinvestigationoutcomeComponent, AgqocinvestigationreasonComponent, AgqocscoreComponent, AgresolutioncategoryComponent,
     AgresolutionsubcategoryComponent, MembercasedetailsComponent, MemberauthdetailsComponent,
 
-    UiDropdownComponent, UiMultiCheckDropdownComponent
+    UiDropdownComponent, 
   ],
   imports: [
     BrowserModule.withServerTransition({ appId: 'ng-cli-universal' }),
@@ -279,7 +278,6 @@ const routes: Routes = [
       { path: 'provider-search', component: ProviderSearchComponent },
       { path: 'member-authnotes', component: UmauthnotesComponent },
       { path: 'member-authdocs', component: UmauthdocumentsComponent },
-      { path: 'member-authactivity', component: UmauthactivityComponent },
       { path: 'admin-config', component: ConfigurationComponent },
       { path: 'admin-user', component: UsermanagementComponent },
       { path: 'admin-role', component: RolemanagementComponent },
@@ -372,7 +370,7 @@ const routes: Routes = [
       { path: 'admin-bre', component: BretestComponent },
 
       { path: 'ui-dropdown', component: UiDropdownComponent },
-      { path: 'ui-multicheckdropdown', component: UiMultiCheckDropdownComponent },
+
       //{
       //  path: 'rulesengine',
       //  loadChildren: () =>

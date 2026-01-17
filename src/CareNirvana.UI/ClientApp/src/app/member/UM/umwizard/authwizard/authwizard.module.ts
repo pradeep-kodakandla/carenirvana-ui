@@ -10,6 +10,7 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatButtonModule } from '@angular/material/button';
+import { DragDropModule } from '@angular/cdk/drag-drop';
 
 import { AuthwizardshellComponent } from 'src/app/member/UM/components/authwizardshell/authwizardshell.component';
 import { AuthchevronstepperComponent } from 'src/app/member/UM/components/authchevronstepper/authchevronstepper.component';
@@ -36,7 +37,9 @@ import { AuthdocumentsComponent } from 'src/app/member/UM/steps/authdocuments/au
     AuthmdreviewComponent,
     AuthactivityComponent,
     AuthnotesComponent,
-    AuthdocumentsComponent
+    AuthdocumentsComponent,
+
+    
   ],
   imports: [
     CommonModule,
@@ -52,6 +55,8 @@ import { AuthdocumentsComponent } from 'src/app/member/UM/steps/authdocuments/au
     MatInputModule,
     MatFormFieldModule,
     MatButtonModule,
+    DragDropModule,
+
   ],
   exports: [
     AuthwizardshellComponent

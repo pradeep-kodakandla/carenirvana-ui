@@ -3,11 +3,12 @@ import { FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms'
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { Observable, Subject, firstValueFrom, of } from 'rxjs';
 import { distinctUntilChanged, filter, map, startWith, switchMap, takeUntil, tap } from 'rxjs/operators';
-
+import { AuthNumberService } from 'src/app/service/auth-number-gen.service';
 import { AuthService } from 'src/app/service/auth.service';
 import { CrudService, DatasourceLookupService } from 'src/app/service/crud.service';
 import { MemberenrollmentService } from 'src/app/service/memberenrollment.service';
 import { AuthDetailApiService } from 'src/app/service/authdetailapi.service';
+import { AuthenticateService } from 'src/app/service/authentication.service';
 
 import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
 
@@ -221,6 +222,14 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
   optionsByControlName: Record<string, UiSmartOption[]> = {};
   private dependentDropdowns: Record<string, DepDropdownCfg> = {};
 
+  // ---------- Users (Owner dropdown) ----------
+  allUsers: any[] = [];
+  usersLoaded = false;
+  private authOwnerOptions: UiSmartOption[] = [];
+
+  /** Default Owner (logged-in user) */
+  private readonly loggedInUserId: number = Number(sessionStorage.getItem('loggedInUserid') || 0);
+
   // add cascading rules here if UM introduces dependencies
   private readonly dependentDatasourceRules: Array<{ child: string; parent: string; linkProp: string }> = [];
 
@@ -249,7 +258,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
     private crudService: CrudService,
     private dsLookup: DatasourceLookupService,
     private memberEnrollment: MemberenrollmentService,
-    private authApi: AuthDetailApiService
+    private authApi: AuthDetailApiService,
+    private userService: AuthenticateService,
+    private authNumberService: AuthNumberService,
   ) { }
 
   ngOnInit(): void {
@@ -266,6 +277,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
     this.loadMemberEnrollment();
     this.loadAuthClass();
 
+    // Load users for Owner dropdown (authActualOwner)
+    this.loadAllUsers();
+
     // React to authNumber changes (works even when authNumber is on parent route)
     this.router.events.pipe(
       filter(e => e instanceof NavigationEnd),
@@ -279,6 +293,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
       }),
       switchMap(authNo => {
         if (!authNo || authNo === '0') return of(null);
+        console.log('Loading auth details for auth number:', authNo);
         return this.authApi.getByNumber(String(authNo));
       })
     ).subscribe((auth: any) => {
@@ -505,6 +520,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
           this.optionsByControlName = {};
           this.setupDependentDropdowns(this.renderSections);
           this.prefetchDropdownOptions(this.renderSections);
+          this.applyAuthOwnerOptions();
 
           // Patch values after controls exist
           if (this.pendingAuth) {
@@ -877,6 +893,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
     this.optionsByControlName = {};
     this.setupDependentDropdowns(this.renderSections);
     this.prefetchDropdownOptions(this.renderSections);
+    this.applyAuthOwnerOptions();
 
     if (snapshot && typeof snapshot === 'object') {
       this.form.patchValue(snapshot, { emitEvent: false });
@@ -904,6 +921,76 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
   // ============================================================
   // Dropdown pipeline
   // ============================================================
+
+  private isAuthOwnerField(f: any): boolean {
+    const id = String((f as any)?._rawId ?? (f as any)?.id ?? (f as any)?.controlName ?? '').toLowerCase();
+    const name = String((f as any)?.displayName ?? (f as any)?.label ?? '').toLowerCase();
+
+    // template field id provided in JSON: authActualOwner
+    if (id === 'authactualowner' || id.includes('authactualowner')) return true;
+
+    // fallback: display label/name is literally "Owner"
+    return name === 'owner' || name === 'auth owner';
+  }
+
+  private applyAuthOwnerOptions(): void {
+    if (!this.authOwnerOptions?.length) return;
+    if (!this.renderSections?.length) return;
+
+    const allFields = this.collectAllRenderFields(this.renderSections);
+    for (const f of allFields) {
+      if (f.type === 'select' && this.isAuthOwnerField(f)) {
+        this.optionsByControlName[f.controlName] = this.authOwnerOptions;
+      }
+    }
+
+    // If this is a new auth (or owner not set yet), default owner to logged-in user
+    this.setDefaultAuthOwnerIfEmpty();
+  }
+
+  private setDefaultAuthOwnerIfEmpty(): void {
+    if (!this.loggedInUserId || this.loggedInUserId <= 0) return;
+    if (!this.renderSections?.length) return;
+
+    const allFields = this.collectAllRenderFields(this.renderSections);
+    const ownerField = allFields.find(f => f.type === 'select' && this.isAuthOwnerField(f));
+    if (!ownerField) return;
+
+    const ctrl = this.form?.get(ownerField.controlName);
+    if (!ctrl) return;
+
+    const cur = this.unwrapValue(ctrl.value);
+    if (cur === null || cur === undefined || String(cur).trim() === '' || Number(cur) === 0) {
+      // Don't override when editing an existing auth that already has an owner
+      ctrl.setValue(this.loggedInUserId, { emitEvent: false });
+    }
+  }
+
+  loadAllUsers(): void {
+    if (this.usersLoaded) {
+      this.applyAuthOwnerOptions();
+      return;
+    }
+
+    this.userService.getAllUsers().subscribe({
+      next: (users: any[]) => {
+        this.allUsers = users || [];
+        this.usersLoaded = true;
+
+        this.authOwnerOptions = this.allUsers.map(u => ({
+          value: u.userId,
+          label: u.userName
+        })) as UiSmartOption[];
+
+        this.applyAuthOwnerOptions();
+      },
+      error: (err) => {
+        console.error('Failed to load users:', err);
+        this.usersLoaded = false;
+      }
+    });
+  }
+
   getDropdownOptions(controlName: string): UiSmartOption[] {
     const all = this.optionsByControlName[controlName] ?? [];
     return this.filterDependentOptions(controlName, all);
@@ -941,7 +1028,10 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
             const dsKey = ds ? this.toCamelCase(ds) : '';
             const value = r?.value ?? r?.id ?? r?.code;
 
+            // Prefer meaningful display fields (some datasources don't use `name/text`)
+            const specialLabel = this.getDatasourcePreferredLabel(ds, r);
             const label =
+              specialLabel ??
               r?.text ??
               r?.name ??
               r?.description ??
@@ -1251,49 +1341,74 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
     const enrollment = this.memberEnrollments?.[Math.max(0, (this.selectedDiv || 1) - 1)];
     const memberEnrollmentId = Number(enrollment?.memberEnrollmentId || 0);
 
+    const authDetailId = Number(this.pendingAuth?.authDetailId ?? this.pendingAuth?.id ?? 0);
+
+    // Merge existing JSON data + current form step data
     const existingObj = this.safeParseJson(this.pendingAuth?.jsonData) ?? {};
     const stepObj = this.form.getRawValue();
-    const merged = { ...(existingObj ?? {}), ...(stepObj ?? {}) };
-    const jsonData = JSON.stringify(merged);
+    const merged: any = { ...(existingObj ?? {}), ...(stepObj ?? {}) };
 
-    const authDetailId = Number(this.pendingAuth?.authDetailId ?? this.pendingAuth?.id ?? 0);
+    const jsonData = JSON.stringify(merged ?? {});
+    const safeJsonData = jsonData && jsonData.trim() ? jsonData : '{}';
+
+    // Helpers
+    const pick = <T = any>(...keys: string[]): T | null => {
+      // prefer merged (current form), then pendingAuth fallback
+      for (const k of keys) {
+        const v = merged?.[k];
+        if (v !== undefined && v !== null && v !== '') return v as T;
+      }
+      for (const k of keys) {
+        const v = (this.pendingAuth as any)?.[k];
+        if (v !== undefined && v !== null && v !== '') return v as T;
+      }
+      return null;
+    };
+
+    const toIsoOrNull = (v: any): string | null => {
+      if (!v) return null;
+      const d = v instanceof Date ? v : new Date(v);
+      return isNaN(d.getTime()) ? null : d.toISOString();
+    };
+
+    // Backend-required-ish fields (based on your insert parameters)
+    const authDueDate = toIsoOrNull(pick('authDueDate', 'authduedate'));
+    const nextReviewDate = toIsoOrNull(pick('nextReviewDate', 'nextreviewdate'));
+    const treatementType = pick<string>('treatementType', 'treatmentType'); // supports both spellings
+    const authAssignedTo = pick<number>('authAssignedTo', 'authassignedto');
+    const authStatus = pick<any>('authStatus', 'authstatus') ?? 'Draft';
+
+    // Build base payload used for both CREATE and UPDATE
+    const payload: any = {
+      authClassId,
+      authTypeId,
+      memberDetailsId: this.memberDetailsId,
+      memberEnrollmentId,
+
+      authDueDate,
+      nextReviewDate,
+      treatementType,
+      authAssignedTo,
+      authStatus,
+
+      jsonData: safeJsonData
+    };
 
     try {
       this.isSaving = true;
 
       if (authDetailId > 0) {
-        // UPDATE
-        await firstValueFrom(
-          this.authApi.update(
-            authDetailId,
-            {
-              authNumber: this.authNumber,
-              authClassId,
-              authTypeId,
-              memberDetailsId: this.memberDetailsId,
-              memberEnrollmentId,
-              jsonData
-            } as any,
-            userId
-          )
-        );
+        // UPDATE: do NOT regenerate authNumber
+        payload.authNumber = this.authNumber === '0' ? null : this.authNumber;
 
+        await firstValueFrom(this.authApi.update(authDetailId, payload, userId));
         this.form.markAsPristine();
       } else {
-        // CREATE
-        const newId = await firstValueFrom(
-          this.authApi.create(
-            {
-              authNumber: this.authNumber === '0' ? null : this.authNumber,
-              authClassId,
-              authTypeId,
-              memberDetailsId: this.memberDetailsId,
-              memberEnrollmentId,
-              jsonData
-            } as any,
-            userId
-          )
-        );
+        // CREATE: generate authNumber ONLY here
+        this.authNumber = this.authNumberService.generateAuthNumber(9, true, true, false, false);
+        payload.authNumber = this.authNumber;
+
+        const newId = await firstValueFrom(this.authApi.create(payload, userId));
 
         if (newId) {
           const fresh = await firstValueFrom(this.authApi.getById(Number(newId), false));
@@ -1305,27 +1420,37 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
 
         this.form.markAsPristine();
       }
-    } catch (e) {
-      console.error('Auth save failed', e);
+    } catch (e: any) {
+      // shows actual ModelState error response for 400
+      console.error('Auth save failed', e?.status, e?.error ?? e);
     } finally {
       this.isSaving = false;
     }
   }
 
+
+
   // ============================================================
   // Bind + Patch existing auth
   // ============================================================
+
   private bindAuthorization(auth: any): void {
-    this.pendingAuth = auth;
+    // normalize payload key so rest of code works
+    const normalized = {
+      ...auth,
+      jsonData: auth?.jsonData ?? auth?.dataJson ?? auth?.data ?? auth?.json
+    };
+
+    this.pendingAuth = normalized;
 
     // Select enrollment if list already loaded
-    if (auth.memberEnrollmentId && this.memberEnrollments?.length) {
-      const idx = this.memberEnrollments.findIndex((e: any) => e.memberEnrollmentId === auth.memberEnrollmentId);
+    if (normalized.memberEnrollmentId && this.memberEnrollments?.length) {
+      const idx = this.memberEnrollments.findIndex((e: any) => e.memberEnrollmentId === normalized.memberEnrollmentId);
       if (idx >= 0) this.selectEnrollment(idx);
     }
 
     // Trigger template chain
-    const authClassId = Number(auth.authClassId ?? 0);
+    const authClassId = Number(normalized.authClassId ?? 0);
     if (authClassId > 0) {
       this.form.get('authClassId')?.setValue(authClassId, { emitEvent: true });
     }
@@ -1333,7 +1458,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
 
   private patchAuthorizationToForm(auth: any): void {
     // Prefer jsonData payload (that’s what contains repeat keys like provider1_providerPhone)
-    const obj = this.safeParseJson(auth?.jsonData);
+    const obj = this.safeParseJson(auth?.jsonData ?? auth?.dataJson ?? auth?.data ?? auth?.json);
     if (obj && typeof obj === 'object') {
       this.form.patchValue(obj, { emitEvent: false });
       this.form.updateValueAndValidity({ emitEvent: false });
@@ -1450,6 +1575,32 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
       const v = row[k];
       if (typeof v === 'string' && v.trim().length > 0) return v;
     }
+    return null;
+  }
+
+  /**
+   * Some datasources return display values in non-standard properties.
+   * Add small targeted mappings here so dropdowns show text instead of ids.
+   */
+  private getDatasourcePreferredLabel(ds: string, row: any): string | null {
+    const k = this.normDs(ds);
+    if (!row) return null;
+
+    // Auth Status Reason: UI was showing only ids
+    if (k === 'authstatusreason' || k === 'authstatusreasons') {
+      return (
+        row?.authStatusReason ??
+        row?.AuthStatusReason ??
+        row?.statusReason ??
+        row?.StatusReason ??
+        row?.reasonName ??
+        row?.ReasonName ??
+        row?.reason ??
+        row?.Reason ??
+        null
+      );
+    }
+
     return null;
   }
 
