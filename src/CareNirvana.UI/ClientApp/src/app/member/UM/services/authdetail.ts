@@ -54,7 +54,6 @@ export interface AuthNoteDto {
   noteText: string;
 
   noteType?: number | null;
-  noteLevel?: number | null;
   authAlertNote?: boolean | null;
 
   encounteredOn?: string | null;
@@ -71,7 +70,6 @@ export interface AuthNoteDto {
 export interface CreateAuthNoteRequest {
   noteText?: string | null;
   noteType?: number | null;
-  noteLevel?: number | null;
   authAlertNote?: boolean | null;
   encounteredOn?: string | null;  // ISO string
   alertEndDate?: string | null;   // ISO string
@@ -80,7 +78,6 @@ export interface CreateAuthNoteRequest {
 export interface UpdateAuthNoteRequest {
   noteText?: string | null;
   noteType?: number | null;
-  noteLevel?: number | null;
   authAlertNote?: boolean | null;
   encounteredOn?: string | null;  // ISO string
   alertEndDate?: string | null;   // ISO string
@@ -129,3 +126,22 @@ export interface TemplateSectionsResponse {
   sections: any; // typically an array of sections
 }
 
+
+export interface DecisionSectionItemDto {
+  itemId: string;          // Guid
+  data: any;               // section payload
+  createdBy: number;
+  createdOn: string;
+  updatedBy?: number | null;
+  updatedOn?: string | null;
+  deletedBy?: number | null;
+  deletedOn?: string | null;
+}
+
+export interface CreateDecisionSectionItemRequest {
+  data: any;
+}
+
+export interface UpdateDecisionSectionItemRequest {
+  data?: any | null;
+}

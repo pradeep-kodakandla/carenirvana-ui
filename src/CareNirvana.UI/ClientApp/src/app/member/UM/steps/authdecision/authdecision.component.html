@@ -1,1 +1,139 @@
-<p>authdecision works!</p>
+<div class="d-flex align-items-center justify-content-between mb-2">
+  <div>
+    <div class="h6 mb-0">Authorization Decision</div>
+  </div>
+
+  <div class="case-savebar">
+    <button class="btn btn-sm btn-primary me-2" (click)="saveCurrentTab()" [disabled]="loading || saving">
+      Save
+    </button>
+    <button class="btn btn-sm btn-outline-danger" (click)="deleteCurrentTab()" [disabled]="loading || saving">
+      Delete
+    </button>
+  </div>
+</div>
+
+<div class="alert alert-danger py-2" *ngIf="errorMsg">
+  {{ errorMsg }}
+</div>
+
+<div *ngIf="loading" class="py-3">
+  Loading...
+</div>
+
+<div *ngIf="!loading && activeState as st" class="decision-details-layout">
+
+  <!-- Left tabs -->
+  <div class="tabs-container">
+    <div class="tabs">
+      <div *ngFor="let tab of tabs"
+           class="tab"
+           [class.active]="selectedTabId === tab.id"
+           (click)="selectTab(tab.id)">
+        <div class="tab-title">{{ tab.name }}</div>
+        <div class="tab-sub" *ngIf="tab.subtitle">{{ tab.subtitle }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right content -->
+  <div class="tab-content">
+
+    <form class="auth-details" [formGroup]="form">
+
+      <ng-container *ngFor="let section of st.sections">
+        <div class="section-card" *ngIf="section?.fields?.length">
+          <div class="section-header">
+            <div class="section-title">{{ section.sectionName }}</div>
+          </div>
+
+          <div class="grid">
+            <ng-container *ngFor="let field of section.fields; let i = index">
+              <ng-container *ngIf="isVisible(st, field)">
+
+                <!-- CHECKBOX -->
+                <ng-container *ngIf="field.type === 'checkbox'; else outlinedTpl">
+                  <div class="ff-field">
+                    <div class="ff-checkbox" [class.ff-disabled]="!field.isEnabled">
+                      <input type="checkbox"
+                             class="form-check-input"
+                             [id]="field.id + '_' + i"
+                             [formControlName]="field.controlName" />
+
+                      <label class="form-check-label" [for]="field.id + '_' + i">
+                        {{ field.displayName }}
+                        <span class="req-star" *ngIf="field.required || field.isRequired">*</span>
+                      </label>
+                    </div>
+
+                    <div class="ff-error" *ngIf="isInvalidField(field)">
+                      {{ field.requiredMsg || (field.displayName + ' is required') }}
+                    </div>
+                  </div>
+                </ng-container>
+
+                <!-- OUTLINED -->
+                <ng-template #outlinedTpl>
+                  <div class="ff-field" [class.ff-span-all]="field.type === 'textarea'">
+                    <div class="ff-outline"
+                         [class.ff-disabled]="!field.isEnabled"
+                         [class.ff-invalid]="isInvalidField(field)">
+
+                      <div class="ff-float-label">
+                        {{ field.displayName }}
+                        <span class="req-star" *ngIf="field.required || field.isRequired">*</span>
+                      </div>
+
+                      <div class="ff-body">
+                        <ng-container [ngSwitch]="field.type">
+
+                          <!-- Select -->
+                          <ng-container *ngSwitchCase="'select'">
+                            <ui-smart-dropdown class="ff-ui"
+                                               label=""
+                                               placeholder="Select."
+                                               [options]="getDropdownOptions(field.controlName)"
+                                               [formControlName]="field.controlName">
+                            </ui-smart-dropdown>
+                          </ng-container>
+
+                          <!-- Datetime -->
+                          <ng-container *ngSwitchCase="'datetime-local'">
+                            <ui-datetime-picker class="ff-ui"
+                                                placeholderDate="mm/dd/yyyy"
+                                                placeholderDateTime="mm/dd/yyyy --:--"
+                                                [formControlName]="field.controlName">
+                            </ui-datetime-picker>
+                          </ng-container>
+
+                          <!-- Textarea -->
+                          <ng-container *ngSwitchCase="'textarea'">
+                            <textarea class="ff-input ff-textarea"
+                                      rows="3"
+                                      [formControlName]="field.controlName"></textarea>
+                          </ng-container>
+
+                          <!-- Default text -->
+                          <ng-container *ngSwitchDefault>
+                            <input class="ff-input" type="text"
+                                   [formControlName]="field.controlName" />
+                          </ng-container>
+                        </ng-container>
+                      </div>
+                    </div>
+
+                    <div class="ff-error" *ngIf="isInvalidField(field)">
+                      {{ field.requiredMsg || (field.displayName + ' is required') }}
+                    </div>
+                  </div>
+                </ng-template>
+
+              </ng-container>
+            </ng-container>
+          </div>
+        </div>
+      </ng-container>
+
+    </form>
+  </div>
+</div>

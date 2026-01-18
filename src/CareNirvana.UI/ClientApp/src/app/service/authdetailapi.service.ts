@@ -14,10 +14,19 @@ import {
   CreateAuthDocumentRequest,
   UpdateAuthDocumentRequest,
   TemplateSectionResponse,
-  TemplateSectionsResponse
+  TemplateSectionsResponse,
+  DecisionSectionItemDto,
+  CreateDecisionSectionItemRequest,
+  UpdateDecisionSectionItemRequest
 } from 'src/app/member/UM/services/authdetail';
 
+export type DecisionSectionName =
+  | 'Decision Details'
+  | 'Member Provider Decision Info'
+  | 'Decision Notes';
+
 @Injectable({ providedIn: 'root' })
+
 export class AuthDetailApiService {
   private baseUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/auth';
   //private baseUrl = 'https://localhost:7201/api/auth';
@@ -124,4 +133,50 @@ export class AuthDetailApiService {
     return this.http.get<TemplateSectionResponse>(`${this.baseUrl}/template/${authTemplateId}/documents`);
   }
 
+
+  // --------------------------
+  // Decision APIs
+  // --------------------------
+
+  getItems(authDetailId: number, sectionName: DecisionSectionName): Observable<DecisionSectionItemDto[]> {
+    const url = `${this.baseUrl}/${authDetailId}/decision/${encodeURIComponent(sectionName)}/items`;
+    return this.http.get<DecisionSectionItemDto[]>(url);
+  }
+
+  /** POST /api/auth/{authDetailId}/decision/{sectionName}/items?userId=123 */
+  createItem(
+    authDetailId: number,
+    sectionName: DecisionSectionName,
+    req: CreateDecisionSectionItemRequest,
+    userId: number
+  ): Observable<string> {
+    const url = `${this.baseUrl}/${authDetailId}/decision/${encodeURIComponent(sectionName)}/items`;
+    const params = new HttpParams().set('userId', String(userId));
+    return this.http.post<string>(url, req, { params }); // returns Guid as string
+  }
+
+  /** PUT /api/auth/{authDetailId}/decision/{sectionName}/items/{itemId}?userId=123 */
+  updateItem(
+    authDetailId: number,
+    sectionName: DecisionSectionName,
+    itemId: string,
+    req: UpdateDecisionSectionItemRequest,
+    userId: number
+  ): Observable<void> {
+    const url = `${this.baseUrl}/${authDetailId}/decision/${encodeURIComponent(sectionName)}/items/${itemId}`;
+    const params = new HttpParams().set('userId', String(userId));
+    return this.http.put<void>(url, req, { params });
+  }
+
+  /** DELETE /api/auth/{authDetailId}/decision/{sectionName}/items/{itemId}?userId=123 */
+  deleteItem(
+    authDetailId: number,
+    sectionName: DecisionSectionName,
+    itemId: string,
+    userId: number
+  ): Observable<void> {
+    const url = `${this.baseUrl}/${authDetailId}/decision/${encodeURIComponent(sectionName)}/items/${itemId}`;
+    const params = new HttpParams().set('userId', String(userId));
+    return this.http.delete<void>(url, { params });
+  }
 }

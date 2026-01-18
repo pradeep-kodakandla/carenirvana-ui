@@ -1,1 +1,235 @@
-<p>authmdreview works!</p>
+<div class="authmdreview">
+  <div class="header-row">
+    <h3 class="title">MD Review</h3>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <form [formGroup]="mdrForm" class="form-grid">
+        <!-- Assignment Type -->
+        <div class="ff-field">
+          <div class="ff-outline">
+            <div class="ff-float-label">Assignment Type</div>
+            <div class="ff-body">
+              <ui-smart-dropdown class="ff-ui"
+                                 label=""
+                                 placeholder="Select..."
+                                 formControlName="assignmentType"
+                                 [options]="assignmentTypeOptions">
+              </ui-smart-dropdown>
+            </div>
+          </div>
+        </div>
+
+        <!-- Activity Type -->
+        <div class="ff-field">
+          <div class="ff-outline">
+            <div class="ff-float-label">Activity Type</div>
+            <div class="ff-body">
+              <ui-smart-dropdown class="ff-ui"
+                                 label=""
+                                 placeholder="Select..."
+                                 formControlName="activityType"
+                                 [options]="activityTypeOptions">
+              </ui-smart-dropdown>
+            </div>
+          </div>
+        </div>
+
+        <!-- Priority -->
+        <div class="ff-field">
+          <div class="ff-outline">
+            <div class="ff-float-label">Priority</div>
+            <div class="ff-body">
+              <ui-smart-dropdown class="ff-ui"
+                                 label=""
+                                 placeholder="Select..."
+                                 formControlName="priority"
+                                 [options]="priorities">
+              </ui-smart-dropdown>
+            </div>
+          </div>
+        </div>
+
+        <!-- Assign To -->
+        <div class="ff-field" *ngIf="!showWorkBasketFields">
+          <div class="ff-outline">
+            <div class="ff-float-label">Assign To</div>
+            <div class="ff-body">
+              <ui-smart-dropdown class="ff-ui"
+                                 label=""
+                                 placeholder="Select..."
+                                 formControlName="assignTo"
+                                 [options]="userOptions">
+              </ui-smart-dropdown>
+            </div>
+          </div>
+        </div>
+
+        <!-- Work Basket -->
+        <div class="ff-field" *ngIf="showWorkBasketFields">
+          <div class="ff-outline">
+            <div class="ff-float-label">Work Basket</div>
+            <div class="ff-body">
+              <ui-smart-dropdown class="ff-ui"
+                                 label=""
+                                 placeholder="Select..."
+                                 formControlName="workBasket"
+                                 [options]="workBasketOptions">
+              </ui-smart-dropdown>
+            </div>
+          </div>
+        </div>
+
+        <!-- Work Basket User -->
+        <div class="ff-field" *ngIf="showWorkBasketFields">
+          <div class="ff-outline">
+            <div class="ff-float-label">Work Basket User</div>
+            <div class="ff-body">
+              <ui-smart-dropdown class="ff-ui"
+                                 label=""
+                                 placeholder="Select..."
+                                 formControlName="workBasketUser"
+                                 [options]="workBasketUserOptions">
+              </ui-smart-dropdown>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dates -->
+        <div class="ff-field">
+          <div class="ff-outline">
+            <div class="ff-float-label">Scheduled Date/Time</div>
+            <div class="ff-body">
+              <ui-datetime-picker class="ff-ui"
+                                  label=""
+                                  placeholderDateTime="mm/dd/yyyy --:--"
+                                  formControlName="scheduledDateTime">
+              </ui-datetime-picker>
+            </div>
+          </div>
+        </div>
+
+        <div class="ff-field">
+          <div class="ff-outline">
+            <div class="ff-float-label">Due Date/Time</div>
+            <div class="ff-body">
+              <ui-datetime-picker class="ff-ui"
+                                  label=""
+                                  placeholderDateTime="mm/dd/yyyy --:--"
+                                  formControlName="dueDateTime">
+              </ui-datetime-picker>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recommendation -->
+        <div class="ff-field">
+          <div class="ff-outline">
+            <div class="ff-float-label">Recommendation</div>
+            <div class="ff-body">
+              <ui-smart-dropdown class="ff-ui"
+                                 label=""
+                                 placeholder="Select..."
+                                 formControlName="recommendation"
+                                 [options]="recommendationOptions">
+              </ui-smart-dropdown>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="ff-field field-wide">
+          <div class="ff-outline">
+            <div class="ff-float-label">Notes</div>
+            <div class="ff-body">
+              <textarea class="ff-input ff-textarea" formControlName="notes" rows="3"></textarea>
+            </div>
+          </div>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- Service Lines -->
+  <div class="card" style="margin-top:12px;">
+    <div class="card-body">
+      <div class="lines-header">
+        <div class="lines-title">Service Lines</div>
+        <div class="lines-actions">
+          <button type="button" class="btn btn-link" (click)="selectAllLines(true)">Select all</button>
+          <button type="button" class="btn btn-link" (click)="selectAllLines(false)">Clear</button>
+        </div>
+      </div>
+
+      <div *ngIf="!serviceLines?.length" class="muted">No service lines found in the auth data.</div>
+
+      <div class="table-responsive" *ngIf="serviceLines?.length">
+        <table class="table table-sm mdr-table">
+          <thead>
+            <tr>
+              <th style="width:40px;"></th>
+              <th>Service Code</th>
+              <th>Description</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Req</th>
+              <th>Appr</th>
+              <th>Denied</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let l of serviceLines">
+              <td>
+                <input type="checkbox" [checked]="!!l.selected" (change)="toggleLine(l, $any($event.target).checked)" />
+              </td>
+              <td>{{ l.serviceCode }}</td>
+              <td>{{ l.serviceDescription }}</td>
+              <td>{{ l.fromDate }}</td>
+              <td>{{ l.toDate }}</td>
+              <td>{{ l.requested }}</td>
+              <td>{{ l.approved }}</td>
+              <td>{{ l.denied }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="footer-actions">
+        <button type="button" class="btn btn-primary" (click)="submitReview()" [disabled]="mdrForm.invalid || !hasSelectedLines">
+          Save MD Review
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Existing Activities -->
+  <div class="card" style="margin-top:12px;" *ngIf="existingActivities?.length">
+    <div class="card-body">
+      <div class="lines-title">Existing MD Review Activities</div>
+      <div class="table-responsive">
+        <table class="table table-sm mdr-table">
+          <thead>
+            <tr>
+              <th>Activity Type</th>
+              <th>Priority</th>
+              <th>Recommendation</th>
+              <th>Created On</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let a of existingActivities">
+              <td>{{ a.activityType ?? a.ActivityType }}</td>
+              <td>{{ a.priority ?? a.Priority }}</td>
+              <td>{{ a.recommendation ?? a.Recommendation }}</td>
+              <td>{{ a.createdOn ?? a.CreatedOn }}</td>
+              <td>{{ a.notes ?? a.Notes }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
