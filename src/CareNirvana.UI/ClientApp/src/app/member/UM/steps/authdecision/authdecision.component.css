@@ -1,34 +1,24 @@
-/* AuthDecision - match AuthDetails field styling */
+/*
+  AuthDecision styles intentionally align with AuthDetails/AuthNotes styling
+  (section-card, section-header, ff-outline floating labels, responsive grid).
+*/
 
-.decision-root {
-  width: 100%;
-}
-
-.decision-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.decision-title {
-  font-weight: 800;
-  font-size: 16px;
-  color: #111827;
-}
-
-.decision-layout {
+/* ===== Left tabs + right content layout ===== */
+.decision-details-layout {
   display: flex;
   gap: 14px;
+  width: 100%;
   align-items: flex-start;
 }
 
-.decision-tabs {
+.tabs-container {
   width: 260px;
   min-width: 260px;
   position: sticky;
   top: 10px;
+}
+
+.tabs {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -40,7 +30,6 @@
   border-radius: 10px;
   padding: 12px 14px;
   cursor: pointer;
-  text-align: left;
   transition: box-shadow .15s ease, border-color .15s ease, transform .05s ease;
 }
 
@@ -59,45 +48,49 @@
     background: #f7f9ff;
   }
 
+/* ===== Status-based accents for tabs ===== */
+.tab.status-pended {
+  border-left: 6px solid #f59e0b;
+}
+
+.tab.status-approved {
+  border-left: 6px solid #22c55e;
+}
+
+.tab.status-denied {
+  border-left: 6px solid #ef4444;
+}
+
+.tab.status-partial {
+  border-left: 6px solid #3b82f6;
+}
+
+.tab.status-other {
+  border-left: 6px solid #6b7280;
+}
+
 .tab-title {
   font-weight: 800;
   font-size: 13px;
   color: #111827;
 }
 
-.tab-status {
+.tab-sub {
   margin-top: 4px;
   font-size: 12px;
   color: #6b7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Status -> tab accent */
-.status-approved {
-  border-left: 5px solid #22c55e;
-}
-
-.status-denied {
-  border-left: 5px solid #ef4444;
-}
-
-.status-pended {
-  border-left: 5px solid #f59e0b;
-}
-
-.status-partiallyapproved {
-  border-left: 5px solid #3b82f6;
-}
-
-.status-void {
-  border-left: 5px solid #64748b;
-}
-
-.decision-body {
+.tab-content {
   flex: 1;
   min-width: 0;
 }
 
-.section {
+/* ===== Cards (copied style from authdetails.component.css) ===== */
+.section-card {
   border: 1px solid #e6e8ec;
   border-radius: 10px;
   padding: 14px;
@@ -121,11 +114,14 @@
   color: #111827;
 }
 
-.spacer {
-  flex: 1;
+.case-savebar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 0;
 }
 
-.form-grid {
+/* ===== Responsive grid (same as authdetails) ===== */
+.grid {
   display: grid;
   gap: 14px;
   align-items: start;
@@ -133,34 +129,29 @@
 }
 
 @media (max-width: 1200px) {
-  .form-grid {
+  .grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 900px) {
-  .form-grid {
+  .grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 600px) {
-  .form-grid {
+  .grid {
     grid-template-columns: repeat(1, minmax(0, 1fr));
   }
 }
 
-/* Outlined floating fields (copied from AuthDetails) */
+/* ===== Outlined floating field (same design language as authdetails) ===== */
 .ff-field {
-  display: flex;
   flex-direction: column;
   align-items: stretch;
   width: 100%;
   min-width: 0;
-}
-
-.ff-span-all {
-  grid-column: 1 / -1;
 }
 
 .ff-outline {
@@ -169,11 +160,18 @@
   border-radius: 8px;
   background: #fff;
   padding: 1px;
+  align-self: start;
+  height: fit-content;
   transition: box-shadow .15s ease, border-color .15s ease;
 }
 
   .ff-outline:hover {
     border-color: #aeb6c2;
+  }
+
+  .ff-outline.ff-disabled {
+    opacity: 0.65;
+    pointer-events: none;
   }
 
   .ff-outline.ff-invalid {
@@ -229,38 +227,70 @@
   width: 100%;
 }
 
-.ff-check {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 4px;
+/* Try to remove double-borders if ui-smart-dropdown / ui-datetime-picker render their own border */
+:host ::ng-deep .ff-outline ui-smart-dropdown,
+:host ::ng-deep .ff-outline ui-datetime-picker {
+  width: 100%;
+  display: block;
 }
 
+  :host ::ng-deep .ff-outline ui-smart-dropdown input,
+  :host ::ng-deep .ff-outline ui-datetime-picker input {
+    border: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    font-size: 14px !important;
+    background: transparent !important;
+    height: 34px !important;
+    line-height: 22px !important;
+  }
+
+/* Errors (same as AuthDetails) */
 .ff-error {
-  font-size: 12px;
   color: #dc3545;
+  font-size: 12px;
   margin-top: 6px;
 }
 
-/* Buttons (keep consistent with existing) */
-.btn {
-  border-radius: 8px;
+/* Span full width for long fields */
+.ff-span-all {
+  grid-column: 1 / -8;
 }
 
-.btn-sm {
-  padding: 4px 10px;
-  font-size: 12px;
+/* Checkbox row */
+.ff-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 2px;
+  align-self: start;
 }
 
+  .ff-checkbox .form-check-input {
+    margin: 0;
+    margin-top: 1px;
+  }
+
+  .ff-checkbox .form-check-label {
+    margin: 0;
+    cursor: pointer;
+  }
+
+/* (Removed old custom autocomplete dropdown styles - ui-smart-dropdown is used) */
+
+/* ===== Responsive layout ===== */
 @media (max-width: 1000px) {
-  .decision-layout {
+  .decision-details-layout {
     flex-direction: column;
   }
 
-  .decision-tabs {
+  .tabs-container {
     width: 100%;
     min-width: 0;
     position: static;
+  }
+
+  .tabs {
     flex-direction: row;
     flex-wrap: wrap;
   }

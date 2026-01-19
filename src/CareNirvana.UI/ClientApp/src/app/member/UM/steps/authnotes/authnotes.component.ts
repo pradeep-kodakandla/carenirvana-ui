@@ -3,13 +3,11 @@ import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@
 import { AbstractControl, FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
 import { forkJoin, Observable, of, Subject, throwError } from 'rxjs';
 import { catchError, finalize, map, switchMap, tap, takeUntil } from 'rxjs/operators';
-
 import { DatasourceLookupService } from 'src/app/service/crud.service';
 import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
-
 import { AuthDetailApiService } from 'src/app/service/authdetailapi.service';
-
 import { AuthNoteDto, TemplateSectionResponse, CreateAuthNoteRequest, UpdateAuthNoteRequest } from 'src/app/member/UM/services/authdetail';
+import { WizardToastService } from 'src/app/member/UM/components/authwizardshell/wizard-toast.service';
 
 type NotesContext = { authDetailId: number; authTemplateId: number };
 
@@ -60,13 +58,67 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
 
   private noteTypeControlName: string | null = null;
   private noteLevelControlName: string | null = null;
+  private alertFlagControlName: string | null = null;
+  private alertEndDateControlName: string | null = null;
+
+  // --------------------------
+  // AuthActivity-like left panel UX (search/sort/select)
+  // --------------------------
+  searchTerm = '';
+  sortBy: 'created_desc' | 'created_asc' | 'type_asc' | 'type_desc' | 'alerts_first' = 'created_desc';
+  showSort = false;
+  selectedNoteId: string | null = null;
+
+  get filteredNotes(): AuthNoteDto[] {
+    const src = Array.isArray(this.notes) ? [...this.notes] : [];
+
+    // Search (note text + type label)
+    const q = (this.searchTerm ?? '').trim().toLowerCase();
+    const searched = q
+      ? src.filter((n) => {
+        const text = (this.getNoteText(n) ?? '').toLowerCase();
+        const type = (this.getNoteTypeLabel(n) ?? '').toLowerCase();
+        const created = (this.getCreatedOn(n) ?? '').toLowerCase();
+        return text.includes(q) || type.includes(q) || created.includes(q);
+      })
+      : src;
+
+    const asDate = (n: AuthNoteDto) => {
+      const raw = this.getCreatedOn(n);
+      const d = raw ? new Date(raw) : null;
+      return d && !isNaN(d.getTime()) ? d.getTime() : 0;
+    };
+
+    // Sort
+    switch (this.sortBy) {
+      case 'created_asc':
+        searched.sort((a, b) => asDate(a) - asDate(b));
+        break;
+      case 'type_asc':
+        searched.sort((a, b) => (this.getNoteTypeLabel(a) || '').localeCompare(this.getNoteTypeLabel(b) || ''));
+        break;
+      case 'type_desc':
+        searched.sort((a, b) => (this.getNoteTypeLabel(b) || '').localeCompare(this.getNoteTypeLabel(a) || ''));
+        break;
+      case 'alerts_first':
+        searched.sort((a, b) => Number(this.isAlert(b)) - Number(this.isAlert(a)) || (asDate(b) - asDate(a)));
+        break;
+      case 'created_desc':
+      default:
+        searched.sort((a, b) => asDate(b) - asDate(a));
+        break;
+    }
+
+    return searched;
+  }
 
   private destroy$ = new Subject<void>();
 
   constructor(
     private fb: FormBuilder,
     private api: AuthDetailApiService,
-    private dsLookup: DatasourceLookupService
+    private dsLookup: DatasourceLookupService,
+    private toastSvc: WizardToastService
   ) { }
 
   ngOnInit(): void {
@@ -87,6 +139,24 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
   // --------------------------
   // UI actions
   // --------------------------
+  applySearch(): void {
+    // computed getter handles filtering; this is here to mirror AuthActivity bindings
+    // and to keep the template event handlers clean.
+  }
+
+  applySort(key: 'created_desc' | 'created_asc' | 'type_asc' | 'type_desc' | 'alerts_first'): void {
+    this.sortBy = key;
+  }
+
+  selectNote(n: AuthNoteDto): void {
+    this.selectedNoteId = this.getNoteId(n);
+  }
+
+  getSelectedNote(): AuthNoteDto | null {
+    if (!this.selectedNoteId) return null;
+    return this.notes.find((n) => String(this.getNoteId(n)) === String(this.selectedNoteId)) ?? null;
+  }
+
   onAddClick(): void {
     this.editing = undefined;
     this.showEditor = true;
@@ -102,6 +172,8 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
     this.editing = n;
     this.showEditor = true;
     this.errorMsg = '';
+
+    this.selectedNoteId = this.getNoteId(n);
 
     this.form.reset();
     this.patchFormFromNote(n);
@@ -195,6 +267,7 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
         finalize(() => (this.saving = false)),
         catchError((err) => {
           this.errorMsg = err?.error?.message ?? 'Unable to save note.';
+          this.toastSvc.error('Unable to save note.');
           return of(null);
         })
       )
@@ -202,6 +275,7 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
         next: () => {
           this.closeEditor();
           this.reloadNotesOnly();
+          this.toastSvc.success('Note saved successfully.');
         }
       });
   }
@@ -231,6 +305,8 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
       .subscribe({
         next: () => this.reloadNotesOnly()
       });
+    this.toastSvc.info('Note deleted.');
+
   }
 
   // --------------------------
@@ -257,13 +333,25 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
     return this.getLabelFromControlOptions(this.noteTypeControlName, v);
   }
 
-
   isAlert(n: AuthNoteDto): boolean {
     return !!((n as any)?.isAlertNote ?? (n as any)?.authAlertNote ?? false);
   }
 
   getCreatedOn(n: AuthNoteDto): string | undefined {
     return (n as any)?.createdOn ?? (n as any)?.createdDate ?? (n as any)?.createdAt;
+  }
+
+  getAlertCount(): number {
+    return (this.notes ?? []).reduce((acc, n) => acc + (this.isAlert(n) ? 1 : 0), 0);
+  }
+
+  getTypeCount(label: string): number {
+    const target = (label ?? '').trim().toLowerCase();
+    if (!target) return 0;
+    return (this.notes ?? []).reduce((acc, n) => {
+      const t = (this.getNoteTypeLabel(n) ?? '').trim().toLowerCase();
+      return acc + (t === target ? 1 : 0);
+    }, 0);
   }
 
   trackByNoteId = (_: number, n: AuthNoteDto) => String(this.getNoteId(n) ?? _);
@@ -294,6 +382,8 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
     this.noteEditorFields = [];
     this.noteTypeControlName = null;
     this.noteLevelControlName = null;
+    this.alertFlagControlName = null;
+    this.alertEndDateControlName = null;
     this.showEditor = false;
     this.editing = undefined;
 
@@ -321,6 +411,15 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
           this.template = res?.template;
           const section = (this.template as any)?.section ?? (this.template as any)?.Section;
           this.applyNotesTemplate(section);
+
+          // keep a stable selection so the right pane has context
+          const ids = new Set(this.notes.map((n) => String(this.getNoteId(n))));
+          if (this.selectedNoteId && !ids.has(String(this.selectedNoteId))) {
+            this.selectedNoteId = null;
+          }
+          //if (!this.selectedNoteId && this.notes.length) {
+          //  this.selectedNoteId = this.getNoteId(this.notes[0]);
+          //}
         }),
         finalize(() => (this.loading = false)),
         catchError((err) => {
@@ -346,7 +445,16 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
         })
       )
       .subscribe({
-        next: (res: any) => (this.notes = (res ?? []) as AuthNoteDto[])
+        next: (res: any) => {
+          this.notes = (res ?? []) as AuthNoteDto[];
+          const ids = new Set(this.notes.map((n) => String(this.getNoteId(n))));
+          if (this.selectedNoteId && !ids.has(String(this.selectedNoteId))) {
+            this.selectedNoteId = null;
+          }
+          //if (!this.selectedNoteId && this.notes.length) {
+          //  this.selectedNoteId = this.getNoteId(this.notes[0]);
+          //}
+        }
       });
   }
 
@@ -355,12 +463,24 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
     const fields = this.extractFieldsDeep(section);
     const editorFields = fields.filter((f) => !this.isGridField(f));
 
-    this.noteEditorFields = editorFields.map((x) => this.enrichField(section, x));
+    // ✅ Order fields so textareas (Note/Comments) render last and can span full width.
+    this.noteEditorFields = this.orderEditorFields(editorFields.map((x) => this.enrichField(section, x)));
 
     this.noteTypeControlName = this.findControlNameByFieldIds([
-      'authorizationNoteType',   
+      'authorizationNoteType',
       'authNoteType',
       'noteType'
+    ]);
+
+    this.alertFlagControlName = this.findControlNameByFieldIds([
+      'authorizationAlertNote',
+      'authAlertNote',
+      'isAlertNote',
+      'authorizationalertnote'
+    ]);
+
+    this.alertEndDateControlName = this.findControlNameByFieldIds([
+      'newDate_copy_q5d60fyd5'
     ]);
 
     const group: Record<string, FormControl> = {};
@@ -371,6 +491,9 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
     }
     this.form = this.fb.group(group);
 
+    // ✅ Hide/disable Alert End Date unless Alert Note is checked.
+    this.bindAlertEndDateControl();
+
     this.prefetchDropdownOptions(this.noteEditorFields);
 
     if (this.showEditor) {
@@ -378,6 +501,27 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
       else this.patchDefaultsForAdd();
       this.reconcileAllSelectControls();
     }
+  }
+
+  private bindAlertEndDateControl(): void {
+    if (!this.alertFlagControlName || !this.alertEndDateControlName) return;
+    const alertCtrl = this.form.get(this.alertFlagControlName);
+    const endCtrl = this.form.get(this.alertEndDateControlName);
+    if (!alertCtrl || !endCtrl) return;
+
+    const apply = (isAlert: boolean) => {
+      if (isAlert) {
+        endCtrl.enable({ emitEvent: false });
+      } else {
+        endCtrl.reset(null, { emitEvent: false });
+        endCtrl.disable({ emitEvent: false });
+        endCtrl.markAsPristine();
+        endCtrl.markAsUntouched();
+      }
+    };
+
+    apply(!!alertCtrl.value);
+    alertCtrl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe((v) => apply(!!v));
   }
 
   private extractFieldsDeep(node: any): AnyField[] {
@@ -405,7 +549,6 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
 
     return out;
   }
-
 
   private enrichField(section: any, f: any): AnyField {
     const id = String(f?.id ?? f?.fieldId ?? '').trim() || this.safeKey(String(f?.displayName ?? f?.label ?? 'field'));
@@ -497,6 +640,8 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
     this.setValueById('noteEncounteredDatetime', null);   // datetime
     this.setValueById('authorizationAlertNote', false);   // checkbox
     this.setValueById('newDate_copy_q5d60fyd5', null);    // alert end date (only used if alert)
+
+    this.syncAlertEndDateState();
   }
 
   private patchFormFromNote(n: AuthNoteDto): void {
@@ -532,8 +677,22 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
 
     // only set alert end date when alert is true
     this.setValueById('newDate_copy_q5d60fyd5', alertFlag ? alertEndDate : null);
+
+    this.syncAlertEndDateState();
   }
 
+  private syncAlertEndDateState(): void {
+    if (!this.alertFlagControlName || !this.alertEndDateControlName) return;
+    const alertCtrl = this.form.get(this.alertFlagControlName);
+    const endCtrl = this.form.get(this.alertEndDateControlName);
+    if (!alertCtrl || !endCtrl) return;
+    const isAlert = !!alertCtrl.value;
+    if (isAlert) {
+      endCtrl.enable({ emitEvent: false });
+    } else {
+      endCtrl.disable({ emitEvent: false });
+    }
+  }
 
   private setValueById(fieldId: string, value: any): void {
     const f = this.noteEditorFields.find((x) => String(x.id ?? '').toLowerCase() === fieldId.toLowerCase());
@@ -698,10 +857,7 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
       : String(rawValue ?? '');
   }
 
-
-
   // In authnotes.component.ts
-
   setContext(ctx: any): void {
     const nextDetailId = Number(ctx?.authDetailId ?? 0) || null;
     const nextTemplateId = Number(ctx?.authTemplateId ?? 0) || null;
@@ -710,14 +866,13 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
       nextDetailId !== this.authDetailId ||
       nextTemplateId !== this.authTemplateId;
 
-    this.authDetailId = Number( nextDetailId);
+    this.authDetailId = Number(nextDetailId);
     this.authTemplateId = Number(nextTemplateId);
 
     // Only fetch once both are available
     if (changed && this.authDetailId && this.authTemplateId) {
       this.reloadWithIds(this.authDetailId, this.authTemplateId);
     }
-    
   }
 
   private reloadWithIds(authDetailId: number, authTemplateId: number): void {
@@ -748,6 +903,129 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
     if (!v) return null;
     const d = v instanceof Date ? v : new Date(v);
     return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+
+  // --------------------------
+  // Layout helpers (2-up grid + textarea at bottom)
+  // --------------------------
+  private isTextareaField(f: AnyField): boolean {
+    return String(f?.type ?? '').toLowerCase() === 'textarea';
+  }
+
+  private isAlertEndDateField(f: AnyField): boolean {
+    return String(f?.id ?? '').toLowerCase() === 'newdate_copy_q5d60fyd5';
+  }
+
+  private orderEditorFields(fields: AnyField[]): AnyField[] {
+    const src = Array.isArray(fields) ? [...fields] : [];
+    const normal = src.filter((f) => !this.isTextareaField(f));
+    const textareas = src.filter((f) => this.isTextareaField(f));
+    // ✅ Textareas last so they land in the last rows.
+    return [...normal, ...textareas];
+  }
+
+  /** Template helper: make textarea/search span the full row */
+  isFullWidthField(f: AnyField): boolean {
+    const t = String(f?.type ?? '').toLowerCase();
+    return t === 'search' || this.isTextareaField(f);
+  }
+
+  /** Template helper: show alert end date only when Alert Note is checked */
+  shouldShowEditorField(f: AnyField): boolean {
+    if (this.isAlertEndDateField(f)) return this.isAlertChecked();
+    return true;
+  }
+
+  /** Template helper: in read-only view show alert end date only for alert notes */
+  shouldShowDisplayField(note: AuthNoteDto, f: AnyField): boolean {
+    if (this.isAlertEndDateField(f)) return this.isAlert(note);
+    return true;
+  }
+
+  private isAlertChecked(): boolean {
+    if (this.alertFlagControlName) {
+      return !!this.form.get(this.alertFlagControlName)?.value;
+    }
+    // fallback if template IDs change
+    return !!this.readValueByCandidates([
+      'authorizationAlertNote',
+      'authAlertNote',
+      'isAlertNote'
+    ]);
+  }
+
+  getDisplayFieldsForSelected(_note?: AuthNoteDto): AnyField[] {
+    // Order is important for layout; filtering is handled by shouldShowDisplayField().
+    return this.orderEditorFields(this.noteEditorFields ?? []);
+  }
+
+  getSelectedFieldDisplayValue(note: AuthNoteDto, f: AnyField): string {
+    const raw = this.getSelectedFieldRawValue(note, f);
+
+    if (raw === null || raw === undefined || raw === '') return '—';
+
+    const t = String(f.type ?? '').toLowerCase();
+
+    if (t === 'checkbox') return raw ? 'Yes' : 'No';
+
+    if (t === 'datetime-local') {
+      const d = new Date(raw);
+      return isNaN(d.getTime()) ? String(raw) : d.toLocaleString();
+    }
+
+    if (t === 'select') {
+      // use dropdown labels if available
+      return this.getLabelFromControlOptions(f.controlName, raw);
+    }
+
+    // textarea/text/default
+    return String(raw);
+  }
+
+  private getSelectedFieldRawValue(note: AuthNoteDto, f: AnyField): any {
+    const id = String(f.id ?? '').toLowerCase();
+
+    // Map template field IDs to note dto props (covers your existing UM ids)
+    switch (id) {
+      case 'authorizationnotes':
+      case 'authnotes':
+      case 'notetext':
+        return (note as any)?.noteText ?? (note as any)?.notes ?? '';
+
+      case 'authorizationnotetype':
+      case 'authnotetype':
+      case 'notetype':
+        return (note as any)?.noteType ?? (note as any)?.authNoteType ?? (note as any)?.authorizationNoteType ?? null;
+
+      case 'authorizationalertnote':
+      case 'authalertnote':
+      case 'isalertnote':
+        return (note as any)?.authAlertNote ?? (note as any)?.isAlertNote ?? false;
+
+      case 'noteencountereddatetime':
+        return (note as any)?.encounteredOn ?? null;
+
+      case 'newdate_copy_q5d60fyd5':
+        return (note as any)?.alertEndDate ?? null;
+
+      case 'notelevel':
+        return (note as any)?.noteLevel ?? null;
+
+      default:
+        // Generic fallback: if DTO has a property with same id, use it
+        // (helps if new template fields are added later)
+        const direct = (note as any)?.[f.id as any];
+        if (direct !== undefined) return direct;
+
+        return null;
+    }
+  }
+
+  clearSelection(): void {
+    this.selectedNoteId = null;
+    // if editor is open, close it too (optional but usually desired)
+    this.showEditor = false;
+    this.editing = undefined;
   }
 
 

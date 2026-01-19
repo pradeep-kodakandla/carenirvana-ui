@@ -9,6 +9,7 @@ import { AuthenticateService } from 'src/app/service/authentication.service';
 import { AuthService } from 'src/app/service/auth.service';
 import { WorkbasketService } from 'src/app/service/workbasket.service';
 import { UiOption } from 'src/app/shared/ui/shared/uioption.model';
+import { WizardToastService } from 'src/app/member/UM/components/authwizardshell/wizard-toast.service';
 
 type DropdownKind = 'workGroup' | 'workBasket' | 'workBasketUser' | 'activityType' | 'priority' | 'assignTo';
 interface Option {
@@ -91,7 +92,7 @@ export class AuthactivityComponent {
   workBasketUserOptions: UiOption<number>[] = [];
 
   constructor(private fb: FormBuilder, private crudService: CrudService, private authenticateService: AuthenticateService,
-    private activityService: AuthService, private wbService: WorkbasketService) {
+    private activityService: AuthService, private wbService: WorkbasketService, private toastSvc: WizardToastService) {
     this.activityForm = this.fb.group({
       memberName: [''],
       activityType: ['', Validators.required],
@@ -160,7 +161,7 @@ export class AuthactivityComponent {
     }
   }
 
- reload(): void {
+  reload(): void {
     const id = this.toNum(this.authDetailId);
     if (!id) return;
     this.lastLoadedAuthDetailId = id;
@@ -400,9 +401,11 @@ export class AuthactivityComponent {
             this.loadActivitiesForAuth(this.authDetailId!);
             this.onReset();
             this.isEditing = false;
+            this.toastSvc.success('Activity saved successfully.');
           },
           error: (err) => {
             console.error('Update failed', err);
+            this.toastSvc.error('Unable to save activity.');
           }
         });
       }

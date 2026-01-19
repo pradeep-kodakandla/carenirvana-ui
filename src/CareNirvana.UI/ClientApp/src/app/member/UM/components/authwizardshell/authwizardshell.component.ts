@@ -1,6 +1,7 @@
-import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, Subscription } from 'rxjs';
+import { WizardToastService, WizardToastMessage } from './wizard-toast.service';
 
 import { AuthDetailApiService } from 'src/app/service/authdetailapi.service';
 import { AuthDetailRow } from 'src/app/member/UM/services/authdetail';
@@ -33,7 +34,7 @@ export interface AuthWizardContext {
   templateUrl: './authwizardshell.component.html',
   styleUrls: ['./authwizardshell.component.css']
 })
-export class AuthwizardshellComponent implements OnInit, OnDestroy {
+export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild(RouterOutlet) outlet?: RouterOutlet;
 
   steps: AuthWizardStep[] = [];
@@ -41,6 +42,30 @@ export class AuthwizardshellComponent implements OnInit, OnDestroy {
 
   authNumber: string = '0';
   isNewAuth = true;
+
+  // ---------------------------
+  // Header bar (above stepper)
+  // ---------------------------
+  shellSaving = false;
+
+  header = {
+    authNumber: '',
+    createdBy: '',
+    createdOn: '',
+    dueDate: ''
+  };
+
+  // ---------------------------
+  // Common toast beside stepper
+  // ---------------------------
+  toast = {
+    visible: false,
+    type: 'success' as 'success' | 'error' | 'info',
+    text: ''
+  };
+
+  private toastTimer: any = null;
+
 
   /** Single source of truth for all steps */
   private ctx: AuthWizardContext = {
@@ -62,7 +87,8 @@ export class AuthwizardshellComponent implements OnInit, OnDestroy {
   constructor(
     private router: Router,
     private route: ActivatedRoute,
-    private authApi: AuthDetailApiService
+    private authApi: AuthDetailApiService,
+    private toastSvc: WizardToastService
   ) { }
 
   ngOnInit(): void {
@@ -70,6 +96,9 @@ export class AuthwizardshellComponent implements OnInit, OnDestroy {
     this.sub.add(
       this.route.paramMap.subscribe(pm => {
         this.authNumber = pm.get('authNumber') || '0';
+
+        // Header always shows auth number immediately
+        this.header.authNumber = this.authNumber;
 
         // treat 0 as "new"
         this.isNewAuth = (this.authNumber === '0' || this.authNumber.trim() === '');
@@ -98,6 +127,9 @@ export class AuthwizardshellComponent implements OnInit, OnDestroy {
         this.ensureDefaultChild();
         this.syncActiveStepFromRoute();
 
+        // Header always shows authNumber immediately
+        this.header.authNumber = this.authNumber;
+
         // ✅ For EDIT: fetch the missing context from API by authNumber
         if (!this.isNewAuth && this.authNumber && this.authNumber !== '0') {
           this.resolveContextFromAuthNumber(this.authNumber);
@@ -117,9 +149,165 @@ export class AuthwizardshellComponent implements OnInit, OnDestroy {
           queueMicrotask(() => this.pushContextIntoCurrentStep());
         })
     );
+
+    // Listen for save notifications from any step (Decision/Activity/Notes/etc.)
+    this.sub.add(
+      this.toastSvc.toast$.subscribe((m: WizardToastMessage) => {
+        this.showToast(m);
+      })
+    );
+  }
+
+  ngAfterViewInit(): void {
+    // When routed step activates, push context and also try to hydrate header from that step
+    if ((this.outlet as any)?.activateEvents) {
+      this.sub.add(
+        (this.outlet as any).activateEvents.subscribe((cmp: any) => {
+          this.refreshHeaderFromStep(cmp);
+        })
+      );
+    }
+  }
+
+
+  public notifySaveSuccess(text: string): void {
+    this.toastSvc.success(text);
+  }
+
+  public notifySaveError(text: string): void {
+    this.toastSvc.error(text);
+  }
+
+  public notifySaveInfo(text: string): void {
+    this.toastSvc.info(text);
+  }
+
+  // ---------------------------
+  // Shell Save (saves active step)
+  // ---------------------------
+  public async saveCurrentStep(): Promise<void> {
+    const inst: any =
+      (this.outlet as any)?.activatedComponent ??
+      (this.outlet as any)?.component ??
+      null;
+
+    if (!inst) return;
+
+    // Try common save method names across steps
+    const saveFn =
+      (typeof inst.save === 'function' && inst.save.bind(inst)) ||
+      (typeof inst.saveCurrentTab === 'function' && inst.saveCurrentTab.bind(inst)) ||
+      (typeof inst.onSave === 'function' && inst.onSave.bind(inst)) ||
+      null;
+
+    if (!saveFn) {
+      this.notifySaveInfo('Nothing to save for this step.');
+      return;
+    }
+
+    const stepLabel = this.steps.find(s => s.id === this.activeStepId)?.label || 'Step';
+
+    try {
+      this.shellSaving = true;
+
+      const res = saveFn();
+      // supports Observable, Promise, or sync
+      if (res?.subscribe) {
+        await new Promise<void>((resolve, reject) => {
+          const sub = res.subscribe({
+            next: () => { /* no-op */ },
+            error: (e: any) => { sub?.unsubscribe(); reject(e); },
+            complete: () => { sub?.unsubscribe(); resolve(); }
+          });
+        });
+      } else if (res?.then) {
+        await res;
+      }
+
+      // If the step didn't emit toast itself, show a generic success toast
+      this.notifySaveSuccess(`${stepLabel} saved successfully.`);
+
+      // Refresh header after save (if the step has fresh pendingAuth)
+      this.refreshHeaderFromStep(inst);
+    } catch (e) {
+      console.error('AuthWizardShell: save failed', e);
+      this.notifySaveError('Save failed.');
+    } finally {
+      this.shellSaving = false;
+    }
+  }
+
+  // ---------------------------
+  // Header hydration
+  // ---------------------------
+  private refreshHeaderFromStep(inst: any): void {
+    if (!inst) return;
+
+    // Auth # always comes from route/context
+    this.header.authNumber = String(this.ctx?.authNumber ?? this.authNumber ?? this.header.authNumber ?? '');
+
+    // Try common places where steps keep the loaded auth
+    const p = inst?.pendingAuth ?? inst?.auth ?? inst?.authDetails ?? inst?.model ?? null;
+    if (!p) return;
+
+    const createdBy = p?.createdBy ?? p?.createdby ?? p?.created_user ?? p?.createdUser ?? null;
+    const createdOn = p?.createdOn ?? p?.createdon ?? p?.createdDate ?? p?.created_date ?? null;
+    const due = p?.authDueDate ?? p?.authduedate ?? p?.dueDate ?? p?.duedate ?? null;
+
+    if (createdBy != null) this.header.createdBy = String(createdBy);
+    if (createdOn != null) this.header.createdOn = this.formatDate(createdOn);
+    if (due != null) this.header.dueDate = this.formatDate(due);
+  }
+
+  private refreshHeaderFromAuthRow(row: any, dataObj: any): void {
+    // Prefer explicit row fields; fallback to parsed json
+    const createdBy = row?.createdBy ?? row?.createdby ?? dataObj?.createdBy ?? dataObj?.createdby ?? null;
+    const createdOn = row?.createdOn ?? row?.createdon ?? dataObj?.createdOn ?? dataObj?.createdon ?? null;
+    const due = row?.authDueDate ?? row?.authduedate ?? dataObj?.authDueDate ?? dataObj?.authduedate ?? dataObj?.dueDate ?? null;
+
+    if (createdBy != null) this.header.createdBy = String(createdBy);
+    if (createdOn != null) this.header.createdOn = this.formatDate(createdOn);
+    if (due != null) this.header.dueDate = this.formatDate(due);
+  }
+
+  private formatDate(v: any): string {
+    if (v == null || v === '') return '';
+    const d = v instanceof Date ? v : new Date(v);
+    if (isNaN(d.getTime())) return '';
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${mm}/${dd}/${yyyy}`;
+  }
+
+  private showToast(m: WizardToastMessage): void {
+    // reset timer
+    if (this.toastTimer) {
+      clearTimeout(this.toastTimer);
+      this.toastTimer = null;
+    }
+
+    this.toast = {
+      visible: true,
+      type: m.type,
+      text: m.text
+    } as any;
+
+    this.toastTimer = setTimeout(() => {
+      this.toast.visible = false;
+    }, 3500);
+  }
+
+  private dismissToast(): void {
+    if (this.toastTimer) {
+      clearTimeout(this.toastTimer);
+      this.toastTimer = null;
+    }
+    this.toast.visible = false;
   }
 
   ngOnDestroy(): void {
+    this.dismissToast();
     this.sub.unsubscribe();
   }
 
@@ -151,6 +339,9 @@ export class AuthwizardshellComponent implements OnInit, OnDestroy {
     const s = this.authApi.getByNumber(authNumber, includeDeleted).subscribe({
       next: (row: AuthDetailRow | any) => {
         const dataObj = this.safeParseJson(row?.dataJson) ?? {};
+
+        // Populate header by default when opening an existing auth
+        this.refreshHeaderFromAuthRow(row, dataObj);
 
         // authTemplateId is not in AuthDetailRow interface today.
         // Try server-provided authTemplateId first; otherwise derive from authClassId (common mapping).
@@ -198,7 +389,7 @@ export class AuthwizardshellComponent implements OnInit, OnDestroy {
   // ---------------------------
   private buildSteps(): void {
     const base: AuthWizardStep[] = [
-      { id: 'details', label: 'Details', route: 'details' },
+      { id: 'details', label: 'Auth Details', route: 'details' },
       { id: 'decision', label: 'Decision', route: 'decision' },
       { id: 'mdReview', label: 'MD Review', route: 'mdReview' },
       { id: 'activities', label: 'Activities', route: 'activities' },

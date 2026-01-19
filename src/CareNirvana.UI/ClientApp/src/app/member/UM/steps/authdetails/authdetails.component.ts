@@ -44,6 +44,18 @@ interface TplRepeat {
   instanceLabel?: string;
 }
 
+type ShowWhen = 'always' | 'fieldEquals' | 'fieldNotEquals' | 'fieldhasvalue';
+
+type LogicalOp = 'AND' | 'OR';
+
+interface TplCondition {
+  id?: number;
+  value?: any;
+  showWhen: ShowWhen;
+  referenceFieldId?: string | null;
+  operatorWithPrev?: LogicalOp;
+}
+
 interface TplField {
   id: string;
   type: string;                 // text/select/textarea/datetime-local/checkbox/search
@@ -186,6 +198,8 @@ type RepeatRegistryMeta = {
 })
 export class AuthdetailsComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
+  private templateDestroy$ = new Subject<void>();
+  private visibilitySyncInProgress = false;
 
   form!: FormGroup;
 
@@ -220,7 +234,52 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
 
   // ---------- Dropdown cache ----------
   optionsByControlName: Record<string, UiSmartOption[]> = {};
+  private fieldIdToControlName = new Map<string, string>();
   private dependentDropdowns: Record<string, DepDropdownCfg> = {};
+
+  // Treat these field types as "option pickers" rendered as buttons
+  isButtonType(type: any): boolean {
+    const t = String(type ?? '').trim().toLowerCase();
+    return t === 'button' || t === 'buttons' || t === 'button-group' || t === 'radio-buttons' || t === 'radiobuttons';
+  }
+
+  /** Options for button-type fields (same sources as dropdowns: datasource or static options) */
+  getButtonOptions(f: any): UiSmartOption[] {
+    const controlName = String(f?.controlName ?? '').trim();
+    if (controlName && (this.optionsByControlName[controlName]?.length ?? 0) > 0) {
+      return this.getDropdownOptions(controlName);
+    }
+
+    // If not prefetched (or no datasource), fall back to static options on the field
+    const staticOpts = this.mapStaticOptions((f as any)?.options);
+    return staticOpts.length ? staticOpts : this.getDropdownOptions(controlName);
+  }
+
+  isButtonOptionSelected(f: any, opt: UiSmartOption): boolean {
+    const ctrl = this.form?.get(f?.controlName);
+    if (!ctrl) return false;
+    const cv = this.unwrapValue(ctrl.value);
+    return String(cv ?? '') === String((opt as any)?.value ?? '');
+  }
+
+  onButtonOptionClick(f: any, opt: UiSmartOption): void {
+    const ctrl = this.form?.get(f?.controlName);
+    if (!ctrl || ctrl.disabled) return;
+
+    ctrl.setValue((opt as any)?.value ?? null);
+    ctrl.markAsDirty();
+    ctrl.markAsTouched();
+
+    // Optional: allow templates to specify a handler method name
+    const handler = (f as any)?.onClick || (f as any)?.action || (f as any)?.clickHandler;
+    if (handler && typeof (this as any)[handler] === 'function') {
+      try {
+        (this as any)[handler](f, opt);
+      } catch {
+        // ignore handler errors to avoid breaking form input
+      }
+    }
+  }
 
   // ---------- Users (Owner dropdown) ----------
   allUsers: any[] = [];
@@ -236,6 +295,8 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
   // ---------- Lookup helpers ----------
   lookupSelectedByControl: Record<string, any> = {};
   private lookupSearchFnCache = new Map<string, (q: string, limit: number) => Observable<any[]>>();
+  private lookupDisplayFnCache = new Map<string, (item: any) => string>();
+  private lookupTrackByFnCache = new Map<string, (item: any) => any>();
 
   // ---------- Save ----------
   isSaving = false;
@@ -526,12 +587,16 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
           if (this.pendingAuth) {
             this.patchAuthorizationToForm(this.pendingAuth);
           }
+
+          this.setupVisibilityWatcher();
         },
         error: (e) => console.error('Template json load failed', e)
       });
   }
 
   private clearTemplate(resetRepeat: boolean): void {
+    // stop previous template-based subscriptions (visibility, etc.)
+    this.templateDestroy$.next();
     this.renderSections = [];
     this.optionsByControlName = {};
     this.dependentDropdowns = {};
@@ -784,6 +849,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
   // Build form controls (includes repeat instances)
   // ============================================================
   private buildFormControls(sections: RenderSection[]): void {
+    this.fieldIdToControlName.clear();
     const allFields = this.collectAllRenderFields(sections);
     this.addFieldsAsControls(allFields);
   }
@@ -819,7 +885,17 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
 
       const validators = [];
       if (f.required) validators.push(Validators.required);
-      this.form.addControl(f.controlName, new FormControl(null, validators));
+
+      const ctrl = new FormControl(null, validators);
+      // default: honor template isEnabled flag
+      const enabledByTpl = (f as any)?.isEnabled !== false;
+      if (!enabledByTpl) ctrl.disable({ emitEvent: false });
+
+      this.form.addControl(f.controlName, ctrl);
+
+      const rawId = String((f as any)?._rawId ?? (f as any)?.id ?? '').trim();
+      if (rawId && !this.fieldIdToControlName.has(rawId)) this.fieldIdToControlName.set(rawId, f.controlName);
+
     }
   }
 
@@ -898,6 +974,8 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
     if (snapshot && typeof snapshot === 'object') {
       this.form.patchValue(snapshot, { emitEvent: false });
     }
+
+    this.setupVisibilityWatcher();
   }
 
   private shiftRepeatSnapshotDown(snapshot: any, meta: RepeatRegistryMeta, removeIndex: number, totalCount: number): any {
@@ -999,17 +1077,17 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
   private prefetchDropdownOptions(sections: RenderSection[]): void {
     const allFields = this.collectAllRenderFields(sections);
 
-    // 1) static select options
+    // 1) static options (select + button types)
     for (const f of allFields) {
       const hasDs = !!String((f as any).datasource ?? '').trim();
-      if (f.type === 'select' && !hasDs) {
+      if ((f.type === 'select' || this.isButtonType(f.type)) && !hasDs) {
         const staticOpts = this.mapStaticOptions((f as any).options);
         if (staticOpts.length) this.optionsByControlName[f.controlName] = staticOpts;
       }
     }
 
-    // 2) datasource selects
-    const selects = allFields.filter((f: any) => f.type === 'select' && !!f.datasource);
+    // 2) datasource options (select + button types)
+    const selects = allFields.filter((f: any) => (f.type === 'select' || this.isButtonType(f.type)) && !!f.datasource);
     const byDatasource = new Map<string, RenderField[]>();
 
     for (const f of selects) {
@@ -1072,7 +1150,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
     const dsToControls = new Map<string, string[]>();
 
     for (const f of allFields) {
-      if (f.type !== 'select') continue;
+      if (!(f.type === 'select' || this.isButtonType(f.type))) continue;
       const ds = String((f as any).datasource ?? '').trim();
       if (!ds) continue;
 
@@ -1184,6 +1262,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
     const k = raw.trim().toLowerCase();
     if (!k) return null;
     if (k.includes('icd')) return 'icd';
+    if ((k.includes('medical') && k.includes('code')) || k.includes('cpt')) return 'medicalcodes';
     if (k.includes('member')) return 'members';
     if (k.includes('provider')) return 'providers';
     if (k.includes('claim')) return 'claims';
@@ -1198,6 +1277,8 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
     if (cached) return cached;
 
     const cfg = this.getLookupCfg(f);
+
+    // Allow template to inject a custom search function
     if (typeof cfg?.searchFn === 'function') {
       const fn = cfg.searchFn.bind(cfg);
       this.lookupSearchFnCache.set(key, fn);
@@ -1207,16 +1288,43 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
     const entity = this.getLookupEntity(f);
     const svc: any = this.authService as any;
 
-    const fn = (q: string, limit: number) => {
+    const fn = (q: string, limit: number): Observable<any[]> => {
       if (!entity) return of([]);
+
       switch (entity) {
-        case 'icd': return svc.searchIcd ? svc.searchIcd(q, limit) : of([]);
-        case 'members': return svc.searchMembers ? svc.searchMembers(q, limit) : of([]);
-        case 'providers': return svc.searchProviders ? svc.searchProviders(q, limit) : of([]);
-        case 'claims': return svc.searchClaims ? svc.searchClaims(q, limit) : of([]);
-        case 'medication': return svc.searchMedication ? svc.searchMedication(q, limit) : of([]);
-        case 'staff': return svc.searchStaff ? svc.searchStaff(q, limit) : of([]);
-        default: return svc.searchLookup ? svc.searchLookup(entity, q, limit) : of([]);
+        case 'icd':
+          return svc.searchIcd ? svc.searchIcd(q, limit) : of([]);
+
+        case 'medicalcodes':
+          return svc.searchMedicalCodes ? svc.searchMedicalCodes(q, limit) : of([]);
+
+        case 'members':
+          return svc.searchMembers ? svc.searchMembers(q, limit) : of([]);
+
+        case 'providers':
+          return svc.searchProviders ? svc.searchProviders(q, limit) : of([]);
+
+        case 'claims':
+        case 'claim':
+          return svc.searchClaims ? svc.searchClaims(q, limit) : of([]);
+
+        case 'medication':
+          // support both method names seen across modules
+          return svc.searchMedications
+            ? svc.searchMedications(q, limit)
+            : (svc.searchMedication ? svc.searchMedication(q, limit) : of([]));
+
+        case 'staff':
+          return svc.searchStaff ? svc.searchStaff(q, limit) : of([]);
+
+        default:
+          // Optional: template can specify the exact service method name to call
+          const method = cfg?.serviceMethod ? String(cfg.serviceMethod) : null;
+          const callable = method && typeof (svc as any)[method] === 'function' ? (svc as any)[method] : null;
+          if (callable) return callable.call(svc, q, limit);
+
+          // Fallback to generic lookup if available
+          return svc.searchLookup ? svc.searchLookup(entity, q, limit) : of([]);
       }
     };
 
@@ -1225,78 +1333,174 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
   }
 
   getLookupDisplayWith(f: any): (item: any) => string {
+    const key = (f?.controlName || f?.id || Math.random().toString()).toString();
+    const cached = this.lookupDisplayFnCache.get(key);
+    if (cached) return cached;
+
     const cfg = this.getLookupCfg(f);
+    const tpl = cfg?.displayTemplate ? String(cfg.displayTemplate) : null;
     const displayField = cfg?.displayField ? String(cfg.displayField) : null;
     const valueField = cfg?.valueField ? String(cfg.valueField) : null;
+    const entity = this.getLookupEntity(f);
 
-    return (item: any): string => {
+    const fn = (item: any): string => {
       if (item == null) return '';
 
+      // If the control stores a primitive (ID or display text), render safely.
       if (typeof item !== 'object') {
         const selected = this.lookupSelectedByControl?.[f?.controlName];
         if (selected && valueField) {
           const selectedId = this.pickPath(selected, valueField);
-          if (String(selectedId ?? '') === String(item ?? '')) item = selected;
+          if (String(selectedId ?? '') === String(item ?? '')) {
+            item = selected; // swap to full object for formatting below
+          }
+        }
+
+        // Still primitive after attempting to swap:
+        if (typeof item !== 'object') {
+          // If valueField isn't configured, we stored display text in the control.
+          if (!valueField) return String(item ?? '');
+          // If valueField is configured, control likely stores an ID. Don't show raw IDs.
+          return '';
         }
       }
 
+      // item is an object now
+      if (tpl) return this.applyLookupTemplate(tpl, item);
+
+      // Prefer explicit displayField when provided
       if (displayField) {
         const v = this.pickPath(item, displayField);
         if (v != null && String(v).trim()) return String(v);
       }
 
-      return (
-        item?.text ??
-        item?.name ??
-        item?.description ??
-        item?.label ??
-        (item?.code ? String(item.code) : '') ??
-        ''
-      );
+      // Parity with CaseDetails: sensible defaults by entity
+      if (entity === 'icd' || entity === 'medicalcodes' || entity === 'medication') {
+        const code = item.code ?? item.Code ?? item.icdcode ?? item.cptcode ?? item.cptCode ?? '';
+        const desc = item.codeDesc ?? item.codedescription ?? item.description ?? item.desc ?? '';
+        return [code, desc].filter(Boolean).join(' - ');
+      }
+
+      if (entity === 'members') {
+        const memberId = item.memberid ?? item.memberId ?? item.id ?? '';
+        const name = [item.firstname ?? item.firstName ?? '', item.lastname ?? item.lastName ?? ''].filter(Boolean).join(' ');
+        const phone = item.phone ?? item.phonenumber ?? item.phoneNumber ?? '';
+        const parts = [memberId, name].filter(Boolean);
+        return phone ? `${parts.join(' - ')} (${phone})` : parts.join(' - ');
+      }
+
+      if (entity === 'providers') {
+        const display = (
+          item.providerName ??
+          item.organizationname ??
+          item.organizationName ??
+          item.name ??
+          [item.lastName ?? item.lastname ?? '', item.firstName ?? item.firstname ?? ''].filter(Boolean).join(', ')
+        );
+        const npi = item.npi ?? item.NPI ?? '';
+        return npi ? `${display} (NPI: ${npi})` : String(display ?? '');
+      }
+
+      if (entity === 'staff') {
+        const uname = item.username ?? item.userName ?? '';
+        const name = item.fullName ?? [item.firstname ?? item.firstName ?? '', item.lastname ?? item.lastName ?? ''].filter(Boolean).join(' ');
+        const role = item.role ? ` (${item.role})` : '';
+        return name ? `${uname} - ${name}${role}` : String(uname ?? '');
+      }
+
+      if (entity === 'claim' || entity === 'claims') {
+        const code = item.claimNumber ?? item.claimnumber ?? item.claimNo ?? '';
+        const df = item.dos_from ?? item.dosFrom ?? '';
+        const dt = item.dos_to ?? item.dosTo ?? '';
+        const datePart = (df || dt) ? ` (${df}${dt ? ' - ' + dt : ''})` : '';
+        return code ? `${code}${datePart}` : String(item.display ?? item.label ?? '');
+      }
+
+      return (item.display ?? item.label ?? item.name ?? item.text ?? item.code ?? '').toString();
     };
+
+    this.lookupDisplayFnCache.set(key, fn);
+    return fn;
   }
 
+
   getLookupTrackBy(f: any): (item: any) => any {
+    const key = (f?.controlName || f?.id || Math.random().toString()).toString();
+    const cached = this.lookupTrackByFnCache.get(key);
+    if (cached) return cached;
+
     const cfg = this.getLookupCfg(f);
     const valueField = cfg?.valueField ? String(cfg.valueField) : null;
+    const path = cfg?.trackByPath ? String(cfg.trackByPath) : null;
 
-    return (item: any) => {
+    const fn = (item: any): any => {
       if (item == null) return item;
       if (typeof item !== 'object') return item;
+      if (path) return this.pickPath(item, path);
       if (valueField) return this.pickPath(item, valueField);
-      return item?.id ?? item?.value ?? item?.code ?? item;
+      return (
+        item.id ??
+        item.userdetailid ??
+        item.providerId ??
+        item.memberclaimheaderid ??
+        item.memberdetailsid ??
+        item.memberDetailsId ??
+        item.code ??
+        item.npi ??
+        item.value ??
+        item
+      );
     };
+
+    this.lookupTrackByFnCache.set(key, fn);
+    return fn;
   }
 
   onLookupSelected(f: any, item: any): void {
+    if (!f) return;
+
     const cfg = this.getLookupCfg(f);
     const valueField = cfg?.valueField ? String(cfg.valueField) : null;
 
-    this.lookupSelectedByControl[f.controlName] = item;
+    // Cache the full object so displayWith can render correctly even when the control stores a primitive.
+    if (f?.controlName) {
+      this.lookupSelectedByControl[f.controlName] = item;
+    }
 
     const ctrl = this.form.get(f.controlName);
     if (ctrl) {
-      const v = valueField ? this.pickPath(item, valueField) : (item?.id ?? item?.value ?? item);
-      ctrl.setValue(v, { emitEvent: true });
+      // Match CaseDetails behavior:
+      // - if valueField is provided, store that primitive in the control
+      // - otherwise store the display string (so the input does not show an id)
+      const storeValue = valueField ? this.pickPath(item, valueField) : this.getLookupDisplayWith(f)(item);
+      ctrl.setValue(storeValue ?? null, { emitEvent: true });
       ctrl.markAsDirty();
     }
 
-    const fill = (cfg?.fill && Array.isArray(cfg.fill)) ? cfg.fill : [];
+    const fill = (cfg?.fill && Array.isArray(cfg.fill)) ? cfg.fill : this.defaultLookupFill(f);
     for (const m of fill) {
       const targetId = m?.targetFieldId;
       const sourcePath = m?.sourcePath;
       if (!targetId || !sourcePath) continue;
 
-      const targetControlName = this.safeControlName(String(targetId));
+      // Resolve in the same repeat instance when applicable (provider1_xxx -> provider1_targetField)
+      const targetControlName = this.resolveReferenceControlName(f, String(targetId));
+      if (!targetControlName) continue;
+
       const tctrl = this.form.get(targetControlName);
       if (tctrl) {
-        tctrl.setValue(this.pickPath(item, String(sourcePath)), { emitEvent: true });
+        tctrl.setValue(this.pickPath(item, String(sourcePath)) ?? null, { emitEvent: true });
         tctrl.markAsDirty();
       }
     }
+
+    // Filling lookup targets can affect visibility/enablement rules.
+    this.syncVisibility();
   }
 
   onLookupTextChange(f: any, _text: string): void {
+
+
     const cfg = this.getLookupCfg(f);
     if (cfg?.clearOnTextChange === true) {
       delete this.lookupSelectedByControl[f.controlName];
@@ -1304,6 +1508,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
   }
 
   onLookupCleared(f: any): void {
+    const cfg = this.getLookupCfg(f);
+    const fill = (cfg?.fill && Array.isArray(cfg.fill)) ? cfg.fill : this.defaultLookupFill(f);
+
     delete this.lookupSelectedByControl[f.controlName];
 
     const ctrl = this.form.get(f.controlName);
@@ -1311,6 +1518,54 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
       ctrl.setValue(null, { emitEvent: true });
       ctrl.markAsDirty();
     }
+
+    // Clear filled target fields too (matches CaseDetails behavior)
+    for (const m of fill) {
+      const targetId = m?.targetFieldId;
+      if (!targetId) continue;
+
+      const targetControlName = this.resolveReferenceControlName(f, String(targetId));
+      if (!targetControlName) continue;
+
+      const tctrl = this.form.get(targetControlName);
+      if (tctrl) {
+        tctrl.setValue(null, { emitEvent: true });
+        tctrl.markAsDirty();
+      }
+    }
+
+    this.syncVisibility();
+  }
+
+  private defaultLookupFill(f: any): Array<{ targetFieldId: string; sourcePath: string }> {
+    const rawId = String((f as any)?._rawId ?? f?.id ?? '').toLowerCase();
+    const name = String(f?.displayName ?? f?.label ?? '').toLowerCase();
+    const key = `${rawId} ${name}`;
+
+    // Sensible fallbacks when template does not provide lookup.fill.
+    if (key.includes('icd') && key.includes('search')) {
+      return [
+        { targetFieldId: 'icdCode', sourcePath: 'code' },
+        { targetFieldId: 'icdDescription', sourcePath: 'codeDesc' }
+      ];
+    }
+
+    if (key.includes('member') && key.includes('search')) {
+      return [
+        { targetFieldId: 'memberFirstName', sourcePath: 'firstname' },
+        { targetFieldId: 'memberLastName', sourcePath: 'lastname' },
+        { targetFieldId: 'memberPhone', sourcePath: 'phone' }
+      ];
+    }
+
+    if (key.includes('provider') && key.includes('search')) {
+      return [
+        { targetFieldId: 'providerName', sourcePath: 'providerName' },
+        { targetFieldId: 'providerNpi', sourcePath: 'npi' }
+      ];
+    }
+
+    return [];
   }
 
   private pickPath(obj: any, path: string): any {
@@ -1322,6 +1577,13 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
       if (cur == null) break;
     }
     return cur;
+  }
+
+  private applyLookupTemplate(tpl: string, item: any): string {
+    return String(tpl).replace(/\{\{\s*([^}]+)\s*\}\}/g, (_m: string, p1: string) => {
+      const v = this.pickPath(item, String(p1).trim());
+      return v == null ? '' : String(v);
+    });
   }
 
   // ============================================================
@@ -1520,6 +1782,147 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
     return (f?.type || '').toString().toLowerCase() === 'search';
   }
 
+
+  // ============================================================
+  // Conditional visibility + isEnabled handling
+  // ============================================================
+  isVisible(f: any): boolean {
+    return this.evalFieldVisibility(f);
+  }
+
+  private setupVisibilityWatcher(): void {
+    // stop previous watcher for the current template
+    this.templateDestroy$.next();
+
+    // initial sync
+    this.syncVisibility();
+
+    // re-sync when any value changes
+    this.form.valueChanges
+      .pipe(takeUntil(this.templateDestroy$), takeUntil(this.destroy$))
+      .subscribe(() => this.syncVisibility());
+  }
+
+  private syncVisibility(): void {
+    if (!this.form || !this.renderSections?.length) return;
+    if (this.visibilitySyncInProgress) return;
+
+    this.visibilitySyncInProgress = true;
+    try {
+      const allFields = this.collectAllRenderFields(this.renderSections);
+      for (const f of allFields) {
+        if (!f?.controlName) continue;
+        const ctrl = this.form.get(f.controlName);
+        if (!ctrl) continue;
+
+        const shouldShow = this.evalFieldVisibility(f);
+        const enabledByTpl = (f as any)?.isEnabled !== false;
+
+        // If hidden, keep disabled to avoid validation issues
+        if (!shouldShow) {
+          if (!ctrl.disabled) ctrl.disable({ emitEvent: false });
+          continue;
+        }
+
+        // Visible: enable/disable based on isEnabled
+        if (enabledByTpl) {
+          if (ctrl.disabled) ctrl.enable({ emitEvent: false });
+        } else {
+          if (!ctrl.disabled) ctrl.disable({ emitEvent: false });
+        }
+      }
+
+      // keep validators consistent
+      this.form.updateValueAndValidity({ emitEvent: false });
+    } finally {
+      this.visibilitySyncInProgress = false;
+    }
+  }
+
+  private evalFieldVisibility(field: any): boolean {
+    if (!field) return true;
+
+    const conds = Array.isArray(field.conditions) ? field.conditions.filter(Boolean) : [];
+    if (conds.length > 0) return this.evalConditions(conds, field);
+
+    const sw: ShowWhen = (field.showWhen ?? 'always');
+    if (sw === 'always') return true;
+
+    const refId = field.referenceFieldId ?? null;
+    const v = field.visibilityValue ?? null;
+    if (!refId) return true;
+
+    return this.evalOne(sw, field, String(refId), v);
+  }
+
+  private evalConditions(conds: TplCondition[], fieldCtx: any): boolean {
+    let result: boolean | null = null;
+
+    for (const c of (conds || [])) {
+      const sw: ShowWhen = (c?.showWhen ?? 'always');
+      let current = true;
+
+      if (sw !== 'always') {
+        const refId = c?.referenceFieldId ?? null;
+        current = refId ? this.evalOne(sw, fieldCtx, String(refId), c?.value) : true;
+      }
+
+      if (result === null) {
+        result = current;
+      } else {
+        const op = String(c?.operatorWithPrev ?? 'AND').toUpperCase();
+        result = op === 'OR' ? (result || current) : (result && current);
+      }
+    }
+
+    return result ?? true;
+  }
+
+  private evalOne(showWhen: ShowWhen, fieldCtx: any, referenceFieldId: string, visibilityValue: any): boolean {
+    const refCtrlName = this.resolveReferenceControlName(fieldCtx, referenceFieldId);
+    const ctrl = refCtrlName ? this.form.get(refCtrlName) : null;
+    const raw = this.unwrapValue(ctrl?.value);
+
+    switch (showWhen) {
+      case 'fieldEquals':
+        return String(raw ?? '') === String(visibilityValue ?? '');
+      case 'fieldNotEquals':
+        return String(raw ?? '') !== String(visibilityValue ?? '');
+      case 'fieldhasvalue':
+        if (raw === null || raw === undefined) return false;
+        if (typeof raw === 'string') return raw.trim().length > 0;
+        if (Array.isArray(raw)) return raw.length > 0;
+        return true;
+      case 'always':
+      default:
+        return true;
+    }
+  }
+
+  private resolveReferenceControlName(fieldCtx: any, referenceFieldId: string): string | null {
+    const refId = String(referenceFieldId ?? '').trim();
+    if (!refId) return null;
+
+    // direct (non-repeat)
+    const direct = this.safeControlName(refId);
+    if (this.form.get(direct)) return direct;
+
+    // same repeat-instance (prefixN_field)
+    const cur = String(fieldCtx?.controlName ?? '').trim();
+    const m = cur.match(/^(.+?)(\d+)_/);
+    if (m) {
+      const prefix = m[1];
+      const idx = m[2];
+      const candidate = this.safeControlName(prefix + idx + '_' + refId);
+      if (this.form.get(candidate)) return candidate;
+    }
+
+    const mapped = this.fieldIdToControlName.get(refId);
+    if (mapped && this.form.get(mapped)) return mapped;
+
+    return null;
+  }
+
   // ============================================================
   // Generic helpers
   // ============================================================
@@ -1644,4 +2047,40 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
     if (!Number.isFinite(n)) return fallback;
     return Math.max(min, Math.min(max, Math.floor(n)));
   }
+
+
+  public onActionButtonClick(field: any): void {
+    console.log('Button clicked:', field?.id, field);
+
+    switch (field?.id) {
+      case 'providerButton1':
+        this.onPriorServicingProviderClick();
+        break;
+
+      case 'providerButton2':
+        this.onLookupProviderClick();
+        break;
+
+      case 'providerButton3':
+        this.onAddNewProviderClick();
+        break;
+
+      default:
+        console.warn('No handler mapped for:', field?.id);
+    }
+  }
+
+  public onPriorServicingProviderClick(): void {
+    alert('Prior Servicing Provider clicked');
+  }
+
+  public onLookupProviderClick(): void {
+    alert('Lookup Provider clicked');
+  }
+
+  public onAddNewProviderClick(): void {
+    alert('Add New Provider clicked');
+  }
+
+
 }

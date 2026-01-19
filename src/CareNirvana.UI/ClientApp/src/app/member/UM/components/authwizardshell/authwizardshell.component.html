@@ -1,11 +1,54 @@
 <div class="authWizardShell">
-  <app-authchevronstepper [steps]="steps"
-                          [activeStepId]="activeStepId"
-                          (stepSelected)="onStepSelected($event)">
-  </app-authchevronstepper>
+
+  <!-- Header (above stepper) -->
+  <div class="authWizardHeader">
+    <div class="authWizardMeta">
+      <div class="metaItem">
+        <div class="metaLabel">Auth #</div>
+        <div class="metaValue">{{ header.authNumber || '-' }}</div>
+      </div>
+
+      <div class="metaItem">
+        <div class="metaLabel">Created By</div>
+        <div class="metaValue">{{ header.createdBy || '-' }}</div>
+      </div>
+
+      <div class="metaItem">
+        <div class="metaLabel">Created On</div>
+        <div class="metaValue">{{ header.createdOn || '-' }}</div>
+      </div>
+
+      <div class="metaItem">
+        <div class="metaLabel">Due Date</div>
+        <div class="metaValue">{{ header.dueDate || '-' }}</div>
+      </div>
+    </div>
+
+    <div class="authWizardActions">
+      <button type="button"
+              class="btn btn-primary"
+              (click)="saveCurrentStep()"
+              [disabled]="shellSaving">
+        {{ shellSaving ? 'Saving...' : 'Save' }}
+      </button>
+    </div>
+  </div>
+
+  <div class="stepperRow">
+    <app-authchevronstepper
+      class="stepper"
+      [steps]="steps"
+      [activeStepId]="activeStepId"
+      (stepSelected)="onStepSelected($event)">
+    </app-authchevronstepper>
+
+    <div class="wizardToast" *ngIf="toast.visible" [ngClass]="toast.type">
+      {{ toast.text }}
+    </div>
+  </div>
 
   <div class="wizardBody">
     <router-outlet></router-outlet>
   </div>
-</div>
 
+</div>

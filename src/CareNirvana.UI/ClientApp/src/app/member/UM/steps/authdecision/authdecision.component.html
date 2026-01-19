@@ -1,6 +1,6 @@
 <div class="d-flex align-items-center justify-content-between mb-2">
   <div>
-    <div class="h6 mb-0">Authorization Decision</div>
+    <!--<div class="h6 mb-0">Authorization Decision</div>-->
   </div>
 
   <div class="case-savebar">
@@ -29,7 +29,8 @@
       <div *ngFor="let tab of tabs"
            class="tab"
            [class.active]="selectedTabId === tab.id"
-           (click)="selectTab(tab.id)">
+           (click)="selectTab(tab.id)"
+           [ngClass]="tab.statusClass">
         <div class="tab-title">{{ tab.name }}</div>
         <div class="tab-sub" *ngIf="tab.subtitle">{{ tab.subtitle }}</div>
       </div>
@@ -42,12 +43,19 @@
     <form class="auth-details" [formGroup]="form">
 
       <ng-container *ngFor="let section of st.sections">
-        <div class="section-card" *ngIf="section?.fields?.length">
+
+        <!-- show section only if it has at least one visible field -->
+        <div class="section-card"
+             *ngIf="section?.fields?.length && isSectionVisible(st, section)"
+             style="height:auto;max-height:none;overflow:visible;">
+
           <div class="section-header">
             <div class="section-title">{{ section.sectionName }}</div>
           </div>
 
-          <div class="grid">
+          <div class="grid"
+               style="grid-template-rows:unset;grid-auto-rows:minmax(min-content,max-content);overflow:visible;">
+
             <ng-container *ngFor="let field of section.fields; let i = index">
               <ng-container *ngIf="isVisible(st, field)">
 
@@ -118,6 +126,7 @@
                             <input class="ff-input" type="text"
                                    [formControlName]="field.controlName" />
                           </ng-container>
+
                         </ng-container>
                       </div>
                     </div>
@@ -130,6 +139,7 @@
 
               </ng-container>
             </ng-container>
+
           </div>
         </div>
       </ng-container>

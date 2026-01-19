@@ -11,9 +11,9 @@
 
 /* Cards */
 .section-card, .sub-card {
-  border: 1px solid #e6e8ec;
-  border-radius: 10px;
-  padding: 14px;
+/*  border: 1px solid #e6e8ec;
+*/  border-radius: 10px;
+  padding: 5px;
   background: #fff;
   margin-bottom: 14px;
 }
@@ -179,10 +179,10 @@
 }
 
 /* Subsection card as an outlined block with floating title */
-.sub-card {
+/*.sub-card {
   position: relative;
-  padding-top: 18px; /* space for floating label */
-}
+  padding-top: 18px;*/ /* space for floating label */
+/*}*/
 
 .sub-float-label {
   position: absolute;
@@ -205,40 +205,56 @@
 
 
 /* Responsive grid: max 5 columns, auto adjusts down on smaller screens */
-.grid {
-  display: grid;
+/*
+  IMPORTANT:
+  The wider app can have global CSS that also defines a `.grid` class.
+  To guarantee our form always renders with 4 fields per row, we increase
+  specificity and use !important for the core grid properties.
+*/
+.auth-details .grid {
+  display: grid !important;
   gap: 14px;
   /* Prevent tall controls (e.g., textarea) from stretching other fields in the same row */
   align-items: start;
-  /* default: up to 4 columns */
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-flow: row;
+  /* default: 4 columns */
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+/* Column span helpers */
+.ff-span-2 {
+  grid-column: span 2;
+}
+
+.ff-span-3 {
+  grid-column: span 3;
 }
 
 /* drop to 4 */
 @media (max-width: 1400px) {
-  .grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+  .auth-details .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   }
 }
 
 /* drop to 3 */
 @media (max-width: 1200px) {
-  .grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .auth-details .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
 }
 
 /* drop to 2 */
 @media (max-width: 900px) {
-  .grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .auth-details .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
 
 /* drop to 1 */
 @media (max-width: 600px) {
-  .grid {
-    grid-template-columns: repeat(1, minmax(0, 1fr));
+  .auth-details .grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
   }
 }
 
@@ -361,9 +377,9 @@
 }
 
 
-/* Make search span the full grid width */
+/* Make a field span the full row */
 .ff-span-all {
-  grid-column: 1 / -8;
+  grid-column: 1 / -1;
 }
 
 /* Search bar styling to match screenshot */
@@ -418,9 +434,9 @@
 }
 
 .ff-repeat-group {
-  border: 1px dashed #e1e5ee;
+/*  border: 1px dashed #e1e5ee;
   border-radius: 12px;
-  padding: 12px;
+  padding: 12px;*/
   background: #fcfcfd;
 }
 
@@ -438,39 +454,39 @@
   letter-spacing: .2px;
 }
 
-.grid.ff-repeat-grid {
-  /* add an extra "actions" column as the LAST cell */
-  grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
+.auth-details .grid.ff-repeat-grid {
+  /* 4 fields per row + an actions column at the end */
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto !important;
 }
 
 /* Keep responsiveness: repeat(N) + auto actions col */
 @media (max-width: 1400px) {
-  .grid.ff-repeat-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  .auth-details .grid.ff-repeat-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) auto !important;
   }
 }
 
 @media (max-width: 1200px) {
-  .grid.ff-repeat-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  .auth-details .grid.ff-repeat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto !important;
   }
 }
 
 @media (max-width: 900px) {
-  .grid.ff-repeat-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  .auth-details .grid.ff-repeat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) auto !important;
   }
 }
 
 @media (max-width: 600px) {
-  .grid.ff-repeat-grid {
-    grid-template-columns: repeat(1, minmax(0, 1fr)) auto;
+  .auth-details .grid.ff-repeat-grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) auto !important;
   }
 }
 
 /* In repeat grids, a full-width field should NOT cover the actions column */
-.grid.ff-repeat-grid .ff-span-all {
-  grid-column: 1 / -8;
+.auth-details .grid.ff-repeat-grid .ff-span-all {
+  grid-column: 1 / -2;
 }
 
 .ff-repeat-cell {
@@ -479,6 +495,28 @@
   justify-content: flex-end;
   gap: 8px;
   padding-top: 1px;
+  /* Put the actions in the last (auto) column.
+     Because this cell is the LAST DOM node in the grid, it naturally lands
+     at the end of the final row. */
+  grid-column: -1;
+  align-self: end;
+  justify-self: end;
+}
+
+/* Don't let lookup components force extra width */
+:host ::ng-deep ui-smart-lookup,
+:host ::ng-deep ui-smart-lookup * {
+  min-width: 0;
+}
+
+/* Subsection polish: clearer grouping + indentation for nested levels */
+/*.sub-card {
+  margin-top: 12px;
+}*/
+
+.sub-card.sub-nested {
+  margin-left: 12px;
+  border-left: 3px dashed #e1e5ee;
 }
 
 .ff-repeat-btn {
