@@ -1,8 +1,7 @@
 import { Component, OnDestroy } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
 import { forkJoin, of, Subject } from 'rxjs';
-import { catchError, finalize, takeUntil } from 'rxjs/operators';
-
+import { catchError, finalize, takeUntil, switchMap, map } from 'rxjs/operators';
 import { AuthDetailApiService, DecisionSectionName } from 'src/app/service/authdetailapi.service';
 import { DatasourceLookupService } from 'src/app/service/crud.service';
 import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
@@ -363,25 +362,25 @@ export class AuthdecisionComponent implements OnDestroy {
     }
   }
 
-  private updateTabStatuses(): void {
-    // Update each tab's status from Decision Details item data
-    this.tabs = (this.tabs ?? []).map(t => {
-      const s = this.getDecisionStatusForProcedure(t.procedureNo);
-      const statusText = (s?.statusText ?? 'Pended') || 'Pended';
-      const statusCode = (s?.statusCode ?? statusText) || statusText;
+  //private updateTabStatuses(): void {
+  //  // Update each tab's status from Decision Details item data
+  //  this.tabs = (this.tabs ?? []).map(t => {
+  //    const s = this.getDecisionStatusForProcedure(t.procedureNo);
+  //    const statusText = (s?.statusText ?? 'Pended') || 'Pended';
+  //    const statusCode = (s?.statusCode ?? statusText) || statusText;
 
-      const fromDate = this.formatDateShort(this.authData?.[`procedure${t.procedureNo}_fromDate`]);
-      const subtitle = `Status: ${statusText}${fromDate !== 'N/A' ? ` • From: ${fromDate}` : ''}`;
+  //    const fromDate = this.formatDateShort(this.authData?.[`procedure${t.procedureNo}_fromDate`]);
+  //    const subtitle = `Status: ${statusText}${fromDate !== 'N/A' ? ` • From: ${fromDate}` : ''}`;
 
-      return {
-        ...t,
-        statusText,
-        statusCode,
-        statusClass: this.statusToClass(statusCode || statusText),
-        subtitle
-      };
-    });
-  }
+  //    return {
+  //      ...t,
+  //      statusText,
+  //      statusCode,
+  //      statusClass: this.statusToClass(statusCode || statusText),
+  //      subtitle
+  //    };
+  //  });
+  //}
 
 
   private buildTabsFromAuthData(): void {
@@ -432,7 +431,6 @@ export class AuthdecisionComponent implements OnDestroy {
   saveCurrentTab(): void {
     if (!this.activeState || !this.authDetailId) return;
 
-    // IMPORTANT: ensure validators only apply to visible+enabled controls
     this.syncVisibility();
 
     if (this.form.invalid) {
@@ -445,27 +443,33 @@ export class AuthdecisionComponent implements OnDestroy {
     const authDetailId = this.authDetailId;
     const procNo = this.activeState.tab.procedureNo;
 
-    const calls: any[] = [];
-
-    for (const sec of this.activeState.sections) {
+    const saveSection = (sec: DecisionSectionVm) => {
       const payload = this.buildSectionPayload(procNo, sec);
+      const existingId = this.activeState!.itemIdsBySection?.[sec.sectionName];
 
-      const existingId = this.activeState.itemIdsBySection?.[sec.sectionName];
-      if (existingId) {
-        calls.push(
-          this.api.updateItem(authDetailId, sec.sectionName, existingId, { data: payload } as any, userId)
-        );
-      } else {
-        calls.push(
-          this.api.createItem(authDetailId, sec.sectionName, { data: payload } as any, userId)
-        );
-      }
-    }
+      const call$ = existingId
+        ? this.api.updateItem(authDetailId, sec.sectionName, existingId, { data: payload } as any, userId)
+        : this.api.createItem(authDetailId, sec.sectionName, { data: payload } as any, userId);
+
+      // Make both branches return the same shape
+      return (call$ as any).pipe(map(() => true));
+    };
+
+    // Always save Decision Details first, then the rest
+    const decisionDetails = this.activeState.sections.find(s => s.sectionName === 'Decision Details') ?? null;
+    const rest = this.activeState.sections.filter(s => s.sectionName !== 'Decision Details');
+    const restCalls = rest.map(s => saveSection(s));
+
+    const req$ = decisionDetails
+      ? saveSection(decisionDetails).pipe(
+        switchMap(() => (restCalls.length ? forkJoin(restCalls) : of([])))
+      )
+      : (restCalls.length ? forkJoin(restCalls) : of([]));
 
     this.saving = true;
     this.errorMsg = '';
 
-    forkJoin(calls)
+    req$
       .pipe(
         finalize(() => (this.saving = false)),
         catchError((e) => {
@@ -480,11 +484,66 @@ export class AuthdecisionComponent implements OnDestroy {
         next: (res: any) => {
           if (res === null) return;
           this.toastSvc.success('Decision saved successfully.');
-          // refresh only items, keep template + auth data
           this.refreshItemsOnly();
         }
       });
   }
+  //saveCurrentTab(): void {
+  //  if (!this.activeState || !this.authDetailId) return;
+
+  //  // IMPORTANT: ensure validators only apply to visible+enabled controls
+  //  this.syncVisibility();
+
+  //  if (this.form.invalid) {
+  //    this.markVisibleControlsTouched();
+  //    this.errorMsg = 'Please fill the required fields before saving.';
+  //    return;
+  //  }
+
+  //  const userId = Number(sessionStorage.getItem('loggedInUserid') || 0);
+  //  const authDetailId = this.authDetailId;
+  //  const procNo = this.activeState.tab.procedureNo;
+
+  //  const calls: any[] = [];
+
+  //  for (const sec of this.activeState.sections) {
+  //    const payload = this.buildSectionPayload(procNo, sec);
+
+  //    const existingId = this.activeState.itemIdsBySection?.[sec.sectionName];
+  //    if (existingId) {
+  //      calls.push(
+  //        this.api.updateItem(authDetailId, sec.sectionName, existingId, { data: payload } as any, userId)
+  //      );
+  //    } else {
+  //      calls.push(
+  //        this.api.createItem(authDetailId, sec.sectionName, { data: payload } as any, userId)
+  //      );
+  //    }
+  //  }
+
+  //  this.saving = true;
+  //  this.errorMsg = '';
+
+  //  forkJoin(calls)
+  //    .pipe(
+  //      finalize(() => (this.saving = false)),
+  //      catchError((e) => {
+  //        console.error(e);
+  //        this.errorMsg = e?.error?.message ?? 'Unable to save decision.';
+  //        this.toastSvc.error('Decision save failed.');
+  //        return of(null);
+  //      }),
+  //      takeUntil(this.destroy$)
+  //    )
+  //    .subscribe({
+  //      next: (res: any) => {
+  //        if (res === null) return;
+  //        this.toastSvc.success('Decision saved successfully.');
+  //        // refresh only items, keep template + auth data
+  //        this.refreshItemsOnly();
+  //      }
+  //    });
+  //}
 
   deleteCurrentTab(): void {
     if (!this.activeState || !this.authDetailId) return;
@@ -960,25 +1019,46 @@ export class AuthdecisionComponent implements OnDestroy {
     return v;
   }
 
-  private findItemForSectionAndProcedure(sectionName: DecisionSectionName, procedureNo: number): { itemId: string | null; data: any } {
+  private findItemForSectionAndProcedure(
+    sectionName: DecisionSectionName,
+    procedureNo: number
+  ): { itemId: string | null; data: any } {
     const list = (this.itemsBySection?.[sectionName] ?? []) as any[];
     if (!Array.isArray(list) || !list.length) return { itemId: null, data: {} };
 
-    const match = list.find((x) => {
-      const p =
-        Number((x as any)?.procedureNo ?? (x as any)?.procedureIndex ?? (x as any)?.serviceIndex ?? (x as any)?.serviceNo);
-      return p === procedureNo;
-    });
+    const getProcNo = (x: any): number | null => {
+      // 1) try root-level fields
+      let p = Number(x?.procedureNo ?? x?.procedureIndex ?? x?.serviceIndex ?? x?.serviceNo);
+      if (Number.isFinite(p) && p > 0) return p;
 
+      // 2) try inside stored json/data
+      const raw = x?.data ?? x?.jsonData ?? x?.payload ?? x?.itemData ?? {};
+      const data = this.safeParseJson(raw) ?? raw ?? {};
+      p = Number(
+        data?.procedureNo ??
+        data?.procedureIndex ??
+        data?.serviceIndex ??
+        data?.serviceNo ??
+        data?.decisionNumber // common alt
+      );
+      if (Number.isFinite(p) && p > 0) return p;
+
+      return null;
+    };
+
+    const match = list.find((x) => getProcNo(x) === procedureNo);
+
+    // Keep your fallback behavior for proc 1
     const picked = match ?? (procedureNo === 1 ? list[0] : null);
     if (!picked) return { itemId: null, data: {} };
 
-    const itemId = String((picked as any)?.itemId ?? (picked as any)?.id ?? (picked as any)?.decisionItemId ?? '');
-    const raw = (picked as any)?.data ?? (picked as any)?.jsonData ?? (picked as any)?.payload ?? (picked as any)?.itemData ?? {};
+    const itemId = String(picked?.itemId ?? picked?.id ?? picked?.decisionItemId ?? '');
+    const raw = picked?.data ?? picked?.jsonData ?? picked?.payload ?? picked?.itemData ?? {};
     const data = this.safeParseJson(raw) ?? raw ?? {};
 
     return { itemId: itemId || null, data };
   }
+
 
   private prefetchDropdownOptions(sections: DecisionSectionVm[]): void {
     const selectFields: DecisionFieldVm[] = [];
@@ -1214,4 +1294,116 @@ export class AuthdecisionComponent implements OnDestroy {
 
     return null;
   }
+
+  private getDecisionDetailsDataForProcedure(procedureNo: number): any {
+    try {
+      const picked = this.findItemForSectionAndProcedure('Decision Details', procedureNo);
+      return picked?.data ?? {};
+    } catch {
+      return {};
+    }
+  }
+
+  private pickFirstValue(obj: any, keys: string[]): any {
+    if (!obj) return null;
+
+    for (const k of keys) {
+      const v = (obj as any)?.[k];
+      if (v === null || v === undefined) continue;
+      if (typeof v === 'string' && v.trim() === '') continue;
+      return v;
+    }
+
+    // case-insensitive fallback
+    const lower = new Map((Object.keys(obj) ?? []).map(x => [String(x).toLowerCase(), x]));
+    for (const k of keys) {
+      const real = lower.get(String(k).toLowerCase());
+      if (!real) continue;
+      const v = (obj as any)?.[real];
+      if (v === null || v === undefined) continue;
+      if (typeof v === 'string' && v.trim() === '') continue;
+      return v;
+    }
+
+    return null;
+  }
+
+  private buildDecisionLine(procedureNo: number, statusText: string, details: any): string {
+    const lineNo =
+      this.pickFirstValue(details, [
+        'decisionNumber',
+        'decisionLineNo',
+        'decisionLine',
+        'lineNumber',
+        'lineNo'
+      ]) ?? procedureNo;
+
+    const fromRaw =
+      this.pickFirstValue(details, ['fromDate', 'effectiveFrom', 'startDate']) ??
+      this.authData?.[`procedure${procedureNo}_fromDate`];
+
+    const toRaw =
+      this.pickFirstValue(details, ['toDate', 'effectiveTo', 'endDate']) ??
+      this.authData?.[`procedure${procedureNo}_toDate`];
+
+    const from = this.formatDateShort(fromRaw);
+    const to = this.formatDateShort(toRaw);
+
+    const unitsRaw =
+      this.pickFirstValue(details, [
+        'approved',
+        'approvedUnits',
+        'unitsApproved',
+        'authorized',
+        'authorizedUnits',
+        'decisionUnits',
+        'requested',
+        'requestedUnits',
+        'recommendedUnits'
+      ]) ??
+      this.authData?.[`procedure${procedureNo}_recommendedUnits`];
+
+    const unitTypeRaw =
+      this.pickFirstValue(details, ['unitType', 'unitsType', 'unit']) ??
+      this.authData?.[`procedure${procedureNo}_unitType`];
+
+    const units = this.asDisplayString(unitsRaw).trim();
+    const unitType = this.asDisplayString(unitTypeRaw).trim();
+
+    const parts: string[] = [];
+    parts.push(`Decision # ${this.asDisplayString(lineNo) || procedureNo}`);
+    parts.push(`Decision: ${statusText || 'Pended'}`);
+
+    if (from !== 'N/A' || to !== 'N/A') {
+      if (from !== 'N/A' && to !== 'N/A') parts.push(`Dates: ${from} - ${to}`);
+      else if (from !== 'N/A') parts.push(`From: ${from}`);
+      else parts.push(`To: ${to}`);
+    }
+
+    if (units) parts.push(`Units: ${units}${unitType ? ' ' + unitType : ''}`);
+
+    return parts.join(' \u2022 ');
+  }
+
+
+  private updateTabStatuses(): void {
+    this.tabs = (this.tabs ?? []).map(t => {
+      const s = this.getDecisionStatusForProcedure(t.procedureNo);
+      const statusText = (s?.statusText ?? 'Pended') || 'Pended';
+      const statusCode = (s?.statusCode ?? statusText) || statusText;
+
+      const details = this.getDecisionDetailsDataForProcedure(t.procedureNo);
+      const subtitle = this.buildDecisionLine(t.procedureNo, statusText, details);
+
+      return {
+        ...t,
+        statusText,
+        statusCode,
+        statusClass: this.statusToClass(statusCode || statusText),
+        subtitle
+      };
+    });
+  }
+
+
 }
