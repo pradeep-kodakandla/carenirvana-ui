@@ -1,13 +1,45 @@
+/* Match Case Wizard behavior:
+   - Shell owns the height and prevents page scrolling
+   - Only the body (below header + stepper) scrolls */
+.authWizardShell {
+  height: 91vh;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden; /* prevent outer/page scroll */
+}
+
+:host {
+  display: block;
+  height: 91vh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.authWizardTop {
+  flex: 0 0 auto;
+  background: #fff;
+  z-index: 10;
+  padding-top: 2px;
+}
+
+.wizardBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto; /* ✅ only this area scrolls */
+  padding: 12px;
+}
+
 .authWizardHeader {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 14px;
-  padding: 12px 14px;
+  padding: 6px 7px;
   background: #ffffff;
   border: 1px solid #e6e8ec;
   border-radius: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 1px;
 }
 
 .authWizardMeta {
@@ -66,47 +98,48 @@
 }
 
 
-.stepperRow{
-  display:flex;
-  align-items:center;
-  gap:12px;
+.stepperRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.stepperRow .stepper{
-  flex:1 1 auto;
-  min-width:0;
-}
-
-.wizardToast{
-  flex:0 0 auto;
-  padding:8px 12px;
-  border-radius:10px;
-  font-weight:700;
-  font-size:12px;
-  border:1px solid #e5e7eb;
-  background:#ffffff;
-  white-space:nowrap;
-  box-shadow:0 6px 18px rgba(0,0,0,0.08);
-}
-
-.wizardToast.success{
-  border-color:#86efac;
-}
-
-.wizardToast.error{
-  border-color:#fca5a5;
-}
-
-.wizardToast.info{
-  border-color:#93c5fd;
-}
-
-@media (max-width: 900px){
-  .stepperRow{
-    flex-direction:column;
-    align-items:stretch;
+  .stepperRow .stepper {
+    flex: 1 1 auto;
+    min-width: 0;
   }
-  .wizardToast{
-    width:fit-content;
+
+.wizardToast {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 12px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+  .wizardToast.success {
+    border-color: #86efac;
+  }
+
+  .wizardToast.error {
+    border-color: #fca5a5;
+  }
+
+  .wizardToast.info {
+    border-color: #93c5fd;
+  }
+
+@media (max-width: 900px) {
+  .stepperRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .wizardToast {
+    width: fit-content;
   }
 }

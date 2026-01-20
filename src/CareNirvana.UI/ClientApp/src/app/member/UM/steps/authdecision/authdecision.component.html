@@ -31,8 +31,9 @@
            [class.active]="selectedTabId === tab.id"
            (click)="selectTab(tab.id)"
            [ngClass]="tab.statusClass">
-        <div class="tab-title">{{ tab.name }}</div>
-        <div class="tab-sub" *ngIf="tab.subtitle">{{ tab.subtitle }}</div>
+        <div class="tab-line1">{{ tab.line1 }}</div>
+        <div class="tab-line2" *ngIf="tab.line2">{{ tab.line2 }}</div>
+        <div class="tab-line3">{{ tab.line3 }}</div>
       </div>
     </div>
   </div>

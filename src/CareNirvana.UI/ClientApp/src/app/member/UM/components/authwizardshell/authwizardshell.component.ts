@@ -3,6 +3,8 @@ import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/ro
 import { filter, Subscription } from 'rxjs';
 import { WizardToastService, WizardToastMessage } from './wizard-toast.service';
 
+// NOTE: no global scroll overrides needed (wizard owns its own scrollbar like Case Wizard)
+
 import { AuthDetailApiService } from 'src/app/service/authdetailapi.service';
 import { AuthDetailRow } from 'src/app/member/UM/services/authdetail';
 
@@ -240,6 +242,19 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
   // ---------------------------
   // Header hydration
   // ---------------------------
+  /**
+   * Public hook for child steps (e.g., Auth Details after first CREATE)
+   * to force the shell header to re-hydrate from the currently active step.
+   */
+  public refreshHeader(): void {
+    const inst: any =
+      (this.outlet as any)?.activatedComponent ??
+      (this.outlet as any)?.component ??
+      null;
+
+    this.refreshHeaderFromStep(inst);
+  }
+
   private refreshHeaderFromStep(inst: any): void {
     if (!inst) return;
 
@@ -322,7 +337,39 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
    *   this.shell.setContext({ authDetailId, authTemplateId, authClassId, authTypeId, memberEnrollmentId });
    */
   public setContext(patch: Partial<AuthWizardContext>): void {
+    const prevAuthNumber = this.ctx.authNumber;
+    const prevIsNewAuth = this.ctx.isNewAuth;
+
     this.ctx = { ...this.ctx, ...patch };
+
+    // Keep shell-level fields in sync (these drive step list + header)
+    if (patch.authNumber != null) {
+      this.authNumber = String(this.ctx.authNumber ?? this.authNumber);
+      this.header.authNumber = this.authNumber;
+    }
+
+    if (patch.isNewAuth != null) {
+      this.isNewAuth = !!this.ctx.isNewAuth;
+    } else if (patch.authNumber != null) {
+      // Derive isNewAuth when authNumber changes but isNewAuth wasn't passed
+      const an = String(this.ctx.authNumber ?? '0');
+      this.isNewAuth = (an === '0' || an.trim() === '');
+      this.ctx = { ...this.ctx, isNewAuth: this.isNewAuth };
+    }
+
+    // If we just flipped from NEW -> EDIT, remove Smart Check and ensure the route isn't stuck there.
+    const authNumberChanged = prevAuthNumber !== this.ctx.authNumber;
+    const isNewChanged = prevIsNewAuth !== this.ctx.isNewAuth;
+    if (authNumberChanged || isNewChanged) {
+      this.buildSteps();
+      this.syncActiveStepFromRoute();
+
+      const childPath = this.route.firstChild?.snapshot?.url?.[0]?.path;
+      if (!this.isNewAuth && childPath === 'smartcheck') {
+        this.router.navigate(['details'], { relativeTo: this.route, replaceUrl: true });
+      }
+    }
+
     this.pushContextIntoCurrentStep();
   }
 
@@ -439,7 +486,7 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     if (!inst) return;
 
     const ctx = this.ctx;
-    
+
     // Set common fields only if the step declares them (safe)
     if ('authNumber' in inst) inst.authNumber = ctx.authNumber;
     if ('isNewAuth' in inst) inst.isNewAuth = ctx.isNewAuth;
@@ -455,7 +502,7 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
 
     if ('userId' in inst) inst.userId = ctx.userId;
 
-    
+
     // Preferred hook
     if (typeof inst?.setContext === 'function') {
       inst.setContext(ctx);

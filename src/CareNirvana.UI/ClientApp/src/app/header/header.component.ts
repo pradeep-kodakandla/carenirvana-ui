@@ -1,5 +1,6 @@
 import { Component, OnInit, EventEmitter, Output } from '@angular/core';
-import { Router } from '@angular/router';
+import { NavigationEnd, Router } from '@angular/router';
+import { filter } from 'rxjs/operators';
 import { HeaderService } from '../service/header.service';
 import { AuthenticateService, RecentlyAccessed, Last24hCounts } from 'src/app/service/authentication.service';
 import { MemberService } from 'src/app/service/shared-member.service';
@@ -35,6 +36,14 @@ export class HeaderComponent implements OnInit {
   ngOnInit(): void {
     this.loadRecentlyAccessed(Number(sessionStorage.getItem('loggedInUserid')));
     this.loadAccessCounts(Number(sessionStorage.getItem('loggedInUserid')));
+
+    // Keep the visual "active" tab stable even if the tab label changes (e.g., Auth # updates after first save)
+    this.selectedTabId = this.headerService.getSelectedTab() || this.router.url.split('?')[0];
+    this.router.events
+      .pipe(filter(e => e instanceof NavigationEnd))
+      .subscribe(() => {
+        this.selectedTabId = this.headerService.getSelectedTab() || this.router.url.split('?')[0];
+      });
   }
 
   loadRecentlyAccessed(userId: number): void {
@@ -87,9 +96,9 @@ export class HeaderComponent implements OnInit {
   }
 
   // Called when a member is selected in the popover search
-  onHeaderMemberSelected( member: MemberSummary | null, trigger: MatMenuTrigger ): void {
+  onHeaderMemberSelected(member: MemberSummary | null, trigger: MatMenuTrigger): void {
 
-    if (!member) { 
+    if (!member) {
       return;
     }
     if (member) {
@@ -139,7 +148,9 @@ export class HeaderComponent implements OnInit {
 
 
   selectTab(tab: { label: string; route: string }): void {
-    this.selectedTabId = tab.label;
+    // Use route as the stable identifier for selection (labels can change after save)
+    this.selectedTabId = tab.route;
+    this.headerService.selectTab(tab.route);
   }
 
   removeTab(tab: { label: string; route: string }): void {
@@ -166,11 +177,15 @@ export class HeaderComponent implements OnInit {
 
     this.headerService.addTab(newTabLabel, newTabRoute, '0');
     this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
-      this.router.navigate([newTabRoute]);
+      this.selectedTabId = newTabRoute;
+      this.router.navigateByUrl(newTabRoute);
     });
   }
 
   onTabClick(route: string): void {
+
+    // keep UI selection in sync (route is stable even if label changes)
+    this.selectedTabId = route;
 
     if (route.includes('member-auth')) {
       this.memberService.setIsCollapse(true);
@@ -189,8 +204,16 @@ export class HeaderComponent implements OnInit {
     }
 
     const memberId = this.headerService.getMemberId(route) || '';
+
+    // IMPORTANT:
+    // - `router.navigate([route])` treats the string as ONE path segment and will URL-encode slashes.
+    // - Tabs store routes like `/member-info/123/auth/0/details`, so we must navigateByUrl/UrlTree.
+    const target = route?.startsWith('/') ? route : `/${route}`;
+
     this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
-      this.router.navigate([route], { queryParams: { memberId } });
+      const tree = this.router.parseUrl(target);
+      tree.queryParams = { ...(tree.queryParams ?? {}), memberId };
+      this.router.navigateByUrl(tree);
     });
   }
 
@@ -294,21 +317,16 @@ export class HeaderComponent implements OnInit {
     const tabRoute = `/member-info/${memberId}`;
 
     const existingTab = this.headerService.getTabs().find(tab => tab.route === tabRoute);
-    if (existingTab) {
-      this.headerService.selectTab(tabRoute);
-
-      const mdId = existingTab.memberDetailsId ?? null;
-      if (mdId) sessionStorage.setItem('selectedMemberDetailsId', mdId);
-      this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
-        this.router.navigate([tabRoute]);
-      });
-    } else {
+    if (!existingTab) {
       this.headerService.addTab(tabLabel, tabRoute, memberId, memberDetailsId ? String(memberDetailsId) : null);
-      sessionStorage.setItem('selectedMemberDetailsId', String(memberDetailsId));
-      this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
-        this.router.navigate([tabRoute]);
-      });
     }
+
+    if (memberDetailsId != null) {
+      sessionStorage.setItem('selectedMemberDetailsId', String(memberDetailsId));
+    }
+
+    // Reuse the central navigation logic (prevents URL-encoding bugs)
+    this.onTabClick(tabRoute);
   }
 
   @Output() addClicked = new EventEmitter<string>();
@@ -318,24 +336,24 @@ export class HeaderComponent implements OnInit {
 
     if (!authNumber) authNumber = 'DRAFT';
 
-    // ✅ point tab to the CHILD route under the shell
-    const tabRoute = `/member-info/${memberId}/member-auth/${authNumber}`;
-    const tabLabel = `Auth No ${authNumber}`;
+    // ✅ route to Auth wizard DETAILS step (matches AuthWizardShell)
+    const tabRoute = `/member-info/${memberId}/auth/${authNumber}/details`;
+    const tabLabel = `Auth # ${authNumber}`;
 
     const existingTab = this.headerService.getTabs().find(t => t.route === tabRoute);
-
-    if (existingTab) {
-      this.headerService.selectTab(tabRoute);
-      const mdId = existingTab.memberDetailsId ?? null;
-      if (mdId) sessionStorage.setItem('selectedMemberDetailsId', mdId);
-
+    if (!existingTab) {
+      this.headerService.addTab(tabLabel, tabRoute, String(memberId), memberDetailsId ? String(memberDetailsId) : null);
     } else {
-      this.headerService.addTab(tabLabel, tabRoute, String(memberId));
+      // keep label fresh if authNumber changed casing
+      this.headerService.updateTab(tabRoute, { label: tabLabel, route: tabRoute });
+    }
+
+    if (memberDetailsId != null) {
       sessionStorage.setItem('selectedMemberDetailsId', String(memberDetailsId));
     }
-    this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
-      this.router.navigate([tabRoute]);
-    });
+
+    // Central navigation logic (prevents encoded route segments)
+    this.onTabClick(tabRoute);
   }
 
 

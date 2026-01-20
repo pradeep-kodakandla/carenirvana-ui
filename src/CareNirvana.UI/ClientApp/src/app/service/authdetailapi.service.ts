@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from 'src/environments/environment';
 
 import {
   AuthDetailRow,
@@ -25,6 +24,8 @@ export type DecisionSectionName =
   | 'Member Provider Decision Info'
   | 'Decision Notes';
 
+export type WorkgroupActionType = 'ACCEPT' | 'REJECT';
+
 @Injectable({ providedIn: 'root' })
 
 export class AuthDetailApiService {
@@ -33,6 +34,26 @@ export class AuthDetailApiService {
 
 
   constructor(private http: HttpClient) { }
+
+  /**
+   * Backend now supports multiple workgroup/workbasket assignments.
+   * UI may send either a single WorkgroupWorkbasketId or an array WorkgroupWorkbasketIds.
+   * This keeps the payload backward compatible.
+   */
+  private normalizeWorkgroupPayload<T extends object>(req: T): T {
+    const r: any = { ...(req as any) };
+
+    const single = r.workgroupWorkbasketId ?? r.WorkgroupWorkbasketId;
+    const arr = r.workgroupWorkbasketIds ?? r.WorkgroupWorkbasketIds;
+
+    if ((!arr || !Array.isArray(arr) || arr.length === 0) && single && Number(single) > 0) {
+      // Prefer camelCase (Angular), but also keep PascalCase if that is what the model uses.
+      r.workgroupWorkbasketIds = [Number(single)];
+      r.WorkgroupWorkbasketIds = r.WorkgroupWorkbasketIds ?? [Number(single)];
+    }
+
+    return r as T;
+  }
 
   // --------------------------
   // Auth Detail APIs
@@ -55,12 +76,42 @@ export class AuthDetailApiService {
 
   create(req: CreateAuthRequest, userId: number): Observable<number> {
     const params = new HttpParams().set('userId', userId);
-    return this.http.post<number>(`${this.baseUrl}`, req, { params });
+    return this.http.post<number>(`${this.baseUrl}`, this.normalizeWorkgroupPayload(req), { params });
   }
 
   update(authDetailId: number, req: UpdateAuthRequest, userId: number): Observable<void> {
     const params = new HttpParams().set('userId', userId);
-    return this.http.put<void>(`${this.baseUrl}/${authDetailId}`, req, { params });
+    return this.http.put<void>(`${this.baseUrl}/${authDetailId}`, this.normalizeWorkgroupPayload(req), { params });
+  }
+
+  /**
+   * POST /api/auth/workgroup/{authWorkgroupId}/action?actionType=ACCEPT|REJECT&userId=123&completedStatusId=1&comment=...
+   *
+   * completedStatusId is required for ACCEPT; can be 0/undefined for REJECT.
+   */
+  acceptRejectAuthWorkgroup(
+    authWorkgroupId: number,
+    actionType: WorkgroupActionType,
+    userId: number,
+    completedStatusId?: number,
+    comment?: string
+  ): Observable<void> {
+    let params = new HttpParams()
+      .set('actionType', actionType)
+      .set('userId', String(userId));
+
+    if (comment != null && comment !== '') {
+      params = params.set('comment', comment);
+    }
+
+    if (actionType === 'ACCEPT') {
+      params = params.set('completedStatusId', String(completedStatusId ?? 0));
+    } else {
+      // keep API happy if it expects the param; harmless if ignored
+      params = params.set('completedStatusId', String(completedStatusId ?? 0));
+    }
+
+    return this.http.post<void>(`${this.baseUrl}/workgroup/${authWorkgroupId}/action`, null, { params });
   }
 
   softDelete(authDetailId: number, userId: number): Observable<void> {

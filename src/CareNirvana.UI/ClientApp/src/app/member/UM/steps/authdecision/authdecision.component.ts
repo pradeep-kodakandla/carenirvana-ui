@@ -1,7 +1,8 @@
 import { Component, OnDestroy } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
 import { forkJoin, of, Subject } from 'rxjs';
-import { catchError, finalize, takeUntil, switchMap, map } from 'rxjs/operators';
+import { catchError, finalize, takeUntil } from 'rxjs/operators';
+
 import { AuthDetailApiService, DecisionSectionName } from 'src/app/service/authdetailapi.service';
 import { DatasourceLookupService } from 'src/app/service/crud.service';
 import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
@@ -11,19 +12,22 @@ type DecisionTab = {
   id: number;              // UI tab id
   procedureNo: number;     // 1..N
 
-  /** Procedure code shown in the tab title */
+  /** Service/procedure code shown in the tab */
   procedureCode: string;
 
-  /** Tab title text */
-  name: string;
-
-  /** Secondary line under the title (e.g. Status) */
+  /** Backward compatibility fields (old tab template) */
+  name?: string;
   subtitle?: string;
 
-  /** Current decision status (display + code for styling) */
+  /** Status for styling */
   statusText: string;
   statusCode: string;
   statusClass: string;
+
+  /** New 3-line tab layout */
+  line1: string;   // Decision # + Code
+  line2?: string;  // Dates
+  line3: string;   // Status
 };
 
 /** Conditional visibility (same semantics as CaseDetails) */
@@ -102,8 +106,104 @@ export class AuthdecisionComponent implements OnDestroy {
 
   private templateSections: any[] = [];
   private authData: any = {};
+  /** Created timestamp of the auth record (from API envelope, not inside dataJson). */
+  private authCreatedOn: string | null = null;
   private itemsBySection: Partial<Record<DecisionSectionName, any[]>> = {};
   private dropdownCache = new Map<string, SmartOpt[]>();
+
+  /**
+   * Cached UI value for the "Pended" option in Decision Status dropdown.
+   * We discover this from dropdown options so we don't have to guess whether Pended is 0/1/etc.
+   */
+  private pendedDecisionStatusValue: any = null;
+
+  /** Extract a service/procedure code string from common backend shapes (object or primitive). */
+  private extractServiceCodeString(v: any): string {
+    if (v === null || v === undefined) return '';
+    if (typeof v === 'string' || typeof v === 'number') return String(v).trim();
+    if (typeof v !== 'object') return String(v).trim();
+    // common shapes: {code:"A0080"}, {procedureCode:{code}}, {serviceCode:{code}}
+    const obj: any = v;
+    const cand =
+      obj?.code ??
+      obj?.procedureCode?.code ??
+      obj?.serviceCode?.code ??
+      obj?.value ??
+      obj?.id ??
+      '';
+    return String(cand ?? '').trim();
+  }
+
+  /** Find the Decision Status field datasource name from the decision template (best effort). */
+  private getDecisionStatusDatasourceFromTemplate(): string | null {
+    try {
+      const merged = this.extractDecisionSectionsFromTemplate();
+      for (const sec of (merged ?? [])) {
+        const fields: any[] = sec?.fields ?? sec?.Fields ?? [];
+        const hit = (fields ?? []).find((f: any) => String(f?.id ?? f?.fieldId ?? '').trim().toLowerCase() === 'decisionstatus');
+        if (hit) {
+          const ds = String(hit?.datasource ?? hit?.Datasource ?? '').trim();
+          return ds || null;
+        }
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Prefetch Decision Status options early so left tabs can show labels (not ids like 1/2/3). */
+  private prefetchDecisionStatusForTabs(done: () => void): void {
+    const ds = this.getDecisionStatusDatasourceFromTemplate();
+    if (!ds) {
+      done();
+      return;
+    }
+
+    if (this.dropdownCache.has(ds)) {
+      // If already cached, also try to lock pended value
+      const cached = (this.dropdownCache.get(ds) ?? []) as any[];
+      const p = this.findPendedStatusOption(cached as any);
+      if (p) this.pendedDecisionStatusValue = (p as any).value;
+      done();
+      return;
+    }
+
+    this.dsLookup
+      .getOptionsWithFallback(
+        ds,
+        (r: any) => {
+          const dsKey = ds ? this.toCamelCase(ds) : '';
+          const value = this.getDatasourcePreferredValue(ds, r) ?? r?.value ?? r?.code ?? r?.id;
+          const special = this.getDatasourcePreferredLabel(ds, r);
+          const label =
+            special ??
+            r?.label ??
+            r?.text ??
+            r?.name ??
+            r?.description ??
+            r?.displayName ??
+            r?.title ??
+            (dsKey
+              ? (r?.[dsKey] ??
+                r?.[dsKey.charAt(0).toUpperCase() + dsKey.slice(1)] ??
+                r?.[ds])
+              : null) ??
+            this.pickDisplayField(r) ??
+            String(value ?? '');
+          return { value, label, text: label, raw: r } as any;
+        },
+        ['UM', 'Admin', 'Provider']
+      )
+      .pipe(catchError(() => of([])), takeUntil(this.destroy$))
+      .subscribe((opts) => {
+        const safe = (opts ?? []) as any[];
+        this.dropdownCache.set(ds, safe as any);
+        const pended = this.findPendedStatusOption(safe as any);
+        if (pended) this.pendedDecisionStatusValue = (pended as any).value;
+        done();
+      });
+  }
 
   /** Field id -> controlName map for the current tab (used for conditional visibility). */
   private fieldIdToControlName = new Map<string, string>();
@@ -177,6 +277,8 @@ export class AuthdecisionComponent implements OnDestroy {
       .subscribe({
         next: (res: any) => {
           this.authData = this.safeParseJson(res?.auth?.dataJson) ?? res?.auth?.data ?? {};
+          // Capture envelope metadata (not part of dataJson)
+          this.authCreatedOn = res?.auth?.createdOn ?? res?.auth?.createdDate ?? res?.auth?.CreatedOn ?? null;
 
           const rawSections = res?.tmpl?.sections ?? res?.tmpl?.Sections ?? [];
           this.templateSections = Array.isArray(rawSections) ? rawSections : [];
@@ -184,15 +286,18 @@ export class AuthdecisionComponent implements OnDestroy {
 
           this.itemsBySection = res?.items ?? {};
 
-          this.buildTabsFromAuthData();
-          this.updateTabStatuses();
-          if (!this.tabs.length) {
-            this.errorMsg = 'No service details found to build Decision tabs.';
-            return;
-          }
+          // IMPORTANT: Prefetch Decision Status dropdown so left tabs can show labels (not ids like 1/2/3)
+          this.prefetchDecisionStatusForTabs(() => {
+            this.buildTabsFromAuthData();
+            this.updateTabStatuses();
+            if (!this.tabs.length) {
+              this.errorMsg = 'No service details found to build Decision tabs.';
+              return;
+            }
 
-          this.selectedTabId = this.tabs[0].id;
-          this.buildActiveState(this.tabs[0]);
+            this.selectedTabId = this.tabs[0].id;
+            this.buildActiveState(this.tabs[0]);
+          });
         },
         error: (e) => {
           console.error(e);
@@ -215,6 +320,14 @@ export class AuthdecisionComponent implements OnDestroy {
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return 'N/A';
     return d.toISOString().slice(0, 10);
+  }
+
+  private toDateTimeLocalString(value: any): string | null {
+    if (!value) return null;
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return null;
+    // datetime-local expects: YYYY-MM-DDTHH:mm
+    return d.toISOString().slice(0, 16);
   }
 
   private extractPrimitive(value: any): any {
@@ -271,6 +384,90 @@ export class AuthdecisionComponent implements OnDestroy {
     return 'status-other';
   }
 
+  private isPendedStatus(v: any): boolean {
+    const s = this.asDisplayString(v).trim().toLowerCase();
+    if (!s) return true;
+
+    // If we discovered a concrete "Pended" dropdown value, treat it as pended.
+    if (this.pendedDecisionStatusValue !== null && this.pendedDecisionStatusValue !== undefined) {
+      const pv = this.asDisplayString(this.pendedDecisionStatusValue).trim().toLowerCase();
+      if (pv && s === pv) return true;
+    }
+
+    // Try mapping ids/codes to labels via datasource cache.
+    const looked = this.lookupDecisionStatusLabel(s);
+    const label = looked?.label ? looked.label.toLowerCase() : '';
+    if (label.startsWith('pend')) return true;
+
+    // Fallback: common encodings
+    return s === '0' || s.startsWith('pend') || s === 'pended' || s === 'pen';
+  }
+
+  /** Existing Decision Details data for a procedure (items win; fallback to authData.decisionDetails). */
+  private getExistingDecisionDetails(procedureNo: number): any {
+    const picked = this.findItemForSectionAndProcedure('Decision Details', procedureNo);
+    const d = picked?.data ?? {};
+    if (d && Object.keys(d).length) return d;
+    return this.getDecisionDetailsFromAuthData(procedureNo) ?? {};
+  }
+
+  /**
+   * Apply timestamp rules for Decision Details:
+   * - createdDateTime: default to authCreatedOn if null
+   * - updatedDateTime: set to now on every save
+   * - decisionDateTime: set when status transitions from Pended -> non-Pended (or changes between non-Pended states)
+   */
+  private applyDecisionTimestamps(procedureNo: number, payload: any): void {
+    if (!payload) return;
+
+    const existing = this.getExistingDecisionDetails(procedureNo);
+    const nowIso = new Date().toISOString();
+
+    // createdDateTime default
+    if (!payload.createdDateTime) {
+      const procCreated = this.authData?.[`procedure${procedureNo}_createdDateTime`] ?? null;
+      payload.createdDateTime = existing?.createdDateTime ?? procCreated ?? this.authCreatedOn ?? nowIso;
+    }
+
+    // always update updatedDateTime on save
+    payload.updatedDateTime = nowIso;
+
+    // determine status transitions
+    const newStatus =
+      payload?.decisionStatus ??
+      payload?.decisionStatusId ??
+      payload?.decisionStatusCode ??
+      payload?.status;
+
+    const oldStatus =
+      existing?.decisionStatus ??
+      existing?.decisionStatusId ??
+      existing?.decisionStatusCode ??
+      existing?.status;
+
+    const newIsPended = this.isPendedStatus(newStatus);
+    const oldIsPended = this.isPendedStatus(oldStatus);
+
+    // if user keeps it pended, keep decisionDateTime null
+    if (newIsPended) {
+      payload.decisionDateTime = null;
+      return;
+    }
+
+    const oldDecisionDt = existing?.decisionDateTime ?? null;
+    const newDecisionDt = payload?.decisionDateTime ?? null;
+
+    const statusChanged = this.asDisplayString(newStatus).trim() !== this.asDisplayString(oldStatus).trim();
+
+    // set decisionDateTime when leaving pended OR when status changes between non-pended values
+    if ((oldIsPended && !newIsPended) || (!oldIsPended && !newIsPended && statusChanged)) {
+      payload.decisionDateTime = nowIso;
+    } else {
+      // keep existing if present
+      payload.decisionDateTime = newDecisionDt || oldDecisionDt;
+    }
+  }
+
   private lookupDecisionStatusLabel(codeOrId: string): { label: string; code: string } | null {
     const v = String(codeOrId ?? '').trim();
     if (!v) return null;
@@ -301,6 +498,16 @@ export class AuthdecisionComponent implements OnDestroy {
     return null;
   }
 
+
+
+  private getDecisionDetailsFromAuthData(procedureNo: number): any | null {
+    const arr: any[] = (this.authData as any)?.decisionDetails ?? [];
+    if (!Array.isArray(arr) || !arr.length) return null;
+
+    const hit = arr.find((x: any) => Number(x?.data?.procedureNo) === Number(procedureNo));
+    return hit?.data ?? null;
+  }
+
   private getDecisionStatusForProcedure(procedureNo: number): { statusText: string; statusCode: string } {
     // Default per requirement
     let statusText = 'Pended';
@@ -308,14 +515,18 @@ export class AuthdecisionComponent implements OnDestroy {
 
     try {
       const picked = this.findItemForSectionAndProcedure('Decision Details', procedureNo);
-      const data = picked?.data ?? {};
+      const pickedData = picked?.data ?? {};
+      // If we don't have Decision Details items yet, fallback to authData.decisionDetails.
+      const data = (pickedData && Object.keys(pickedData).length)
+        ? pickedData
+        : (this.getDecisionDetailsFromAuthData(procedureNo) ?? {});
 
-      // prefer explicit keys
+      // Prefer the actual Decision Status (id/code). decisionStatusCode is usually the *reason* dropdown.
       let raw =
-        data?.decisionStatusCode ??
         data?.decisionStatus ??
         data?.decisionStatusId ??
         data?.status ??
+        data?.decisionStatusCode ??
         null;
 
       if (raw === null) {
@@ -362,25 +573,64 @@ export class AuthdecisionComponent implements OnDestroy {
     }
   }
 
-  //private updateTabStatuses(): void {
-  //  // Update each tab's status from Decision Details item data
-  //  this.tabs = (this.tabs ?? []).map(t => {
-  //    const s = this.getDecisionStatusForProcedure(t.procedureNo);
-  //    const statusText = (s?.statusText ?? 'Pended') || 'Pended';
-  //    const statusCode = (s?.statusCode ?? statusText) || statusText;
 
-  //    const fromDate = this.formatDateShort(this.authData?.[`procedure${t.procedureNo}_fromDate`]);
-  //    const subtitle = `Status: ${statusText}${fromDate !== 'N/A' ? ` • From: ${fromDate}` : ''}`;
 
-  //    return {
-  //      ...t,
-  //      statusText,
-  //      statusCode,
-  //      statusClass: this.statusToClass(statusCode || statusText),
-  //      subtitle
-  //    };
-  //  });
-  //}
+  private computeTabStatus(procedureNo: number): { label: string; statusClass: string } {
+    const status = this.getDecisionStatusForProcedure(procedureNo);
+    const txt = String(status?.statusText ?? '').trim();
+    const code = String(status?.statusCode ?? '').trim();
+
+    // Treat empty or "pended" statuses as Pended.
+    if (this.isPendedStatus(code) || this.isPendedStatus(txt)) {
+      return { label: 'Pended', statusClass: this.statusToClass('Pended') };
+    }
+
+    // Normalize common display labels
+    const low = txt.toLowerCase();
+    if (low.startsWith('approv')) return { label: 'Approved', statusClass: this.statusToClass('Approved') };
+    if (low.startsWith('deny')) return { label: 'Denied', statusClass: this.statusToClass('Denied') };
+
+    // Fallback: use resolved label/code
+    return { label: txt || code || 'Pended', statusClass: this.statusToClass(txt || code || 'Pended') };
+  }
+
+
+  private updateTabStatuses(): void {
+    this.tabs = (this.tabs ?? []).map(t => {
+      const procNo = t.procedureNo;
+
+      // Data sources for dates/code
+      const dd = this.getExistingDecisionDetails(procNo) ?? {};
+      const code = this.asDisplayString(dd?.serviceCode ?? dd?.procedureCode ?? this.authData?.[`procedure${procNo}_procedureCode`]).trim();
+      const decisionNo = this.asDisplayString(dd?.decisionNumber).trim() || String(procNo);
+
+      const fromDate = this.formatDateShort(dd?.fromDate ?? this.authData?.[`procedure${procNo}_fromDate`]);
+      const toDate = this.formatDateShort(dd?.toDate ?? this.authData?.[`procedure${procNo}_toDate`]);
+      const line2 = (fromDate !== 'N/A' || toDate !== 'N/A')
+        ? `From: ${fromDate !== 'N/A' ? fromDate : '-'}  To: ${toDate !== 'N/A' ? toDate : '-'}`
+        : '';
+
+      const status = this.computeTabStatus(procNo);
+
+      const line1 = `Decision #${decisionNo}${code ? ` | Code: ${code}` : ''}`;
+      const line3 = status.label;
+
+      return {
+        ...t,
+        procedureCode: code || t.procedureCode,
+        statusText: status.label,
+        statusCode: status.label,
+        statusClass: status.statusClass,
+        line1,
+        line2,
+        line3,
+        // Backward compatibility (in case old template still uses name/subtitle)
+        name: line1,
+        subtitle: line2
+      };
+    });
+  }
+
 
 
   private buildTabsFromAuthData(): void {
@@ -398,21 +648,32 @@ export class AuthdecisionComponent implements OnDestroy {
     const procedureNos = nums.length ? nums : [1];
 
     this.tabs = procedureNos.map((n, idx) => {
-      const rawCode = this.authData?.[`procedure${n}_procedureCode`];
-      const code = this.asDisplayString(rawCode).trim();
+      const dd = this.getExistingDecisionDetails(n) ?? {};
+      const code = this.asDisplayString(dd?.serviceCode ?? dd?.procedureCode ?? this.authData?.[`procedure${n}_procedureCode`]).trim();
+      const decisionNo = this.asDisplayString(dd?.decisionNumber).trim() || String(n);
 
-      const statusDefault = 'Pended';
-      const fromDate = this.formatDateShort(this.authData?.[`procedure${n}_fromDate`]);
+      const fromDate = this.formatDateShort(dd?.fromDate ?? this.authData?.[`procedure${n}_fromDate`]);
+      const toDate = this.formatDateShort(dd?.toDate ?? this.authData?.[`procedure${n}_toDate`]);
+      const line2 = (fromDate !== 'N/A' || toDate !== 'N/A')
+        ? `From: ${fromDate !== 'N/A' ? fromDate : '-'}  To: ${toDate !== 'N/A' ? toDate : '-'}`
+        : '';
+
+      const status = this.computeTabStatus(n);
+      const line1 = `Decision #${decisionNo}${code ? ` | Code: ${code}` : ''}`;
 
       return {
         id: idx + 1,
         procedureNo: n,
         procedureCode: code,
-        name: `Code - ${code || n}`,
-        statusText: statusDefault,
-        statusCode: statusDefault,
-        statusClass: this.statusToClass(statusDefault),
-        subtitle: `Status: ${statusDefault}${fromDate !== 'N/A' ? ` • From: ${fromDate}` : ''}`
+        statusText: status.label,
+        statusCode: status.label,
+        statusClass: status.statusClass,
+        line1,
+        line2,
+        line3: status.label,
+        // Backward compatibility
+        name: line1,
+        subtitle: line2
       };
     });
   }
@@ -431,6 +692,7 @@ export class AuthdecisionComponent implements OnDestroy {
   saveCurrentTab(): void {
     if (!this.activeState || !this.authDetailId) return;
 
+    // IMPORTANT: ensure validators only apply to visible+enabled controls
     this.syncVisibility();
 
     if (this.form.invalid) {
@@ -443,33 +705,32 @@ export class AuthdecisionComponent implements OnDestroy {
     const authDetailId = this.authDetailId;
     const procNo = this.activeState.tab.procedureNo;
 
-    const saveSection = (sec: DecisionSectionVm) => {
+    const calls: any[] = [];
+
+    for (const sec of this.activeState.sections) {
       const payload = this.buildSectionPayload(procNo, sec);
-      const existingId = this.activeState!.itemIdsBySection?.[sec.sectionName];
 
-      const call$ = existingId
-        ? this.api.updateItem(authDetailId, sec.sectionName, existingId, { data: payload } as any, userId)
-        : this.api.createItem(authDetailId, sec.sectionName, { data: payload } as any, userId);
+      // Timestamp rules apply only to Decision Details
+      if (sec.sectionName === 'Decision Details') {
+        this.applyDecisionTimestamps(procNo, payload);
+      }
 
-      // Make both branches return the same shape
-      return (call$ as any).pipe(map(() => true));
-    };
-
-    // Always save Decision Details first, then the rest
-    const decisionDetails = this.activeState.sections.find(s => s.sectionName === 'Decision Details') ?? null;
-    const rest = this.activeState.sections.filter(s => s.sectionName !== 'Decision Details');
-    const restCalls = rest.map(s => saveSection(s));
-
-    const req$ = decisionDetails
-      ? saveSection(decisionDetails).pipe(
-        switchMap(() => (restCalls.length ? forkJoin(restCalls) : of([])))
-      )
-      : (restCalls.length ? forkJoin(restCalls) : of([]));
+      const existingId = this.activeState.itemIdsBySection?.[sec.sectionName];
+      if (existingId) {
+        calls.push(
+          this.api.updateItem(authDetailId, sec.sectionName, existingId, { data: payload } as any, userId)
+        );
+      } else {
+        calls.push(
+          this.api.createItem(authDetailId, sec.sectionName, { data: payload } as any, userId)
+        );
+      }
+    }
 
     this.saving = true;
     this.errorMsg = '';
 
-    req$
+    forkJoin(calls)
       .pipe(
         finalize(() => (this.saving = false)),
         catchError((e) => {
@@ -484,66 +745,11 @@ export class AuthdecisionComponent implements OnDestroy {
         next: (res: any) => {
           if (res === null) return;
           this.toastSvc.success('Decision saved successfully.');
+          // refresh only items, keep template + auth data
           this.refreshItemsOnly();
         }
       });
   }
-  //saveCurrentTab(): void {
-  //  if (!this.activeState || !this.authDetailId) return;
-
-  //  // IMPORTANT: ensure validators only apply to visible+enabled controls
-  //  this.syncVisibility();
-
-  //  if (this.form.invalid) {
-  //    this.markVisibleControlsTouched();
-  //    this.errorMsg = 'Please fill the required fields before saving.';
-  //    return;
-  //  }
-
-  //  const userId = Number(sessionStorage.getItem('loggedInUserid') || 0);
-  //  const authDetailId = this.authDetailId;
-  //  const procNo = this.activeState.tab.procedureNo;
-
-  //  const calls: any[] = [];
-
-  //  for (const sec of this.activeState.sections) {
-  //    const payload = this.buildSectionPayload(procNo, sec);
-
-  //    const existingId = this.activeState.itemIdsBySection?.[sec.sectionName];
-  //    if (existingId) {
-  //      calls.push(
-  //        this.api.updateItem(authDetailId, sec.sectionName, existingId, { data: payload } as any, userId)
-  //      );
-  //    } else {
-  //      calls.push(
-  //        this.api.createItem(authDetailId, sec.sectionName, { data: payload } as any, userId)
-  //      );
-  //    }
-  //  }
-
-  //  this.saving = true;
-  //  this.errorMsg = '';
-
-  //  forkJoin(calls)
-  //    .pipe(
-  //      finalize(() => (this.saving = false)),
-  //      catchError((e) => {
-  //        console.error(e);
-  //        this.errorMsg = e?.error?.message ?? 'Unable to save decision.';
-  //        this.toastSvc.error('Decision save failed.');
-  //        return of(null);
-  //      }),
-  //      takeUntil(this.destroy$)
-  //    )
-  //    .subscribe({
-  //      next: (res: any) => {
-  //        if (res === null) return;
-  //        this.toastSvc.success('Decision saved successfully.');
-  //        // refresh only items, keep template + auth data
-  //        this.refreshItemsOnly();
-  //      }
-  //    });
-  //}
 
   deleteCurrentTab(): void {
     if (!this.activeState || !this.authDetailId) return;
@@ -784,7 +990,12 @@ export class AuthdecisionComponent implements OnDestroy {
           ? (this.extractPrimitive(v) ?? v)
           : v;
 
-        field.value = normalized ?? this.defaultValueForType(field.type);
+        const t = String(field.type ?? '').toLowerCase();
+        if (t === 'datetime-local') {
+          field.value = this.toDateTimeLocalString(normalized) ?? this.defaultValueForType(field.type);
+        } else {
+          field.value = normalized ?? this.defaultValueForType(field.type);
+        }
       }
     }
 
@@ -799,6 +1010,9 @@ export class AuthdecisionComponent implements OnDestroy {
       sections,
       itemIdsBySection
     };
+
+    // Decision Status -> Decision Status Code dependency
+    this.wireDecisionStatusCodeDependency();
 
     // initial visibility sync + watch for changes
     this.syncVisibility();
@@ -822,24 +1036,55 @@ export class AuthdecisionComponent implements OnDestroy {
 
     const get = (suffix: string) => this.authData?.[`procedure${procedureNo}_${suffix}`];
 
+    // Decision Details can arrive either from itemsBySection (API) OR embedded inside authData.decisionDetails
+    const dd: any = this.getDecisionDetailsFromAuthData(procedureNo) ?? {};
+
     switch (fid) {
+      case 'decisionStatus':
+        // Default is set via dropdown options (see ensureDecisionStatusDefaultIfNeeded).
+        // If the API already has a value, keep it; otherwise leave empty so we can select "Pended" safely.
+        return dd?.decisionStatus ?? dd?.decisionStatusId ?? undefined;
+
+      case 'createdDateTime':
+        // Default to auth createdOn when Decision Details.createdDateTime is null.
+        // Prefer Decision Details value if already set.
+        return dd?.createdDateTime ?? get('createdDateTime') ?? this.authCreatedOn ?? undefined;
+
+      case 'updatedDateTime':
+        // On first load this can stay null; it will be set on save.
+        return dd?.updatedDateTime ?? undefined;
+
+      case 'decisionDateTime':
+        // Only meaningful once decision is moved away from Pended.
+        return dd?.decisionDateTime ?? undefined;
+
       case 'decisionNumber':
-        return String(procedureNo);
+        return dd?.decisionNumber ?? String(procedureNo);
 
       case 'serviceCode':
-        return get('procedureCode') ?? get('serviceReq') ?? get('serviceCode');
+        // prefer Decision Details.serviceCode/procedureCode (object from API) -> fallback to procedureN_procedureCode
+        return this.extractServiceCodeString(
+          dd?.serviceCode ??
+          dd?.procedureCode ??
+          get('procedureCode') ??
+          get('serviceCode')
+        );
 
       case 'serviceDescription':
-        return get('procedureDescription') ?? get('serviceDescription');
+        return dd?.serviceDescription ?? dd?.procedureDescription ?? get('procedureDescription') ?? get('serviceDescription');
 
       case 'fromDate':
-        return get('fromDate') ?? get('effectiveDate');
+        return dd?.fromDate ?? get('fromDate') ?? get('effectiveDate');
 
       case 'toDate':
-        return get('toDate');
+        return dd?.toDate ?? get('toDate');
 
       case 'requested':
+        // first-time default comes from serviceReq in authData OR Decision Details.requested
         return (
+          dd?.requested ??
+          dd?.serviceReq ??
+          get('serviceReq') ??
           get('recommendedUnits') ??
           get('requested') ??
           get('hours') ??
@@ -847,20 +1092,41 @@ export class AuthdecisionComponent implements OnDestroy {
           get('weeks')
         );
 
+      case 'approved':
+        return dd?.approved ?? get('serviceAppr') ?? get('approvedPsp');
+
+      case 'denied':
+        return dd?.denied ?? get('serviceDenied');
+
       case 'used':
-        return get('used');
+        return dd?.used ?? get('used');
 
       case 'reviewType':
-        return get('reviewType');
+        return dd?.reviewType ?? get('reviewType');
+
+      case 'treatmentType':
+        // Requirement: assign treatmentType (from auth data) to decision on first load
+        return dd?.treatmentType ?? this.authData?.treatmentType ?? get('treatmentType');
+
+      case 'requestType':
+        // Requirement: assign requestType (from auth data) to decision on first load.
+        // Some templates use requestReceivedVia instead; support both.
+        return dd?.requestType ?? this.authData?.requestSent ?? dd?.requestReceivedVia ?? this.authData?.requestReceivedVia ?? get('requestSent');
+
+      case 'requestReceivedVia':
+        return dd?.requestReceivedVia ?? this.authData?.requestSent ?? this.authData?.requestReceivedVia ?? get('requestSent');
+
+      case 'requestPriority':
+        return dd?.requestPriority ?? this.authData?.requestPriority ?? get('requestPriority');
 
       case 'modifier':
-        return get('modifier');
+        return dd?.modifier ?? get('modifier');
 
       case 'unitType':
-        return get('unitType');
+        return dd?.unitType ?? get('unitType');
 
       case 'alternateServiceId':
-        return get('alternateServiceId');
+        return dd?.alternateServiceId ?? get('alternateServiceId');
 
       default:
         return undefined;
@@ -1019,46 +1285,38 @@ export class AuthdecisionComponent implements OnDestroy {
     return v;
   }
 
-  private findItemForSectionAndProcedure(
-    sectionName: DecisionSectionName,
-    procedureNo: number
-  ): { itemId: string | null; data: any } {
+  private findItemForSectionAndProcedure(sectionName: DecisionSectionName, procedureNo: number): { itemId: string | null; data: any } {
     const list = (this.itemsBySection?.[sectionName] ?? []) as any[];
     if (!Array.isArray(list) || !list.length) return { itemId: null, data: {} };
 
-    const getProcNo = (x: any): number | null => {
-      // 1) try root-level fields
-      let p = Number(x?.procedureNo ?? x?.procedureIndex ?? x?.serviceIndex ?? x?.serviceNo);
-      if (Number.isFinite(p) && p > 0) return p;
+    const match = list.find((x) => {
+      // Some APIs store procedureNo at the top-level; others store it inside the section's `data` json.
+      const rawData: any = (x as any)?.data ?? (x as any)?.jsonData ?? (x as any)?.payload ?? (x as any)?.itemData ?? null;
+      const parsedData: any = this.safeParseJson(rawData) ?? rawData ?? null;
 
-      // 2) try inside stored json/data
-      const raw = x?.data ?? x?.jsonData ?? x?.payload ?? x?.itemData ?? {};
-      const data = this.safeParseJson(raw) ?? raw ?? {};
-      p = Number(
-        data?.procedureNo ??
-        data?.procedureIndex ??
-        data?.serviceIndex ??
-        data?.serviceNo ??
-        data?.decisionNumber // common alt
+      const p = Number(
+        (x as any)?.procedureNo ??
+        (x as any)?.procedureIndex ??
+        (x as any)?.serviceIndex ??
+        (x as any)?.serviceNo ??
+        parsedData?.procedureNo ??
+        parsedData?.procedureIndex ??
+        parsedData?.serviceIndex ??
+        parsedData?.serviceNo
       );
-      if (Number.isFinite(p) && p > 0) return p;
 
-      return null;
-    };
+      return p === procedureNo;
+    });
 
-    const match = list.find((x) => getProcNo(x) === procedureNo);
-
-    // Keep your fallback behavior for proc 1
     const picked = match ?? (procedureNo === 1 ? list[0] : null);
     if (!picked) return { itemId: null, data: {} };
 
-    const itemId = String(picked?.itemId ?? picked?.id ?? picked?.decisionItemId ?? '');
-    const raw = picked?.data ?? picked?.jsonData ?? picked?.payload ?? picked?.itemData ?? {};
+    const itemId = String((picked as any)?.itemId ?? (picked as any)?.id ?? (picked as any)?.decisionItemId ?? '');
+    const raw = (picked as any)?.data ?? (picked as any)?.jsonData ?? (picked as any)?.payload ?? (picked as any)?.itemData ?? {};
     const data = this.safeParseJson(raw) ?? raw ?? {};
 
     return { itemId: itemId || null, data };
   }
-
 
   private prefetchDropdownOptions(sections: DecisionSectionVm[]): void {
     const selectFields: DecisionFieldVm[] = [];
@@ -1077,6 +1335,7 @@ export class AuthdecisionComponent implements OnDestroy {
       const staticOpts = this.mapStaticOptions(((f as any).options ?? (f as any).level ?? []) as any[]);
       this.optionsByControlName[f.controlName] = this.filterBySelectedOptions(f, staticOpts);
       this.reconcileSelectValue(f);
+      this.ensureDecisionStatusDefaultIfNeeded(f);
     }
 
     // 2) datasource select options
@@ -1095,6 +1354,7 @@ export class AuthdecisionComponent implements OnDestroy {
         for (const f of fields) {
           this.optionsByControlName[f.controlName] = this.filterBySelectedOptions(f, cacheHit);
           this.reconcileSelectValue(f);
+          this.ensureDecisionStatusDefaultIfNeeded(f);
         }
         continue;
       }
@@ -1136,10 +1396,140 @@ export class AuthdecisionComponent implements OnDestroy {
             const finalOpts = this.filterBySelectedOptions(f, safe);
             this.optionsByControlName[f.controlName] = finalOpts;
             this.reconcileSelectValue(f);
+            this.ensureDecisionStatusDefaultIfNeeded(f);
           }
         });
 
     }
+  }
+
+  private isDecisionStatusField(field: DecisionFieldVm): boolean {
+    return String(field?.id ?? '').trim().toLowerCase() === 'decisionstatus';
+  }
+
+  private findPendedStatusOption(options: UiSmartOption[]): UiSmartOption | null {
+    for (const o of (options ?? [])) {
+      const lbl = String((o as any)?.label ?? (o as any)?.text ?? '').trim().toLowerCase();
+      if (lbl.startsWith('pend')) return o;
+      const raw: any = (o as any)?.raw;
+      const rawLbl = String(raw?.name ?? raw?.label ?? raw?.text ?? raw?.decisionStatusName ?? '').trim().toLowerCase();
+      if (rawLbl.startsWith('pend')) return o;
+    }
+    return null;
+  }
+
+  /**
+   * Requirement: Decision Status dropdown should display "Pended" by default on first load.
+   * We set the control to the option whose label is "Pended" (or starts with "Pend").
+   * This avoids hardcoding ids (0/1/etc.).
+   */
+  private ensureDecisionStatusDefaultIfNeeded(field: DecisionFieldVm): void {
+    if (!this.activeState || !this.form) return;
+    if (!this.isDecisionStatusField(field)) return;
+
+    const ctrl = this.form.get(field.controlName);
+    if (!ctrl) return;
+
+    const current = this.extractPrimitive(this.unwrapValue(ctrl.value)) ?? this.unwrapValue(ctrl.value);
+    const hasValue = String(current ?? '').trim() !== '';
+    if (hasValue) return;
+
+    const opts = this.optionsByControlName[field.controlName] ?? [];
+    const pended = this.findPendedStatusOption(opts);
+    if (!pended) return;
+
+    this.pendedDecisionStatusValue = (pended as any).value;
+    ctrl.setValue((pended as any).value, { emitEvent: false });
+    field.value = (pended as any).value;
+  }
+
+  /**
+   * Filter Decision Status Code options based on selected Decision Status.
+   * Common pattern: Approved status shows approval reason codes; Denied status shows denial reason codes.
+   */
+  private wireDecisionStatusCodeDependency(): void {
+    if (!this.activeState || !this.form) return;
+
+    const ddSection = this.activeState.sections.find(s => s.sectionName === 'Decision Details');
+    if (!ddSection) return;
+
+    const statusField = ddSection.fields.find(f => String(f.id).toLowerCase() === 'decisionstatus');
+    const statusCodeField = ddSection.fields.find(f => String(f.id).toLowerCase() === 'decisionstatuscode');
+    if (!statusField || !statusCodeField) return;
+
+    const statusCtrl = this.form.get(statusField.controlName);
+    const codeCtrl = this.form.get(statusCodeField.controlName);
+    if (!statusCtrl || !codeCtrl) return;
+
+    // Optional Decision DateTime control: update it when status changes (UX requirement)
+    const decisionDtField = ddSection.fields.find(f => String(f.id).toLowerCase() === 'decisiondatetime');
+    const decisionDtCtrl = decisionDtField ? this.form.get(decisionDtField.controlName) : null;
+
+    const getFullOpts = (): SmartOpt[] => {
+      const ds = String((statusCodeField as any).datasource ?? '').trim();
+      if (ds) return (this.dropdownCache.get(ds) ?? []) as SmartOpt[];
+      return (this.optionsByControlName[statusCodeField.controlName] ?? []) as SmartOpt[];
+    };
+
+    const applyFilter = () => {
+      const rawStatus = this.extractPrimitive(this.unwrapValue(statusCtrl.value)) ?? this.unwrapValue(statusCtrl.value);
+      const statusKey = String(rawStatus ?? '').trim();
+
+      const full = getFullOpts();
+
+      // Pended => clear statusCode
+      if (this.isPendedStatus(statusKey)) {
+        this.optionsByControlName[statusCodeField.controlName] = [];
+        if (codeCtrl.value) codeCtrl.setValue(null, { emitEvent: false });
+
+        // If status is pended, decisionDateTime should not be set
+        if (decisionDtCtrl && decisionDtCtrl.value) {
+          decisionDtCtrl.setValue(null, { emitEvent: false });
+        }
+        return;
+      }
+
+      // Non-pended status: if decisionDateTime is empty, set it immediately for display.
+      if (decisionDtCtrl) {
+        const cur = String(decisionDtCtrl.value ?? '').trim();
+        if (!cur) {
+          const nowIso = new Date().toISOString();
+          decisionDtCtrl.setValue(this.toDateTimeLocalString(nowIso), { emitEvent: false });
+        }
+      }
+
+      // Filter by matching status id/code on the option's raw object (best-effort)
+      const filtered = (full ?? []).filter((o: any) => {
+        const raw: any = o?.raw ?? o;
+        const cand =
+          raw?.decisionStatus ??
+          raw?.decisionStatusId ??
+          raw?.statusId ??
+          raw?.status ??
+          raw?.parentId ??
+          raw?.groupId ??
+          null;
+        if (cand === null || cand === undefined || String(cand).trim() === '') return true; // keep if no mapping
+        return String(cand).trim() === statusKey;
+      });
+
+      const finalOpts = filtered.length ? filtered : full;
+      this.optionsByControlName[statusCodeField.controlName] = [...finalOpts];
+
+      // If current selection is not in allowed list, clear it
+      const current = this.extractPrimitive(this.unwrapValue(codeCtrl.value)) ?? this.unwrapValue(codeCtrl.value);
+      const currentKey = String(current ?? '').trim();
+      if (currentKey) {
+        const ok = finalOpts.some((o: any) => String((o as any)?.value ?? this.extractPrimitive((o as any)?.raw) ?? '').trim() === currentKey);
+        if (!ok) codeCtrl.setValue(null, { emitEvent: false });
+      }
+    };
+
+    // Apply once on load and on status change
+    applyFilter();
+    statusCtrl.valueChanges
+      .pipe(takeUntil(this.tabDestroy$), takeUntil(this.destroy$))
+      .subscribe(() => applyFilter());
   }
 
   private filterBySelectedOptions(field: DecisionFieldVm, options: UiSmartOption[]): UiSmartOption[] {
@@ -1294,116 +1684,4 @@ export class AuthdecisionComponent implements OnDestroy {
 
     return null;
   }
-
-  private getDecisionDetailsDataForProcedure(procedureNo: number): any {
-    try {
-      const picked = this.findItemForSectionAndProcedure('Decision Details', procedureNo);
-      return picked?.data ?? {};
-    } catch {
-      return {};
-    }
-  }
-
-  private pickFirstValue(obj: any, keys: string[]): any {
-    if (!obj) return null;
-
-    for (const k of keys) {
-      const v = (obj as any)?.[k];
-      if (v === null || v === undefined) continue;
-      if (typeof v === 'string' && v.trim() === '') continue;
-      return v;
-    }
-
-    // case-insensitive fallback
-    const lower = new Map((Object.keys(obj) ?? []).map(x => [String(x).toLowerCase(), x]));
-    for (const k of keys) {
-      const real = lower.get(String(k).toLowerCase());
-      if (!real) continue;
-      const v = (obj as any)?.[real];
-      if (v === null || v === undefined) continue;
-      if (typeof v === 'string' && v.trim() === '') continue;
-      return v;
-    }
-
-    return null;
-  }
-
-  private buildDecisionLine(procedureNo: number, statusText: string, details: any): string {
-    const lineNo =
-      this.pickFirstValue(details, [
-        'decisionNumber',
-        'decisionLineNo',
-        'decisionLine',
-        'lineNumber',
-        'lineNo'
-      ]) ?? procedureNo;
-
-    const fromRaw =
-      this.pickFirstValue(details, ['fromDate', 'effectiveFrom', 'startDate']) ??
-      this.authData?.[`procedure${procedureNo}_fromDate`];
-
-    const toRaw =
-      this.pickFirstValue(details, ['toDate', 'effectiveTo', 'endDate']) ??
-      this.authData?.[`procedure${procedureNo}_toDate`];
-
-    const from = this.formatDateShort(fromRaw);
-    const to = this.formatDateShort(toRaw);
-
-    const unitsRaw =
-      this.pickFirstValue(details, [
-        'approved',
-        'approvedUnits',
-        'unitsApproved',
-        'authorized',
-        'authorizedUnits',
-        'decisionUnits',
-        'requested',
-        'requestedUnits',
-        'recommendedUnits'
-      ]) ??
-      this.authData?.[`procedure${procedureNo}_recommendedUnits`];
-
-    const unitTypeRaw =
-      this.pickFirstValue(details, ['unitType', 'unitsType', 'unit']) ??
-      this.authData?.[`procedure${procedureNo}_unitType`];
-
-    const units = this.asDisplayString(unitsRaw).trim();
-    const unitType = this.asDisplayString(unitTypeRaw).trim();
-
-    const parts: string[] = [];
-    parts.push(`Decision # ${this.asDisplayString(lineNo) || procedureNo}`);
-    parts.push(`Decision: ${statusText || 'Pended'}`);
-
-    if (from !== 'N/A' || to !== 'N/A') {
-      if (from !== 'N/A' && to !== 'N/A') parts.push(`Dates: ${from} - ${to}`);
-      else if (from !== 'N/A') parts.push(`From: ${from}`);
-      else parts.push(`To: ${to}`);
-    }
-
-    if (units) parts.push(`Units: ${units}${unitType ? ' ' + unitType : ''}`);
-
-    return parts.join(' \u2022 ');
-  }
-
-
-  private updateTabStatuses(): void {
-    this.tabs = (this.tabs ?? []).map(t => {
-      const s = this.getDecisionStatusForProcedure(t.procedureNo);
-      const statusText = (s?.statusText ?? 'Pended') || 'Pended';
-      const statusCode = (s?.statusCode ?? statusText) || statusText;
-
-      const details = this.getDecisionDetailsDataForProcedure(t.procedureNo);
-      const subtitle = this.buildDecisionLine(t.procedureNo, statusText, details);
-
-      return {
-        ...t,
-        statusText,
-        statusCode,
-        statusClass: this.statusToClass(statusCode || statusText),
-        subtitle
-      };
-    });
-  }
-
-
 }

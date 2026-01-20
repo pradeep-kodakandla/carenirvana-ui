@@ -497,6 +497,8 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     // ✅ MERGE (step values overwrite same keys, but keep other keys)
     const merged = { ...(existingObj ?? {}), ...(stepObj ?? {}) };
     const jsonData = JSON.stringify(merged);
+    // Workgroup / Workbasket selection (optional)
+    const wgwbIds: number[] = this.getSelectedWorkgroupWorkbasketIds?.() ?? [];
 
     try {
       this.isSaving = true;
@@ -511,11 +513,27 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
         (this as any).showSavedMessage?.('Case updated successfully.');
 
         // UPDATE existing level row
-        await this.caseApi.updateCaseDetail({ caseDetailId: existingDetail.caseDetailId, jsonData }, userId).toPromise();
+        await this.caseApi.updateCaseDetail(
+          {
+            caseDetailId: existingDetail.caseDetailId,
+            jsonData,
+            ...(wgwbIds.length ? { workgroupWorkbasketIds: wgwbIds } : {})
+          },
+          userId
+        ).toPromise();
       } else if (caseHeaderId) {
         // ADD level row
         const caseNumber = this.form.get('caseNumber')?.value ?? '';
-        await this.caseApi.addCaseLevel({ caseHeaderId, caseNumber, levelId, jsonData }, userId).toPromise();
+        await this.caseApi.addCaseLevel(
+          {
+            caseHeaderId,
+            caseNumber,
+            levelId,
+            jsonData,
+            ...(wgwbIds.length ? { workgroupWorkbasketIds: wgwbIds } : {})
+          },
+          userId
+        ).toPromise();
 
       } else {
         // CREATE header + first detail
@@ -531,7 +549,15 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
         const memberDetailId = Number(sessionStorage.getItem('selectedMemberDetailsId') || 0); //memberDetailIdRaw ? Number(memberDetailIdRaw) : 1;
 
         await this.caseApi.createCase(
-          { caseNumber, caseType, status, memberDetailId, levelId, jsonData },
+          {
+            caseNumber,
+            caseType,
+            status,
+            memberDetailId,
+            levelId,
+            jsonData,
+            ...(wgwbIds.length ? { workgroupWorkbasketIds: wgwbIds } : {})
+          },
           userId
         ).toPromise();
 
@@ -2291,5 +2317,38 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     }
   }
 
+
+  private getSelectedWorkgroupWorkbasketIds(): number[] {
+    if (!this.form || !this.renderSections?.length) return [];
+
+    const out: number[] = [];
+
+    const pushVal = (v: any) => {
+      if (v == null || v === '') return;
+      if (Array.isArray(v)) {
+        for (const x of v) pushVal(x);
+        return;
+      }
+      if (typeof v === 'object') {
+        if ('value' in v) return pushVal((v as any).value);
+        if ('id' in v) return pushVal((v as any).id);
+      }
+      const n = Number(v);
+      if (Number.isFinite(n) && n > 0) out.push(n);
+    };
+
+    const fields = this.collectAllRenderFields(this.renderSections)
+      .filter((f: any) => String((f as any)?.type ?? '').toLowerCase() === 'select' && this.isWorkBasketField(f));
+
+    for (const f of fields) {
+      const ctrlName = String((f as any)?.controlName ?? '').trim();
+      if (!ctrlName) continue;
+      const ctrl = this.form.get(ctrlName);
+      if (!ctrl) continue;
+      pushVal(ctrl.value);
+    }
+
+    return Array.from(new Set(out));
+  }
 
 }

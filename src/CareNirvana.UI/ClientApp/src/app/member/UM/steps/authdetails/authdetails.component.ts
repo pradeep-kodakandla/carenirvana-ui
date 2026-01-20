@@ -9,6 +9,7 @@ import { CrudService, DatasourceLookupService } from 'src/app/service/crud.servi
 import { MemberenrollmentService } from 'src/app/service/memberenrollment.service';
 import { AuthDetailApiService } from 'src/app/service/authdetailapi.service';
 import { AuthenticateService } from 'src/app/service/authentication.service';
+import { WorkbasketService } from 'src/app/service/workbasket.service';
 
 import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
 
@@ -200,6 +201,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private templateDestroy$ = new Subject<void>();
   private visibilitySyncInProgress = false;
+  // When we change only the authNumber segment (0 -> generated) after the first SAVE,
+  // we don't want to wipe the already-built template UI and briefly show the "initial" screen.
+  private skipNextResetOnNav = false;
 
   form!: FormGroup;
 
@@ -289,6 +293,11 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
   /** Default Owner (logged-in user) */
   private readonly loggedInUserId: number = Number(sessionStorage.getItem('loggedInUserid') || 0);
 
+  // ---------- Work Group / Work List (Workbasket) ----------
+  private workBasketOptions: UiSmartOption[] = [];
+  private workGroupOptions: UiSmartOption[] = [];
+  private workBasketLoaded = false;
+
   // add cascading rules here if UM introduces dependencies
   private readonly dependentDatasourceRules: Array<{ child: string; parent: string; linkProp: string }> = [];
 
@@ -322,6 +331,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
     private authApi: AuthDetailApiService,
     private userService: AuthenticateService,
     private authNumberService: AuthNumberService,
+    private wbService: WorkbasketService,
   ) { }
 
   ngOnInit(): void {
@@ -341,6 +351,12 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
     // Load users for Owner dropdown (authActualOwner)
     this.loadAllUsers();
 
+    // Load Work Group / Work List dropdowns (from WorkbasketService)
+    this.loadWorkBasket();
+
+    // Work Group / Work List dropdowns (same approach as Case Details)
+    this.loadWorkBasket();
+
     // React to authNumber changes (works even when authNumber is on parent route)
     this.router.events.pipe(
       filter(e => e instanceof NavigationEnd),
@@ -350,7 +366,12 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
       distinctUntilChanged(),
       tap(authNo => {
         this.authNumber = String(authNo);
-        this.resetAuthScreenState();
+        if (this.skipNextResetOnNav) {
+          // Keep the current template rendering intact; we'll still refresh data via getByNumber below.
+          this.skipNextResetOnNav = false;
+        } else {
+          this.resetAuthScreenState();
+        }
       }),
       switchMap(authNo => {
         if (!authNo || authNo === '0') return of(null);
@@ -543,7 +564,18 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
             .filter(o => !!o.label && Number(o.value) > 0);
 
           // If editing an existing auth, force-select template/type
-          const desiredTypeId = Number(this.pendingAuth?.authTypeId ?? this.pendingAuth?.templateId ?? 0);
+          // NOTE: different APIs may return the template/type id under different names.
+          // We accept several common variants so that after the first CREATE + route refresh
+          // the template is re-selected automatically (instead of falling back to the initial screen).
+          const desiredTypeId = Number(
+            (this.pendingAuth as any)?.authTypeId ??
+            (this.pendingAuth as any)?.authTypeID ??
+            (this.pendingAuth as any)?.authTemplateId ??
+            (this.pendingAuth as any)?.AuthTemplateId ??
+            (this.pendingAuth as any)?.templateId ??
+            (this.pendingAuth as any)?.TemplateId ??
+            0
+          );
           if (desiredTypeId > 0) {
             this.form.get('authTypeId')?.setValue(desiredTypeId, { emitEvent: true });
           }
@@ -582,6 +614,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
           this.setupDependentDropdowns(this.renderSections);
           this.prefetchDropdownOptions(this.renderSections);
           this.applyAuthOwnerOptions();
+          this.applyWorkGroupAndBasketOptions();
 
           // Patch values after controls exist
           if (this.pendingAuth) {
@@ -1067,6 +1100,109 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
         this.usersLoaded = false;
       }
     });
+  }
+
+  // ============================================================
+  // Work Group / Work List dropdowns (from WorkbasketService)
+  // ============================================================
+  loadWorkBasket(): void {
+    if (this.workBasketLoaded) {
+      this.applyWorkGroupAndBasketOptions();
+      return;
+    }
+
+    const uid = Number(sessionStorage.getItem('loggedInUserid')) || 0;
+    this.wbService.getByUserId(uid).subscribe({
+      next: (res: any) => {
+        this.workBasketLoaded = true;
+
+        if (!Array.isArray(res)) {
+          console.warn('wbService.getByUserId did not return an array', res);
+          this.workBasketOptions = [];
+          this.workGroupOptions = [];
+          this.applyWorkGroupAndBasketOptions();
+          return;
+        }
+
+        const distinctWB = res.filter(
+          (item: any, index: number, self: any[]) =>
+            index === self.findIndex((t: any) => t.workBasketId === item.workBasketId)
+        );
+
+        const distinctWG = res.filter(
+          (item: any, index: number, self: any[]) =>
+            index === self.findIndex((t: any) => t.workGroupId === item.workGroupId)
+        );
+
+        // Work Lists (Work Baskets) – use workGroupWorkBasketId if available
+        this.workBasketOptions = distinctWB
+          .filter((r: any) => r.activeFlag !== false)
+          .map((r: any) => ({
+            value: Number(r.workGroupWorkBasketId ?? r.workBasketId),
+            label: r.workBasketName || r.workBasketCode || `WB #${r.workBasketId}`
+          }))
+          .filter((o: any) => !isNaN(o.value));
+
+        // Work Groups
+        this.workGroupOptions = distinctWG
+          .filter((r: any) => r.activeFlag !== false)
+          .map((r: any) => ({
+            value: Number(r.workGroupId),
+            label: r.workGroupName || r.workGroupCode || `WG #${r.workGroupId}`
+          }))
+          .filter((o: any) => !isNaN(o.value));
+        console.log('Loaded work basket options:', this.workGroupOptions);
+        this.applyWorkGroupAndBasketOptions();
+      },
+      error: (err: any) => {
+        console.error('Error fetching user workgroups/workbaskets', err);
+        this.workBasketLoaded = false;
+        this.workBasketOptions = [];
+        this.workGroupOptions = [];
+        this.applyWorkGroupAndBasketOptions();
+      }
+    });
+  }
+
+  private isWorkGroupField(f: any): boolean {
+    const id = String((f as any)?._rawId ?? (f as any)?.id ?? (f as any)?.controlName ?? '').toLowerCase();
+    const name = String((f as any)?.displayName ?? (f as any)?.label ?? '').toLowerCase();
+    const lookupEntity = String((f as any)?.lookup?.entity ?? (f as any)?.lookupEntity ?? '').toLowerCase();
+
+    if (lookupEntity.includes('workgroup')) return true;
+    return id.includes('workgroup') || name.includes('work group');
+  }
+
+  /** Treat "work list" as work basket in UI */
+  private isWorkBasketField(f: any): boolean {
+    const id = String((f as any)?._rawId ?? (f as any)?.id ?? (f as any)?.controlName ?? '').toLowerCase();
+    const name = String((f as any)?.displayName ?? (f as any)?.label ?? '').toLowerCase();
+    const lookupEntity = String((f as any)?.lookup?.entity ?? (f as any)?.lookupEntity ?? '').toLowerCase();
+
+    if (lookupEntity.includes('workbasket')) return true;
+
+    // support both "work basket" and "work list" wording
+    return (
+      id.includes('workbasket') ||
+      id.includes('work_basket') ||
+      id.includes('worklist') ||
+      name.includes('work basket') ||
+      name.includes('work list')
+    );
+  }
+
+  private applyWorkGroupAndBasketOptions(): void {
+    if (!this.renderSections?.length) return;
+
+    const wbOpts = this.workBasketOptions ?? [];
+    const wgOpts = this.workGroupOptions ?? [];
+
+    const allFields = this.collectAllRenderFields(this.renderSections);
+    for (const f of allFields) {
+      if ((f as any).type !== 'select') continue;
+      if (this.isWorkBasketField(f) && wbOpts.length) this.optionsByControlName[f.controlName] = wbOpts;
+      if (this.isWorkGroupField(f) && wgOpts.length) this.optionsByControlName[f.controlName] = wgOpts;
+    }
   }
 
   getDropdownOptions(controlName: string): UiSmartOption[] {
@@ -1639,7 +1775,8 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
     const treatementType = pick<string>('treatementType', 'treatmentType'); // supports both spellings
     const authAssignedTo = pick<number>('authAssignedTo', 'authassignedto');
     const authStatus = pick<any>('authStatus', 'authstatus') ?? 'Draft';
-
+    const wgwbIds = this.getSelectedWorkgroupWorkbasketIds();
+    console.log('Saving auth with workgroup/workbasket IDs:', wgwbIds);
     // Build base payload used for both CREATE and UPDATE
     const payload: any = {
       authClassId,
@@ -1653,7 +1790,10 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
       authAssignedTo,
       authStatus,
 
-      jsonData: safeJsonData
+      jsonData: safeJsonData,
+      requestType: 'AUTH',
+      workgroupWorkbasketId: wgwbIds.length ? wgwbIds[0] : null,
+      workgroupWorkbasketIds: wgwbIds
     };
 
     try {
@@ -1678,6 +1818,18 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
 
           const newAuthNumber = (fresh as any)?.authNumber;
           if (newAuthNumber) this.authNumber = String(newAuthNumber);
+        }
+
+        // IMPORTANT: update the URL from /auth/0/... -> /auth/<newAuthNumber>/... so that:
+        // - the shell/header reflect the new authNumber
+        // - other steps (decision/notes/docs) load against the real auth
+        // - we don't "fall back" to the initial screen due to resetAuthScreenState
+        // We keep the already-built template UI while the authNumber segment is updated.
+        const currentUrl = this.router.url;
+        const updatedUrl = currentUrl.replace(/(\/auth\/)([^\/]+)(\/)/, `$1${this.authNumber}$3`);
+        if (updatedUrl !== currentUrl) {
+          this.skipNextResetOnNav = true;
+          await this.router.navigateByUrl(updatedUrl, { replaceUrl: true });
         }
 
         this.form.markAsPristine();
@@ -2082,5 +2234,41 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
     alert('Add New Provider clicked');
   }
 
+  /**
+ * Collect selected WorkgroupWorkbasketId(s) from the rendered template.
+ * We treat "Work List" fields (work basket) as the source of WG/WB mapping ids.
+ */
+  private getSelectedWorkgroupWorkbasketIds(): number[] {
+    if (!this.form || !this.renderSections?.length) return [];
+
+    const out: number[] = [];
+
+    const pushVal = (v: any) => {
+      if (v == null || v === '') return;
+      if (Array.isArray(v)) {
+        for (const x of v) pushVal(x);
+        return;
+      }
+      if (typeof v === 'object') {
+        if ('value' in v) return pushVal((v as any).value);
+        if ('id' in v) return pushVal((v as any).id);
+      }
+      const n = Number(v);
+      if (Number.isFinite(n) && n > 0) out.push(n);
+    };
+
+    const fields = this.collectAllRenderFields(this.renderSections)
+      .filter((f: any) => String((f as any)?.type ?? '').toLowerCase() === 'select' && this.isWorkBasketField(f));
+
+    for (const f of fields) {
+      const ctrlName = String((f as any)?.controlName ?? '').trim();
+      if (!ctrlName) continue;
+      const ctrl = this.form.get(ctrlName);
+      if (!ctrl) continue;
+      pushVal(ctrl.value);
+    }
+
+    return Array.from(new Set(out));
+  }
 
 }

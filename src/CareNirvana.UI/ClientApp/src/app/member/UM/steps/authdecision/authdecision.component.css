@@ -48,26 +48,26 @@
     background: #f7f9ff;
   }
 
-/* ===== Status-based accents for tabs ===== */
-.tab.status-pended {
-  border-left: 6px solid #f59e0b;
-}
+  /* ===== Status-based accents for tabs ===== */
+  .tab.status-pended {
+    border-left: 6px solid #f59e0b;
+  }
 
-.tab.status-approved {
-  border-left: 6px solid #22c55e;
-}
+  .tab.status-approved {
+    border-left: 6px solid #22c55e;
+  }
 
-.tab.status-denied {
-  border-left: 6px solid #ef4444;
-}
+  .tab.status-denied {
+    border-left: 6px solid #ef4444;
+  }
 
-.tab.status-partial {
-  border-left: 6px solid #3b82f6;
-}
+  .tab.status-partial {
+    border-left: 6px solid #3b82f6;
+  }
 
-.tab.status-other {
-  border-left: 6px solid #6b7280;
-}
+  .tab.status-other {
+    border-left: 6px solid #6b7280;
+  }
 
 .tab-title {
   font-weight: 800;
@@ -83,6 +83,34 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Tab lines (3-line layout)
+   1) Decision # + Code
+   2) Dates
+   3) Status
+*/
+.tab-line1 {
+  font-weight: 800;
+  font-size: 13px;
+  color: #111827;
+  line-height: 18px;
+}
+
+.tab-line2 {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 16px;
+}
+
+.tab-line3 {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 16px;
+}
+
 
 .tab-content {
   flex: 1;

@@ -33,6 +33,11 @@ export interface CaseDetailDto {
   updatedBy?: number | null;
   deletedOn?: string | null;
   deletedBy?: number | null;
+
+  isWorkgroupAssigned?: boolean;
+  isWorkgroupPending?: boolean;
+  assignedWorkgroupWorkbasketIds?: number[] | null;
+
 }
 
 export interface CaseAggregateDto {
@@ -47,6 +52,12 @@ export interface CreateCaseRequest {
   memberDetailId?: number | null;
   levelId: number;      // Level1 id comes from UI input
   jsonData: any;        // json payload for level 1
+
+  // Workgroup assignment (optional)
+  workgroupWorkbasketId?: number | null;          // single (backward compatible)
+  workgroupWorkbasketIds?: number[] | null;       // multi
+  groupStatusId?: number | null;
+
 }
 
 export interface AddCaseLevelRequest {
@@ -54,12 +65,24 @@ export interface AddCaseLevelRequest {
   caseHeaderId: number;
   levelId: number;
   jsonData: any;
+
+  // Workgroup assignment (optional)
+  workgroupWorkbasketId?: number | null;
+  workgroupWorkbasketIds?: number[] | null;
+  groupStatusId?: number | null;
+
 }
 
 export interface UpdateCaseDetailRequest {
   caseDetailId: number;
   jsonData: any;
   // optionally: status, etc., if your API supports it
+
+  // Workgroup assignment (optional)
+  workgroupWorkbasketId?: number | null;
+  workgroupWorkbasketIds?: number[] | null;
+  groupStatusId?: number | null;
+
 }
 
 export interface CreateCaseResponse {
@@ -97,6 +120,11 @@ export interface AgCaseGridRow {
   caseStatusText: string;
 
   lastDetailOn: string | null;     // ISO string or null
+
+  isWorkgroupAssigned?: boolean;
+  isWorkgroupPending?: boolean;
+  assignedWorkgroupWorkbasketIds?: number[] | null;
+
 }
 
 
@@ -173,6 +201,18 @@ export interface CaseDocumentDto {
   deletedOn?: string;
 }
 
+
+
+
+export type CaseWorkgroupActionType = 'ACCEPT' | 'REJECT';
+
+export interface AcceptRejectCaseWorkgroupRequest {
+  caseWorkgroupId: number;
+  actionType: CaseWorkgroupActionType;
+  comment?: string | null;
+  userId: number;
+  completedStatusId?: number; // required for ACCEPT
+}
 
 export type CaseActivityStatusFilter = 'all' | 'open' | 'requested' | 'accepted' | 'rejected';
 
@@ -260,6 +300,27 @@ export class CasedetailService {
 
   constructor(private http: HttpClient) { }
 
+
+
+  /**
+   * Normalizes workgroup/workbasket selection so API always receives consistent payload.
+   * - If only single id is provided, populate the array too.
+   * - Removes null/0/duplicates.
+   */
+  private normalizeWorkgroupWorkbasketIds(req: any): void {
+    if (!req) return;
+
+    const arr = (Array.isArray(req.workgroupWorkbasketIds) ? req.workgroupWorkbasketIds : [])
+      .map((x: any) => Number(x))
+      .filter((x: number) => Number.isFinite(x) && x > 0);
+
+    const single = Number((req as any).workgroupWorkbasketId);
+    if (Number.isFinite(single) && single > 0) arr.push(single);
+
+    const uniq = Array.from(new Set(arr));
+    (req as any).workgroupWorkbasketIds = uniq.length ? uniq : null;
+    (req as any).workgroupWorkbasketId = uniq.length ? uniq[0] : null;
+  }
   getCaseByNumber(caseNumber: string, includeDeleted = false): Observable<CaseAggregateDto> {
     const params = new HttpParams().set('includeDeleted', includeDeleted);
     return this.http.get<CaseAggregateDto>(`${this.baseUrl}/${encodeURIComponent(caseNumber)}`, { params });
@@ -272,16 +333,58 @@ export class CasedetailService {
   }
 
   createCase(req: CreateCaseRequest, userId: number): Observable<any> {
+    this.normalizeWorkgroupWorkbasketIds(req);
+
     return this.http.post(`${this.baseUrl}`, req, { params: { userId } });
   }
 
   addCaseLevel(req: AddCaseLevelRequest, userId: number): Observable<any> {
+    this.normalizeWorkgroupWorkbasketIds(req);
+
     return this.http.post(`${this.baseUrl}/AddLevel`, req, { params: { userId } });
   }
 
   updateCaseDetail(req: UpdateCaseDetailRequest, userId: number): Observable<any> {
+    this.normalizeWorkgroupWorkbasketIds(req);
+
     return this.http.put(`${this.baseUrl}/UpdateDetail`, req, { params: { userId } });
   }
+
+
+  /**
+   * Accept/Reject a CASE (or ACTIVITY) workgroup assignment row.
+   * Backend route should match: POST /api/case/workgroup/{caseWorkgroupId}/action
+   * with query params: actionType, comment, userId, completedStatusId (required for ACCEPT).
+   */
+  acceptRejectCaseWorkgroup(
+    caseWorkgroupId: number,
+    actionType: 'ACCEPT' | 'REJECT',
+    userId: number,
+    completedStatusId?: number,
+    comment?: string | null
+  ) {
+    const at = (actionType || '').toUpperCase() as 'ACCEPT' | 'REJECT';
+
+    const params: any = {
+      caseWorkgroupId,
+      actionType: at,
+      userId,
+      completedStatusId: at === 'ACCEPT' ? (completedStatusId ?? 0) : 0
+    };
+
+    const body = comment ?? null;
+
+    return this.http.post(
+      `${this.baseUrl}/workgroup/acceptreject`,
+      body,
+      {
+        params,
+        headers: { 'Content-Type': 'text/plain' },
+        responseType: 'text'
+      }
+    );
+  }
+
 
   softDeleteCaseHeader(caseHeaderId: number, userId: number, cascadeDetails = true): Observable<void> {
     const params = new HttpParams()

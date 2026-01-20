@@ -1,50 +1,54 @@
 <div class="authWizardShell">
 
-  <!-- Header (above stepper) -->
-  <div class="authWizardHeader">
-    <div class="authWizardMeta">
-      <div class="metaItem">
-        <div class="metaLabel">Auth #</div>
-        <div class="metaValue">{{ header.authNumber || '-' }}</div>
+  <!-- Sticky Top (Header + Stepper) -->
+  <div class="authWizardTop">
+
+    <!-- Header (above stepper) -->
+    <div class="authWizardHeader">
+      <div class="authWizardMeta">
+        <div class="metaItem">
+          <div class="metaLabel">Auth #</div>
+          <div class="metaValue">{{ header.authNumber ? (header.authNumber | uppercase) : '-' }}</div>
+        </div>
+
+        <div class="metaItem">
+          <div class="metaLabel">Created By</div>
+          <div class="metaValue">{{ header.createdBy || '-' }}</div>
+        </div>
+
+        <div class="metaItem">
+          <div class="metaLabel">Created On</div>
+          <div class="metaValue">{{ header.createdOn || '-' }}</div>
+        </div>
+
+        <div class="metaItem">
+          <div class="metaLabel">Due Date</div>
+          <div class="metaValue">{{ header.dueDate || '-' }}</div>
+        </div>
       </div>
 
-      <div class="metaItem">
-        <div class="metaLabel">Created By</div>
-        <div class="metaValue">{{ header.createdBy || '-' }}</div>
-      </div>
-
-      <div class="metaItem">
-        <div class="metaLabel">Created On</div>
-        <div class="metaValue">{{ header.createdOn || '-' }}</div>
-      </div>
-
-      <div class="metaItem">
-        <div class="metaLabel">Due Date</div>
-        <div class="metaValue">{{ header.dueDate || '-' }}</div>
+      <div class="authWizardActions">
+        <button type="button"
+                class="btn btn-primary"
+                (click)="saveCurrentStep()"
+                [disabled]="shellSaving">
+          {{ shellSaving ? 'Saving...' : 'Save' }}
+        </button>
       </div>
     </div>
 
-    <div class="authWizardActions">
-      <button type="button"
-              class="btn btn-primary"
-              (click)="saveCurrentStep()"
-              [disabled]="shellSaving">
-        {{ shellSaving ? 'Saving...' : 'Save' }}
-      </button>
-    </div>
-  </div>
+    <div class="stepperRow">
+      <app-authchevronstepper class="stepper"
+                              [steps]="steps"
+                              [activeStepId]="activeStepId"
+                              (stepSelected)="onStepSelected($event)">
+      </app-authchevronstepper>
 
-  <div class="stepperRow">
-    <app-authchevronstepper
-      class="stepper"
-      [steps]="steps"
-      [activeStepId]="activeStepId"
-      (stepSelected)="onStepSelected($event)">
-    </app-authchevronstepper>
-
-    <div class="wizardToast" *ngIf="toast.visible" [ngClass]="toast.type">
-      {{ toast.text }}
+      <div class="wizardToast" *ngIf="toast.visible" [ngClass]="toast.type">
+        {{ toast.text }}
+      </div>
     </div>
+
   </div>
 
   <div class="wizardBody">

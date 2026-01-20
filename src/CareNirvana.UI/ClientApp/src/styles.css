@@ -67,7 +67,12 @@ main {
   /*min-height: 90vh;*/ /* Ensures content fills the screen */
   /*padding-bottom: 20px;*/ /*This ensures space for the footer */
   margin: 5px !important;
-  overflow: auto;
+  /* IMPORTANT:
+     Don't make every Bootstrap `.container` a scroll container.
+     It breaks `position: sticky` headers/steppers inside routed pages.
+     Let `.app-main` handle vertical scrolling (see `.app-main { overflow-y: auto; }`).
+  */
+  overflow: visible;
 }
 
 .sidebar {
@@ -136,11 +141,11 @@ body {
     border-bottom: 1px solid #d6e0f0;
   }
 
-  .mat-mdc-row {
-    background: none !important;
-    font-family: 'Open Sans',sans-serif !important;
-    font-size: 12px;
-  }
+.mat-mdc-row {
+  background: none !important;
+  font-family: 'Open Sans',sans-serif !important;
+  font-size: 12px;
+}
 
 .mng-table .mat-mdc-cell {
   border-bottom: 1px solid #e6ebf2;
