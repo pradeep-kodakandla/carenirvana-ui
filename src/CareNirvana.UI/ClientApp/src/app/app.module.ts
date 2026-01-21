@@ -42,17 +42,9 @@ import { MemberSummaryaiComponent } from './member/member-summaryai/member-summa
 import { MemberActivityComponent } from './member/memberactivity/memberactivity.component';
 import { MembersearchComponent } from './member/membersearch/membersearch.component';
 
-import { AuthorizationComponent } from './member/UM/authorization/authorization.component';
-import { DecisiondetailsComponent } from './member/UM/decisiondetails/decisiondetails.component';
-import { DecisionbulkdialogComponent } from './member/UM/decisionbulkdialog/decisionbulkdialog.component';
 import { AuthdynamicComponent } from './member/UM/authdynamic/authdynamic.component';
 import { ProviderSearchComponent } from './Provider/provider-search/provider-search.component';
-import { UmauthnotesComponent } from './member/UM/umauthnotes/umauthnotes.component';
-import { UmauthdocumentsComponent } from './member/UM/umauthdocuments/umauthdocuments.component';
 import { ValidationErrorDialogComponent } from './member/validation-error-dialog/validation-error-dialog.component';
-import { MdreviewComponent } from './member/UM/mdreview/mdreview.component';
-import { SmartauthcheckComponent } from './member/UM/smartauthcheck/smartauthcheck.component';
-import { ConfirmationDialogComponent } from './member/UM/confirmation-dialog/confirmation-dialog.component';
 
 import { ConfigurationComponent } from './admin/configuration/configuration.component';
 import { UsermanagementComponent } from './admin/usermanagement/usermanagement.component';
@@ -184,12 +176,12 @@ const routes: Routes = [
     MemberNotesComponent,
     MemberProgramComponent,
     MemberTasksummaryComponent,
-    MemberInfoComponent, AuthorizationComponent, DecisiondetailsComponent, AuthdynamicComponent, ProviderSearchComponent,
-    UmauthnotesComponent, UmauthdocumentsComponent, ValidationErrorDialogComponent, MdreviewComponent,
-    NewDashBoardComponent, NewDashboard2Component, MdreviewdashboardComponent, SmartauthcheckComponent, ConfirmationDialogComponent,
+    MemberInfoComponent, AuthdynamicComponent, ProviderSearchComponent,
+    ValidationErrorDialogComponent,
+    NewDashBoardComponent, NewDashboard2Component, MdreviewdashboardComponent, 
     ConfigurationComponent, UsermanagementComponent, RolemanagementComponent, ProfilemanagementComponent, AppfeaturesetupComponent, PermissionManagerComponent,
     WorkgroupComponent, WorkbasketComponent, UserDefinedCustomFieldsComponent, TemplatebuilderComponent, TemplatebuilderpropertiesComponent, ValidationComponent,
-    UmdocumenttypeComponent, SettingsDialogComponent, UmactivitytypeComponent, DecisionbulkdialogComponent, DialogContentComponent, UmnotetypeComponent, ExternallinksComponent,
+    UmdocumenttypeComponent, SettingsDialogComponent, UmactivitytypeComponent, DialogContentComponent, UmnotetypeComponent, ExternallinksComponent,
     UmclaimtypeComponent, UmactivitypriorityComponent, UmadmissionlevelComponent, UmadmissiontypeComponent, UmadmitreasonComponent,
     UmcertificationtypeComponent, UmdenialtypeComponent, UmdeterminationtypeComponent, UmdischargetoComponent, UmdischargetypeComponent,
     UmmedicationfrequencyComponent, UmnotificationtypeComponent, UmoutofareaindicatorComponent, UmplaceofserviceComponent, UmprescriptionquantityComponent,
@@ -258,13 +250,7 @@ const routes: Routes = [
       { path: 'member-program', component: MemberProgramComponent },
       { path: 'member-tasksummary', component: MemberTasksummaryComponent },
       { path: 'member-info', component: MemberInfoComponent },
-      { path: 'member-auth', component: AuthorizationComponent },
-      { path: 'member-auth/:authNo/:memberId', component: AuthorizationComponent },
-      { path: 'member-decision/:id', component: DecisiondetailsComponent },
       { path: 'member-um-validation', component: ValidationErrorDialogComponent },
-      { path: 'member-decisionbulk', component: DecisionbulkdialogComponent },
-      { path: 'member-mdreview', component: MdreviewComponent },
-      { path: 'member-smartauthcheck', component: SmartauthcheckComponent },
       { path: 'member-journey', component: MemberJourneyComponent },
       { path: 'member-summaryai', component: MemberSummaryaiComponent },
       { path: 'member-activity', component: MemberActivityComponent },
@@ -276,8 +262,6 @@ const routes: Routes = [
       { path: 'dash-newdash2', component: NewDashboard2Component },
       { path: 'member-authdynamic', component: AuthdynamicComponent },
       { path: 'provider-search', component: ProviderSearchComponent },
-      { path: 'member-authnotes', component: UmauthnotesComponent },
-      { path: 'member-authdocs', component: UmauthdocumentsComponent },
       { path: 'admin-config', component: ConfigurationComponent },
       { path: 'admin-user', component: UsermanagementComponent },
       { path: 'admin-role', component: RolemanagementComponent },

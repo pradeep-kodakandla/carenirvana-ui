@@ -7,6 +7,9 @@
     <button class="btn btn-sm btn-primary me-2" (click)="saveCurrentTab()" [disabled]="loading || saving">
       Save
     </button>
+    <button class="btn btn-sm btn-outline-secondary me-2" (click)="openMdReview()" [disabled]="loading || saving">
+      MD Review
+    </button>
     <button class="btn btn-sm btn-outline-danger" (click)="deleteCurrentTab()" [disabled]="loading || saving">
       Delete
     </button>

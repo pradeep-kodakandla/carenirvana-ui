@@ -1,235 +1,441 @@
 <div class="authmdreview">
-  <!--<div class="header-row">
-    <h3 class="title">MD Review</h3>
-  </div>-->
 
-  <div class="card">
-    <div class="card-body">
-      <form [formGroup]="mdrForm" class="form-grid">
-        <!-- Assignment Type -->
-        <div class="ff-field">
-          <div class="ff-outline">
-            <div class="ff-float-label">Assignment Type</div>
-            <div class="ff-body">
-              <ui-smart-dropdown class="ff-ui"
-                                 label=""
-                                 placeholder="Select..."
-                                 formControlName="assignmentType"
-                                 [options]="assignmentTypeOptions">
-              </ui-smart-dropdown>
+  <!-- CREATE MODE -->
+  <ng-container *ngIf="viewMode === 'create'; else reviewMode">
+
+    <div class="card">
+      <div class="card-body">
+        <form [formGroup]="mdrForm" class="form-grid">
+
+          <!-- Assignment Type -->
+          <div class="ff-field">
+            <div class="ff-outline">
+              <div class="ff-float-label">Assignment Type</div>
+              <div class="ff-body">
+                <ui-smart-dropdown class="ff-ui"
+                                   label=""
+                                   placeholder="Select..."
+                                   formControlName="assignmentType"
+                                   [options]="assignmentTypeOptions">
+                </ui-smart-dropdown>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Activity Type -->
-        <div class="ff-field">
-          <div class="ff-outline">
-            <div class="ff-float-label">Activity Type</div>
-            <div class="ff-body">
-              <ui-smart-dropdown class="ff-ui"
-                                 label=""
-                                 placeholder="Select..."
-                                 formControlName="activityType"
-                                 [options]="activityTypeOptions">
-              </ui-smart-dropdown>
+          <!-- Activity Type -->
+          <div class="ff-field">
+            <div class="ff-outline">
+              <div class="ff-float-label">Activity Type</div>
+              <div class="ff-body">
+                <ui-smart-dropdown class="ff-ui"
+                                   label=""
+                                   placeholder="Select..."
+                                   formControlName="activityType"
+                                   [options]="activityTypeOptions">
+                </ui-smart-dropdown>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Priority -->
-        <div class="ff-field">
-          <div class="ff-outline">
-            <div class="ff-float-label">Priority</div>
-            <div class="ff-body">
-              <ui-smart-dropdown class="ff-ui"
-                                 label=""
-                                 placeholder="Select..."
-                                 formControlName="priority"
-                                 [options]="priorities">
-              </ui-smart-dropdown>
+          <!-- Priority -->
+          <div class="ff-field">
+            <div class="ff-outline">
+              <div class="ff-float-label">Priority</div>
+              <div class="ff-body">
+                <ui-smart-dropdown class="ff-ui"
+                                   label=""
+                                   placeholder="Select..."
+                                   formControlName="priority"
+                                   [options]="priorities">
+                </ui-smart-dropdown>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Assign To -->
-        <div class="ff-field" *ngIf="!showWorkBasketFields">
-          <div class="ff-outline">
-            <div class="ff-float-label">Assign To</div>
-            <div class="ff-body">
-              <ui-smart-dropdown class="ff-ui"
-                                 label=""
-                                 placeholder="Select..."
-                                 formControlName="assignTo"
-                                 [options]="userOptions">
-              </ui-smart-dropdown>
+          <!-- Assign To -->
+          <div class="ff-field">
+            <div class="ff-outline">
+              <div class="ff-float-label">Assign To</div>
+              <div class="ff-body">
+                <ui-smart-dropdown class="ff-ui"
+                                   label=""
+                                   placeholder="Select..."
+                                   formControlName="assignTo"
+                                   [options]="userOptions">
+                </ui-smart-dropdown>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Work Basket -->
-        <div class="ff-field" *ngIf="showWorkBasketFields">
-          <div class="ff-outline">
-            <div class="ff-float-label">Work Basket</div>
-            <div class="ff-body">
-              <ui-smart-dropdown class="ff-ui"
-                                 label=""
-                                 placeholder="Select..."
-                                 formControlName="workBasket"
-                                 [options]="workBasketOptions">
-              </ui-smart-dropdown>
+          <!-- Work Basket -->
+          <div class="ff-field">
+            <div class="ff-outline">
+              <div class="ff-float-label">Work Basket</div>
+              <div class="ff-body">
+                <ui-smart-dropdown class="ff-ui"
+                                   label=""
+                                   placeholder="Select..."
+                                   formControlName="workBasket"
+                                   [options]="workBasketOptions">
+                </ui-smart-dropdown>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Work Basket User -->
-        <div class="ff-field" *ngIf="showWorkBasketFields">
-          <div class="ff-outline">
-            <div class="ff-float-label">Work Basket User</div>
-            <div class="ff-body">
-              <ui-smart-dropdown class="ff-ui"
-                                 label=""
-                                 placeholder="Select..."
-                                 formControlName="workBasketUser"
-                                 [options]="workBasketUserOptions">
-              </ui-smart-dropdown>
+          <!-- Work Basket User -->
+          <div class="ff-field">
+            <div class="ff-outline">
+              <div class="ff-float-label">Work Basket User</div>
+              <div class="ff-body">
+                <ui-smart-dropdown class="ff-ui"
+                                   label=""
+                                   placeholder="Select..."
+                                   formControlName="workBasketUser"
+                                   [options]="workBasketUserOptions">
+                </ui-smart-dropdown>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Dates -->
-        <div class="ff-field">
-          <div class="ff-outline">
-            <div class="ff-float-label">Scheduled Date/Time</div>
-            <div class="ff-body">
-              <ui-datetime-picker class="ff-ui"
-                                  label=""
-                                  placeholderDateTime="mm/dd/yyyy --:--"
-                                  formControlName="scheduledDateTime">
-              </ui-datetime-picker>
+          <!-- Scheduled Date/Time -->
+          <div class="ff-field">
+            <div class="ff-outline">
+              <div class="ff-float-label">Scheduled Date/Time</div>
+              <div class="ff-body">
+                <ui-datetime-picker class="ff-ui"
+                                    label=""
+                                    placeholderDateTime="mm/dd/yyyy --:--"
+                                    formControlName="scheduledDateTime">
+                </ui-datetime-picker>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="ff-field">
-          <div class="ff-outline">
-            <div class="ff-float-label">Due Date/Time</div>
-            <div class="ff-body">
-              <ui-datetime-picker class="ff-ui"
-                                  label=""
-                                  placeholderDateTime="mm/dd/yyyy --:--"
-                                  formControlName="dueDateTime">
-              </ui-datetime-picker>
+          <!-- Due Date/Time -->
+          <div class="ff-field">
+            <div class="ff-outline">
+              <div class="ff-float-label">Due Date/Time</div>
+              <div class="ff-body">
+                <ui-datetime-picker class="ff-ui"
+                                    label=""
+                                    placeholderDateTime="mm/dd/yyyy --:--"
+                                    formControlName="dueDateTime">
+                </ui-datetime-picker>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Recommendation -->
-        <div class="ff-field">
-          <div class="ff-outline">
-            <div class="ff-float-label">Recommendation</div>
-            <div class="ff-body">
-              <ui-smart-dropdown class="ff-ui"
-                                 label=""
-                                 placeholder="Select..."
-                                 formControlName="recommendation"
-                                 [options]="recommendationOptions">
-              </ui-smart-dropdown>
+          <!-- Notes -->
+          <div class="ff-field field-wide">
+            <div class="ff-outline">
+              <div class="ff-float-label">Notes</div>
+              <div class="ff-body">
+                <textarea class="ff-input ff-textarea"
+                          rows="3"
+                          placeholder="Notes..."
+                          formControlName="notes"></textarea>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Notes -->
-        <div class="ff-field field-wide">
-          <div class="ff-outline">
-            <div class="ff-float-label">Notes</div>
-            <div class="ff-body">
-              <textarea class="ff-input ff-textarea" formControlName="notes" rows="3"></textarea>
-            </div>
-          </div>
-        </div>
-      </form>
-
-    </div>
-  </div>
-
-  <!-- Service Lines -->
-  <div class="card" style="margin-top:12px;">
-    <div class="card-body">
-      <div class="lines-header">
-        <div class="lines-title">Service Lines</div>
-        <div class="lines-actions">
-          <button type="button" class="btn btn-link" (click)="selectAllLines(true)">Select all</button>
-          <button type="button" class="btn btn-link" (click)="selectAllLines(false)">Clear</button>
-        </div>
-      </div>
-
-      <div *ngIf="!serviceLines?.length" class="muted">No service lines found in the auth data.</div>
-
-      <div class="table-responsive" *ngIf="serviceLines?.length">
-        <table class="table table-sm mdr-table">
-          <thead>
-            <tr>
-              <th style="width:40px;"></th>
-              <th>Service Code</th>
-              <th>Description</th>
-              <th>From</th>
-              <th>To</th>
-              <th>Req</th>
-              <th>Appr</th>
-              <th>Denied</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let l of serviceLines">
-              <td>
-                <input type="checkbox" [checked]="!!l.selected" (change)="toggleLine(l, $any($event.target).checked)" />
-              </td>
-              <td>{{ l.serviceCode }}</td>
-              <td>{{ l.serviceDescription }}</td>
-              <td>{{ l.fromDate }}</td>
-              <td>{{ l.toDate }}</td>
-              <td>{{ l.requested }}</td>
-              <td>{{ l.approved }}</td>
-              <td>{{ l.denied }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="footer-actions">
-        <button type="button" class="btn btn-primary" (click)="submitReview()" [disabled]="mdrForm.invalid || !hasSelectedLines">
-          Save MD Review
-        </button>
+        </form>
       </div>
     </div>
-  </div>
 
-  <!-- Existing Activities -->
-  <div class="card" style="margin-top:12px;" *ngIf="existingActivities?.length">
-    <div class="card-body">
-      <div class="lines-title">Existing MD Review Activities</div>
-      <div class="table-responsive">
-        <table class="table table-sm mdr-table">
-          <thead>
-            <tr>
-              <th>Activity Type</th>
-              <th>Priority</th>
-              <th>Recommendation</th>
-              <th>Created On</th>
-              <th>Notes</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let a of existingActivities">
-              <td>{{ a.activityType ?? a.ActivityType }}</td>
-              <td>{{ a.priority ?? a.Priority }}</td>
-              <td>{{ a.recommendation ?? a.Recommendation }}</td>
-              <td>{{ a.createdOn ?? a.CreatedOn }}</td>
-              <td>{{ a.notes ?? a.Notes }}</td>
-            </tr>
-          </tbody>
-        </table>
+    <!-- Service Lines (Create) -->
+    <div class="card" style="margin-top:12px;">
+      <div class="card-body">
+
+        <div class="lines-header">
+          <div class="lines-title">Service Lines</div>
+          <div class="lines-actions">
+            <button type="button" class="btn btn-link" (click)="selectAllLines(true)">Select all</button>
+            <button type="button" class="btn btn-link" (click)="selectAllLines(false)">Clear</button>
+          </div>
+        </div>
+
+        <div *ngIf="!serviceLines?.length" class="muted">No service lines found in the auth data.</div>
+
+        <div class="table-responsive" *ngIf="serviceLines?.length">
+          <table class="table table-sm mdr-table">
+            <thead>
+              <tr>
+                <th style="width:40px;"></th>
+                <th>Service Code</th>
+                <th>Description</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Req</th>
+                <th>Appr</th>
+                <th>Den</th>
+                <th>Initial Recommendation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let l of serviceLines; trackBy: trackByCreateLineId">
+                <td>
+                  <input type="checkbox"
+                         [checked]="!!l.selected"
+                         (change)="l.selected = $any($event.target).checked" />
+                </td>
+                <td>{{ l.serviceCode }}</td>
+                <td>{{ l.serviceDescription }}</td>
+                <td>{{ l.fromDate | date:'MM/dd/yyyy' }}</td>
+                <td>{{ l.toDate | date:'MM/dd/yyyy' }}</td>
+                <td class="num">{{ l.requested ?? '-' }}</td>
+                <td class="num">{{ l.approved ?? '-' }}</td>
+                <td class="num">{{ l.denied ?? '-' }}</td>
+                <td>{{ l.initialRecommendation || '-' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="footer-row" style="margin-top:12px; display:flex; gap:10px; justify-content:flex-end; align-items:center;">
+          <button class="btn ghost"
+                  type="button"
+                  (click)="cancelCreate()">
+            Cancel
+          </button>
+
+          <button class="btn primary"
+                  type="button"
+                  (click)="submitCreate()"
+                  [disabled]="mdrForm.invalid || !serviceLines?.length">
+            Create MD Review Activity
+          </button>
+        </div>
+
       </div>
     </div>
-  </div>
+
+  </ng-container>
+
+  <!-- REVIEW MODE -->
+  <ng-template #reviewMode>
+    <div class="mdr-shell">
+
+      <!-- Left: Activities list -->
+      <div class="mdr-left card">
+        <div class="card-body">
+
+          <div class="left-header">
+            <div class="left-title">MD Review Activities</div>
+            <button class="btn btn-sm btn-primary me-2" type="button" (click)="onCreateNewFromList()">Create New</button>
+          </div>
+
+          <!--<div class="left-search">
+            <input class="input"
+                   type="text"
+                   placeholder="Search..."
+                   [value]="activitySearch"
+                   (input)="onQuickSearchActivities($any($event.target).value)" />
+          </div>-->
+
+          <div *ngIf="isLoadingActivities" class="muted pad">Loading activities…</div>
+
+          <div *ngIf="!isLoadingActivities && !filteredActivities.length" class="muted pad">
+            No MD Review activities found.
+          </div>
+
+          <div class="activity-list" *ngIf="!isLoadingActivities && filteredActivities.length">
+            <button type="button"
+                    class="activity-item"
+                    *ngFor="let a of filteredActivities; trackBy: trackByActivityId"
+                    [class.active]="a.activityId === selectedActivityId"
+                    (click)="onSelectActivity(a)">
+
+              <div class="row1">
+                <div class="row1-left">
+                  <div class="activity-type">{{ a.activityType || 'Unknown Activity' }}</div>
+                  <div class="activity-id muted">#{{ a.activityId }}</div>
+                </div>
+
+                <!-- keep status pill on the right -->
+                <span class="pill" [ngClass]="getMdReviewPillClass(a.mdReviewStatus)">
+                  {{ a.mdReviewStatus || '-' }}
+                </span>
+              </div>
+
+              <div class="row2 muted">
+                <span>Created: {{ a.createdOn ? (a.createdOn | date:'MM/dd/yyyy') : '-' }}</span>
+                <span>Due: {{ a.dueDateTime ? (a.dueDateTime | date:'MM/dd/yyyy') : '-' }}</span>
+              </div>
+
+              <div class="row3 muted">
+                <span>Priority: {{ a.priority ?? '-' }}</span>
+                <span>Lines: {{ a.serviceLineCount ?? '-' }}</span>
+              </div>
+
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Right: Activity details -->
+      <div class="mdr-right">
+        <ng-container *ngIf="selectedActivity; else selectOne">
+
+          <div class="card p-2">
+
+            <!-- Summary -->
+            <div class="review-header">
+              <p>
+                Review Priority: {{ selectedActivity.priority ?? '-' }}
+              </p>
+
+              <p class="overall-ir">
+                <strong>Overall Initial Recommendation:</strong>
+                <span class="md-badge">
+                  {{ getActivityInitialRecommendation() || 'Not Reviewed' }}
+                </span>
+              </p>
+            </div>
+
+            <!-- Service Lines -->
+            <div class="lines-header" style="margin-top:12px;">
+              <div class="lines-title">Service Lines</div>
+              <div class="lines-actions">
+                <label class="muted" style="display:flex; align-items:center; gap:8px; margin:0;">
+                  <input #selectAllReview type="checkbox"
+                         (change)="toggleSelectAllReviewLines(selectAllReview.checked)" />
+                  Select all
+                </label>
+              </div>
+            </div>
+
+            <div class="table-responsive" *ngIf="selectedActivity.lines?.length; else noLines">
+              <table class="table table-sm mdr-table">
+                <thead>
+                  <tr>
+                    <th style="width:40px;"></th>
+                    <th>Service Code</th>
+                    <th>Description</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Req</th>
+                    <th>Appr</th>
+                    <th>Den</th>
+                    <th>Initial Recommendation</th>
+                    <th>MD Review Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let l of selectedActivity.lines; trackBy: trackByLineId">
+                    <td>
+                      <input type="checkbox"
+                             [checked]="!!l.selected"
+                             (change)="onToggleReviewLine(l, $any($event.target).checked)" />
+                    </td>
+                    <td>{{ l.serviceCode }}</td>
+                    <td>{{ l.serviceDescription }}</td>
+                    <td>{{ l.fromDate | date:'MM/dd/yyyy' }}</td>
+                    <td>{{ l.toDate | date:'MM/dd/yyyy' }}</td>
+                    <td class="num">{{ l.requested ?? '-' }}</td>
+                    <td class="num">{{ l.approved ?? '-' }}</td>
+                    <td class="num">{{ l.denied ?? '-' }}</td>
+                    <td>{{ l.initialRecommendation || '-' }}</td>
+                    <td><span class="pill">{{ l.status || '-' }}</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <ng-template #noLines>
+              <div class="muted">No service lines found.</div>
+            </ng-template>
+
+            <!-- Medical Director's Decision -->
+            <div class="lines-title" style="margin-top:18px;">Medical Director's Decision</div>
+            <hr />
+
+            <div class="decision-grid">
+
+              <div class="ff-field">
+                <div class="ff-outline">
+                  <div class="ff-float-label">Decision Status <span class="req">*</span></div>
+                  <div class="ff-body">
+                    <ui-smart-dropdown class="ff-ui"
+                                       label=""
+                                       placeholder="Select"
+                                       [options]="decisionStatusOptions"
+                                       [(ngModel)]="overallDecisionStatus"
+                                       (ngModelChange)="onDecisionStatusChanged()">
+                    </ui-smart-dropdown>
+                  </div>
+                </div>
+              </div>
+
+              <div class="ff-field">
+                <div class="ff-outline">
+                  <div class="ff-float-label">Decision Status Code</div>
+                  <div class="ff-body">
+                    <ui-smart-dropdown class="ff-ui"
+                                       label=""
+                                       placeholder="Select"
+                                       [options]="decisionStatusCodeOptions"
+                                       [(ngModel)]="overallDecisionStatusCode">
+                    </ui-smart-dropdown>
+                  </div>
+                </div>
+              </div>
+
+              <div class="ff-field" style="display:flex; align-items:center;">
+                <label class="muted" style="display:flex; align-items:center; gap:8px; margin:0;">
+                  <input type="checkbox" [(ngModel)]="requestMoreInformation" />
+                  Request more information
+                </label>
+              </div>
+
+              <div class="ff-field field-wide">
+                <div class="ff-outline">
+                  <div class="ff-float-label">Comments and Recommendations</div>
+                  <div class="ff-body">
+                    <textarea class="ff-input ff-textarea"
+                              rows="6"
+                              placeholder=""
+                              [(ngModel)]="mdNotesText"></textarea>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <div class="footer-row">
+              <button class="btn primary"
+                      type="button"
+                      (click)="submitDecision()"
+                      [disabled]="!hasSelectedReviewLines()">
+                Submit Decision
+              </button>
+
+              <button class="btn"
+                      type="button"
+                      (click)="saveAndContinue()"
+                      [disabled]="!hasSelectedReviewLines()">
+                Save &amp; Continue
+              </button>
+
+              <button class="btn danger"
+                      type="button"
+                      (click)="closeReview()">
+                Close
+              </button>
+            </div>
+
+          </div>
+
+        </ng-container>
+
+        <ng-template #selectOne>
+          <div class="card">
+            <div class="card-body muted">Select an activity to view details.</div>
+          </div>
+        </ng-template>
+
+      </div>
+    </div>
+  </ng-template>
+
 </div>

@@ -5,47 +5,39 @@
   <button mat-menu-item><span>Add Notes</span></button>
   <button mat-menu-item><span>Upload Document</span></button>
 </mat-menu>
-
+<mat-menu #alertsMenu="matMenu" class="history-popover" yPosition="below" [overlapTrigger]="false" [hasBackdrop]="true" [backdropClass]="'cdk-overlay-dark-backdrop'" matMenuTriggerRestoreFocus="false">
+  <div class="messages-wrap" (click)="$event.stopPropagation()">
+    <app-member-alerts [showTable]="true"></app-member-alerts>
+  </div>
+</mat-menu>
 <div style="display:flex;">
   <div class="sidebar" [class.collapsed]="isCollapse">
     <!-- Expand/Collapse Button -->
-    <div class="sidebar-toolbar">
-      <!-- Left-aligned button -->
-      <button class="toggle-button" [matMenuTriggerFor]="menu" *ngIf="!isCollapse">
+    <div class="sidebar-toolbar" [class.collapsed]="isCollapse">
+      <!-- Menu (show in both expanded + collapsed) -->
+      <!--<button class="toggle-button" [matMenuTriggerFor]="menu">
         <mat-icon>menu</mat-icon>
-      </button>
-
-      <!--<button mat-icon-button class="toggle-button" *ngIf="!isCollapse">
-        <mat-icon aria-hidden="false" matBadge="{{member?.alertCount}}">notifications</mat-icon>
       </button>-->
+
+      <!-- Notifications (make it a toggle-button so it matches styling) -->
       <button mat-icon-button
+              class="toggle-button"
               aria-label="Messages"
               #messagesTrigger="matMenuTrigger"
               [matMenuTriggerFor]="alertsMenu"
-              (onclick)="openMessagesMenu(messagesTrigger)">
-        <mat-icon style="color:white;" aria-hidden="false" matBadge="{{member?.alertCount}}">notifications</mat-icon>
+              (click)="openMessagesMenu(messagesTrigger)">
+        <mat-icon aria-hidden="false" matBadge="{{member?.alertCount}}">notifications</mat-icon>
       </button>
-      <!-- Alert popover -->
-      <mat-menu #alertsMenu="matMenu"
-                class="history-popover"
-                yPosition="below"
-                [overlapTrigger]="false"
-                [hasBackdrop]="true"
-                [backdropClass]="'cdk-overlay-dark-backdrop'"
-                matMenuTriggerRestoreFocus="false">
-        <div class="messages-wrap" (click)="$event.stopPropagation()">
-          <!-- Give the panel a nice fixed size -->
-          <app-member-alerts [showTable]="true"></app-member-alerts>
-        </div>
-      </mat-menu>
-      <!-- Spacer -->
-      <div class="flex-spacer"></div>
 
-      <!-- Right-aligned buttons -->
+      <!-- Spacer only when expanded -->
+      <div class="flex-spacer" *ngIf="!isCollapse"></div>
+
+      <!-- Collapse / Expand -->
       <button class="toggle-button" (click)="toggleSidebar()">
         <mat-icon>{{ isCollapse ? 'people' : 'push_pin' }}</mat-icon>
       </button>
     </div>
+
 
 
     <div class="sidebar-content" *ngIf="!isCollapse">
@@ -148,62 +140,3 @@
     </div>
   </div>
 </div>
-
-<!--<div class="sidebar-content" *ngIf="!isCollapse && member">-->
-<!-- Header -->
-<!--<div class="member-card">
-  <div class="member-avatar">
-    {{ member.FirstName?.charAt(0) }}{{ member.LastName?.charAt(0) }}
-  </div>
-  <div>
-    <div class="member-name">{{ member.FirstName }} {{ member.LastName }}</div>
-    <div class="member-sub">
-      ID: {{ member.MemberId }} · DOB: {{ member.DOB }} ({{ getAge(member.DOB) }} Yrs), {{ member.Gender }}
-    </div>
-  </div>
-</div>-->
-<!-- Enrollment & Risk -->
-<!--<div class="section m-top-6">
-  <div class="section-title">Enrollment</div>
-  <div>
-    <span class="badge-green">
-      {{ getLevelValue(member.LevelMap, 'LOB') }} ({{ member.EndDate ? 'Inactive' : 'Active' }})
-    </span>
-  </div>
-</div>
-
-<div class="section m-top-6" *ngIf="member.RiskLevelCode">
-  <div class="section-title">Risk Level</div>
-  <div><span [class]="'pill-' + getRiskClass(member.RiskLevelCode)">{{ member.RiskLevelCode }}</span></div>
-</div>-->
-<!-- Programs -->
-<!--<div class="section m-top-6" *ngIf="member.Programs">
-  <div class="section-title">Programs</div>
-  <div>
-    <span class="chip" *ngFor="let prog of member.Programs.split(',')">
-      {{ prog.trim() }}
-    </span>
-  </div>
-</div>-->
-<!-- Contact Information -->
-<!--<div class="section m-top-6">
-  <div class="section-title">Contact Information</div>
-
-  <div class="row" *ngIf="member.MemberPhoneNumberId">
-    <mat-icon>call</mat-icon>
-    <div>{{ member.MemberPhoneNumberId }}</div>
-  </div>-->
-<!-- static address -->
-<!--<div class="row">
-    <mat-icon>location_on</mat-icon>
-    <div>12345 Example Way<br />San Francisco, CA 17050</div>
-  </div>
-</div>-->
-<!-- Activity/Alerts -->
-<!--<div class="section m-top-6">
-    <div class="section-title">Stats</div>
-    <div class="team-row">Authorizations: {{ member.AuthCount }}</div>
-    <div class="team-row">Alerts: {{ member.AlertCount }}</div>
-    <div class="team-row">Care Plans: {{ member.CarePlanCount }}</div>
-  </div>
-</div>-->

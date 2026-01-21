@@ -1,4 +1,5 @@
 import { Component, OnDestroy } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
 import { forkJoin, of, Subject } from 'rxjs';
 import { catchError, finalize, takeUntil } from 'rxjs/operators';
@@ -217,8 +218,20 @@ export class AuthdecisionComponent implements OnDestroy {
     private fb: FormBuilder,
     private api: AuthDetailApiService,
     private dsLookup: DatasourceLookupService,
-    private toastSvc: WizardToastService
+    private toastSvc: WizardToastService,
+    private router: Router,
+    private route: ActivatedRoute
   ) { }
+  public openMdReview(): void {
+    // Make MD Review visible in the stepper (via query param) and navigate to MD Review step.
+    this.router.navigate(['../mdReview'], {
+      relativeTo: this.route,
+      queryParams: { showMdReview: 1 },
+      queryParamsHandling: 'merge'
+    });
+  }
+
+
 
   ngOnDestroy(): void {
     this.tabDestroy$.next();

@@ -522,3 +522,23 @@ mat-tab-group {
 .m-top-6 {
   margin-top: 6px;
 }
+
+
+/* When sidebar is collapsed, stack toolbar icons vertically */
+.sidebar-toolbar.collapsed {
+  flex-direction: column;
+  justify-content: flex-start;
+  height: auto; /* allow multiple icon rows */
+  padding: 6px 0;
+  gap: 6px;
+}
+
+  .sidebar-toolbar.collapsed .flex-spacer {
+    display: none;
+  }
+
+  /* Make stacked icon buttons uniform */
+  .sidebar-toolbar.collapsed .toggle-button {
+    width: 44px;
+    height: 44px;
+  }

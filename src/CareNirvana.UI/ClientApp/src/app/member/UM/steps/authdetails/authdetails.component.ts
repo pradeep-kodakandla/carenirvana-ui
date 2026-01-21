@@ -11,6 +11,9 @@ import { AuthDetailApiService } from 'src/app/service/authdetailapi.service';
 import { AuthenticateService } from 'src/app/service/authentication.service';
 import { WorkbasketService } from 'src/app/service/workbasket.service';
 
+import { MatDialog } from '@angular/material/dialog';
+import { ValidationErrorDialogComponent } from 'src/app/member/validation-error-dialog/validation-error-dialog.component';
+
 import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
 
 /** ---- Enrollment interfaces ---- */
@@ -310,6 +313,11 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
   // ---------- Save ----------
   isSaving = false;
 
+
+  // ---------- Template validation (same as AuthorizationComponent) ----------
+  validationRules: any[] = [];
+  sectionValidationMessages: { [sectionTitle: string]: string[] } = {};
+
   // ---------- Hide sections (other steps) ----------
   private readonly hiddenSectionTitles = new Set([
     'decision',
@@ -332,6 +340,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
     private userService: AuthenticateService,
     private authNumberService: AuthNumberService,
     private wbService: WorkbasketService,
+    private dialog: MatDialog,
   ) { }
 
   ngOnInit(): void {
@@ -409,6 +418,8 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
 
         this.templateId = tplId > 0 ? tplId : null;
         this.clearTemplate(true);
+        this.validationRules = [];
+        this.sectionValidationMessages = {};
 
         if (this.templateId) {
           this.loadTemplateJson(this.templateId);
@@ -620,6 +631,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
           if (this.pendingAuth) {
             this.patchAuthorizationToForm(this.pendingAuth);
           }
+
+          // Load validation rules for this template (same behavior as AuthorizationComponent)
+          this.getValidationRules();
 
           this.setupVisibilityWatcher();
         },
@@ -1731,6 +1745,28 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
     this.form.markAllAsTouched();
     if (this.form.invalid) return;
 
+    // Template validation (rules from getTemplateValidation), displayed per section like AuthorizationComponent
+    const { failedErrors, failedWarnings, allMessages } = this.runTemplateValidation();
+
+    if (allMessages.length > 0) {
+      const allowContinue = failedErrors.length === 0;
+
+      const dialogRef = this.dialog.open(ValidationErrorDialogComponent, {
+        width: '600px',
+        data: {
+          title: 'Validation Results',
+          messages: allMessages,
+          allowContinue
+        }
+      });
+
+      const result = await firstValueFrom(dialogRef.afterClosed());
+      if (!(result === 'continue' && allowContinue)) {
+        this.scrollToFirstValidationSection();
+        return;
+      }
+    }
+
     const userId = Number(sessionStorage.getItem('loggedInUserid') || 0);
 
     const authClassId = Number(this.unwrapValue(this.form.get('authClassId')?.value) || 0);
@@ -1842,6 +1878,320 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
     }
   }
 
+
+  // ============================================================
+  // Template validation (same concept as AuthorizationComponent)
+  // ============================================================
+
+  /** DOM id used for scrolling to a section when validation fails */
+  sectionDomId(sec: RenderSection): string {
+    return `section-${this.safeKey(sec?.title ?? '')}`;
+  }
+
+  private scrollToFirstValidationSection(): void {
+    const titles = Object.keys(this.sectionValidationMessages || {}).filter(t => (this.sectionValidationMessages[t]?.length ?? 0) > 0);
+    if (!titles.length) return;
+
+    const firstId = `section-${this.safeKey(titles[0])}`;
+    const el = document.getElementById(firstId);
+    if (!el) return;
+
+    setTimeout(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 200);
+  }
+
+  // ============================================================
+  // Template Validation: fetch + parse
+  // ============================================================
+
+  private parseValidationJson(raw: any): any[] {
+    if (!raw) return [];
+
+    // already array
+    if (Array.isArray(raw)) return raw;
+
+    // string -> parse (handles possible double-stringify)
+    if (typeof raw === 'string') {
+      const s = raw.trim();
+      if (!s || s === 'null' || s === 'undefined') return [];
+
+      const first = JSON.parse(s);
+      if (Array.isArray(first)) return first;
+
+      if (typeof first === 'string') {
+        const second = JSON.parse(first);
+        return Array.isArray(second) ? second : [];
+      }
+      return [];
+    }
+
+    return [];
+  }
+
+  getValidationRules(): void {
+    if (!this.templateId) {
+      this.validationRules = [];
+      return;
+    }
+
+    console.log('Fetching template validation rules for templateId:', this.templateId);
+
+    this.authService.getTemplateValidation(this.templateId).subscribe({
+      next: (response: any) => {
+        try {
+          console.log('Received template validation response:', response);
+
+          // Your payload uses `validationJson` (lowercase v).
+          // Keep fallbacks for other envelopes/casing.
+          const raw =
+            response?.validationJson ??
+            response?.ValidationJson ??
+            response?.data?.validationJson ??
+            response?.data?.ValidationJson ??
+            response?.result?.validationJson ??
+            response?.result?.ValidationJson ??
+            null;
+
+          this.validationRules = this.parseValidationJson(raw);
+
+          console.log('Loaded validation rules:', this.validationRules);
+        } catch (e) {
+          console.error('Failed to parse validationJson:', e);
+          this.validationRules = [];
+        }
+      },
+      error: (err: any) => {
+        console.error('Error fetching validation rules:', err);
+        this.validationRules = [];
+      }
+    });
+  }
+
+
+  // ============================================================
+  // Template Validation: run + display per section
+  // ============================================================
+
+  private runTemplateValidation(): {
+    failedErrors: any[];
+    failedWarnings: any[];
+    allMessages: Array<{ msg: string; type: 'error' | 'warning' }>;
+  } {
+    this.sectionValidationMessages = {};
+
+    const failedErrors: any[] = [];
+    const failedWarnings: any[] = [];
+    const allMessages: Array<{ msg: string; type: 'error' | 'warning' }> = [];
+
+    const rules = (this.validationRules || []).filter(r => r?.enabled);
+    if (!rules.length) return { failedErrors, failedWarnings, allMessages };
+
+    // Build flat values using your existing renderSections + form
+    const flatValues: any = {};
+    const allFields = this.collectAllRenderFields(this.renderSections);
+
+    for (const f of allFields) {
+      const rawId = String((f as any)?._rawId ?? '').trim();
+      if (!rawId) continue;
+
+      const ctrl = this.form?.get((f as any).controlName);
+      if (!ctrl) continue;
+
+      const v = this.unwrapValue(ctrl.value);
+      if (flatValues[rawId] === undefined || flatValues[rawId] === null || flatValues[rawId] === '') {
+        flatValues[rawId] = v;
+      }
+    }
+
+    // Map section -> set of raw field ids (for section-level message display)
+    const sectionIdSets = (this.renderSections || []).map((sec: any) => {
+      const ids = new Set<string>();
+      const fields = this.collectAllRenderFields([sec]);
+      for (const f of fields) {
+        const rawId = String((f as any)?._rawId ?? '').trim();
+        if (rawId) ids.add(rawId);
+      }
+      return { sec, ids };
+    });
+
+    for (const rule of rules) {
+      const ok = this.evaluateExpression(rule, flatValues);
+
+      if (ok) continue;
+
+      const isError = !!rule.isError;
+      const message = String(rule?.errorMessage ?? 'Validation failed.');
+
+      // Attach message to every section that contains at least one dependent field
+      const dependsOn: string[] = Array.isArray(rule?.dependsOn) ? rule.dependsOn : [];
+      for (const { sec, ids } of sectionIdSets) {
+        const hit = dependsOn.some(dep => ids.has(String(dep)));
+        if (!hit) continue;
+
+        const key = sec.title;
+        if (!this.sectionValidationMessages[key]) this.sectionValidationMessages[key] = [];
+        this.sectionValidationMessages[key].push(message);
+      }
+
+      if (isError) failedErrors.push(rule);
+      else failedWarnings.push(rule);
+
+      allMessages.push({
+        msg: (isError ? `❌ ${message}` : `⚠️ ${message}`),
+        type: isError ? 'error' : 'warning'
+      });
+    }
+
+    return { failedErrors, failedWarnings, allMessages };
+  }
+
+
+  // ============================================================
+  // Expression Evaluator (AM/PM dates + IF syntax support)
+  // ============================================================
+
+  private parseUsDateTimeToDate(val: string): Date | null {
+    // Matches: "01/20/2026 09:10:21 PM" or without seconds
+    const m = val.trim().match(
+      /^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)$/i
+    );
+    if (!m) return null;
+
+    const month = Number(m[1]);
+    const day = Number(m[2]);
+    const year = Number(m[3]);
+    let hour = Number(m[4]);
+    const minute = Number(m[5]);
+    const second = m[6] ? Number(m[6]) : 0;
+    const ampm = (m[7] || '').toUpperCase();
+
+    if (ampm === 'PM' && hour < 12) hour += 12;
+    if (ampm === 'AM' && hour === 12) hour = 0;
+
+    const d = new Date(year, month - 1, day, hour, minute, second, 0);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  private normalizeForExpression(val: any): any {
+    if (val === undefined || val === null || val === '') return null;
+
+    if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+
+    if (typeof val === 'number' || typeof val === 'boolean') return val;
+
+    if (typeof val === 'string') {
+      const s = val.trim();
+      if (!s) return null;
+
+      // US datetime with AM/PM (your UI format)
+      const us = this.parseUsDateTimeToDate(s);
+      if (us) return us;
+
+      // ISO or other parseable string
+      const t = Date.parse(s);
+      if (!isNaN(t)) return new Date(t);
+
+      // numeric string
+      if (/^-?\d+(\.\d+)?$/.test(s)) return Number(s);
+
+      return s;
+    }
+
+    return val;
+  }
+
+  private evaluateExpression(rule: any, values: any): boolean {
+    let expression: string = String(rule?.expression ?? '').trim();
+    const dependsOn: string[] = Array.isArray(rule?.dependsOn) ? rule.dependsOn : [];
+
+    if (!expression) return true;
+
+    // Handle special "IF ..." syntax from your rules:
+    // "IF condition" means: rule FAILS when condition is true.
+    // So we evaluate `condition` and then invert.
+    const isIf = /^IF\s+/i.test(expression);
+    if (isIf) expression = expression.replace(/^IF\s+/i, '').trim();
+
+    try {
+      const context: any = {};
+      const localDependsOn: string[] = [...dependsOn];
+
+      // Support `now` and `createdDateTime` if expression mentions them
+      if (expression.includes('now') && !localDependsOn.includes('now')) localDependsOn.push('now');
+      if (expression.includes('createdDateTime') && !localDependsOn.includes('createdDateTime')) {
+        localDependsOn.push('createdDateTime');
+      }
+
+      // Build context values
+      for (const key of localDependsOn) {
+        let raw: any = values?.[key];
+
+        // fallback: try pulling directly from form if not found in flat values
+        if ((raw === undefined || raw === null || raw === '') && key) {
+          raw = this.getFieldValueByName(key);
+        }
+
+        // dynamic values
+        if (key === 'now') raw = new Date();
+
+        context[key] = this.normalizeForExpression(raw);
+      }
+
+      // Convert Date objects in context to epoch ms for consistent comparisons
+      // (JS compares Date objects okay, but numeric ms avoids surprises)
+      const paramNames: string[] = [];
+      const paramValues: any[] = [];
+
+      for (const k of localDependsOn) {
+        paramNames.push(k);
+        const v = context[k];
+        if (v instanceof Date) paramValues.push(v.getTime());
+        else paramValues.push(v);
+      }
+
+      // Also rewrite "fieldName" Date comparisons to work with ms params
+      // We already pass ms for Date values, so expression can remain the same.
+
+      // eslint-disable-next-line no-new-func
+      const fn = new Function(...paramNames, `return (${expression});`);
+      const result = !!fn(...paramValues);
+
+      // IF-rules fail when condition is true
+      return isIf ? !result : result;
+    } catch (e) {
+      console.error('Error evaluating expression:', e, rule);
+      // Safer default: treat evaluation failure as PASS? (prevents blocking saves due to bad rule syntax)
+      // If you prefer strict: return false;
+      return true;
+    }
+  }
+
+
+  // ============================================================
+  // Helper (fixes TS2339 when referenced elsewhere)
+  // ============================================================
+
+  private getFieldValueByName(fieldId: string): any {
+    if (!this.form || !fieldId) return null;
+
+    const direct = this.form.get(fieldId);
+    if (direct) return this.unwrapValue(direct.value);
+
+    // If you have a safe control name helper in the component, use it.
+    const safeName = (this as any).safeControlName ? (this as any).safeControlName(fieldId) : fieldId;
+    const safe = this.form.get(safeName);
+    if (safe) return this.unwrapValue(safe.value);
+
+    // If you keep any mapping of rawId->controlName
+    const mapped = (this as any).fieldIdToControlName?.get?.(fieldId);
+    if (mapped) {
+      const mappedCtrl = this.form.get(mapped);
+      if (mappedCtrl) return this.unwrapValue(mappedCtrl.value);
+    }
+
+    return null;
+  }
 
 
   // ============================================================
@@ -2270,5 +2620,91 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
 
     return Array.from(new Set(out));
   }
+
+
+  private isUsDateTimeString(v: any): v is string {
+    return typeof v === 'string'
+      && /^\d{2}\/\d{2}\/\d{4}\s+\d{1,2}:\d{2}(:\d{2})?\s*(AM|PM)$/i.test(v.trim());
+  }
+
+  // Parses "MM/DD/YYYY hh:mm[:ss] AM/PM" into epoch ms
+  private parseUsDateTimeToMs(s: string): number | null {
+    const str = s.trim();
+    const m = str.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)$/i);
+    if (!m) return null;
+
+    let month = Number(m[1]);
+    let day = Number(m[2]);
+    let year = Number(m[3]);
+    let hour = Number(m[4]);
+    const minute = Number(m[5]);
+    const second = m[6] ? Number(m[6]) : 0;
+    const ampm = m[7].toUpperCase();
+
+    if (ampm === 'PM' && hour < 12) hour += 12;
+    if (ampm === 'AM' && hour === 12) hour = 0;
+
+    // local time
+    const d = new Date(year, month - 1, day, hour, minute, second, 0);
+    return isNaN(d.getTime()) ? null : d.getTime();
+  }
+
+  private normalizeValue(v: any): any {
+    if (v == null || v === '') return null;
+
+    // Date object
+    if (v instanceof Date) return isNaN(v.getTime()) ? null : v.getTime();
+
+    // ISO string -> Date
+    if (typeof v === 'string') {
+      const t = v.trim();
+
+      // US datetime like your UI
+      if (this.isUsDateTimeString(t)) {
+        const ms = this.parseUsDateTimeToMs(t);
+        return ms ?? null;
+      }
+
+      // ISO-like
+      const isoMs = Date.parse(t);
+      if (!isNaN(isoMs)) return isoMs;
+
+      // numeric string
+      if (/^-?\d+(\.\d+)?$/.test(t)) return Number(t);
+
+      return t; // keep as string
+    }
+
+    // number / boolean
+    return v;
+  }
+
+  private evaluateRuleExpression(expression: string, ctx: Record<string, any>): boolean {
+    if (!expression) return true;
+
+    // Special syntax: "IF <cond>" means "invalid when cond is true"
+    // So the rule PASSES when cond is false.
+    const trimmed = expression.trim();
+    const isIf = /^IF\s+/i.test(trimmed);
+    const exprToEval = isIf ? trimmed.replace(/^IF\s+/i, '').trim() : trimmed;
+
+    // Build a function with ctx keys as params
+    const keys = Object.keys(ctx);
+    const vals = keys.map(k => ctx[k]);
+
+    let result: any;
+    try {
+      // eslint-disable-next-line no-new-func
+      const fn = new Function(...keys, `return (${exprToEval});`);
+      result = fn(...vals);
+    } catch {
+      // If expression can't be evaluated, treat as failed (safer)
+      return false;
+    }
+
+    const ok = !!result;
+    return isIf ? !ok : ok;
+  }
+
 
 }

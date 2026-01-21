@@ -1,12 +1,10 @@
 import { AfterViewInit, Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
-import { filter, Subscription } from 'rxjs';
+import { filter, Subscription, take } from 'rxjs';
 import { WizardToastService, WizardToastMessage } from './wizard-toast.service';
-
-// NOTE: no global scroll overrides needed (wizard owns its own scrollbar like Case Wizard)
-
 import { AuthDetailApiService } from 'src/app/service/authdetailapi.service';
 import { AuthDetailRow } from 'src/app/member/UM/services/authdetail';
+import { AuthService } from 'src/app/service/auth.service';
 
 export interface AuthWizardStep {
   id: string;
@@ -44,6 +42,9 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
 
   authNumber: string = '0';
   isNewAuth = true;
+
+  /** Hide MD Review step by default; enable when user opts-in or when an existing MD Review is detected */
+  showMdReview = false;
 
   // ---------------------------
   // Header bar (above stepper)
@@ -90,7 +91,8 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     private router: Router,
     private route: ActivatedRoute,
     private authApi: AuthDetailApiService,
-    private toastSvc: WizardToastService
+    private toastSvc: WizardToastService,
+    private activityService: AuthService
   ) { }
 
   ngOnInit(): void {
@@ -104,6 +106,9 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
 
         // treat 0 as "new"
         this.isNewAuth = (this.authNumber === '0' || this.authNumber.trim() === '');
+
+        // reset per-auth; MD Review becomes visible either when user opts-in or when an existing MD Review is detected
+        this.showMdReview = this.shouldShowMdReviewFromRoute();
 
         // base context every time
         this.ctx = {
@@ -147,6 +152,7 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
       this.router.events
         .pipe(filter(e => e instanceof NavigationEnd))
         .subscribe(() => {
+          this.enableMdReviewStepIfNeeded(this.shouldShowMdReviewFromRoute());
           this.syncActiveStepFromRoute();
           queueMicrotask(() => this.pushContextIntoCurrentStep());
         })
@@ -285,6 +291,27 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     if (due != null) this.header.dueDate = this.formatDate(due);
   }
 
+  private checkMdReviewActivitiesAndEnableStep(authDetailId: number | null): void {
+    if (!authDetailId) return;
+
+    const getFn = (this.activityService as any)?.getMdReviewActivities;
+    if (typeof getFn !== 'function') return;
+
+    const obs = getFn.call(this.activityService, null, authDetailId);
+    if (!obs?.pipe) return;
+
+    obs.pipe(take(1)).subscribe({
+      next: (rows: any[]) => {
+        if ((rows?.length ?? 0) > 0) {
+          this.enableMdReviewStepIfNeeded(true);
+        }
+      },
+      error: () => {
+        // non-blocking: if this fails we just fall back to existing behavior
+      }
+    });
+  }
+
   private formatDate(v: any): string {
     if (v == null || v === '') return '';
     const d = v instanceof Date ? v : new Date(v);
@@ -390,6 +417,13 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
         // Populate header by default when opening an existing auth
         this.refreshHeaderFromAuthRow(row, dataObj);
 
+        // If this auth already has an MD Review, make the MD Review step visible.
+        this.enableMdReviewStepIfNeeded(this.detectExistingMdReview(row, dataObj));
+
+        // Also: if MD Review activities already exist, show the stepper by default.
+        const authDetailId = this.toNum(row?.authDetailId);
+        this.checkMdReviewActivitiesAndEnableStep(authDetailId);
+
         // authTemplateId is not in AuthDetailRow interface today.
         // Try server-provided authTemplateId first; otherwise derive from authClassId (common mapping).
         const authClassId = this.toNum(row?.authClassId ?? dataObj?.authClassId);
@@ -431,6 +465,45 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     return Number.isFinite(n) && n > 0 ? n : null;
   }
 
+
+  private shouldShowMdReviewFromRoute(): boolean {
+    const childPath = this.route.firstChild?.snapshot?.url?.[0]?.path;
+    if (childPath === 'mdReview') return true;
+
+    const qp = this.route.snapshot.queryParamMap.get('showMdReview');
+    return qp === '1' || qp === 'true';
+  }
+
+  /** Best-effort detection (based on server dataJson / row shape) that an MD Review already exists for this auth. */
+  private detectExistingMdReview(row: any, dataObj: any): boolean {
+    // If the API ever exposes a dedicated id/flag on the row, honor it.
+    if (row && (row.mdReviewId || row.mdReviewDetailId || row.medicalDirectorReviewId || row.hasMdReview)) return true;
+
+    if (!dataObj || typeof dataObj !== 'object') return false;
+
+    // Look for a likely MD Review payload in dataJson (case-insensitive).
+    const keys = Object.keys(dataObj);
+    const hitKey = keys.find(k => {
+      const lk = k.toLowerCase();
+      return lk.includes('mdreview') || lk.includes('md_review') || lk.includes('medicaldirectorreview') || lk.includes('medical_director_review');
+    });
+
+    if (!hitKey) return false;
+
+    const val = (dataObj as any)[hitKey];
+    if (val == null) return false;
+    if (typeof val === 'object') return Object.keys(val).length > 0;
+    return true;
+  }
+
+  private enableMdReviewStepIfNeeded(enable: boolean): void {
+    if (!enable) return;
+    if (this.showMdReview) return;
+
+    this.showMdReview = true;
+    this.buildSteps();
+  }
+
   // ---------------------------
   // Steps list / routing helpers
   // ---------------------------
@@ -438,7 +511,7 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     const base: AuthWizardStep[] = [
       { id: 'details', label: 'Auth Details', route: 'details' },
       { id: 'decision', label: 'Decision', route: 'decision' },
-      { id: 'mdReview', label: 'MD Review', route: 'mdReview' },
+      ...(this.showMdReview ? [{ id: 'mdReview', label: 'MD Review', route: 'mdReview' } as AuthWizardStep] : []),
       { id: 'activities', label: 'Activities', route: 'activities' },
       { id: 'notes', label: 'Notes', route: 'notes' },
       { id: 'documents', label: 'Documents', route: 'documents' }

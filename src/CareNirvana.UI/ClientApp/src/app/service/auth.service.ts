@@ -81,7 +81,6 @@ export interface ClaimLookupRow {
   paid?: number | null;
 }
 
-
 @Injectable({
   providedIn: 'root'
 })

@@ -78,13 +78,20 @@
   <ng-container *ngIf="(templateId ?? 0) > 0">
 
     <ng-container *ngFor="let sec of renderSections">
-      <div class="section-card">
+      <div class="section-card" [attr.id]="sectionDomId(sec)">
         <div class="section-header" (click)="toggleSection(sec)">
           <span class="section-acc-icon" [class.open]="sec.expanded">▸</span>
           <div class="section-title">{{ sec.title }}</div>
         </div>
 
         <ng-container *ngIf="sec.expanded">
+
+          <div *ngIf="sectionValidationMessages[sec.title]?.length" class="validation-messages">
+            <div *ngFor="let msg of sectionValidationMessages[sec.title]" class="text-danger" style="padding-left:40px;">
+              {{ msg }}
+            </div>
+          </div>
+
 
           <!-- =========================
                SECTION FIELDS (NON-REPEAT)
