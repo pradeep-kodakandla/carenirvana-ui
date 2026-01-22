@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
+import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges, Output, EventEmitter } from '@angular/core';
 import { AbstractControl, FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
 import { forkJoin, Observable, of, Subject, throwError } from 'rxjs';
 import { catchError, finalize, map, switchMap, takeUntil, tap } from 'rxjs/operators';
@@ -11,6 +11,13 @@ import {
 } from 'src/app/service/casedetail.service';
 import { DatasourceLookupService } from 'src/app/service/crud.service';
 import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
+
+type SortMode =
+  | 'created_desc'
+  | 'created_asc'
+  | 'type_asc'
+  | 'type_desc'
+  | 'alerts_first';
 
 type NotesContext = { caseHeaderId: number; caseTemplateId: number; levelId: number };
 
@@ -42,7 +49,18 @@ export class CasenotesComponent implements OnInit, OnChanges, OnDestroy, CaseUns
 
   // optional: if caller only has caseNumber
   @Input() caseNumber?: string;
+  @Input() isAddOnly = false;     // show only editor pane + "view all activities"
+  @Input() singlePane = false;    // when true: list-only until select/add, then editor-only
 
+  @Output() viewAll = new EventEmitter<void>(); // parent dashboard can navigate/open full activity view
+
+  // ✅ Search / sort / selection
+  searchTerm = '';
+  showSort = false;
+  sortMode: SortMode = 'created_desc';
+
+  filteredNotes: any[] = [];
+  selectedNoteId: any = null;
   notes: CaseNoteDto[] = [];
   template?: CaseNotesTemplateResponse;
 
@@ -78,11 +96,13 @@ export class CasenotesComponent implements OnInit, OnChanges, OnDestroy, CaseUns
 
   ngOnInit(): void {
     this.reload();
+    this.refreshList();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['caseHeaderId'] || changes['caseTemplateId'] || changes['levelId'] || changes['caseNumber']) {
       this.reload();
+      this.refreshList();
     }
   }
 
@@ -178,7 +198,7 @@ export class CasenotesComponent implements OnInit, OnChanges, OnDestroy, CaseUns
       )
       .subscribe({
         next: () => {
-          this.closeEditor();
+          this.clearSelection();
           this.reloadNotesOnly();
         }
       });
@@ -277,6 +297,7 @@ export class CasenotesComponent implements OnInit, OnChanges, OnDestroy, CaseUns
     this.errorMsg = '';
     this.resolved = undefined;
     this.notes = [];
+    this.filteredNotes = [];
     this.template = undefined;
     this.dropdownOptions = {};
     this.noteEditorFields = [];
@@ -305,9 +326,10 @@ export class CasenotesComponent implements OnInit, OnChanges, OnDestroy, CaseUns
           });
         }),
         tap((res) => {
-          this.notes = res.notes?.notes ?? [];
+          this.notes = (res.notes?.notes ?? res.notes ?? []) as any[];
           this.template = res.template;
           this.applyNotesTemplate(this.template?.section ?? (this.template as any)?.Section);
+          this.refreshList();
         }),
         finalize(() => (this.loading = false)),
         catchError((err) => {
@@ -333,7 +355,10 @@ export class CasenotesComponent implements OnInit, OnChanges, OnDestroy, CaseUns
         })
       )
       .subscribe({
-        next: (res: any) => (this.notes = res?.notes ?? [])
+        next: (res: any) => {
+          this.notes = (res?.notes?.notes ?? res?.notes ?? []) as any[];
+          this.refreshList();
+        }
       });
   }
 
@@ -641,4 +666,93 @@ export class CasenotesComponent implements OnInit, OnChanges, OnDestroy, CaseUns
     const match = opts.find(o => String((o as any).value) === String(rawValue));
     return match ? String((match as any).label ?? (match as any).text ?? (match as any).value ?? '') : String(rawValue ?? '');
   }
+
+
+  refreshList(): void {
+    const list = Array.isArray(this.notes) ? [...this.notes] : [];
+
+    const term = (this.searchTerm || '').trim().toLowerCase();
+    let out = term
+      ? list.filter(n => {
+        const text = (this.getNoteText?.(n) ?? '').toString().toLowerCase();
+        const type = (this.getNoteTypeLabel?.(n) ?? '').toString().toLowerCase();
+        const level = (this.getNoteLevelLabel?.(n) ?? '').toString().toLowerCase();
+        return text.includes(term) || type.includes(term) || level.includes(term);
+      })
+      : list;
+
+    const createdVal = (n: any) => {
+      const d = this.getCreatedOn?.(n);
+      const t = d ? new Date(d).getTime() : 0;
+      return Number.isFinite(t) ? t : 0;
+    };
+
+    switch (this.sortMode) {
+      case 'created_asc':
+        out.sort((a, b) => createdVal(a) - createdVal(b));
+        break;
+      case 'created_desc':
+        out.sort((a, b) => createdVal(b) - createdVal(a));
+        break;
+      case 'type_asc':
+        out.sort((a, b) => (this.getNoteTypeLabel(a) || '').localeCompare(this.getNoteTypeLabel(b) || ''));
+        break;
+      case 'type_desc':
+        out.sort((a, b) => (this.getNoteTypeLabel(b) || '').localeCompare(this.getNoteTypeLabel(a) || ''));
+        break;
+      case 'alerts_first':
+        out.sort((a, b) => (this.isAlert(b) ? 1 : 0) - (this.isAlert(a) ? 1 : 0));
+        break;
+    }
+
+    this.filteredNotes = out;
+  }
+
+  applySearch(): void {
+    this.refreshList();
+  }
+
+  applySort(mode: SortMode): void {
+    this.sortMode = mode;
+    this.refreshList();
+  }
+
+  emitViewAll(): void {
+    this.viewAll.emit();
+  }
+
+  getAlertCount(): number {
+    return (this.notes || []).filter((n: any) => this.isAlert(n)).length;
+  }
+
+  onSelect(n: any): void {
+    // preview-only selection (doesn't force editor open)
+    this.selectedNoteId = this.getNoteId(n);
+    if (this.showEditor) {
+      this.closeEditor(); // uses your existing logic
+    }
+  }
+
+  getSelectedNote(): any | null {
+    if (!this.selectedNoteId) return null;
+    return (this.notes || []).find((n: any) => this.getNoteId(n) === this.selectedNoteId) ?? null;
+  }
+
+  clearSelection(): void {
+    this.selectedNoteId = null;
+    if (this.showEditor) this.closeEditor(); // uses your existing logic
+  }
+
+  /** Wrappers: keep your existing functionality untouched */
+  editNote(n: any): void {
+    this.selectedNoteId = this.getNoteId(n);
+    this.onEdit(n); // your existing method
+  }
+
+  deleteNote(n: any): void {
+    const id = this.getNoteId(n);
+    this.onDelete(n); // your existing method
+    if (this.selectedNoteId === id) this.selectedNoteId = null;
+  }
+
 }

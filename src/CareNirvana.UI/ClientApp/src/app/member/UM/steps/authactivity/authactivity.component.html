@@ -1,6 +1,6 @@
-<div class="activity-container">
+<div class="activity-container" [class.activity-container--single-pane]="singlePane">
   <!-- Left Side - Timeline -->
-  <div class="activity-left">
+  <div class="activity-left" *ngIf="!isAddOnly && (!singlePane || !isEditing)">
     <!-- Top Search + Action Bar -->
     <div class="left-controls">
       <input type="text" placeholder="🔍 Search..." [(ngModel)]="searchTerm" (input)="applySearch()" class="search-input" />
@@ -23,7 +23,7 @@
     </div>
 
     <div cdkDropList (cdkDropListDropped)="dropActivity($event)" class="timeline-list">
-      <div *ngFor="let activity of filteredActivities; let i = index" cdkDrag class="timeline-item" [ngClass]="{'selected': selectedIndex === i}">
+      <div *ngFor="let activity of filteredActivities; let i = index" class="timeline-item" [ngClass]="{'selected': selectedIndex === i}">
         <div class="timeline-dot" [ngClass]="{'completed': activity.statusId === 2}"></div>
         <div class="timeline-content" (click)="selectActivity(i)">
           <div class="timeline-header">
@@ -62,7 +62,17 @@
   </div>
 
   <!-- Right Side - Form or Summary -->
-  <div class="activity-right">
+  <div class="activity-right" *ngIf="isAddOnly || !singlePane || isEditing">
+    <!-- Embedded header (add-only mode) -->
+    <div class="embed-activity-header" *ngIf="isAddOnly">
+      <div class="embed-actions">
+        <button type="button"
+                class="btn btn-sm btn-link"
+                (click)="emitViewAll()">
+          View all activities ({{ activities?.length || 0 }})
+        </button>
+      </div>
+    </div>
     <ng-container *ngIf="isEditing; else aiSummary">
       <div class="auth-form" [attr.data-form-key]="formKey">
         <form [formGroup]="activityForm">

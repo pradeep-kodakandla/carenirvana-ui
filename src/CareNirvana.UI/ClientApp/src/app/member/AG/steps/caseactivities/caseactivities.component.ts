@@ -1,5 +1,5 @@
 // src/app/member/AG/steps/caseactivities/caseactivities.component.ts
-import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
+import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges, Output, EventEmitter } from '@angular/core';
 import { AbstractControl, FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
 import { forkJoin, Observable, of, Subject, throwError } from 'rxjs';
 import { catchError, finalize, map, switchMap, takeUntil, tap } from 'rxjs/operators';
@@ -57,6 +57,9 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
 
   @Input() caseHeaderId?: number = 27;
   @Input() caseTemplateId?: number = 2;
+  @Input() mode: 'full' | 'embed' = 'full';          // full = existing behavior, embed = dashboard add-only
+  @Input() singlePaneOnEdit = false;                  // optional: match AuthActivity single-pane while editing
+  @Output() viewAll = new EventEmitter<void>();      // parent can navigate to the full Case Activities page/section
 
   // If your wizard only knows levelId, we can fallback:
   @Input() levelId: number = 1;
@@ -80,6 +83,9 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
   showEditor = false;
   editing?: CaseActivityRowDto;
 
+  // selection highlight (AuthActivity-like)
+  selectedActivityId: number | null = null;
+  selectedIndex: number | null = null;
   form: FormGroup = this.fb.group({});
 
   activityEditorFields: AnyField[] = [];
@@ -162,6 +168,7 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
       return;
     }
     this.editing = undefined;
+    this.selectedActivityId = null;
     this.showEditor = true;
 
     this.form.reset({}, { emitEvent: false });
@@ -178,8 +185,34 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
     this.form.markAsPristine();
   }
 
+  /**
+   * Click a card to select + open it for edit (matches AuthActivity UX).
+   * Keeps existing edit logic intact.
+   */
+  selectActivity(a: CaseActivityRowDto): void {
+    if (!a) return;
+    this.selectedActivityId = a.caseActivityId ?? null;
+    this.onEdit(a);
+  }
+
+  /** Activity Summary counts (shown in the right-side summary panel) */
+  getCompletedCount(): number {
+    return (this.activities || []).filter(a => a.requestStatus === 'ACCEPTED').length;
+  }
+
+  getPendingCount(): number {
+    return (this.activities || []).filter(a => a.requestStatus !== 'ACCEPTED').length;
+  }
+
+  getPriorityCount(label: 'High' | 'Medium' | 'Low'): number {
+    const l = (label || '').toLowerCase();
+    return (this.activities || []).filter(a => (this.getPriorityLabel(a) || '').toLowerCase() === l).length;
+  }
+
+
   onEdit(a: CaseActivityRowDto): void {
     this.editing = a;
+    this.selectedActivityId = a.caseActivityId ?? null;
     this.showEditor = true;
     this.errorMsg = '';
 
@@ -1105,6 +1138,15 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
         this.form.get(wgName)?.setValue(null, { emitEvent: false });  // ✅ wgName is string
       }
     });
+  }
+
+  getPriorityClassFromLabel(label: string): string {
+    switch ((label || '').toLowerCase()) {
+      case 'high': return 'priority-high';
+      case 'medium': return 'priority-medium';
+      case 'low': return 'priority-low';
+      default: return 'priority-default';
+    }
   }
 
 }

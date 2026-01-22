@@ -1,70 +1,150 @@
 <!-- src/app/member/AG/steps/caseactivities/caseactivities.component.html -->
 
-<div class="d-flex align-items-center justify-content-between mb-2">
-  <div>
-    <div class="h6 mb-0">Case Activities</div>
-    <small class="text-muted" *ngIf="resolved">Level: {{ resolved.caseLevelId }}</small>
-  </div>
+<div class="activity-container" [class.activity-container--single-pane]="mode === 'embed'">
 
-  <button class="btn btn-sm btn-primary" (click)="onAddClick()" [disabled]="loading || saving">
-    + Add Activity
-  </button>
-</div>
+  <!-- LEFT: List (hidden in embed mode, and hidden while editing in single-pane style) -->
+  <div class="activity-left" *ngIf="mode !== 'embed' && (!singlePaneOnEdit || !showEditor)">
 
-<div class="alert alert-danger py-2" *ngIf="errorMsg">
-  {{ errorMsg }}
-</div>
+    <!-- Header bar (matches AuthActivity left header vibe) -->
+    <div class="left-controls">
+      <div class="left-title">
+        <div class="h6 mb-0">Case Activities</div>
+        <small class="text-muted" *ngIf="resolved">Level: {{ resolved.caseLevelId }}</small>
+      </div>
 
-<div *ngIf="loading" class="py-3">
-  Loading...
-</div>
-
-<!-- Editor -->
-<div class="section-card" *ngIf="showEditor">
-  <div class="section-header">
-    <div class="section-title">{{ editing ? 'Edit Activity' : 'Add Activity' }}</div>
-    <div class="ms-auto">
-      <button type="button" class="btn btn-sm btn-outline-secondary" (click)="closeEditor()">Close</button>
+      <div class="right-actions">
+        <button class="add-btn" (click)="onAddClick()" [disabled]="loading || saving">
+          ➕ Add Activity
+        </button>
+      </div>
     </div>
+
+    <div class="alert alert-danger py-2" *ngIf="errorMsg">
+      {{ errorMsg }}
+    </div>
+
+    <div *ngIf="loading" class="py-3">
+      Loading...
+    </div>
+
+    <!-- Empty -->
+    <div *ngIf="!loading && (!activities || activities.length === 0)" class="text-muted py-3 px-2">
+      No activities yet.
+    </div>
+
+    <!-- Activity cards (styled like AuthActivity timeline items) -->
+    <div class="timeline-list" *ngIf="activities && activities.length > 0">
+      <div *ngFor="let a of activities; trackBy: trackByActivity" class="timeline-item"
+           [ngClass]="{ 'selected': (selectedActivityId != null && selectedActivityId === (a.caseActivityId != null ? +a.caseActivityId : -1)) }">
+
+
+        <div class="timeline-content" (click)="onEdit(a)">
+          <div class="timeline-header">
+            <div class="timeline-title">
+              Activity Type: {{ getActivityTypeLabel(a) }}
+              <span *ngIf="a.requestStatus === 'ACCEPTED'">✅</span>
+              <span *ngIf="a.requestStatus !== 'ACCEPTED'">⏳</span>
+            </div>
+
+            <div class="timeline-priority"
+                 [ngClass]="getPriorityClassFromLabel(getPriorityLabel(a))">
+              Priority: {{ getPriorityLabel(a) }}
+            </div>
+
+            <!-- Actions (keep your existing handlers/guards) -->
+            <span class="activity-actions">
+              <button class="btn btn-sm btn-outline-success me-1"
+                      type="button"
+                      *ngIf="canActOn(a)"
+                      (click)="accept(a)"
+                      [disabled]="saving">
+                Accept
+              </button>
+
+              <button class="btn btn-sm btn-outline-danger me-2"
+                      type="button"
+                      *ngIf="canActOn(a)"
+                      (click)="reject(a)"
+                      [disabled]="saving">
+                Reject
+              </button>
+
+              <button class="icon-btn" type="button" title="Edit" (click)="onEdit(a)" [disabled]="saving">✏️</button>
+              <button class="icon-btn" type="button" title="Delete" (click)="onDelete(a)" [disabled]="saving">🗑️</button>
+            </span>
+          </div>
+
+          <div class="timeline-summary">
+            <span class="pill pill-primary">Status · {{ a.requestStatus }}</span>
+            <span class="pill" *ngIf="a.dueDate">Due · {{ a.dueDate | date:'short' }}</span>
+            <span class="pill" *ngIf="a.referTo">Assigned To · {{ getAssignedToLabel(a) }}</span>
+          </div>
+
+          <div class="resp-body">
+            {{ a.comment || '' }}
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
-  <form [formGroup]="form">
-    <div class="grid">
-      <ng-container *ngFor="let f of activityEditorFields; trackBy: trackByField">
-        <ng-container *ngIf="form.get(f.controlName) as ctrl">
+  <!-- RIGHT: Editor (shown in embed mode always, or when showEditor=true) -->
+  <div class="activity-right" *ngIf="mode === 'embed' || showEditor">
 
-          <!-- CHECKBOX -->
-          <ng-container *ngIf="f.type === 'checkbox'; else outlinedTpl">
-            <div class="ff-field">
-              <div class="ff-checkbox">
-                <input type="checkbox"
-                       class="form-check-input"
-                       [formControlName]="f.controlName" />
-                <label class="form-check-label">
-                  {{ f.displayName }}
-                  <span class="req-star" *ngIf="isRequired(ctrl, f)">*</span>
-                </label>
-              </div>
+    <!-- Embed header (dashboard add-only) -->
+    <div class="embed-activity-header" *ngIf="mode === 'embed'">
+      <div class="embed-actions">
+        <button type="button"
+                class="btn btn-sm btn-link"
+                (click)="viewAll.emit()">
+          View all activities ({{ activities?.length || 0 }})
+        </button>
+      </div>
+    </div>
 
-              <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
-                {{ f.requiredMsg || (f.displayName + ' is required') }}
-              </div>
-            </div>
-          </ng-container>
+    <!-- Editor -->
+    <div class="auth-form" *ngIf="showEditor">
 
-          <!-- OUTLINED (text/select/textarea/datetime/search) -->
-          <ng-template #outlinedTpl>
-            <div class="ff-field" [class.ff-span-all]="f.type === 'search'">
-              <div class="ff-outline"
-                   [class.ff-disabled]="ctrl.disabled"
-                   [class.ff-invalid]="ctrl.touched && ctrl.invalid">
+      <form [formGroup]="form">
+        <div class="form-grid">
 
-                <div class="ff-float-label">
-                  {{ f.displayName }}
-                  <span class="req-star" *ngIf="isRequired(ctrl, f)">*</span>
+          <ng-container *ngFor="let f of activityEditorFields; trackBy: trackByField">
+            <ng-container *ngIf="form.get(f.controlName) as ctrl">
+
+              <!-- CHECKBOX -->
+              <ng-container *ngIf="f.type === 'checkbox'; else outlinedTpl">
+                <div class="form-outline ff-checkbox-row"
+                     [class.is-invalid]="ctrl.touched && ctrl.invalid">
+                  <label class="floating-label">
+                    {{ f.displayName }}
+                    <span class="text-danger" *ngIf="isRequired(ctrl, f)">*</span>
+                  </label>
+
+                  <div class="ff-checkbox-inner">
+                    <input type="checkbox"
+                           class="form-check-input"
+                           [formControlName]="f.controlName" />
+                    <span class="text-muted"> </span>
+                  </div>
                 </div>
 
-                <div class="ff-body">
+                <div class="invalid-feedback d-block" *ngIf="ctrl.touched && ctrl.invalid">
+                  {{ f.requiredMsg || (f.displayName + ' is required') }}
+                </div>
+              </ng-container>
+
+              <!-- OUTLINED (text/select/textarea/datetime/search) -->
+              <ng-template #outlinedTpl>
+                <div class="form-outline dropdown-container"
+                     [class.is-invalid]="ctrl.touched && ctrl.invalid"
+                     [class.full-width]="f.type === 'textarea' || f.type === 'search'">
+
+                  <label class="floating-label">
+                    {{ f.displayName }}
+                    <span class="text-danger" *ngIf="isRequired(ctrl, f)">*</span>
+                  </label>
+
                   <ng-container [ngSwitch]="f.type">
 
                     <!-- Dropdown -->
@@ -88,99 +168,66 @@
 
                     <!-- Textarea -->
                     <ng-container *ngSwitchCase="'textarea'">
-                      <textarea class="ff-input ff-textarea"
+                      <textarea class="form-control"
                                 rows="3"
                                 [formControlName]="f.controlName"></textarea>
                     </ng-container>
 
                     <!-- Default text -->
                     <ng-container *ngSwitchDefault>
-                      <input class="ff-input" type="text" [formControlName]="f.controlName" />
+                      <input class="form-control" type="text" [formControlName]="f.controlName" />
                     </ng-container>
 
                   </ng-container>
                 </div>
-              </div>
 
-              <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
-                {{ f.requiredMsg || (f.displayName + ' is required') }}
-              </div>
-            </div>
-          </ng-template>
+                <div class="invalid-feedback d-block" *ngIf="ctrl.touched && ctrl.invalid">
+                  {{ f.requiredMsg || (f.displayName + ' is required') }}
+                </div>
+              </ng-template>
 
-        </ng-container>
+            </ng-container>
+          </ng-container>
+
+        </div>
+
+        <div class="button-group">
+          <button type="button" (click)="onSave()" [disabled]="saving">Save</button>
+          <button type="button" (click)="closeEditor()">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+
+
+
+  </div>
+  <!-- In embed mode, if editor isn't open yet, show a CTA -->
+  <ng-template #aiSummary>
+    <div class="ai-summary">
+      <h3>📊 Activities Summary</h3>
+
+      <div class="summary-grid">
+        <p><strong>Total Activities:</strong> {{ activities?.length || 0 }}</p>
+        <p><strong>Completed:</strong> {{ getCompletedCount() }}</p>
+        <p><strong>Pending:</strong> {{ getPendingCount() }}</p>
+        <p><strong>High Priority:</strong> {{ getPriorityCount('High') }}</p>
+        <p><strong>Medium Priority:</strong> {{ getPriorityCount('Medium') }}</p>
+        <p><strong>Low Priority:</strong> {{ getPriorityCount('Low') }}</p>
+      </div>
+
+      <ng-container *ngIf="mode === 'embed'; else fullModeText">
+        <p class="text-muted mb-3">Create a new case activity from the dashboard.</p>
+        <button class="add-btn" (click)="onAddClick()" [disabled]="loading || saving">
+          ➕ Add Activity
+        </button>
       </ng-container>
+
+      <ng-template #fullModeText>
+        <p class="text-muted mb-0">
+          Select an activity from the left to edit, or add a new one.
+        </p>
+      </ng-template>
     </div>
-
-    <div class="case-savebar">
-      <button type="button" class="btn btn-outline-secondary me-2" (click)="closeEditor()">Cancel</button>
-      <button type="button" class="btn btn-primary" [disabled]="saving" (click)="onSave()">Save</button>
-    </div>
-  </form>
-</div>
-
-<!-- Empty -->
-<div *ngIf="!loading && (!activities || activities.length === 0)" class="text-muted py-3 px-2">
-  No activities yet.
-</div>
-
-<!-- Activity cards -->
-<div class="resp-list" *ngIf="activities && activities.length > 0">
-  <article class="resp-card" *ngFor="let a of activities; trackBy: trackByActivity">
-
-    <div class="resp-head">
-      <div class="resp-meta">
-        <span class="pill pill-primary">Type · {{ getActivityTypeLabel(a) }}</span>
-        <span class="pill">Priority · {{ getPriorityLabel(a) }}</span>
-
-        <span class="pill"
-              [ngClass]="{
-                'pill-warn': a.requestStatus === 'REQUESTED',
-                'pill-primary': a.requestStatus === 'ACCEPTED',
-                'pill-danger': a.requestStatus === 'REJECTED'
-              }">
-          {{ a.requestStatus }}
-        </span>
-
-        <span class="pill" *ngIf="a.dueDate">Due · {{ a.dueDate | date:'short' }}</span>
-        <span class="pill" *ngIf="a.referTo">Assigned To · {{ getAssignedToLabel(a) }}</span>
-      </div>
-
-      <div class="resp-actions">
-        <!-- Accept/Reject only if pending for this user -->
-        <button class="btn btn-sm btn-outline-success me-1"
-                type="button"
-                *ngIf="canActOn(a)"
-                (click)="accept(a)"
-                [disabled]="saving">
-          Accept
-        </button>
-
-        <button class="btn btn-sm btn-outline-danger me-2"
-                type="button"
-                *ngIf="canActOn(a)"
-                (click)="reject(a)"
-                [disabled]="saving">
-          Reject
-        </button>
-
-        <button class="icon-btn" type="button" title="Edit" (click)="onEdit(a)" [disabled]="saving">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm2.92 2.83H5v-.92l8.06-8.06.92.92L5.92 20.08zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"></path>
-          </svg>
-        </button>
-
-        <button class="icon-btn danger" type="button" title="Delete" (click)="onDelete(a)" [disabled]="saving">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M6 7h12v14H6V7zm3-3h6l1 1h4v2H4V5h4l1-1zm1 6h2v9H10v-9zm4 0h2v9h-2v-9z"></path>
-          </svg>
-        </button>
-      </div>
-    </div>
-
-    <div class="resp-body">
-      {{ a.comment || '' }}
-    </div>
-
-  </article>
+  </ng-template>
 </div>

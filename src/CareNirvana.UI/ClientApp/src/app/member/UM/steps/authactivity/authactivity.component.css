@@ -394,3 +394,18 @@ label .text-danger {
   vertical-align: middle;
   margin-left: 2px;
 }
+
+
+/* Dashboard single-pane behavior (list-only until editing, then editor-only) */
+.activity-container.activity-container--single-pane {
+  height: auto;
+  display: block;
+}
+
+.activity-container.activity-container--single-pane .activity-left,
+.activity-container.activity-container--single-pane .activity-right {
+  width: 100%;
+  padding-left: 0;
+  padding-right: 0;
+  border-right: 0;
+}

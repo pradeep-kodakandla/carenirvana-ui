@@ -1,153 +1,275 @@
-<div class="d-flex align-items-center justify-content-between mb-2">
-  <div>
-    <div class="h6 mb-0">Case Notes</div>
-    <small class="text-muted" *ngIf="resolved">Level: {{ resolved.levelId }}</small>
-  </div>
+<div class="notes-container"
+     [class.notes-container--add-only]="isAddOnly"
+     [class.notes-container--single-pane]="singlePane && !isAddOnly">
 
-  <button class="btn btn-sm btn-primary" (click)="onAddClick()" [disabled]="loading || saving">
-    + Add Note
-  </button>
-</div>
+  <!-- Left Side - Notes Timeline/List (AuthNotes style) -->
+  <div class="notes-left" *ngIf="!isAddOnly && !(singlePane && (showEditor || selectedNoteId))">
 
-<div class="alert alert-danger py-2" *ngIf="errorMsg">
-  {{ errorMsg }}
-</div>
-
-<div *ngIf="loading" class="py-3">
-  Loading...
-</div>
-
-<!-- Editor -->
-<div class="section-card" *ngIf="showEditor">
-  <div class="section-header">
-    <div class="section-title">{{ editing ? 'Edit Note' : 'Add Note' }}</div>
-    <div class="ms-auto">
-      <button type="button" class="btn btn-sm btn-outline-secondary" (click)="closeEditor()">Close</button>
+    <div class="notes-titlebar">
+      <div>
+        <div class="notes-title">Case Notes</div>
+        <small class="text-muted" *ngIf="resolved">Level: {{ resolved.levelId }}</small>
+      </div>
     </div>
+
+    <!-- Top Search + Action Bar -->
+    <div class="left-controls">
+      <input type="text"
+             placeholder="🔍 Search notes..."
+             [(ngModel)]="searchTerm"
+             (input)="applySearch()"
+             class="search-input"
+             [disabled]="loading" />
+
+      <div class="right-actions">
+        <div class="sort-wrapper" (mouseenter)="showSort = true" (mouseleave)="showSort = false">
+          <button class="sort-icon" type="button" aria-label="Sort">⇅</button>
+          <div class="sort-menu" *ngIf="showSort">
+            <div class="sort-option" (click)="applySort('created_desc')">Newest first</div>
+            <div class="sort-option" (click)="applySort('created_asc')">Oldest first</div>
+            <div class="sort-option" (click)="applySort('type_asc')">Note Type (A–Z)</div>
+            <div class="sort-option" (click)="applySort('type_desc')">Note Type (Z–A)</div>
+            <div class="sort-option" (click)="applySort('alerts_first')">Alerts first</div>
+          </div>
+        </div>
+
+        <button class="add-btn" (click)="onAddClick()" [disabled]="loading || saving">➕ Add Note</button>
+      </div>
+    </div>
+
+    <div class="alert alert-danger py-2" *ngIf="errorMsg">
+      {{ errorMsg }}
+    </div>
+
+    <div *ngIf="loading" class="py-3 px-2">
+      Loading...
+    </div>
+
+    <!-- Notes list -->
+    <div *ngIf="!loading && (!notes || notes.length === 0)" class="text-muted py-3 px-2">
+      No notes yet.
+    </div>
+
+    <div class="timeline-list" *ngIf="!loading && filteredNotes && filteredNotes.length > 0; else noFilteredNotes">
+      <article class="timeline-item"
+               *ngFor="let n of filteredNotes; trackBy: trackByNoteId"
+               [ngClass]="{ 'selected': (selectedNoteId && (selectedNoteId === getNoteId(n))) }">
+
+        <!-- Select (preview) -->
+        <div class="timeline-content" (click)="editNote(n)">
+          <div class="timeline-header">
+            <div class="timeline-title">
+              {{ getNoteTypeLabel(n) || 'Note' }}
+              <span *ngIf="isAlert(n)">⚠️</span>
+            </div>
+
+            <div class="timeline-actions" (click)="$event.stopPropagation()">
+              <button class="icon-btn" type="button" title="Edit" (click)="editNote(n)" [disabled]="saving">✏️</button>
+              <button class="icon-btn" type="button" title="Delete" (click)="deleteNote(n)" [disabled]="saving">🗑️</button>
+            </div>
+          </div>
+
+          <div class="timeline-summary">
+            <span class="pill pill-primary">Level · {{ getNoteLevelLabel(n) }}</span>
+            <span class="pill pill-warn" *ngIf="isAlert(n)">Alert</span>
+            <span class="resp-time">{{ getCreatedOn(n) | date: 'short' }}</span>
+          </div>
+
+          <div class="note-snippet">{{ getNoteText(n) }}</div>
+        </div>
+      </article>
+    </div>
+    <!-- When notes exist but current filter has no matches -->
+    <ng-template #noFilteredNotes>
+      <div *ngIf="!loading && notes && notes.length > 0" class="text-muted py-3 px-2">
+        No matching notes.
+      </div>
+    </ng-template>
+
   </div>
 
-  <form [formGroup]="form">
-    <div class="grid">
-      <ng-container *ngFor="let f of noteEditorFields; trackBy: trackByField">
-        <ng-container *ngIf="form.get(f.controlName) as ctrl">
+  <!-- Right Side - Editor / Selected Note Preview / Summary -->
+  <div class="notes-right" *ngIf="isAddOnly || !singlePane || (showEditor || selectedNoteId)">
 
-          <!-- CHECKBOX -->
-          <ng-container *ngIf="f.type === 'checkbox'; else outlinedTpl">
-            <div class="ff-field">
-              <div class="ff-checkbox">
-                <input type="checkbox"
-                       class="form-check-input"
-                       [formControlName]="f.controlName" />
-                <label class="form-check-label">
-                  {{ f.displayName }}
-                  <span class="req-star" *ngIf="isRequired(ctrl, f)">*</span>
-                </label>
-              </div>
+    <!-- Embedded header (dashboard add-only mode) -->
+    <div class="embed-notes-header" *ngIf="isAddOnly">
+      <div class="embed-actions">
+        <button type="button"
+                class="btn btn-sm btn-link"
+                (click)="emitViewAll()"
+                [disabled]="loading || saving">
+          View all activities ({{ notes?.length || 0 }})
+        </button>
+      </div>
+    </div>
 
-              <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
-                {{ f.requiredMsg || (f.displayName + ' is required') }}
-              </div>
-            </div>
+    <!-- Editor -->
+    <div class="section-card" *ngIf="showEditor">
+      <div class="section-header">
+        <div class="section-title">{{ editing ? 'Edit Note' : 'Add Note' }}</div>
+        <div class="ms-auto">
+          <button type="button" class="btn btn-sm btn-outline-secondary" (click)="closeEditor()">Close</button>
+        </div>
+      </div>
+
+      <form [formGroup]="form">
+        <div class="grid">
+          <ng-container *ngFor="let f of noteEditorFields; trackBy: trackByField">
+            <ng-container *ngIf="form.get(f.controlName) as ctrl">
+
+              <!-- CHECKBOX -->
+              <ng-container *ngIf="f.type === 'checkbox'; else outlinedTpl">
+                <div class="ff-field">
+                  <div class="ff-checkbox">
+                    <input type="checkbox"
+                           class="form-check-input"
+                           [formControlName]="f.controlName" />
+                    <label class="form-check-label">
+                      {{ f.displayName }}
+                      <span class="req-star" *ngIf="isRequired(ctrl, f)">*</span>
+                    </label>
+                  </div>
+
+                  <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
+                    {{ f.requiredMsg || (f.displayName + ' is required') }}
+                  </div>
+                </div>
+              </ng-container>
+
+              <!-- OUTLINED (text/select/textarea/datetime/search) -->
+              <ng-template #outlinedTpl>
+                <div class="ff-field" [class.ff-span-all]="f.type === 'search'">
+                  <div class="ff-outline"
+                       [class.ff-disabled]="ctrl.disabled"
+                       [class.ff-invalid]="ctrl.touched && ctrl.invalid">
+
+                    <div class="ff-float-label">
+                      {{ f.displayName }}
+                      <span class="req-star" *ngIf="isRequired(ctrl, f)">*</span>
+                    </div>
+
+                    <div class="ff-body">
+                      <ng-container [ngSwitch]="f.type">
+
+                        <!-- Dropdown -->
+                        <ng-container *ngSwitchCase="'select'">
+                          <ui-smart-dropdown class="ff-ui"
+                                             label=""
+                                             placeholder="Select..."
+                                             [options]="getDropdownOptions(f.controlName)"
+                                             [formControlName]="f.controlName">
+                          </ui-smart-dropdown>
+                        </ng-container>
+
+                        <!-- Datetime -->
+                        <ng-container *ngSwitchCase="'datetime-local'">
+                          <ui-datetime-picker class="ff-ui"
+                                              placeholderDate="mm/dd/yyyy"
+                                              placeholderDateTime="mm/dd/yyyy --:--"
+                                              [formControlName]="f.controlName">
+                          </ui-datetime-picker>
+                        </ng-container>
+
+                        <!-- Textarea -->
+                        <ng-container *ngSwitchCase="'textarea'">
+                          <textarea class="ff-input ff-textarea"
+                                    rows="5"
+                                    [formControlName]="f.controlName"></textarea>
+                        </ng-container>
+
+                        <!-- Default text -->
+                        <ng-container *ngSwitchDefault>
+                          <input class="ff-input" type="text" [formControlName]="f.controlName" />
+                        </ng-container>
+
+                      </ng-container>
+                    </div>
+                  </div>
+
+                  <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
+                    {{ f.requiredMsg || (f.displayName + ' is required') }}
+                  </div>
+                </div>
+              </ng-template>
+
+            </ng-container>
           </ng-container>
+        </div>
 
-          <!-- OUTLINED (text/select/textarea/datetime/search) -->
-          <ng-template #outlinedTpl>
-            <div class="ff-field" [class.ff-span-all]="f.type === 'search'">
-              <div class="ff-outline"
-                   [class.ff-disabled]="ctrl.disabled"
-                   [class.ff-invalid]="ctrl.touched && ctrl.invalid">
+        <div class="case-savebar">
+          <button type="button" class="btn btn-outline-secondary me-2" (click)="clearSelection()">Cancel</button>
+          <button type="button" class="btn btn-primary" [disabled]="saving" (click)="onSave()">Save</button>
+        </div>
+      </form>
+    </div>
 
-                <div class="ff-float-label">
-                  {{ f.displayName }}
-                  <span class="req-star" *ngIf="isRequired(ctrl, f)">*</span>
-                </div>
+    <!-- Selected note preview -->
+    <ng-container *ngIf="!showEditor && !isAddOnly">
+      <div class="section-card" *ngIf="getSelectedNote() as sn; else notesSummary">
 
-                <div class="ff-body">
-                  <ng-container [ngSwitch]="f.type">
+        <div class="resp-meta mb-3">
+          <span class="pill pill-primary">Type · {{ getNoteTypeLabel(sn) }}</span>
+          <span class="pill pill-primary">Level · {{ getNoteLevelLabel(sn) }}</span>
+          <span class="pill pill-warn" *ngIf="isAlert(sn)">Alert</span>
+          <span class="resp-time">{{ getCreatedOn(sn) | date: 'short' }}</span>
+        </div>
 
-                    <!-- Dropdown -->
-                    <ng-container *ngSwitchCase="'select'">
-                      <ui-smart-dropdown class="ff-ui"
-                                         label=""
-                                         placeholder="Select..."
-                                         [options]="getDropdownOptions(f.controlName)"
-                                         [formControlName]="f.controlName">
-                      </ui-smart-dropdown>
-                    </ng-container>
-
-                    <!-- Datetime -->
-                    <ng-container *ngSwitchCase="'datetime-local'">
-                      <ui-datetime-picker class="ff-ui"
-                                          placeholderDate="mm/dd/yyyy"
-                                          placeholderDateTime="mm/dd/yyyy --:--"
-                                          [formControlName]="f.controlName">
-                      </ui-datetime-picker>
-                    </ng-container>
-
-                    <!-- Textarea -->
-                    <ng-container *ngSwitchCase="'textarea'">
-                      <textarea class="ff-input ff-textarea"
-                                rows="3"
-                                [formControlName]="f.controlName"></textarea>
-                    </ng-container>
-
-                    <!-- Default text -->
-                    <ng-container *ngSwitchDefault>
-                      <input class="ff-input" type="text" [formControlName]="f.controlName" />
-                    </ng-container>
-
-                  </ng-container>
-                </div>
-              </div>
-
-              <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
-                {{ f.requiredMsg || (f.displayName + ' is required') }}
-              </div>
+        <div class="grid">
+          <div class="ff-field">
+            <div class="ff-outline">
+              <div class="ff-float-label">Type</div>
+              <div class="ff-body"><div class="ff-readonly">{{ getNoteTypeLabel(sn) }}</div></div>
             </div>
-          </ng-template>
+          </div>
 
-        </ng-container>
-      </ng-container>
-    </div>
+          <div class="ff-field">
+            <div class="ff-outline">
+              <div class="ff-float-label">Level</div>
+              <div class="ff-body"><div class="ff-readonly">{{ getNoteLevelLabel(sn) }}</div></div>
+            </div>
+          </div>
 
-    <div class="case-savebar">
-      <button type="button" class="btn btn-outline-secondary me-2" (click)="closeEditor()">Cancel</button>
-      <button type="button" class="btn btn-primary" [disabled]="saving" (click)="onSave()">Save</button>
-    </div>
-  </form>
-</div>
+          <div class="ff-field">
+            <div class="ff-outline">
+              <div class="ff-float-label">Created</div>
+              <div class="ff-body"><div class="ff-readonly">{{ getCreatedOn(sn) | date: 'short' }}</div></div>
+            </div>
+          </div>
 
+          <div class="ff-field">
+            <div class="ff-outline">
+              <div class="ff-float-label">Alert</div>
+              <div class="ff-body"><div class="ff-readonly">{{ isAlert(sn) ? 'Yes' : 'No' }}</div></div>
+            </div>
+          </div>
 
-<!-- Notes cards -->
-<div *ngIf="!loading && (!notes || notes.length === 0)" class="text-muted py-3 px-2">
-  No notes yet.
-</div>
+          <div class="ff-field ff-span-all">
+            <div class="ff-outline">
+              <div class="ff-float-label">Note</div>
+              <div class="ff-body"><div class="ff-readonly">{{ getNoteText(sn) }}</div></div>
+            </div>
+          </div>
+        </div>
 
-<div class="resp-list" *ngIf="notes && notes.length > 0">
-  <article class="resp-card" *ngFor="let n of notes; trackBy: trackByNoteId">
-    <div class="resp-head">
-      <div class="resp-meta">
-        <span class="pill pill-primary">Type · {{ getNoteTypeLabel(n) }}</span>
-        <span class="pill">Level · {{ getNoteLevelLabel(n) }}</span>
-        <span class="pill pill-warn" *ngIf="isAlert(n)">Alert</span>
-        <span class="resp-time">{{ getCreatedOn(n) | date: 'short' }}</span>
+        <div class="case-savebar">
+          <button class="btn btn-outline-secondary me-2" type="button" (click)="clearSelection()">Back</button>
+          <button class="btn btn-primary" type="button" (click)="editNote(sn)" [disabled]="saving">Edit</button>
+        </div>
+
       </div>
 
-      <div class="resp-actions">
-        <button class="icon-btn" type="button" title="Edit" (click)="onEdit(n)" [disabled]="saving">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm2.92 2.83H5v-.92l8.06-8.06.92.92L5.92 20.08zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"></path>
-          </svg>
-        </button>
+      <!-- Default summary (no selection) -->
+      <ng-template #notesSummary>
+        <div class="ai-summary">
+          <h3>📝 Notes Summary</h3>
+          <p><strong>Total Notes:</strong> {{ notes?.length || 0 }}</p>
+          <p><strong>Alerts:</strong> {{ getAlertCount() }}</p>
+          <p class="text-muted" style="margin-top: 10px;">
+            Select a note on the left to view its details here, or click “Add Note”.
+          </p>
+        </div>
+      </ng-template>
+    </ng-container>
 
-        <button class="icon-btn danger" type="button" title="Delete" (click)="onDelete(n)" [disabled]="saving">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M6 7h12v14H6V7zm3-3h6l1 1h4v2H4V5h4l1-1zm1 6h2v9H10v-9zm4 0h2v9h-2v-9z"></path>
-          </svg>
-        </button>
-      </div>
-    </div>
-
-    <div class="resp-body">{{ getNoteText(n) }}</div>
-  </article>
+  </div>
 </div>

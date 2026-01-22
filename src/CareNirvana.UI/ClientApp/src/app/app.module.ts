@@ -127,6 +127,9 @@ import { AgnotetypeComponent } from './admin/AG/agnotetype/agnotetype.component'
 import { AgdocumenttypeComponent } from './admin/AG/agdocumenttype/agdocumenttype.component';
 
 import { SharedUiModule } from './casewizard/casewizard/sharedui.module';
+import { UmsharedwidgetsModule } from 'src/app/member/UM/umwizard/authwizard/umsharedwidgets.module';
+import { CasesharedwidgetsModule } from 'src/app/casewizard/casewizard/casesharedwidgets.module';
+
 import { MembercasedetailsComponent } from './member/AG/components/membercasedetails/membercasedetails.component';
 
 import { AgcomplaintcategoryComponent } from './admin/AG/agcomplaintcategory/agcomplaintcategory.component';
@@ -178,7 +181,7 @@ const routes: Routes = [
     MemberTasksummaryComponent,
     MemberInfoComponent, AuthdynamicComponent, ProviderSearchComponent,
     ValidationErrorDialogComponent,
-    NewDashBoardComponent, NewDashboard2Component, MdreviewdashboardComponent, 
+    NewDashBoardComponent, NewDashboard2Component, MdreviewdashboardComponent,
     ConfigurationComponent, UsermanagementComponent, RolemanagementComponent, ProfilemanagementComponent, AppfeaturesetupComponent, PermissionManagerComponent,
     WorkgroupComponent, WorkbasketComponent, UserDefinedCustomFieldsComponent, TemplatebuilderComponent, TemplatebuilderpropertiesComponent, ValidationComponent,
     UmdocumenttypeComponent, SettingsDialogComponent, UmactivitytypeComponent, DialogContentComponent, UmnotetypeComponent, ExternallinksComponent,
@@ -195,15 +198,15 @@ const routes: Routes = [
     CmclinicalindicatorsComponent, AgcomplaintcategoryComponent, AgcomplaintclassComponent, AgcomplaintcredentialsComponent, AgcomplaintstatusreasonComponent,
     AgcomplaintsubcategoryComponent, AgcoordinatortypeComponent, AgparticipantroleComponent, AgparticipanttypeComponent,
     AgqocinvestigationoutcomeComponent, AgqocinvestigationreasonComponent, AgqocscoreComponent, AgresolutioncategoryComponent,
-    AgresolutionsubcategoryComponent, MembercasedetailsComponent, MemberauthdetailsComponent,
+    AgresolutionsubcategoryComponent, MembercasedetailsComponent, MemberauthdetailsComponent, 
 
-    UiDropdownComponent, 
+    UiDropdownComponent,
   ],
   imports: [
     BrowserModule.withServerTransition({ appId: 'ng-cli-universal' }),
     HttpClientModule,
     FormsModule,
-    ReactiveFormsModule, AngularMaterialModule, SharedUiModule,
+    ReactiveFormsModule, AngularMaterialModule, SharedUiModule, UmsharedwidgetsModule, CasesharedwidgetsModule,
     RouterModule.forRoot([
       { path: '', component: LoginComponent, pathMatch: 'full' },
       { path: 'login', component: LoginComponent, pathMatch: 'full' },

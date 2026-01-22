@@ -53,14 +53,14 @@ export class AssignedcomplaintsComponent implements OnInit, AfterViewInit {
   @Output() addClicked = new EventEmitter<string>();
 
   displayedColumns: string[] = [
-    'actions',
     'memberId',
     'caseNumber',
     'caseType',
     'receivedDateTime',
     'priority',
     'status',
-    'createdOn'
+    'createdOn',
+    'actions'
   ];
 
   dataSource = new MatTableDataSource<AgCaseGridRow>([]);
@@ -86,6 +86,14 @@ export class AssignedcomplaintsComponent implements OnInit, AfterViewInit {
 
   expandedElement: AgCaseGridRow | null = null;
 
+  // right panel (same pattern as mycaseload)
+  showNotesPanel = false;
+  selectedRow: AgCaseGridRow | null = null;
+  selectedPanel: string | null = null;
+  selectedActionLabel = '';
+  panelSubtitle = '';
+
+
   constructor(
     private fb: FormBuilder,
     private router: Router,
@@ -110,6 +118,7 @@ export class AssignedcomplaintsComponent implements OnInit, AfterViewInit {
       next: (rows) => {
         this.rawData = rows ?? [];
         this.recomputeAll();
+        console.log('Fetched AG cases:', this.rawData);
       },
       error: () => {
         this.rawData = [];
@@ -375,4 +384,160 @@ export class AssignedcomplaintsComponent implements OnInit, AfterViewInit {
     x.setHours(23, 59, 59, 999);
     return x;
   }
+
+  /** ===== Right side panel (design only for now) ===== */
+  openPanel(panel: string, row: AgCaseGridRow): void {
+    this.selectedPanel = panel;
+    this.selectedRow = row ?? null;
+    this.selectedActionLabel = this.getActionLabel(panel);
+    this.panelSubtitle = (row?.memberName ?? row?.memberId ?? '').toString();
+    this.showNotesPanel = true;
+  }
+
+  closePanel(): void {
+    this.showNotesPanel = false;
+    this.selectedPanel = null;
+    this.selectedRow = null;
+    this.selectedActionLabel = '';
+    this.panelSubtitle = '';
+  }
+
+  getPanelTitle(): string {
+    return this.selectedActionLabel || 'Details';
+  }
+
+  private getActionLabel(panel: string): string {
+    switch ((panel || '').toLowerCase()) {
+      case 'activity': return 'Add Activity';
+      case 'messages': return 'Messages';
+      case 'notes': return 'Add Notes';
+      case 'summary': return 'Summary';
+      case 'unassign': return 'Unassign';
+      default: return 'Details';
+    }
+  }
+
+
+
+
+  // Add near your other component state
+  selectedCaseHeaderId: number | null = null;
+  selectedCaseTemplateId: number | null = null;
+  selectedCaseLevelId: number | null = null;
+  selectedMemberDetailsId: number | null = null;
+  selectedCaseNumber: string | null = null;
+
+  // “dashboard embed” modes (same idea as AssignedAuths)
+  notesViewMode: 'add' | 'full' = 'add';
+  documentsViewMode: 'add' | 'full' = 'add';
+  activityViewMode: 'add' | 'full' = 'add';
+
+  // used to trigger editor when opening add mode
+  startAddDocuments = false;
+
+  // ---- helpers (safe extraction from row; do NOT break existing row typing)
+  private toNum(v: any): number | null {
+    const n = v === null || v === undefined || v === '' ? NaN : Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  private extractCaseHeaderId(row: any): number | null {
+    return this.toNum(row?.caseHeaderId ?? row?.caseHeaderID ?? row?.caseId ?? row?.caseHeader);
+  }
+
+  private extractCaseTemplateId(row: any): number | null {
+    return this.toNum(row?.caseTemplateId ?? row?.templateId ?? row?.caseTemplateID);
+  }
+
+  private extractCaseLevelId(row: any): number | null {
+    return this.toNum(row?.caseLevelId ?? row?.levelId ?? row?.caseLevelID);
+  }
+
+  private extractMemberDetailsId(row: any): number | null {
+    return this.toNum(row?.memberDetailsId ?? row?.memberDetailId ?? row?.memberDetailID);
+  }
+
+  // ---- OPEN PANEL APIs (called from row menu)  :contentReference[oaicite:1]{index=1}
+
+  openActivity(row: any, mode: 'add' | 'full' = 'add'): void {
+    this.selectedRow = row;
+    this.selectedPanel = 'activity';
+    this.showNotesPanel = true;
+
+    this.selectedCaseNumber = row?.caseNumber ?? null;
+    this.selectedCaseHeaderId = this.extractCaseHeaderId(row);
+    this.selectedCaseTemplateId = this.extractCaseTemplateId(row);
+    this.selectedCaseLevelId = this.extractCaseLevelId(row);
+    this.selectedMemberDetailsId = this.extractMemberDetailsId(row);
+
+    this.activityViewMode = mode;
+    this.selectedActionLabel = mode === 'full' ? 'Activities' : 'Add Activity';
+    this.panelSubtitle = this.selectedCaseNumber ? `Case #${this.selectedCaseNumber}` : '';
+  }
+
+  openNotes(row: any, mode: 'add' | 'full' = 'add'): void {
+    this.selectedRow = row;
+    this.selectedPanel = 'notes';
+    this.showNotesPanel = true;
+
+    this.selectedCaseNumber = row?.caseNumber ?? null;
+    this.selectedCaseHeaderId = this.extractCaseHeaderId(row);
+    this.selectedCaseTemplateId = this.extractCaseTemplateId(row);
+    this.selectedCaseLevelId = this.extractCaseLevelId(row);
+    this.selectedMemberDetailsId = this.extractMemberDetailsId(row);
+    this.notesViewMode = mode;
+    this.selectedActionLabel = mode === 'full' ? 'Notes' : 'Add Notes';
+    this.panelSubtitle = this.selectedCaseNumber ? `Case #${this.selectedCaseNumber}` : '';
+  }
+
+  openDocuments(row: any, mode: 'add' | 'full' = 'add'): void {
+    this.selectedRow = row;
+    this.selectedPanel = 'documents';
+    this.showNotesPanel = true;
+
+    this.selectedCaseNumber = row?.caseNumber ?? null;
+    this.selectedCaseHeaderId = this.extractCaseHeaderId(row);
+    this.selectedCaseTemplateId = this.extractCaseTemplateId(row);
+    this.selectedCaseLevelId = this.extractCaseLevelId(row);
+    this.selectedMemberDetailsId = this.extractMemberDetailsId(row);
+
+    this.documentsViewMode = mode;
+    this.startAddDocuments = mode === 'add';
+    this.selectedActionLabel = mode === 'full' ? 'Documents' : 'Add Documents';
+    this.panelSubtitle = this.selectedCaseNumber ? `Case #${this.selectedCaseNumber}` : '';
+  }
+
+  // ---- callbacks from embedded components (View All / Add Only toggles)
+
+  // CaseActivities has a "View all activities" action in embed header. :contentReference[oaicite:2]{index=2}
+  onActivityViewAll(): void {
+    this.activityViewMode = 'full';
+    this.selectedActionLabel = 'Activities';
+  }
+
+  // CaseNotes: when in add-only, we show "view all" from component output -> switch to full
+  onNotesViewAll(): void {
+    this.notesViewMode = 'full';
+    this.selectedActionLabel = 'Notes';
+  }
+
+  // CaseDocuments: add-only has a “View All Documents” button. :contentReference[oaicite:3]{index=3}
+  onDocumentsRequestViewAll(): void {
+    this.documentsViewMode = 'full';
+    this.startAddDocuments = false;
+    this.selectedActionLabel = 'Documents';
+  }
+
+  onDocumentsRequestAddOnly(): void {
+    this.documentsViewMode = 'add';
+    this.startAddDocuments = true;
+    this.selectedActionLabel = 'Add Documents';
+  }
+
+  // OPTIONAL: Update your existing getActionLabel() switch to include documents if you want consistent titles
+  // (keep your current cases, just add:)
+  //
+  // case 'documents': return 'Documents';
+
+
 }

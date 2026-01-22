@@ -1,204 +1,268 @@
+<div class="docs-container"
+     [ngClass]="{
+       'docs-container--embedded': singlePane,
+       'docs-container--editor-only': editorOnlyLayout,
+       'docs-container--single-pane': singlePane
+     }">
 
-<div class="d-flex align-items-center justify-content-between mb-2">
-  <div>
-    <!--<div class="h6 mb-0">Case Documents</div>-->
+  <!-- Left: List -->
+  <div class="docs-left" *ngIf="showLeftPane" [style.flex]="singlePane ? '1 1 100%' : null">
+
+    <div class="left-controls">
+      <input type="text"
+             placeholder="🔍 Search documents..."
+             [(ngModel)]="searchTerm"
+             (input)="applySearch()"
+             class="search-input"
+             [disabled]="loading" />
+
+      <div class="right-actions">
+        <div class="sort-wrapper" (mouseenter)="showSort = true" (mouseleave)="showSort = false">
+          <button class="sort-icon" type="button" aria-label="Sort">⇅</button>
+
+          <div class="sort-menu" *ngIf="showSort">
+            <div class="sort-option" (click)="applySort('created_desc')">Newest first</div>
+            <div class="sort-option" (click)="applySort('created_asc')">Oldest first</div>
+            <div class="sort-option" (click)="applySort('type_asc')">Type (A–Z)</div>
+            <div class="sort-option" (click)="applySort('type_desc')">Type (Z–A)</div>
+            <div class="sort-option" (click)="applySort('files_first')">With files first</div>
+          </div>
+        </div>
+
+        <button class="add-btn" (click)="openAdd()" [disabled]="saving || loading">➕ Add Document</button>
+      </div>
+    </div>
+
+    <div class="alert alert-danger py-2" *ngIf="errorMsg">{{ errorMsg }}</div>
+    <div *ngIf="loading" class="py-3 px-2">Loading...</div>
+
+    <div *ngIf="!loading && (!documents || documents.length === 0)" class="text-muted py-3 px-2">
+      No documents yet.
+    </div>
+
+    <div class="resp-list" *ngIf="!loading && documents && documents.length > 0">
+      <article class="resp-card"
+               *ngFor="let d of filteredDocuments; trackBy: trackByDoc"
+               (click)="openEdit(d)"
+               [ngClass]="{ 'selected': selectedDocId && (selectedDocId === ('' + getDocumentId(d))) }">
+
+        <div class="resp-head">
+          <div class="resp-meta">
+            <span class="pill pill-primary">Type · {{ getDocTypeLabel(d) }}</span>
+            <span class="pill">Level · {{ getDocLevelLabel(d) }}</span>
+            <span class="resp-time">{{ d?.createdOn | date:'short' }}</span>
+          </div>
+
+          <div class="resp-actions" (click)="$event.stopPropagation()">
+            <button type="button"
+                    class="icon-btn"
+                    (click)="openEdit(d)"
+                    [disabled]="saving"
+                    aria-label="Edit document"
+                    title="Edit">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm2.92 2.83H5v-.92l8.06-8.06.92.92L5.92 20.08zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" />
+              </svg>
+            </button>
+
+            <button type="button"
+                    class="icon-btn danger"
+                    (click)="onDelete(d)"
+                    [disabled]="saving"
+                    aria-label="Delete document"
+                    title="Delete">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="resp-body">{{ d?.documentDescription }}</div>
+
+        <div class="files-list" *ngIf="getFiles(d).length">
+          <span class="file-chip" *ngFor="let f of getFiles(d)">{{ f }}</span>
+        </div>
+      </article>
+    </div>
   </div>
 
-  <button class="btn btn-sm btn-primary" (click)="openAdd()" [disabled]="saving">
-    + Add Document
-  </button>
-</div>
+  <!-- Right: Editor / Summary -->
+  <div class="docs-right" *ngIf="showRightPane" [style.flex]="singlePane ? '1 1 100%' : null">
 
-<div class="alert alert-danger py-2" *ngIf="errorMsg">
-  {{ errorMsg }}
-</div>
-
-<div *ngIf="loading" class="py-3">
-  Loading...
-</div>
-
-<!-- Editor -->
-<div *ngIf="showEditor" class="sub-card">
-  <div class="sub-float-label">{{ editing ? 'Edit Document' : 'Add Document' }}</div>
-
-  <form [formGroup]="form">
-    <div class="grid" style="padding-bottom: 15px">
-
-      <ng-container *ngFor="let f of fields; trackBy: trackByField">
-
-        <!-- LABEL (info text) -->
-        <div *ngIf="f.type === 'label'" class="ff-field" style="grid-column: 1 / -1;">
-          <div class="info-note">
-            {{ f.info || f.displayName || f.label }}
-          </div>
-        </div>
-
-        <!-- FILE PICKER (special by id) -->
-        <div *ngIf="f.id === 'caseSelectFiles'" class="ff-field" style="grid-column: 1 / -1;">
-          <div class="ff-outline">
-            <div class="ff-float-label">
-              {{ f.displayName || f.label || 'Select File(s)' }}
-              <span class="req-star" *ngIf="f.required">*</span>
-            </div>
-
-            <div class="ff-body">
-              <input class="ff-input" type="file" multiple (change)="onFilesSelected($event)" />
-            </div>
-          </div>
-
-          <div class="file-chips mt-2" *ngIf="selectedFileNames.length > 0">
-            <span class="file-chip" *ngFor="let name of selectedFileNames; let i = index">
-              {{ name }}
-              <button type="button" class="chip-x" (click)="removeFile(i)">×</button>
-            </span>
-          </div>
-        </div>
-
-        <!-- SELECT -->
-        <div *ngIf="f.type === 'select'" class="ff-field">
-          <div class="ff-outline" [class.ff-invalid]="form.get(f.controlName)?.touched && form.get(f.controlName)?.invalid">
-            <div class="ff-float-label">
-              {{ f.displayName || f.label }}
-              <span class="req-star" *ngIf="f.required">*</span>
-            </div>
-
-            <div class="ff-body">
-              <ui-smart-dropdown class="ff-ui"
-                                 label=""
-                                 placeholder="Select..."
-                                 [options]="getDropdownOptions(f.controlName)"
-                                 [formControlName]="f.controlName">
-              </ui-smart-dropdown>
-            </div>
-          </div>
-
-          <div class="ff-error" *ngIf="form.get(f.controlName)?.touched && form.get(f.controlName)?.invalid">
-            {{ f.requiredMsg || ('Please select ' + (f.displayName || f.label || 'value')) }}
-          </div>
-        </div>
-
-        <!-- TEXTAREA -->
-        <div *ngIf="f.type === 'textarea'" class="ff-field" style="grid-column: 1 / -1;">
-          <div class="ff-outline" [class.ff-invalid]="form.get(f.controlName)?.touched && form.get(f.controlName)?.invalid">
-            <div class="ff-float-label">
-              {{ f.displayName || f.label }}
-              <span class="req-star" *ngIf="f.required">*</span>
-            </div>
-
-            <div class="ff-body">
-              <textarea class="ff-input ff-textarea"
-                        rows="3"
-                        [formControlName]="f.controlName"></textarea>
-            </div>
-          </div>
-
-          <div class="ff-error" *ngIf="form.get(f.controlName)?.touched && form.get(f.controlName)?.invalid">
-            {{ f.requiredMsg || ('Please enter ' + (f.displayName || f.label || 'value')) }}
-          </div>
-        </div>
-
-        <!-- CHECKBOX -->
-        <div *ngIf="f.type === 'checkbox'" class="ff-field">
-          <div class="ff-outline">
-            <div class="ff-body d-flex align-items-center gap-2">
-              <input type="checkbox" class="form-check-input" [formControlName]="f.controlName" />
-              <span>{{ f.displayName || f.label }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- DEFAULT TEXT -->
-        <div *ngIf="f.type !== 'label' && f.id !== 'caseSelectFiles' && f.type !== 'select' && f.type !== 'textarea' && f.type !== 'checkbox'" class="ff-field">
-          <div class="ff-outline" [class.ff-invalid]="form.get(f.controlName)?.touched && form.get(f.controlName)?.invalid">
-            <div class="ff-float-label">
-              {{ f.displayName || f.label }}
-              <span class="req-star" *ngIf="f.required">*</span>
-            </div>
-
-            <div class="ff-body">
-              <input class="ff-input" type="text" [formControlName]="f.controlName" />
-            </div>
-          </div>
-
-          <div class="ff-error" *ngIf="form.get(f.controlName)?.touched && form.get(f.controlName)?.invalid">
-            {{ f.requiredMsg || ('Please enter ' + (f.displayName || f.label || 'value')) }}
-          </div>
-        </div>
-
-      </ng-container>
-    </div>
-
-    <div class="d-flex gap-2">
-      <button type="button" class="btn btn-primary" (click)="onSave()" [disabled]="saving">
-        {{ saving ? 'Saving...' : 'Save' }}
-      </button>
-      <button type="button" class="btn btn-outline-secondary" (click)="closeEditor()" [disabled]="saving">
-        Cancel
+    <!-- Helpful for dashboard add-only mode -->
+    <div class="mb-2" *ngIf="singlePane && isAddOnly">
+      <button type="button"
+              class="btn btn-sm btn-outline-secondary"
+              (click)="emitViewAll()"
+              [disabled]="saving || loading">
+        ← View All Documents
       </button>
     </div>
-  </form>
-</div>
 
-<!-- Cards -->
-<div *ngIf="!loading && (!documents || documents.length === 0)" class="text-muted py-3 px-2">
-  No documents yet.
-</div>
+    <!-- Editor -->
+    <div class="section-card" *ngIf="showEditor">
+      <form [formGroup]="form">
+        <div class="grid" style="padding-bottom: 15px">
+          <ng-container *ngFor="let f of fields; trackBy: trackByField">
 
-<div class="docs-list" *ngIf="documents && documents.length > 0">
-  <article class="doc-item"
-           *ngFor="let d of documents; trackBy: trackByDoc">
+            <!-- LABEL (info text) -->
+            <div *ngIf="f.type === 'label'" class="ff-field" style="grid-column: 1 / -1;">
+              <div class="info-note">
+                {{ f.info || f.displayName || f.label }}
+              </div>
+            </div>
 
-    <div class="doc-head">
-      <div class="doc-tags">
-        <span class="pill pill-neutral">Type · {{ getDocTypeLabel(d) }}</span>
-        <span class="pill pill-info">Level · {{ getDocLevelLabel(d) }}</span>
-        <span class="doc-time">{{ d?.createdOn | date:'short' }}</span>
-        <!--<span class="pill pill-warn" *ngIf="d?.isAlert === true">Alert</span>-->
-      </div>
+            <!-- FILE PICKER (special by id) -->
+            <div *ngIf="f.id === 'caseSelectFiles'" class="ff-field" style="grid-column: 1 / -1;">
+              <div class="ff-outline">
+                <div class="ff-float-label">
+                  {{ f.displayName || f.label || 'Select File(s)' }}
+                  <span class="req-star" *ngIf="f.required">*</span>
+                </div>
 
-      <div class="doc-actions">
-        <button type="button"
-                class="icon-btn"
-                (click)="openEdit(d)"
-                [disabled]="saving"
-                aria-label="Edit document"
-                title="Edit">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm2.92 2.83H5v-.92l8.06-8.06.92.92L5.92 20.08zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" />
-          </svg>
-        </button>
+                <div class="ff-body">
+                  <input class="ff-input" type="file" multiple (change)="onFilesSelected($event)" />
+                </div>
+              </div>
 
-        <button type="button"
-                class="icon-btn danger"
-                (click)="onDelete(d)"
-                [disabled]="saving"
-                aria-label="Delete document"
-                title="Delete">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z" />
-          </svg>
-        </button>
-      </div>
-    </div>
+              <div class="file-chips mt-2" *ngIf="selectedFileNames.length > 0">
+                <span class="file-chip" *ngFor="let name of selectedFileNames; let i = index">
+                  {{ name }}
+                  <button type="button" class="chip-x" (click)="removeFile(i)">×</button>
+                </span>
+              </div>
+            </div>
 
-    <div class="doc-body">
-      <div class="doc-desc" style="white-space: pre-wrap;">
-        {{ d?.documentDescription }}
-      </div>
+            <!-- SELECT -->
+            <div *ngIf="f.type === 'select'" class="ff-field">
+              <div class="ff-outline" [class.ff-invalid]="form.get(f.controlName)?.touched && form.get(f.controlName)?.invalid">
+                <div class="ff-float-label">
+                  {{ f.displayName || f.label }}
+                  <span class="req-star" *ngIf="f.required">*</span>
+                </div>
 
-      <div *ngIf="d.files?.length" class="doc-files">
-        <div class="doc-files-title">Files</div>
-        <div class="doc-files-list">
-          <span class="file-chip" *ngFor="let f of d.files">{{ f }}</span>
+                <div class="ff-body">
+                  <ui-smart-dropdown class="ff-ui"
+                                     label=""
+                                     placeholder="Select..."
+                                     [options]="getDropdownOptions(f.controlName)"
+                                     [formControlName]="f.controlName">
+                  </ui-smart-dropdown>
+                </div>
+              </div>
+
+              <div class="ff-error" *ngIf="form.get(f.controlName)?.touched && form.get(f.controlName)?.invalid">
+                {{ f.requiredMsg || ('Please select ' + (f.displayName || f.label || 'value')) }}
+              </div>
+            </div>
+
+            <!-- TEXTAREA -->
+            <div *ngIf="f.type === 'textarea'" class="ff-field" style="grid-column: 1 / -1;">
+              <div class="ff-outline" [class.ff-invalid]="form.get(f.controlName)?.touched && form.get(f.controlName)?.invalid">
+                <div class="ff-float-label">
+                  {{ f.displayName || f.label }}
+                  <span class="req-star" *ngIf="f.required">*</span>
+                </div>
+
+                <div class="ff-body">
+                  <textarea class="ff-input ff-textarea"
+                            rows="3"
+                            [formControlName]="f.controlName"></textarea>
+                </div>
+              </div>
+
+              <div class="ff-error" *ngIf="form.get(f.controlName)?.touched && form.get(f.controlName)?.invalid">
+                {{ f.requiredMsg || ('Please enter ' + (f.displayName || f.label || 'value')) }}
+              </div>
+            </div>
+
+            <!-- CHECKBOX -->
+            <div *ngIf="f.type === 'checkbox'" class="ff-field">
+              <div class="ff-outline">
+                <div class="ff-body d-flex align-items-center gap-2">
+                  <input type="checkbox" class="form-check-input" [formControlName]="f.controlName" />
+                  <span>{{ f.displayName || f.label }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- DEFAULT TEXT -->
+            <div *ngIf="f.type !== 'label' && f.id !== 'caseSelectFiles' && f.type !== 'select' && f.type !== 'textarea' && f.type !== 'checkbox'"
+                 class="ff-field">
+              <div class="ff-outline" [class.ff-invalid]="form.get(f.controlName)?.touched && form.get(f.controlName)?.invalid">
+                <div class="ff-float-label">
+                  {{ f.displayName || f.label }}
+                  <span class="req-star" *ngIf="f.required">*</span>
+                </div>
+
+                <div class="ff-body">
+                  <input class="ff-input" type="text" [formControlName]="f.controlName" />
+                </div>
+              </div>
+
+              <div class="ff-error" *ngIf="form.get(f.controlName)?.touched && form.get(f.controlName)?.invalid">
+                {{ f.requiredMsg || ('Please enter ' + (f.displayName || f.label || 'value')) }}
+              </div>
+            </div>
+
+          </ng-container>
         </div>
-      </div>
+
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-primary" (click)="onSave()" [disabled]="saving">
+            {{ saving ? 'Saving...' : 'Save' }}
+          </button>
+          <button type="button" class="btn btn-outline-secondary" (click)="clearSelection()" [disabled]="saving">
+            Cancel
+          </button>
+        </div>
+      </form>
     </div>
 
-    <!--<div class="doc-foot">
-      <span class="doc-time">{{ d?.createdOn | date:'short' }}</span>
-    </div>-->
+    <!-- Selected / Summary (optional, same pattern as AuthDocuments) -->
+    <ng-container *ngIf="!showEditor">
+      <div class="section-card" *ngIf="getSelectedDoc() as sd; else docsSummary">
 
-  </article>
+        <div class="resp-meta mb-3">
+          <span class="pill pill-primary">Type · {{ getDocTypeLabel(sd) }}</span>
+          <span class="pill">Level · {{ getDocLevelLabel(sd) }}</span>
+          <span class="resp-time">{{ sd?.createdOn | date:'short' }}</span>
+        </div>
+
+        <div class="grid">
+          <div class="ff-field" *ngFor="let f of getDisplayFieldsForSelected(); trackBy: trackByField">
+            <div class="ff-outline">
+              <div class="ff-float-label">{{ f.displayName || f.label }}</div>
+              <div class="ff-body">
+                <div class="ff-readonly">
+                  {{ getSelectedFieldDisplayValue(sd, f) }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sub-title mt-3">Files</div>
+        <div class="files-list" *ngIf="getFiles(sd).length; else noFiles">
+          <span class="file-chip" *ngFor="let f of getFiles(sd)">{{ f }}</span>
+        </div>
+        <ng-template #noFiles>
+          <div class="text-muted">No files attached.</div>
+        </ng-template>
+      </div>
+
+      <ng-template #docsSummary>
+        <div class="ai-summary">
+          <h3>📄 Documents Summary</h3>
+          <p><strong>Total Documents:</strong> {{ (documents?.length || 0) }}</p>
+          <p><strong>With Files:</strong> {{ documentsWithFilesCount }}</p>
+          <p class="text-muted" style="margin-top: 10px;">
+            Click “Add Document” to create a new document, or select one from the list to edit.
+          </p>
+        </div>
+      </ng-template>
+    </ng-container>
+
+  </div>
 </div>
-
-

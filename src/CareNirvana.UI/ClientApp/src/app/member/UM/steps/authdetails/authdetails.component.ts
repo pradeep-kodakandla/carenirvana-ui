@@ -933,7 +933,8 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
       const validators = [];
       if (f.required) validators.push(Validators.required);
 
-      const ctrl = new FormControl(null, validators);
+      const defaultVal = this.computeDefaultValue(f as any);
+      const ctrl = new FormControl(defaultVal, validators);
       // default: honor template isEnabled flag
       const enabledByTpl = (f as any)?.isEnabled !== false;
       if (!enabledByTpl) ctrl.disable({ emitEvent: false });
@@ -943,6 +944,56 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
       const rawId = String((f as any)?._rawId ?? (f as any)?.id ?? '').trim();
       if (rawId && !this.fieldIdToControlName.has(rawId)) this.fieldIdToControlName.set(rawId, f.controlName);
 
+    }
+  }
+
+
+  /**
+   * Compute template-driven default value for a field.
+   * Mirrors CaseDetails behavior so ui-smart-dropdown can show a selected label on load.
+   */
+  private computeDefaultValue(field: any): any {
+    const v = field?.defaultValue;
+
+    // Special template token: 'D' -> current datetime (ISO)
+    if (typeof v === 'string') {
+      const s = v.trim().toUpperCase();
+      if (s === 'D') return new Date().toISOString();
+
+      // if the template stores numeric defaults as strings ("2"), keep as string for now;
+      // we reconcile to actual option value after options load.
+      return v;
+    }
+
+    // Checkbox: honor isEnabled flag as initial checked state (matches CaseDetails)
+    if (field?.type === 'checkbox') return !!field?.isEnabled;
+
+    return v ?? null;
+  }
+
+  /**
+   * If a select control has a value that matches an option only by string/number coercion,
+   * coerce the control to the exact option.value so the dropdown displays its label.
+   */
+  private reconcileSelectControlValue(controlName: string): void {
+    if (!controlName) return;
+    const ctrl = this.form?.get(controlName);
+    if (!ctrl) return;
+
+    const cur = ctrl.value;
+    if (cur === null || cur === undefined || cur === '') return;
+
+    const opts: any[] = this.optionsByControlName?.[controlName] ?? [];
+    if (!Array.isArray(opts) || opts.length === 0) return;
+
+    // already a strict match
+    if (opts.some(o => o?.value === cur)) return;
+
+    const curStr = String(cur);
+    const hit = opts.find(o => String(o?.value) === curStr);
+    if (hit) {
+      ctrl.setValue(hit.value, { emitEvent: false });
+      ctrl.markAsPristine();
     }
   }
 
@@ -1066,6 +1117,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
     for (const f of allFields) {
       if (f.type === 'select' && this.isAuthOwnerField(f)) {
         this.optionsByControlName[f.controlName] = this.authOwnerOptions;
+        this.reconcileSelectControlValue(f.controlName);
       }
     }
 
@@ -1214,8 +1266,14 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
     const allFields = this.collectAllRenderFields(this.renderSections);
     for (const f of allFields) {
       if ((f as any).type !== 'select') continue;
-      if (this.isWorkBasketField(f) && wbOpts.length) this.optionsByControlName[f.controlName] = wbOpts;
-      if (this.isWorkGroupField(f) && wgOpts.length) this.optionsByControlName[f.controlName] = wgOpts;
+      if (this.isWorkBasketField(f) && wbOpts.length) {
+        this.optionsByControlName[f.controlName] = wbOpts;
+        this.reconcileSelectControlValue(f.controlName);
+      }
+      if (this.isWorkGroupField(f) && wgOpts.length) {
+        this.optionsByControlName[f.controlName] = wgOpts;
+        this.reconcileSelectControlValue(f.controlName);
+      }
     }
   }
 
@@ -1232,7 +1290,10 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
       const hasDs = !!String((f as any).datasource ?? '').trim();
       if ((f.type === 'select' || this.isButtonType(f.type)) && !hasDs) {
         const staticOpts = this.mapStaticOptions((f as any).options);
-        if (staticOpts.length) this.optionsByControlName[f.controlName] = staticOpts;
+        if (staticOpts.length) {
+          this.optionsByControlName[f.controlName] = staticOpts;
+          this.reconcileSelectControlValue(f.controlName);
+        }
       }
     }
 
@@ -1286,6 +1347,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
               continue;
             }
             this.optionsByControlName[f.controlName] = opts ?? [];
+            this.reconcileSelectControlValue(f.controlName);
           }
 
           for (const f of fields) this.updateDependentChild(f.controlName);

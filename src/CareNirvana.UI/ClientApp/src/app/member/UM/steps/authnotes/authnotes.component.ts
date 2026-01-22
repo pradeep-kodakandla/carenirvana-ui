@@ -1,5 +1,5 @@
 /// <reference path="../../../../service/authdetailapi.service.ts" />
-import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
 import { AbstractControl, FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
 import { forkJoin, Observable, of, Subject, throwError } from 'rxjs';
 import { catchError, finalize, map, switchMap, tap, takeUntil } from 'rxjs/operators';
@@ -38,6 +38,22 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
 
   // optional: if caller only has authNumber
   @Input() authNumber?: string;
+  @Input() singlePane = false;
+
+  /**
+   * mode='add'  -> show Add Notes editor directly (dashboard embed)
+   * mode='full' -> full notes experience (wizard/stepper)
+   */
+  @Input() mode: 'add' | 'full' | 'view-all' | 'viewall' = 'full';
+
+  /**
+   * When true (dashboard), show ONE pane at a time:
+   * - list only OR editor only (never both)
+   */
+  @Input() dashboardSinglePane: boolean = false;
+
+  @Output() requestViewAll = new EventEmitter<void>();
+  @Output() requestAddOnly = new EventEmitter<void>();
 
   notes: AuthNoteDto[] = [];
   template?: TemplateSectionResponse;
@@ -48,6 +64,8 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
 
   showEditor = false;
   editing?: AuthNoteDto;
+
+  private autoOpenAddAfterLoad = false;
 
   resolved?: NotesContext;
 
@@ -68,6 +86,49 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
   sortBy: 'created_desc' | 'created_asc' | 'type_asc' | 'type_desc' | 'alerts_first' = 'created_desc';
   showSort = false;
   selectedNoteId: string | null = null;
+
+
+get isAddOnly(): boolean {
+  return (this.mode || 'full') === 'add';
+}
+
+/** Dashboard: never show list+editor at the same time */
+get showLeftPane(): boolean {
+  if (this.isAddOnly) return false;
+  if (!this.dashboardSinglePane) return true;
+  return !this.showEditor;
+}
+
+get showRightPane(): boolean {
+  if (this.isAddOnly) return true;
+  if (!this.dashboardSinglePane) return true;
+  return this.showEditor;
+}
+
+emitViewAll(): void {
+  this.requestViewAll.emit();
+}
+
+emitAddOnly(): void {
+  this.requestAddOnly.emit();
+}
+
+backToList(): void {
+  this.showEditor = false;
+  this.editing = undefined;
+}
+
+onCancel(): void {
+  if (this.isAddOnly) {
+    this.onAddClick();
+    return;
+  }
+  if (this.dashboardSinglePane) {
+    this.backToList();
+    return;
+  }
+  this.clearSelection();
+}
 
   get filteredNotes(): AuthNoteDto[] {
     const src = Array.isArray(this.notes) ? [...this.notes] : [];
@@ -122,12 +183,21 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
   ) { }
 
   ngOnInit(): void {
+    this.autoOpenAddAfterLoad = this.isAddOnly;
     this.reload();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['authDetailId'] || changes['authTemplateId'] || changes['authNumber']) {
       this.reload();
+    }
+
+    if (changes['mode']) {
+      this.autoOpenAddAfterLoad = this.isAddOnly;
+      if (this.isAddOnly && this.noteEditorFields?.length) {
+        this.onAddClick();
+        this.autoOpenAddAfterLoad = false;
+      }
     }
   }
 
@@ -273,7 +343,7 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
       )
       .subscribe({
         next: () => {
-          this.closeEditor();
+          this.clearSelection();
           this.reloadNotesOnly();
           this.toastSvc.success('Note saved successfully.');
         }
@@ -411,6 +481,11 @@ export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
           this.template = res?.template;
           const section = (this.template as any)?.section ?? (this.template as any)?.Section;
           this.applyNotesTemplate(section);
+
+          if (this.autoOpenAddAfterLoad) {
+            this.autoOpenAddAfterLoad = false;
+            this.onAddClick();
+          }
 
           // keep a stable selection so the right pane has context
           const ids = new Set(this.notes.map((n) => String(this.getNoteId(n))));

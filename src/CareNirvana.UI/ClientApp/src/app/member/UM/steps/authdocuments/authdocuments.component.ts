@@ -1,4 +1,4 @@
-import { Component, OnDestroy } from '@angular/core';
+import { Component, OnDestroy, OnChanges, SimpleChanges, Input, Output, EventEmitter } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
 import { forkJoin, of, Subject } from 'rxjs';
 import { catchError, finalize, mapTo, takeUntil, tap } from 'rxjs/operators';
@@ -38,10 +38,34 @@ type AnyField = {
   templateUrl: './authdocuments.component.html',
   styleUrls: ['./authdocuments.component.css']
 })
-export class AuthdocumentsComponent implements OnDestroy {
-  authNumber: string = '0';
-  authDetailId: number | null = null;
-  authTemplateId: number | null = null;
+export class AuthdocumentsComponent implements OnDestroy, OnChanges {
+// --------------------------
+// Inputs/Outputs (AssignedAuths embedded mode)
+// --------------------------
+@Input() authNumber: string = '0';
+@Input() authDetailId: number | null = null;
+@Input() authTemplateId: number | null = null;
+
+/** When true, component is rendered inside AssignedAuths right panel */
+@Input() singlePane: boolean = false;
+
+/** Parent can pulse this true to force opening Add screen */
+@Input() startAdd: boolean = false;
+
+/** Back-compat */
+@Input() mode: 'add' | 'full' = 'full';
+
+/** Preferred input */
+@Input() inputMode: 'add' | 'full' = 'full';
+
+@Output() requestViewAll = new EventEmitter<void>();
+@Output() requestAddOnly = new EventEmitter<void>();
+
+// Layout flags for embedded mode
+isAddOnly: boolean = false;
+showLeftPane: boolean = true;
+showRightPane: boolean = true;
+editorOnlyLayout: boolean = false;
 
   loading = false;
   saving = false;
@@ -64,6 +88,10 @@ export class AuthdocumentsComponent implements OnDestroy {
   private docTypeControlName: string | null = null;
   private destroy$ = new Subject<void>();
 
+  // When in embedded list-only mode, clicking add/edit needs to switch mode first
+  private pendingAddFromList = false;
+  private pendingEditDoc: AuthDocumentDto | null = null;
+
   // --------------------------
   // AuthActivity/AuthNotes-style UX state
   // --------------------------
@@ -83,6 +111,62 @@ export class AuthdocumentsComponent implements OnDestroy {
     this.destroy$.next();
     this.destroy$.complete();
   }
+
+
+ngOnChanges(changes: SimpleChanges): void {
+  const effectiveMode: 'add' | 'full' = (this.inputMode ?? this.mode ?? 'full') as any;
+
+  // Embedded behavior (singlePane): mutually exclusive panes
+  if (this.singlePane) {
+    this.isAddOnly = effectiveMode === 'add';
+    this.editorOnlyLayout = this.isAddOnly;
+
+    // View-all: left only
+    if (!this.isAddOnly) {
+      this.showLeftPane = true;
+      this.showRightPane = false;
+      this.showEditor = false;
+    } else {
+      // Add/Edit: right only
+      this.showLeftPane = false;
+      this.showRightPane = true;
+      this.showEditor = true;
+    }
+  } else {
+    // Standalone behavior: keep both panes
+    this.isAddOnly = false;
+    this.editorOnlyLayout = false;
+    this.showLeftPane = true;
+    this.showRightPane = true;
+  }
+
+  // Context changes (auth inputs)
+  if (changes['authDetailId'] || changes['authTemplateId'] || changes['authNumber']) {
+    this.setContext({
+      authNumber: this.authNumber,
+      authDetailId: this.authDetailId,
+      authTemplateId: this.authTemplateId
+    });
+  }
+
+  // Parent pulse: open Add screen when in editor-only mode
+  if (changes['startAdd'] && this.startAdd && (this.singlePane ? this.isAddOnly : true)) {
+    this.openAddInternal();
+  }
+
+  // Apply pending action after switching list-only -> editor-only
+  if (this.singlePane && this.isAddOnly) {
+    if (this.pendingEditDoc) {
+      const d = this.pendingEditDoc;
+      this.pendingEditDoc = null;
+      this.openEditInternal(d);
+    } else if (this.pendingAddFromList) {
+      this.pendingAddFromList = false;
+      this.openAddInternal();
+    }
+  }
+}
+
 
   // --------------------------
   // Context (called by WizardShell)
@@ -113,7 +197,6 @@ export class AuthdocumentsComponent implements OnDestroy {
 
     // Fallback: resolve missing context from authNumber (same idea as AuthNotes)
     if (changed && (!this.authDetailId || !this.authTemplateId)) {
-      this.tryResolveContextFromAuthNumber();
       this.tryResolveContextFromAuthNumber();
     }
   }
@@ -393,7 +476,7 @@ export class AuthdocumentsComponent implements OnDestroy {
         (r: any) => {
           const value = r?.value ?? r?.id ?? r?.code;
           const label =
-            r?.text ??
+            r?.documentType ??
             r?.name ??
             r?.description ??
             String(value ?? '');
@@ -504,8 +587,11 @@ export class AuthdocumentsComponent implements OnDestroy {
     this.selectedDocId = String(this.getDocumentId(d) ?? '');
     this.showEditor = false; // viewing mode
   }
-
   clearSelection(): void {
+    if (this.singlePane) {
+      this.emitViewAll();
+      return;
+    }
     this.selectedDocId = null;
     this.showEditor = false;
     this.editing = undefined;
@@ -519,7 +605,30 @@ export class AuthdocumentsComponent implements OnDestroy {
   // --------------------------
   // Editor actions
   // --------------------------
-  openAdd(): void {
+
+// --------------------------
+// Embedded mode: parent mode-switch requests
+// --------------------------
+emitViewAll(): void {
+  this.requestViewAll.emit();
+}
+
+emitAddOnly(): void {
+  this.requestAddOnly.emit();
+}
+
+openAdd(): void {
+  // In embedded list-only mode, switch to editor-only first.
+  if (this.singlePane && !this.isAddOnly) {
+    this.pendingAddFromList = true;
+    this.emitAddOnly();
+    return;
+  }
+  this.openAddInternal();
+}
+
+private openAddInternal(): void {
+
     this.editing = undefined;
     this.showEditor = true;
     this.errorMsg = '';
@@ -531,7 +640,18 @@ export class AuthdocumentsComponent implements OnDestroy {
     this.setValueByFieldId('authorizationDocumentDesc', '');
   }
 
-  openEdit(d: AuthDocumentDto): void {
+openEdit(d: AuthDocumentDto): void {
+  // In embedded list-only mode, switch to editor-only first.
+  if (this.singlePane && !this.isAddOnly) {
+    this.pendingEditDoc = d;
+    this.emitAddOnly();
+    return;
+  }
+  this.openEditInternal(d);
+}
+
+private openEditInternal(d: AuthDocumentDto): void {
+
     this.editing = d;
     this.showEditor = true;
     this.errorMsg = '';
@@ -552,6 +672,7 @@ export class AuthdocumentsComponent implements OnDestroy {
     this.setValueByFieldId('authorizationDocumentType', docTypeRaw != null ? String(docTypeRaw) : null);
     this.setValueByFieldId('authorizationDocumentDesc', (d as any)?.documentDescription ?? '');
   }
+
 
   closeEditor(): void {
     this.showEditor = false;
@@ -608,7 +729,7 @@ export class AuthdocumentsComponent implements OnDestroy {
         })
       )
       .subscribe(() => {
-        this.closeEditor();
+        this.clearSelection();
         this.reloadDocsOnly();
         this.toastSvc.success('Document saved successfully.');
       });

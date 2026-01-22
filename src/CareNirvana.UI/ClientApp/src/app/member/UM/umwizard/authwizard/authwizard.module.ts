@@ -19,10 +19,8 @@ import { AuthconfirmleavedialogComponent } from 'src/app/member/UM/components/au
 import { AuthsmartcheckComponent } from 'src/app/member/UM/steps/authsmartcheck/authsmartcheck.component';
 import { AuthdetailsComponent } from 'src/app/member/UM/steps/authdetails/authdetails.component';
 import { AuthdecisionComponent } from 'src/app/member/UM/steps/authdecision/authdecision.component';
-import { AuthmdreviewComponent } from 'src/app/member/UM/steps/authmdreview/authmdreview.component';
-import { AuthactivityComponent } from 'src/app/member/UM/steps/authactivity/authactivity.component';
-import { AuthnotesComponent } from 'src/app/member/UM/steps/authnotes/authnotes.component';
-import { AuthdocumentsComponent } from 'src/app/member/UM/steps/authdocuments/authdocuments.component';
+import { UmsharedwidgetsModule } from 'src/app/member/UM/umwizard/authwizard/umsharedwidgets.module';
+
 
 
 @NgModule({
@@ -34,10 +32,7 @@ import { AuthdocumentsComponent } from 'src/app/member/UM/steps/authdocuments/au
     AuthsmartcheckComponent,
     AuthdetailsComponent,
     AuthdecisionComponent,
-    AuthmdreviewComponent,
-    AuthactivityComponent,
-    AuthnotesComponent,
-    AuthdocumentsComponent,
+
 
     
   ],
@@ -56,7 +51,7 @@ import { AuthdocumentsComponent } from 'src/app/member/UM/steps/authdocuments/au
     MatFormFieldModule,
     MatButtonModule,
     DragDropModule,
-
+    UmsharedwidgetsModule
   ],
   exports: [
     AuthwizardshellComponent

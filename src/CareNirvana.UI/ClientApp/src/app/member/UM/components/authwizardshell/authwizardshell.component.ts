@@ -510,7 +510,7 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
   private buildSteps(): void {
     const base: AuthWizardStep[] = [
       { id: 'details', label: 'Auth Details', route: 'details' },
-      { id: 'decision', label: 'Decision', route: 'decision' },
+      { id: 'decision', label: 'Decisions', route: 'decision' },
       ...(this.showMdReview ? [{ id: 'mdReview', label: 'MD Review', route: 'mdReview' } as AuthWizardStep] : []),
       { id: 'activities', label: 'Activities', route: 'activities' },
       { id: 'notes', label: 'Notes', route: 'notes' },

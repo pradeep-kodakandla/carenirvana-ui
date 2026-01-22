@@ -12,6 +12,11 @@
   height: calc(100vh - 100px);
 }
 
+/* Embedded (AssignedAuths) should not use viewport height */
+.docs-container.docs-container--embedded {
+  height: auto;
+}
+
 .docs-left {
   width: 40%;
   overflow-y: auto;
@@ -526,7 +531,7 @@
 }
 
 /* --------------------------- */
-/* Response-style cards (Notes/Documents) */
+/* Response-style cards (docs/Documents) */
 /* --------------------------- */
 
 .resp-list {
@@ -708,4 +713,38 @@
 
   .chip-x:hover {
     background: #f3f4f6;
+  }
+
+
+
+
+/* Editor-only (dashboard view-all after selecting/adding a note) */
+.docs-container.docs-container--editor-only {
+  height: auto;
+  display: block; /* override 2-column flex */
+}
+
+  .docs-container.docs-container--editor-only .docs-left {
+    display: none;
+  }
+
+  .docs-container.docs-container--editor-only .docs-right {
+    width: 100%;
+    padding-left: 0;
+    overflow-y: auto;
+  }
+
+
+
+.docs-container.docs-container--single-pane {
+  height: auto;
+  display: block;
+}
+
+  .docs-container.docs-container--single-pane .docs-left,
+  .docs-container.docs-container--single-pane .docs-right {
+    width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+    border-right: 0;
   }

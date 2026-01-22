@@ -1,677 +1,447 @@
-/* Layout */
-.case-details {
-  width: 100%;
-}
+/* src/app/member/AG/steps/caseactivities/caseactivities.component.css */
+/* CaseActivities styled to match AuthActivity look & feel */
 
-/*.grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-}*/
-
-/* Cards */
-.section-card, .sub-card {
-  border: 1px solid #e6e8ec;
-  border-radius: 10px;
-  padding: 14px;
-  background: #fff;
-  margin-bottom: 14px;
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  /* header bar look */
-  background: #f3f4f6;
-  border-bottom: 1px solid #e6e8ec;
-  /* make it span full card width */
-  margin: -14px -14px 12px;
-  padding: 10px 14px;
-  /* match card top corners */
-  border-radius: 10px 10px 0 0;
-}
-
-.section-title {
-  font-weight: 800;
-  font-size: 14px;
-  color: #111827;
-}
-
-.sub-title {
-  font-weight: 700;
-  font-size: 13px;
-  margin: 6px 0 10px;
-}
-
-/* ============ Outlined Floating Field (like screenshot) ============ */
-.ff-outline {
-  position: relative;
-  border: 1px solid #cfd4dc;
+.auth-form {
+  padding: 1rem;
+  border: 1px solid #ccc;
   border-radius: 8px;
-  background: #fff;
-  /* space for the floating label + consistent control padding */
-  padding: 1px 1px 1px;
-  /*min-height: 52px;*/
-  /* In grid rows with textareas, don't stretch this box to match row height */
-  align-self: start;
-  height: fit-content;
+  margin-bottom: 2rem;
 }
 
-  .ff-outline:hover {
-    border-color: #aeb6c2;
-  }
-
-  .ff-outline.ff-disabled {
-    opacity: 0.65;
-    pointer-events: none;
-  }
-
-  .ff-outline.ff-invalid {
-    border-color: #dc3545;
-  }
-
-.ff-float-label {
-  position: absolute;
-  top: -9px;
-  left: 10px;
-  padding: 0 6px;
-  background: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  color: #444;
-  line-height: 18px;
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
 }
 
-/* body holds the actual control */
-.ff-body {
-  display: flex;
-  align-items: center;
-  min-height: 34px;
+.form-group-outline {
+  position: relative;
+  margin-top: 1.5rem;
 }
 
-/* Native inputs inside outlined */
-.ff-input {
-  width: 100%;
-  border: 0;
-  outline: none;
-  background: transparent;
-  font-size: 12px;
-  line-height: 22px;
-  padding-left: 5px;
-}
-
-  /* Consistent height for non-textarea inputs */
-  .ff-input:not(.ff-textarea) {
-    height: 34px;
+  .form-group-outline label {
+    position: absolute;
+    top: -10px;
+    left: 10px;
+    background: white;
+    padding: 0 5px;
+    font-size: 13px;
+    color: #333;
+    font-weight: 500;
+    z-index: 1;
   }
 
-.ff-textarea {
+  .form-group-outline input,
+  .form-group-outline select,
+  .form-group-outline textarea {
+    width: 100%;
+    padding: 12px 10px;
+    border: 1px solid #888;
+    border-radius: 4px;
+    font-size: 14px;
+    background-color: white;
+  }
+
+.form-grid .form-outline,
+.form-grid .dropdown-container {
+  margin-bottom: 15px !important;
+  padding-bottom: 0 !important;
+}
+
+.form-grid {
+  row-gap: 0 !important;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  display: grid;
+  column-gap: 16px;
+}
+
+
+textarea {
   resize: vertical;
-  min-height: 72px;
-  padding-top: 5px;
 }
 
-/* Required asterisk */
-.req-star {
-  color: #dc3545;
-  margin-left: 4px;
-  font-weight: 800;
-}
-
-/* Your UI controls should fill the width */
-.ff-ui {
-  display: block;
-  width: 100%;
-}
-
-/* Try to remove double-borders if ui-smart-dropdown / ui-datetime-picker render their own border */
-:host ::ng-deep .ff-outline ui-smart-dropdown,
-:host ::ng-deep .ff-outline ui-datetime-picker {
-  width: 100%;
-  display: block;
-}
-
-  :host ::ng-deep .ff-outline ui-smart-dropdown input,
-  :host ::ng-deep .ff-outline ui-datetime-picker input {
-    border: 0 !important;
-    outline: none !important;
-    box-shadow: none !important;
-    font-size: 14px !important;
-    background: transparent !important;
-    height: 34px !important;
-    line-height: 22px !important;
-  }
-
-/* Checkbox row (keep clean) */
-.ff-checkbox {
+.button-group {
+  margin-top: 1rem;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 2px;
-  align-self: start;
+  gap: 1rem;
 }
 
-  .ff-checkbox .form-check-input {
-    margin: 0;
-    margin-top: 1px;
-  }
-
-  .ff-checkbox .form-check-label {
-    margin: 0;
+  .button-group button {
+    padding: 8px 16px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
     cursor: pointer;
   }
 
-/* Errors */
-.ff-error {
-  color: #dc3545;
-  font-size: 12px;
-  margin-top: 6px;
-}
-
-.form-outline .ff-ui,
-.field-box .ff-ui {
-  border: 0 !important;
-}
-
-.ff-ui {
-  border: 0 !important;
-  box-shadow: none !important;
-}
-
-/* Subsection card as an outlined block with floating title */
-.sub-card {
-  position: relative;
-  padding-top: 18px; /* space for floating label */
-}
-
-.sub-float-label {
-  position: absolute;
-  top: -9px;
-  left: 12px;
-  padding: 0 8px;
-  background: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  color: #6b7280;
-  line-height: 18px;
-}
-
-
-.case-savebar {
-  display: flex;
-  justify-content: flex-end;
-  padding: 10px 0;
-}
-
-
-/* Responsive grid: max 5 columns, auto adjusts down on smaller screens */
-.grid {
-  display: grid;
-  gap: 14px;
-  /* Prevent tall controls (e.g., textarea) from stretching other fields in the same row */
-  align-items: start;
-  /* default: up to 4 columns */
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-/* drop to 4 */
-@media (max-width: 1400px) {
-  .grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-/* drop to 3 */
-@media (max-width: 1200px) {
-  .grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-/* drop to 2 */
-@media (max-width: 900px) {
-  .grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-/* drop to 1 */
-@media (max-width: 600px) {
-  .grid {
-    grid-template-columns: repeat(1, minmax(0, 1fr));
-  }
-}
-
-
-/* Make section header clickable like accordion */
-.section-header {
+.add-btn {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 14px;
   cursor: pointer;
-  user-select: none;
 }
 
-  .section-header:focus {
-    outline: 2px solid rgba(59, 130, 246, 0.35);
-    outline-offset: 2px;
-  }
+.activity-container {
+  display: flex;
+  height: calc(100vh - 100px);
+  gap: 1rem;
+}
 
-/* Chevron icon before title */
-.section-acc-icon {
-  display: inline-flex;
-  width: 18px;
-  height: 18px;
+.activity-left {
+  width: 40%;
+  overflow-y: auto;
+  border-right: 2px solid #eee;
+  padding-right: 1rem;
+}
+
+.activity-right {
+  width: 60%;
+  padding-left: 1rem;
+  overflow-y: auto;
+}
+
+.left-controls {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
-  margin-right: 8px;
-  font-size: 24px;
-  transition: transform 150ms ease;
-  color: #374151;
+  margin-bottom: 1rem;
+  gap: 0.5rem;
 }
 
-  .section-acc-icon.open {
-    transform: rotate(90deg);
-  }
-
-
-.ff-outline {
-  position: relative;
+.search-input {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 6px;
   border: 1px solid #ccc;
-  border-radius: 10px;
+  font-size: 14px;
+}
+
+.right-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sort-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.sort-icon {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.sort-menu {
+  position: absolute;
+  top: 36px;
+  right: 0;
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  z-index: 10;
+  width: 200px;
+}
+
+.sort-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+  .sort-option:hover {
+    background-color: #f0f0f0;
+  }
+
+.timeline-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.timeline-item {
+  position: relative;
+  margin-bottom: 1rem;
+  cursor: grab;
+}
+
+  .timeline-item.selected .timeline-content {
+    border: 2px solid #007bff;
+    background-color: #e9f5ff;
+  }
+
+
+.timeline-item {
+  max-height: 150px;
+  overflow: hidden;
+}
+
+.timeline-dot {
+  position: absolute;
+  left: 7px;
+  width: 16px;
+  height: 16px;
+  background: #007bff;
+  border-radius: 50%;
+  top: 10px;
+  border: 3px solid white;
+  z-index: 1;
+  visibility: hidden;
+}
+
+  .timeline-dot.completed {
+    background: #28a745;
+  }
+
+.timeline-content {
+  /*  background: #f9f9f9;
+*/ padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.timeline-title {
+  font-weight: bold;
+  color: #333;
+}
+
+.timeline-summary {
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.timeline-priority {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: white;
+}
+
+.priority-high {
+  background-color: #dc3545;
+}
+
+.priority-medium {
+  background-color: orange; /* 🔥 make Medium priority orange */
+}
+
+.priority-low {
+  background-color: #28a745;
+}
+
+.priority-default {
+  background-color: #6c757d;
+}
+
+.ai-summary {
+  padding: 2rem;
+  /*  background: #f7f9fc;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  box-shadow: 0px 2px 6px rgba(0,0,0,0.08);*/
+}
+
+  .ai-summary h3 {
+    margin-bottom: 1rem;
+  }
+
+  .ai-summary p {
+    margin: 0.5rem 0;
+    font-size: 1rem;
+  }
+
+.is-invalid {
+  border-color: red !important;
+}
+
+.invalid-feedback {
+  color: red;
+  font-size: 0.85em;
+  margin-top: 4px;
+}
+
+
+.dropdown-container {
+  position: relative;
+}
+
+.autocomplete-dropdown {
+  position: absolute;
   background: #fff;
-  transition: box-shadow .15s ease, border-color .15s ease, background .15s ease;
+  z-index: 1000;
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  border-radius: 4px;
 }
 
-/* Unchanged baseline */
-.ff-unchanged:hover {
-  border-color: #c7d0dc;
+.autocomplete-option {
+  padding: 8px 12px;
+  cursor: pointer;
 }
 
-/* CHANGED: subtle cue always visible */
-.ff-changed {
-  border-color: #b9c7ff; /* soft accent */
-  background: #fbfcff; /* almost white tint */
-}
-
-  /* optional: tiny "edited" dot in the corner */
-  .ff-changed::after {
-    content: "";
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #4c6fff; /* accent dot */
-    opacity: .9;
+  .autocomplete-option:hover {
+    background-color: #f1f1f1;
   }
 
-/* SELECTED: higher emphasis than changed */
-.ff-selected {
-  border-color: #4c6fff;
-  box-shadow: 0 0 0 3px rgba(76, 111, 255, .12);
-  background: #f7f9ff;
+.form-outline {
+  position: relative;
+  border: 1px solid #cfd4dc;
+  margin-bottom: 1.5rem;
 }
 
-  /* optional: left accent bar for selected */
-  .ff-selected::before {
-    content: "";
-    position: absolute;
-    left: -1px;
-    top: 10px;
-    bottom: 10px;
-    width: 3px;
-    border-radius: 3px;
-    background: #4c6fff;
+.floating-label {
+  position: absolute;
+  top: -10px;
+  left: 12px;
+  background-color: white;
+  padding: 0 4px;
+  font-size: 12px;
+  color: #555;
+  z-index: 10;
+}
+
+.input-with-icon {
+  position: relative;
+}
+
+  .input-with-icon input.form-control {
+    padding-right: 30px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
   }
 
-  /* If selected + changed, keep selected dominant */
-  .ff-selected.ff-changed {
-    background: #f4f7ff;
+.dropdown-arrow {
+  position: absolute;
+  right: 10px;
+  top: 8px;
+  pointer-events: none;
+  font-size: 0.85rem;
+  color: #777;
+}
+
+.autocomplete-option.highlighted {
+  background-color: #007BFF;
+  color: white;
+}
+
+.calendar-icon-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+  z-index: 2;
+}
+
+
+.icon-btn {
+  background: none;
+  border: none;
+  padding: 0 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  margin-left: 6px;
+}
+
+  .icon-btn:hover {
+    color: #007bff;
   }
 
-
-.edited-badge {
+.activity-actions {
   display: inline-flex;
   align-items: center;
   margin-left: 8px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1;
-  border: 1px solid rgba(76, 111, 255, .22);
-  background: rgba(76, 111, 255, .10);
-  color: #2f49d1;
+}
+
+.icon-btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.comments-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 16px;
+}
+
+/* umauthactivity.component.css */
+
+/* Only affect the red star inside the floating label */
+label .text-danger {
+  font-size: inherit;
+  transform: scale(1.5);
+  display: inline-block;
   vertical-align: middle;
-  transform: translateY(-1px);
+  margin-left: 2px;
 }
 
 
-/* Wrap a field + its validation message so error never flows beside */
-.ff-field {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  width: 100%;
-  min-width: 0;
+/* Dashboard single-pane behavior (list-only until editing, then editor-only) */
+.activity-container.activity-container--single-pane {
+  height: auto;
+  display: block;
 }
 
-/* Ensure checkbox stays on one line and error below */
-.ff-checkbox, .ff-outline {
-  width: 100%;
-}
-
-
-/* Make search span the full grid width */
-.ff-span-all {
-  grid-column: 1 / -8;
-}
-
-/* Search bar styling to match screenshot */
-.ff-searchbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  /*  border: 1px solid #d0d0d0;
-*/ border-radius: 10px;
-  padding: 10px 12px;
-  background: #fff;
-  min-height: 44px;
-}
-
-  .ff-searchbar:focus-within {
-    border-color: #6aa9ff;
-    box-shadow: 0 0 0 3px rgba(106,169,255,.18);
+  .activity-container.activity-container--single-pane .activity-left,
+  .activity-container.activity-container--single-pane .activity-right {
+    width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+    border-right: 0;
   }
 
-.ff-search-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  color: #6b7280;
-}
+/* --- CaseActivities tweaks --- */
 
-  .ff-search-icon svg {
-    fill: currentColor;
-  }
-
-.ff-search-input {
-  width: 100%;
-  border: none;
-  outline: none;
-  background: transparent;
-  font-size: 12px;
-}
-
-  .ff-search-input::-webkit-search-cancel-button {
-    -webkit-appearance: none;
-  }
-/* =========================
-   Repeat groups (+ / −)
-========================= */
-.ff-repeat-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-
-.ff-repeat-group {
-  border: 1px dashed #e1e5ee;
-  border-radius: 12px;
-  padding: 12px;
-  background: #fcfcfd;
-}
-
-.ff-repeat-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-
-.ff-repeat-title {
-  font-size: 12px;
-  font-weight: 700;
-  color: #374151;
-  letter-spacing: .2px;
-}
-
-.grid.ff-repeat-grid {
-  /* add an extra "actions" column as the LAST cell */
-  grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
-}
-
-/* Keep responsiveness: repeat(N) + auto actions col */
-@media (max-width: 1400px) {
-  .grid.ff-repeat-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
-  }
-}
-
-@media (max-width: 1200px) {
-  .grid.ff-repeat-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
-  }
-}
-
-@media (max-width: 900px) {
-  .grid.ff-repeat-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
-  }
-}
-
-@media (max-width: 600px) {
-  .grid.ff-repeat-grid {
-    grid-template-columns: repeat(1, minmax(0, 1fr)) auto;
-  }
-}
-
-/* In repeat grids, a full-width field should NOT cover the actions column */
-.grid.ff-repeat-grid .ff-span-all {
-  grid-column: 1 / -8;
-}
-
-.ff-repeat-cell {
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-  gap: 8px;
-  padding-top: 1px;
-}
-
-.ff-repeat-btn {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  border: 1px solid #d7dde5;
-  background: #fff;
+/* Make timeline cards clickable like AuthActivity */
+.timeline-content {
   cursor: pointer;
+}
+
+/* Ensure selected styling exists even if AuthActivity css changes */
+.timeline-item.selected .timeline-content {
+  border: 2px solid #007bff;
+  background-color: #e9f5ff;
+}
+
+/* Summary grid (counts) */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.25rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Keep icons from shifting layout */
+.activity-actions {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  font-weight: 800;
-  line-height: 1;
-  user-select: none;
-  transition: box-shadow .15s ease, border-color .15s ease, transform .05s ease;
+  gap: 6px;
 }
 
-  .ff-repeat-btn:hover {
-    border-color: #aeb6c2;
-    box-shadow: 0 2px 10px rgba(17,24,39,.06);
-  }
-
-  .ff-repeat-btn:active {
-    transform: translateY(1px);
-  }
-
-  .ff-repeat-btn:disabled {
-    opacity: .45;
-    cursor: not-allowed;
-    box-shadow: none;
-  }
-
-  .ff-repeat-btn.danger {
-    border-color: rgba(220,53,69,.32);
-  }
-
-    .ff-repeat-btn.danger:hover {
-      border-color: rgba(220,53,69,.6);
-    }
-
-/* Nested subsection visual hint */
-.sub-card.sub-nested {
-  border-style: dashed;
-  background: #fff;
-  margin-top: 14px;
-}
-
-/* --------------------------- */
-/* Response-style cards (Notes/Documents) */
-/* --------------------------- */
-
-.resp-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 4px 2px 12px;
-}
-
-.resp-card {
-  background: #fff;
-  border: 1px solid rgba(17, 24, 39, 0.10);
-  border-radius: 14px;
-  padding: 12px 14px;
-  box-shadow: 0 1px 0 rgba(17, 24, 39, 0.02);
-  transition: box-shadow 160ms ease, transform 160ms ease, border-color 160ms ease;
-}
-
-  .resp-card:hover {
-    border-color: rgba(17, 24, 39, 0.16);
-    box-shadow: 0 10px 22px rgba(17, 24, 39, 0.08);
-    transform: translateY(-1px);
-  }
-
-.resp-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.resp-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.resp-time {
-  font-size: 12px;
-  color: #6b7280;
-}
-
-.pill {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 4px 10px;
-  font-size: 12px;
-  line-height: 1;
-  background: #f3f4f6;
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  color: #111827;
-  white-space: nowrap;
-}
-
-.pill-primary {
-  background: #eef6ff;
-  border-color: #cfe6ff;
-}
-
-.pill-warn {
-  background: #fff7ed;
-  border-color: #fed7aa;
-  color: #9a3412;
-}
-
-.resp-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.icon-btn {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  border: 1px solid rgba(17, 24, 39, 0.10);
-  background: #fff;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  cursor: pointer;
-  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
-}
-
-  .icon-btn svg {
-    width: 18px;
-    height: 18px;
-    fill: #374151;
-  }
-
-  .icon-btn:hover {
-    background: #f9fafb;
-    border-color: rgba(17, 24, 39, 0.16);
-    transform: translateY(-1px);
-  }
-
-  .icon-btn:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-    transform: none;
-  }
-
-  .icon-btn.danger:hover {
-    background: #fff5f5;
-    border-color: rgba(239, 68, 68, 0.30);
-  }
-
-  .icon-btn.danger svg {
-    fill: #b91c1c;
-  }
-
-.resp-body {
-  margin-top: 10px;
-  white-space: pre-wrap;
-  color: #111827;
-  font-size: 14px;
-  line-height: 1.45;
-}
-
-.files-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.file-chip {
-  display: inline-flex;
-  align-items: center;
-  max-width: 100%;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  line-height: 1;
-  color: #374151;
-  background: #f9fafb;
-  border: 1px solid rgba(17, 24, 39, 0.10);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+/* In CaseActivities, the dot should be visible (AuthActivity hides it) */
+.timeline-dot {
+  visibility: visible;
 }

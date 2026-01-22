@@ -296,7 +296,7 @@
 
 .ff-textarea {
   resize: vertical;
-  /* ✅ Give Note/Comments more space */
+  /* âœ… Give Note/Comments more space */
   min-height: 140px;
   padding-top: 5px;
 }
@@ -390,7 +390,7 @@
   display: grid;
   gap: 14px;
   align-items: start;
-  /* ✅ 2 fields per row */
+  /* âœ… 2 fields per row */
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
@@ -488,7 +488,7 @@
   }
 
 /* =========================
-   Repeat groups (+ / −)
+   Repeat groups (+ / âˆ’)
 ========================= */
 .ff-repeat-wrap {
   display: flex;
@@ -760,3 +760,77 @@
   color: #111827;
   white-space: pre-wrap;
 }
+
+
+/* When embedded in dashboard (add-only), make the editor take full width */
+.notes-container.notes-container--add-only {
+  height: auto; /* avoid the stepper height rule in a drawer/panel */
+  display: block; /* no 2-column flex layout needed */
+}
+
+  .notes-container.notes-container--add-only .notes-right {
+    width: 100%;
+    padding-left: 0;
+    overflow-y: auto;
+  }
+
+  /* optional: if you ever render left in add-only, ensure it doesn't reserve space */
+  .notes-container.notes-container--add-only .notes-left {
+    display: none;
+  }
+
+
+
+/* =========================================================
+   Dashboard "View all notes" single-pane behavior
+   - view-all: show only list (left)
+   - after selection/add: show only editor (right)
+   Keeps the full-page 2-column layout unchanged.
+========================================================= */
+
+/* List-only (dashboard view-all, no selection yet) */
+.notes-container.notes-container--list-only {
+  height: auto;
+  display: block; /* override 2-column flex */
+}
+
+.notes-container.notes-container--list-only .notes-left {
+  width: 100%;
+  padding-right: 0;
+  border-right: 0;
+}
+
+.notes-container.notes-container--list-only .notes-right {
+  display: none;
+}
+
+/* Editor-only (dashboard view-all after selecting/adding a note) */
+.notes-container.notes-container--editor-only {
+  height: auto;
+  display: block; /* override 2-column flex */
+}
+
+.notes-container.notes-container--editor-only .notes-left {
+  display: none;
+}
+
+.notes-container.notes-container--editor-only .notes-right {
+  width: 100%;
+  padding-left: 0;
+  overflow-y: auto;
+}
+
+
+
+.notes-container.notes-container--single-pane {
+  height: auto;
+  display: block;
+}
+
+  .notes-container.notes-container--single-pane .notes-left,
+  .notes-container.notes-container--single-pane .notes-right {
+    width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+    border-right: 0;
+  }

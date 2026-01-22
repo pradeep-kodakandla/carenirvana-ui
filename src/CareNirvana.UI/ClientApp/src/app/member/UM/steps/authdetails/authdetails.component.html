@@ -143,7 +143,9 @@
 
                               <ng-container *ngSwitchCase="'datetime-local'">
                                 <ui-datetime-picker class="ff-ui"
+                                                    placeholderDate="mm/dd/yyyy"
                                                     placeholderDateTime="mm/dd/yyyy --:--"
+                                                    [dateOnly]="!!f.dateOnly"
                                                     [formControlName]="f.controlName">
                                 </ui-datetime-picker>
                               </ng-container>
@@ -247,7 +249,9 @@
 
                                     <ng-container *ngSwitchCase="'datetime-local'">
                                       <ui-datetime-picker class="ff-ui"
+                                                          placeholderDate="mm/dd/yyyy"
                                                           placeholderDateTime="mm/dd/yyyy --:--"
+                                                          [dateOnly]="!!f.dateOnly"
                                                           [formControlName]="f.controlName">
                                       </ui-datetime-picker>
                                     </ng-container>
@@ -333,7 +337,6 @@
       {{ isSaving ? 'Saving...' : 'Save' }}
     </button>
   </div>-->
-
   <!-- Recursive subsection template -->
   <ng-template #subTpl let-sub let-depth="depth">
     <div class="sub-card" [class.sub-nested]="depth > 0">
@@ -391,6 +394,7 @@
                             <ui-datetime-picker class="ff-ui"
                                                 placeholderDate="mm/dd/yyyy"
                                                 placeholderDateTime="mm/dd/yyyy --:--"
+                                                [dateOnly]="!!f.dateOnly"
                                                 [formControlName]="f.controlName">
                             </ui-datetime-picker>
                           </ng-container>
@@ -493,6 +497,7 @@
                                   <ui-datetime-picker class="ff-ui"
                                                       placeholderDate="mm/dd/yyyy"
                                                       placeholderDateTime="mm/dd/yyyy --:--"
+                                                      [dateOnly]="!!f.dateOnly"
                                                       [formControlName]="f.controlName">
                                   </ui-datetime-picker>
                                 </ng-container>

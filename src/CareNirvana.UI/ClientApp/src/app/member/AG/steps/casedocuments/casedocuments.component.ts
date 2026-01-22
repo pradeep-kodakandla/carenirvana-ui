@@ -1,7 +1,7 @@
-import { Component, Input, OnDestroy, OnInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnDestroy, OnInit, OnChanges, SimpleChanges } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
 import { Subject, of } from 'rxjs';
-import { catchError, finalize, map, takeUntil, tap } from 'rxjs/operators';
+import { catchError, finalize, takeUntil, tap } from 'rxjs/operators';
 import { CasedetailService, CaseDocumentDto } from 'src/app/service/casedetail.service';
 import { DatasourceLookupService } from 'src/app/service/crud.service';
 import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
@@ -29,10 +29,37 @@ export interface AnyField {
   templateUrl: './casedocuments.component.html',
   styleUrls: ['./casedocuments.component.css'],
 })
-export class CasedocumentsComponent implements OnInit, OnDestroy {
+export class CasedocumentsComponent implements OnInit, OnDestroy, OnChanges {
+  // --------------------------
+  // Inputs/Outputs (Dashboard / Embedded support)
+  // --------------------------
   @Input() caseHeaderId?: number = 27;
   @Input() levelId?: number = 1;
   @Input() caseTemplateId?: number = 2;
+
+  /** When true, this component is rendered inside a dashboard/single panel area */
+  @Input() singlePane: boolean = false;
+
+  /** Parent can pulse this true to force opening Add screen */
+  @Input() startAdd: boolean = false;
+
+  /** Back-compat */
+  @Input() mode: 'add' | 'full' = 'full';
+
+  /** Preferred input */
+  @Input() inputMode: 'add' | 'full' = 'full';
+
+  /** Parent can switch to view-all/list mode */
+  @Output() requestViewAll = new EventEmitter<void>();
+
+  /** Parent can switch to add-only/editor mode */
+  @Output() requestAddOnly = new EventEmitter<void>();
+
+  // Layout flags for embedded mode
+  isAddOnly: boolean = false;
+  showLeftPane: boolean = true;
+  showRightPane: boolean = true;
+  editorOnlyLayout: boolean = false;
 
   loading = false;
   saving = false;
@@ -56,6 +83,18 @@ export class CasedocumentsComponent implements OnInit, OnDestroy {
 
   private destroy$ = new Subject<void>();
 
+  // When in embedded list-only mode, clicking add/edit needs to switch mode first
+  private pendingAddFromList = false;
+  private pendingEditDoc: CaseDocumentDto | null = null;
+
+  // --------------------------
+  // AuthActivity/AuthNotes-style UX state
+  // --------------------------
+  searchTerm = '';
+  showSort = false;
+  sortBy: 'created_desc' | 'created_asc' | 'type_asc' | 'type_desc' | 'files_first' = 'created_desc';
+  selectedDocId: string | null = null;
+
   constructor(
     private fb: FormBuilder,
     private api: CasedetailService,
@@ -67,12 +106,73 @@ export class CasedocumentsComponent implements OnInit, OnDestroy {
     this.reload();
   }
 
+  ngOnChanges(changes: SimpleChanges): void {
+    const effectiveMode: 'add' | 'full' = (this.inputMode ?? this.mode ?? 'full') as any;
+
+    // Embedded behavior (singlePane): mutually exclusive panes
+    if (this.singlePane) {
+      this.isAddOnly = effectiveMode === 'add';
+      this.editorOnlyLayout = this.isAddOnly;
+
+      // View-all: left only
+      if (!this.isAddOnly) {
+        this.showLeftPane = true;
+        this.showRightPane = false;
+        this.showEditor = false;
+      } else {
+        // Add/Edit: right only
+        this.showLeftPane = false;
+        this.showRightPane = true;
+        this.showEditor = true;
+      }
+    } else {
+      // Standalone behavior: keep both panes
+      this.isAddOnly = false;
+      this.editorOnlyLayout = false;
+      this.showLeftPane = true;
+      this.showRightPane = true;
+    }
+
+    // Reload when case context changes
+    if (changes['caseHeaderId'] || changes['levelId'] || changes['caseTemplateId']) {
+      if (this.form) this.reload();
+    }
+
+    // Parent pulse: open Add screen when in editor-only mode (or standalone)
+    if (changes['startAdd'] && this.startAdd && (this.singlePane ? this.isAddOnly : true)) {
+      this.openAddInternal();
+    }
+
+    // Apply pending action after switching list-only -> editor-only
+    if (this.singlePane && this.isAddOnly) {
+      if (this.pendingEditDoc) {
+        const d = this.pendingEditDoc;
+        this.pendingEditDoc = null;
+        this.openEditInternal(d);
+      } else if (this.pendingAddFromList) {
+        this.pendingAddFromList = false;
+        this.openAddInternal();
+      }
+    }
+  }
+
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
   }
 
-  // ---------------------- LOAD ----------------------
+  // --------------------------
+  // Embedded mode: parent mode-switch requests
+  // --------------------------
+  emitViewAll(): void {
+    this.requestViewAll.emit();
+  }
+
+  emitAddOnly(): void {
+    this.requestAddOnly.emit();
+  }
+
+  // ---------------------- LOAD -------------------
   reload(): void {
     this.loading = true;
     this.errorMsg = '';
@@ -80,7 +180,13 @@ export class CasedocumentsComponent implements OnInit, OnDestroy {
     this.templateSection = undefined;
     this.fields = [];
     this.dropdownOptions = {};
-    this.closeEditor();
+
+    // Keep embedded add-only mode in editor view
+    if (this.singlePane && this.isAddOnly) {
+      this.openAddInternal();
+    } else {
+      this.closeEditor();
+    }
 
     if (this.caseHeaderId == null || this.levelId == null) {
       this.loading = false;
@@ -95,7 +201,6 @@ export class CasedocumentsComponent implements OnInit, OnDestroy {
         tap((res) => {
           const list = res?.documents ?? [];
           this.documents = list.filter((x: any) => !!x && !!x.documentId);
-          console.log('Documents:', this.documents);
         }),
         catchError((err) => {
           this.errorMsg = err?.error?.message ?? 'Unable to load documents.';
@@ -119,6 +224,76 @@ export class CasedocumentsComponent implements OnInit, OnDestroy {
         )
         .subscribe();
     }
+  }
+
+  // --------------------------
+  // Left panel search/sort
+  // --------------------------
+  applySearch(): void {
+    // getter handles filtering
+  }
+
+  applySort(key: 'created_desc' | 'created_asc' | 'type_asc' | 'type_desc' | 'files_first'): void {
+    this.sortBy = key;
+    this.showSort = false;
+  }
+
+  get filteredDocuments(): CaseDocumentDto[] {
+    const src = Array.isArray(this.documents) ? [...this.documents] : [];
+
+    const q = (this.searchTerm ?? '').trim().toLowerCase();
+    const searched = q
+      ? src.filter((d) => {
+        const type = (this.getDocTypeLabel(d) ?? '').toLowerCase();
+        const level = (this.getDocLevelLabel(d) ?? '').toLowerCase();
+        const desc = String((d as any)?.documentDescription ?? '').toLowerCase();
+        const created = String((d as any)?.createdOn ?? '').toLowerCase();
+        const files = this.getFiles(d).join(' ').toLowerCase();
+        return type.includes(q) || level.includes(q) || desc.includes(q) || created.includes(q) || files.includes(q);
+      })
+      : src;
+
+    const asDate = (d: CaseDocumentDto) => {
+      const raw = (d as any)?.createdOn;
+      const dt = raw ? new Date(raw) : null;
+      return dt && !isNaN(dt.getTime()) ? dt.getTime() : 0;
+    };
+
+    switch (this.sortBy) {
+      case 'created_asc':
+        searched.sort((a, b) => asDate(a) - asDate(b));
+        break;
+      case 'type_asc':
+        searched.sort((a, b) => (this.getDocTypeLabel(a) || '').localeCompare(this.getDocTypeLabel(b) || ''));
+        break;
+      case 'type_desc':
+        searched.sort((a, b) => (this.getDocTypeLabel(b) || '').localeCompare(this.getDocTypeLabel(a) || ''));
+        break;
+      case 'files_first':
+        searched.sort((a, b) => this.getFiles(b).length - this.getFiles(a).length || (asDate(b) - asDate(a)));
+        break;
+      case 'created_desc':
+      default:
+        searched.sort((a, b) => asDate(b) - asDate(a));
+        break;
+    }
+
+    return searched;
+  }
+
+  clearSelection(): void {
+    if (this.singlePane) {
+      // in embedded/dashboard mode, delegate to parent
+      this.emitViewAll();
+      return;
+    }
+    this.selectedDocId = null;
+    this.closeEditor();
+  }
+
+  getSelectedDoc(): CaseDocumentDto | null {
+    if (!this.selectedDocId) return null;
+    return this.documents.find(d => String(this.getDocumentId(d)) === String(this.selectedDocId)) ?? null;
   }
 
   // ---------------------- TEMPLATE -> FORM ----------------------
@@ -305,18 +480,47 @@ export class CasedocumentsComponent implements OnInit, OnDestroy {
 
   // ---------------------- UI ACTIONS ----------------------
   openAdd(): void {
+    // In embedded list-only mode, switch to editor-only first.
+    if (this.singlePane && !this.isAddOnly) {
+      this.pendingAddFromList = true;
+      this.emitAddOnly();
+      return;
+    }
+    this.openAddInternal();
+  }
+
+  private openAddInternal(): void {
     this.editing = undefined;
     this.showEditor = true;
     this.selectedFiles = [];
     this.selectedFileNames = [];
+    this.errorMsg = '';
     this.form?.reset();
+
+    // keep selection consistent
+    this.selectedDocId = null;
   }
 
   openEdit(doc: CaseDocumentDto): void {
+    // In embedded list-only mode, switch to editor-only first.
+    if (this.singlePane && !this.isAddOnly) {
+      this.pendingEditDoc = doc;
+      this.emitAddOnly();
+      return;
+    }
+    this.openEditInternal(doc);
+  }
+
+  private openEditInternal(doc: CaseDocumentDto): void {
     this.editing = doc;
     this.showEditor = true;
+    this.errorMsg = '';
+
+    // keep selection in sync
+    this.selectedDocId = String(this.getDocumentId(doc) ?? '');
+
     this.selectedFiles = [];
-    this.selectedFileNames = (doc?.files ?? []).map(x => String(x));
+    this.selectedFileNames = this.getFiles(doc);
 
     // patch using field IDs (template-driven)
     const typeCn = this.getControlNameByFieldId('caseDocumentType');
@@ -325,6 +529,7 @@ export class CasedocumentsComponent implements OnInit, OnDestroy {
     const typeVal = typeCn ? (this.findOption(typeCn, doc.documentType)?.value ?? doc.documentType) : doc.documentType;
     const levelVal = levelCn ? (this.findOption(levelCn, doc.documentLevel)?.value ?? doc.documentLevel) : doc.documentLevel;
 
+    this.form?.reset();
     this.setValueByFieldId('caseDocumentType', typeVal);
     this.setValueByFieldId('documentLevel', levelVal);
     this.setValueByFieldId('caseDocumentDesc', doc.documentDescription);
@@ -335,6 +540,7 @@ export class CasedocumentsComponent implements OnInit, OnDestroy {
     this.editing = undefined;
     this.selectedFiles = [];
     this.selectedFileNames = [];
+    this.errorMsg = '';
     this.form?.reset();
   }
 
@@ -391,7 +597,7 @@ export class CasedocumentsComponent implements OnInit, OnDestroy {
         .pipe(finalize(() => (this.saving = false)))
         .subscribe({
           next: () => {
-            this.closeEditor();
+            this.clearSelection();
             this.reload();
             (this as any).showSavedMessage?.('Document updated successfully');
           },
@@ -409,9 +615,63 @@ export class CasedocumentsComponent implements OnInit, OnDestroy {
       .deleteDocument(this.caseHeaderId, this.levelId, doc.documentId)
       .pipe(finalize(() => (this.saving = false)))
       .subscribe({
-        next: () => this.reload(),
+        next: () => {
+          // if deleted selected doc, clear selection
+          if (this.selectedDocId && String(doc.documentId) === String(this.selectedDocId)) {
+            this.selectedDocId = null;
+          }
+          this.reload();
+        },
         error: (err) => (this.errorMsg = err?.error?.message ?? 'Unable to delete document.'),
       });
+  }
+
+  // ----------------------
+  // Read-only Selected display helpers
+  // ----------------------
+  getDisplayFieldsForSelected(): AnyField[] {
+    const hiddenIds = new Set(['caseselectfiles']);
+    return (this.fields ?? []).filter(f => {
+      const t = String(f.type ?? '').toLowerCase();
+      const id = String(f.id ?? '').toLowerCase();
+      if (t === 'label') return false;
+      if (hiddenIds.has(id)) return false;
+      return true;
+    });
+  }
+
+  getSelectedFieldDisplayValue(doc: CaseDocumentDto, f: AnyField): string {
+    const raw = this.getSelectedFieldRawValue(doc, f);
+    if (raw === null || raw === undefined || raw === '') return '—';
+
+    const t = String(f.type ?? '').toLowerCase();
+    if (t === 'select') {
+      return this.getLabelFromControlOptions(f.controlName, raw);
+    }
+    if (t === 'checkbox') {
+      return raw === true ? 'Yes' : 'No';
+    }
+    return String(raw);
+  }
+
+  private getSelectedFieldRawValue(doc: CaseDocumentDto, f: AnyField): any {
+    const id = String(f.id ?? '').toLowerCase();
+
+    switch (id) {
+      case 'casedocumenttype':
+        return (doc as any)?.documentType ?? (doc as any)?.caseDocumentType ?? (doc as any)?.documentTypeId ?? null;
+
+      case 'documentlevel':
+        return (doc as any)?.documentLevel ?? (doc as any)?.level ?? (doc as any)?.documentLevelId ?? null;
+
+      case 'casedocumentdesc':
+        return (doc as any)?.documentDescription ?? '';
+
+      default:
+        // fallback: if dto has matching key
+        const direct = (doc as any)?.[f.id as any];
+        return direct !== undefined ? direct : null;
+    }
   }
 
   // ---------------------- FIELD ID HELPERS ----------------------
@@ -432,11 +692,18 @@ export class CasedocumentsComponent implements OnInit, OnDestroy {
     this.form.get(cn)?.setValue(value);
   }
 
+  getDocumentId(d?: CaseDocumentDto): any {
+    return (d as any)?.documentId;
+  }
+
+  getFiles(d: CaseDocumentDto): string[] {
+    const arr = (d as any)?.fileNames ?? (d as any)?.files;
+    return Array.isArray(arr) ? arr.map((x: any) => String(x)) : [];
+  }
+
   // trackBy
   trackByDoc = (i: number, d: any) => d?.documentId ?? i;
   trackByField = (_: number, f: AnyField) => f.controlName;
-
-
 
   private findOption(controlName: string, rawValue: any): UiSmartOption | null {
     const opts = this.dropdownOptions?.[controlName] ?? [];
@@ -469,25 +736,29 @@ export class CasedocumentsComponent implements OnInit, OnDestroy {
     ctrl.updateValueAndValidity({ emitEvent: false });
   }
 
+  private getLabelFromControlOptions(controlName: string | null, rawValue: any): string {
+    if (!controlName) return String(rawValue ?? '');
+    const opts = this.dropdownOptions?.[controlName] ?? [];
+    const hit = opts.find(o => String((o as any).value) === String(rawValue));
+    return hit ? String((hit as any).label ?? (hit as any).text ?? (hit as any).name ?? rawValue) : String(rawValue ?? '');
+  }
+
   // For cards: show label instead of id
   getDocTypeLabel(d: CaseDocumentDto): string {
     const cn = this.getControlNameByFieldId('caseDocumentType');
-    const opt = cn ? this.findOption(cn, d?.documentType) : null;
-    return opt?.label ?? String(d?.documentType ?? '');
+    const opt = cn ? this.findOption(cn, (d as any)?.documentType) : null;
+    return opt?.label ?? String((d as any)?.documentType ?? '');
   }
 
   getDocLevelLabel(d: CaseDocumentDto): string {
     const cn = this.getControlNameByFieldId('documentLevel');
-    const opt = cn ? this.findOption(cn, d?.documentLevel) : null;
-    return opt?.label ?? String(d?.documentLevel ?? '');
+    const opt = cn ? this.findOption(cn, (d as any)?.documentLevel) : null;
+    return opt?.label ?? String((d as any)?.documentLevel ?? '');
   }
 
-
-
-
+  get documentsWithFilesCount(): number {
+    const docs = this.documents ?? [];
+    return docs.filter(d => (this.getFiles(d)?.length ?? 0) > 0).length;
+  }
 
 }
-
-
-
-

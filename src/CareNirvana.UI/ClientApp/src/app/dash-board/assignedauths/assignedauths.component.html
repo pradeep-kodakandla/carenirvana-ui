@@ -1,268 +1,364 @@
-<mat-menu #menu="matMenu">
-  <button mat-menu-item><span>Add Activity</span></button>
-  <button mat-menu-item disabled><span>Run Assessment</span></button>
-  <button mat-menu-item><span>Messages</span></button>
-  <button mat-menu-item><span>Add Notes</span></button>
-  <button mat-menu-item disabled><span>Send Letter</span></button>
-  <button mat-menu-item><span>Unassign</span></button>
-  <button mat-menu-item><span>Summary</span></button>
+<mat-menu #menu="matMenu" panelClass="row-menu-panel">
+  <ng-template matMenuContent let-row="row">
+
+    <!-- Add Activity (primary row) -->
+    <button mat-menu-item class="row-menu-item row-menu-item--primary"
+            (click)="openActivity(row); $event.stopPropagation()">
+      <span class="row-menu-icon">
+        <mat-icon>add</mat-icon>
+      </span>
+      <span class="row-menu-label">Add Activity</span>
+    </button>
+
+    <button mat-menu-item class="row-menu-item"
+            (click)="openNotes(row, 'add'); $event.stopPropagation()">
+      <span class="row-menu-icon">
+        <mat-icon>edit_note</mat-icon>
+      </span>
+      <span class="row-menu-label">Add Notes</span>
+    </button>
+
+    <button mat-menu-item class="row-menu-item">
+      <span class="row-menu-icon">
+        <mat-icon>assignment</mat-icon>
+      </span>
+      <span class="row-menu-label">Run Assessment</span>
+    </button>
+
+    <button mat-menu-item class="row-menu-item"
+            (click)="openDocuments(row, 'add'); $event.stopPropagation()">
+      <span class="row-menu-icon">
+        <mat-icon>description</mat-icon>
+      </span>
+      <span class="row-menu-label">Add Documents</span>
+    </button>
+
+    <button mat-menu-item class="row-menu-item">
+      <span class="row-menu-icon">
+        <mat-icon>outgoing_mail</mat-icon>
+      </span>
+      <span class="row-menu-label">Send Letter</span>
+    </button>
+
+    <button mat-menu-item class="row-menu-item"
+            (click)="openNotes(row); $event.stopPropagation()">
+      <span class="row-menu-icon">
+        <mat-icon>person_remove</mat-icon>
+      </span>
+      <span class="row-menu-label">Unassign</span>
+    </button>
+
+    <button mat-menu-item class="row-menu-item"
+            (click)="openNotes(row); $event.stopPropagation()">
+      <span class="row-menu-icon">
+        <mat-icon>summarize</mat-icon>
+      </span>
+      <span class="row-menu-label">Summarizer</span>
+    </button>
+
+  </ng-template>
 </mat-menu>
 
-<mat-drawer-container class="sidenav-container" style="padding:5px;" autosize>
-  <mat-drawer-content mode="side" opened>
-    <!-- Top bar: search + filter toggle + due chips -->
-    <div class="top-bar" style="display:flex;align-items:center;gap:10px;margin:8px 0;">
-      <div class="search-section" style="display:flex;align-items:center;gap:8px;flex:1;">
-        <input type="text"
-               placeholder="🔍 Search authorizations…"
-               (input)="onQuickSearch($event)"
-               class="search-input"
-               style="flex:1; padding:10px 12px; border:1px solid #e1e5ea; border-radius:10px; outline:none;" />
-        <button class="filter-btn"
-                type="button"
-                (click)="toggleFilters()"
-                title="Filters">
+<div class="dashboard-wrapper">
+  <!-- Top bar: search + filter toggle + due chips -->
+  <div class="top-bar" style="display:flex;align-items:center;gap:10px;margin:8px 0;">
+    <div class="search-section" style="display:flex;align-items:center;gap:8px;flex:1;">
+      <input type="text"
+             placeholder="🔍 Search authorizations…"
+             (input)="onQuickSearch($event)"
+             class="search-input"
+             style="flex:1; padding:10px 12px; border:1px solid #e1e5ea; border-radius:10px; outline:none;" />
+      <button class="filter-btn"
+              type="button"
+              (click)="toggleFilters()"
+              title="Filters">
 
-          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M3 5h18v2l-7 7v5l-4 2v-7L3 7z"></path>
-          </svg>
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 5h18v2l-7 7v5l-4 2v-7L3 7z"></path>
+        </svg>
+      </button>
+      <button matTooltip="Click to add a new authorization" class="btn btn-primary ms-2">
+        Add Authorization
+      </button>
+    </div>
+
+    <div class="filters-col">
+      <div class="chip-list">
+        <button type="button" class="pill red" [class.active]="isDueSelected('OVERDUE')" (click)="setDueChip('OVERDUE')">
+          <span class="dot red"></span> Over Due
+          <span class="count">{{ overdueCount  }}</span>
         </button>
-        <button matTooltip="Click to add a new authorization" class="btn btn-primary ms-2">
-          Add Authorization
+        <button type="button" class="pill amber" [class.active]="isDueSelected('TODAY')" (click)="setDueChip('TODAY')">
+          <span class="dot amber"></span> Due today
+          <span class="count">{{ dueTodayCount  }}</span>
+        </button>
+        <button type="button" class="pill green" [class.active]="isDueSelected('FUTURE')" (click)="setDueChip('FUTURE')">
+          <span class="dot green"></span> Due in future
+          <span class="count">{{ dueFutureCount }}</span>
         </button>
       </div>
+    </div>
+  </div>
 
-      <div class="filters-col">
-        <div class="chip-list">
-          <button type="button" class="pill red" [class.active]="isDueSelected('OVERDUE')" (click)="setDueChip('OVERDUE')">
-            <span class="dot red"></span> Over Due
-            <span class="count">{{ overdueCount  }}</span>
+  <!-- Inline Filters Drawer -->
+  <section class="filters-wrapper" *ngIf="showFilters" style="margin:8px 0;">
+    <form [formGroup]="filtersForm" class="filters-panel"
+          style="border:1px solid #e1e5ea;border-radius:12px;padding:12px;background:#fff;">
+      <div class="filters-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <h3 style="margin:0;font-weight:600;">Filters</h3>
+        <div style="display:flex;gap:8px;">
+          <button type="button" (click)="resetFilters()" class="reset-btn"
+                  style="border:1px solid #e1e5ea;border-radius:10px;padding:6px 10px;background:#fff;cursor:pointer;">
+            Reset
           </button>
-          <button type="button" class="pill amber" [class.active]="isDueSelected('TODAY')" (click)="setDueChip('TODAY')">
-            <span class="dot amber"></span> Due today
-            <span class="count">{{ dueTodayCount  }}</span>
+          <button type="button" (click)="applyAdvancedFilters()" class="apply-btn"
+                  style="border:0;border-radius:10px;padding:6px 12px;background:#1b72e8;color:#fff;cursor:pointer;">
+            Apply
           </button>
-          <button type="button" class="pill green" [class.active]="isDueSelected('FUTURE')" (click)="setDueChip('FUTURE')">
-            <span class="dot green"></span> Due in future
-            <span class="count">{{ dueFutureCount }}</span>
+          <button type="button" (click)="toggleFilters()" class="close-btn"
+                  style="border:0;border-radius:10px;padding:6px 12px;background:#6b7280;color:#fff;cursor:pointer;">
+            Close
           </button>
         </div>
+      </div>
+
+      <!-- Grid -->
+      <div class="filters-grid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;">
+        <mat-form-field appearance="outline">
+          <mat-label>Auth Type</mat-label>
+          <input matInput formControlName="authType" placeholder="e.g., Inpatient, Outpatient">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Treatment Type</mat-label>
+          <input matInput formControlName="treatmentType" placeholder="e.g., Physical Therapy">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Auth Priority</mat-label>
+          <input matInput formControlName="authPriority" placeholder="e.g., Routine, Urgent">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Auth Status</mat-label>
+          <input matInput formControlName="authStatus" placeholder="e.g., Open, Closed, Denied">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Service From Date</mat-label>
+          <input matInput [matDatepicker]="svcFrom" formControlName="serviceFromDate">
+          <mat-datepicker-toggle matSuffix [for]="svcFrom"></mat-datepicker-toggle>
+          <mat-datepicker #svcFrom></mat-datepicker>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Service To Date</mat-label>
+          <input matInput [matDatepicker]="svcTo" formControlName="serviceToDate">
+          <mat-datepicker-toggle matSuffix [for]="svcTo"></mat-datepicker-toggle>
+          <mat-datepicker #svcTo></mat-datepicker>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Auth Created From</mat-label>
+          <input matInput [matDatepicker]="crFrom" formControlName="createdFrom">
+          <mat-datepicker-toggle matSuffix [for]="crFrom"></mat-datepicker-toggle>
+          <mat-datepicker #crFrom></mat-datepicker>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Auth Created To</mat-label>
+          <input matInput [matDatepicker]="crTo" formControlName="createdTo">
+          <mat-datepicker-toggle matSuffix [for]="crTo"></mat-datepicker-toggle>
+          <mat-datepicker #crTo></mat-datepicker>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Provider</mat-label>
+          <input matInput formControlName="provider" placeholder="Provider name or ID">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Provider Specialty</mat-label>
+          <input matInput formControlName="providerSpecialty" placeholder="e.g., Orthopedics">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Auth Due Date (From)</mat-label>
+          <input matInput [matDatepicker]="dueFrom" formControlName="authDueFrom">
+          <mat-datepicker-toggle matSuffix [for]="dueFrom"></mat-datepicker-toggle>
+          <mat-datepicker #dueFrom></mat-datepicker>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Auth Due Date (To)</mat-label>
+          <input matInput [matDatepicker]="dueTo" formControlName="authDueTo">
+          <mat-datepicker-toggle matSuffix [for]="dueTo"></mat-datepicker-toggle>
+          <mat-datepicker #dueTo></mat-datepicker>
+        </mat-form-field>
+      </div>
+    </form>
+  </section>
+
+  <div class="workspace" [class.has-notes]="showNotesPanel">
+    <div class="left-pane">
+      <div class="table-wrapper">
+        <table mat-table [dataSource]="dataSource" matSort
+               multiTemplateDataRows
+               class="mat-elevation-z1 full-width-table pro-table mng-table">
+
+          <!-- Actions -->
+          <!-- Member (MemberName + MemberId) -->
+          <ng-container matColumnDef="memberId">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Member</th>
+            <td mat-cell *matCellDef="let row">
+              <div class="name-cell">
+                <div class="sub-name">
+                  <a href="#" (click)="onMemberClick(row.memberId, row.memberName, row.memberDetailsId); $event.preventDefault()">
+                    {{ row.memberName }}
+                  </a>
+                </div>
+                <div class="sub-id">ID: {{ row.memberId }}</div>
+              </div>
+            </td>
+          </ng-container>
+
+          <!-- Auth Number -->
+          <ng-container matColumnDef="authNumber">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Auth #</th>
+            <td mat-cell *matCellDef="let row">
+              <a href="#" (click)="onAuthClick(row.authNumber, row.memberId, row.memberDetailsId); $event.preventDefault()">
+                {{ row.authNumber }}
+              </a>
+              <!--{{ row.authNumber || '-' }}-->
+            </td>
+          </ng-container>
+
+          <!-- Auth Type (TemplateName) -->
+          <ng-container matColumnDef="authType">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Auth Type</th>
+            <td mat-cell *matCellDef="let row">{{ row.templateName || '-' }}</td>
+          </ng-container>
+
+          <!-- Auth Due Date (colored + days-left) -->
+          <ng-container matColumnDef="authDueDate">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Auth Due Date</th>
+            <td mat-cell *matCellDef="let row">
+              <span class="risk-chip compact" [ngClass]="getDueDateClass(getComputedAuthDueDate(row))">
+                <div class="date-value">
+                  {{ getComputedAuthDueDate(row) ? (getComputedAuthDueDate(row) | date:'MM/dd/yyyy HH:mm:ss') : '-' }}
+                </div>
+                <div class="days-left">
+                  {{ getDaysLeftLabel(getComputedAuthDueDate(row)) }}
+                </div>
+              </span>
+            </td>
+          </ng-container>
+
+          <!-- Next Review Date -->
+          <ng-container matColumnDef="nextReviewDate">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Next Review Date</th>
+            <td mat-cell *matCellDef="let row">
+              {{ getComputedNextReviewDate(row) ? (getComputedNextReviewDate(row) | date:'MM/dd/yyyy HH:mm:ss') : '-' }}
+            </td>
+          </ng-container>
+
+          <!-- Treatment Type -->
+          <ng-container matColumnDef="treatmentType">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Treatment Type</th>
+            <td mat-cell *matCellDef="let row">{{ row.treatmentTypeValue || row.treatmentType || '-' }}</td>
+          </ng-container>
+
+          <!-- Priority -->
+          <ng-container matColumnDef="priority">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Priority</th>
+            <td mat-cell *matCellDef="let row">{{ row.requestPriorityValue || row.authPriority || '-' }}</td>
+          </ng-container>
+
+          <!-- Status -->
+          <ng-container matColumnDef="authStatusValue">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+            <td mat-cell *matCellDef="let row">{{ row.authStatusValue || row.authStatus || '-' }}</td>
+          </ng-container>
+
+          <!-- Expanded placeholder -->
+          <ng-container matColumnDef="expandedDetail">
+            <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns.length">
+              <!-- add expanded info if needed -->
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let row">
+              <button mat-icon-button class="row-menu-trigger-icon"
+                      [matMenuTriggerFor]="menu"
+                      [matMenuTriggerData]="{ row: row }"
+                      (click)="$event.stopPropagation()">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row
+              *matRowDef="let row; columns: displayedColumns;"
+              class="example-element-row"
+              [class.example-expanded-row]="expandedElement === row"
+              (click)="expandedElement = expandedElement === row ? null : row" [class.notes-target]="showNotesPanel && selectedRow === row">
+          </tr>
+          <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="example-detail-row"></tr>
+          <tr class="mat-row" *matNoDataRow>
+            <td class="mat-cell" [attr.colspan]="displayedColumns.length">No data</td>
+          </tr>
+        </table>
+
+        <mat-paginator [pageSizeOptions]="[10, 25, 100]" aria-label="Select page of users"></mat-paginator>
       </div>
     </div>
 
-    <!-- Inline Filters Drawer -->
-    <section class="filters-wrapper" *ngIf="showFilters" style="margin:8px 0;">
-      <form [formGroup]="filtersForm" class="filters-panel"
-            style="border:1px solid #e1e5ea;border-radius:12px;padding:12px;background:#fff;">
-        <div class="filters-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-          <h3 style="margin:0;font-weight:600;">Filters</h3>
-          <div style="display:flex;gap:8px;">
-            <button type="button" (click)="resetFilters()" class="reset-btn"
-                    style="border:1px solid #e1e5ea;border-radius:10px;padding:6px 10px;background:#fff;cursor:pointer;">
-              Reset
-            </button>
-            <button type="button" (click)="applyAdvancedFilters()" class="apply-btn"
-                    style="border:0;border-radius:10px;padding:6px 12px;background:#1b72e8;color:#fff;cursor:pointer;">
-              Apply
-            </button>
-            <button type="button" (click)="toggleFilters()" class="close-btn"
-                    style="border:0;border-radius:10px;padding:6px 12px;background:#6b7280;color:#fff;cursor:pointer;">
-              Close
-            </button>
-          </div>
+    <aside class="right-pane" [attr.aria-hidden]="!showNotesPanel">
+      <div class="notes-header">
+        <h3 class="pane-title">
+          <span class="title-strong">{{ selectedActionLabel || 'Details' }}</span>
+          <span class="title-normal" *ngIf="panelSubtitle"> - {{ panelSubtitle }}</span>
+        </h3>
+        <button type="button" class="notes-close" (click)="closeRightPanel()" aria-label="Close">×</button>
+      </div>
+
+      <div class="panel-body">
+        <app-authnotes *ngIf="selectedPanel === 'notes'"
+                       [authDetailId]="selectedAuthDetailId ?? undefined"
+                       [authNumber]="selectedAuthNumber || (selectedRow?.AuthNumber || selectedRow?.authNumber)"
+                       [mode]="notesViewMode"
+                       [singlePane]="true"
+                       [authTemplateId]="selectedAuthTemplateId ?? undefined"
+                       (requestViewAll)="onNotesRequestViewAll()"
+                       (requestAddOnly)="onNotesRequestAddOnly()">
+        </app-authnotes>
+
+        <app-authdocuments *ngIf="selectedPanel === 'documents'"
+                           [authDetailId]="selectedAuthDetailId ?? null"
+                           [authNumber]="selectedAuthNumber || (selectedRow?.AuthNumber || selectedRow?.authNumber)"
+                           [authTemplateId]="selectedAuthTemplateId ?? null"
+                           [singlePane]="true"
+                           [startAdd]="startAddDocuments"
+                           [mode]="documentsViewMode"
+                           [inputMode]="documentsViewMode"
+                           (requestViewAll)="onDocumentsRequestViewAll()"
+                           (requestAddOnly)="onDocumentsRequestAddOnly()">
+        </app-authdocuments>
+
+        <app-authactivity *ngIf="selectedPanel === 'activity'"
+                          [authDetailId]="selectedAuthDetailId ?? null"
+                          [singlePane]="true"
+                          [startAdd]="startAddActivity"
+                          [inputMode]="activityViewMode"
+                          (requestViewAll)="onActivityRequestViewAll()"
+                          (requestAddOnly)="onActivityRequestAddOnly()">
+        </app-authactivity>
+
+        <div *ngIf="selectedPanel !== 'notes' && selectedPanel !== 'documents' && selectedPanel !== 'activity'" class="panel-placeholder">
+          Select an action to view details.
         </div>
-
-        <!-- Grid -->
-        <div class="filters-grid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;">
-          <mat-form-field appearance="outline">
-            <mat-label>Auth Type</mat-label>
-            <input matInput formControlName="authType" placeholder="e.g., Inpatient, Outpatient">
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Treatment Type</mat-label>
-            <input matInput formControlName="treatmentType" placeholder="e.g., Physical Therapy">
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Auth Priority</mat-label>
-            <input matInput formControlName="authPriority" placeholder="e.g., Routine, Urgent">
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Auth Status</mat-label>
-            <input matInput formControlName="authStatus" placeholder="e.g., Open, Closed, Denied">
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Service From Date</mat-label>
-            <input matInput [matDatepicker]="svcFrom" formControlName="serviceFromDate">
-            <mat-datepicker-toggle matSuffix [for]="svcFrom"></mat-datepicker-toggle>
-            <mat-datepicker #svcFrom></mat-datepicker>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Service To Date</mat-label>
-            <input matInput [matDatepicker]="svcTo" formControlName="serviceToDate">
-            <mat-datepicker-toggle matSuffix [for]="svcTo"></mat-datepicker-toggle>
-            <mat-datepicker #svcTo></mat-datepicker>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Auth Created From</mat-label>
-            <input matInput [matDatepicker]="crFrom" formControlName="createdFrom">
-            <mat-datepicker-toggle matSuffix [for]="crFrom"></mat-datepicker-toggle>
-            <mat-datepicker #crFrom></mat-datepicker>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Auth Created To</mat-label>
-            <input matInput [matDatepicker]="crTo" formControlName="createdTo">
-            <mat-datepicker-toggle matSuffix [for]="crTo"></mat-datepicker-toggle>
-            <mat-datepicker #crTo></mat-datepicker>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Provider</mat-label>
-            <input matInput formControlName="provider" placeholder="Provider name or ID">
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Provider Specialty</mat-label>
-            <input matInput formControlName="providerSpecialty" placeholder="e.g., Orthopedics">
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Auth Due Date (From)</mat-label>
-            <input matInput [matDatepicker]="dueFrom" formControlName="authDueFrom">
-            <mat-datepicker-toggle matSuffix [for]="dueFrom"></mat-datepicker-toggle>
-            <mat-datepicker #dueFrom></mat-datepicker>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Auth Due Date (To)</mat-label>
-            <input matInput [matDatepicker]="dueTo" formControlName="authDueTo">
-            <mat-datepicker-toggle matSuffix [for]="dueTo"></mat-datepicker-toggle>
-            <mat-datepicker #dueTo></mat-datepicker>
-          </mat-form-field>
-        </div>
-      </form>
-    </section>
-
-    <mat-drawer-container class="sidenav-container" autosize>
-      <mat-drawer-content mode="side" opened>
-        <div class="table-wrapper">
-          <table mat-table [dataSource]="dataSource" matSort
-                 multiTemplateDataRows
-                 class="mat-elevation-z1 full-width-table pro-table mng-table">
-
-            <!-- Actions -->
-            <ng-container matColumnDef="actions">
-              <th mat-header-cell *matHeaderCellDef></th>
-              <td mat-cell *matCellDef="let row">
-                <button mat-icon-button [matMenuTriggerFor]="menu">
-                  <mat-icon>list</mat-icon>
-                </button>
-              </td>
-            </ng-container>
-
-            <!-- Member (MemberName + MemberId) -->
-            <ng-container matColumnDef="memberId">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>Member</th>
-              <td mat-cell *matCellDef="let row">
-                <div class="name-cell">
-                  <div class="sub-name">
-                    <a href="#" (click)="onMemberClick(row.memberId, row.memberName, row.memberDetailsId); $event.preventDefault()">
-                      {{ row.memberName }}
-                    </a>
-                  </div>
-                  <div class="sub-id">ID: {{ row.memberId }}</div>
-                </div>
-              </td>
-            </ng-container>
-
-            <!-- Auth Number -->
-            <ng-container matColumnDef="authNumber">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>Auth #</th>
-              <td mat-cell *matCellDef="let row">
-                <a href="#" (click)="onAuthClick(row.authNumber, row.memberId, row.memberDetailsId); $event.preventDefault()">
-                  {{ row.authNumber }}
-                </a>
-                <!--{{ row.authNumber || '-' }}-->
-              </td>
-            </ng-container>
-
-            <!-- Auth Type (TemplateName) -->
-            <ng-container matColumnDef="authType">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>Auth Type</th>
-              <td mat-cell *matCellDef="let row">{{ row.templateName || '-' }}</td>
-            </ng-container>
-
-            <!-- Auth Due Date (colored + days-left) -->
-            <ng-container matColumnDef="authDueDate">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>Auth Due Date</th>
-              <td mat-cell *matCellDef="let row">
-                <span class="risk-chip compact" [ngClass]="getDueDateClass(row.authDueDate)">
-                  <div class="date-value">
-                    {{ row.authDueDate | date:'MM/dd/yyyy HH:mm:ss' }}
-                  </div>
-                  <div class="days-left">
-                    {{ getDaysLeftLabel(row.authDueDate) }}
-                  </div>
-                </span>
-              </td>
-            </ng-container>
-
-            <!-- Next Review Date -->
-            <ng-container matColumnDef="nextReviewDate">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>Next Review Date</th>
-              <td mat-cell *matCellDef="let row">{{ row.nextReviewDate | date:'MM/dd/yyyy hh:mm:ss' }}</td>
-            </ng-container>
-
-            <!-- Treatment Type -->
-            <ng-container matColumnDef="treatmentType">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>Treatment Type</th>
-              <td mat-cell *matCellDef="let row">{{ row.treatmentTypeValue || row.treatmentType || '-' }}</td>
-            </ng-container>
-
-            <!-- Priority -->
-            <ng-container matColumnDef="priority">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>Priority</th>
-              <td mat-cell *matCellDef="let row">{{ row.requestPriorityValue || row.authPriority || '-' }}</td>
-            </ng-container>
-
-            <!-- Status -->
-            <ng-container matColumnDef="authStatusValue">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
-              <td mat-cell *matCellDef="let row">{{ row.authStatusValue || row.authStatus || '-' }}</td>
-            </ng-container>
-
-            <!-- Expanded placeholder -->
-            <ng-container matColumnDef="expandedDetail">
-              <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns.length">
-                <!-- add expanded info if needed -->
-              </td>
-            </ng-container>
-
-            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row
-                *matRowDef="let row; columns: displayedColumns;"
-                class="example-element-row"
-                [class.example-expanded-row]="expandedElement === row"
-                (click)="expandedElement = expandedElement === row ? null : row">
-            </tr>
-            <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="example-detail-row"></tr>
-            <tr class="mat-row" *matNoDataRow>
-              <td class="mat-cell" [attr.colspan]="displayedColumns.length">No data</td>
-            </tr>
-          </table>
-
-          <mat-paginator [pageSizeOptions]="[10, 25, 100]" aria-label="Select page of users"></mat-paginator>
-        </div>
-      </mat-drawer-content>
-
-      <mat-drawer #drawer class="sidenav" style="width:22%;height:50%;align-content:center;" position="end" mode="side" opened="false">
-      </mat-drawer>
-    </mat-drawer-container>
-  </mat-drawer-content>
-</mat-drawer-container>
+      </div>
+    </aside>
+  </div>
+</div>

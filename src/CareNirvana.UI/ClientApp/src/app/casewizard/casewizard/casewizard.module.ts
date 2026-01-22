@@ -11,10 +11,8 @@ import { CaseConfirmLeaveDialogComponent } from 'src/app/member/AG/components/ca
 import { CasedetailsComponent } from 'src/app/member/AG/steps/casedetails/casedetails.component';
 import { CasedispositionComponent } from 'src/app/member/AG/steps/casedisposition/casedisposition.component';
 import { CasemdreviewComponent } from 'src/app/member/AG/steps/casemdreview/casemdreview.component';
-import { CaseactivitiesComponent } from 'src/app/member/AG/steps/caseactivities/caseactivities.component';
-import { CasenotesComponent } from 'src/app/member/AG/steps/casenotes/casenotes.component';
-import { CasedocumentsComponent } from 'src/app/member/AG/steps/casedocuments/casedocuments.component';
 import { CasecloseComponent } from 'src/app/member/AG/steps/caseclose/caseclose.component';
+import { CasesharedwidgetsModule } from './casesharedwidgets.module';
 
 @NgModule({
   declarations: [
@@ -25,9 +23,6 @@ import { CasecloseComponent } from 'src/app/member/AG/steps/caseclose/caseclose.
     CasedetailsComponent,
     CasedispositionComponent,
     CasemdreviewComponent,
-    CaseactivitiesComponent,
-    CasenotesComponent,
-    CasedocumentsComponent,
     CasecloseComponent,
   ],
   imports: [
@@ -35,7 +30,8 @@ import { CasecloseComponent } from 'src/app/member/AG/steps/caseclose/caseclose.
     FormsModule,
     ReactiveFormsModule,
     CasewizardRoutingModule,
-    SharedUiModule
+    SharedUiModule,
+    CasesharedwidgetsModule
   ],
   exports: [
     CasewizardshellComponent 

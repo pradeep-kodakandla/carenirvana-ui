@@ -15,10 +15,27 @@ import { Observable, of } from 'rxjs';
 })
 export class AssignedauthsComponent implements OnInit, AfterViewInit {
 
-  selectedDue = new Set<'OVERDUE' | 'TODAY' | 'FUTURE'>(); 
+  // ===== Right panel state (required for notes panel + other actions) =====
+  showNotesPanel: boolean = false;
+  selectedRow: any | null = null;
+  selectedPanel: string | null = null;
+  selectedActionLabel: string = '';
+  panelSubtitle: string = '';
+
+  // ===== Notes integration state =====
+  selectedAuthDetailId: number | null = null;
+  selectedAuthNumber: string | null = null;
+  selectedAuthTemplateId: number | null = null;
+  notesViewMode: 'add' | 'full' = 'add';
+  documentsViewMode: 'add' | 'full' = 'add';
+  activityViewMode: 'add' | 'full' = 'add';
+  startAddActivity: boolean = false;
+  startAddDocuments: boolean = false;
+
+  selectedDue = new Set<'OVERDUE' | 'TODAY' | 'FUTURE'>();
   // Column ids (keep your existing column ids the same)
   displayedColumns: string[] = [
-    'actions',
+
     'memberId',
     'authNumber',
     'authType',
@@ -26,7 +43,8 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
     'nextReviewDate',
     'treatmentType',
     'priority',
-    'authStatusValue'
+    'authStatusValue',
+    'actions'
   ];
 
   dataSource = new MatTableDataSource<any>([]);
@@ -215,7 +233,7 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
         return match;
       });
     } else {
-      base = base;          
+      base = base;
       // base = [];            // or show NONE (uncomment if you prefer)
     }
 
@@ -351,33 +369,200 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
     return `In ${diffDays}d`;
   }
 
+
+  /** ========= Right panel actions ========= */
+  // Template uses openPanel/getPanelTitle/closePanel (mycaseload-style). Keep existing methods and provide wrappers.
+  openPanel(panel: string, row: any): void {
+    const key = (panel || '').toLowerCase();
+
+    // Notes has extra wiring (authDetailId/authNumber/etc.)
+    if (key === 'notes') {
+      this.openNotes(row);
+      return;
+    }
+
+    this.selectedRow = row ?? null;
+    this.selectedPanel = key;
+    this.selectedActionLabel = this.getActionLabel(key);
+    this.panelSubtitle = (row?.MemberName ?? row?.memberName ?? row?.MemberId ?? row?.memberId ?? '').toString();
+    this.showNotesPanel = true;
+  }
+
+
+  openDocuments(row: any, mode: 'add' | 'full' = 'add'): void {
+    this.selectedRow = row ?? null;
+    this.selectedPanel = 'documents';
+    this.selectedActionLabel = mode === 'full' ? 'Documents' : 'Add Documents';
+    this.panelSubtitle = (row?.MemberName ?? row?.memberName ?? row?.MemberId ?? row?.memberId ?? '').toString();
+
+    this.selectedAuthDetailId = this.extractAuthDetailId(row);
+    this.selectedAuthNumber = (row?.AuthNumber ?? row?.authNumber ?? null) ? String(row?.AuthNumber ?? row?.authNumber) : null;
+    this.selectedAuthTemplateId = (row?.authtemplateId ?? row?.templateId ?? null) ? Number(row?.authtemplateId ?? row?.templateId) : null;
+
+    this.documentsViewMode = mode;
+    this.showNotesPanel = true;
+  }
+
+
+  openActivity(row: any): void {
+    this.selectedRow = row ?? null;
+    this.selectedPanel = 'activity';
+    this.selectedActionLabel = 'Add Activity';
+    this.panelSubtitle = (row?.MemberName ?? row?.memberName ?? row?.MemberId ?? row?.memberId ?? '').toString();
+
+    this.selectedAuthDetailId = this.extractAuthDetailId(row);
+    this.selectedAuthNumber = (row?.AuthNumber ?? row?.authNumber ?? null) ? String(row?.AuthNumber ?? row?.authNumber) : null;
+    this.selectedAuthTemplateId = (row?.authtemplateId ?? row?.templateId ?? null) ? Number(row?.authtemplateId ?? row?.templateId) : null;
+
+    this.showNotesPanel = true;
+  }
+
+
+
+  closePanel(): void {
+    this.closeRightPanel();
+  }
+
+  getPanelTitle(): string {
+    // keep it simple for now; label is set by openPanel/openNotes
+    return this.selectedActionLabel || 'Details';
+  }
+
+  private getActionLabel(panel: string): string {
+    switch ((panel || '').toLowerCase()) {
+      case 'activity': return 'Add Activity';
+      case 'messages': return 'Add Documents';
+      case 'unassign': return 'Unassign';
+      case 'summary': return 'Summary';
+      default: return 'Details';
+    }
+  }
+  openNotes(row: any, mode: 'add' | 'full' = 'add'): void {
+    this.selectedRow = row ?? null;
+    this.selectedPanel = 'notes';
+    this.selectedActionLabel = 'Add Notes';
+    this.panelSubtitle = (row?.MemberName ?? row?.memberName ?? row?.MemberId ?? row?.memberId ?? '').toString();
+    this.selectedAuthDetailId = this.extractAuthDetailId(row);
+    this.selectedAuthNumber = (row?.AuthNumber ?? row?.authNumber ?? null) ? String(row?.AuthNumber ?? row?.authNumber) : null;
+    this.selectedAuthTemplateId = (row?.authtemplateId ?? row?.templateId ?? null) ? Number(row?.authtemplateId ?? row?.templateId) : null;
+    this.notesViewMode = mode;
+    this.showNotesPanel = true;
+  }
+
+  closeRightPanel(): void {
+    this.showNotesPanel = false;
+    this.selectedPanel = null;
+    this.selectedRow = null;
+    this.selectedAuthDetailId = null;
+    this.selectedAuthNumber = null;
+    // this.notesViewMode = mode;
+    this.selectedActionLabel = '';
+    this.panelSubtitle = '';
+  }
+
+  onNotesRequestViewAll(): void {
+    this.notesViewMode = 'full';
+  }
+
+  onNotesRequestAddOnly(): void {
+    this.notesViewMode = 'add';
+  }
+
+  onDocumentsRequestViewAll() {
+    this.documentsViewMode = 'full';
+    this.startAddDocuments = false;
+  }
+
+  onDocumentsRequestAddOnly() {
+    this.documentsViewMode = 'add';
+    this.startAddDocuments = true;
+    Promise.resolve().then(() => (this.startAddDocuments = false));
+  }
+
+  private extractAuthDetailId(row: any): number | null {
+    const v = row?.AuthDetailId ?? row?.authDetailId ?? row?.authdetailid
+      ?? row?.AuthDetailsId ?? row?.authDetailsId ?? row?.authdetailsid
+      ?? row?.authdetailId ?? null;
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+
   @Output() addClicked = new EventEmitter<string>();
 
   onAuthClick(authNumber: string = '', memId: string = '', memberDetailsId: string) {
+    this.openAuthTab(authNumber, memId, memberDetailsId, false);
+  }
+
+  private openAuthTab(authNumber: string, memId: string = '', memDetailsId: string, isNew: boolean): void {
+    // this.memberService.setIsCollapse(true);
     this.addClicked.emit(authNumber);
+    const memberId = memId;
+    const memberDetailsId = memDetailsId;
 
-    if (!authNumber) authNumber = 'DRAFT';
+    if (!memberId || Number.isNaN(memberId)) {
+      console.error('Invalid memberId for auth tab route');
+      return;
+    }
 
-    // read member id once (prefer your own field; fall back to route)
-    const memberId = memId ?? Number(this.route.parent?.snapshot.paramMap.get('id'));
+    // âœ… normalize for new
+    const authNo = isNew ? '0' : String(authNumber);
 
-    // ✅ point tab to the CHILD route under the shell
-    const tabRoute = `/member-info/${memberId}/member-auth/${authNumber}`;
-    const tabLabel = `Auth No ${authNumber}`;
+    // âœ… choose correct step
+    const stepRoute = isNew ? 'smartcheck' : 'details';
+
+    const urlTree = this.router.createUrlTree([
+      '/member-info',
+      memberId,
+      'auth',
+      authNo,
+      stepRoute
+    ]);
+
+    const tabRoute = this.router.serializeUrl(urlTree);
+    const tabLabel = isNew ? `Auth # DRAFT` : `Auth # ${authNo}`;
 
     const existingTab = this.headerService.getTabs().find(t => t.route === tabRoute);
-
     if (existingTab) {
       this.headerService.selectTab(tabRoute);
-      const mdId = existingTab.memberDetailsId ?? null;
-      if (mdId) sessionStorage.setItem('selectedMemberDetailsId', mdId);
-
     } else {
-      this.headerService.addTab(tabLabel, tabRoute, String(memberId));
-      sessionStorage.setItem('selectedMemberDetailsId', memberDetailsId);
+      this.headerService.addTab(tabLabel, tabRoute, String(memberId), memberDetailsId);
     }
-    this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
-      this.router.navigate([tabRoute]);
-    });
+
+    this.router.navigateByUrl(tabRoute);
   }
+
+  onActivityRequestViewAll(): void {
+    this.activityViewMode = 'full';
+  }
+
+  onActivityRequestAddOnly(): void {
+    this.activityViewMode = 'add';
+    // ensure add form opens
+    this.startAddActivity = true;
+    Promise.resolve().then(() => (this.startAddActivity = false));
+  }
+
+  private readonly tempDateOffsetDays = 10;
+
+  getComputedAuthDueDate(row: any): Date | null {
+    const created = this.toDate(row?.createdOn ?? row?.CreatedOn);
+    if (created) {
+      const d = new Date(created);
+      d.setDate(d.getDate() + this.tempDateOffsetDays);
+      return d;
+    }
+    return this.toDate(row?.authDueDate ?? row?.AuthDueDate);
+  }
+
+  getComputedNextReviewDate(row: any): Date | null {
+    const created = this.toDate(row?.createdOn ?? row?.CreatedOn);
+    if (created) {
+      const d = new Date(created);
+      d.setDate(d.getDate() + this.tempDateOffsetDays);
+      return d;
+    }
+    return this.toDate(row?.nextReviewDate ?? row?.NextReviewDate);
+  }
+
+
 }

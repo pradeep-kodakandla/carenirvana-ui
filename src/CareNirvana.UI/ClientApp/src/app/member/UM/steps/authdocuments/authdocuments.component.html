@@ -1,12 +1,12 @@
 <div class="docs-container">
   <!-- Left: List -->
-  <div class="docs-left">
+  <div class="docs-left" *ngIf="showLeftPane" [style.flex]="singlePane ? '1 1 100%' : null">
     <!--<div class="docs-titlebar">
-      <div>
-        <div class="h6 mb-0">Authorization Documents</div>-->
-        <!--<small class="text-muted" *ngIf="authDetailId">AuthDetailId: {{ authDetailId }}</small>-->
-      <!--</div>
-    </div>-->
+    <div>
+      <div class="h6 mb-0">Authorization Documents</div>-->
+    <!--<small class="text-muted" *ngIf="authDetailId">AuthDetailId: {{ authDetailId }}</small>-->
+    <!--</div>
+  </div>-->
 
     <div class="left-controls">
       <input type="text"
@@ -42,7 +42,7 @@
     <div class="resp-list" *ngIf="!loading && documents && documents.length > 0">
       <article class="resp-card"
                *ngFor="let d of filteredDocuments; trackBy: trackByDoc"
-               (click)="selectDoc(d)"
+               (click)="openEdit(d)"
                [ngClass]="{ 'selected': selectedDocId && (selectedDocId === ('' + getDocumentId(d))) }">
 
         <div class="resp-head">
@@ -86,17 +86,17 @@
   </div>
 
   <!-- Right: Summary / Selected / Editor -->
-  <div class="docs-right">
+  <div class="docs-right" *ngIf="showRightPane" [style.flex]="singlePane ? '1 1 100%' : null">
     <!-- Editor -->
     <div class="section-card" *ngIf="showEditor">
-      <div class="section-header">
-        <div class="section-title">{{ editing ? 'Edit Document' : 'Add Document' }}</div>
-        <div class="ms-auto">
-          <button type="button" class="btn btn-sm btn-outline-secondary" (click)="closeEditor()" [disabled]="saving">
-            ✕ Close
-          </button>
-        </div>
+      <!--<div class="section-header">
+      <div class="section-title">{{ editing ? 'Edit Document' : 'Add Document' }}</div>
+      <div class="ms-auto">
+        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="closeEditor()" [disabled]="saving">
+          ✕ Close
+        </button>
       </div>
+    </div>-->
 
       <form [formGroup]="form">
         <div class="grid" style="padding-bottom: 15px">
@@ -198,7 +198,7 @@
           <button type="button" class="btn btn-primary" (click)="onSave()" [disabled]="saving">
             {{ saving ? 'Saving...' : 'Save' }}
           </button>
-          <button type="button" class="btn btn-outline-secondary" (click)="closeEditor()" [disabled]="saving">
+          <button type="button" class="btn btn-outline-secondary" (click)="clearSelection()" [disabled]="saving">
             Cancel
           </button>
         </div>
@@ -208,21 +208,21 @@
     <!-- Selected / Summary -->
     <ng-container *ngIf="!showEditor">
       <div class="section-card" *ngIf="getSelectedDoc() as sd; else docsSummary">
-        <div class="section-header">
-          <div class="section-title">Selected Document</div>
+        <!--<div class="section-header">
+        <div class="section-title">Selected Document</div>
 
-          <div class="ms-auto d-flex gap-2">
-            <button class="btn btn-sm btn-outline-secondary" type="button" (click)="clearSelection()" [disabled]="saving">
-              ✕ Close
-            </button>
-            <button class="btn btn-sm btn-outline-primary" type="button" (click)="openEdit(sd)" [disabled]="saving">
-              Edit
-            </button>
-            <button class="btn btn-sm btn-outline-danger" type="button" (click)="onDelete(sd)" [disabled]="saving">
-              Delete
-            </button>
-          </div>
+        <div class="ms-auto d-flex gap-2">
+          <button class="btn btn-sm btn-outline-secondary" type="button" (click)="clearSelection()" [disabled]="saving">
+            ✕ Close
+          </button>
+          <button class="btn btn-sm btn-outline-primary" type="button" (click)="openEdit(sd)" [disabled]="saving">
+            Edit
+          </button>
+          <button class="btn btn-sm btn-outline-danger" type="button" (click)="onDelete(sd)" [disabled]="saving">
+            Delete
+          </button>
         </div>
+      </div>-->
 
         <div class="resp-meta mb-3">
           <span class="pill pill-primary">Type · {{ getDocTypeLabel(sd) }}</span>

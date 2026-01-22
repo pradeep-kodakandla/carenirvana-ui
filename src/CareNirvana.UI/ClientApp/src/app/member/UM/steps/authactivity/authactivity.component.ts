@@ -1,4 +1,4 @@
-import { Component, ViewChild, ElementRef, Input, SimpleChanges } from '@angular/core';
+import { Component, ViewChild, ElementRef, Input, Output, EventEmitter, SimpleChanges, OnChanges } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { AuthActivity } from 'src/app/member/UM/steps/authactivity/auth-activity.model.service';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
@@ -30,7 +30,7 @@ interface Option {
   ]
 })
 
-export class AuthactivityComponent {
+export class AuthactivityComponent implements OnChanges {
   activityForm: FormGroup;
   activities: AuthActivity[] = [];
   filteredActivities: AuthActivity[] = [];
@@ -51,6 +51,27 @@ export class AuthactivityComponent {
 
   @Input()
   authDetailId: number | null = null;
+
+  /** When true (dashboard), show one pane at a time */
+  @Input() singlePane = false;
+
+  /** Optional: open add form immediately (dashboard "Add Activity") */
+  @Input() startAdd = false;
+
+
+
+  /**
+   * inputMode='add'  -> show Add Activity form directly (dashboard embed)
+   * inputMode='full' -> allow viewing timeline (and editing) within the component
+   */
+  @Input() inputMode: 'add' | 'full' = 'full';
+
+  @Output() requestViewAll = new EventEmitter<void>();
+  @Output() requestAddOnly = new EventEmitter<void>();
+
+  get isAddOnly(): boolean {
+    return (this.inputMode || 'full') === 'add';
+  }
 
   private lastLoadedAuthDetailId: number | null = null;
   canAdd = true;
@@ -141,7 +162,36 @@ export class AuthactivityComponent {
         this.lastLoadedAuthDetailId = newId;
       }
     }
+  
+
+    if (changes['startAdd'] && this.startAdd) {
+      // Dashboard "Add Activity" => open add screen by default
+      this.onAddNewActivity();
+    }
+
+  
+
+    if (changes['inputMode']) {
+      if (this.isAddOnly) {
+        // dashboard embed: keep form open
+        this.onAddNewActivity();
+      } else {
+        // switching to full view: show timeline by default
+        this.isEditing = false;
+        this.selectedIndex = null;
+      }
+    }
+}
+
+  emitViewAll(): void {
+    this.requestViewAll.emit();
   }
+
+  emitAddOnly(): void {
+    this.requestAddOnly.emit();
+  }
+
+
 
 
   // --------------------------

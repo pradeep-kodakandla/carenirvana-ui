@@ -1,10 +1,12 @@
-<div class="notes-container">
+
+<div class="notes-container"
+     [class.notes-container--add-only]="isAddOnly"
+     [class.notes-container--single-pane]="singlePane && !isAddOnly">
   <!-- Left Side - Notes Timeline/List (AuthActivity style) -->
-  <div class="notes-left">
+  <div class="notes-left" *ngIf="!isAddOnly && !(singlePane && (showEditor || selectedNoteId))">
     <!--<div class="notes-titlebar">
       <div class="notes-title">Authorization Notes</div>
     </div>-->
-
     <!-- Top Search + Action Bar -->
     <div class="left-controls">
       <input type="text"
@@ -48,7 +50,7 @@
                *ngFor="let n of filteredNotes; trackBy: trackByNoteId"
                [ngClass]="{ 'selected': (selectedNoteId && (selectedNoteId === getNoteId(n))) }">
 
-        <div class="timeline-content" (click)="selectNote(n)">
+        <div class="timeline-content" (click)="onEdit(n)">
           <div class="timeline-header">
             <div class="timeline-title">
               {{ getNoteTypeLabel(n) || 'Note' }}
@@ -73,15 +75,22 @@
   </div>
 
   <!-- Right Side - Editor / Selected Note / Summary -->
-  <div class="notes-right">
+  <div class="notes-right" *ngIf="isAddOnly || !singlePane || (showEditor || selectedNoteId)">
+    <!-- Embedded header (add-only mode) -->
+    <div class="embed-notes-header" *ngIf="isAddOnly">
+      <!--<div class="embed-title">Add Notes</div>-->
+      <div class="embed-actions">
+        <button type="button"
+                class="btn btn-sm btn-link"
+                (click)="emitViewAll()"
+                [disabled]="loading || saving">
+          View all notes ({{ notes?.length || 0 }})
+        </button>
+      </div>
+    </div>
+
     <!-- Editor -->
     <div class="section-card" *ngIf="showEditor">
-      <div class="section-header">
-        <div class="section-title">{{ editing ? 'Edit Note' : 'Add Note' }}</div>
-        <div class="ms-auto">
-          <button type="button" class="btn btn-sm btn-outline-secondary" (click)="closeEditor()">Close</button>
-        </div>
-      </div>
 
       <form [formGroup]="form">
         <div class="grid">
@@ -89,80 +98,80 @@
             <ng-container *ngIf="form.get(f.controlName) as ctrl">
               <ng-container *ngIf="shouldShowEditorField(f)">
 
-              <!-- CHECKBOX -->
-              <ng-container *ngIf="f.type === 'checkbox'; else outlinedTpl">
-                <div class="ff-field">
-                  <div class="ff-checkbox">
-                    <input type="checkbox"
-                           class="form-check-input"
-                           [formControlName]="f.controlName" />
-                    <label class="form-check-label">
-                      {{ f.displayName }}
-                      <span class="req-star" *ngIf="isRequired(ctrl, f)">*</span>
-                    </label>
-                  </div>
-
-                  <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
-                    {{ f.requiredMsg || (f.displayName + ' is required') }}
-                  </div>
-                </div>
-              </ng-container>
-
-              <!-- OUTLINED -->
-              <ng-template #outlinedTpl>
-                <div class="ff-field" [class.ff-span-all]="isFullWidthField(f)">
-                  <div class="ff-outline"
-                       [class.ff-disabled]="ctrl.disabled"
-                       [class.ff-invalid]="ctrl.touched && ctrl.invalid">
-
-                    <div class="ff-float-label">
-                      {{ f.displayName }}
-                      <span class="req-star" *ngIf="isRequired(ctrl, f)">*</span>
+                <!-- CHECKBOX -->
+                <ng-container *ngIf="f.type === 'checkbox'; else outlinedTpl">
+                  <div class="ff-field">
+                    <div class="ff-checkbox">
+                      <input type="checkbox"
+                             class="form-check-input"
+                             [formControlName]="f.controlName" />
+                      <label class="form-check-label">
+                        {{ f.displayName }}
+                        <span class="req-star" *ngIf="isRequired(ctrl, f)">*</span>
+                      </label>
                     </div>
 
-                    <div class="ff-body">
-                      <ng-container [ngSwitch]="f.type">
-
-                        <!-- Dropdown -->
-                        <ng-container *ngSwitchCase="'select'">
-                          <ui-smart-dropdown class="ff-ui"
-                                             label=""
-                                             placeholder="Select..."
-                                             [options]="getDropdownOptions(f.controlName)"
-                                             [formControlName]="f.controlName">
-                          </ui-smart-dropdown>
-                        </ng-container>
-
-                        <!-- Datetime -->
-                        <ng-container *ngSwitchCase="'datetime-local'">
-                          <ui-datetime-picker class="ff-ui"
-                                              placeholderDate="mm/dd/yyyy"
-                                              placeholderDateTime="mm/dd/yyyy --:--"
-                                              [formControlName]="f.controlName">
-                          </ui-datetime-picker>
-                        </ng-container>
-
-                        <!-- Textarea -->
-                        <ng-container *ngSwitchCase="'textarea'">
-                          <textarea class="ff-input ff-textarea"
-                                    rows="5"
-                                    [formControlName]="f.controlName"></textarea>
-                        </ng-container>
-
-                        <!-- Default text -->
-                        <ng-container *ngSwitchDefault>
-                          <input class="ff-input" type="text" [formControlName]="f.controlName" />
-                        </ng-container>
-
-                      </ng-container>
+                    <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
+                      {{ f.requiredMsg || (f.displayName + ' is required') }}
                     </div>
                   </div>
+                </ng-container>
 
-                  <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
-                    {{ f.requiredMsg || (f.displayName + ' is required') }}
+                <!-- OUTLINED -->
+                <ng-template #outlinedTpl>
+                  <div class="ff-field" [class.ff-span-all]="isFullWidthField(f)">
+                    <div class="ff-outline"
+                         [class.ff-disabled]="ctrl.disabled"
+                         [class.ff-invalid]="ctrl.touched && ctrl.invalid">
+
+                      <div class="ff-float-label">
+                        {{ f.displayName }}
+                        <span class="req-star" *ngIf="isRequired(ctrl, f)">*</span>
+                      </div>
+
+                      <div class="ff-body">
+                        <ng-container [ngSwitch]="f.type">
+
+                          <!-- Dropdown -->
+                          <ng-container *ngSwitchCase="'select'">
+                            <ui-smart-dropdown class="ff-ui"
+                                               label=""
+                                               placeholder="Select..."
+                                               [options]="getDropdownOptions(f.controlName)"
+                                               [formControlName]="f.controlName">
+                            </ui-smart-dropdown>
+                          </ng-container>
+
+                          <!-- Datetime -->
+                          <ng-container *ngSwitchCase="'datetime-local'">
+                            <ui-datetime-picker class="ff-ui"
+                                                placeholderDate="mm/dd/yyyy"
+                                                placeholderDateTime="mm/dd/yyyy --:--"
+                                                [formControlName]="f.controlName">
+                            </ui-datetime-picker>
+                          </ng-container>
+
+                          <!-- Textarea -->
+                          <ng-container *ngSwitchCase="'textarea'">
+                            <textarea class="ff-input ff-textarea"
+                                      rows="5"
+                                      [formControlName]="f.controlName"></textarea>
+                          </ng-container>
+
+                          <!-- Default text -->
+                          <ng-container *ngSwitchDefault>
+                            <input class="ff-input" type="text" [formControlName]="f.controlName" />
+                          </ng-container>
+
+                        </ng-container>
+                      </div>
+                    </div>
+
+                    <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
+                      {{ f.requiredMsg || (f.displayName + ' is required') }}
+                    </div>
                   </div>
-                </div>
-              </ng-template>
+                </ng-template>
 
               </ng-container>
             </ng-container>
@@ -170,7 +179,7 @@
         </div>
 
         <div class="case-savebar">
-          <button type="button" class="btn btn-outline-secondary me-2" (click)="closeEditor()">Cancel</button>
+          <button type="button" class="btn btn-outline-secondary me-2" (click)="clearSelection()">Cancel</button>
           <button type="button" class="btn btn-primary" [disabled]="saving" (click)="onSave()">Save</button>
         </div>
       </form>
@@ -178,22 +187,8 @@
 
     <!-- Selected note preview -->
     <!-- Selected note preview -->
-    <ng-container *ngIf="!showEditor">
+    <ng-container *ngIf="!showEditor && !isAddOnly">
       <div class="section-card" *ngIf="getSelectedNote() as sn; else notesSummary">
-        <div class="section-header">
-          <div class="section-title">Selected Note</div>
-          <div class="ms-auto d-flex gap-2">
-
-            <button class="btn btn-sm btn-outline-primary" type="button" (click)="onEdit(sn)" [disabled]="saving">Edit</button>
-            <button class="btn btn-sm btn-outline-danger" type="button" (click)="onDelete(sn)" [disabled]="saving">Delete</button>
-            <button class="btn btn-sm btn-outline-secondary"
-                    type="button"
-                    (click)="clearSelection()"
-                    [disabled]="saving">
-              ✕ Close
-            </button>
-          </div>
-        </div>
 
         <!-- Top meta pills -->
         <div class="resp-meta mb-3">
@@ -202,7 +197,7 @@
           <span class="resp-time">{{ getCreatedOn(sn) | date: 'short' }}</span>
         </div>
 
-        <!-- ✅ Display fields (read-only) -->
+        <!-- âœ… Display fields (read-only) -->
         <div class="grid">
           <ng-container *ngFor="let f of getDisplayFieldsForSelected(sn); trackBy: trackByField">
             <div class="ff-field"
@@ -221,7 +216,7 @@
         </div>
       </div>
 
-      <!-- ✅ Default summary (no selection) -->
+      <!-- âœ… Default summary (no selection) -->
       <ng-template #notesSummary>
         <div class="ai-summary">
           <h3>📝 Notes Summary</h3>
