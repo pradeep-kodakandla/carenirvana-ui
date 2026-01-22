@@ -149,7 +149,15 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['caseHeaderId'] || changes['memberDetailsId'] || changes['caseTemplateId'] || changes['caseLevelId'] || changes['levelId']) {
+    if (
+      changes['caseHeaderId'] ||
+      changes['memberDetailsId'] ||
+      changes['caseTemplateId'] ||
+      changes['caseLevelId'] ||
+      changes['levelId'] ||
+      changes['mode'] ||
+      changes['singlePaneOnEdit']
+    ) {
       this.reload();
     }
   }
@@ -560,6 +568,9 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
 
           this.cacheImportantControlNames(this.activityEditorFields);
           this.prefetchDropdownOptions(this.activityEditorFields);
+          if (this.mode === 'embed') {
+            this.onAddClick();
+          }
 
           // load users into "Assign To"
           this.loadAllUsers();
@@ -1148,5 +1159,7 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
       default: return 'priority-default';
     }
   }
+
+
 
 }

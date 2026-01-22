@@ -100,7 +100,14 @@ export class CasenotesComponent implements OnInit, OnChanges, OnDestroy, CaseUns
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['caseHeaderId'] || changes['caseTemplateId'] || changes['levelId'] || changes['caseNumber']) {
+    if (
+      changes['caseHeaderId'] ||
+      changes['caseTemplateId'] ||
+      changes['levelId'] ||
+      changes['caseNumber'] ||
+      changes['isAddOnly'] ||
+      changes['singlePane']
+    ) {
       this.reload();
       this.refreshList();
     }
@@ -330,6 +337,9 @@ export class CasenotesComponent implements OnInit, OnChanges, OnDestroy, CaseUns
           this.template = res.template;
           this.applyNotesTemplate(this.template?.section ?? (this.template as any)?.Section);
           this.refreshList();
+          if (this.isAddOnly) {
+            this.onAddClick();
+          }
         }),
         finalize(() => (this.loading = false)),
         catchError((err) => {

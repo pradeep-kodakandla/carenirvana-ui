@@ -445,3 +445,21 @@ label .text-danger {
 .timeline-dot {
   visibility: visible;
 }
+
+
+
+/* Dashboard: when opened for Add/Edit, show ONLY editor and use full width */
+.activity-container.activity-container--editor-only {
+  height: auto;
+  display: block;
+}
+
+  .activity-container.activity-container--editor-only .activity-left {
+    display: none !important;
+  }
+
+  .activity-container.activity-container--editor-only .activity-right {
+    width: 100% !important;
+    padding-left: 0 !important;
+    border-right: 0 !important;
+  }

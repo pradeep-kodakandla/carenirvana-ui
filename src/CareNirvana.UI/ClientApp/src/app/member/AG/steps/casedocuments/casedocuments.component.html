@@ -54,6 +54,10 @@
           </div>
 
           <div class="resp-actions" (click)="$event.stopPropagation()">
+            <button class="icon-btn" type="button" title="Edit Document" (click)="openEdit(d)" [disabled]="saving">✏️</button>
+            <button class="icon-btn" type="button" title="Delete" (click)="onDelete(d)" [disabled]="saving">🗑️</button>
+          </div>
+          <!--<div class="resp-actions" (click)="$event.stopPropagation()">
             <button type="button"
                     class="icon-btn"
                     (click)="openEdit(d)"
@@ -75,7 +79,7 @@
                 <path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z" />
               </svg>
             </button>
-          </div>
+          </div>-->
         </div>
 
         <div class="resp-body">{{ d?.documentDescription }}</div>
@@ -91,13 +95,15 @@
   <div class="docs-right" *ngIf="showRightPane" [style.flex]="singlePane ? '1 1 100%' : null">
 
     <!-- Helpful for dashboard add-only mode -->
-    <div class="mb-2" *ngIf="singlePane && isAddOnly">
-      <button type="button"
-              class="btn btn-sm btn-outline-secondary"
-              (click)="emitViewAll()"
-              [disabled]="saving || loading">
-        ← View All Documents
-      </button>
+    <div class="embed-notes-header" *ngIf="isAddOnly">
+      <div class="embed-actions">
+        <button type="button"
+                class="btn btn-sm btn-link"
+                (click)="emitViewAll()"
+                [disabled]="loading || saving">
+          View all Documents ({{ documents?.length || 0 }})
+        </button>
+      </div>
     </div>
 
     <!-- Editor -->

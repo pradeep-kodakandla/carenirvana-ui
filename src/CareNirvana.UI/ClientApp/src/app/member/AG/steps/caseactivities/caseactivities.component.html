@@ -1,6 +1,9 @@
 <!-- src/app/member/AG/steps/caseactivities/caseactivities.component.html -->
 
-<div class="activity-container" [class.activity-container--single-pane]="mode === 'embed'">
+<div class="activity-container"      [ngClass]="{
+       'activity-container--single-pane': singlePaneOnEdit && mode === 'embed',
+       'activity-container--editor-only': singlePaneOnEdit && mode === 'embed' && showEditor
+     }">
 
   <!-- LEFT: List (hidden in embed mode, and hidden while editing in single-pane style) -->
   <div class="activity-left" *ngIf="mode !== 'embed' && (!singlePaneOnEdit || !showEditor)">
