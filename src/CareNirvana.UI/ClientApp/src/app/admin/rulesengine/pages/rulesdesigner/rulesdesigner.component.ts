@@ -239,6 +239,8 @@ export class RuleDesignerComponent implements OnInit {
 
   private _idSeq = 0;
 
+  successMsg = '';
+
   constructor(
     private svc: RulesengineService,
     private route: ActivatedRoute,
@@ -1207,10 +1209,13 @@ export class RuleDesignerComponent implements OnInit {
   // ============================================================
 
   back(): void {
-    this.router.navigate(['/admin/rulesengine/rules']);
+    this.router.navigate(['configuration/rulesengine/rules']);
   }
 
   save(): void {
+    this.error = '';
+    this.successMsg = '';
+
     if (!this.rule) {
       this.error = 'No rule loaded.';
       return;
@@ -1237,12 +1242,18 @@ export class RuleDesignerComponent implements OnInit {
 
     this.svc.updateRule(this.rule.id, req).subscribe({
       next: () => {
+        this.successMsg = 'Rule saved successfully.';
         this.saving = false;
-        this.back();
+
+        setTimeout(() => {
+          this.successMsg = '';
+        }, 2000);
+        //this.back();
       },
       error: (err) => {
         console.error(err);
-        this.error = 'Save failed.';
+        this.error = err?.error?.message || 'Save failed.';
+        this.successMsg = '';
         this.saving = false;
       }
     });

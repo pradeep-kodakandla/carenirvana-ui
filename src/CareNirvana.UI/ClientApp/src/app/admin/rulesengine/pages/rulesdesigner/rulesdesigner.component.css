@@ -877,3 +877,10 @@
 .rightpanel .sectiontitle {
   color: #0f172a;
 }
+
+
+.success {
+  margin-top: 10px;
+  color: #15803d;
+  font-weight: 600;
+}
