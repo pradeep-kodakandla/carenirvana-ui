@@ -884,3 +884,52 @@
   color: #15803d;
   font-weight: 600;
 }
+
+/* ===========================================
+   Autocomplete must be above all panels
+   =========================================== */
+
+/* Ensure panels have explicit stacking order */
+.designer {
+  position: relative;
+}
+
+.midpanel {
+  position: relative;
+  z-index: 20;
+}
+
+.leftpanel, .rightpanel {
+  position: relative;
+  z-index: 1;
+}
+
+/* Ensure the dropdown’s local stacking context is on top */
+.exprslot, .acWrap {
+  position: relative;
+  z-index: 30;
+  overflow: visible;
+}
+
+/* Actual dropdown */
+.acPanel {
+  z-index: 999999 !important;
+}
+
+
+/* =========================================================
+   FIX: Autocomplete dropdown should overlay the THEN block
+   Reason: .canvas/.thenCanvas use backdrop-filter (stacking contexts)
+   ========================================================= */
+.midpanel .canvas,
+.midpanel .thenCanvas {
+  position: relative; /* enable z-index */
+}
+
+.midpanel .canvas {
+  z-index: 50; /* WHEN container above THEN container */
+}
+
+.midpanel .thenCanvas {
+  z-index: 10;
+}
