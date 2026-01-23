@@ -1,212 +1,422 @@
 <div class="topbar">
   <div class="left">
-    <button class="btn" (click)="back()">← Back</button>
-    <div class="titleblock">
-      <div class="title">Rule Designer</div>
-      <div class="subtitle" *ngIf="rule">
-        {{ rule.name }} • {{ groupName(rule.ruleGroupId) }} • {{ rule.ruleType }}
-      </div>
+    <div>
+      <div class="title">Rules Designer</div>
+      <div class="subtitle">Drag fields → build WHEN, then drag actions → THEN. JSON stays in sync.</div>
     </div>
   </div>
 
   <div class="right">
-    <button class="btn" (click)="toggleJson()">{{ showJson ? 'Hide JSON' : 'Show JSON' }}</button>
-    <button class="btn primary" (click)="save()" [disabled]="saving">{{ saving ? 'Saving...' : 'Save' }}</button>
+    <button class="btn" (click)="back()">Back</button>
+    <button class="btn primary" [disabled]="saving" (click)="save()">
+      {{ saving ? 'Saving...' : 'Save' }}
+    </button>
   </div>
 </div>
 
-<div class="err" *ngIf="error">{{ error }}</div>
+<div class="headercard card">
+  <div class="formgrid">
+    <div class="flfield">
+      <input class="flinput" placeholder=" " [(ngModel)]="name" />
+      <label class="fllabel">Rule Name</label>
+    </div>
 
-<div class="shell" *ngIf="!loading && !error">
+    <div class="flfield" [class.filled]="!!ruleType">
+      <ui-smart-dropdown class="flcontrol"
+                         label="Rule Type"
+                         [options]="ruleTypeUiOptions"
+                         [(ngModel)]="ruleType">
+      </ui-smart-dropdown>
+    </div>
 
-  <!-- Header info like decisionrules -->
-  <div class="card headercard">
-    <div class="grid">
-      <div class="flfield">
-        <input class="flinput" placeholder=" " [(ngModel)]="name" (ngModelChange)="refreshJsonPreview()" />
-        <label class="fllabel">Rule Name</label>
+    <div class="flfield full" [class.filled]="!!ruleGroupId">
+      <ui-smart-dropdown class="flcontrol"
+                         label="Rule Group"
+                         [options]="groupUiOptions"
+                         [(ngModel)]="ruleGroupId">
+      </ui-smart-dropdown>
+    </div>
+
+    <div class="flfield full filled">
+      <div class="activeRow">
+        <label class="activeLabel">Active</label>
+        <label class="switch">
+          <input type="checkbox" [(ngModel)]="activeFlag" />
+          <span class="slider"></span>
+        </label>
       </div>
+    </div>
 
-      <div class="flfield">
-        <ui-smart-dropdown class="flcontrol"
-                           label="Rule Type"
-                           [options]="ruleTypeUiOptions"
-                           [(ngModel)]="ruleType"
-                           (ngModelChange)="refreshJsonPreview()">
-        </ui-smart-dropdown>
+    <!--<div class="flfield full">
+      <textarea class="fltextarea" rows="2" placeholder=" " [(ngModel)]="description"></textarea>
+      <label class="fllabel">Description</label>
+    </div>-->
+  </div>
+
+  <div class="error" *ngIf="error">{{ error }}</div>
+</div>
+
+<!-- IMPORTANT: cdkDropListGroup connects ALL drop lists so drops won’t snap back -->
+<div class="designer" cdkDropListGroup>
+
+  <!-- LEFT PALETTE -->
+  <div class="panel card leftpanel">
+
+    <!-- Fields -->
+    <div class="section">
+      <div class="sectionhead">
+        <div class="sectiontitle">Fields</div>
+        <button class="link" (click)="showAllFields = !showAllFields">
+          {{ showAllFields ? 'Top 5' : 'Show all' }}
+        </button>
       </div>
+      <input class="search" [(ngModel)]="fieldSearch" placeholder="Search fields..." />
 
-      <div class="flfield">
-        <ui-smart-dropdown class="flcontrol"
-                           label="Rule Group"
-                           [options]="groupUiOptions"
-                           [(ngModel)]="ruleGroupId"
-                           (ngModelChange)="refreshJsonPreview()">
-        </ui-smart-dropdown>
-      </div>
-
-      <div class="flfield">
-        <div class="activeRow">
-          <label class="activeLabel">Active</label>
-          <label class="switch">
-            <input type="checkbox" [(ngModel)]="activeFlag" />
-            <span class="slider"></span>
-          </label>
+      <div class="palette"
+           cdkDropList
+           [id]="fieldsPaletteId"
+           [cdkDropListSortingDisabled]="true">
+        <div class="pill"
+             *ngFor="let f of visibleFields"
+             cdkDrag
+             (cdkDragMoved)="onPaletteDragMoved($event)"
+             (cdkDragEnded)="onPaletteDragEnded()"
+             [cdkDragData]="dragField(f)"
+             cdkDragPreviewClass="drag-preview">
+          {{ f.label }}
+          <div class="pillsub">{{ f.key }}</div>
         </div>
       </div>
+    </div>
 
-      <div class="flfield full">
-        <textarea class="fltextarea" rows="2" placeholder=" " [(ngModel)]="description" (ngModelChange)="refreshJsonPreview()"></textarea>
-        <label class="fllabel">Description</label>
+    <!-- Functions -->
+    <div class="section">
+      <div class="sectionhead">
+        <div class="sectiontitle">Functions</div>
+        <button class="link" (click)="showAllFunctions = !showAllFunctions">
+          {{ showAllFunctions ? 'Top 5' : 'Show all' }}
+        </button>
+      </div>
+      <input class="search" [(ngModel)]="functionSearch" placeholder="Search functions..." />
+
+      <div class="palette"
+           cdkDropList
+           [id]="functionsPaletteId"
+           [cdkDropListSortingDisabled]="true">
+        <div class="pill"
+             *ngFor="let fn of visibleFunctions"
+             cdkDrag
+             (cdkDragMoved)="onPaletteDragMoved($event)"
+             (cdkDragEnded)="onPaletteDragEnded()"
+             [cdkDragData]="dragFunction(fn)"
+             cdkDragPreviewClass="drag-preview">
+          {{ fn.label }}
+          <div class="pillsub">returns {{ fn.returnType }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="section">
+      <div class="sectionhead">
+        <div class="sectiontitle">Actions</div>
+        <button class="link" (click)="showAllActions = !showAllActions">
+          {{ showAllActions ? 'Top 5' : 'Show all' }}
+        </button>
+      </div>
+      <input class="search" [(ngModel)]="actionSearch" placeholder="Search actions..." />
+
+      <div class="palette"
+           cdkDropList
+           [id]="actionsPaletteId"
+           [cdkDropListSortingDisabled]="true">
+        <div class="pill"
+             *ngFor="let a of visibleActions"
+             cdkDrag
+             (cdkDragMoved)="onPaletteDragMoved($event)"
+             (cdkDragEnded)="onPaletteDragEnded()"
+             [cdkDragData]="dragAction(a)"
+             cdkDragPreviewClass="drag-preview">
+          {{ a.label }}
+          <div class="pillsub">{{ a.key }}</div>
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="bodygrid">
-    <!-- IF -->
-    <div class="card panel">
-      <div class="panelhead">
-        <div class="pilltag iftag">IF</div>
-        <div class="paneltitle">Conditions</div>
-        <button class="btn" (click)="addCondition()">+ Add</button>
+  <!-- MIDDLE: WHEN/THEN CANVAS -->
+  <div class="panel card midpanel">
+
+    <!-- Branch Tabs -->
+    <div class="branchtabs">
+      <button class="tab"
+              *ngFor="let b of branches; let i = index"
+              [class.active]="i === activeBranchIndex"
+              (click)="setActiveBranch(i)">
+        {{ b.type === 'IF' ? 'IF' : (b.type === 'ELSE_IF' ? 'ELSE IF' : 'ELSE') }}
+      </button>
+
+      <div class="spacer"></div>
+
+      <button class="tab ghost" (click)="addElseIf()">+ ELSE IF</button>
+      <button class="tab ghost" (click)="ensureElseBranch()">+ ELSE</button>
+    </div>
+
+    <!-- WHEN -->
+    <div class="block" *ngIf="activeBranch.type !== 'ELSE'">
+      <div class="blockhead">
+        <div class="blocktitle">WHEN</div>
+
       </div>
 
-      <div class="list" *ngIf="conditions.length === 0">
-        <div class="emptyline">No conditions. Add one.</div>
+      <!-- IMPORTANT: ONE stable drop-list for canvas (no *ngIf on this element) -->
+      <div class="canvas"
+           cdkDropList
+           [id]="canvasDropId"
+           [cdkDropListEnterPredicate]="canDropToWhen"
+           [cdkDropListSortingDisabled]="true"
+           (cdkDropListDropped)="dropToActiveWhenCanvas($event)">
+
+        <div class="watermark" *ngIf="isActiveGroupEmpty()">
+          Drag a <b>field</b> (or function) here to start building the rule…
+        </div>
+
+        <!-- Render active group's children -->
+        <ng-container *ngIf="activeBranch.when as root">
+          <ng-container *ngTemplateOutlet="groupTpl; context:{ $implicit: root }"></ng-container>
+        </ng-container>
       </div>
+    </div>
 
-      <div class="cond" *ngFor="let c of conditions; let i = index">
-        <div class="rowhead">
-          <div class="rowtitle">{{ i + 1 }}. {{ c.name }}</div>
-          <button class="icon" (click)="removeCondition(i)">✕</button>
-        </div>
-
-        <div class="rowgrid">
-          <div class="flfield">
-            <input class="flinput" placeholder=" " [(ngModel)]="c.name" (ngModelChange)="refreshJsonPreview()" />
-            <label class="fllabel">Label</label>
-          </div>
-
-          <div class="flfield">
-            <ui-smart-dropdown class="flcontrol"
-                               label="Operator"
-                               [options]="operators"
-                               [(ngModel)]="c.operator"
-                               (ngModelChange)="refreshJsonPreview()">
-            </ui-smart-dropdown>
-          </div>
-
-          <div class="flfield">
-            <ui-smart-dropdown class="flcontrol"
-                               label="Data Type"
-                               [options]="dataTypes"
-                               [(ngModel)]="c.dataType"
-                               (ngModelChange)="refreshJsonPreview()">
-            </ui-smart-dropdown>
-          </div>
-
-          <div class="flfield full">
-            <input class="flinput" placeholder=" " [(ngModel)]="c.mappedFieldLabel" (ngModelChange)="refreshJsonPreview()" />
-            <label class="fllabel">Mapped Field Label</label>
-          </div>
-
-          <div class="flfield">
-            <input class="flinput" placeholder=" " [(ngModel)]="c.mappedModule" (ngModelChange)="refreshJsonPreview()" />
-            <label class="fllabel">Module</label>
-          </div>
-
-          <div class="flfield">
-            <input class="flinput" placeholder=" " [(ngModel)]="c.mappedDatasetKey" (ngModelChange)="refreshJsonPreview()" />
-            <label class="fllabel">Dataset</label>
-          </div>
-
-          <div class="flfield">
-            <input class="flinput" placeholder=" " [(ngModel)]="c.mappedFieldPath" (ngModelChange)="refreshJsonPreview()" />
-            <label class="fllabel">Field Path</label>
-          </div>
-
-          <div class="flfield">
-            <input class="flinput" placeholder=" " [(ngModel)]="c.mappedFieldKey" (ngModelChange)="refreshJsonPreview()" />
-            <label class="fllabel">Field Key</label>
-          </div>
-        </div>
+    <!-- ELSE branch has no WHEN -->
+    <div class="block" *ngIf="activeBranch.type === 'ELSE'">
+      <div class="watermark solo">
+        ELSE branch: no WHEN conditions. Only THEN actions will run.
       </div>
     </div>
 
     <!-- THEN -->
-    <div class="card panel">
-      <div class="panelhead">
-        <div class="pilltag thentag">THEN</div>
-        <div class="paneltitle">Outputs</div>
-        <button class="btn" (click)="addResult()">+ Add</button>
+    <div class="block">
+      <div class="blockhead">
+        <div class="blocktitle">THEN</div>
+        <div class="hint">Drag an action from the left into this area.</div>
       </div>
 
-      <div class="metaRow">
-        <div class="flfield">
-          <ui-smart-dropdown class="flcontrol"
-                             label="Hit Policy"
-                             [options]="hitPolicies"
-                             [(ngModel)]="hitPolicy"
-                             (ngModelChange)="refreshJsonPreview()">
-          </ui-smart-dropdown>
+      <div class="thenCanvas"
+           cdkDropList
+           [id]="thenDropId"
+           [cdkDropListEnterPredicate]="canDropToThen"
+           [cdkDropListSortingDisabled]="true"
+           (cdkDropListDropped)="dropToThenCanvas($event)">
+
+        <div class="watermark" *ngIf="activeBranch.then.length === 0">
+          Drag an <b>action</b> here (ex: Create Member Alert, Add Activity)…
         </div>
 
-        <div class="flfield">
-          <ui-smart-dropdown class="flcontrol"
-                             label="Return Mode"
-                             [options]="returnModes"
-                             [(ngModel)]="returnMode"
-                             (ngModelChange)="refreshJsonPreview()">
-          </ui-smart-dropdown>
-        </div>
-      </div>
-
-      <div class="list" *ngIf="results.length === 0">
-        <div class="emptyline">No outputs. Add one.</div>
-      </div>
-
-      <div class="cond" *ngFor="let r of results; let i = index">
-        <div class="rowhead">
-          <div class="rowtitle">{{ i + 1 }}. {{ r.name }}</div>
-          <button class="icon" (click)="removeResult(i)">✕</button>
-        </div>
-
-        <div class="rowgrid">
-          <div class="flfield">
-            <input class="flinput" placeholder=" " [(ngModel)]="r.name" (ngModelChange)="refreshJsonPreview()" />
-            <label class="fllabel">Label</label>
+        <div class="actionCard" *ngFor="let ai of activeBranch.then">
+          <div class="actionTop">
+            <div class="actionTitle">{{ ai.label }}</div>
+            <button class="iconbtn" (click)="removeAction(ai.id)">✕</button>
           </div>
 
-          <div class="flfield">
-            <ui-smart-dropdown class="flcontrol"
-                               label="Data Type"
-                               [options]="dataTypes"
-                               [(ngModel)]="r.dataType"
-                               (ngModelChange)="refreshJsonPreview()">
-            </ui-smart-dropdown>
-          </div>
+          <ng-container *ngIf="actionDef(ai.actionKey) as def">
+            <div class="paramRow"
+                 *ngFor="let p of def.params"
+                 [class.hiddenparam]="p.uiType === 'hidden'">
+
+              <div class="paramLabel">
+                {{ p.fieldName }}
+                <span class="req" *ngIf="p.required">*</span>
+              </div>
+
+              <div class="paramValue">
+                <div class="exprslot"
+                     cdkDropList
+                     [cdkDropListEnterPredicate]="canDropToExpr"
+                     [cdkDropListSortingDisabled]="true"
+                     (cdkDropListDropped)="dropActionParam(ai.id, p.fieldKey, $event)">
+
+                  <ng-container *ngIf="ai.params[p.fieldKey] && ai.params[p.fieldKey]?.type !== 'literal'; else actionLiteral">
+                    <span class="chip">
+                      {{ exprLabel(ai.params[p.fieldKey]) }}
+                    </span>
+                    <button class="x" (click)="clearActionParam(ai.id, p.fieldKey)">✕</button>
+                  </ng-container>
+
+                  <ng-template #actionLiteral>
+                    <div class="acWrap" (click)="$event.stopPropagation()">
+                      <input class="text mini"
+                             [value]="literalText(ai.params[p.fieldKey])"
+                             (focus)="openActionParamAutocomplete(ai.id, p.fieldKey, p.dataType, literalText(ai.params[p.fieldKey]))"
+                             (keydown)="onExprAutoKeydown($event)"
+                             (input)="setActionParamLiteral(ai.id, p.fieldKey, $any($event.target).value, p.dataType); updateExprAutoQuery(actionParamKey(ai.id, p.fieldKey), $any($event.target).value)"
+                             placeholder="Type value or search field/function..." />
+                      <div class="acPanel" *ngIf="isExprAutoOpen(actionParamKey(ai.id, p.fieldKey))" (mousedown)="$event.stopPropagation()">
+                        <div class="acHeader">Search fields / functions</div>
+                        <button class="acClose" type="button" (mousedown)="$event.preventDefault(); closeExprAutocomplete()">✕</button>
+
+                        <div class="acEmpty" *ngIf="exprAuto.items.length === 0">No matches</div>
+
+                        <div class="acItem" *ngFor="let it of exprAuto.items"
+                             (mousedown)="$event.preventDefault(); applyExprAuto(it)">
+                          <div class="acMain">
+                            <span class="acKind" [class.fn]="it.kind==='function'">{{ it.kind === 'function' ? 'ƒ' : '⛁' }}</span>
+                            {{ it.label }}
+                          </div>
+                          <div class="acMeta">{{ it.meta }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </ng-template>
+
+                </div>
+              </div>
+            </div>
+          </ng-container>
         </div>
+
       </div>
     </div>
 
-    <!-- JSON -->
-    <div class="card panel jsonpanel" *ngIf="showJson">
-      <div class="panelhead">
-        <div class="paneltitle">JSON</div>
-        <button class="btn" (click)="applyJsonToDesigner()">Apply JSON → Designer</button>
+    <!-- Recursive group renderer -->
+    <ng-template #groupTpl let-g>
+      <div class="groupBox">
+        <div class="groupHead">
+          <button class="chipbtn tiny" (click)="addGroup(g.id)">+ Group</button>
+        </div>
+
+        <div class="groupBody"
+             cdkDropList
+             [id]="g.id"
+             [cdkDropListEnterPredicate]="canDropToWhen"
+             [cdkDropListSortingDisabled]="true"
+             (cdkDropListDropped)="dropToGroup(g.id, $event)">
+
+          <div class="watermark" *ngIf="g.children.length === 0">
+            Drop a field here…
+          </div>
+
+          <ng-container *ngFor="let n of g.children; let idx = index">
+            <div class="joiner" *ngIf="idx > 0">
+              <select class="joinerSelect"
+                      [(ngModel)]="g.op"
+                      (ngModelChange)="onGroupOpChanged()">
+                <option [ngValue]="'AND'">AND</option>
+                <option [ngValue]="'OR'">OR</option>
+              </select>
+            </div>
+
+            <ng-container [ngSwitch]="n.nodeType">
+
+              <!-- Condition -->
+              <div *ngSwitchCase="'condition'" class="condRow">
+                <!-- Left -->
+                <div class="exprslot"
+                     cdkDropList
+                     [cdkDropListEnterPredicate]="canDropToExpr"
+                     [cdkDropListSortingDisabled]="true"
+                     (cdkDropListDropped)="dropCondLeft(n.id, $event)">
+
+                  <ng-container *ngIf="n.left; else leftEmpty">
+                    <span class="chip">{{ exprLabel(n.left) }}</span>
+                    <button class="x" (click)="clearCondLeft(n.id)">✕</button>
+                  </ng-container>
+
+                  <ng-template #leftEmpty>
+                    <span class="slotph">drop field/function</span>
+                  </ng-template>
+                </div>
+
+                <!-- Operator -->
+                <select class="op"
+                        [(ngModel)]="n.operator"
+                        (ngModelChange)="onOperatorChanged()"
+                        [disabled]="!n.left">
+                  <option [ngValue]="null">Operator…</option>
+                  <option *ngFor="let op of operatorOptionsFor(n.left)"
+                          [ngValue]="op.key">
+                    {{ op.label }}
+                  </option>
+                </select>
+
+                <!-- Right -->
+                <div class="exprslot rhs"
+                     *ngIf="operatorNeedsRhs(n.operator)">
+                  <div class="exprslot inner"
+                       cdkDropList
+                       [cdkDropListEnterPredicate]="canDropToExpr"
+                       [cdkDropListSortingDisabled]="true"
+                       (cdkDropListDropped)="dropCondRight(n.id, $event)">
+
+                    <ng-container *ngIf="n.right && n.right.type !== 'literal'; else rightLiteral">
+                      <span class="chip">{{ exprLabel(n.right) }}</span>
+                      <button class="x" (click)="clearCondRight(n.id)">✕</button>
+                    </ng-container>
+
+                    <ng-template #rightLiteral>
+                      <div class="acWrap" (click)="$event.stopPropagation()">
+                        <input class="text mini"
+                               [value]="literalText(n.right)"
+                               (focus)="openCondRightAutocomplete(n.id, literalText(n.right))"
+                               (keydown)="onExprAutoKeydown($event)"
+                               (input)="setCondLiteralRight(n.id, $any($event.target).value); updateExprAutoQuery(condRightKey(n.id), $any($event.target).value)"
+                               placeholder="Type value or search field/function..." />
+
+                        <div class="acPanel" *ngIf="isExprAutoOpen(condRightKey(n.id))" (mousedown)="$event.stopPropagation()">
+                          <div class="acHeader">Search fields / functions</div>
+                          <button class="acClose" type="button" (mousedown)="$event.preventDefault(); closeExprAutocomplete()">✕</button>
+
+                          <div class="acEmpty" *ngIf="exprAuto.items.length === 0">No matches</div>
+
+                          <div class="acItem" *ngFor="let it of exprAuto.items"
+                               (mousedown)="$event.preventDefault(); applyExprAuto(it)">
+                            <div class="acMain">
+                              <span class="acKind" [class.fn]="it.kind==='function'">{{ it.kind === 'function' ? 'ƒ' : '⛁' }}</span>
+                              {{ it.label }}
+                            </div>
+                            <div class="acMeta">{{ it.meta }}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </ng-template>
+                  </div>
+                </div>
+
+                <button class="iconbtn" (click)="removeWhenNode(g.id, n.id)">🗑</button>
+              </div>
+
+              <!-- Nested Group -->
+              <div *ngSwitchCase="'group'" class="nested">
+                <ng-container *ngTemplateOutlet="groupTpl; context:{ $implicit: n }"></ng-container>
+                <div class="rowend">
+                  <button class="link danger" (click)="removeWhenNode(g.id, n.id)">Remove group</button>
+                </div>
+              </div>
+
+            </ng-container>
+          </ng-container>
+        </div>
       </div>
+    </ng-template>
 
-      <div class="jsonerr" *ngIf="jsonError">{{ jsonError }}</div>
-
-      <textarea class="jsonarea"
-                rows="24"
-                [(ngModel)]="jsonText"></textarea>
-
-      <div class="hint">
-        Tip: You can paste the ruleJson you receive from API here and click “Apply JSON → Designer”.
-      </div>
-    </div>
   </div>
-</div>
 
-<div class="loading" *ngIf="loading">Loading...</div>
+  <!-- RIGHT JSON -->
+  <div class="panel card rightpanel">
+    <div class="jsonhead">
+      <div class="sectiontitle">Rule JSON</div>
+      <div class="jsonbtns">
+        <button class="btn small" (click)="applyJsonToDesigner()">Apply</button>
+        <button class="btn small" (click)="discardJsonEdits()">Discard</button>
+      </div>
+    </div>
+
+    <textarea class="jsonarea"
+              [(ngModel)]="jsonText"
+              (focus)="onJsonFocus()"
+              (blur)="onJsonBlur()"></textarea>
+
+    <div class="error" *ngIf="jsonError">{{ jsonError }}</div>
+  </div>
+
+</div>

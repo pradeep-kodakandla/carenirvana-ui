@@ -255,26 +255,6 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
     this.loadInitialComponent();
   }
 
-  //selectMainMenu(menuItem: MenuItem): void {
-  //  this.selectedMenu = menuItem;
-
-  //  if ((menuItem?.name ?? '').toLowerCase() === 'business rules engine') {
-  //    if (this.dynamicContainer) this.dynamicContainer.clear();
-  //    this.selectedSubMenu = null;
-  //    this.isMenuCollapsed = false;
-  //    this.router.navigate(['/rulesengine', 'dashboard']);
-  //    return;
-  //  }
-
-  //  this.filterSubMenu();
-  //  this.selectedSubMenu = this.filteredSubMenu[0] || null;
-  //  this.isMenuCollapsed = false;
-
-  //  if (this.selectedSubMenu) {
-  //    this.loadComponent(this.selectedSubMenu);
-  //  }
-  //}
-
   selectMainMenu(menuItem: MenuItem): void {
     this.selectedMenu = menuItem;
     this.filterSubMenu();
@@ -296,30 +276,6 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
     }
   }
 
-
-
-  //selectMainMenu(menuItem: MenuItem): void {
-  //  this.selectedMenu = menuItem;
-  //  this.filterSubMenu();
-  //  this.selectedSubMenu = this.filteredSubMenu[0] || null;
-  //  this.isMenuCollapsed = false; // Expand menu when selecting main menu
-  //  if (this.selectedSubMenu) {
-  //    this.loadComponent(this.selectedSubMenu);
-  //  }
-  //}
-
-  //selectSubMenu(subMenuItem: string): void {
-  //  this.selectedSubMenu = subMenuItem;
-  //  this.loadComponent(subMenuItem);
-
-  //  // Collapse menu when "Auth Template" is selected
-  //  if (subMenuItem === 'Auth Template' || 'Case Template') {
-  //    this.isMenuCollapsed = true;
-  //  } else {
-  //    this.isMenuCollapsed = false;
-  //  }
-  //}
-
   selectSubMenu(subMenuItem: string): void {
     this.selectedSubMenu = subMenuItem;
 
@@ -332,7 +288,7 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
 
       if (key === 'dashboard') this.router.navigate(['configuration', 'rulesengine', 'dashboard']);
       else if (key === 'rule groups') this.router.navigate(['configuration', 'rulesengine', 'rulegroups']);
-      else if (key === 'rules') this.router.navigate(['configuration', 'rulesengine', 'rules']);
+      else if (key === 'rules') { this.router.navigate(['configuration', 'rulesengine', 'rules']); this.isMenuCollapsed = true; }
       else if (key === 'data fields') this.router.navigate(['configuration', 'rulesengine', 'datafields']);
       else if (key === 'functions') this.router.navigate(['configuration', 'rulesengine', 'functions']);
       else if (key === 'decision tables') this.router.navigate(['configuration', 'rulesengine', 'decisiontable']);
@@ -345,8 +301,7 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
     // existing workflow (dynamic component load)
     this.loadComponent(subMenuItem);
 
-    // FIX: your current code has a bug and always collapses
-    if (subMenuItem === 'Auth Template' || subMenuItem === 'Case Template') {
+    if (subMenuItem === 'Auth Template' || subMenuItem === 'Case Template' ) {
       this.isMenuCollapsed = true;
     } else {
       this.isMenuCollapsed = false;

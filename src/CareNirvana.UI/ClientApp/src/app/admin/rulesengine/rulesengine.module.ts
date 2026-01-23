@@ -1,7 +1,7 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-
+import { DragDropModule } from '@angular/cdk/drag-drop';
 import { RulesEngineRoutingModule } from './rulesengine.routing.module';
 
 import { RulesEngineShellComponent } from './layout/rulesengineshell.component';
@@ -32,7 +32,8 @@ import { RuleDesignerComponent } from './pages/rulesdesigner/rulesdesigner.compo
     FormsModule,
     RulesEngineRoutingModule,
     ReactiveFormsModule,
-    SharedUiModule
+    SharedUiModule,
+    DragDropModule
   ]
 })
 export class RulesEngineModule { }
