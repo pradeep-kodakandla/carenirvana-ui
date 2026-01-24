@@ -1,19 +1,21 @@
 import { Component, HostListener, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CdkDragDrop, CdkDropList, CdkDrag, CdkDragMove } from '@angular/cdk/drag-drop';
-import { forkJoin } from 'rxjs';
+import { of, forkJoin } from 'rxjs';
+import { map, switchMap } from 'rxjs/operators';
 import {
   RulesengineService,
   RuleGroupModel,
   RuleModel,
-  RuleType
+  RuleType,
+  DecisionTableListItem, RuleDataFunctionModel
 } from 'src/app/service/rulesengine.service';
 import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
 
 
 type DataType = 'string' | 'number' | 'boolean' | 'date' | 'datetime';
 
-type DragKind = 'field' | 'function' | 'action';
+type DragKind = 'field' | 'function' | 'action' | 'decisionTable';
 type AndOr = 'AND' | 'OR';
 
 interface FieldDef {
@@ -118,11 +120,56 @@ interface UiRuleJsonV1 {
   }>;
 }
 
+
+type RuleDocKind = 'LADDER' | 'DECISION_TABLE';
+
+interface DecisionTableUiModel {
+  schema: 'rulesengine.uidt.v1';
+  version: 1;
+  decisionTable: {
+    id: string;
+    name?: string;
+    tableVersion?: number;
+    hitPolicy?: string;
+    updatedOn?: string | null;
+  };
+  outputs?: Array<{ key: string; label?: string; dataType?: DataType }>;
+  postProcessing?: UiRuleJsonV2;
+}
+
+interface UiRuleJsonV2 {
+  schema: 'rulesengine.uirule.v2';
+  version: 2;
+  branches: Array<{
+    type: BranchType;
+    when?: any;
+    then: any[];
+  }>;
+  assets?: {
+    decisionTables?: Array<{ id: string; name?: string; tableVersion?: number }>;
+  };
+}
+
+interface RuleDocV1 {
+  schema: 'rulesengine.ruledoc.v1';
+  version: 1;
+  kind: RuleDocKind;
+  ui: UiRuleJsonV2 | DecisionTableUiModel;
+  engine?: any;
+  meta?: {
+    source?: string;
+    generatedOn?: string;
+  };
+}
+
+
+
 interface DragItem {
   kind: DragKind;
   field?: FieldDef;
   fn?: FuncDef;
   action?: ActionDef;
+  decisionTable?: DecisionTableListItem;
 }
 type ExprAutoKind = 'field' | 'function';
 
@@ -163,15 +210,26 @@ export class RuleDesignerComponent implements OnInit {
   apiRows: any[] = [];
   fields: FieldDef[] = [];
 
+  // ---- Decision tables (drag into THEN)
+  decisionTables: DecisionTableListItem[] = [];
+
+  // ---- Decision Outputs (for DecisionTable-driven rules)
+  decisionOutputsMeta: Array<{ key: string; label?: string; dataType?: DataType }> = [];
+  decisionOutputFields: FieldDef[] = [];
+
   // ---- Left palette: search
   fieldSearch = '';
   functionSearch = '';
   actionSearch = '';
+  decisionTableSearch = '';
+  decisionOutputSearch = '';
 
   // top-5 default view
   showAllFields = false;
   showAllFunctions = false;
   showAllActions = false;
+  showAllDecisionTables = false;
+  showAllDecisionOutputs = false;
 
 
   ruleTypeUiOptions: UiSmartOption<RuleType>[] = [];
@@ -221,7 +279,11 @@ export class RuleDesignerComponent implements OnInit {
     { key: 'NOT_EMPTY', label: 'Not Empty', needsRhs: false, allowed: 'any' }
   ];
 
-  // ---- Ladder
+  // ---- Ladder / mode
+  designerMode: RuleDocKind = 'LADDER';
+  loadedDecisionTable: { id: string; name?: string; tableVersion?: number } | null = null;
+  private _dtBaseDoc: RuleDocV1 | null = null;
+
   branches: Branch[] = [];
   activeBranchIndex = 0;
 
@@ -229,11 +291,14 @@ export class RuleDesignerComponent implements OnInit {
   jsonText = '';
   jsonError = '';
   jsonUserEditing = false;
+  private _lastStableJsonText = '';
 
   // ---- IDs for drop lists (stable)
   readonly fieldsPaletteId = 'fieldsPalette';
   readonly functionsPaletteId = 'functionsPalette';
   readonly actionsPaletteId = 'actionsPalette';
+  readonly decisionTablesPaletteId = 'decisionTablesPalette';
+  readonly decisionOutputsPaletteId = 'decisionOutputsPalette';
   readonly canvasDropId = 'canvasDrop';
   readonly thenDropId = 'thenDrop';
 
@@ -255,7 +320,7 @@ export class RuleDesignerComponent implements OnInit {
 
     // Build action defs from your sample + add "Set Field" as generic assignment
     this.buildActions();
-
+    this.refreshFunctions();
     // Default ladder state (empty canvas)
     this.branches = [this.makeIfBranch()];
     this.activeBranchIndex = 0;
@@ -299,6 +364,14 @@ export class RuleDesignerComponent implements OnInit {
         this.apiRows = Array.isArray(rows) ? rows : [];
         this.fields = this.buildFieldsFromApiRows(this.apiRows);
         this.syncJsonFromDesigner();
+      },
+      error: (e) => console.error(e)
+    });
+
+    // Decision Tables for drag/drop into THEN
+    this.svc.listTables().subscribe({
+      next: (rows: any) => {
+        this.decisionTables = Array.isArray(rows) ? rows : [];
       },
       error: (e) => console.error(e)
     });
@@ -349,6 +422,35 @@ export class RuleDesignerComponent implements OnInit {
     return this.showAllActions ? this.filteredActions : this.filteredActions.slice(0, 5);
   }
 
+
+  get filteredDecisionTables(): DecisionTableListItem[] {
+    const q = (this.decisionTableSearch || '').trim().toLowerCase();
+    const list = !q ? this.decisionTables : this.decisionTables.filter((t: any) =>
+      ((t?.name ?? '').toLowerCase().includes(q)) ||
+      ((t?.id ?? '').toLowerCase().includes(q))
+    );
+    return list;
+  }
+
+  get visibleDecisionTables(): DecisionTableListItem[] {
+    return this.showAllDecisionTables ? this.filteredDecisionTables : this.filteredDecisionTables.slice(0, 5);
+  }
+
+
+  get filteredDecisionOutputs(): FieldDef[] {
+    const q = (this.decisionOutputSearch || '').trim().toLowerCase();
+    const list = !q ? this.decisionOutputFields : this.decisionOutputFields.filter((f: any) =>
+      ((f?.label ?? '').toLowerCase().includes(q)) ||
+      ((f?.key ?? '').toLowerCase().includes(q))
+    );
+    return list;
+  }
+
+  get visibleDecisionOutputs(): FieldDef[] {
+    return this.showAllDecisionOutputs ? this.filteredDecisionOutputs : this.filteredDecisionOutputs.slice(0, 5);
+  }
+
+
   // ============================================================
   // Drag data factories
   // ============================================================
@@ -363,6 +465,10 @@ export class RuleDesignerComponent implements OnInit {
 
   dragAction(a: ActionDef): DragItem {
     return { kind: 'action', action: a };
+  }
+
+  dragDecisionTable(t: DecisionTableListItem): DragItem {
+    return { kind: 'decisionTable', decisionTable: t };
   }
 
 
@@ -411,7 +517,7 @@ export class RuleDesignerComponent implements OnInit {
 
   canDropToThen = (drag: CdkDrag<any>, _drop: CdkDropList<any>) => {
     const d = drag.data as DragItem;
-    return d?.kind === 'action';
+    return d?.kind === 'action' || d?.kind === 'decisionTable';
   };
 
   canDropToExpr = (drag: CdkDrag<any>, _drop: CdkDropList<any>) => {
@@ -641,9 +747,38 @@ export class RuleDesignerComponent implements OnInit {
   // THEN actions
   // ============================================================
 
+
+
+  private makeRunDecisionTableAction(t: DecisionTableListItem): ActionInstance {
+    const dtId = (t as any)?.id ?? '';
+    const dtName = (t as any)?.name ?? '';
+    const dtVersion = (t as any)?.version ?? (t as any)?.tableVersion ?? null;
+
+    const inst: ActionInstance = {
+      id: this.makeId('act'),
+      actionKey: 'runDecisionTable',
+      label: dtName ? `Run Decision Table • ${dtName}` : 'Run Decision Table',
+      params: {
+        __dtId: { type: 'literal', dataType: 'string', value: dtId },
+        __dtName: { type: 'literal', dataType: 'string', value: dtName },
+        __dtVersion: (dtVersion != null) ? { type: 'literal', dataType: 'number', value: Number(dtVersion) } : null
+      }
+    };
+    return inst;
+  }
+
   dropToThenCanvas(ev: CdkDragDrop<any>): void {
     const d = ev.item.data as DragItem;
-    if (!d || d.kind !== 'action' || !d.action) return;
+    if (!d) return;
+
+    if (d.kind === 'decisionTable' && d.decisionTable) {
+      const inst = this.makeRunDecisionTableAction(d.decisionTable);
+      this.activeBranch.then.push(inst);
+      this.syncJsonFromDesigner();
+      return;
+    }
+
+    if (d.kind !== 'action' || !d.action) return;
 
     const adef = d.action;
     const inst: ActionInstance = {
@@ -711,13 +846,20 @@ export class RuleDesignerComponent implements OnInit {
   discardJsonEdits(): void {
     this.jsonUserEditing = false;
     this.jsonError = '';
+    if (this._lastStableJsonText) {
+      this.jsonText = this._lastStableJsonText;
+    }
     this.syncJsonFromDesigner();
   }
+
 
   applyJsonToDesigner(): void {
     this.jsonError = '';
     const t = (this.jsonText || '').trim();
+
     if (!t) {
+      this.designerMode = 'LADDER';
+      this.loadedDecisionTable = null;
       this.branches = [this.makeIfBranch()];
       this.activeBranchIndex = 0;
       this.jsonUserEditing = false;
@@ -725,47 +867,170 @@ export class RuleDesignerComponent implements OnInit {
       return;
     }
 
+    let obj: any = null;
     try {
-      const obj = JSON.parse(t) as UiRuleJsonV1;
-      if (obj?.schema !== 'rulesengine.uirule.v1') {
-        this.jsonError = 'JSON schema mismatch. Expected rulesengine.uirule.v1';
-        return;
-      }
-
-      const loaded = this.fromJson(obj);
-      this.branches = loaded;
-      this.activeBranchIndex = 0;
-      this.jsonUserEditing = false;
-      this.syncJsonFromDesigner();
+      obj = JSON.parse(t);
     } catch (e: any) {
       this.jsonError = e?.message ?? 'Invalid JSON';
+      return;
     }
+
+    const parsed = this.parseAnyRuleJson(obj);
+    if (!parsed.ok) {
+      this.jsonError = parsed.error;
+      return;
+    }
+
+    // DECISION_TABLE doc => show DT card + editable post-decision routing
+    if (parsed.doc.kind === 'DECISION_TABLE') {
+      this.designerMode = 'DECISION_TABLE';
+      this._dtBaseDoc = parsed.doc;
+
+      this.loadedDecisionTable = {
+        id: parsed.dtInfo?.id ?? '',
+        name: parsed.dtInfo?.name ?? undefined,
+        tableVersion: parsed.dtInfo?.tableVersion ?? undefined
+      };
+
+      // Post-processing branches (if present)
+      const dtUi = parsed.doc.ui as any;
+      const pp = dtUi?.postProcessing;
+      if (pp?.schema === 'rulesengine.uirule.v2' || pp?.schema === 'rulesengine.uirule.v1') {
+        const ppV2 = (pp.schema === 'rulesengine.uirule.v2') ? pp as UiRuleJsonV2 : this.upgradeV1ToV2(pp as UiRuleJsonV1);
+        this.branches = this.fromUiRuleJson(ppV2);
+      } else {
+        this.branches = [this.makeIfBranch()];
+      }
+      this.activeBranchIndex = 0;
+
+      // Decision outputs palette
+      this.setDecisionOutputsFromDoc(parsed.doc);
+
+      this.jsonUserEditing = false;
+      this.syncJsonFromDesigner();
+      return;
+    }
+
+    // LADDER doc
+    const ui = parsed.uiRule;
+    if (!ui) {
+      this.jsonError = 'Missing LADDER ui rule JSON.';
+      return;
+    }
+
+    this.designerMode = 'LADDER';
+    this.loadedDecisionTable = null;
+
+    this.branches = this.fromUiRuleJson(ui);
+    this.activeBranchIndex = 0;
+    this.jsonUserEditing = false;
+    this.syncJsonFromDesigner();
   }
+
+
 
   private syncJsonFromDesigner(): void {
     if (this.jsonUserEditing) return;
 
     this.jsonError = '';
-    const obj: UiRuleJsonV1 = this.toJson();
-    this.jsonText = JSON.stringify(obj, null, 2);
+
+    // LADDER -> normal rule UI
+    if (this.designerMode === 'LADDER') {
+      const ui = this.toUiRuleJsonV2();
+      const doc: RuleDocV1 = {
+        schema: 'rulesengine.ruledoc.v1',
+        version: 1,
+        kind: 'LADDER',
+        ui,
+        meta: { source: 'RulesDesigner', generatedOn: new Date().toISOString() }
+      };
+
+      this.jsonText = JSON.stringify(doc, null, 2);
+      this._lastStableJsonText = this.jsonText;
+      return;
+    }
+
+    // DECISION_TABLE -> preserve DT engine + metadata, but allow postProcessing (routing) to be edited here
+    if (this.designerMode === 'DECISION_TABLE') {
+      const base = this._dtBaseDoc ?? null;
+      const baseUi = (base?.ui as any) ?? {};
+      const dt = baseUi?.decisionTable ?? this.loadedDecisionTable ?? {};
+
+      const postProcessing = this.toUiRuleJsonV2();
+
+      const outputs = (Array.isArray(baseUi?.outputs) && baseUi.outputs.length)
+        ? baseUi.outputs
+        : (this.decisionOutputsMeta || []).map(o => ({ key: o.key, label: o.label, dataType: o.dataType }));
+
+      const ui: DecisionTableUiModel = {
+        schema: 'rulesengine.uidt.v1',
+        version: 1,
+        decisionTable: {
+          id: dt?.id ?? this.loadedDecisionTable?.id ?? '',
+          name: dt?.name ?? this.loadedDecisionTable?.name,
+          tableVersion: dt?.tableVersion ?? this.loadedDecisionTable?.tableVersion,
+          hitPolicy: dt?.hitPolicy ?? undefined,
+          updatedOn: dt?.updatedOn ?? null
+        },
+        outputs,
+        postProcessing
+      };
+
+      const doc: RuleDocV1 = {
+        schema: 'rulesengine.ruledoc.v1',
+        version: 1,
+        kind: 'DECISION_TABLE',
+        ui,
+        engine: base?.engine ?? (base as any)?.engine,
+        meta: { source: 'RulesDesigner', generatedOn: new Date().toISOString() }
+      };
+
+      this.jsonText = JSON.stringify(doc, null, 2);
+      this._lastStableJsonText = this.jsonText;
+      return;
+    }
   }
 
-  private toJson(): UiRuleJsonV1 {
-    return {
-      schema: 'rulesengine.uirule.v1',
-      version: 1,
-      branches: this.branches.map(b => ({
-        type: b.type,
-        when: b.when ? this.whenGroupToJson(b.when) : undefined,
-        then: (b.then || []).map(ai => ({
+
+
+  private toUiRuleJsonV2(): UiRuleJsonV2 {
+    // Collect DT references from actions for dependency discovery
+    const dtRefs = new Map<string, { id: string; name?: string; tableVersion?: number }>();
+
+    const branchesJson = this.branches.map(b => ({
+      type: b.type,
+      when: b.when ? this.whenGroupToJson(b.when) : undefined,
+      then: (b.then || []).map(ai => {
+        if (ai.actionKey === 'runDecisionTable') {
+          const idExpr = (ai.params || {})['__dtId'] as any;
+          const nameExpr = (ai.params || {})['__dtName'] as any;
+          const verExpr = (ai.params || {})['__dtVersion'] as any;
+
+          const idVal = (idExpr?.type === 'literal') ? String(idExpr.value ?? '') : '';
+          const nameVal = (nameExpr?.type === 'literal') ? String(nameExpr.value ?? '') : undefined;
+          const verVal = (verExpr?.type === 'literal' && verExpr.value != null) ? Number(verExpr.value) : undefined;
+
+          if (idVal) dtRefs.set(idVal, { id: idVal, name: nameVal, tableVersion: verVal });
+        }
+
+        return {
           key: ai.actionKey,
           params: this.exprMapToJson(ai.params || {})
-        }))
-      }))
+        };
+      })
+    }));
+
+    const assets = dtRefs.size ? { decisionTables: Array.from(dtRefs.values()) } : undefined;
+
+    return {
+      schema: 'rulesengine.uirule.v2',
+      version: 2,
+      branches: branchesJson,
+      assets
     };
   }
 
-  private fromJson(obj: UiRuleJsonV1): Branch[] {
+  private fromUiRuleJson(obj: UiRuleJsonV1 | UiRuleJsonV2): Branch[] {
     const out: Branch[] = [];
     for (const b of (obj.branches || [])) {
       if (b.type === 'ELSE') {
@@ -778,15 +1043,18 @@ export class RuleDesignerComponent implements OnInit {
       } else {
         out.push({
           id: this.makeId('br'),
-          type: b.type,
-          when: this.whenGroupFromJson(b.when),
+          type: b.type as any,
+          when: b.when ? this.whenGroupFromJson(b.when) : this.makeEmptyGroup(),
           then: this.actionsFromJson(b.then || [])
         });
       }
     }
-    if (out.length === 0) out.push(this.makeIfBranch());
-    return out;
+    return out.length ? out : [this.makeIfBranch()];
   }
+  //  }
+  //  if (out.length === 0) out.push(this.makeIfBranch());
+  //  return out;
+  //}
 
   private whenGroupToJson(g: WhenGroupNode): any {
     return {
@@ -1040,7 +1308,12 @@ export class RuleDesignerComponent implements OnInit {
 
     const items: ExprAutoItem[] = [];
 
-    for (const f of this.fields || []) {
+    const fieldPool: FieldDef[] = [
+      ...(this.fields || []),
+      ...((this.designerMode === 'DECISION_TABLE') ? (this.decisionOutputFields || []) : [])
+    ];
+
+    for (const f of fieldPool) {
       const hay = `${f.label} ${f.key} ${f.module ?? ''} ${f.dataset ?? ''} ${f.path ?? ''}`.toLowerCase();
       if (q && !hay.includes(q)) continue;
 
@@ -1133,7 +1406,17 @@ export class RuleDesignerComponent implements OnInit {
       ]
     };
 
-    this.actions = [memberAlert, addActivity, setField];
+    const runDecisionTable: ActionDef = {
+      key: 'runDecisionTable',
+      label: 'Run Decision Table',
+      params: [
+        { fieldKey: '__dtId', fieldName: 'Decision Table ID', dataType: 'string', uiType: 'hidden', required: true },
+        { fieldKey: '__dtName', fieldName: 'Decision Table Name', dataType: 'string', uiType: 'hidden' },
+        { fieldKey: '__dtVersion', fieldName: 'Decision Table Version', dataType: 'number', uiType: 'hidden' }
+      ]
+    };
+
+    this.actions = [memberAlert, addActivity, setField, runDecisionTable];
   }
 
   // ============================================================
@@ -1259,26 +1542,235 @@ export class RuleDesignerComponent implements OnInit {
     });
   }
 
+
+  openDecisionTableInBuilder(): void {
+    // If your app already has a route to DT builder, wire it here.
+    // Keeping this safe: no-op if id is missing.
+    const id = this.loadedDecisionTable?.id;
+    if (!id) return;
+
+    // Example route (adjust to your app):
+    // this.router.navigate(['configuration/rulesengine/decisiontables', id]);
+    this.router.navigate(['configuration/rulesengine/decisiontablebuilder', id]);
+  }
+
+  private setDecisionOutputsFromDoc(doc: RuleDocV1): void {
+    const ui: any = doc?.ui ?? {};
+    const outputs = Array.isArray(ui?.outputs) ? ui.outputs : null;
+
+    const meta: Array<{ key: string; label?: string; dataType?: DataType }> = [];
+
+    if (outputs && outputs.length) {
+      for (const o of outputs) {
+        const k = String(o?.key ?? '').trim();
+        if (!k) continue;
+        meta.push({
+          key: k,
+          label: String(o?.label ?? k).trim(),
+          dataType: this.normalizeDataType(o?.dataType)
+        });
+      }
+    } else {
+      // fallback infer from engine.rules[*].then keys
+      const engine = (doc as any)?.engine;
+      const rules = Array.isArray(engine?.rules) ? engine.rules : [];
+      const keys = new Set<string>();
+      for (const r of rules) {
+        const then = r?.then;
+        if (then && typeof then === 'object') {
+          for (const k of Object.keys(then)) keys.add(k);
+        }
+      }
+      for (const k of Array.from(keys.values())) {
+        meta.push({ key: k, label: k, dataType: 'string' });
+      }
+    }
+
+    // Store meta + build FieldDefs as Decision.<key>
+    this.decisionOutputsMeta = meta;
+    this.decisionOutputFields = meta.map(m => ({
+      key: `Decision.${m.key}`,
+      label: `Decision.${m.key}`,
+      dataType: m.dataType ?? 'string',
+      module: 'Decision',
+      dataset: 'Decision',
+      path: `Decision.${m.key}`
+    }));
+  }
+
+  private normalizeDataType(raw: any): DataType {
+    const v = String(raw ?? '').toLowerCase();
+    if (v === 'number') return 'number';
+    if (v === 'boolean') return 'boolean';
+    if (v === 'date') return 'date';
+    if (v === 'datetime') return 'datetime';
+    return 'string';
+  }
+
   // ============================================================
   // Internals
   // ============================================================
 
+
+  private parseAnyRuleJson(obj: any): {
+    ok: boolean;
+    error: string;
+    doc: RuleDocV1;
+    uiRule?: UiRuleJsonV1 | UiRuleJsonV2;
+    dtInfo?: { id: string; name?: string; tableVersion?: number };
+  } {
+    // 1) New wrapper doc
+    if (obj?.schema === 'rulesengine.ruledoc.v1') {
+      const doc = obj as RuleDocV1;
+
+      if (doc.kind === 'LADDER') {
+        const ui = doc.ui as any;
+        if (ui?.schema === 'rulesengine.uirule.v2' || ui?.schema === 'rulesengine.uirule.v1') {
+          return { ok: true, error: '', doc, uiRule: ui as any };
+        }
+        return { ok: false, error: 'RuleDoc LADDER ui is not a supported schema.', doc };
+      }
+
+      if (doc.kind === 'DECISION_TABLE') {
+        const ui = doc.ui as any;
+        const dt = ui?.decisionTable ?? ui;
+        const id = dt?.id ?? '';
+        if (!id) return { ok: false, error: 'RuleDoc DECISION_TABLE missing decisionTable.id', doc };
+        return { ok: true, error: '', doc, dtInfo: { id, name: dt?.name ?? undefined, tableVersion: dt?.tableVersion ?? undefined } };
+      }
+
+      return { ok: false, error: 'Unknown RuleDoc.kind', doc };
+    }
+
+    // 2) Legacy UI rule v1/v2 (no wrapper)
+    if (obj?.schema === 'rulesengine.uirule.v1' || obj?.schema === 'rulesengine.uirule.v2') {
+      const ui = obj as any;
+      const uiV2 = (ui.schema === 'rulesengine.uirule.v2') ? ui as UiRuleJsonV2 : this.upgradeV1ToV2(ui as UiRuleJsonV1);
+
+      const doc: RuleDocV1 = {
+        schema: 'rulesengine.ruledoc.v1',
+        version: 1,
+        kind: 'LADDER',
+        ui: uiV2,
+        meta: { source: 'RulesDesigner', generatedOn: new Date().toISOString() }
+      };
+
+      return { ok: true, error: '', doc, uiRule: ui };
+    }
+
+    // 3) Legacy DecisionTable runtime JSON (no wrapper)
+    if (obj?.engine === 'DecisionTable') {
+      const dt = obj?.decisionTable ?? {};
+      const id = dt?.id ?? '';
+      const name = dt?.name ?? undefined;
+      const tableVersion = dt?.tableVersion ?? undefined;
+
+      // Infer outputs from compiled rules 'then' keys (best-effort)
+      const keys = new Set<string>();
+      const rules = Array.isArray(obj?.rules) ? obj.rules : [];
+      for (const r of rules) {
+        const then = r?.then;
+        if (then && typeof then === 'object') {
+          for (const k of Object.keys(then)) keys.add(k);
+        }
+      }
+      const outputs = Array.from(keys.values()).map(k => ({ key: k, label: k, dataType: 'string' as DataType }));
+
+      const ui: DecisionTableUiModel = {
+        schema: 'rulesengine.uidt.v1',
+        version: 1,
+        decisionTable: { id, name, tableVersion, hitPolicy: dt?.hitPolicy, updatedOn: dt?.updatedOn ?? null },
+        outputs,
+        postProcessing: {
+          schema: 'rulesengine.uirule.v2',
+          version: 2,
+          branches: [{ type: 'IF', when: { op: 'AND', children: [] }, then: [] }]
+        }
+      };
+
+      const doc: RuleDocV1 = {
+        schema: 'rulesengine.ruledoc.v1',
+        version: 1,
+        kind: 'DECISION_TABLE',
+        ui,
+        engine: obj,
+        meta: { source: 'RulesDesigner', generatedOn: new Date().toISOString() }
+      };
+
+      if (!id) return { ok: false, error: 'DecisionTable json missing decisionTable.id', doc };
+      return { ok: true, error: '', doc, dtInfo: { id, name, tableVersion } };
+    }
+
+    // Not recognized
+    const empty: RuleDocV1 = { schema: 'rulesengine.ruledoc.v1', version: 1, kind: 'LADDER', ui: this.toUiRuleJsonV2() };
+    return { ok: false, error: 'Unrecognized rule JSON format.', doc: empty };
+  }
+
+  private upgradeV1ToV2(v1: UiRuleJsonV1): UiRuleJsonV2 {
+    return {
+      schema: 'rulesengine.uirule.v2',
+      version: 2,
+      branches: (v1.branches || []).map(b => ({ type: b.type, when: b.when, then: b.then }))
+    };
+  }
+
   private tryLoadFromRuleJson(ruleJson: string | null): void {
     if (!ruleJson || !ruleJson.trim()) return;
 
+    let obj: any = null;
     try {
-      const obj = JSON.parse(ruleJson);
-      if (obj?.schema === 'rulesengine.uirule.v1') {
-        this.branches = this.fromJson(obj as UiRuleJsonV1);
-        this.activeBranchIndex = 0;
-        this.jsonUserEditing = false;
-        this.syncJsonFromDesigner();
-      } else {
-        // leave designer as-is; show JSON panel content
-        this.jsonText = JSON.stringify(obj, null, 2);
-      }
+      obj = JSON.parse(ruleJson);
     } catch {
-      // ignore
+      return;
+    }
+
+    const parsed = this.parseAnyRuleJson(obj);
+    if (!parsed.ok) {
+      // Not recognized -> just show what we got
+      this.jsonText = JSON.stringify(obj, null, 2);
+      this._lastStableJsonText = this.jsonText;
+      return;
+    }
+
+    if (parsed.doc.kind === 'DECISION_TABLE') {
+      this.designerMode = 'DECISION_TABLE';
+      this._dtBaseDoc = parsed.doc;
+
+      this.loadedDecisionTable = {
+        id: parsed.dtInfo?.id ?? '',
+        name: parsed.dtInfo?.name ?? undefined,
+        tableVersion: parsed.dtInfo?.tableVersion ?? undefined
+      };
+
+      const dtUi = parsed.doc.ui as any;
+      const pp = dtUi?.postProcessing;
+      if (pp?.schema === 'rulesengine.uirule.v2' || pp?.schema === 'rulesengine.uirule.v1') {
+        const ppV2 = (pp.schema === 'rulesengine.uirule.v2') ? pp as UiRuleJsonV2 : this.upgradeV1ToV2(pp as UiRuleJsonV1);
+        this.branches = this.fromUiRuleJson(ppV2);
+      } else {
+        this.branches = [this.makeIfBranch()];
+      }
+      this.activeBranchIndex = 0;
+
+      this.setDecisionOutputsFromDoc(parsed.doc);
+
+      this.jsonUserEditing = false;
+      this.syncJsonFromDesigner();
+      return;
+    }
+
+    // LADDER
+    this.designerMode = 'LADDER';
+    this.loadedDecisionTable = null;
+
+    if (parsed.uiRule) {
+      this.branches = this.fromUiRuleJson(parsed.uiRule);
+      this.activeBranchIndex = 0;
+      this.jsonUserEditing = false;
+      this.syncJsonFromDesigner();
+    } else {
+      this.jsonText = JSON.stringify(parsed.doc, null, 2);
+      this._lastStableJsonText = this.jsonText;
     }
   }
 
@@ -1357,4 +1849,126 @@ export class RuleDesignerComponent implements OnInit {
     // date/datetime keep string (ISO or user typed)
     return text;
   }
+
+
+  functionsLoading = false;
+
+  // keep any built-in ones if you want
+  private builtinFunctions: FuncDef[] = [ ];
+
+
+  refreshFunctions(): void {
+    this.functionsLoading = true;
+
+    this.svc.listRuleDataFunctions().pipe(
+      map(list => (list ?? []).filter(x => x.activeFlag)),
+      switchMap(list =>
+        list.length ? forkJoin(list.map(x => this.svc.getRuleDataFunction(x.id))) : of([])
+      ),
+      map((models: RuleDataFunctionModel[]) =>
+        (models ?? [])
+          .map((m: RuleDataFunctionModel) => this.mapRuleDataFunctionToFuncDef(m))
+          .filter(Boolean) as FuncDef[]
+      )
+    ).subscribe({
+      next: (defs: FuncDef[]) => {
+        const merged = [...this.builtinFunctions, ...defs];
+        merged.sort((a, b) => (a.label || '').localeCompare(b.label || ''));
+        this.functions = merged;
+        this.functionsLoading = false;
+        this.rebindFunctionExprMetadata();
+      },
+      error: (err: any) => {
+        console.error('Failed to load rule data functions', err);
+        this.functionsLoading = false;
+      }
+    });
+  }
+
+
+  private mapRuleDataFunctionToFuncDef(m: RuleDataFunctionModel): FuncDef | null {
+    const raw = m.ruleDataFunctionJson;
+    const json = this.parseMaybeJson(raw);
+
+    // supports both shapes:
+    // { returnType, parameters:[...] }
+    // OR { signature:{ returnType, args:[...] } }
+    const sig = json?.signature ?? json ?? {};
+
+    const returnType = this.normalizeDataType(sig.returnType ?? json?.returnType ?? 'string');
+    const paramsSrc = sig.args ?? json?.parameters ?? [];
+
+    const params: FuncParamDef[] = (Array.isArray(paramsSrc) ? paramsSrc : []).map((p: any) => ({
+      name: (p?.name ?? '').toString(),
+      label: (p?.label ?? p?.name ?? '').toString(),
+      dataType: this.normalizeDataType(p?.dataType ?? p?.type ?? 'string'),
+      required: !!p?.required
+    })).filter(p => !!p.name);
+
+    return {
+      key: String(m.ruleDataFunctionId),              // stable key => id
+      label: String(m.ruleDataFunctionName ?? m.ruleDataFunctionId),
+      returnType,
+      params
+    };
+  }
+
+  private parseMaybeJson(v: any): any {
+    if (v == null) return {};
+    if (typeof v === 'object') return v;
+    if (typeof v === 'string') {
+      try { return JSON.parse(v); } catch { return {}; }
+    }
+    return {};
+  }
+
+  /**
+   * If a rule JSON was loaded before functions arrived,
+   * existing expr labels may still show the raw key.
+   * This updates function expr metadata in-place.
+   */
+  private rebindFunctionExprMetadata(): void {
+    const visitExpr = (e: any) => {
+      if (!e) return;
+      if (e.type === 'function') {
+        const def = this.functions.find(f => f.key === e.key);
+        if (def) {
+          e.label = def.label;
+          e.returnType = def.returnType;
+          const nextArgs: Record<string, any> = {};
+          for (const p of def.params) nextArgs[p.name] = e.args?.[p.name] ?? null;
+          e.args = nextArgs;
+        }
+        Object.values(e.args ?? {}).forEach(visitExpr);
+      }
+    };
+
+    for (const b of this.branches ?? []) {
+      const walkGroup = (g: any) => {
+        for (const ch of g.children ?? []) {
+          if (ch.nodeType === 'condition') {
+            visitExpr(ch.left);
+            visitExpr(ch.right);
+          } else if (ch.nodeType === 'group') {
+            walkGroup(ch);
+          }
+        }
+      };
+
+      if (b.when) walkGroup(b.when);
+      for (const a of b.then ?? []) {
+        for (const k of Object.keys(a.params ?? {})) visitExpr(a.params[k]);
+      }
+    }
+  }
+
+  // ---- Right JSON panel UI (expand/collapse)
+  jsonPanelCollapsed = true;
+
+  toggleJsonPanel(): void {
+    this.jsonPanelCollapsed = !this.jsonPanelCollapsed;
+  }
+
+
+
 }

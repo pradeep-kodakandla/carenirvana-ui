@@ -1,0 +1,502 @@
+:host {
+  display: block;
+  background: #ffffff;
+}
+
+/* Header */
+.pagehead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.h2 {
+  font-size: 22px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+/* Buttons */
+.btn {
+  border: 1px solid #d0d5dd;
+  background: #ffffff;
+  color: #111827;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease, transform 80ms ease;
+}
+
+  .btn:hover {
+    background: #f9fafb;
+    border-color: #cbd5e1;
+  }
+
+  .btn:active {
+    transform: translateY(1px);
+  }
+
+  .btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+/* ✅ Primary (use class="btn primary") */
+.primary {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
+  .primary:hover {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+  }
+
+  .primary:focus-visible,
+  .btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18);
+  }
+
+/* Cards */
+.card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+}
+
+.formcard {
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.formtitle {
+  font-weight: 600;
+  font-size: 16px;
+  color: #0f172a;
+  margin-bottom: 12px;
+}
+
+.formgrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.formactions {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Floating label fields */
+.flfield {
+  position: relative;
+}
+
+.flinput,
+.fltextarea {
+  width: 100%;
+  border: 1px solid #c4c4c4;
+  border-radius: 5px;
+  padding: 6px 30px 10px 10px;
+  outline: none;
+  font-size: 14px;
+  background: #ffffff;
+  color: #111827;
+}
+
+.fllabel {
+  position: absolute;
+  left: 12px;
+  top: -10px;
+  padding: 0 4px;
+  background: #ffffff;
+  color: #555;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+/*.flcontrol {
+  border: 1px solid #c7d2fe;
+  border-radius: 14px;
+  background: #ffffff;
+}*/
+
+.flfield:focus-within .flinput,
+.flfield:focus-within .fltextarea,
+.flfield:focus-within .flcontrol {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.14);
+}
+
+.flfield:focus-within .fllabel {
+  color: #2563eb;
+}
+
+
+.full {
+  grid-column: 1 / -1;
+}
+
+.hint {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #667085;
+}
+
+/* Search */
+.rulestop {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.search {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #d0d5dd;
+  border-radius: 12px;
+  padding: 10px 12px;
+  gap: 10px;
+}
+
+  .search:focus-within {
+    border-color: #93c5fd;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.14);
+  }
+
+.sicon {
+  opacity: 0.55;
+}
+
+.search input {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 14px;
+  background: #ffffff;
+  color: #111827;
+}
+
+/* Rule cards */
+.rulegrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.rulecard {
+  padding: 16px;
+  position: relative;
+}
+
+  /* soften the accent bar */
+  .rulecard:before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 12px;
+    bottom: 12px;
+    width: 4px;
+    border-radius: 10px;
+    background: #dbeafe;
+  }
+
+.ruletitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+  padding-left: 10px;
+}
+
+.rulemeta {
+  margin-top: 6px;
+  color: #667085;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  padding-left: 10px;
+}
+
+.ruledesc {
+  margin-top: 12px;
+  color: #344054;
+  font-size: 14px;
+  min-height: 36px;
+  padding-left: 10px;
+}
+
+.rulebadges {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-left: 10px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #344054;
+}
+
+.ruleactions {
+  margin-top: 14px;
+  display: flex;
+  gap: 10px;
+  padding-left: 10px;
+}
+
+/* Keep your existing classes but make them lighter */
+.btnoutline,
+.btndanger {
+  flex: 1;
+  background: #ffffff;
+  border: 1px solid #d0d5dd;
+  border-radius: 12px;
+  padding: 9px 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+  .btnoutline:hover {
+    background: #f9fafb;
+    border-color: #cbd5e1;
+  }
+
+.btndanger {
+  border-color: #fda4af;
+  color: #b42318;
+}
+
+  .btndanger:hover {
+    background: #fff1f2;
+    border-color: #fb7185;
+  }
+
+/* Empty state */
+.empty {
+  padding: 20px;
+  border: 1px dashed #d0d5dd;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.emptytitle {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #0f172a;
+}
+
+.emptytext {
+  color: #667085;
+  font-size: 13px;
+}
+
+@media (max-width: 1200px) {
+  .rulegrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .rulegrid {
+    grid-template-columns: 1fr;
+  }
+
+  .formgrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* ========================= */
+/* ✅ Rule Designer Modal    */
+/* ========================= */
+.modalbackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 999;
+}
+
+.modal {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(980px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  z-index: 1000;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.25);
+}
+
+.modalhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.modaltitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.iconbtn {
+  border: 1px solid #d0d5dd;
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+  .iconbtn:hover {
+    background: #f9fafb;
+    border-color: #cbd5e1;
+  }
+
+.modalmeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid #eef2f7;
+  color: #475467;
+  font-size: 13px;
+}
+
+.metaitem b {
+  color: #0f172a;
+}
+
+.modalbody {
+  padding: 14px 16px;
+}
+
+.jsonarea {
+  width: 100%;
+  border: 1px solid #d0d5dd;
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 13px;
+  line-height: 18px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  outline: none;
+  background: #ffffff;
+  color: #111827;
+  margin-top: 10px;
+}
+
+  .jsonarea:focus {
+    border-color: #93c5fd;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.14);
+  }
+
+.err {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  color: #9f1239;
+  font-size: 13px;
+}
+
+.modalactions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 16px 16px;
+  border-top: 1px solid #eef2f7;
+}
+
+/* Fit 3 buttons in actions row nicely */
+.ruleactions .btnoutline,
+.ruleactions .btndanger {
+  flex: 1;
+}
+
+
+/* ---- Functions-only additions ---- */
+
+/* ONE ROW header fields: name | status | version | active */
+.formgrid.onerow {
+  grid-template-columns: 2fr 1.1fr 0.7fr 0.7fr;
+}
+
+/* Active row compact inside a single grid cell */
+.activeRow.compact {
+  justify-content: space-between;
+  padding: 8px 10px;
+  border: 1px solid #c4c4c4;
+  border-radius: 5px;
+  background: #fff;
+}
+
+/* Designer header row */
+.designerbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.designertitle {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.designeractions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Toast */
+.toast {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #14532d;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+  .toast.error {
+    border-color: #fecdd3;
+    background: #fff1f2;
+    color: #9f1239;
+  }
+
+@media (max-width: 860px) {
+  .formgrid.onerow {
+    grid-template-columns: 1fr;
+  }
+}

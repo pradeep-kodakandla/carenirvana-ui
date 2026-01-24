@@ -7,7 +7,6 @@ import { RuleGroupsComponent } from './pages/rulegroups/rulegroups.component';
 import { RulesComponent } from './pages/rules/rules.component';
 import { DatafieldsComponent } from './pages/datafields/datafields.component';
 import { FunctionsComponent } from './pages/functions/functions.component';
-import { DecisiontableComponent } from './pages/decisiontable/decisiontable.component';
 import { DecisionTableBuilderComponent } from './pages/decisiontablebuilder/decisiontablebuilder.component';
 import { RuleDesignerComponent } from './pages/rulesdesigner/rulesdesigner.component';
 
@@ -22,7 +21,6 @@ const routes: Routes = [
       { path: 'rulegroups', component: RuleGroupsComponent, data: { title: 'Rule Groups' } },
       { path: 'datafields', component: DatafieldsComponent, data: { title: 'Data Fields' } },
       { path: 'functions', component: FunctionsComponent, data: { title: 'Functions' } },
-      { path: 'decision', component: DecisiontableComponent, data: { title: 'Decision Table' } },
       { path: 'decisiontable', component: DecisionTableBuilderComponent, data: { title: 'Decision Table' } },
       { path: 'designer/:id', component: RuleDesignerComponent }
 

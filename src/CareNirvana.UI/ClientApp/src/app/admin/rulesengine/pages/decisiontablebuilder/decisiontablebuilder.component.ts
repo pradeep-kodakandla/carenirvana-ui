@@ -17,6 +17,7 @@ interface DtColumn {
   label: string;
   dataType: DataType;
   inputType: InputType;
+  operator?: string;
   isEnabled: boolean;
 
   mappedFieldKey?: string;     // selected fieldKey
@@ -45,6 +46,40 @@ interface DecisionTableDefinition {
   columns: DtColumn[];
   rows: DtRow[];
 }
+
+
+type RuleDocKind = 'LADDER' | 'DECISION_TABLE';
+
+interface DecisionTableUiModel {
+  schema: 'rulesengine.uidt.v1';
+  version: 1;
+  decisionTable: {
+    id: string;
+    name?: string;
+    tableVersion?: number;
+    hitPolicy?: HitPolicy;
+    updatedOn?: string | null;
+  };
+  outputs?: Array<{ key: string; label?: string; dataType?: string }>;
+  postProcessing?: UiRuleJsonV2;
+}
+
+interface UiRuleJsonV2 {
+  schema: 'rulesengine.uirule.v2';
+  version: 2;
+  branches: any[];
+  assets?: any;
+}
+
+interface RuleDocV1 {
+  schema: 'rulesengine.ruledoc.v1';
+  version: 1;
+  kind: RuleDocKind;
+  ui: UiRuleJsonV2 | DecisionTableUiModel;
+  engine?: any;
+  meta?: { source?: string; generatedOn?: string };
+}
+
 
 interface FieldRef {
   fieldKey: string;
@@ -87,6 +122,36 @@ export class DecisionTableBuilderComponent implements OnInit {
     { value: 'PUBLISHED', label: 'PUBLISHED' },
     { value: 'ARCHIVED', label: 'ARCHIVED' }
   ];
+
+  readonly operatorDefinitions: Array<{ code: string; name: string; description: string }> = [
+    { code: '=', name: 'Equals', description: 'Compares scalar values (strings, numbers, booleans).' },
+    { code: 'ANY', name: 'Anything', description: 'Always true; ignores the condition value.' },
+    { code: 'IN', name: 'Is in', description: 'True if the left operand is in the right-side set/array.' },
+    { code: '!IN', name: 'Not in', description: 'True if the left operand is not in the right-side set/array.' },
+    { code: '>=', name: 'Greater or equal', description: 'True if left operand is greater than or equal to right operand.' },
+    { code: '>', name: 'Greater than', description: 'True if left operand is greater than right operand.' },
+    { code: '<=', name: 'Less or equal', description: 'True if left operand is less than or equal to right operand.' },
+    { code: '<', name: 'Less than', description: 'True if left operand is less than right operand.' },
+    { code: '!=', name: 'Not equal', description: 'True if scalar operands are not equal.' },
+    { code: 'BTW', name: 'Between', description: 'Inclusive range check; right operand must have 2 values.' },
+    { code: 'BTW LO', name: 'Between left open', description: 'Excludes lower bound, includes upper bound (2-value range).' },
+    { code: 'BTW RO', name: 'Between right open', description: 'Includes lower bound, excludes upper bound (2-value range).' },
+    { code: '!BTW', name: 'Not between', description: 'True if value is outside the given 2-value range.' },
+    { code: 'NULL', name: 'Is null', description: 'True if the evaluated value is empty.' },
+    { code: '!NULL', name: 'Is not null', description: 'True if the evaluated value is not empty.' },
+    { code: 'C TXT', name: 'Contains text', description: 'Substring match in a string/array (supports separators: | , ;).' },
+    { code: 'C IN', name: 'Contains in', description: 'True if any right-side value appears in the left operand (substring/exact).' },
+    { code: '!C IN', name: 'Not contains in', description: 'True if none of the right-side values appear in the left operand.' },
+    { code: 'EQ ARR', name: 'Equal array', description: 'True if every right-side value is a substring of at least one left array item.' },
+    { code: 'ELSE', name: 'Else', description: 'True only when no preceding row has matched.' }
+  ];
+
+  operatorUiOptions: UiSmartOption<string>[] = this.operatorDefinitions.map(o => ({
+    value: o.code,
+    label: `${o.name} (${o.code})`
+  }));
+
+  private readonly operatorCodeIndex = new Map<string, string>();
 
   condFieldSearch: Record<string, string> = {}; // per condition column id
   private allFields: FieldRef[] = [];
@@ -305,7 +370,7 @@ export class DecisionTableBuilderComponent implements OnInit {
       activeFlag: true,
       updatedOn: new Date().toISOString(),
       columns: [
-        { id: this.svc.newId('c'), kind: 'condition', key: 'condition1', label: 'Condition', dataType: 'string', inputType: 'text', isEnabled: true },
+        { id: this.svc.newId('c'), kind: 'condition', key: 'condition1', label: 'Condition', dataType: 'string', inputType: 'text', operator: '=', isEnabled: true },
         { id: this.svc.newId('r'), kind: 'result', key: 'result1', label: 'Result', dataType: 'string', inputType: 'text', isEnabled: true }
       ],
       rows: [{ id: this.svc.newId('row'), enabled: true, cells: {} }]
@@ -346,7 +411,13 @@ export class DecisionTableBuilderComponent implements OnInit {
           updatedOn: p.updatedOn ?? new Date().toISOString()
         };
 
-        this.columns = Array.isArray(p.columns) ? p.columns : [];
+        this.columns = (Array.isArray(p.columns) ? p.columns : []).map((c: any) => {
+          if (c?.kind === 'condition') {
+            return { ...c, operator: this.normalizeDtOperator(c.operator) };
+          }
+          return c;
+        });
+
         this.rows = Array.isArray(p.rows) ? p.rows : [];
 
         if (this.rows.length === 0) this.rows = [{ id: this.svc.newId('row'), enabled: true, cells: {} }];
@@ -452,6 +523,7 @@ export class DecisionTableBuilderComponent implements OnInit {
     };
 
     if (kind === 'condition') {
+      col.operator = '=';
       this.condFieldSearch[col.id] = '';
       this.condFieldOptions[col.id] = this.defaultTop20;
     }
@@ -722,6 +794,38 @@ export class DecisionTableBuilderComponent implements OnInit {
     col.mappedModule = ref?.moduleName;
   }
 
+  onCondOperatorSelect(col: any, operator: string): void {
+    col.operator = this.normalizeDtOperator(operator);
+  }
+
+  private opKey(op: string): string {
+    return (op ?? '').toString().replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+
+  private normalizeDtOperator(operator: any): string {
+    const raw = (operator ?? '').toString();
+    const key = this.opKey(raw);
+
+    // direct match against known operator codes
+    const direct = this.operatorCodeIndex.get(key);
+    if (direct) return direct;
+
+    // legacy function-style operators (fallback)
+    const legacy: Record<string, string> = {
+      eq: '=',
+      ne: '!=',
+      gt: '>',
+      gte: '>=',
+      lt: '<',
+      lte: '<='
+    };
+    const mapped = legacy[key];
+    if (mapped) return mapped;
+
+    // default
+    return '=';
+  }
+
   /****************** Add rule logic *********************/
   // --- Rule flyout state ---
   showRuleFlyout = false;
@@ -873,54 +977,147 @@ export class DecisionTableBuilderComponent implements OnInit {
     });
   }
 
-  private buildRuleJsonFromDecisionTable(dt: any): any {
-    const conditions = (dt.columns || [])
-      .filter((c: any) => c.kind === 'condition')
-      .map((c: any) => ({
-        name: c.label,
-        columnId: c.id,
-        mappedModule: c.mappedModule ?? null,
-        mappedDatasetKey: c.mappedDatasetKey ?? null,
-        mappedFieldKey: c.mappedFieldKey ?? null,
-        mappedFieldPath: c.mappedFieldPath ?? null,
-        mappedFieldLabel: c.mappedFieldLabel ?? null,
-        dataType: c.dataType ?? 'string',
-        operator: 'EQ'
-      }));
 
-    const resultColumns = (dt.columns || [])
-      .filter((c: any) => c.kind === 'result')
+  private buildRuleJsonFromDecisionTable(dt: any): RuleDocV1 {
+    const engine = this.buildDecisionTableEngineJson(dt);
+
+    const outputs = (dt?.columns || [])
+      .filter((c: any) => c && c.isEnabled && (c.kind === 'result' || c.kind === 'calculation'))
       .map((c: any) => ({
-        name: c.label,
-        columnId: c.id,
-        dataType: c.dataType ?? 'string'
-      }));
+        key: String(c.key ?? '').trim(),
+        label: String(c.label ?? c.key ?? '').trim(),
+        // map enum -> string for RulesDesigner / rule ui
+        dataType: (String(c.dataType ?? 'string').toLowerCase() === 'enum') ? 'string' : String(c.dataType ?? 'string')
+      }))
+      .filter((o: any) => !!o.key);
+
+    const ui: DecisionTableUiModel = {
+      schema: 'rulesengine.uidt.v1',
+      version: 1,
+      decisionTable: {
+        id: dt?.id,
+        name: dt?.name,
+        tableVersion: dt?.version,
+        hitPolicy: dt?.hitPolicy,
+        updatedOn: dt?.updatedOn ?? null
+      },
+      outputs,
+      // Editable routing in RulesDesigner, evaluated *after* the decision table returns outputs
+      postProcessing: {
+        schema: 'rulesengine.uirule.v2',
+        version: 2,
+        branches: [{ type: 'IF', when: { op: 'AND', children: [] }, then: [] }]
+      }
+    };
+
+    const doc: RuleDocV1 = {
+      schema: 'rulesengine.ruledoc.v1',
+      version: 1,
+      kind: 'DECISION_TABLE',
+      ui,
+      engine,
+      meta: { source: 'DecisionTableBuilder', generatedOn: new Date().toISOString() }
+    };
+
+    return doc;
+  }
+
+  private buildDecisionTableEngineJson(dt: any): any {
+    // Preserve your existing runtime shape (engine: DecisionTable)
+    const condColumns = (dt?.columns || []).filter((c: any) => c.kind === 'condition' && c.isEnabled);
+
+    const conditionFieldRefs = condColumns.map((c: any) => ({
+      columnKey: c.key,
+      fieldKey: c.mappedFieldKey,
+      path: c.mappedFieldPath,
+      dataType: c.dataType,
+      datasetKey: c.mappedDatasetKey,
+      module: c.mappedModule
+    }));
+
+    const rows = (dt?.rows || []).filter((r: any) => r.enabled !== false);
+
+    const compiledRules = rows.map((r: any, idx: number) => {
+      const conditions = condColumns
+        .filter((c: any) => c.mappedFieldPath && c.key)
+        .map((c: any) => {
+          const raw = (r?.cells || {})[c.id] ?? '';
+          return {
+            fieldPath: c.mappedFieldPath,
+            operator: 'EQ',
+            value: raw,
+            dataType: c.dataType
+          };
+        });
+
+      // results
+      const results: any = {};
+      for (const col of (dt?.columns || [])) {
+        if (!col || !col.isEnabled) continue;
+        if (col.kind === 'result' || col.kind === 'calculation') {
+          results[col.key] = (r?.cells || {})[col.id] ?? '';
+        }
+      }
+
+      return {
+        id: `row_${idx + 1}`,
+        enabled: r.enabled !== false,
+        priority: idx + 1,
+        when: { all: conditions },
+        then: results
+      };
+    });
 
     return {
       engine: 'DecisionTable',
-      version: 1,
       decisionTable: {
-        id: dt.id,
-        name: dt.name,
-        tableVersion: dt.version ?? 1,
-        hitPolicy: dt.hitPolicy ?? 'FIRST'
+        id: dt?.id,
+        name: dt?.name,
+        tableVersion: dt?.version,
+        hitPolicy: dt?.hitPolicy,
+        updatedOn: dt?.updatedOn ?? null
       },
-      input: {
-        conditions
+      inputs: {
+        conditions: conditionFieldRefs
       },
-      output: {
-        resultColumns,
-        returnMode: (dt.hitPolicy === 'FIRST' ? 'FIRST_MATCH' : 'ALL_MATCHES')
-      },
-      meta: {
-        generatedOn: new Date().toISOString(),
-        source: 'DecisionTableBuilder'
-      }
+      rules: compiledRules
     };
   }
 
-
   // call after loadTable + after refreshTables + after saveTable
+
+  private extractDecisionTableInfoFromRuleJson(obj: any): { id: string | null; name?: string; tableVersion?: number; updatedOn?: string | null } {
+    // RuleDoc wrapper
+    if (obj?.schema === 'rulesengine.ruledoc.v1') {
+      if (obj?.kind === 'DECISION_TABLE') {
+        const ui = obj?.ui;
+        const dt = ui?.decisionTable ?? ui;
+        const id = dt?.id ?? obj?.engine?.decisionTable?.id ?? null;
+        return {
+          id,
+          name: dt?.name ?? obj?.engine?.decisionTable?.name,
+          tableVersion: dt?.tableVersion ?? obj?.engine?.decisionTable?.tableVersion,
+          updatedOn: dt?.updatedOn ?? obj?.engine?.decisionTable?.updatedOn ?? null
+        };
+      }
+      // LADDER doc might still reference DTs as actions; not a DT rule
+      return { id: null };
+    }
+
+    // Legacy DecisionTable runtime JSON
+    if (obj?.engine === 'DecisionTable') {
+      const dt = obj?.decisionTable ?? {};
+      return { id: dt?.id ?? null, name: dt?.name, tableVersion: dt?.tableVersion, updatedOn: dt?.updatedOn ?? null };
+    }
+
+    // Very old shape (defensive)
+    if (obj?.decisionTable?.id) {
+      return { id: obj.decisionTable.id, name: obj?.decisionTable?.name, tableVersion: obj?.decisionTable?.tableVersion, updatedOn: obj?.decisionTable?.updatedOn ?? null };
+    }
+
+    return { id: null };
+  }
+
   private checkLinkedRuleForCurrentTable(): void {
     const dtId = this.meta?.id || this.selectedTableId;
     if (!dtId) {
@@ -937,6 +1134,7 @@ export class DecisionTableBuilderComponent implements OnInit {
 
         let found: any = null;
         let foundRuleJson: any = null;
+        let foundInfo: any = null;
 
         for (const r of arr) {
           const raw = r.ruleJson ?? r.rulejson ?? null;
@@ -944,10 +1142,11 @@ export class DecisionTableBuilderComponent implements OnInit {
 
           let obj: any = null;
           try { obj = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch { obj = null; }
-          const rid = obj?.decisionTable?.id;
-          if (rid && rid === dtId) {
+          const info = this.extractDecisionTableInfoFromRuleJson(obj);
+          if (info?.id && info.id === dtId) {
             found = r;
             foundRuleJson = obj;
+            foundInfo = info;
             break;
           }
         }
@@ -963,7 +1162,7 @@ export class DecisionTableBuilderComponent implements OnInit {
 
         this.linkedRuleId = Number(found.id) || null;
         this.linkedRuleName = found.name ?? '';
-        this.linkedRuleDtUpdatedOn = foundRuleJson?.decisionTable?.updatedOn ?? null;
+        this.linkedRuleDtUpdatedOn = foundInfo?.updatedOn ?? null;
 
         // prefill flyout fields from existing rule
         this.ruleDraft.name = found.name ?? this.ruleDraft.name;

@@ -205,7 +205,7 @@ const routes: Routes = [
   imports: [
     BrowserModule.withServerTransition({ appId: 'ng-cli-universal' }),
     HttpClientModule,
-    FormsModule,
+    FormsModule, 
     ReactiveFormsModule, AngularMaterialModule, SharedUiModule, UmsharedwidgetsModule, CasesharedwidgetsModule,
     RouterModule.forRoot([
       { path: '', component: LoginComponent, pathMatch: 'full' },

@@ -933,3 +933,90 @@
 .midpanel .thenCanvas {
   z-index: 10;
 }
+
+
+/* Decision Table mode banner */
+.dtBanner {
+  padding: 18px;
+  border: 1px dashed #94a3b8;
+  background: #f8fafc;
+  border-radius: 12px;
+}
+
+.dtBannerTitle {
+  font-weight: 900;
+  color: #0f172a;
+  margin-bottom: 6px;
+}
+
+.dtBannerSub {
+  color: #475569;
+  font-size: 13px;
+}
+
+.dtBannerMeta {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dtPill {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+
+
+/* Decision Table card (shown above the canvas when in DECISION_TABLE mode) */
+.dtCard {
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  margin-bottom: 12px;
+}
+
+.dtCardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dtCardTitle {
+  font-weight: 900;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+
+.dtCardSub {
+  color: #475569;
+  font-size: 13px;
+}
+
+.dtOutputsRow {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.dtOutputsLabel {
+  color: #475569;
+  font-weight: 700;
+  font-size: 12px;
+  padding-top: 3px;
+  min-width: 60px;
+}
+
+.dtOutputsChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

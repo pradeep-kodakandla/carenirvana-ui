@@ -107,13 +107,15 @@ interface ComponentMap {
 })
 export class ConfigurationComponent implements OnInit, AfterViewInit {
   @ViewChild('dynamicContainer', { read: ViewContainerRef, static: false })
-  dynamicContainer!: ViewContainerRef;
+  dynamicContainer?: ViewContainerRef;
 
   searchQuery: string = '';
   selectedMenu: MenuItem | null = null;
   selectedSubMenu: string | null = null;
   isMenuCollapsed: boolean = false;
   showRulesEngine: boolean = false;
+
+  expandedMenu: MenuItem | null = null;
 
   private readonly componentMap: ComponentMap = {
     'User Management': UsermanagementComponent,
@@ -248,11 +250,26 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
   }
 
   ngOnInit(): void {
-    this.selectMainMenu(this.mainMenu[0]);
+    //this.selectMainMenu(this.mainMenu[0]);
+    this.toggleParent(this.mainMenu[0]);
   }
 
   ngAfterViewInit(): void {
-    this.loadInitialComponent();
+    if (!this.showRulesEngine) {
+      this.loadInitialComponent();
+    }
+  }
+
+
+  toggleParent(menuItem: MenuItem): void {
+    // Only one parent expanded at a time
+    if (this.expandedMenu === menuItem) {
+      this.expandedMenu = null;
+      return;
+    }
+
+    this.expandedMenu = menuItem;
+    this.selectMainMenu(menuItem);
   }
 
   selectMainMenu(menuItem: MenuItem): void {
@@ -266,6 +283,10 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
 
     if (isRulesEngine) {
       // loads inside the Details Section router outlet
+      if (this.dynamicContainer) {
+        this.dynamicContainer.clear();
+      }
+
       this.router.navigate(['configuration', 'rulesengine', 'dashboard']);
       return;
     }
@@ -288,7 +309,7 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
 
       if (key === 'dashboard') this.router.navigate(['configuration', 'rulesengine', 'dashboard']);
       else if (key === 'rule groups') this.router.navigate(['configuration', 'rulesengine', 'rulegroups']);
-      else if (key === 'rules') { this.router.navigate(['configuration', 'rulesengine', 'rules']); this.isMenuCollapsed = true; }
+      else if (key === 'rules') { this.router.navigate(['configuration', 'rulesengine', 'rules']); }
       else if (key === 'data fields') this.router.navigate(['configuration', 'rulesengine', 'datafields']);
       else if (key === 'functions') this.router.navigate(['configuration', 'rulesengine', 'functions']);
       else if (key === 'decision tables') this.router.navigate(['configuration', 'rulesengine', 'decisiontable']);
@@ -301,7 +322,7 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
     // existing workflow (dynamic component load)
     this.loadComponent(subMenuItem);
 
-    if (subMenuItem === 'Auth Template' || subMenuItem === 'Case Template' ) {
+    if (subMenuItem === 'Auth Template' || subMenuItem === 'Case Template') {
       this.isMenuCollapsed = true;
     } else {
       this.isMenuCollapsed = false;
@@ -320,10 +341,16 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
 
     if (this.selectedMenu && !this.filteredMainMenu.includes(this.selectedMenu)) {
       this.resetSelection();
+      return;
+    }
+
+    if (this.expandedMenu && !this.filteredMainMenu.includes(this.expandedMenu)) {
+      this.expandedMenu = null;
     }
 
     this.filterSubMenu();
   }
+
 
   private filterSubMenu(): void {
     if (!this.selectedMenu) {
@@ -332,10 +359,17 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
     }
 
     const query = this.searchQuery.toLowerCase().trim();
+
+    if (!query || this.selectedMenu.name.toLowerCase().includes(query)) {
+      this.filteredSubMenu = [...this.selectedMenu.children];
+      return;
+    }
+
     this.filteredSubMenu = this.selectedMenu.children.filter(child =>
       child.toLowerCase().includes(query)
     );
   }
+
 
   private loadComponent(componentKey: string): void {
     try {
@@ -346,13 +380,15 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
       }
 
       if (!this.dynamicContainer) {
-        console.error('Dynamic container not available');
+        // View not ready yet (e.g., switching from BRE). Try next tick.
+        setTimeout(() => this.loadComponent(componentKey), 0);
         return;
       }
 
       const componentFactory = this.componentFactoryResolver.resolveComponentFactory(component);
       this.dynamicContainer.clear();
       const componentRef = this.dynamicContainer.createComponent(componentFactory);
+
 
       if (componentKey === 'Auth Validation' || componentKey === 'Case Validation') {
         const v = componentRef.instance as ValidationComponent;
@@ -393,25 +429,21 @@ export class ConfigurationComponent implements OnInit, AfterViewInit {
   }
 
   private loadInitialComponent(): void {
-    if (this.dynamicContainer) {
-      this.loadComponent('Auth Template');
-      //this.loadComponent('Custom Field');
-    } else {
-      console.error('Dynamic container not initialized');
-    }
+    if (this.showRulesEngine) return;
+    if (!this.dynamicContainer) return;
+
+    this.loadComponent('Auth Template');
   }
 
-  private resetSelection(): void {
+
+  resetSelection(): void {
     this.selectedMenu = null;
     this.selectedSubMenu = null;
+    this.expandedMenu = null;
     this.isMenuCollapsed = false;
+
     if (this.dynamicContainer) {
       this.dynamicContainer.clear();
     }
   }
-
-  //// New method to toggle menu visibility manually if needed
-  //toggleMenu(): void {
-  //  this.isMenuCollapsed = !this.isMenuCollapsed;
-  //}
 }

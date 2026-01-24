@@ -1,40 +1,42 @@
 <div class="d-flex" style="padding-left:5px;">
-  <!-- Main Content (Menu Section) -->
+  <!-- Menu Panel (Parent + Child in same div) -->
   <div class="main-content" [ngClass]="{'collapsed': isMenuCollapsed}">
-    <!-- Main Menu -->
-    <div class="main-menu" *ngIf="!isMenuCollapsed">
-      <div class="search-bar">
+    <div class="nav-panel" *ngIf="!isMenuCollapsed">
+      <div class="search-bar nav-search">
         <input type="text"
                placeholder="Search settings"
                [(ngModel)]="searchQuery"
                (input)="filterMenus()" />
-      </div>
-      <ul>
-        <li *ngFor="let item of filteredMainMenu"
-            (click)="selectMainMenu(item)"
-            [class.selected]="selectedMenu === item">
-          {{ item.name }}
-        </li>
-      </ul>
-    </div>
 
-    <!-- Sub-Menu -->
-    <div class="sub-menu" *ngIf="selectedMenu && !isMenuCollapsed">
-      <div class="search-bar" style="display: flex; align-items: center;">
-        <input type="text"
-               placeholder="Search settings"
-               [(ngModel)]="searchQuery"
-               (input)="filterMenus()"
-               style="flex: 1;" />
         <button class="collapse-btn" (click)="toggleMenu()">
           {{ isMenuCollapsed ? '>' : '<' }}
         </button>
       </div>
-      <ul>
-        <li *ngFor="let subItem of filteredSubMenu"
-            (click)="selectSubMenu(subItem)"
-            [class.selected]="selectedSubMenu === subItem">
-          {{ subItem }}
+
+      <ul class="nav-list">
+        <li class="nav-item" *ngFor="let item of filteredMainMenu">
+          <!-- Parent -->
+          <button type="button"
+                  class="nav-parent"
+                  (click)="toggleParent(item)"
+                  [class.selected]="selectedMenu === item"
+                  [class.expanded]="expandedMenu === item">
+            <span class="caret" aria-hidden="true"></span>
+            <span class="label">{{ item.name }}</span>
+            <span class="count">({{ item.children.length }})</span>
+          </button>
+
+          <!-- Children (only for expanded parent) -->
+          <ul class="nav-children" *ngIf="expandedMenu === item">
+            <li *ngFor="let subItem of filteredSubMenu">
+              <button type="button"
+                      class="nav-child"
+                      (click)="selectSubMenu(subItem); $event.stopPropagation()"
+                      [class.selected]="selectedSubMenu === subItem">
+                {{ subItem }}
+              </button>
+            </li>
+          </ul>
         </li>
       </ul>
     </div>
@@ -45,18 +47,12 @@
     <button class="collapse-btn" (click)="toggleMenu()" *ngIf="isMenuCollapsed">
       {{ isMenuCollapsed ? '>' : '<' }}
     </button>
-    <!--<ng-container *ngIf="selectedSubMenu">
-      <div #dynamicContainer></div>
-    </ng-container>-->
+
     <ng-container *ngIf="selectedSubMenu">
-      <ng-container *ngIf="showRulesEngine; else dynamicTpl">
-        <router-outlet></router-outlet>
-      </ng-container>
+      <router-outlet *ngIf="showRulesEngine"></router-outlet>
 
-      <ng-template #dynamicTpl>
-        <div #dynamicContainer></div>
-      </ng-template>
+      <!-- Keep this ALWAYS present so ViewChild is always initialized -->
+      <div #dynamicContainer [hidden]="showRulesEngine"></div>
     </ng-container>
-
   </div>
 </div>

@@ -1,1 +1,116 @@
-<p>functions works!</p>
+<div class="pagehead">
+  <div class="h2">Rule Data Functions</div>
+  <button class="btn primary" (click)="onNew()">+ New Function</button>
+</div>
+
+<!-- toast -->
+<div class="toast" *ngIf="toastText" [class.error]="toastKind === 'error'">
+  {{ toastText }}
+</div>
+
+<!-- Create/Edit -->
+<div class="card formcard" *ngIf="showForm">
+  <div class="formtitle">{{ isEditMode ? 'Edit Function' : 'Create Function' }}</div>
+
+  <!-- ✅ ONE ROW: Function Name | Deployment Status | Version | Active -->
+  <div class="formgrid onerow">
+    <div class="flfield">
+      <input class="flinput" placeholder=" " [(ngModel)]="form.name" />
+      <label class="fllabel">Function Name</label>
+    </div>
+
+    <div class="flfield" [class.filled]="!!form.deploymentStatus">
+      <ui-smart-dropdown class="flcontrol"
+                         label="Deployment Status"
+                         [options]="deploymentStatusOptions"
+                         [(ngModel)]="form.deploymentStatus">
+      </ui-smart-dropdown>
+    </div>
+
+    <div class="flfield">
+      <input class="flinput" type="number" min="1" placeholder=" " [(ngModel)]="form.version" />
+      <label class="fllabel">Version</label>
+    </div>
+
+    <div class="flfield filled">
+      <div class="activeRow compact">
+        <label class="activeLabel">Active</label>
+        <label class="switch">
+          <input type="checkbox" [(ngModel)]="form.activeFlag" />
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="flfield full">
+      <textarea class="fltextarea" rows="3" placeholder=" " [(ngModel)]="form.description"></textarea>
+      <label class="fllabel">Description</label>
+    </div>
+
+    <!-- ✅ Designer at bottom (embedded) -->
+    <div class="full" id="fnDesigner">
+      <div class="designerbar">
+        <div class="designertitle">Function Designer</div>
+        <div class="designeractions">
+          <button class="btn" (click)="validateDesigner()">Validate</button>
+          <button class="btn" (click)="formatDesigner()" [disabled]="!(form.designerText || '').trim()">Format</button>
+        </div>
+      </div>
+
+      <div class="hint">
+        Define function signature + implementation JSON. This JSON is saved into <code>ruleDataFunctionJson</code>.
+      </div>
+
+      <textarea class="jsonarea"
+                rows="14"
+                [(ngModel)]="form.designerText"
+                placeholder="{ }"></textarea>
+
+      <div class="err" *ngIf="designerError">{{ designerError }}</div>
+    </div>
+  </div>
+
+  <div class="formactions">
+    <button class="btn" (click)="onCancel()">Cancel</button>
+    <button class="btn primary" (click)="onSave()" [disabled]="loading">
+      {{ isEditMode ? 'Update' : 'Save' }}
+    </button>
+  </div>
+</div>
+
+<!-- Search -->
+<div class="rulestop">
+  <div class="search">
+    <span class="sicon">🔎</span>
+    <input [(ngModel)]="searchText" placeholder="Search functions." />
+  </div>
+</div>
+
+<!-- Empty -->
+<div class="empty" *ngIf="!showForm && functions.length === 0">
+  <div class="emptytitle">No Functions</div>
+  <div class="emptytext">Create a function and use it in the Rules Designer.</div>
+</div>
+
+<!-- Cards -->
+<div class="rulegrid" *ngIf="filteredFunctions.length > 0">
+  <div class="card rulecard" *ngFor="let f of filteredFunctions">
+    <div class="ruletitle">{{ f.name }}</div>
+
+    <div class="rulemeta">
+      🚀 {{ f.deploymentStatus }} • v{{ f.version }}
+    </div>
+
+    <div class="rulebadges">
+      <span class="pill">{{ f.deploymentStatus }}</span>
+      <span class="pill">v{{ f.version }}</span>
+      <span class="pill" [class.off]="!f.activeFlag">{{ f.activeFlag ? 'Active' : 'Inactive' }}</span>
+    </div>
+
+    <div class="ruleactions">
+      <button class="btnoutline" (click)="openDesigner(f)">Designer</button>
+      <button class="btnoutline" (click)="onEdit(f)">Edit</button>
+      <button class="btndanger" (click)="onDelete(f)">Delete</button>
+    </div>
+  </div>
+</div>

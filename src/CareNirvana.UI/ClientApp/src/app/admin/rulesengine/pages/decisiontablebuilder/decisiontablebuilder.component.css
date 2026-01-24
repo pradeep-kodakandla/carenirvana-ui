@@ -582,10 +582,15 @@
 .mapwrap {
   margin-top: 8px;
   display: grid;
-  gap: 6px;
+  gap: 16px;
 }
 
 .mapdd {
+  width: 100%;
+  display: block;
+}
+
+.opdd {
   width: 100%;
   display: block;
 }
@@ -594,7 +599,10 @@
    Adjust max-height if your option row height differs. */
 :host ::ng-deep .mapdd .dropdown-panel,
 :host ::ng-deep .mapdd .options-panel,
-:host ::ng-deep .mapdd .options {
+:host ::ng-deep .mapdd .options,
+:host ::ng-deep .opdd .dropdown-panel,
+:host ::ng-deep .opdd .options-panel,
+:host ::ng-deep .opdd .options {
   max-height: 520px; /* ~20 rows */
   overflow: auto;
 }

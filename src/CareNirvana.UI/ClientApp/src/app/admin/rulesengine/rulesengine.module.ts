@@ -10,7 +10,6 @@ import { RuleGroupsComponent } from './pages/rulegroups/rulegroups.component';
 import { RulesComponent } from './pages/rules/rules.component';
 import { DatafieldsComponent } from './pages/datafields/datafields.component';
 import { FunctionsComponent } from './pages/functions/functions.component';
-import { DecisiontableComponent } from './pages/decisiontable/decisiontable.component';
 import { SharedUiModule } from 'src/app/casewizard/casewizard/sharedui.module';
 import { DecisionTableBuilderComponent } from './pages/decisiontablebuilder/decisiontablebuilder.component';
 import { RuleDesignerComponent } from './pages/rulesdesigner/rulesdesigner.component';
@@ -23,7 +22,6 @@ import { RuleDesignerComponent } from './pages/rulesdesigner/rulesdesigner.compo
     RulesComponent,
     DatafieldsComponent,
     FunctionsComponent,
-    DecisiontableComponent,
     DecisionTableBuilderComponent,
     RuleDesignerComponent
   ],

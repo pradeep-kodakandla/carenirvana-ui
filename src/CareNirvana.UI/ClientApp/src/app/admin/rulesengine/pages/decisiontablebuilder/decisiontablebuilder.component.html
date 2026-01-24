@@ -1,6 +1,5 @@
 <!-- decisiontablebuilder.component.html -->
 <div class="pagewrap">
-
   <!-- LIST VIEW (default) -->
   <!-- LIST VIEW (Rules-style) -->
   <ng-container *ngIf="pageMode === 'list'; else builderTpl">
@@ -55,9 +54,9 @@
 
   <!-- BUILDER VIEW -->
   <ng-template #builderTpl>
-    <div class="backrow">
+    <!--<div class="backrow">
       <button class="btn btnsmall" type="button" (click)="goToList()">← Back to list</button>
-    </div>
+    </div>-->
 
     <form class="page">
       <div class="topbar">
@@ -69,17 +68,17 @@
 
         <div class="right">
           <div class="tplrow">
-            <div class="flfield compact" [class.filled]="!!selectedTableId">
-              <ui-smart-dropdown class="flcontrol"
-                                 label="Templates"
-                                 [options]="tableUiOptions"
-                                 [(ngModel)]="selectedTableId"
-                                 [ngModelOptions]="{ standalone: true }"
-                                 (ngModelChange)="onTemplateChange($event)">
-              </ui-smart-dropdown>
-            </div>
+            <!--<div class="flfield compact" [class.filled]="!!selectedTableId">
+    <ui-smart-dropdown class="flcontrol"
+                       label="Templates"
+                       [options]="tableUiOptions"
+                       [(ngModel)]="selectedTableId"
+                       [ngModelOptions]="{ standalone: true }"
+                       (ngModelChange)="onTemplateChange($event)">
+    </ui-smart-dropdown>
+  </div>
 
-            <button class="btn" type="button" (click)="createNewTable()">New</button>
+  <button class="btn" type="button" (click)="createNewTable()">New</button>-->
             <button class="btn primary" type="button" (click)="saveTable()">Save</button>
             <!-- + Rule button with hover flyout -->
             <div class="rulebtnwrap"
@@ -166,6 +165,7 @@
             </div>
 
             <button class="btn danger" type="button" (click)="deleteCurrent()">Delete</button>
+            <button class="btn" type="button" (click)="goToList()">Cancel</button>
 
 
           </div>
@@ -291,6 +291,14 @@
                 <!-- ✅ DataField mapping for this condition column -->
                 <!-- ✅ DataField mapping for this condition column (autocomplete inside dropdown) -->
                 <div class="mapwrap">
+                  <ui-smart-dropdown class="opdd"
+                                     label="Operator"
+                                     [options]="operatorUiOptions"
+                                     [(ngModel)]="c.operator"
+                                     [ngModelOptions]="{ standalone: true }"
+                                     (ngModelChange)="onCondOperatorSelect(c, $event)">
+                  </ui-smart-dropdown>
+
                   <ui-smart-dropdown class="mapdd"
                                      label="Data Field"
                                      [options]="allFieldUiOptions"

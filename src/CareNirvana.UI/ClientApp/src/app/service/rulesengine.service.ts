@@ -64,6 +64,46 @@ export interface RuleDataFieldRow {
   deletedOn?: string;
   deletedBy?: number;
 }
+
+
+
+export interface RuleDataFunctionListItem {
+  id: number;
+  name: string;
+  description: string;
+  deploymentStatus: string;
+  version: number;
+  updatedOn: string;
+  activeFlag: boolean;
+}
+
+export interface RuleDataFunctionModel {
+  ruleDataFunctionId: number;
+  ruleDataFunctionName: string;
+  description: string;
+  deploymentStatus: string;
+  version: number;
+  ruleDataFunctionJson: any; // backend stores jsonb; API returns JSON or string depending on your DTO
+  activeFlag: boolean;
+
+  createdOn?: string;
+  createdBy?: number;
+  updatedOn?: string;
+  updatedBy?: number;
+  deletedOn?: string;
+  deletedBy?: number;
+}
+
+export interface UpsertRuleDataFunctionRequest {
+  name: string;
+  description: string;
+  deploymentStatus: string;
+  version: number;
+  ruleDataFunctionJson: any;
+  activeFlag: boolean;
+}
+
+
 export interface DropdownOption<T> { value: T; label: string; }
 
 @Injectable({ providedIn: 'root' })
@@ -190,5 +230,48 @@ export class RulesengineService {
   getRuleDataFieldJson(id: number) {
     return this.http.get<any>(`${this.baseUrl}/datafields/${id}`);
   }
+
+
+  // ----------------------------
+  // Rule Data Functions (rulesengine.cfgruledatafunction)
+  // Upsert payload: { name, description, deploymentStatus, version, ruleDataFunctionJson, activeFlag }
+  // ----------------------------
+  listRuleDataFunctions() {
+    return this.http.get<RuleDataFunctionListItem[]>(`${this.baseUrl}/datafunctions`);
+  }
+
+  getRuleDataFunction(id: number) {
+    return this.http.get<RuleDataFunctionModel>(`${this.baseUrl}/datafunctions/${id}`);
+  }
+
+  // If your API returns Content(json,"application/json") this will deserialize as object
+  getRuleDataFunctionJson(id: number) {
+    return this.http.get<any>(`${this.baseUrl}/datafunctions/${id}/json`);
+  }
+
+  private toRuleDataFunctionPayload(req: UpsertRuleDataFunctionRequest) {
+    return {
+      name: req.name ?? '',
+      description: req.description ?? '',
+      deploymentStatus: req.deploymentStatus ?? 'DRAFT',
+      version: req.version ?? 1,
+      activeFlag: req.activeFlag ?? true,
+      // send JSON as object (backend can bind JsonElement)
+      ruleDataFunctionJson: req.ruleDataFunctionJson ?? {}
+    };
+  }
+
+  createRuleDataFunction(req: UpsertRuleDataFunctionRequest) {
+    return this.http.post<number>(`${this.baseUrl}/datafunctions`, this.toRuleDataFunctionPayload(req));
+  }
+
+  updateRuleDataFunction(id: number, req: UpsertRuleDataFunctionRequest) {
+    return this.http.put<void>(`${this.baseUrl}/datafunctions/${id}`, this.toRuleDataFunctionPayload(req));
+  }
+
+  deleteRuleDataFunction(id: number) {
+    return this.http.delete<void>(`${this.baseUrl}/datafunctions/${id}`);
+  }
+
 
 }

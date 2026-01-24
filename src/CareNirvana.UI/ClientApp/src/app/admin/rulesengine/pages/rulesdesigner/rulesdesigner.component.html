@@ -59,7 +59,11 @@
 </div>
 
 <!-- IMPORTANT: cdkDropListGroup connects ALL drop lists so drops won’t snap back -->
-<div class="designer" cdkDropListGroup>
+<div class="designer"
+     cdkDropListGroup
+     [class.jsonCollapsed]="jsonPanelCollapsed"
+     [ngStyle]="jsonPanelCollapsed ? { 'grid-template-columns': 'auto 1fr 44px' } : null">
+
 
   <!-- LEFT PALETTE -->
   <div class="panel card leftpanel">
@@ -93,12 +97,29 @@
 
     <!-- Functions -->
     <div class="section">
-      <div class="sectionhead">
+      <!--<div class="sectionhead">
         <div class="sectiontitle">Functions</div>
         <button class="link" (click)="showAllFunctions = !showAllFunctions">
           {{ showAllFunctions ? 'Top 5' : 'Show all' }}
         </button>
+      </div>-->
+      <div class="sectionhead">
+        <div class="sectiontitle">Functions</div>
+
+        /d
+        p:
+
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button class="link" type="button" (click)="refreshFunctions()" [disabled]="functionsLoading">
+            {{ functionsLoading ? 'Refreshing...' : 'Refresh' }}
+          </button>
+
+          <button class="link" type="button" (click)="showAllFunctions = !showAllFunctions">
+            {{ showAllFunctions ? 'Top 5' : 'Show all' }}
+          </button>
+        </div>
       </div>
+
       <input class="search" [(ngModel)]="functionSearch" placeholder="Search functions..." />
 
       <div class="palette"
@@ -144,10 +165,101 @@
         </div>
       </div>
     </div>
+
+
+
+    <!-- Decision Outputs (Decision Table rule only) -->
+    <div class="section" *ngIf="designerMode === 'DECISION_TABLE' && decisionOutputFields.length">
+      <div class="sectionhead">
+        <div class="sectiontitle">Decision Outputs</div>
+        <button class="link" (click)="showAllDecisionOutputs = !showAllDecisionOutputs">
+          {{ showAllDecisionOutputs ? 'Top 5' : 'Show all' }}
+        </button>
+      </div>
+
+      <input class="search" [(ngModel)]="decisionOutputSearch" placeholder="Search decision outputs..." />
+
+      <div class="palette"
+           cdkDropList
+           [id]="decisionOutputsPaletteId"
+           [cdkDropListSortingDisabled]="true">
+        <div class="pill"
+             *ngFor="let o of visibleDecisionOutputs"
+             cdkDrag
+             (cdkDragMoved)="onPaletteDragMoved($event)"
+             (cdkDragEnded)="onPaletteDragEnded()"
+             [cdkDragData]="dragField(o)"
+             cdkDragPreviewClass="drag-preview">
+          {{ o.label }}
+          <div class="pillsub">Decision output</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Decision Tables -->
+    <div class="section" *ngIf="designerMode === 'LADDER'">
+      <div class="sectionhead">
+        <div class="sectiontitle">Decision Tables</div>
+        <button class="link" (click)="showAllDecisionTables = !showAllDecisionTables">
+          {{ showAllDecisionTables ? 'Top 5' : 'Show all' }}
+        </button>
+      </div>
+      <input class="search" [(ngModel)]="decisionTableSearch" placeholder="Search decision tables..." />
+
+      <div class="palette"
+           cdkDropList
+           [id]="decisionTablesPaletteId"
+           [cdkDropListSortingDisabled]="true">
+        <div class="pill"
+             *ngFor="let t of visibleDecisionTables"
+             cdkDrag
+             (cdkDragMoved)="onPaletteDragMoved($event)"
+             (cdkDragEnded)="onPaletteDragEnded()"
+             [cdkDragData]="dragDecisionTable(t)"
+             cdkDragPreviewClass="drag-preview">
+          {{ t.name || t.id }}
+          <div class="pillsub">{{ t.id }}</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- MIDDLE: WHEN/THEN CANVAS -->
-  <div class="panel card midpanel">
+  <div class="panel card midpanel"
+       [style.flex]="'1 1 0'"
+       [style.flexBasis]="'0'"
+       [style.width]="'auto'"
+       [style.minWidth]="'0'">
+
+    <div class="dtCard" *ngIf="designerMode === 'DECISION_TABLE'">
+      <div class="dtCardHead">
+        <div>
+          <div class="dtCardTitle">Decision Table Rule</div>
+          <div class="dtCardSub">
+            Decision table runs first. Build routing below using <b>Decision.*</b> outputs.
+          </div>
+        </div>
+        <button class="btn small" type="button" (click)="openDecisionTableInBuilder()" [disabled]="!loadedDecisionTable?.id">
+          Open in Decision Table Builder
+        </button>
+      </div>
+
+      <div class="dtBannerMeta" *ngIf="loadedDecisionTable?.id">
+        <span class="dtPill">ID: {{ loadedDecisionTable?.id }}</span>
+        <span class="dtPill" *ngIf="loadedDecisionTable?.name">Name: {{ loadedDecisionTable?.name }}</span>
+        <span class="dtPill" *ngIf="loadedDecisionTable?.tableVersion != null">Version: {{ loadedDecisionTable?.tableVersion }}</span>
+      </div>
+
+      <div class="dtOutputsRow" *ngIf="decisionOutputFields.length">
+        <div class="dtOutputsLabel">Outputs</div>
+        <div class="dtOutputsChips">
+          <span class="dtPill" *ngFor="let o of decisionOutputFields">{{ o.label }}</span>
+        </div>
+      </div>
+    </div>
+
+
+
 
     <!-- Branch Tabs -->
     <div class="branchtabs">
@@ -180,7 +292,7 @@
            (cdkDropListDropped)="dropToActiveWhenCanvas($event)">
 
         <div class="watermark" *ngIf="isActiveGroupEmpty()">
-          Drag a <b>field</b> (or function) here to start building the rule…
+          Drag a <b>field</b><span *ngIf="designerMode === 'DECISION_TABLE'"> or <b>Decision.*</b> output</span> (or function) here to start building the rule…
         </div>
 
         <!-- Render active group's children -->
@@ -400,25 +512,47 @@
         </div>
       </div>
     </ng-template>
-
   </div>
 
   <!-- RIGHT JSON -->
-  <div class="panel card rightpanel">
-    <div class="jsonhead">
-      <div class="sectiontitle">Rule JSON</div>
-      <div class="jsonbtns">
+  <!-- RIGHT JSON -->
+  <div class="panel card rightpanel"
+       [class.jsonCollapsed]="jsonPanelCollapsed"
+       [ngStyle]="jsonPanelCollapsed ? { flex: '0 0 44px', width: '44px', minWidth: '44px', maxWidth: '44px', padding: '0' } : null">
+
+    <div class="jsonhead"
+         [ngStyle]="jsonPanelCollapsed ? { padding: '8px 6px', justifyContent: 'center' } : null">
+
+      <div class="sectiontitle" *ngIf="!jsonPanelCollapsed">Rule JSON</div>
+
+      <div class="jsonbtns" *ngIf="!jsonPanelCollapsed">
         <button class="btn small" (click)="applyJsonToDesigner()">Apply</button>
         <button class="btn small" (click)="discardJsonEdits()">Discard</button>
       </div>
+
+      <button class="btn small"
+              type="button"
+              (click)="toggleJsonPanel()"
+              [attr.title]="jsonPanelCollapsed ? 'Expand Rule JSON' : 'Collapse Rule JSON'"
+              [attr.aria-label]="jsonPanelCollapsed ? 'Expand Rule JSON' : 'Collapse Rule JSON'">
+        {{ jsonPanelCollapsed ? '⟨' : '⟩' }}
+      </button>
     </div>
 
-    <textarea class="jsonarea"
-              [(ngModel)]="jsonText"
-              (focus)="onJsonFocus()"
-              (blur)="onJsonBlur()"></textarea>
+    <ng-container *ngIf="!jsonPanelCollapsed">
+      <textarea class="jsonarea"
+                [(ngModel)]="jsonText"
+                (focus)="onJsonFocus()"
+                (blur)="onJsonBlur()"></textarea>
 
-    <div class="error" *ngIf="jsonError">{{ jsonError }}</div>
+      <div class="error" *ngIf="jsonError">{{ jsonError }}</div>
+    </ng-container>
+
+    <div *ngIf="jsonPanelCollapsed"
+         style="height: 100%; display: flex; align-items: center; justify-content: center; user-select: none; writing-mode: vertical-rl; transform: rotate(180deg); font-weight: 600; opacity: 0.8;">
+      JSON
+    </div>
   </div>
+
 
 </div>
