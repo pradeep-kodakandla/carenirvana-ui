@@ -123,6 +123,8 @@ interface UiRuleJsonV1 {
 
 type RuleDocKind = 'LADDER' | 'DECISION_TABLE';
 
+type DtResponseMode = 'DIRECT' | 'ROUTE';
+
 interface DecisionTableUiModel {
   schema: 'rulesengine.uidt.v1';
   version: 1;
@@ -134,8 +136,24 @@ interface DecisionTableUiModel {
     updatedOn?: string | null;
   };
   outputs?: Array<{ key: string; label?: string; dataType?: DataType }>;
+
+  /**
+   * How this Decision Table is used by the rule:
+   * - DIRECT: return decision outputs as the rule response (no routing)
+   * - ROUTE: use Decision.* outputs in postProcessing (routing) to build the final response/actions
+   *
+   * NOTE: this is UI-owned metadata; backend can ignore unknown keys safely.
+   */
+  responseMode?: DtResponseMode;
+  responseOutputKey?: string | null;
+
+  // Post-decision routing (optional)
   postProcessing?: UiRuleJsonV2;
+
+  // UI-only: preserve routing edits even if responseMode === 'DIRECT'
+  postProcessingDraft?: UiRuleJsonV2;
 }
+
 
 interface UiRuleJsonV2 {
   schema: 'rulesengine.uirule.v2';
@@ -280,9 +298,26 @@ export class RuleDesignerComponent implements OnInit {
   ];
 
   // ---- Ladder / mode
+  // ---- Ladder / mode
   designerMode: RuleDocKind = 'LADDER';
   loadedDecisionTable: { id: string; name?: string; tableVersion?: number } | null = null;
   private _dtBaseDoc: RuleDocV1 | null = null;
+
+  // ---- Decision Table (RUN FIRST) behavior
+  dtResponseMode: DtResponseMode = 'ROUTE';
+  /** Optional: if you want to return only one output when in DIRECT mode */
+  dtResponseOutputKey: string | null = null;
+
+  // ---- Decision Outputs editor (manual fallback)
+  dtNewOutputKey = '';
+  dtNewOutputType: DataType = 'string';
+  dtNewOutputLabel = '';
+
+  readonly dataTypeOptions: DataType[] = ['string', 'number', 'boolean', 'date', 'datetime'];
+
+  get isDtDirectResponse(): boolean {
+    return this.designerMode === 'DECISION_TABLE' && this.dtResponseMode === 'DIRECT';
+  }
 
   branches: Branch[] = [];
   activeBranchIndex = 0;
@@ -299,6 +334,7 @@ export class RuleDesignerComponent implements OnInit {
   readonly actionsPaletteId = 'actionsPalette';
   readonly decisionTablesPaletteId = 'decisionTablesPalette';
   readonly decisionOutputsPaletteId = 'decisionOutputsPalette';
+  readonly runFirstDropId = 'runFirstDrop';
   readonly canvasDropId = 'canvasDrop';
   readonly thenDropId = 'thenDrop';
 
@@ -525,7 +561,140 @@ export class RuleDesignerComponent implements OnInit {
     return d?.kind === 'field' || d?.kind === 'function';
   };
 
+  canDropToRunFirst = (drag: CdkDrag<any>, _drop: CdkDropList<any>) => {
+    const d = drag.data as DragItem;
+    return d?.kind === 'decisionTable';
+  };
+
   // ============================================================
+
+  // ============================================================
+  // RUN FIRST: Decision Table attachment (drag/drop into designer)
+  // ============================================================
+
+  dropToRunFirst(ev: CdkDragDrop<any>): void {
+    const d = ev.item.data as DragItem;
+    if (!d || d.kind !== 'decisionTable' || !d.decisionTable) return;
+    this.attachDecisionTableAsRunFirst(d.decisionTable);
+  }
+
+  setDtResponseMode(mode: DtResponseMode): void {
+    if (this.dtResponseMode === mode) return;
+    this.dtResponseMode = mode;
+    this.syncJsonFromDesigner();
+  }
+
+  attachDecisionTableAsRunFirst(t: DecisionTableListItem): void {
+    const dtId = (t as any)?.id ?? '';
+    if (!dtId) return;
+
+    const dtName = (t as any)?.name ?? undefined;
+    const dtVersionRaw = (t as any)?.version ?? (t as any)?.tableVersion ?? null;
+    const dtVersion = (dtVersionRaw != null && dtVersionRaw !== '') ? Number(dtVersionRaw) : undefined;
+
+    // Switch the UI into DecisionTable-first mode
+    this.designerMode = 'DECISION_TABLE';
+    this.loadedDecisionTable = { id: dtId, name: dtName, tableVersion: dtVersion };
+
+    // Default: route using outputs (user can switch to DIRECT)
+    if (!this.dtResponseMode) this.dtResponseMode = 'ROUTE';
+
+    // Create/refresh a base doc so we can preserve engine/meta if present later.
+    const existingEngine = (this._dtBaseDoc as any)?.engine;
+    const nowIso = new Date().toISOString();
+
+    const draft = this.toUiRuleJsonV2();
+
+    const ui: any = {
+      schema: 'rulesengine.uidt.v1',
+      version: 1,
+      decisionTable: {
+        id: dtId,
+        name: dtName,
+        tableVersion: dtVersion
+      },
+      // If outputs are already known (manual editor or loaded), keep them
+      outputs: (this.decisionOutputsMeta || []).map(o => ({ key: o.key, label: o.label, dataType: o.dataType })),
+      // Preserve routing edits even if user switches to DIRECT
+      postProcessingDraft: draft
+    };
+
+    this._dtBaseDoc = {
+      schema: 'rulesengine.ruledoc.v1',
+      version: 1,
+      kind: 'DECISION_TABLE',
+      ui,
+      engine: existingEngine,
+      meta: { source: 'RulesDesigner', generatedOn: nowIso }
+    };
+
+    this.syncJsonFromDesigner();
+  }
+
+  clearRunFirstDecisionTable(): void {
+    // Revert to LADDER rule (DecisionTable removed)
+    this.designerMode = 'LADDER';
+    this.loadedDecisionTable = null;
+    this._dtBaseDoc = null;
+
+    // Keep branches as-is (they become the LADDER rule body again)
+    this.dtResponseMode = 'ROUTE';
+    this.dtResponseOutputKey = null;
+
+    // Decision outputs are not used in LADDER mode
+    this.decisionOutputsMeta = [];
+    this.decisionOutputFields = [];
+
+    this.syncJsonFromDesigner();
+  }
+
+  addDecisionOutput(): void {
+    const rawKey = (this.dtNewOutputKey || '').trim();
+    if (!rawKey) return;
+
+    const key = rawKey.startsWith('Decision.') ? rawKey.substring('Decision.'.length) : rawKey;
+    if (!key) return;
+
+    const exists = (this.decisionOutputsMeta || []).some(x => x.key === key);
+    if (exists) return;
+
+    const label = (this.dtNewOutputLabel || '').trim() || key;
+
+    this.decisionOutputsMeta = [
+      ...(this.decisionOutputsMeta || []),
+      { key, label, dataType: this.dtNewOutputType ?? 'string' }
+    ];
+
+    this.rebuildDecisionOutputFields();
+
+    // reset editor
+    this.dtNewOutputKey = '';
+    this.dtNewOutputLabel = '';
+    this.dtNewOutputType = 'string';
+
+    this.syncJsonFromDesigner();
+  }
+
+  removeDecisionOutput(key: string): void {
+    const k = (key || '').replace(/^Decision\./, '').trim();
+    if (!k) return;
+
+    this.decisionOutputsMeta = (this.decisionOutputsMeta || []).filter(x => x.key !== k);
+    this.rebuildDecisionOutputFields();
+    this.syncJsonFromDesigner();
+  }
+
+  private rebuildDecisionOutputFields(): void {
+    const meta = (this.decisionOutputsMeta || []);
+    this.decisionOutputFields = meta.map(m => ({
+      key: `Decision.${m.key}`,
+      label: `Decision.${m.key}`,
+      dataType: m.dataType ?? 'string',
+      module: 'Decision',
+      dataset: 'Decision',
+      path: `Decision.${m.key}`
+    }));
+  }
   // Ladder helpers
   // ============================================================
 
@@ -555,12 +724,22 @@ export class RuleDesignerComponent implements OnInit {
     const hasElse = this.branches.some(b => b.type === 'ELSE');
     if (hasElse) return;
 
+    const activeId = this.activeBranch?.id;
+
     this.branches.push({
       id: this.makeId('br'),
       type: 'ELSE',
       when: null,
       then: []
     });
+
+    this.normalizeBranches();
+
+    // restore active selection if possible
+    if (activeId) {
+      const idx = this.branches.findIndex(b => b.id === activeId);
+      if (idx >= 0) this.activeBranchIndex = idx;
+    }
 
     this.syncJsonFromDesigner();
   }
@@ -569,9 +748,87 @@ export class RuleDesignerComponent implements OnInit {
     // Insert before ELSE (if exists), otherwise append
     const elseIdx = this.branches.findIndex(b => b.type === 'ELSE');
     const insertAt = elseIdx >= 0 ? elseIdx : this.branches.length;
-    this.branches.splice(insertAt, 0, this.makeElseIfBranch());
-    this.activeBranchIndex = insertAt;
+
+    const nb = this.makeElseIfBranch();
+    this.branches.splice(insertAt, 0, nb);
+
+    // Normalize types (ensures first branch is IF, rest ELSE_IF) and ELSE stays last
+    this.normalizeBranches();
+
+    // keep focus on the newly added branch (even if type normalized to IF)
+    const newIdx = this.branches.findIndex(b => b.id === nb.id);
+    this.activeBranchIndex = newIdx >= 0 ? newIdx : Math.min(insertAt, this.branches.length - 1);
+
     this.syncJsonFromDesigner();
+  }
+
+
+
+  canRemoveBranch(b: Branch): boolean {
+    return b.type !== 'ELSE' && this.branches.length > 1;
+  }
+
+  removeBranch(branchId: string): void {
+    const idx = this.branches.findIndex(b => b.id === branchId);
+    if (idx < 0) return;
+
+    const b = this.branches[idx];
+    if (b.type === 'ELSE') return; // not supported (yet)
+
+    const activeId = this.activeBranch?.id;
+
+    this.branches.splice(idx, 1);
+
+    if (!this.branches.length) {
+      this.branches = [this.makeIfBranch()];
+    }
+
+    this.normalizeBranches();
+
+    // Keep current branch selected if it still exists; otherwise select nearest.
+    if (activeId) {
+      const newActiveIdx = this.branches.findIndex(x => x.id === activeId);
+      if (newActiveIdx >= 0) {
+        this.activeBranchIndex = newActiveIdx;
+      } else {
+        this.activeBranchIndex = Math.min(idx, this.branches.length - 1);
+      }
+    } else {
+      this.activeBranchIndex = Math.min(idx, this.branches.length - 1);
+    }
+
+    this.syncJsonFromDesigner();
+  }
+
+  /**
+   * Keeps branch list structurally valid:
+   * - 0 or 1 ELSE branch (keeps the last one if multiple)
+   * - ELSE is always the last branch (if present)
+   * - First non-ELSE branch is IF; the rest are ELSE_IF
+   */
+  private normalizeBranches(): void {
+    if (!this.branches || this.branches.length === 0) {
+      this.branches = [this.makeIfBranch()];
+      this.activeBranchIndex = 0;
+      return;
+    }
+
+    const elseBranches = this.branches.filter(x => x.type === 'ELSE');
+    const elseBranch = elseBranches.length ? elseBranches[elseBranches.length - 1] : null;
+
+    const nonElse = this.branches.filter(x => x.type !== 'ELSE');
+
+    if (nonElse.length) {
+      nonElse[0].type = 'IF';
+      for (let i = 1; i < nonElse.length; i++) nonElse[i].type = 'ELSE_IF';
+    }
+
+    this.branches = elseBranch ? [...nonElse, elseBranch] : nonElse;
+
+    if (this.branches.length === 0) {
+      this.branches = [this.makeIfBranch()];
+      this.activeBranchIndex = 0;
+    }
   }
 
   setActiveBranch(i: number): void {
@@ -860,6 +1117,11 @@ export class RuleDesignerComponent implements OnInit {
     if (!t) {
       this.designerMode = 'LADDER';
       this.loadedDecisionTable = null;
+      this._dtBaseDoc = null;
+      this.dtResponseMode = 'ROUTE';
+      this.dtResponseOutputKey = null;
+      this.decisionOutputsMeta = [];
+      this.decisionOutputFields = [];
       this.branches = [this.makeIfBranch()];
       this.activeBranchIndex = 0;
       this.jsonUserEditing = false;
@@ -892,19 +1154,41 @@ export class RuleDesignerComponent implements OnInit {
         tableVersion: parsed.dtInfo?.tableVersion ?? undefined
       };
 
-      // Post-processing branches (if present)
       const dtUi = parsed.doc.ui as any;
-      const pp = dtUi?.postProcessing;
-      if (pp?.schema === 'rulesengine.uirule.v2' || pp?.schema === 'rulesengine.uirule.v1') {
-        const ppV2 = (pp.schema === 'rulesengine.uirule.v2') ? pp as UiRuleJsonV2 : this.upgradeV1ToV2(pp as UiRuleJsonV1);
-        this.branches = this.fromUiRuleJson(ppV2);
-      } else {
-        this.branches = [this.makeIfBranch()];
-      }
-      this.activeBranchIndex = 0;
+
+      // Decide usage mode:
+      // - If postProcessing exists => ROUTE
+      // - If postProcessing is absent => DIRECT (return outputs)
+      const hasPostProcessing = !!(dtUi?.postProcessing && (dtUi.postProcessing.schema === 'rulesengine.uirule.v2' || dtUi.postProcessing.schema === 'rulesengine.uirule.v1'));
+      const explicitMode = dtUi?.responseMode;
+      this.dtResponseMode = (explicitMode === 'DIRECT' || explicitMode === 'ROUTE')
+        ? explicitMode
+        : (hasPostProcessing ? 'ROUTE' : 'DIRECT');
+
+      this.dtResponseOutputKey = (dtUi?.responseOutputKey ?? null);
 
       // Decision outputs palette
       this.setDecisionOutputsFromDoc(parsed.doc);
+
+      // Post-processing branches (ROUTE) OR Draft branches (DIRECT)
+      const pickUiRule = (raw: any): UiRuleJsonV2 | null => {
+        if (!raw) return null;
+        if (raw.schema === 'rulesengine.uirule.v2') return raw as UiRuleJsonV2;
+        if (raw.schema === 'rulesengine.uirule.v1') return this.upgradeV1ToV2(raw as UiRuleJsonV1);
+        return null;
+      };
+
+      const ppV2 = pickUiRule(dtUi?.postProcessing);
+      const draftV2 = pickUiRule(dtUi?.postProcessingDraft);
+
+      if (this.dtResponseMode === 'ROUTE') {
+        this.branches = this.fromUiRuleJson(ppV2 ?? draftV2 ?? this.toUiRuleJsonV2());
+      } else {
+        // DIRECT: routing is disabled at runtime, but we keep the draft in UI for easy toggling back.
+        this.branches = this.fromUiRuleJson(draftV2 ?? ppV2 ?? this.toUiRuleJsonV2());
+      }
+
+      this.activeBranchIndex = 0;
 
       this.jsonUserEditing = false;
       this.syncJsonFromDesigner();
@@ -920,6 +1204,11 @@ export class RuleDesignerComponent implements OnInit {
 
     this.designerMode = 'LADDER';
     this.loadedDecisionTable = null;
+    this._dtBaseDoc = null;
+    this.dtResponseMode = 'ROUTE';
+    this.dtResponseOutputKey = null;
+    this.decisionOutputsMeta = [];
+    this.decisionOutputFields = [];
 
     this.branches = this.fromUiRuleJson(ui);
     this.activeBranchIndex = 0;
@@ -956,11 +1245,16 @@ export class RuleDesignerComponent implements OnInit {
       const baseUi = (base?.ui as any) ?? {};
       const dt = baseUi?.decisionTable ?? this.loadedDecisionTable ?? {};
 
-      const postProcessing = this.toUiRuleJsonV2();
+      // Always keep a draft of routing in the UI so switching modes doesn't lose work.
+      const postProcessingDraft = this.toUiRuleJsonV2();
 
-      const outputs = (Array.isArray(baseUi?.outputs) && baseUi.outputs.length)
-        ? baseUi.outputs
-        : (this.decisionOutputsMeta || []).map(o => ({ key: o.key, label: o.label, dataType: o.dataType }));
+      // ROUTE => include postProcessing (runtime routing)
+      // DIRECT => omit postProcessing (runtime returns decision outputs)
+      const postProcessing = (this.dtResponseMode === 'ROUTE') ? postProcessingDraft : undefined;
+
+      const outputsFromMeta = (this.decisionOutputsMeta || []).map(o => ({ key: o.key, label: o.label, dataType: o.dataType }));
+      const outputsFromUi = (Array.isArray(baseUi?.outputs) && baseUi.outputs.length) ? baseUi.outputs : [];
+      const outputs = outputsFromMeta.length ? outputsFromMeta : outputsFromUi;
 
       const ui: DecisionTableUiModel = {
         schema: 'rulesengine.uidt.v1',
@@ -972,8 +1266,11 @@ export class RuleDesignerComponent implements OnInit {
           hitPolicy: dt?.hitPolicy ?? undefined,
           updatedOn: dt?.updatedOn ?? null
         },
-        outputs,
-        postProcessing
+        outputs: outputs.length ? outputs : undefined,
+        responseMode: this.dtResponseMode ?? (postProcessing ? 'ROUTE' : 'DIRECT'),
+        responseOutputKey: this.dtResponseOutputKey ?? null,
+        postProcessing,
+        postProcessingDraft
       };
 
       const doc: RuleDocV1 = {
@@ -1588,14 +1885,7 @@ export class RuleDesignerComponent implements OnInit {
 
     // Store meta + build FieldDefs as Decision.<key>
     this.decisionOutputsMeta = meta;
-    this.decisionOutputFields = meta.map(m => ({
-      key: `Decision.${m.key}`,
-      label: `Decision.${m.key}`,
-      dataType: m.dataType ?? 'string',
-      module: 'Decision',
-      dataset: 'Decision',
-      path: `Decision.${m.key}`
-    }));
+    this.rebuildDecisionOutputFields();
   }
 
   private normalizeDataType(raw: any): DataType {
@@ -1743,16 +2033,34 @@ export class RuleDesignerComponent implements OnInit {
       };
 
       const dtUi = parsed.doc.ui as any;
-      const pp = dtUi?.postProcessing;
-      if (pp?.schema === 'rulesengine.uirule.v2' || pp?.schema === 'rulesengine.uirule.v1') {
-        const ppV2 = (pp.schema === 'rulesengine.uirule.v2') ? pp as UiRuleJsonV2 : this.upgradeV1ToV2(pp as UiRuleJsonV1);
-        this.branches = this.fromUiRuleJson(ppV2);
-      } else {
-        this.branches = [this.makeIfBranch()];
-      }
-      this.activeBranchIndex = 0;
+
+      const hasPostProcessing = !!(dtUi?.postProcessing && (dtUi.postProcessing.schema === 'rulesengine.uirule.v2' || dtUi.postProcessing.schema === 'rulesengine.uirule.v1'));
+      const explicitMode = dtUi?.responseMode;
+      this.dtResponseMode = (explicitMode === 'DIRECT' || explicitMode === 'ROUTE')
+        ? explicitMode
+        : (hasPostProcessing ? 'ROUTE' : 'DIRECT');
+
+      this.dtResponseOutputKey = (dtUi?.responseOutputKey ?? null);
 
       this.setDecisionOutputsFromDoc(parsed.doc);
+
+      const pickUiRule = (raw: any): UiRuleJsonV2 | null => {
+        if (!raw) return null;
+        if (raw.schema === 'rulesengine.uirule.v2') return raw as UiRuleJsonV2;
+        if (raw.schema === 'rulesengine.uirule.v1') return this.upgradeV1ToV2(raw as UiRuleJsonV1);
+        return null;
+      };
+
+      const ppV2 = pickUiRule(dtUi?.postProcessing);
+      const draftV2 = pickUiRule(dtUi?.postProcessingDraft);
+
+      if (this.dtResponseMode === 'ROUTE') {
+        this.branches = this.fromUiRuleJson(ppV2 ?? draftV2 ?? this.toUiRuleJsonV2());
+      } else {
+        this.branches = this.fromUiRuleJson(draftV2 ?? ppV2 ?? this.toUiRuleJsonV2());
+      }
+
+      this.activeBranchIndex = 0;
 
       this.jsonUserEditing = false;
       this.syncJsonFromDesigner();
@@ -1762,6 +2070,11 @@ export class RuleDesignerComponent implements OnInit {
     // LADDER
     this.designerMode = 'LADDER';
     this.loadedDecisionTable = null;
+    this._dtBaseDoc = null;
+    this.dtResponseMode = 'ROUTE';
+    this.dtResponseOutputKey = null;
+    this.decisionOutputsMeta = [];
+    this.decisionOutputFields = [];
 
     if (parsed.uiRule) {
       this.branches = this.fromUiRuleJson(parsed.uiRule);
@@ -1854,7 +2167,7 @@ export class RuleDesignerComponent implements OnInit {
   functionsLoading = false;
 
   // keep any built-in ones if you want
-  private builtinFunctions: FuncDef[] = [ ];
+  private builtinFunctions: FuncDef[] = [];
 
 
   refreshFunctions(): void {
@@ -1964,6 +2277,7 @@ export class RuleDesignerComponent implements OnInit {
 
   // ---- Right JSON panel UI (expand/collapse)
   jsonPanelCollapsed = true;
+  rightPanelTab: 'json' | 'settings' = 'settings';
 
   toggleJsonPanel(): void {
     this.jsonPanelCollapsed = !this.jsonPanelCollapsed;

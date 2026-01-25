@@ -1,32 +1,82 @@
-<div class="grid3">
-  <div class="card pad kpi">
-    <div class="value">{{ stats.activeRules.value }}</div>
-    <div class="label">Active Rules</div>
-    <div class="sub">{{ stats.activeRules.sub }}</div>
+<div class="kpi-row">
+  <!-- Active Rules -->
+  <div class="kpi-card">
+    <div class="kpi-number">{{ stats?.activeRules?.value }}</div>
+
+    <div class="kpi-text">
+      <div class="kpi-title">Active Rules</div>
+      <div class="kpi-sub" *ngIf="stats?.activeRules?.sub">{{ stats.activeRules.sub }}</div>
+    </div>
+
+    <div class="kpi-icon" aria-hidden="true">
+      <!-- check-square -->
+      <svg viewBox="0 0 24 24">
+        <path d="M9 11l2 2 4-4" />
+        <path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
+      </svg>
+    </div>
   </div>
 
-  <div class="card pad kpi">
-    <div class="value">{{ stats.ruleGroups.value }}</div>
-    <div class="label">Rule Groups</div>
-    <div class="sub">{{ stats.ruleGroups.sub }}</div>
+  <!-- Rule Groups -->
+  <div class="kpi-card">
+    <div class="kpi-number">{{ stats?.ruleGroups?.value }}</div>
+
+    <div class="kpi-text">
+      <div class="kpi-title">Rule Groups</div>
+      <div class="kpi-sub" *ngIf="stats?.ruleGroups?.sub">{{ stats.ruleGroups.sub }}</div>
+    </div>
+
+    <div class="kpi-icon" aria-hidden="true">
+      <!-- file-plus -->
+      <svg viewBox="0 0 24 24">
+        <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6" />
+        <path d="M12 14v6" />
+        <path d="M9 17h6" />
+      </svg>
+    </div>
   </div>
 
-  <div class="card pad kpi">
-    <div class="value">{{ stats.dataFunctions.value }}</div>
-    <div class="label">Data Functions</div>
-    <div class="sub">{{ stats.dataFunctions.sub }}</div>
+  <!-- Data Functions -->
+  <div class="kpi-card">
+    <div class="kpi-number">{{ stats?.dataFunctions?.value }}</div>
+
+    <div class="kpi-text">
+      <div class="kpi-title">Data Functions</div>
+      <div class="kpi-sub" *ngIf="stats?.dataFunctions?.sub">{{ stats.dataFunctions.sub }}</div>
+    </div>
+
+    <div class="kpi-icon" aria-hidden="true">
+      <!-- calendar -->
+      <svg viewBox="0 0 24 24">
+        <path d="M7 3v3" />
+        <path d="M17 3v3" />
+        <path d="M4 8h16" />
+        <path d="M6 5h12a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z" />
+      </svg>
+    </div>
+  </div>
+
+  <!-- Records Processed -->
+  <div class="kpi-card">
+    <div class="kpi-number">{{ stats?.recordsProcessed?.value }}</div>
+
+    <div class="kpi-text">
+      <div class="kpi-title">Records Processed</div>
+      <div class="kpi-sub" *ngIf="stats?.recordsProcessed?.sub">{{ stats.recordsProcessed.sub }}</div>
+    </div>
+
+    <div class="kpi-icon" aria-hidden="true">
+      <!-- clipboard -->
+      <svg viewBox="0 0 24 24">
+        <path d="M9 3h6" />
+        <path d="M9 5h6" />
+        <path d="M8 4h-.5A2.5 2.5 0 0 0 5 6.5V20a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6.5A2.5 2.5 0 0 0 18.5 4H18" />
+      </svg>
+    </div>
   </div>
 </div>
 
-<div class="spacer"></div>
-
-<div class="grid2">
-  <div class="card pad kpi records">
-    <div class="value">{{ stats.recordsProcessed.value }}</div>
-    <div class="label">Records Processed</div>
-    <div class="sub">{{ stats.recordsProcessed.sub }}</div>
-  </div>
-</div>
 
 <div class="sectiontitle">Recent Rule Executions</div>
 

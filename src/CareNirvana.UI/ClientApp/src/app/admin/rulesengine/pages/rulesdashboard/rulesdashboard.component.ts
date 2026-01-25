@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { RulesEngineSampleDataService } from '../../data/rulesengine.sampledata.service';
+import { RulesengineService, RulesDashboardStats } from 'src/app/service/rulesengine.service';
 
 @Component({
   selector: 'app-rulesdashboard',
@@ -7,13 +8,21 @@ import { RulesEngineSampleDataService } from '../../data/rulesengine.sampledata.
   styleUrls: ['./rulesdashboard.component.css']
 })
 export class RulesDashboardComponent implements OnInit {
-  stats: any;
+  stats!: RulesDashboardStats;
   executions: any[] = [];
 
-  constructor(private data: RulesEngineSampleDataService) { }
+  constructor(
+    private dashboardApi: RulesengineService,
+    private sampleData: RulesEngineSampleDataService
+  ) { }
 
   ngOnInit(): void {
-    this.stats = this.data.getDashboardStats();
-    this.executions = this.data.getRecentExecutions();
+    // keep Recent Rule Executions static for now
+    this.executions = this.sampleData.getRecentExecutions();
+
+    // KPIs dynamic
+    this.dashboardApi.getDashboard().subscribe({
+      next: (s) => (this.stats = s) // optional fallback
+    });
   }
 }

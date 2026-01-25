@@ -262,8 +262,8 @@
                *ngIf="showAddMenu || showRowMenu || showColMenu"
                (click)="closeMenus()"></div>
 
-          <div class="dtgrid" [style.gridTemplateColumns]="gridTemplateColumns">
-            <!-- Group header row -->
+          <div class="dtgrid">
+            <!-- Group header row [style.gridTemplateColumns]="gridTemplateColumns"-->
             <div class="cell grouphead rowhead"></div>
 
             <div class="cell grouphead condhead" [style.gridColumn]="condGroupSpan">Condition</div>
@@ -308,9 +308,9 @@
                   </ui-smart-dropdown>
 
                   <!--<div class="mapmeta" *ngIf="c.mappedFieldKey">
-                    <span class="pillmini">Mapped</span>
-                    <span class="maptext">{{ c.mappedFieldLabel }}</span>
-                  </div>-->
+          <span class="pillmini">Mapped</span>
+          <span class="maptext">{{ c.mappedFieldLabel }}</span>
+        </div>-->
                 </div>
 
 

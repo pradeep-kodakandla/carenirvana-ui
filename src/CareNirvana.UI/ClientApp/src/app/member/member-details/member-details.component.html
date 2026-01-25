@@ -14,15 +14,18 @@
   <div class="sidebar" [class.collapsed]="isCollapse">
     <!-- Expand/Collapse Button -->
     <div class="sidebar-toolbar" [class.collapsed]="isCollapse">
-      <!-- Menu (show in both expanded + collapsed) -->
-      <!--<button class="toggle-button" [matMenuTriggerFor]="menu">
-        <mat-icon>menu</mat-icon>
-      </button>-->
-
-      <!-- Notifications (make it a toggle-button so it matches styling) -->
+      <!-- Menu (always visible) -->
       <button mat-icon-button
               class="toggle-button"
-              aria-label="Messages"
+              aria-label="Menu"
+              [matMenuTriggerFor]="menu">
+        <mat-icon>menu</mat-icon>
+      </button>
+
+      <!-- Alerts (always visible) -->
+      <button mat-icon-button
+              class="toggle-button"
+              aria-label="Alerts"
               #messagesTrigger="matMenuTrigger"
               [matMenuTriggerFor]="alertsMenu"
               (click)="openMessagesMenu(messagesTrigger)">
@@ -33,11 +36,20 @@
       <div class="flex-spacer" *ngIf="!isCollapse"></div>
 
       <!-- Collapse / Expand -->
-      <button class="toggle-button" (click)="toggleSidebar()">
-        <mat-icon>{{ isCollapse ? 'people' : 'push_pin' }}</mat-icon>
+      <button class="toggle-button collapse-toggle"
+              (click)="toggleSidebar()"
+              aria-label="Toggle member sidebar">
+        <mat-icon>{{ isCollapse ? 'chevron_right' : 'chevron_left' }}</mat-icon>
       </button>
     </div>
 
+    <!-- Collapsed member name (vertical) -->
+    <div class="sidebar-collapsed-summary" *ngIf="isCollapse">
+      <div class="collapsed-member-name"
+           [attr.title]="(member?.firstName || '') + ' ' + (member?.lastName || '')">
+        {{ member?.firstName }} {{ member?.lastName }} - ID: {{ member?.memberId }} · DOB: {{ member?.dob }} ({{ getAge(member?.dob) }} Yrs), {{ member?.gender }}
+      </div>
+    </div>
 
 
     <div class="sidebar-content" *ngIf="!isCollapse">
@@ -129,9 +141,9 @@
 
 
     <!-- Show 'People' Icon when Collapsed -->
-    <div class="collapsed-icon" [matMenuTriggerFor]="menu" *ngIf="isCollapse">
+    <!--<div class="collapsed-icon" [matMenuTriggerFor]="menu" *ngIf="isCollapse">
       <mat-icon>menu</mat-icon>
-    </div>
+    </div>-->
   </div>
   <div class="main-content">
     <div class="sidenav-content" style="padding-right:5px;">

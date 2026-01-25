@@ -104,6 +104,14 @@ export interface UpsertRuleDataFunctionRequest {
 }
 
 
+export interface DashboardKpi { value: number; sub: string; }
+export interface RulesDashboardStats {
+  activeRules: DashboardKpi;
+  ruleGroups: DashboardKpi;
+  dataFunctions: DashboardKpi;
+  recordsProcessed: DashboardKpi;
+}
+
 export interface DropdownOption<T> { value: T; label: string; }
 
 @Injectable({ providedIn: 'root' })
@@ -273,5 +281,8 @@ export class RulesengineService {
     return this.http.delete<void>(`${this.baseUrl}/datafunctions/${id}`);
   }
 
+  getDashboard(): Observable<RulesDashboardStats> {
+    return this.http.get<RulesDashboardStats>(`${this.baseUrl}/dashboard`);
+  }
 
 }

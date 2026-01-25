@@ -146,7 +146,7 @@
 }
 /* Fix #2: allow preview above */
 .leftpanel {
-  max-height: calc(100vh - 220px);
+  max-height: calc(100vh - 140px);
   overflow: auto;
 }
 
@@ -302,6 +302,20 @@
   overflow: visible;
 }
 
+.runFirstCanvas {
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+  padding: 2px;
+  min-height: 92px;
+  background: #fbfdff;
+  overflow: visible;
+}
+
+.chipbtn.active {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+}
+
 .watermark {
   color: #94a3b8;
   font-weight: 700;
@@ -423,6 +437,11 @@
     color: #0f172a;
   }
 
+.x.mini {
+  font-size: 12px;
+  line-height: 1;
+}
+
 .op {
   border: 1px solid #e2e8f0;
   border-radius: 10px;
@@ -526,9 +545,7 @@
   outline: none;
   resize: none;
   background-color: #f8fafc;
-  /* background-image: radial-gradient(circle at 18% 0%, rgba(37, 99, 235, .14), transparent 42%), radial-gradient(circle at 82% 10%, rgba(124, 58, 237, .10), transparent 46%), linear-gradient(rgba(15, 23, 42, .045) 1px, transparent 1px), linear-gradient(90deg, rgba(15, 23, 42, .045) 1px, transparent 1px);
-  background-size: auto, auto, 26px 26px, 26px 26px;
-  background-position: 0 0, 0 0, -1px -1px, -1px -1px;*/
+  height: 100%;
   color: blue;
 }
 
@@ -760,6 +777,7 @@
   /*  border: 1px solid #e6eaf2;
   border-radius: 16px;
   padding: 10px;*/
+  min-width:250px;
   background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
 }
 
@@ -823,7 +841,7 @@
 /* ---------- MIDDLE: Add vertical scroll bar + cool professional background ---------- */
 /* Replace the old .midpanel overflow: visible with a real scroll container */
 .midpanel {
-  max-height: calc(100vh - 220px);
+  max-height: calc(100vh - 140px);
   overflow-y: auto;
   overflow-x: visible;
   /* "Designer canvas" background: subtle gradient + faint grid */
@@ -1020,3 +1038,101 @@
   flex-wrap: wrap;
   gap: 8px;
 }
+
+.dtPill.ghost {
+  background: transparent;
+  border: 1px dashed #cbd5e1;
+  color: #64748b;
+}
+
+.dtOutputChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dtModeRow {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dtModeLabel {
+  color: #475569;
+  font-weight: 900;
+  font-size: 12px;
+  margin-right: 4px;
+}
+
+.dtModeHint {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.dtOutputEditor {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1.2fr 180px 1.2fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+@media (max-width: 980px) {
+  .dtOutputEditor {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+.titleRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+  .titleRow .subtitle {
+    margin-top: 0; /* keep subtitle style but remove the “new line” spacing */
+  }
+
+
+/* Right panel inner content wrapper */
+.rightcontent {
+  flex: 1;
+  overflow: auto;
+  padding: 10px 12px;
+}
+
+/* Right panel tabs */
+.rtabs {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.rtab {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  padding: 6px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+  .rtab.active {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+  }
+
+/* Settings tab: force headercard formgrid to be vertical INSIDE right panel */
+.rightpanel .settingsform {
+  padding: 0;
+  margin: 0;
+}
+
+  .rightpanel .settingsform .formgrid {
+    grid-template-columns: 1fr; /* override the 4-column headercard grid */
+  }

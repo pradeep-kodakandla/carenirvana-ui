@@ -1,57 +1,61 @@
 <div class="d-flex" style="padding-left:5px;">
-  <!-- Menu Panel (Parent + Child in same div) -->
-  <div class="main-content" [ngClass]="{'collapsed': isMenuCollapsed}">
-    <div class="nav-panel" *ngIf="!isMenuCollapsed">
-      <div class="search-bar nav-search">
-        <input type="text"
+  <!-- Menu Panel (expand/collapse like RulesDesigner JSON panel) -->
+  <div class="main-content" [class.collapsed]="isMenuCollapsed">
+
+    <div class="nav-panel">
+      <div class="search-bar nav-search" [class.is-collapsed]="isMenuCollapsed">
+        <input *ngIf="!isMenuCollapsed"
+               type="text"
                placeholder="Search settings"
                [(ngModel)]="searchQuery"
                (input)="filterMenus()" />
 
-        <button class="collapse-btn" (click)="toggleMenu()">
-          {{ isMenuCollapsed ? '>' : '<' }}
+        <button class="menuToggle"
+                type="button"
+                (click)="toggleMenu()"
+                [attr.title]="isMenuCollapsed ? 'Expand Menu' : 'Collapse Menu'"
+                [attr.aria-label]="isMenuCollapsed ? 'Expand Menu' : 'Collapse Menu'">
+          {{ isMenuCollapsed ? '⟩' : '⟨' }}
         </button>
       </div>
 
-      <ul class="nav-list">
-        <li class="nav-item" *ngFor="let item of filteredMainMenu">
-          <!-- Parent -->
-          <button type="button"
-                  class="nav-parent"
-                  (click)="toggleParent(item)"
-                  [class.selected]="selectedMenu === item"
-                  [class.expanded]="expandedMenu === item">
-            <span class="caret" aria-hidden="true"></span>
-            <span class="label">{{ item.name }}</span>
-            <span class="count">({{ item.children.length }})</span>
-          </button>
+      <ng-container *ngIf="!isMenuCollapsed">
+        <ul class="nav-list">
+          <li class="nav-item" *ngFor="let item of filteredMainMenu">
+            <button type="button"
+                    class="nav-parent"
+                    (click)="toggleParent(item)"
+                    [class.selected]="selectedMenu === item"
+                    [class.expanded]="expandedMenu === item">
+              <span class="caret" aria-hidden="true"></span>
+              <span class="label">{{ item.name }}</span>
+              <span class="count">({{ item.children.length }})</span>
+            </button>
 
-          <!-- Children (only for expanded parent) -->
-          <ul class="nav-children" *ngIf="expandedMenu === item">
-            <li *ngFor="let subItem of filteredSubMenu">
-              <button type="button"
-                      class="nav-child"
-                      (click)="selectSubMenu(subItem); $event.stopPropagation()"
-                      [class.selected]="selectedSubMenu === subItem">
-                {{ subItem }}
-              </button>
-            </li>
-          </ul>
-        </li>
-      </ul>
+            <ul class="nav-children" *ngIf="expandedMenu === item">
+              <li *ngFor="let subItem of filteredSubMenu">
+                <button type="button"
+                        class="nav-child"
+                        (click)="selectSubMenu(subItem); $event.stopPropagation()"
+                        [class.selected]="selectedSubMenu === subItem">
+                  {{ subItem }}
+                </button>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </ng-container>
+
+      <div class="menuCollapsedLabel" *ngIf="isMenuCollapsed">MENU</div>
     </div>
+
+
   </div>
 
   <!-- Details Section -->
   <div class="details-section" style="padding-top:10px; flex: 1; position: relative;">
-    <button class="collapse-btn" (click)="toggleMenu()" *ngIf="isMenuCollapsed">
-      {{ isMenuCollapsed ? '>' : '<' }}
-    </button>
-
     <ng-container *ngIf="selectedSubMenu">
       <router-outlet *ngIf="showRulesEngine"></router-outlet>
-
-      <!-- Keep this ALWAYS present so ViewChild is always initialized -->
       <div #dynamicContainer [hidden]="showRulesEngine"></div>
     </ng-container>
   </div>

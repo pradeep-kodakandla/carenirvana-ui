@@ -1,6 +1,6 @@
 <div class="topbar">
   <div class="left">
-    <div>
+    <div class="titleRow">
       <div class="title">Rules Designer</div>
       <div class="subtitle">Drag fields → build WHEN, then drag actions → THEN. JSON stays in sync.</div>
     </div>
@@ -12,51 +12,10 @@
       {{ saving ? 'Saving...' : 'Save' }}
     </button>
   </div>
-</div>
-
-<div class="headercard card">
-  <div class="formgrid">
-    <div class="flfield">
-      <input class="flinput" placeholder=" " [(ngModel)]="name" />
-      <label class="fllabel">Rule Name</label>
-    </div>
-
-    <div class="flfield" [class.filled]="!!ruleType">
-      <ui-smart-dropdown class="flcontrol"
-                         label="Rule Type"
-                         [options]="ruleTypeUiOptions"
-                         [(ngModel)]="ruleType">
-      </ui-smart-dropdown>
-    </div>
-
-    <div class="flfield full" [class.filled]="!!ruleGroupId">
-      <ui-smart-dropdown class="flcontrol"
-                         label="Rule Group"
-                         [options]="groupUiOptions"
-                         [(ngModel)]="ruleGroupId">
-      </ui-smart-dropdown>
-    </div>
-
-    <div class="flfield full filled">
-      <div class="activeRow">
-        <label class="activeLabel">Active</label>
-        <label class="switch">
-          <input type="checkbox" [(ngModel)]="activeFlag" />
-          <span class="slider"></span>
-        </label>
-      </div>
-    </div>
-
-    <!--<div class="flfield full">
-      <textarea class="fltextarea" rows="2" placeholder=" " [(ngModel)]="description"></textarea>
-      <label class="fllabel">Description</label>
-    </div>-->
-  </div>
-
   <div class="error" *ngIf="error">{{ error }}</div>
   <div class="success" *ngIf="successMsg">{{ successMsg }}</div>
-
 </div>
+
 
 <!-- IMPORTANT: cdkDropListGroup connects ALL drop lists so drops won’t snap back -->
 <div class="designer"
@@ -90,7 +49,7 @@
              [cdkDragData]="dragField(f)"
              cdkDragPreviewClass="drag-preview">
           {{ f.label }}
-          <div class="pillsub">{{ f.key }}</div>
+          <!--<div class="pillsub">{{ f.key }}</div>-->
         </div>
       </div>
     </div>
@@ -105,10 +64,6 @@
       </div>-->
       <div class="sectionhead">
         <div class="sectiontitle">Functions</div>
-
-        /d
-        p:
-
         <div style="display:flex; gap:10px; align-items:center;">
           <button class="link" type="button" (click)="refreshFunctions()" [disabled]="functionsLoading">
             {{ functionsLoading ? 'Refreshing...' : 'Refresh' }}
@@ -197,7 +152,7 @@
     </div>
 
     <!-- Decision Tables -->
-    <div class="section" *ngIf="designerMode === 'LADDER'">
+    <div class="section">
       <div class="sectionhead">
         <div class="sectiontitle">Decision Tables</div>
         <button class="link" (click)="showAllDecisionTables = !showAllDecisionTables">
@@ -230,39 +185,118 @@
        [style.flexBasis]="'0'"
        [style.width]="'auto'"
        [style.minWidth]="'0'">
+    <!-- RUN FIRST: Decision Table (drag here) -->
+    <div class="block runfirst">
+      <div class="blockhead">
+        <div class="blocktitle">RUN FIRST</div>
+        <div class="hint">Drag a decision table here to run it first.</div>
 
-    <div class="dtCard" *ngIf="designerMode === 'DECISION_TABLE'">
-      <div class="dtCardHead">
-        <div>
-          <div class="dtCardTitle">Decision Table Rule</div>
-          <div class="dtCardSub">
-            Decision table runs first. Build routing below using <b>Decision.*</b> outputs.
-          </div>
-        </div>
-        <button class="btn small" type="button" (click)="openDecisionTableInBuilder()" [disabled]="!loadedDecisionTable?.id">
-          Open in Decision Table Builder
+        <div class="spacer"></div>
+
+        <button class="btn small"
+                type="button"
+                *ngIf="loadedDecisionTable?.id"
+                (click)="clearRunFirstDecisionTable()">
+          Remove
         </button>
       </div>
 
-      <div class="dtBannerMeta" *ngIf="loadedDecisionTable?.id">
-        <span class="dtPill">ID: {{ loadedDecisionTable?.id }}</span>
-        <span class="dtPill" *ngIf="loadedDecisionTable?.name">Name: {{ loadedDecisionTable?.name }}</span>
-        <span class="dtPill" *ngIf="loadedDecisionTable?.tableVersion != null">Version: {{ loadedDecisionTable?.tableVersion }}</span>
-      </div>
+      <div class="runFirstCanvas"
+           cdkDropList
+           [id]="runFirstDropId"
+           [cdkDropListEnterPredicate]="canDropToRunFirst"
+           [cdkDropListSortingDisabled]="true"
+           (cdkDropListDropped)="dropToRunFirst($event)">
 
-      <div class="dtOutputsRow" *ngIf="decisionOutputFields.length">
-        <div class="dtOutputsLabel">Outputs</div>
-        <div class="dtOutputsChips">
-          <span class="dtPill" *ngFor="let o of decisionOutputFields">{{ o.label }}</span>
+        <div class="watermark" *ngIf="!loadedDecisionTable?.id">
+          Drag a <b>Decision Table</b> here (optional). It will execute before WHEN/THEN.
+        </div>
+
+        <div class="dtCard" *ngIf="loadedDecisionTable?.id">
+          <div class="dtCardHead">
+            <div>
+              <!--<div class="dtCardTitle">Decision Table Rule</div>-->
+              <div class="dtCardSub">
+                Decision table runs first. Use <b>Decision.*</b> outputs as response or for routing.
+              </div>
+            </div>
+
+            <!--<button class="btn small"
+                    type="button"
+                    (click)="openDecisionTableInBuilder()"
+                    [disabled]="!loadedDecisionTable?.id">
+              Open in Decision Table Builder
+            </button>-->
+          </div>
+
+          <div class="dtModeRow">
+            <div class="dtModeLabel">Mode</div>
+
+            <button class="chipbtn tiny"
+                    type="button"
+                    [class.active]="dtResponseMode === 'DIRECT'"
+                    (click)="setDtResponseMode('DIRECT')">
+              Return outputs
+            </button>
+
+            <button class="chipbtn tiny"
+                    type="button"
+                    [class.active]="dtResponseMode === 'ROUTE'"
+                    (click)="setDtResponseMode('ROUTE')">
+              Route on outputs
+            </button>
+
+            <div class="spacer"></div>
+
+            <span class="dtModeHint" *ngIf="dtResponseMode === 'DIRECT'">
+              Routing below is disabled.
+            </span>
+          </div>
+
+          <div class="dtBannerMeta">
+            <!--<span class="dtPill">ID: {{ loadedDecisionTable?.id }}</span>-->
+            <span class="dtPill" *ngIf="loadedDecisionTable?.name">Name: {{ loadedDecisionTable?.name }}</span>
+            <span class="dtPill" *ngIf="loadedDecisionTable?.tableVersion != null">Version: {{ loadedDecisionTable?.tableVersion }}</span>
+          </div>
+
+          <div class="dtOutputsRow">
+            <div class="dtOutputsLabel">Outputs</div>
+            <div class="dtOutputsChips">
+              <span class="dtPill dtOutputChip" *ngFor="let o of decisionOutputsMeta">
+                Decision.{{ o.key }}
+                <button class="x mini" type="button" (click)="removeDecisionOutput(o.key)">✕</button>
+              </span>
+
+              <span class="dtPill ghost" *ngIf="!decisionOutputsMeta?.length">
+                No outputs yet
+              </span>
+            </div>
+          </div>
+
+          <!--<div class="dtOutputEditor">
+            <input class="text mini"
+                   [(ngModel)]="dtNewOutputKey"
+                   placeholder="Output key (e.g. result1)" />
+
+            <select class="op"
+                    [(ngModel)]="dtNewOutputType">
+              <option *ngFor="let t of dataTypeOptions" [ngValue]="t">{{ t }}</option>
+            </select>
+
+            <input class="text mini"
+                   [(ngModel)]="dtNewOutputLabel"
+                   placeholder="Label (optional)" />
+
+            <button class="btn small" type="button" (click)="addDecisionOutput()">
+              Add
+            </button>
+          </div>-->
         </div>
       </div>
     </div>
 
-
-
-
     <!-- Branch Tabs -->
-    <div class="branchtabs">
+    <div class="branchtabs" *ngIf="!isDtDirectResponse">
       <button class="tab"
               *ngFor="let b of branches; let i = index"
               [class.active]="i === activeBranchIndex"
@@ -277,7 +311,7 @@
     </div>
 
     <!-- WHEN -->
-    <div class="block" *ngIf="activeBranch.type !== 'ELSE'">
+    <div class="block" *ngIf="!isDtDirectResponse && activeBranch.type !== 'ELSE'">
       <div class="blockhead">
         <div class="blocktitle">WHEN</div>
 
@@ -303,14 +337,14 @@
     </div>
 
     <!-- ELSE branch has no WHEN -->
-    <div class="block" *ngIf="activeBranch.type === 'ELSE'">
+    <div class="block" *ngIf="!isDtDirectResponse && activeBranch.type === 'ELSE'">
       <div class="watermark solo">
         ELSE branch: no WHEN conditions. Only THEN actions will run.
       </div>
     </div>
 
     <!-- THEN -->
-    <div class="block">
+    <div class="block" *ngIf="!isDtDirectResponse">
       <div class="blockhead">
         <div class="blocktitle">THEN</div>
         <div class="hint">Drag an action from the left into this area.</div>
@@ -516,6 +550,7 @@
 
   <!-- RIGHT JSON -->
   <!-- RIGHT JSON -->
+  <!-- RIGHT PANEL -->
   <div class="panel card rightpanel"
        [class.jsonCollapsed]="jsonPanelCollapsed"
        [ngStyle]="jsonPanelCollapsed ? { flex: '0 0 44px', width: '44px', minWidth: '44px', maxWidth: '44px', padding: '0' } : null">
@@ -523,13 +558,33 @@
     <div class="jsonhead"
          [ngStyle]="jsonPanelCollapsed ? { padding: '8px 6px', justifyContent: 'center' } : null">
 
-      <div class="sectiontitle" *ngIf="!jsonPanelCollapsed">Rule JSON</div>
+      <!-- Tabs (only when expanded) -->
+      <div class="rtabs" *ngIf="!jsonPanelCollapsed">
+        <button class="rtab"
+                [class.active]="rightPanelTab === 'settings'"
+                type="button"
+                (click)="rightPanelTab = 'settings'">
+          Settings
+        </button>
+        <button class="rtab"
+                [class.active]="rightPanelTab === 'json'"
+                type="button"
+                (click)="rightPanelTab = 'json'">
+          JSON
+        </button>
 
-      <div class="jsonbtns" *ngIf="!jsonPanelCollapsed">
+
+      </div>
+
+      <div class="spacer" *ngIf="!jsonPanelCollapsed"></div>
+
+      <!-- JSON buttons only on JSON tab -->
+      <div class="jsonbtns" *ngIf="!jsonPanelCollapsed && rightPanelTab === 'json'">
         <button class="btn small" (click)="applyJsonToDesigner()">Apply</button>
         <button class="btn small" (click)="discardJsonEdits()">Discard</button>
       </div>
 
+      <!-- Collapse/Expand stays the same -->
       <button class="btn small"
               type="button"
               (click)="toggleJsonPanel()"
@@ -540,19 +595,73 @@
     </div>
 
     <ng-container *ngIf="!jsonPanelCollapsed">
-      <textarea class="jsonarea"
-                [(ngModel)]="jsonText"
-                (focus)="onJsonFocus()"
-                (blur)="onJsonBlur()"></textarea>
+      <div class="rightcontent">
 
-      <div class="error" *ngIf="jsonError">{{ jsonError }}</div>
+        <!-- JSON TAB -->
+        <ng-container *ngIf="rightPanelTab === 'json'; else settingsTab">
+          <textarea class="jsonarea"
+                    [(ngModel)]="jsonText"
+                    (focus)="onJsonFocus()"
+                    (blur)="onJsonBlur()"></textarea>
+
+          <div class="error" *ngIf="jsonError">{{ jsonError }}</div>
+        </ng-container>
+
+        <!-- SETTINGS TAB -->
+        <ng-template #settingsTab>
+          <!-- Reuse headercard field styles, but force vertical layout -->
+          <div class="settingsform headercard">
+            <div class="formgrid">
+
+              <div class="flfield">
+                <input class="flinput" placeholder=" " [(ngModel)]="name" />
+                <label class="fllabel">Rule Name</label>
+              </div>
+
+              <div class="flfield" [class.filled]="!!ruleType">
+                <ui-smart-dropdown class="flcontrol"
+                                   label="Rule Type"
+                                   [options]="ruleTypeUiOptions"
+                                   [(ngModel)]="ruleType">
+                </ui-smart-dropdown>
+              </div>
+
+              <div class="flfield" [class.filled]="!!ruleGroupId">
+                <ui-smart-dropdown class="flcontrol"
+                                   label="Rule Group"
+                                   [options]="groupUiOptions"
+                                   [(ngModel)]="ruleGroupId">
+                </ui-smart-dropdown>
+              </div>
+
+              <div class="flfield filled">
+                <div class="activeRow">
+                  <label class="activeLabel">Active</label>
+                  <label class="switch">
+                    <input type="checkbox" [(ngModel)]="activeFlag" />
+                    <span class="slider"></span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="flfield full">
+                <textarea class="fltextarea" rows="2" placeholder=" " [(ngModel)]="description"></textarea>
+                <label class="fllabel">Description</label>
+              </div>
+            </div>
+          </div>
+        </ng-template>
+
+      </div>
     </ng-container>
 
+    <!-- Collapsed rail stays as-is -->
     <div *ngIf="jsonPanelCollapsed"
-         style="height: 100%; display: flex; align-items: center; justify-content: center; user-select: none; writing-mode: vertical-rl; transform: rotate(180deg); font-weight: 600; opacity: 0.8;">
-      JSON
+         style="display: flex; align-items: center; justify-content: center; user-select: none; writing-mode: vertical-rl; transform: rotate(180deg); font-weight: 600; opacity: 0.8;">
+      Settings
     </div>
   </div>
+
 
 
 </div>

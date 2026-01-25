@@ -194,3 +194,113 @@ container, .container {
   flex: 1;
   position: relative;
 }
+
+
+.main-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 260px;
+  max-width: 380px;
+  height: calc(100vh - 60px);
+  border-right: 1px solid #d7dbe0;
+  background: #fff;
+  overflow: hidden;
+  transition: width 0.25s ease;
+}
+
+  .main-content.collapsed {
+    width: 44px;
+    min-width: 44px;
+    max-width: 44px;
+    padding: 0;
+    border-right: 1px solid #d7dbe0;
+  }
+
+/* Menu collapse/expand (match RulesDesigner JSON panel vibe) */
+.menuhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(2, 6, 23, .08);
+  background: linear-gradient(135deg, rgba(2, 6, 23, .04), rgba(37, 99, 235, .08));
+}
+
+.menutitle {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.menuToggle {
+  border: 1px solid #d0d5dd;
+  background: #fff;
+  color: #111827;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 1;
+}
+
+  .menuToggle:hover {
+    background: #f9fafb;
+    border-color: #cbd5e1;
+  }
+
+.main-content.collapsed .menuToggle {
+  padding: 6px 8px;
+}
+
+.menuCollapsedLabel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-weight: 600;
+  opacity: 0.8;
+  color: #0f172a;
+}
+
+/* make list scroll correctly inside flex column */
+.nav-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Add focus-visible for toggle */
+.nav-parent:focus-visible,
+.nav-child:focus-visible,
+.collapse-btn:focus-visible,
+.menuToggle:focus-visible,
+.search-bar input:focus-visible {
+  outline: 2px solid #007BFF;
+  outline-offset: 2px;
+}
+
+
+.search-bar.nav-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+  /* when collapsed, hide input + center the toggle */
+  .search-bar.nav-search.is-collapsed {
+    justify-content: center;
+    padding: 10px 6px;
+  }
+
+.menuToggle {
+  flex: 0 0 auto;
+}
+
+/* optional: tighten button so it fits inside 44px rail */
+.main-content.collapsed .menuToggle {
+  padding: 6px 8px;
+}
