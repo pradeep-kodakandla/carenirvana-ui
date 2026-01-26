@@ -4,14 +4,16 @@ import { HttpClient } from '@angular/common/http';
 import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { Observable, of } from 'rxjs';
-import { map, startWith } from 'rxjs/operators';
+import { Observable, of, merge, Subject } from 'rxjs';
+import { map, startWith, debounceTime, distinctUntilChanged, switchMap, tap, shareReplay, catchError } from 'rxjs/operators';
 
 import { CrudService } from 'src/app/service/crud.service';
 import { AuthService } from 'src/app/service/auth.service';
 import { MemberenrollmentService } from 'src/app/service/memberenrollment.service';
 
 import { AuthconfirmleavedialogComponent } from 'src/app/member/UM/components/authconfirmleavedialog/authconfirmleavedialog.component';
+import { RulesengineService, ExecuteTriggerResponse } from 'src/app/service/rulesengine.service'; // adjust path if needed
+
 
 interface MemberEnrollment {
   Account_PCP?: string;
@@ -27,7 +29,7 @@ interface MemberEnrollment {
   Coverage_Status?: string;
 }
 
-type CodeOption = { code: string; desc: string };
+type CodeOption = { code: string; desc: string; codeDesc?: string };
 
 @Component({
   selector: 'app-authsmartcheck',
@@ -57,6 +59,10 @@ export class AuthsmartcheckComponent implements OnInit {
   filteredCpt$!: Observable<CodeOption[]>;
   filteredService$!: Observable<CodeOption[]>;
 
+  private codesetsLoaded$?: Observable<void>;
+  private icdAutoRefresh$ = new Subject<void>();
+  private serviceAutoRefresh$ = new Subject<void>();
+
   // Date text boxes (D / D+1 / D-1)
   scheduledDateText = '';
   dueDateText = '';
@@ -79,7 +85,8 @@ export class AuthsmartcheckComponent implements OnInit {
     private http: HttpClient,
     private dialog: MatDialog,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private rulesengineService: RulesengineService
   ) { }
 
   ngOnInit(): void {
@@ -150,20 +157,24 @@ export class AuthsmartcheckComponent implements OnInit {
 
   addIcdRow(): void {
     this.icds.push(this.createIcdRow());
+    this.icdAutoRefresh$.next();
   }
 
   removeIcdRow(i: number): void {
     if (this.icds.length === 1) return;
     this.icds.removeAt(i);
+    this.icdAutoRefresh$.next();
   }
 
   addServiceRow(): void {
     this.services.push(this.createServiceRow());
+    this.serviceAutoRefresh$.next();
   }
 
   removeServiceRow(i: number): void {
     if (this.services.length === 1) return;
     this.services.removeAt(i);
+    this.serviceAutoRefresh$.next();
   }
 
   // --- Enrollment ---
@@ -286,42 +297,143 @@ export class AuthsmartcheckComponent implements OnInit {
 
   // --- Autocomplete ---
   private wireAutocomplete(): void {
-    // We filter based on current focused row values via valueChanges
-    // (simple pattern: filter globally; each input gets same filtered stream)
-    this.filteredCpt$ = of([]);     // set once data loads
-    this.filteredService$ = of([]); // set once data loads
+    // Wire Angular Material mat-autocomplete to the FormArray controls (mirrors AuthDetails' "searchFn + minChars + debounce")
+    // We keep a single filtered stream per field-type, and rebuild the merged valueChanges streams whenever rows are added/removed.
+    const minChars = 1;
+    const debounceMs = 200;
+    const limit = 25;
+
+    this.filteredCpt$ = this.icdAutoRefresh$.pipe(
+      startWith(void 0),
+      switchMap(() => {
+        const ctrls = this.icds.controls
+          .map(g => (g as FormGroup).get('icd10') as FormControl)
+          .filter(Boolean);
+
+        if (!ctrls.length) return of([] as CodeOption[]);
+
+        return merge(
+          ...ctrls.map(c => c.valueChanges.pipe(startWith(c.value)))
+        ).pipe(
+          map(v => (typeof v === 'string') ? v : (v?.code ?? '')),
+          map(v => String(v ?? '').trim()),
+          debounceTime(debounceMs),
+          distinctUntilChanged(),
+          switchMap(q => q.length >= minChars ? this.searchLocalIcd(q, limit) : of([] as CodeOption[]))
+        );
+      })
+    ).pipe(shareReplay(1));
+
+    this.filteredService$ = this.serviceAutoRefresh$.pipe(
+      startWith(void 0),
+      switchMap(() => {
+        const ctrls = this.services.controls
+          .map(g => (g as FormGroup).get('serviceCode') as FormControl)
+          .filter(Boolean);
+
+        if (!ctrls.length) return of([] as CodeOption[]);
+
+        return merge(
+          ...ctrls.map(c => c.valueChanges.pipe(startWith(c.value)))
+        ).pipe(
+          map(v => (typeof v === 'string') ? v : (v?.code ?? '')),
+          map(v => String(v ?? '').trim()),
+          debounceTime(debounceMs),
+          distinctUntilChanged(),
+          switchMap(q => q.length >= minChars ? this.searchLocalServiceCodes(q, limit) : of([] as CodeOption[]))
+        );
+      })
+    ).pipe(shareReplay(1));
   }
 
+  // Warm-up load for both ICD + Service codesets (same getAllCodesets('ICD') contract used in AuthDetails)
   loadCodesForField(): void {
-    const type = 'ICD';
-    // Only load once
-    if (this.allIcdCodes.length > 0 && this.allServiceCodes.length > 0) return;
-
-    // Adjust these calls to match your existing AuthService methods
-    // (your smartauthcheck already does something similar)
-    this.authService.getAllCodesets(type).subscribe({
-      next: (resp: any) => {
-        // Expecting resp.icd10Codes + resp.serviceCodes (adjust to your actual response)
-        this.allIcdCodes = (resp?.icd10Codes || resp?.icd || []).map((x: any) => ({
-          code: x.code ?? x.Code,
-          desc: x.desc ?? x.Description ?? x.description,
-        }));
-        this.allServiceCodes = (resp?.serviceCodes || resp?.cpt || []).map((x: any) => ({
-          code: x.code ?? x.Code,
-          desc: x.desc ?? x.Description ?? x.description,
-        }));
-
-        this.filteredCpt$ = this.makeFilterStream(this.allIcdCodes);
-        this.filteredService$ = this.makeFilterStream(this.allServiceCodes);
-      },
-      error: (e: any) => console.error('Codeset load failed', e),
-    });
+    this.ensureCodesetsLoaded().subscribe();
   }
 
-  private makeFilterStream(options: CodeOption[]): Observable<CodeOption[]> {
-    // This stream is used by mat-autocomplete; it filters by whichever control is currently typing.
-    // We’ll filter using a merged valueChanges approach is overkill here, so keep it simple:
-    return of(options);
+  private ensureCodesetsLoaded(): Observable<void> {
+    if (this.codesetsLoaded$) return this.codesetsLoaded$;
+
+    const svc: any = this.authService as any;
+    if (typeof svc.getAllCodesets !== 'function') {
+      this.codesetsLoaded$ = of(void 0).pipe(shareReplay(1));
+      return this.codesetsLoaded$;
+    }
+
+    this.codesetsLoaded$ = svc.getAllCodesets('ICD').pipe(
+      tap((resp: any) => {
+        const icdSrc =
+          resp?.icd10Codes ||
+          resp?.icd ||
+          resp?.icd10 ||
+          (Array.isArray(resp) ? resp : []);
+
+        const svcSrc =
+          resp?.serviceCodes ||
+          resp?.cpt ||
+          resp?.medicalCodes ||
+          resp?.service ||
+          [];
+
+        this.allIcdCodes = (icdSrc || [])
+          .map((x: any) => {
+            const code = x?.code ?? x?.Code ?? x?.icdcode ?? x?.icdCode ?? '';
+            const desc = x?.codeDesc ?? x?.codedescription ?? x?.Description ?? x?.description ?? x?.desc ?? '';
+            const sCode = String(code ?? '').trim();
+            const sDesc = String(desc ?? '').trim();
+            return { code: sCode, desc: sDesc, codeDesc: sDesc } as CodeOption;
+          })
+          .filter((x: CodeOption) => !!x.code);
+
+        this.allServiceCodes = (svcSrc || [])
+          .map((x: any) => {
+            const code = x?.code ?? x?.Code ?? x?.cptcode ?? x?.cptCode ?? x?.serviceCode ?? '';
+            const desc = x?.codeDesc ?? x?.codedescription ?? x?.Description ?? x?.description ?? x?.desc ?? '';
+            const sCode = String(code ?? '').trim();
+            const sDesc = String(desc ?? '').trim();
+            return { code: sCode, desc: sDesc, codeDesc: sDesc } as CodeOption;
+          })
+          .filter((x: CodeOption) => !!x.code);
+
+        // Helpful when debugging "no options" issues
+        // console.log('[AuthSmartCheck] codesets loaded', { icd: this.allIcdCodes.length, service: this.allServiceCodes.length });
+      }),
+      map(() => void 0),
+      catchError((err: any) => {
+        console.error('[AuthSmartCheck] getAllCodesets failed', err);
+        this.allIcdCodes = [];
+        this.allServiceCodes = [];
+        return of(void 0);
+      }),
+      shareReplay(1)
+    );
+    console.log('[AuthSmartCheck] codesets loaded', { icd: this.allIcdCodes.length, service: this.allServiceCodes.length });
+
+    return this.codesetsLoaded$ ?? of(void 0);
+
+  }
+
+  private filterCodes(options: CodeOption[], q: string, limit: number): CodeOption[] {
+    const term = String(q ?? '').trim().toLowerCase();
+    const lim = Number.isFinite(Number(limit)) ? Number(limit) : 25;
+
+    if (!term) return (options || []).slice(0, lim);
+
+    return (options || [])
+      .filter(o => {
+        const code = String(o?.code ?? '').toLowerCase();
+        const desc = String(o?.codeDesc ?? o?.desc ?? '').toLowerCase();
+        return code.includes(term) || desc.includes(term);
+      })
+      .slice(0, lim);
+  }
+
+  private searchLocalIcd(q: string, limit: number): Observable<CodeOption[]> {
+    return this.ensureCodesetsLoaded().pipe(map(() => this.filterCodes(this.allIcdCodes, q, limit)));
+  }
+
+  private searchLocalServiceCodes(q: string, limit: number): Observable<CodeOption[]> {
+    return this.ensureCodesetsLoaded().pipe(map(() => this.filterCodes(this.allServiceCodes, q, limit)));
   }
 
   displayCode = (opt: any): string => {
@@ -433,18 +545,27 @@ export class AuthsmartcheckComponent implements OnInit {
       'LOB': lob,
     };
 
-    this.http.post(this.decisionTableUrl, body, { responseType: 'text' }).subscribe({
-      next: (raw: string) => {
-        let data: any = raw;
-        try { data = JSON.parse(raw); } catch { }
+    const triggerKey = 'SMART_AUTH_CHECK.BUTTON_CLICK';
+    const facts = {
+      serviceCode: '11922',
+      procedure: {
+        fromDate: '1/1/2021',
+        toDate: '12/31/2999'
+      }
+    };
 
-        // If auth is required → show confirm then route
-        if (data === 'Y') {
+    this.rulesengineService.executeTrigger(triggerKey, facts).subscribe({
+      next: (res: ExecuteTriggerResponse) => {
+        console.log('Rules response:', res);
+
+        const authRequired = (res?.outputs?.result1 ?? '').toString().toUpperCase() === 'YES';
+
+        if (authRequired) {
           const ref = this.dialog.open(AuthconfirmleavedialogComponent, {
             width: '520px',
             data: {
               title: 'Authorization Required',
-              message: 'Authorization is required based on the selected LOB and Service Code. Continue to create Authorization?',
+              message: 'Authorization is required based on the selected inputs. Continue to create Authorization?',
               okText: 'Continue',
               cancelText: 'Cancel',
               showCancel: true,
@@ -459,11 +580,43 @@ export class AuthsmartcheckComponent implements OnInit {
         }
       },
       error: (e) => {
-        console.error('Decision table failed', e);
-        // fail-open → still allow user to proceed
+        console.error('Rules trigger failed', e);
+        // fail-open (same behavior you already had)
         this.gotoDetails();
-      },
+      }
     });
+
+    //this.http.post(this.decisionTableUrl, body, { responseType: 'text' }).subscribe({
+    //  next: (raw: string) => {
+    //    let data: any = raw;
+    //    try { data = JSON.parse(raw); } catch { }
+
+    //    // If auth is required → show confirm then route
+    //    if (data === 'Y') {
+    //      const ref = this.dialog.open(AuthconfirmleavedialogComponent, {
+    //        width: '520px',
+    //        data: {
+    //          title: 'Authorization Required',
+    //          message: 'Authorization is required based on the selected LOB and Service Code. Continue to create Authorization?',
+    //          okText: 'Continue',
+    //          cancelText: 'Cancel',
+    //          showCancel: true,
+    //        },
+    //      });
+
+    //      ref.afterClosed().subscribe((ok: boolean) => {
+    //        if (ok) this.gotoDetails();
+    //      });
+    //    } else {
+    //      this.gotoDetails();
+    //    }
+    //  },
+    //  error: (e) => {
+    //    console.error('Decision table failed', e);
+    //    // fail-open → still allow user to proceed
+    //    this.gotoDetails();
+    //  },
+    //});
   }
 
   private gotoDetails(): void {
@@ -503,5 +656,18 @@ export class AuthsmartcheckComponent implements OnInit {
     this.smartAuthCheckForm.patchValue({
       authTypeId: this.selectedAuthTypeId
     });
+  }
+
+  // Backward-compatible handlers (in case template wires (input)="onIcdInput/ onServiceInput")
+  onIcdInput(i: number, ev: Event): void {
+    const v = ((ev?.target as HTMLInputElement)?.value ?? '').toString();
+    const g = this.icds.at(i) as FormGroup;
+    if (!v) g.patchValue({ icd10Desc: '' }, { emitEvent: false });
+  }
+
+  onServiceInput(i: number, ev: Event): void {
+    const v = ((ev?.target as HTMLInputElement)?.value ?? '').toString();
+    const g = this.services.at(i) as FormGroup;
+    if (!v) g.patchValue({ serviceDesc: '' }, { emitEvent: false });
   }
 }

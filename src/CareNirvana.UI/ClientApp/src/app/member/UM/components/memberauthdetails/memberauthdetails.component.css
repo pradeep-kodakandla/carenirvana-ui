@@ -78,3 +78,24 @@
 .no-data {
   opacity: .8;
 }
+
+
+.priority-cell {
+  display: inline-flex;
+  align-items: center; /* vertical center */
+  justify-content: center;
+  gap: 6px; /* space between icon & text */
+}
+
+.expedited-icon {
+  color: #dc2626;
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  line-height: 18px;
+}
+
+.priority-text {
+  line-height: 1; /* helps keep it visually centered */
+}
+

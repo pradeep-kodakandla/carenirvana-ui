@@ -1,7 +1,7 @@
 <mat-menu #rowMenu="matMenu" panelClass="row-menu-panel">
-  <ng-template matMenuContent let-row="row">
+  <ng-template matMenuContent let-row="row" let-trigger="trigger">
     <button mat-menu-item class="row-menu-item row-menu-item--primary"
-            (click)="openActivity(row); $event.stopPropagation()">
+            (click)="openActivity(row); trigger.closeMenu()">
       <span class="row-menu-icon">
         <mat-icon>add</mat-icon>
       </span>
@@ -9,7 +9,7 @@
     </button>
 
     <button mat-menu-item class="row-menu-item"
-            (click)="openNotes(row, 'add'); $event.stopPropagation()">
+            (click)="openNotes(row, 'add'); trigger.closeMenu()">
       <span class="row-menu-icon">
         <mat-icon>edit_note</mat-icon>
       </span>
@@ -24,7 +24,7 @@
     </button>
 
     <button mat-menu-item class="row-menu-item"
-            (click)="openDocuments(row, 'add'); $event.stopPropagation()">
+            (click)="openDocuments(row, 'add'); trigger.closeMenu()">
       <span class="row-menu-icon">
         <mat-icon>description</mat-icon>
       </span>
@@ -39,19 +39,19 @@
     </button>
 
     <button mat-menu-item class="row-menu-item"
-            (click)="openNotes(row); $event.stopPropagation()">
+            (click)="openNotes(row); trigger.closeMenu()">
       <span class="row-menu-icon">
-        <mat-icon>person_remove</mat-icon>
+        <mat-icon>content_copy</mat-icon>
       </span>
-      <span class="row-menu-label">Unassign</span>
+      <span class="row-menu-label">Clone</span>
     </button>
 
     <button mat-menu-item class="row-menu-item"
-            (click)="openNotes(row); $event.stopPropagation()">
+            (click)="openNotes(row); trigger.closeMenu()">
       <span class="row-menu-icon">
         <mat-icon>summarize</mat-icon>
       </span>
-      <span class="row-menu-label">Summarizer</span>
+      <span class="row-menu-label">Case Summary</span>
     </button>
   </ng-template>
 </mat-menu>
@@ -192,10 +192,17 @@
           <ng-container matColumnDef="caseNumber">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Case #</th>
             <td mat-cell *matCellDef="let row">
-              <a href="#"
-                 (click)="onCaseClick(row.caseNumber || '', row.memberId || '', row.memberDetailId); $event.preventDefault()">
-                {{ row.caseNumber || '-' }}
-              </a>
+              <div class="name-cell">
+                <div class="sub-name">
+                  <a href="#"
+                     (click)="onCaseClick(row.caseNumber || '', row.memberId || '', row.memberDetailId); $event.preventDefault()">
+                    {{ row.caseNumber || '-' }}
+                  </a>
+                </div>
+                <div class="sub-id">Level: {{ row.caseLevelId || '-' }}</div>
+              </div>
+
+
             </td>
           </ng-container>
 
@@ -204,19 +211,29 @@
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Case Type</th>
             <td mat-cell *matCellDef="let row">{{ row.caseTypeText || row.caseType || '-' }}</td>
           </ng-container>
+          <!-- Case Category -->
+          <ng-container matColumnDef="caseCategory">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Case Category</th>
+            <td mat-cell *matCellDef="let row">{{ row.caseCategoryText || row.caseCategory || '-' }}</td>
+          </ng-container>
 
           <!-- Received Date -->
           <ng-container matColumnDef="receivedDateTime">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Received</th>
             <td mat-cell *matCellDef="let row">
-              {{ row.receivedDateTime ? (row.receivedDateTime | date:'MM/dd/yyyy HH:mm:ss') : '-' }}
+              {{ row.receivedDateTime ? (row.receivedDateTime | date) : '-' }}
             </td>
           </ng-container>
 
           <!-- Priority -->
           <ng-container matColumnDef="priority">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Priority</th>
-            <td mat-cell *matCellDef="let row">{{ row.casePriorityText || row.casePriority || '-' }}</td>
+            <td mat-cell *matCellDef="let row">
+              <span *ngIf="isExpedited(row)" class="priority-cell" matTooltip="Expedited">
+                <mat-icon class="expedited-icon" aria-hidden="true">error</mat-icon>
+              </span>
+              {{ row.casePriorityText || row.casePriority || '-' }}
+            </td>
           </ng-container>
 
           <!-- Status -->
@@ -225,11 +242,16 @@
             <td mat-cell *matCellDef="let row">{{ row.caseStatusText || row.caseStatusId || '-' }}</td>
           </ng-container>
 
+          <!-- Created By -->
+          <!--<ng-container matColumnDef="createdBy">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Created By</th>
+            <td mat-cell *matCellDef="let row">{{ row.createdByUserName || row.createdBy || '-' }}</td>
+          </ng-container>-->
           <!-- Created On -->
           <ng-container matColumnDef="createdOn">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Created</th>
             <td mat-cell *matCellDef="let row">
-              {{ row.createdOn ? (row.createdOn | date:'MM/dd/yyyy HH:mm:ss') : '-' }}
+              {{ row.createdOn ? (row.createdOn | date) : '-' }}
             </td>
           </ng-container>
 
@@ -240,7 +262,7 @@
               <button mat-icon-button
                       class="row-menu-trigger-icon"
                       [matMenuTriggerFor]="rowMenu"
-                      [matMenuTriggerData]="{ row: row }"
+                      [matMenuTriggerData]="{ row: row, trigger: rowMenu }"
                       (click)="$event.stopPropagation()"
                       matTooltip="View action list">
                 <mat-icon>more_vert</mat-icon>
@@ -260,7 +282,8 @@
               *matRowDef="let row; columns: displayedColumns;"
               class="example-element-row"
               [class.example-expanded-row]="expandedElement === row"
-              (click)="expandedElement = expandedElement === row ? null : row">
+              (click)="expandedElement = expandedElement === row ? null : row"
+              [class.row-target]="(row.caseNumber) === selectedCaseNumber">
           </tr>
           <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="example-detail-row"></tr>
           <tr class="mat-row" *matNoDataRow>

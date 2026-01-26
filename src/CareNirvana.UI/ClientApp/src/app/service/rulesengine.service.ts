@@ -112,6 +112,26 @@ export interface RulesDashboardStats {
   recordsProcessed: DashboardKpi;
 }
 
+export interface ExecuteTriggerRequest {
+  triggerKey: string;   // ex: "SMART_AUTH_CHECK.BUTTON_CLICK"
+  facts: any;           // your request payload / facts bag
+}
+
+export interface ExecuteTriggerResponse {
+  triggerKey: string;
+
+  // optional metadata (nice to have)
+  matchedRuleId?: number;
+  matchedRuleName?: string;
+  matchedRowId?: string;        // ex: "row_1"
+  stopReason?: string;          // ex: "FIRST_MATCH"
+
+  outputs: Record<string, any>; // ex: { result1: "Yes", result2: "No", result3: "No" }
+
+  receivedOn?: string;
+  responseTimeMs?: number;
+}
+
 export interface DropdownOption<T> { value: T; label: string; }
 
 @Injectable({ providedIn: 'root' })
@@ -123,7 +143,7 @@ export class RulesengineService {
 
   getRuleTypeOptions(): DropdownOption<RuleType>[] {
     return [
-      { value: 'REALTIME', label: 'Real-time' },
+      { value: 'REALTIME', label: 'Realtime' },
       { value: 'BATCH', label: 'Batch' }
     ];
   }
@@ -283,6 +303,23 @@ export class RulesengineService {
 
   getDashboard(): Observable<RulesDashboardStats> {
     return this.http.get<RulesDashboardStats>(`${this.baseUrl}/dashboard`);
+  }
+
+  executeTrigger(triggerKey: string, facts: any): Observable<ExecuteTriggerResponse> {
+    // ✅ matches [HttpPost("executetrigger")]
+    const url = `${this.baseUrl}/executetrigger`;
+
+    // ✅ matches your controller request object (ExecuteTriggerRequest)
+    const body: ExecuteTriggerRequest = {
+      triggerKey,
+      facts,
+      // optional fields if your backend model has them:
+      // moduleId: 1,
+      // requestedUserId: 123,
+      // clientApp: 'CareNirvana'
+    };
+
+    return this.http.post<ExecuteTriggerResponse>(url, body);
   }
 
 }

@@ -1,6 +1,7 @@
 import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { DATE_PIPE_DEFAULT_OPTIONS } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
 import { RouterModule, Routes } from '@angular/router';
@@ -198,14 +199,14 @@ const routes: Routes = [
     CmclinicalindicatorsComponent, AgcomplaintcategoryComponent, AgcomplaintclassComponent, AgcomplaintcredentialsComponent, AgcomplaintstatusreasonComponent,
     AgcomplaintsubcategoryComponent, AgcoordinatortypeComponent, AgparticipantroleComponent, AgparticipanttypeComponent,
     AgqocinvestigationoutcomeComponent, AgqocinvestigationreasonComponent, AgqocscoreComponent, AgresolutioncategoryComponent,
-    AgresolutionsubcategoryComponent, MembercasedetailsComponent, MemberauthdetailsComponent, 
+    AgresolutionsubcategoryComponent, MembercasedetailsComponent, MemberauthdetailsComponent,
 
     UiDropdownComponent,
   ],
   imports: [
     BrowserModule.withServerTransition({ appId: 'ng-cli-universal' }),
     HttpClientModule,
-    FormsModule, 
+    FormsModule,
     ReactiveFormsModule, AngularMaterialModule, SharedUiModule, UmsharedwidgetsModule, CasesharedwidgetsModule,
     RouterModule.forRoot([
       { path: '', component: LoginComponent, pathMatch: 'full' },
@@ -378,7 +379,8 @@ const routes: Routes = [
 
     ])
   ],
-  providers: [SidenavService, DatePipe],
+  providers: [SidenavService, DatePipe,
+    { provide: DATE_PIPE_DEFAULT_OPTIONS, useValue: { dateFormat: 'MM/dd/yyyy hh:mm:ss a' } }],
   bootstrap: [AppComponent],
   exports: []
 })

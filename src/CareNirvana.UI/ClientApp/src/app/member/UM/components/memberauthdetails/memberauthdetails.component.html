@@ -1,15 +1,58 @@
 <mat-menu #menu="matMenu">
-  <button mat-menu-item *ngIf="hasPermission('Add Auth Activity', 'add')">
-    <span>Add Auth Activity</span>
+  <button mat-menu-item class="row-menu-item row-menu-item--primary">
+    <span class="row-menu-icon">
+      <mat-icon>add</mat-icon>
+    </span>
+    <span class="row-menu-label">Add Activity</span>
   </button>
-  <button mat-menu-item *ngIf="hasPermission('Add Auth Notes', 'add')">
-    <span>Add Notes</span>
+
+  <button mat-menu-item class="row-menu-item">
+    <span class="row-menu-icon">
+      <mat-icon>edit_note</mat-icon>
+    </span>
+    <span class="row-menu-label">Add Notes</span>
   </button>
-  <button mat-menu-item *ngIf="hasPermission('Add Auth Documents', 'add')">
-    <span>Add Documents</span>
+
+  <button mat-menu-item class="row-menu-item">
+    <span class="row-menu-icon">
+      <mat-icon>assignment</mat-icon>
+    </span>
+    <span class="row-menu-label">Run Assessment</span>
   </button>
-  <button mat-menu-item *ngIf="hasPermission('Auth Summary', 'view')">
-    <span>Auth Summary</span>
+
+  <button mat-menu-item class="row-menu-item">
+    <span class="row-menu-icon">
+      <mat-icon>description</mat-icon>
+    </span>
+    <span class="row-menu-label">Add Documents</span>
+  </button>
+
+  <button mat-menu-item class="row-menu-item">
+    <span class="row-menu-icon">
+      <mat-icon>outgoing_mail</mat-icon>
+    </span>
+    <span class="row-menu-label">Send Letter</span>
+  </button>
+
+  <button mat-menu-item class="row-menu-item">
+    <span class="row-menu-icon">
+      <mat-icon>content_copy</mat-icon>
+    </span>
+    <span class="row-menu-label">Clone Auth</span>
+  </button>
+
+  <button mat-menu-item class="row-menu-item">
+    <span class="row-menu-icon">
+      <mat-icon>person_remove</mat-icon>
+    </span>
+    <span class="row-menu-label">Transfer</span>
+  </button>
+
+  <button mat-menu-item class="row-menu-item">
+    <span class="row-menu-icon">
+      <mat-icon>summarize</mat-icon>
+    </span>
+    <span class="row-menu-label">Auth Summary </span>
   </button>
 </mat-menu>
 
@@ -45,15 +88,20 @@
       <mat-card [ngClass]="{ 'case-card': true, 'compact': compactMode }">
 
         <div class="d-flex justify-content-between align-items-center mb-3">
-          <a class="case-link" (click)="onAuthClick(row.authNumber)">
-            {{ row.authNumber }}
-          </a>
+          <div>
+            <span *ngIf="row.requestPriority === 'Expedited'" class="priority-cell" matTooltip="Expedited">
+              <mat-icon class="expedited-icon" aria-hidden="true">error</mat-icon>
+            </span>
+            <a class="case-link" (click)="onAuthClick(row.authNumber)" matTooltip="Click to access auth details">
 
+              {{ row.authNumber }}
+            </a>
+          </div>
           <div class="d-flex align-items-center">
-            <span class="case-chip me-2 type">
+            <span class="case-chip me-2 type" matTooltip="Auth Type">
               {{ row.authTemplateName || row.authTypeId || '—' }}
             </span>
-            <span class="case-chip me-2 status">
+            <span class="case-chip me-2 status" matTooltip="Auth Status">
               {{ row.authStatusText || row.authStatus || '—' }}
             </span>
             <button mat-icon-button [matMenuTriggerFor]="menu">
@@ -66,26 +114,26 @@
           <div class="text-sm">
             <mat-icon class="me-1" fontIcon="schedule" inline></mat-icon>
             <strong>Due Date: </strong>&nbsp;
-            {{ row.authDueDate ? (row.authDueDate | date:'MM/dd/yyyy') : '—' }}
+            {{ row.authDueDate ? (row.authDueDate | date) : '—' }}
           </div>
 
           <div class="text-sm">
             <mat-icon class="me-1" fontIcon="event" inline></mat-icon>
             <strong>Next Review: </strong>&nbsp;
-            {{ row.nextReviewDate ? (row.nextReviewDate | date:'MM/dd/yyyy') : '—' }}
+            {{ row.nextReviewDate ? (row.nextReviewDate | date) : '—' }}
           </div>
 
           <div class="text-sm">
             <mat-icon class="me-1" fontIcon="healing" inline></mat-icon>
             <strong>Treatment: </strong>&nbsp;
-            {{ row.treatmentType || '—' }}
+            {{ row.treatementType || '—' }}
           </div>
 
           <div class="text-sm">
             <mat-icon class="me-1" fontIcon="account_circle" inline></mat-icon>
             <strong>Created: </strong>&nbsp;
             {{ row.createdByUserName || '—' }}
-            <span class="muted">• {{ row.createdOn ? (row.createdOn | date:'MM/dd/yyyy HH:mm') : '' }}</span>
+            <span class="muted">• {{ row.createdOn ? (row.createdOn | date) : '' }}</span>
           </div>
         </div>
 

@@ -1,9 +1,59 @@
 <mat-menu #menu="matMenu">
-  <button mat-menu-item><span>Add Activity</span></button>
-  <button mat-menu-item><span>Run Assessment</span></button>
-  <button mat-menu-item><span>Add Message</span></button>
-  <button mat-menu-item><span>Add Notes</span></button>
-  <button mat-menu-item><span>Upload Document</span></button>
+  <button mat-menu-item class="row-menu-item row-menu-item--primary">
+    <span class="row-menu-icon">
+      <mat-icon>add</mat-icon>
+    </span>
+    <span class="row-menu-label">Add Activity</span>
+  </button>
+
+  <button mat-menu-item class="row-menu-item">
+    <span class="row-menu-icon">
+      <mat-icon>edit_note</mat-icon>
+    </span>
+    <span class="row-menu-label">Add Notes</span>
+  </button>
+
+  <button mat-menu-item class="row-menu-item">
+    <span class="row-menu-icon">
+      <mat-icon>assignment</mat-icon>
+    </span>
+    <span class="row-menu-label">Run Assessment</span>
+  </button>
+
+  <button mat-menu-item class="row-menu-item">
+    <span class="row-menu-icon">
+      <mat-icon>description</mat-icon>
+    </span>
+    <span class="row-menu-label">Add Documents</span>
+  </button>
+
+  <button mat-menu-item class="row-menu-item">
+    <span class="row-menu-icon">
+      <mat-icon>outgoing_mail</mat-icon>
+    </span>
+    <span class="row-menu-label">Send Letter</span>
+  </button>
+
+  <button mat-menu-item class="row-menu-item">
+    <span class="row-menu-icon">
+      <mat-icon>content_copy</mat-icon>
+    </span>
+    <span class="row-menu-label">Clone Auth</span>
+  </button>
+
+  <button mat-menu-item class="row-menu-item">
+    <span class="row-menu-icon">
+      <mat-icon>person_remove</mat-icon>
+    </span>
+    <span class="row-menu-label">Transfer</span>
+  </button>
+
+  <button mat-menu-item class="row-menu-item">
+    <span class="row-menu-icon">
+      <mat-icon>summarize</mat-icon>
+    </span>
+    <span class="row-menu-label">Auth Summary </span>
+  </button>
 </mat-menu>
 <mat-menu #alertsMenu="matMenu" class="history-popover" yPosition="below" [overlapTrigger]="false" [hasBackdrop]="true" [backdropClass]="'cdk-overlay-dark-backdrop'" matMenuTriggerRestoreFocus="false">
   <div class="messages-wrap" (click)="$event.stopPropagation()">
@@ -16,10 +66,14 @@
     <div class="sidebar-toolbar" [class.collapsed]="isCollapse">
       <!-- Menu (always visible) -->
       <button mat-icon-button
+              style="border: 1px solid #e2e5ea;height:auto;"
               class="toggle-button"
               aria-label="Menu"
+              matTooltip="Click to view actions"
               [matMenuTriggerFor]="menu">
-        <mat-icon>menu</mat-icon>
+
+        <mat-icon>more_vert</mat-icon>
+
       </button>
 
       <!-- Alerts (always visible) -->
@@ -28,6 +82,7 @@
               aria-label="Alerts"
               #messagesTrigger="matMenuTrigger"
               [matMenuTriggerFor]="alertsMenu"
+              matTooltip="Click to view alerts"
               (click)="openMessagesMenu(messagesTrigger)">
         <mat-icon aria-hidden="false" matBadge="{{member?.alertCount}}">notifications</mat-icon>
       </button>
@@ -38,6 +93,7 @@
       <!-- Collapse / Expand -->
       <button class="toggle-button collapse-toggle"
               (click)="toggleSidebar()"
+              matTooltip="Expand/Collapse Sidebar"
               aria-label="Toggle member sidebar">
         <mat-icon>{{ isCollapse ? 'chevron_right' : 'chevron_left' }}</mat-icon>
       </button>

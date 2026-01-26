@@ -398,7 +398,7 @@
           <!-- Header and main rows first -->
           <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
           <tr mat-row *matRowDef="let row; columns: displayedColumns;"
-              class="member-row" [class.expanded-row]="expandedRow === row" [class.notes-target]="(row.memberDetailsId ?? row.memberId) === selectedMemberId"></tr>
+              class="member-row" [class.expanded-row]="expandedRow === row" [class.row-target]="(row.memberDetailsId ?? row.memberId) === selectedMemberId"></tr>
 
           <!-- Detail Row *matRowDef="let row; columns: ['expandedDetail']; when: isDetailRow"-->
           <tr mat-row class="detail-row"></tr>

@@ -129,7 +129,6 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
       next: rows => {
         this.rawData = Array.isArray(rows) ? rows : [];
         this.recomputeAll();
-        console.log('Assigned Auths data loaded, count=', this.rawData);
       },
       error: () => {
         this.rawData = [];
@@ -146,7 +145,6 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
   onMemberClick(memberId: string, memberName: string, memberDetailsId: string): void {
     const tabLabel = `Member: ${memberName}`;
     const tabRoute = `/member-info/${memberId}`;
-    console.log('Member Clicked:', memberId, memberName, memberDetailsId);
     const existingTab = this.headerService.getTabs().find(tab => tab.route === tabRoute);
 
     if (existingTab) {
@@ -220,7 +218,7 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
       const today = new Date();
 
       base = base.filter(r => {
-        const d = this.toDate(r?.authDueDate);
+        const d = this.toDate(this.getComputedAuthDueDate(r));// r?.authDueDate);
         if (!d) return false;
 
         const cmp = this.compareDateOnly(d, today); // <0 overdue, 0 today, >0 future
@@ -564,5 +562,12 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
     return this.toDate(row?.nextReviewDate ?? row?.NextReviewDate);
   }
 
+  public isExpedited(row: any): boolean {
+    const v =
+      row?.requestPriorityValue ?? row?.authPriority ??
+      row?.RequestPriorityValue ?? row?.AuthPriority;
+    const s = (v ?? '').toString().trim();
+    return s !== '-' && s.toLowerCase().startsWith('exped'); // handles "Expedited", "EXPEDITED"
+  }
 
 }

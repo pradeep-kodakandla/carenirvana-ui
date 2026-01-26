@@ -108,7 +108,7 @@
           <label class="floating-label">From Date <span class="req">*</span></label>
 
           <ui-datetime-picker formControlName="scheduledDateTime"
-                              [dateOnly]="false"
+                              [dateOnly]="true"
                               placeholderDateTime="Enter D, D+1, D-1 or select"
                               tabindex="-1">
           </ui-datetime-picker>
@@ -124,7 +124,7 @@
           <label class="floating-label">To Date <span class="req">*</span></label>
 
           <ui-datetime-picker formControlName="dueDateTime"
-                              [dateOnly]="false"
+                              [dateOnly]="true"
                               placeholderDateTime="Enter D, D+1, D-1 or select"
                               tabindex="-1">
           </ui-datetime-picker>
@@ -146,7 +146,7 @@
                    formControlName="icd10"
                    [matAutocomplete]="icdAuto"
                    placeholder="Type ICD-10 (code or description)"
-                   (focus)="loadCodesForField()" />
+                   (focus)="loadCodesForField()" (input)="onIcdInput(i, $event)" />
 
             <mat-autocomplete #icdAuto="matAutocomplete"
                               [displayWith]="displayCode"
@@ -183,7 +183,7 @@
                    formControlName="serviceCode"
                    [matAutocomplete]="svcAuto"
                    placeholder="Type Service Code (code or description)"
-                   (focus)="loadCodesForField()" />
+                   (focus)="loadCodesForField()" (input)="onServiceInput(i, $event)" />
 
             <mat-autocomplete #svcAuto="matAutocomplete"
                               [displayWith]="displayCode"

@@ -93,7 +93,7 @@
             <!-- Created On -->
             <ng-container matColumnDef="createdOn">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Created On</th>
-              <td mat-cell *matCellDef="let row">{{ row.createdOn | date:'MM/dd/yyyy HH:mm:ss' }}</td>
+              <td mat-cell *matCellDef="let row">{{ row.createdOn | date }}</td>
             </ng-container>
 
             <!-- Refer To (username + id) -->
@@ -114,7 +114,7 @@
             <!-- Follow Up Date -->
             <ng-container matColumnDef="followUpDate">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Follow Up Date</th>
-              <td mat-cell *matCellDef="let row">{{ row.followUpDateTime | date:'MM/dd/yyyy HH:mm:ss' }}</td>
+              <td mat-cell *matCellDef="let row">{{ row.followUpDateTime | date }}</td>
             </ng-container>
 
             <!-- Due Date with colors + days-left -->
@@ -123,7 +123,7 @@
               <td mat-cell *matCellDef="let row">
                 <span class="risk-chip compact" [ngClass]="getDueDateClass(row.dueDate)">
                   <div class="date-value">
-                    {{ row.dueDate | date:'MM/dd/yyyy HH:mm:ss' }}
+                    {{ row.dueDate | date }}
                   </div>
                   <div class="days-left">
                     {{ getDaysLeftLabel(row.dueDate) }}

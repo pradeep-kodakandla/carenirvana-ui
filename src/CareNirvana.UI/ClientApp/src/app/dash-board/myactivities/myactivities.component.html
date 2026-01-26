@@ -343,38 +343,18 @@
 
                             <!-- right side: action icons -->
                             <div class="event-actions">
-                              <!--<button mat-icon-button
-                                      matTooltip="Accept"
-                                      (click)="onAccept(ev); $event.stopPropagation()">
-                                <mat-icon>check_circle</mat-icon>
-                              </button>
 
-                              <button mat-icon-button
-                                      matTooltip="Reject"
-                                      (click)="onReject(ev); $event.stopPropagation()">
-                                <mat-icon>cancel</mat-icon>
+                              <button mat-icon-button class="icon-btn acknowledge" matTooltip="Accept & Complete">
+                                <mat-icon>thumb_up</mat-icon>
                               </button>
-
-                              <button mat-icon-button
-                                      matTooltip="View"
-                                      (click)="onView(ev); $event.stopPropagation()">
-                                <mat-icon>visibility</mat-icon>
-                              </button>-->
-                              <button mat-icon-button class="icon-btn reject" matTooltip="Reject">
-                                <mat-icon>cancel</mat-icon>
+                              <button mat-icon-button class="icon-btn view" matTooltip="Edit" (click)="onViewActivity(ev); $event.stopPropagation()">
+                                <mat-icon>edit</mat-icon>
                               </button>
-
-                              <!--<button mat-icon-button class="icon-btn view" matTooltip="View">
-                                <mat-icon>visibility</mat-icon>
-                              </button>-->
                               <button mat-icon-button
                                       class="icon-btn view"
                                       matTooltip="View"
                                       (click)="onViewActivity(ev); $event.stopPropagation()">
                                 <mat-icon>visibility</mat-icon>
-                              </button>
-                              <button mat-icon-button class="icon-btn acknowledge" matTooltip="Accept & Complete">
-                                <mat-icon>thumb_up</mat-icon>
                               </button>
                             </div>
 
@@ -443,7 +423,7 @@
                   <!-- Created On -->
                   <ng-container matColumnDef="createdOn">
                     <th mat-header-cell *matHeaderCellDef mat-sort-header>Created On</th>
-                    <td mat-cell *matCellDef="let row">{{ row.createdOn | date:'MM/dd/yyyy HH:mm:ss' }}</td>
+                    <td mat-cell *matCellDef="let row">{{ row.createdOn | date }}</td>
                   </ng-container>
 
                   <!-- Refer To (username + id) -->
@@ -463,7 +443,7 @@
                   <!-- Follow Up Date -->
                   <ng-container matColumnDef="followUpDate">
                     <th mat-header-cell *matHeaderCellDef mat-sort-header>Follow Up Date</th>
-                    <td mat-cell *matCellDef="let row">{{ row.followUpDateTime | date:'MM/dd/yyyy HH:mm:ss' }}</td>
+                    <td mat-cell *matCellDef="let row">{{ row.followUpDateTime | date }}</td>
                   </ng-container>
 
                   <!-- Due Date with colors + days-left -->
@@ -473,7 +453,7 @@
                       <span class="risk-chip compact"
                             [ngClass]="getDueDateClass(row.dueDate)">
                         <div class="date-value">
-                          {{ row.dueDate | date:'MM/dd/yyyy HH:mm:ss' }}
+                          {{ row.dueDate | date }}
                         </div>
                         <div class="days-left">
                           {{ getDaysLeftLabel(row.dueDate) }}
@@ -493,10 +473,13 @@
                     <td class="actions-cell" mat-cell
                         *matCellDef="let row">
 
-                      <button mat-icon-button class="icon-btn reject" matTooltip="Reject">
-                        <mat-icon>cancel</mat-icon>
-                      </button>
 
+                      <button mat-icon-button class="icon-btn acknowledge" matTooltip="Accept & Complete">
+                        <mat-icon>thumb_up</mat-icon>
+                      </button>
+                      <button mat-icon-button class="icon-btn view" matTooltip="Edit" (click)="onViewActivity(row); $event.stopPropagation()">
+                        <mat-icon>edit</mat-icon>
+                      </button>
                       <button mat-icon-button
                               class="icon-btn view"
                               matTooltip="View"
@@ -504,9 +487,7 @@
                         <mat-icon>visibility</mat-icon>
                       </button>
 
-                      <button mat-icon-button class="icon-btn acknowledge" matTooltip="Accept & Complete">
-                        <mat-icon>thumb_up</mat-icon>
-                      </button>
+
                     </td>
                   </ng-container>
 

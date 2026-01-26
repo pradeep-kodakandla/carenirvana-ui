@@ -56,6 +56,7 @@ export class AssignedcomplaintsComponent implements OnInit, AfterViewInit {
     'memberId',
     'caseNumber',
     'caseType',
+    'caseCategory',
     'receivedDateTime',
     'priority',
     'status',
@@ -118,7 +119,6 @@ export class AssignedcomplaintsComponent implements OnInit, AfterViewInit {
       next: (rows) => {
         this.rawData = rows ?? [];
         this.recomputeAll();
-        console.log('Fetched AG cases:', this.rawData);
       },
       error: () => {
         this.rawData = [];
@@ -152,7 +152,7 @@ export class AssignedcomplaintsComponent implements OnInit, AfterViewInit {
   /** Replace with your real API call */
   private getComplaintDetails$(): Observable<AgCaseGridRow[]> {
     const userId = Number(sessionStorage.getItem('loggedInUserid') ?? 0);
-    console.log('Fetching AG cases for user ID:', userId);
+
 
     if (!userId) return of([]);
 
@@ -335,33 +335,59 @@ export class AssignedcomplaintsComponent implements OnInit, AfterViewInit {
     }
   }
 
-  onCaseClick(caseNumber: string = '', memId: string = '', memberDetailsId: any = null): void {
-    this.addClicked.emit(caseNumber);
 
-    if (!caseNumber) return;
+  onCaseClick(caseNumber: string = '', memId: string = '', memDetailsId: any = null) {
 
-    const memberId = memId ?? String(this.route.parent?.snapshot.paramMap.get('id') ?? '');
+    const memberId = Number(memId) || 0;
+    const memberDetailsId = memDetailsId
 
-    // TODO: adjust this route to your actual complaint/case details route
-    const tabRoute = `/member-info/${memberId}/ag-case/${caseNumber}`;
-    const tabLabel = `Case ${caseNumber}`;
+    const urlTree = this.router.createUrlTree(
+      ['/member-info', memberId, 'case', caseNumber, 'details']
+      //  { queryparams: isnew ? { mode: 'new' } : {} }
+    );
+
+    const tabRoute = this.router.serializeUrl(urlTree); // ✅ includes query params safely
+    const tabLabel = `Case # ${caseNumber}`;
 
     const existingTab = this.headerService.getTabs().find(t => t.route === tabRoute);
 
     if (existingTab) {
       this.headerService.selectTab(tabRoute);
-      const mdId = existingTab.memberDetailsId ?? null;
-      if (mdId) sessionStorage.setItem('selectedMemberDetailsId', mdId);
-
     } else {
-      this.headerService.addTab(tabLabel, tabRoute, String(memberId));
-      if (memberDetailsId != null) sessionStorage.setItem('selectedMemberDetailsId', String(memberDetailsId));
+      this.headerService.addTab(tabLabel, tabRoute, String(memberId), memberDetailsId);
     }
-
-    this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
-      this.router.navigate([tabRoute]);
-    });
+    // ✅ no skipLocationChange hack (this often causes weird “stuck” behavior)
+    this.router.navigateByUrl(tabRoute);
   }
+
+
+  //onCaseClick(caseNumber: string = '', memId: string = '', memberDetailsId: any = null): void {
+  //  this.addClicked.emit(caseNumber);
+
+  //  if (!caseNumber) return;
+
+  //  const memberId = memId ?? String(this.route.parent?.snapshot.paramMap.get('id') ?? '');
+
+  //  // TODO: adjust this route to your actual complaint/case details route
+  //  const tabRoute = `/member-info/${memberId}/ag-case/${caseNumber}`;
+  //  const tabLabel = `Case ${caseNumber}`;
+
+  //  const existingTab = this.headerService.getTabs().find(t => t.route === tabRoute);
+
+  //  if (existingTab) {
+  //    this.headerService.selectTab(tabRoute);
+  //    const mdId = existingTab.memberDetailsId ?? null;
+  //    if (mdId) sessionStorage.setItem('selectedMemberDetailsId', mdId);
+
+  //  } else {
+  //    this.headerService.addTab(tabLabel, tabRoute, String(memberId));
+  //    if (memberDetailsId != null) sessionStorage.setItem('selectedMemberDetailsId', String(memberDetailsId));
+  //  }
+
+  //  this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+  //    this.router.navigate([tabRoute]);
+  //  });
+  //}
 
   /** ===== helpers ===== */
   private toDate(val: any): Date | null {
@@ -534,10 +560,11 @@ export class AssignedcomplaintsComponent implements OnInit, AfterViewInit {
     this.selectedActionLabel = 'Add Documents';
   }
 
-  // OPTIONAL: Update your existing getActionLabel() switch to include documents if you want consistent titles
-  // (keep your current cases, just add:)
-  //
-  // case 'documents': return 'Documents';
-
+  public isExpedited(row: any): boolean {
+    const v =
+      row?.casePriorityText ?? row?.casePriority;
+    const s = (v ?? '').toString().trim();
+    return s !== '-' && s.toLowerCase().startsWith('exped'); // handles "Expedited", "EXPEDITED"
+  }
 
 }
