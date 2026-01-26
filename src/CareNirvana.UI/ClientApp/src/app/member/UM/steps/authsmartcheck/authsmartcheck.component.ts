@@ -59,7 +59,7 @@ export class AuthsmartcheckComponent implements OnInit {
   filteredCpt$!: Observable<CodeOption[]>;
   filteredService$!: Observable<CodeOption[]>;
 
-  private codesetsLoaded$?: Observable<void>;
+  private codesetsLoaded$!: Observable<void>;
   private icdAutoRefresh$ = new Subject<void>();
   private serviceAutoRefresh$ = new Subject<void>();
 
@@ -340,7 +340,7 @@ export class AuthsmartcheckComponent implements OnInit {
           map(v => String(v ?? '').trim()),
           debounceTime(debounceMs),
           distinctUntilChanged(),
-          switchMap(q => q.length >= minChars ? this.searchLocalServiceCodes(q, limit) : of([] as CodeOption[]))
+          switchMap(q => q.length >= minChars ? this.searchServiceCodes(q, limit) : of([] as CodeOption[]))
         );
       })
     ).pipe(shareReplay(1));
@@ -407,10 +407,8 @@ export class AuthsmartcheckComponent implements OnInit {
       }),
       shareReplay(1)
     );
-    console.log('[AuthSmartCheck] codesets loaded', { icd: this.allIcdCodes.length, service: this.allServiceCodes.length });
 
-    return this.codesetsLoaded$ ?? of(void 0);
-
+    return this.codesetsLoaded$;
   }
 
   private filterCodes(options: CodeOption[], q: string, limit: number): CodeOption[] {
@@ -432,7 +430,65 @@ export class AuthsmartcheckComponent implements OnInit {
     return this.ensureCodesetsLoaded().pipe(map(() => this.filterCodes(this.allIcdCodes, q, limit)));
   }
 
-  private searchLocalServiceCodes(q: string, limit: number): Observable<CodeOption[]> {
+  private mapAnyToCodeOption(x: any): CodeOption {
+    if (!x) return { code: '', desc: '' };
+    if (typeof x === 'string') return { code: x, desc: '' };
+
+    const code =
+      x?.code ??
+      x?.Code ??
+      x?.cptcode ??
+      x?.cptCode ??
+      x?.servicecode ??
+      x?.serviceCode ??
+      x?.procedureCode ??
+      x?.medicalCode ??
+      '';
+
+    const desc =
+      x?.codeDesc ??
+      x?.codedescription ??
+      x?.Description ??
+      x?.description ??
+      x?.desc ??
+      '';
+
+    const sCode = String(code ?? '').trim();
+    const sDesc = String(desc ?? '').trim();
+    return { code: sCode, desc: sDesc, codeDesc: sDesc };
+  }
+
+  private searchServiceCodes(q: string, limit: number): Observable<CodeOption[]> {
+    const svc: any = this.authService as any;
+
+    // Prefer AuthDetails' server-side search for procedure/medical codes when available
+    if (typeof svc.searchMedicalCodes === 'function') {
+      return svc.searchMedicalCodes(q, limit).pipe(
+        map((resp: any) => {
+          const items =
+            (Array.isArray(resp) ? resp : null) ??
+            resp?.items ??
+            resp?.results ??
+            resp?.data ??
+            resp?.medicalCodes ??
+            resp?.serviceCodes ??
+            resp?.cptCodes ??
+            resp?.cpt ??
+            [];
+
+          return (items || [])
+            .map((x: any) => this.mapAnyToCodeOption(x))
+            .filter((x: CodeOption) => !!x.code)
+            .slice(0, limit);
+        }),
+        catchError((err: any) => {
+          console.error('[AuthSmartCheck] searchMedicalCodes failed', err);
+          return of([] as CodeOption[]);
+        })
+      );
+    }
+
+    // Fallback to locally-loaded codeset list (if your API returns service codes in getAllCodesets)
     return this.ensureCodesetsLoaded().pipe(map(() => this.filterCodes(this.allServiceCodes, q, limit)));
   }
 
