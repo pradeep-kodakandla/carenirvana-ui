@@ -2,7 +2,7 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { Observable, Subject, firstValueFrom, of } from 'rxjs';
-import { distinctUntilChanged, filter, map, startWith, switchMap, takeUntil, tap } from 'rxjs/operators';
+import { distinctUntilChanged, filter, map, startWith, switchMap, takeUntil, tap, catchError } from 'rxjs/operators';
 import { AuthNumberService } from 'src/app/service/auth-number-gen.service';
 import { AuthService } from 'src/app/service/auth.service';
 import { CrudService, DatasourceLookupService } from 'src/app/service/crud.service';
@@ -36,6 +36,20 @@ interface MemberEnrollment {
   levels?: string;   // JSON array
   levelMap?: string; // JSON object
   [k: string]: any;
+}
+
+
+/** ---- Smart Check prefill (from previous step) ---- */
+interface SmartCheckPrefill {
+  authClassId?: number;
+  authTypeId?: number;
+  enrollmentId?: number;
+  icdCodes?: string[];
+  serviceCodes?: string[];
+  fromDateIso?: any;
+  toDateIso?: any;
+  procedureFromDateIso?: any;
+  procedureToDateIso?: any;
 }
 
 /** ---- Template shapes ---- */
@@ -215,6 +229,11 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
   memberId = 0;
   memberDetailsId = 0;
   private pendingAuth: any | null = null;
+  // Smart Check prefill (from Auth Smart Check step)
+  private readonly SMARTCHECK_PREFILL_KEY = 'SMART_AUTH_CHECK_PREFILL';
+  private smartCheckPrefill: SmartCheckPrefill | null = null;
+  private smartCheckPrefillApplied = false;
+
 
   // ---------- Enrollment ----------
   memberEnrollments: MemberEnrollment[] = [];
@@ -350,6 +369,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
       authTypeId: new FormControl(null, Validators.required),
     });
 
+    // Read Smart Auth Check prefill (if user came from Smart Check step)
+    this.smartCheckPrefill = this.readSmartCheckPrefill();
+
     this.memberId = this.getNumberParamFromAncestors('id') || 0;
     this.memberDetailsId = Number(sessionStorage.getItem('selectedMemberDetailsId') || 0);
 
@@ -435,6 +457,23 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
   // ============================================================
   // Route param helpers
   // ============================================================
+
+  private readSmartCheckPrefill(): SmartCheckPrefill | null {
+    try {
+      const raw = sessionStorage.getItem(this.SMARTCHECK_PREFILL_KEY);
+      if (!raw) return null;
+      const obj = JSON.parse(raw);
+      if (!obj || typeof obj !== 'object') return null;
+      return obj as SmartCheckPrefill;
+    } catch {
+      return null;
+    }
+  }
+
+  private clearSmartCheckPrefill(): void {
+    try { sessionStorage.removeItem(this.SMARTCHECK_PREFILL_KEY); } catch { /* ignore */ }
+  }
+
   private getStringParamFromAncestors(param: string): string | null {
     let r: ActivatedRoute | null = this.route;
     while (r) {
@@ -485,6 +524,16 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
       const idx = this.memberEnrollments.findIndex((e: any) => e.memberEnrollmentId === targetEnrollmentId);
       if (idx >= 0) {
         this.selectEnrollment(idx);
+        return;
+      }
+    }
+
+    // If coming from Smart Check (new auth), preselect the same enrollment if possible
+    if (!this.pendingAuth && this.smartCheckPrefill?.enrollmentId) {
+      const prefId = Number(this.smartCheckPrefill.enrollmentId || 0);
+      const idx2 = this.memberEnrollments.findIndex((e: any) => Number(e?.memberEnrollmentId || 0) === prefId);
+      if (idx2 >= 0) {
+        this.selectEnrollment(idx2);
         return;
       }
     }
@@ -552,6 +601,15 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
               label: x.authClass ?? x.AuthClass ?? x.name ?? ''
             }) as UiSmartOption)
             .filter(o => !!o.label && Number(o.value) > 0);
+
+          // Smart Check prefill: preselect Auth Class for new auth flows
+          if (!this.pendingAuth && this.smartCheckPrefill?.authClassId && (this.authNumber === '0' || !this.authNumber)) {
+            const desired = Number(this.smartCheckPrefill.authClassId || 0);
+            const cur = Number(this.unwrapValue(this.form.get('authClassId')?.value) || 0);
+            if (desired > 0 && cur === 0) {
+              this.form.get('authClassId')?.setValue(desired, { emitEvent: true });
+            }
+          }
         },
         error: (e) => {
           console.error('Error fetching auth class:', e);
@@ -575,9 +633,6 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
             .filter(o => !!o.label && Number(o.value) > 0);
 
           // If editing an existing auth, force-select template/type
-          // NOTE: different APIs may return the template/type id under different names.
-          // We accept several common variants so that after the first CREATE + route refresh
-          // the template is re-selected automatically (instead of falling back to the initial screen).
           const desiredTypeId = Number(
             (this.pendingAuth as any)?.authTypeId ??
             (this.pendingAuth as any)?.authTypeID ??
@@ -589,6 +644,16 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
           );
           if (desiredTypeId > 0) {
             this.form.get('authTypeId')?.setValue(desiredTypeId, { emitEvent: true });
+            return; // don't let Smart Check prefill override edit flow
+          }
+
+          // Smart Check prefill: preselect Auth Type (template) for new auth flows
+          if (!this.pendingAuth && this.smartCheckPrefill?.authTypeId && (this.authNumber === '0' || !this.authNumber)) {
+            const desired = Number(this.smartCheckPrefill.authTypeId || 0);
+            const cur = Number(this.unwrapValue(this.form.get('authTypeId')?.value) || 0);
+            if (desired > 0 && cur === 0) {
+              this.form.get('authTypeId')?.setValue(desired, { emitEvent: true });
+            }
           }
         },
         error: (e) => console.error('Auth templates load failed', e)
@@ -632,6 +697,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
             this.patchAuthorizationToForm(this.pendingAuth);
           }
 
+          // Smart Check prefill: if user arrived from Smart Check, fill ICD + Procedure codes (new auth only)
+          void this.applySmartCheckPrefillToTemplateFields();
+
           // Load validation rules for this template (same behavior as AuthorizationComponent)
           this.getValidationRules();
 
@@ -640,6 +708,253 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
         error: (e) => console.error('Template json load failed', e)
       });
   }
+
+  // ============================================================
+  // Smart Check prefill into Auth Details template
+  // ============================================================
+  private getSearchFieldsByEntity(entity: string): RenderField[] {
+    const e = String(entity || '').toLowerCase();
+    const all = this.collectAllRenderFields(this.renderSections);
+    return (all || [])
+      .filter(f => String((f as any)?.type || '').toLowerCase() === 'search')
+      .filter(f => String(this.getLookupEntity(f) || '').toLowerCase() === e);
+  }
+
+  private findRepeatKeyForKind(kind: 'icd' | 'medicalcodes'): string | null {
+    const patterns = kind === 'icd'
+      ? ['icd', 'diag', 'diagn']
+      : ['medical', 'cpt', 'procedure', 'proc', 'service', 'code'];
+
+    const metas = Object.values(this.repeatRegistry || {});
+    const candidate = metas.find(m => {
+      const s = `${m?.prefix ?? ''} ${m?.title ?? ''}`.toLowerCase();
+      return patterns.some(p => s.includes(p));
+    });
+
+    return candidate?.key ?? null;
+  }
+
+  private ensureRepeatCountForKind(kind: 'icd' | 'medicalcodes', desiredCount: number): void {
+    const desired = Number(desiredCount || 0);
+    if (desired <= 1) return;
+
+    const current = this.getSearchFieldsByEntity(kind).length;
+    if (current >= desired) return;
+
+    const key = this.findRepeatKeyForKind(kind);
+    if (!key) return;
+
+    const curCount = Number(this.repeatCounts?.[key] || 0);
+    this.repeatCounts[key] = Math.max(desired, curCount || 0);
+
+    const snap = this.form.getRawValue();
+    this.rebuildFromNormalizedTemplate(snap);
+  }
+
+  private pickCode(item: any): string {
+    if (!item) return '';
+    if (typeof item === 'string') return item;
+    return String(
+      item.code ??
+      item.Code ??
+      item.icdcode ??
+      item.icdCode ??
+      item.cptcode ??
+      item.cptCode ??
+      item.medicalcode ??
+      item.medicalCode ??
+      ''
+    ).trim();
+  }
+
+  private async prefillLookupFieldByCode(f: any, code: string): Promise<void> {
+    if (!f?.controlName || !code) return;
+
+    const ctrl = this.form.get(f.controlName);
+    if (!ctrl) return;
+
+    const cur = String(ctrl.value ?? '').trim();
+    if (cur) return; // do not override user / existing values
+
+    const searchFn = this.getLookupSearchFn(f);
+    if (!searchFn) {
+      ctrl.setValue(code, { emitEvent: true });
+      ctrl.markAsDirty();
+      return;
+    }
+
+    try {
+      const results = await firstValueFrom(
+        searchFn(String(code), 25).pipe(catchError(() => of([])))
+      ) as any[];
+
+      const wanted = String(code).trim().toLowerCase();
+      const match =
+        (results || []).find(x => this.pickCode(x).toLowerCase() === wanted) ||
+        (results || [])[0];
+
+      if (match) {
+        this.onLookupSelected(f, match);
+      } else {
+        ctrl.setValue(code, { emitEvent: true });
+        ctrl.markAsDirty();
+      }
+    } catch {
+      ctrl.setValue(code, { emitEvent: true });
+      ctrl.markAsDirty();
+    }
+  }
+
+  private prefillProcedureFromToDates(fromVal: any, toVal: any, desiredCount: number): void {
+    const from = this.normalizeSmartCheckDateValue(fromVal);
+    const to = this.normalizeSmartCheckDateValue(toVal);
+    if (!from && !to) return;
+
+    const procSecs = this.getProcedureCandidateSections();
+    const baseFields = this.collectAllRenderFields((procSecs && procSecs.length) ? procSecs : this.renderSections);
+    const dtFields = (baseFields || [])
+      .filter(f => String((f as any)?.type || '').toLowerCase() === 'datetime-local');
+
+    let fromFields = dtFields.filter(f => this.isFromDateField(f));
+    let toFields = dtFields.filter(f => this.isToDateField(f));
+
+    // Fallback: sometimes Procedure is nested under a differently-named section - use rawId/controlName hints
+    if (!fromFields.length && !toFields.length) {
+      const all = this.collectAllRenderFields(this.renderSections)
+        .filter(f => String((f as any)?.type || '').toLowerCase() === 'datetime-local');
+
+      fromFields = all.filter(f => this.isProcedureRelatedField(f) && this.isFromDateField(f));
+      toFields = all.filter(f => this.isProcedureRelatedField(f) && this.isToDateField(f));
+    }
+
+    const n = Math.max(Number(desiredCount || 1), fromFields.length, toFields.length);
+    for (let i = 0; i < n; i++) {
+      if (from && fromFields[i]) this.setControlIfEmpty(fromFields[i].controlName, from);
+      if (to && toFields[i]) this.setControlIfEmpty(toFields[i].controlName, to);
+    }
+  }
+
+  private normalizeSmartCheckDateValue(v: any): any {
+    if (v === undefined || v === null) return null;
+    if (v instanceof Date) return v.toISOString();
+    const s = String(v).trim();
+    if (!s) return null;
+    // If it is parseable, store as ISO to match ui-datetime-picker expectations
+    const d = new Date(s);
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+    return s;
+  }
+
+  private setControlIfEmpty(controlName: string, value: any): void {
+    if (!controlName) return;
+    const ctrl = this.form.get(controlName);
+    if (!ctrl) return;
+    const cur = ctrl.value;
+    if (cur !== undefined && cur !== null && String(cur).trim() !== '') return;
+    ctrl.setValue(value, { emitEvent: true });
+    ctrl.markAsDirty();
+  }
+
+  private getProcedureCandidateSections(): RenderSection[] {
+    const secs = this.renderSections || [];
+    const proc = secs.filter(s => {
+      const t = String(s?.title || '').toLowerCase();
+      // prefer explicit Procedure; otherwise Service (but not Diagnosis/ICD)
+      if (t.includes('procedure')) return true;
+      if (t.includes('service') && !t.includes('diagnos') && !t.includes('icd')) return true;
+      return false;
+    });
+    return proc;
+  }
+
+  private isProcedureRelatedField(f: any): boolean {
+    const s = this.fieldSearchText(f);
+    return s.includes('procedure') || s.includes('service') || s.includes('cpt') || (s.includes('medical') && s.includes('code'));
+  }
+
+  private isFromDateField(f: any): boolean {
+    const s = this.fieldSearchText(f);
+    return (s.includes('from') || s.includes('start') || s.includes('begin')) && (s.includes('date') || s.includes('dt'));
+  }
+
+  private isToDateField(f: any): boolean {
+    const s = this.fieldSearchText(f);
+    return (s.includes('to') || s.includes('end') || s.includes('thru') || s.includes('through')) && (s.includes('date') || s.includes('dt'));
+  }
+
+  private fieldSearchText(f: any): string {
+    return [
+      String(f?.displayName ?? ''),
+      String(f?.label ?? ''),
+      String(f?.controlName ?? ''),
+      String((f as any)?._rawId ?? ''),
+      String((f as any)?.id ?? '')
+    ].join(' ').toLowerCase();
+  }
+
+  private async applySmartCheckPrefillToTemplateFields(): Promise<void> {
+    // Only apply for new auth flows (no auth number) and only once
+    if (this.smartCheckPrefillApplied) return;
+    if (this.pendingAuth) return;
+    if (this.authNumber && this.authNumber !== '0') return;
+
+    const pre = this.smartCheckPrefill;
+    if (!pre) return;
+
+    const icds = Array.isArray(pre.icdCodes) ? pre.icdCodes.filter(Boolean) : [];
+    const svcs = Array.isArray(pre.serviceCodes) ? pre.serviceCodes.filter(Boolean) : [];
+
+    // Ensure repeat instances exist (if template uses repeats)
+    if (icds.length > 1) this.ensureRepeatCountForKind('icd', icds.length);
+    if (svcs.length > 1) this.ensureRepeatCountForKind('medicalcodes', svcs.length);
+
+    // Re-collect fields after potential rebuild
+    let icdFields = this.getSearchFieldsByEntity('icd');
+    let svcFields = this.getSearchFieldsByEntity('medicalcodes');
+
+    // Fallback: some templates may not set entity; infer by control name/id
+    if (!icdFields.length && icds.length) {
+      const allSearch = this.collectAllRenderFields(this.renderSections)
+        .filter(f => String((f as any)?.type || '').toLowerCase() === 'search');
+      icdFields = allSearch.filter(f => {
+        const k = String((f as any)?._rawId ?? (f as any)?.id ?? (f as any)?.controlName ?? '').toLowerCase();
+        return k.includes('icd') || k.includes('diag');
+      });
+    }
+
+    if (!svcFields.length && svcs.length) {
+      const allSearch = this.collectAllRenderFields(this.renderSections)
+        .filter(f => String((f as any)?.type || '').toLowerCase() === 'search');
+      svcFields = allSearch.filter(f => {
+        const k = String((f as any)?._rawId ?? (f as any)?.id ?? (f as any)?.controlName ?? '').toLowerCase();
+        return k.includes('procedure') || k.includes('service') || k.includes('cpt') || (k.includes('medical') && k.includes('code'));
+      });
+    }
+
+    // Fill ICD codes
+    for (let i = 0; i < icds.length; i++) {
+      const f = icdFields[i];
+      if (!f) break;
+      // For some templates the code field is not the first 'search' in the ICD repeat; still, filling in order is safest.
+      await this.prefillLookupFieldByCode(f, icds[i]);
+    }
+
+    // Fill Procedure/Service codes
+    for (let i = 0; i < svcs.length; i++) {
+      const f = svcFields[i];
+      if (!f) break;
+      await this.prefillLookupFieldByCode(f, svcs[i]);
+    }
+
+    // Prefill Procedure From/To dates (Smart Check → Auth Details)
+    const fromDt = (pre as any)?.procedureFromDateIso ?? (pre as any)?.fromDateIso ?? null;
+    const toDt = (pre as any)?.procedureToDateIso ?? (pre as any)?.toDateIso ?? null;
+    this.prefillProcedureFromToDates(fromDt, toDt, Math.max(1, svcs.length));
+
+    this.smartCheckPrefillApplied = true;
+    this.clearSmartCheckPrefill();
+  }
+
 
   private clearTemplate(resetRepeat: boolean): void {
     // stop previous template-based subscriptions (visibility, etc.)
@@ -2767,6 +3082,4 @@ export class AuthdetailsComponent implements OnInit, OnDestroy {
     const ok = !!result;
     return isIf ? !ok : ok;
   }
-
-
 }

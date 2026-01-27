@@ -28,8 +28,33 @@
 
 .status {
   font-size: 12px;
-  color: #475467;
   margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #344054;
+}
+
+.status.ok {
+  background: #ecfdf3;
+  border-color: #a7f3d0;
+  color: #067647;
+}
+
+.status.err {
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #b42318;
+}
+
+.status.info {
+  background: #f9fafb;
+  border-color: #e5e7eb;
+  color: #344054;
 }
 
 .right {

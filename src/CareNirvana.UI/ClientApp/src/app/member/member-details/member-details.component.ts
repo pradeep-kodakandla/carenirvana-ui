@@ -24,6 +24,12 @@ export class MemberDetailsComponent implements OnInit {
   loggedInUser: string = sessionStorage.getItem('loggedInUsername') || '';
   isCollapse: boolean = false;
   member: any;
+
+  // Contact info (from GetMemberDetailsAsync)
+  memberDetails: any;
+  memberPhoneNumbers: any[] = [];
+  memberEmails: any[] = [];
+  memberAddresses: any[] = [];
   constructor(private route: ActivatedRoute, private router: Router, private tabService: TabService, private memberService: MemberService, private dashboard: DashboardServiceService) { }
 
   toggleSidebar() {
@@ -34,6 +40,13 @@ export class MemberDetailsComponent implements OnInit {
   selectedTabIndex = 0;
   tabs1: { id: number; name: string; content: string }[] = [];
   selectedTabId: number | null = null;
+
+  // Primary (or fallback) contact records (shown in UI)
+  primaryPhoneNumber: any | null = null;
+  primaryEmail: any | null = null;
+  primaryAddress: any | null = null;
+  primaryAddressLines: string[] = [];
+
 
   ngOnInit(): void {
     // Subscribe to route params to handle new member selection
@@ -63,6 +76,35 @@ export class MemberDetailsComponent implements OnInit {
       console.error('Error fetching member summary', error);
     });
 
+    const selectedMemberDetailsId = Number(sessionStorage.getItem('selectedMemberDetailsId'));
+    if (Number.isFinite(selectedMemberDetailsId) && selectedMemberDetailsId > 0) {
+      this.dashboard.getMemberDetails(selectedMemberDetailsId).subscribe({
+        next: (res) => {
+          this.memberDetails = res;
+
+          // Backend may return camelCase or lowercase keys, and may return nested JSON as a string.
+          this.primaryPhoneNumber = this.pickBestRecord(
+            this.memberDetails.memberPhoneNumbers,
+            (p: any) => p?.phonenumber ?? p?.phoneNumber
+          );
+
+          this.primaryEmail = this.pickBestRecord(
+            this.memberDetails.memberEmails,
+            (e: any) => e?.emailaddress ?? e?.emailAddress
+          );
+
+          this.primaryAddress = this.pickBestRecord(
+            this.memberDetails.memberAddresses,
+            (a: any) => (this.getAddressLines(a) || []).join(' ')
+          );
+
+          this.primaryAddressLines = this.primaryAddress ? this.getAddressLines(this.primaryAddress) : [];
+
+          console.log('Member Details:', this.primaryPhoneNumber);
+        },
+        error: (err) => console.error(err)
+      });
+    }
   }
   selectTab(tabId: number) {
     this.selectedTabId = tabId;
@@ -136,5 +178,108 @@ export class MemberDetailsComponent implements OnInit {
     if (!trigger.menuOpen) {
       trigger.openMenu();
     }
+  }
+
+  // -------------------------
+  // Contact info helpers
+  // -------------------------
+  private toArray(value: any): any[] {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  }
+
+  private isTruthy(item: any, keys: string[]): boolean {
+    return keys.some(k => item?.[k] === true);
+  }
+
+  isPrimary(item: any): boolean {
+    return this.isTruthy(item, ['isprimary', 'isPrimary']);
+  }
+
+  isPreferred(item: any): boolean {
+    return this.isTruthy(item, ['ispreferred', 'isPreferred']);
+  }
+
+  /**
+   * Pick the record to show in the UI:
+   * - Prefer a Primary record
+   * - If no Primary, fall back to another record
+   * - Prefer records that actually have a value (non-empty / not 'NULL')
+   */
+  private pickBestRecord<T = any>(items: T[], valueSelector?: (item: T) => any): T | null {
+    const list = this.toArray(items);
+    if (!list.length) return null;
+
+    const hasValue = (item: T): boolean => {
+      if (!valueSelector) return true;
+      const raw = valueSelector(item);
+      if (raw === null || raw === undefined) return false;
+      if (typeof raw === 'string') return this.clean(raw).length > 0;
+      return true;
+    };
+
+    const primaryWithValue = list.find(x => this.isPrimary(x) && hasValue(x));
+    if (primaryWithValue) return primaryWithValue;
+    console.log('primary with value', primaryWithValue);
+    // If primary exists but has no usable value, fall back to another record that *does* have a value.
+    const preferredWithValue = list.find(x => this.isPreferred(x) && hasValue(x));
+    if (preferredWithValue) return preferredWithValue;
+
+    const firstWithValue = list.find(hasValue);
+    if (firstWithValue) return firstWithValue;
+
+    // Nothing has a value; just return primary if present, otherwise the first record.
+    const primary = list.find(x => this.isPrimary(x));
+    if (primary) return primary;
+
+    return list[0];
+  }
+
+
+  private clean(value: any): string {
+    if (value === null || value === undefined) return '';
+    const s = String(value).trim();
+    if (!s) return '';
+    if (s.toUpperCase() === 'NULL') return '';
+    return s;
+  }
+
+  formatPhone(phone?: string): string {
+    const digits = (phone ?? '').replace(/\D/g, '');
+    if (digits.length === 10) {
+      return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+    }
+    return phone ?? '';
+  }
+
+  getAddressLines(address: any): string[] {
+    if (!address) return [];
+
+    const l1 = this.clean(address.addressline1 ?? address.addressLine1);
+    const l2 = this.clean(address.addressline2 ?? address.addressLine2);
+    const l3 = this.clean(address.addressline3 ?? address.addressLine3);
+    const city = this.clean(address.city);
+    const zip = this.clean(address.zipcode ?? address.zipCode);
+    const country = this.clean(address.country);
+
+    const lines: string[] = [];
+    if (l1) lines.push(l1);
+    if (l2) lines.push(l2);
+    if (l3) lines.push(l3);
+
+    const lastLine = [city, zip].filter(Boolean).join(' ');
+    if (lastLine) lines.push(lastLine);
+    if (country) lines.push(country);
+
+    return lines;
   }
 }

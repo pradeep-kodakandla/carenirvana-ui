@@ -11,11 +11,13 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatButtonModule } from '@angular/material/button';
 import { DragDropModule } from '@angular/cdk/drag-drop';
+import { MatIcon } from '@angular/material/icon';
 
 import { AuthwizardshellComponent } from 'src/app/member/UM/components/authwizardshell/authwizardshell.component';
 import { AuthchevronstepperComponent } from 'src/app/member/UM/components/authchevronstepper/authchevronstepper.component';
 import { AuthconfirmleavedialogComponent } from 'src/app/member/UM/components/authconfirmleavedialog/authconfirmleavedialog.component';
 
+import { SmartCheckResultDialogComponent } from 'src/app/member/UM/steps/authsmartcheck/smartcheck-result-dialog.component';
 import { AuthsmartcheckComponent } from 'src/app/member/UM/steps/authsmartcheck/authsmartcheck.component';
 import { AuthdetailsComponent } from 'src/app/member/UM/steps/authdetails/authdetails.component';
 import { AuthdecisionComponent } from 'src/app/member/UM/steps/authdecision/authdecision.component';
@@ -32,7 +34,7 @@ import { UmsharedwidgetsModule } from 'src/app/member/UM/umwizard/authwizard/ums
     AuthsmartcheckComponent,
     AuthdetailsComponent,
     AuthdecisionComponent,
-
+    SmartCheckResultDialogComponent
 
     
   ],
@@ -43,7 +45,7 @@ import { UmsharedwidgetsModule } from 'src/app/member/UM/umwizard/authwizard/ums
     AuthwizardroutingModule,
     SharedUiModule,
 
-
+    MatIcon,
     MatCardModule,
     MatDividerModule,
     MatAutocompleteModule,

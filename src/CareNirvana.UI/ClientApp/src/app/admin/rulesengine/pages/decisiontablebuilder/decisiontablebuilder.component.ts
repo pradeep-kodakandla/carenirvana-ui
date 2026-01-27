@@ -100,6 +100,8 @@ export class DecisionTableBuilderComponent implements OnInit {
   // UI
   viewMode: 'table' | 'json' = 'table';
   statusText = '';
+  statusType: 'info' | 'ok' | 'err' = 'info';
+  private statusTimer: any;
 
   // dropdowns
   tables: DecisionTableListItem[] = [];
@@ -153,6 +155,32 @@ export class DecisionTableBuilderComponent implements OnInit {
 
   private readonly operatorCodeIndex = new Map<string, string>();
 
+
+  private initOperatorCodeIndex(): void {
+    // Map both operator codes (e.g. '=', '!=', 'BTW LO') and names (e.g. 'Equals')
+    // to the canonical code used in payloads / ruleJson.
+    this.operatorCodeIndex.clear();
+
+    for (const op of this.operatorDefinitions) {
+      this.operatorCodeIndex.set(this.opKey(op.code), op.code);
+      this.operatorCodeIndex.set(this.opKey(op.name), op.code);
+    }
+
+    // legacy function-style operators (fallback)
+    const legacy: Record<string, string> = {
+      eq: '=',
+      ne: '!=',
+      gt: '>',
+      gte: '>=',
+      lt: '<',
+      lte: '<='
+    };
+
+    for (const k of Object.keys(legacy)) {
+      this.operatorCodeIndex.set(this.opKey(k), legacy[k]);
+    }
+  }
+
   condFieldSearch: Record<string, string> = {}; // per condition column id
   private allFields: FieldRef[] = [];
   allFieldUiOptions: UiSmartOption<string>[] = [];
@@ -205,6 +233,7 @@ export class DecisionTableBuilderComponent implements OnInit {
   constructor(private svc: RulesengineService) { }
 
   ngOnInit(): void {
+    this.initOperatorCodeIndex();
     this.refreshTables(false);
     this.loadAllRuleDataFieldsForMapping();
     this.ruleTypeUiOptions = this.svc.getRuleTypeOptions().map(x => ({ value: x.value, label: x.label }));
@@ -271,6 +300,7 @@ export class DecisionTableBuilderComponent implements OnInit {
     this.svc.listTables().subscribe({
       next: (rows) => {
         this.tables = rows ?? [];
+        console.log('Loaded decision tables:', this.tables);
         this.tableUiOptions = this.tables.map(t => ({ value: t.id, label: t.name }));
         this.refreshSavedFlag();
         this.checkLinkedRuleForCurrentTable();
@@ -329,13 +359,13 @@ export class DecisionTableBuilderComponent implements OnInit {
 
     this.svc.deleteTable(id).subscribe({
       next: () => {
-        this.statusText = 'Deleted.';
+        this.setStatus('Deleted.', 'ok', 3000);
         this.refreshTables(false);
         this.pageMode = 'list';
       },
       error: (err: any) => {
         console.error(err);
-        this.statusText = 'Delete failed.';
+        this.setStatus('Delete failed.', 'err');
       }
     });
   }
@@ -435,9 +465,10 @@ export class DecisionTableBuilderComponent implements OnInit {
   }
 
   saveTable(): void {
+    this.normalizeIdsBeforeSave();
     const payload = this.buildPayload();
     if (!payload.name?.trim()) {
-      this.statusText = 'Name required.';
+      this.setStatus('Name required.', 'err');
       return;
     }
 
@@ -450,14 +481,14 @@ export class DecisionTableBuilderComponent implements OnInit {
 
     call$.subscribe({
       next: () => {
-        this.statusText = 'Saved.';
+        this.setStatus(`Saved successfully. ID: ${id}`, 'ok', 4000);
         this.isTableSaved = true;
         this.checkLinkedRuleForCurrentTable();
         this.refreshTables(false);
       },
       error: (err: any) => {
         console.error(err);
-        this.statusText = 'Save failed.';
+        this.setStatus('Save failed.', 'err');
       }
     });
   }
@@ -471,19 +502,20 @@ export class DecisionTableBuilderComponent implements OnInit {
 
     this.svc.deleteTable(id).subscribe({
       next: () => {
-        this.statusText = 'Deleted.';
+        this.setStatus('Deleted.', 'ok', 3000);
         this.refreshTables(false);
         this.goToList();
       },
       error: (err: any) => {
         console.error(err);
-        this.statusText = 'Delete failed.';
+        this.setStatus('Delete failed.', 'err');
       }
     });
   }
 
   private buildPayload(): DecisionTableDefinition {
-    const id = this.meta.id || this.selectedTableId || this.svc.newId('dt');
+    const computedId = this.computeTableId((this.meta.name ?? '').trim());
+    const id = this.meta.id || this.selectedTableId || computedId || this.svc.newId('dt');
 
     return {
       id,
@@ -512,11 +544,22 @@ export class DecisionTableBuilderComponent implements OnInit {
     const base = kind === 'condition' ? 'condition' : kind === 'calculation' ? 'calc' : 'result';
     const id = this.svc.newId(kind === 'result' ? 'r' : kind === 'calculation' ? 'k' : 'c');
 
+    const label = kind === 'condition' ? 'Condition' : kind === 'calculation' ? 'Calculation' : 'Result';
+
+    let key = `${base}${this.columns.filter(x => x.kind === kind).length + 1}`;
+
+    // Result columns should be: dt.result.<ResultNameWithoutSpaces>
+    if (kind === 'result') {
+      const desired = this.computeResultKey(label);
+      const taken = new Set(this.columns.filter(c => c.kind === 'result').map(c => c.key));
+      key = this.makeUniqueKey(desired, taken);
+    }
+
     const col: DtColumn = {
       id,
       kind,
-      key: `${base}${this.columns.filter(x => x.kind === kind).length + 1}`,
-      label: kind === 'condition' ? 'Condition' : kind === 'calculation' ? 'Calculation' : 'Result',
+      key,
+      label,
       dataType: 'string',
       inputType: 'text',
       isEnabled: true
@@ -582,6 +625,17 @@ export class DecisionTableBuilderComponent implements OnInit {
 
   setColLabel(col: DtColumn, label: string): void {
     col.label = label;
+
+    // Keep result column keys as: dt.result.<ResultNameWithoutSpaces>
+    if (col.kind === 'result') {
+      const desired = this.computeResultKey(col.label);
+      const taken = new Set(
+        this.columns
+          .filter(c => c.kind === 'result' && c.id !== col.id)
+          .map(c => c.key)
+      );
+      col.key = this.makeUniqueKey(desired, taken);
+    }
   }
 
   // ------------ Row actions ------------
@@ -1044,7 +1098,7 @@ export class DecisionTableBuilderComponent implements OnInit {
           const raw = (r?.cells || {})[c.id] ?? '';
           return {
             fieldPath: c.mappedFieldPath,
-            operator: 'EQ',
+            operator: this.normalizeDtOperator(c.operator),
             value: raw,
             dataType: c.dataType
           };
@@ -1267,5 +1321,67 @@ export class DecisionTableBuilderComponent implements OnInit {
   }
 
 
+
+
+  // ------------ ID / key helpers ------------
+  private toTokenNoSpaces(value: string): string {
+    return (value ?? '')
+      .trim()
+      .replace(/\s+/g, '')
+      .replace(/[^A-Za-z0-9_-]/g, '');
+  }
+
+  private computeTableId(name: string): string {
+    const token = this.toTokenNoSpaces(name);
+    return token ? `dt-${token}` : '';
+  }
+
+  private computeResultKey(label: string): string {
+    const token = this.toTokenNoSpaces(label) || 'Result';
+    return `dt.result.${token}`;
+  }
+
+  private makeUniqueKey(desired: string, taken: Set<string>): string {
+    if (!taken.has(desired)) return desired;
+    let i = 2;
+    while (taken.has(`${desired}${i}`)) i++;
+    return `${desired}${i}`;
+  }
+
+  private normalizeIdsBeforeSave(): void {
+    // For new/unsaved tables, auto-generate ID from table name (dt-<NameWithoutSpaces>)
+    // We treat it as "new" if the current ID does NOT exist in the loaded tables list.
+    const currentId = this.meta.id || this.selectedTableId || '';
+    const exists = !!currentId && this.tables.some(t => t.id === currentId);
+    if (!exists) {
+      const computed = this.computeTableId((this.meta.name ?? '').trim());
+      if (computed) {
+        this.meta.id = computed;
+        this.selectedTableId = computed;
+      }
+    }
+
+    // Ensure every result column key follows dt.result.<LabelWithoutSpaces>
+    const taken = new Set<string>();
+    for (const c of this.columns) {
+      if (c.kind !== 'result') continue;
+      const desired = this.computeResultKey(c.label);
+      c.key = this.makeUniqueKey(desired, taken);
+      taken.add(c.key);
+    }
+  }
+
+  private setStatus(msg: string, type: 'info' | 'ok' | 'err' = 'info', autoClearMs = 0): void {
+    this.statusText = msg;
+    this.statusType = type;
+
+    if (this.statusTimer) clearTimeout(this.statusTimer);
+    if (autoClearMs > 0) {
+      this.statusTimer = setTimeout(() => {
+        this.statusText = '';
+        this.statusType = 'info';
+      }, autoClearMs);
+    }
+  }
 
 }

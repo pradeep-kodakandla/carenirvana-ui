@@ -133,6 +133,27 @@ export interface AgCaseGridRow {
 }
 
 
+export interface MemberDetailsResponseDto {
+  memberdetailsid: number;
+
+  // these come back as JSON arrays from the SQL (jsonb_agg)
+  memberadditionaldetails: any[];
+  memberaddresses: any[];
+  memberemails: any[];
+  memberphonenumbers: any[];
+  membercommunicationimpairments: any[];
+  memberevacuationzones: any[];
+  memberidentifiers: any[];
+  memberlanguages: any[];
+  memberportalaccesses: any[];
+  memberpreferredtimeofcalls: any[];
+  memberserviceinterruptions: any[];
+
+  // plus all the other scalar columns...
+  [key: string]: any;
+}
+
+
 @Injectable({
   providedIn: 'root'
 })
@@ -237,5 +258,11 @@ export class DashboardServiceService {
 
   getAgCasesByUser(userId: number): Observable<AgCaseGridRow[]> {
     return this.http.get<AgCaseGridRow[]>(`${this.apiUrl}/agcases/${userId}`);
+  }
+
+  getMemberDetails(memberDetailsId: number): Observable<MemberDetailsResponseDto> {
+    return this.http.get<MemberDetailsResponseDto>(
+      `${this.apiUrl}/memberdetails/${memberDetailsId}`
+    );
   }
 }

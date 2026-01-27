@@ -2,7 +2,7 @@ import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 
 import { AuthwizardshellComponent } from 'src/app/member/UM/components/authwizardshell/authwizardshell.component';
-
+import { SmartCheckResultDialogComponent } from 'src/app/member/UM/steps/authsmartcheck/smartcheck-result-dialog.component';
 import { AuthsmartcheckComponent } from 'src/app/member/UM/steps/authsmartcheck/authsmartcheck.component';
 import { AuthdetailsComponent } from 'src/app/member/UM/steps/authdetails/authdetails.component';
 import { AuthdecisionComponent } from 'src/app/member/UM/steps/authdecision/authdecision.component';

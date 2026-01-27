@@ -63,7 +63,7 @@
         <div class="left">
           <div class="title">Decision Table Builder</div>
           <div class="hint">Add columns + enter rows like a real decision table.</div>
-          <!--<div class="status">{{ statusText }}</div>-->
+          <div class="status" *ngIf="statusText" [ngClass]="statusType">{{ statusText }}</div>
         </div>
 
         <div class="right">

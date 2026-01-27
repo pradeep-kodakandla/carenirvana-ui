@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 export type RuleType = 'REALTIME' | 'BATCH';
@@ -130,6 +130,20 @@ export interface ExecuteTriggerResponse {
 
   receivedOn?: string;
   responseTimeMs?: number;
+}
+
+export interface RuleActionDto {
+  id: number;
+  name: string;
+  description?: string | null;
+  actionJson?: string | null;
+  activeFlag: boolean;
+  createdOn: string;
+  createdBy?: number | null;
+  updatedOn?: string | null;
+  updatedBy?: number | null;
+  deletedOn?: string | null;
+  deletedBy?: number | null;
 }
 
 export interface DropdownOption<T> { value: T; label: string; }
@@ -322,4 +336,18 @@ export class RulesengineService {
     return this.http.post<ExecuteTriggerResponse>(url, body);
   }
 
+
+  /** GET api/rulesengine/ruleactions?activeOnly=true|false */
+  getRuleActions(activeOnly?: boolean): Observable<RuleActionDto[]> {
+    let params = new HttpParams();
+    if (activeOnly !== undefined) {
+      params = params.set('activeOnly', String(activeOnly));
+    }
+    return this.http.get<RuleActionDto[]>(`${this.baseUrl}/ruleactions`, { params });
+  }
+
+  /** GET api/rulesengine/ruleactions/{id} */
+  getRuleActionById(id: number): Observable<RuleActionDto> {
+    return this.http.get<RuleActionDto>(`${this.baseUrl}/ruleactions/${id}`);
+  }
 }

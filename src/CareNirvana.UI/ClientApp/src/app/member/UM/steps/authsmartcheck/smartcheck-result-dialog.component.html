@@ -1,0 +1,50 @@
+<div class="sc-dialog" [class.sc-info]="tone==='info'" [class.sc-warning]="tone==='warning'"
+     [class.sc-success]="tone==='success'" [class.sc-error]="tone==='error'">
+
+  <div class="sc-header">
+    <div class="sc-icon" aria-hidden="true">
+      <mat-icon *ngIf="tone==='info'">info</mat-icon>
+      <mat-icon *ngIf="tone==='warning'">warning</mat-icon>
+      <mat-icon *ngIf="tone==='success'">check_circle</mat-icon>
+      <mat-icon *ngIf="tone==='error'">error</mat-icon>
+    </div>
+
+    <div class="sc-title-wrap">
+      <div class="sc-title">{{ data.title }}</div>
+    </div>
+  </div>
+
+  <div class="sc-content">
+    <div class="sc-message">{{ data.message }}</div>
+
+    <div class="sc-details" *ngIf="data.details?.length">
+      <div class="sc-details-title">Result summary</div>
+      <div class="sc-details-grid">
+        <div class="sc-detail" *ngFor="let d of data.details">
+          <div class="sc-detail-label">{{ d.label }}</div>
+          <div class="sc-detail-value">{{ d.value }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sc-actions">
+    <button
+      *ngIf="showSecondary"
+      mat-stroked-button
+      type="button"
+      class="sc-btn-secondary"
+      (click)="onSecondary()">
+      {{ data.secondaryText }}
+    </button>
+
+    <button
+      mat-flat-button
+      type="button"
+      class="sc-btn-primary"
+      cdkFocusInitial
+      (click)="onPrimary()">
+      {{ data.primaryText }}
+    </button>
+  </div>
+</div>

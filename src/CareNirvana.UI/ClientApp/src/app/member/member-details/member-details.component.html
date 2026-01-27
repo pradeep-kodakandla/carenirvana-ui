@@ -145,24 +145,54 @@
       </div>
 
       <!-- Contact Information -->
+      <!-- Contact Information -->
       <div class="section m-top-6">
         <div class="section-title">Contact Information</div>
 
         <div class="row">
           <mat-icon>call</mat-icon>
-          <div>123-456-7890</div>
+          <div>
+            <ng-container *ngIf="primaryPhoneNumber; else noPhones">
+              <div>
+                {{ formatPhone(primaryPhoneNumber?.phonenumber ?? primaryPhoneNumber?.phoneNumber) }}
+                <ng-container *ngIf="primaryPhoneNumber?.extension"> x{{ primaryPhoneNumber.extension }}</ng-container>
+                <span *ngIf="isPrimary(primaryPhoneNumber)"> </span>
+                <span *ngIf="!isPrimary(primaryPhoneNumber) && isPreferred(primaryPhoneNumber)"> (Preferred)</span>
+              </div>
+            </ng-container>
+            <ng-template #noPhones>N/A</ng-template>
+          </div>
         </div>
 
         <div class="row">
           <mat-icon>mail</mat-icon>
-          <div>test&#64;yahoo.com</div>
+          <div>
+            <ng-container *ngIf="primaryEmail; else noEmails">
+              <div>
+                {{ (primaryEmail?.emailaddress ?? primaryEmail?.emailAddress) || 'N/A' }}
+                <span *ngIf="isPrimary(primaryEmail)"> </span>
+                <span *ngIf="!isPrimary(primaryEmail) && isPreferred(primaryEmail)"> (Preferred)</span>
+              </div>
+            </ng-container>
+            <ng-template #noEmails>N/A</ng-template>
+          </div>
         </div>
 
         <div class="row">
           <mat-icon>location_on</mat-icon>
-          <div>12345 Example Way<br />Sanfrancisco, CA 17050</div>
+          <div>
+            <ng-container *ngIf="primaryAddress; else noAddresses">
+              <div>
+                <div *ngFor="let line of primaryAddressLines">{{ line }}</div>
+                <span *ngIf="isPrimary(primaryAddress)"> </span>
+                <span *ngIf="!isPrimary(primaryAddress) && isPreferred(primaryAddress)"> (Preferred)</span>
+              </div>
+            </ng-container>
+            <ng-template #noAddresses>N/A</ng-template>
+          </div>
         </div>
       </div>
+
 
       <!-- Care Team -->
       <div class="section m-top-6">

@@ -142,23 +142,20 @@
         <div class="row-2" *ngFor="let g of icds.controls; let i = index" [formGroupName]="i">
           <div class="form-field">
             <label class="floating-label">ICD-10</label>
-            <input class="form-control"
-                   formControlName="icd10"
-                   [matAutocomplete]="icdAuto"
-                   placeholder="Type ICD-10 (code or description)"
-                   (focus)="loadCodesForField()" (input)="onIcdInput(i, $event)" />
 
-            <mat-autocomplete #icdAuto="matAutocomplete"
-                              [displayWith]="displayCode"
-                              (optionSelected)="onCptSelected(i, $event.option.value)"
-                              autoActiveFirstOption>
-              <mat-option *ngFor="let opt of filteredCpt$ | async" [value]="opt">
-                <div class="opt-row">
-                  <span class="opt-code">{{ opt.code }}</span>
-                  <span class="opt-desc">{{ opt.desc }}</span>
-                </div>
-              </mat-option>
-            </mat-autocomplete>
+            <ui-smart-lookup class="ff-ui ff-lookup"
+                             [placeholder]="getLookupPlaceholder(icdLookupField)"
+                             [minChars]="getLookupMinChars(icdLookupField)"
+                             [debounceMs]="getLookupDebounceMs(icdLookupField)"
+                             [limit]="getLookupLimit(icdLookupField)"
+                             [searchFn]="getLookupSearchFn(icdLookupField)"
+                             [displayWith]="getLookupDisplayWith(icdLookupField)"
+                             [trackBy]="getLookupTrackBy(icdLookupField)"
+                             [formControlName]="icdLookupField.controlName"
+                             (selected)="onIcdLookupSelected(i, $event)"
+                             (textChange)="onIcdLookupTextChange(i, $event)"
+                             (cleared)="onIcdLookupCleared(i)">
+            </ui-smart-lookup>
           </div>
 
           <div class="form-field with-actions">
@@ -179,23 +176,20 @@
         <div class="row-2" *ngFor="let g of services.controls; let i = index" [formGroupName]="i">
           <div class="form-field">
             <label class="floating-label">Service Code</label>
-            <input class="form-control"
-                   formControlName="serviceCode"
-                   [matAutocomplete]="svcAuto"
-                   placeholder="Type Service Code (code or description)"
-                   (focus)="loadCodesForField()" (input)="onServiceInput(i, $event)" />
 
-            <mat-autocomplete #svcAuto="matAutocomplete"
-                              [displayWith]="displayCode"
-                              (optionSelected)="onServiceSelected(i, $event.option.value)"
-                              autoActiveFirstOption>
-              <mat-option *ngFor="let opt of filteredService$ | async" [value]="opt">
-                <div class="opt-row">
-                  <span class="opt-code">{{ opt.code }}</span>
-                  <span class="opt-desc">{{ opt.desc }}</span>
-                </div>
-              </mat-option>
-            </mat-autocomplete>
+            <ui-smart-lookup class="ff-ui ff-lookup"
+                             [placeholder]="getLookupPlaceholder(serviceLookupField)"
+                             [minChars]="getLookupMinChars(serviceLookupField)"
+                             [debounceMs]="getLookupDebounceMs(serviceLookupField)"
+                             [limit]="getLookupLimit(serviceLookupField)"
+                             [searchFn]="getLookupSearchFn(serviceLookupField)"
+                             [displayWith]="getLookupDisplayWith(serviceLookupField)"
+                             [trackBy]="getLookupTrackBy(serviceLookupField)"
+                             [formControlName]="serviceLookupField.controlName"
+                             (selected)="onServiceLookupSelected(i, $event)"
+                             (textChange)="onServiceLookupTextChange(i, $event)"
+                             (cleared)="onServiceLookupCleared(i)">
+            </ui-smart-lookup>
           </div>
 
           <div class="form-field with-actions">

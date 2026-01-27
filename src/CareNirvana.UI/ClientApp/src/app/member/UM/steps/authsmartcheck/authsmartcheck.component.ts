@@ -4,14 +4,14 @@ import { HttpClient } from '@angular/common/http';
 import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { Observable, of, merge, Subject } from 'rxjs';
-import { map, startWith, debounceTime, distinctUntilChanged, switchMap, tap, shareReplay, catchError } from 'rxjs/operators';
+import { Observable, of } from 'rxjs';
+import { map, tap, shareReplay, catchError } from 'rxjs/operators';
 
 import { CrudService } from 'src/app/service/crud.service';
 import { AuthService } from 'src/app/service/auth.service';
 import { MemberenrollmentService } from 'src/app/service/memberenrollment.service';
 
-import { AuthconfirmleavedialogComponent } from 'src/app/member/UM/components/authconfirmleavedialog/authconfirmleavedialog.component';
+import { SmartCheckResultDialogComponent, SmartCheckDialogAction, SmartCheckDialogData } from './smartcheck-result-dialog.component';
 import { RulesengineService, ExecuteTriggerResponse } from 'src/app/service/rulesengine.service'; // adjust path if needed
 
 
@@ -56,13 +56,39 @@ export class AuthsmartcheckComponent implements OnInit {
   // Autocomplete data
   allIcdCodes: CodeOption[] = [];
   allServiceCodes: CodeOption[] = [];
-  filteredCpt$!: Observable<CodeOption[]>;
-  filteredService$!: Observable<CodeOption[]>;
+
+
+  // ui-smart-lookup configs (mirrors AuthDetails' 'search' fields)
+  icdLookupField = {
+    controlName: 'icd10',
+    lookup: {
+      placeholder: 'Type ICD-10 (code or description)',
+      minChars: 1,
+      debounceMs: 200,
+      limit: 25,
+      entity: 'icd'
+    }
+  };
+
+  serviceLookupField = {
+    controlName: 'serviceCode',
+    lookup: {
+      placeholder: 'Type Service Code (code or description)',
+      minChars: 1,
+      debounceMs: 200,
+      limit: 25,
+      entity: 'medicalcodes'
+    }
+  };
+
+
+
+  // cache stable function references (prevents ui-smart-lookup from reinitializing on every change detection)
+  private lookupSearchFnCache = new Map<string, (q: string, limit: number) => Observable<any[]>>();
+  private lookupDisplayWithCache = new Map<string, (item: any) => string>();
+  private lookupTrackByCache = new Map<string, (item: any) => any>();
 
   private codesetsLoaded$!: Observable<void>;
-  private icdAutoRefresh$ = new Subject<void>();
-  private serviceAutoRefresh$ = new Subject<void>();
-
   // Date text boxes (D / D+1 / D-1)
   scheduledDateText = '';
   dueDateText = '';
@@ -115,8 +141,6 @@ export class AuthsmartcheckComponent implements OnInit {
         this.loadAuthTemplates(authClassId);
       }
     });
-
-    this.wireAutocomplete();
   }
 
   private buildForm(): void {
@@ -154,27 +178,19 @@ export class AuthsmartcheckComponent implements OnInit {
       serviceDesc: [''],
     });
   }
-
   addIcdRow(): void {
     this.icds.push(this.createIcdRow());
-    this.icdAutoRefresh$.next();
   }
-
   removeIcdRow(i: number): void {
     if (this.icds.length === 1) return;
     this.icds.removeAt(i);
-    this.icdAutoRefresh$.next();
   }
-
   addServiceRow(): void {
     this.services.push(this.createServiceRow());
-    this.serviceAutoRefresh$.next();
   }
-
   removeServiceRow(i: number): void {
     if (this.services.length === 1) return;
     this.services.removeAt(i);
-    this.serviceAutoRefresh$.next();
   }
 
   // --- Enrollment ---
@@ -197,6 +213,12 @@ export class AuthsmartcheckComponent implements OnInit {
   selectEnrollment(index: number): void {
     this.selectedDiv = index + 1;
     this.selectedEnrollment = this.memberEnrollments[index] ?? null;
+
+    // Keep member context consistent across steps (Auth Details reads selectedMemberDetailsId)
+    const mdId = Number(this.memberDetailsId || 0);
+    if (mdId > 0) {
+      try { sessionStorage.setItem('selectedMemberDetailsId', String(mdId)); } catch { /* ignore */ }
+    }
   }
 
   getEnrollmentDisplayPairs(enr: any): { label: string; value: string }[] {
@@ -295,57 +317,6 @@ export class AuthsmartcheckComponent implements OnInit {
     }));
   }
 
-  // --- Autocomplete ---
-  private wireAutocomplete(): void {
-    // Wire Angular Material mat-autocomplete to the FormArray controls (mirrors AuthDetails' "searchFn + minChars + debounce")
-    // We keep a single filtered stream per field-type, and rebuild the merged valueChanges streams whenever rows are added/removed.
-    const minChars = 1;
-    const debounceMs = 200;
-    const limit = 25;
-
-    this.filteredCpt$ = this.icdAutoRefresh$.pipe(
-      startWith(void 0),
-      switchMap(() => {
-        const ctrls = this.icds.controls
-          .map(g => (g as FormGroup).get('icd10') as FormControl)
-          .filter(Boolean);
-
-        if (!ctrls.length) return of([] as CodeOption[]);
-
-        return merge(
-          ...ctrls.map(c => c.valueChanges.pipe(startWith(c.value)))
-        ).pipe(
-          map(v => (typeof v === 'string') ? v : (v?.code ?? '')),
-          map(v => String(v ?? '').trim()),
-          debounceTime(debounceMs),
-          distinctUntilChanged(),
-          switchMap(q => q.length >= minChars ? this.searchLocalIcd(q, limit) : of([] as CodeOption[]))
-        );
-      })
-    ).pipe(shareReplay(1));
-
-    this.filteredService$ = this.serviceAutoRefresh$.pipe(
-      startWith(void 0),
-      switchMap(() => {
-        const ctrls = this.services.controls
-          .map(g => (g as FormGroup).get('serviceCode') as FormControl)
-          .filter(Boolean);
-
-        if (!ctrls.length) return of([] as CodeOption[]);
-
-        return merge(
-          ...ctrls.map(c => c.valueChanges.pipe(startWith(c.value)))
-        ).pipe(
-          map(v => (typeof v === 'string') ? v : (v?.code ?? '')),
-          map(v => String(v ?? '').trim()),
-          debounceTime(debounceMs),
-          distinctUntilChanged(),
-          switchMap(q => q.length >= minChars ? this.searchServiceCodes(q, limit) : of([] as CodeOption[]))
-        );
-      })
-    ).pipe(shareReplay(1));
-  }
-
   // Warm-up load for both ICD + Service codesets (same getAllCodesets('ICD') contract used in AuthDetails)
   loadCodesForField(): void {
     this.ensureCodesetsLoaded().subscribe();
@@ -426,6 +397,40 @@ export class AuthsmartcheckComponent implements OnInit {
       .slice(0, lim);
   }
 
+
+  private searchIcdCodes(q: string, limit: number): Observable<CodeOption[]> {
+    const svc: any = this.authService as any;
+
+    // Prefer server-side ICD search when available (matches AuthDetails)
+    if (typeof svc.searchIcd === 'function') {
+      return svc.searchIcd(q, limit).pipe(
+        map((resp: any) => {
+          const items =
+            (Array.isArray(resp) ? resp : null) ??
+            resp?.items ??
+            resp?.results ??
+            resp?.data ??
+            resp?.icd10Codes ??
+            resp?.icdCodes ??
+            resp?.icd ??
+            [];
+
+          return (items || [])
+            .map((x: any) => this.mapAnyToCodeOption(x))
+            .filter((x: CodeOption) => !!x.code)
+            .slice(0, limit);
+        }),
+        catchError((err: any) => {
+          console.error('[AuthSmartCheck] searchIcd failed', err);
+          return this.searchLocalIcd(q, limit);
+        })
+      );
+    }
+
+    // Fallback to locally-loaded codeset list
+    return this.searchLocalIcd(q, limit);
+  }
+
   private searchLocalIcd(q: string, limit: number): Observable<CodeOption[]> {
     return this.ensureCodesetsLoaded().pipe(map(() => this.filterCodes(this.allIcdCodes, q, limit)));
   }
@@ -492,6 +497,93 @@ export class AuthsmartcheckComponent implements OnInit {
     return this.ensureCodesetsLoaded().pipe(map(() => this.filterCodes(this.allServiceCodes, q, limit)));
   }
 
+
+  // ---- ui-smart-lookup helpers (same binding shape as AuthDetails) ----
+  private getLookupCfg(f: any): any {
+    return f?.lookup ?? f?.lookupCfg ?? {};
+  }
+
+  getLookupPlaceholder(f: any): string {
+    const cfg = this.getLookupCfg(f);
+    return (cfg?.placeholder || 'Search...')?.toString();
+  }
+
+  getLookupMinChars(f: any): number {
+    const cfg = this.getLookupCfg(f);
+    const n = Number(cfg?.minChars ?? 1);
+    return Number.isFinite(n) ? n : 1;
+  }
+
+  getLookupDebounceMs(f: any): number {
+    const cfg = this.getLookupCfg(f);
+    const n = Number(cfg?.debounceMs ?? 200);
+    return Number.isFinite(n) ? n : 200;
+  }
+
+  getLookupLimit(f: any): number {
+    const cfg = this.getLookupCfg(f);
+    const n = Number(cfg?.limit ?? 25);
+    return Number.isFinite(n) ? n : 25;
+  }
+
+  getLookupSearchFn(f: any): (q: string, limit: number) => Observable<any[]> {
+    const cfg = this.getLookupCfg(f);
+    const entity = String(cfg?.entity ?? '');
+    const key = `${entity}`;
+
+    const existing = this.lookupSearchFnCache.get(key);
+    if (existing) return existing;
+
+    const fn = (q: string, limit: number): Observable<any[]> => {
+      if (!q) return of([] as any[]);
+
+      switch (entity) {
+        case 'icd':
+          return this.searchIcdCodes(q, limit);
+        case 'medicalcodes':
+          return this.searchServiceCodes(q, limit);
+        default:
+          return of([] as any[]);
+      }
+    };
+
+    this.lookupSearchFnCache.set(key, fn);
+    return fn;
+  }
+
+
+  getLookupDisplayWith(_f: any): (item: any) => string {
+    const key = 'default';
+    const existing = this.lookupDisplayWithCache.get(key);
+    if (existing) return existing;
+
+    const fn = (item: any): string => {
+      if (!item) return '';
+      if (typeof item === 'string') return item;
+      const code = String(item?.code ?? '').trim();
+      const desc = String(item?.desc ?? item?.codeDesc ?? '').trim();
+      return desc ? `${code} - ${desc}` : code;
+    };
+
+    this.lookupDisplayWithCache.set(key, fn);
+    return fn;
+  }
+
+  getLookupTrackBy(_f: any): (item: any) => any {
+    const key = 'default';
+    const existing = this.lookupTrackByCache.get(key);
+    if (existing) return existing;
+
+    const fn = (item: any): any => {
+      if (!item) return item;
+      if (typeof item !== 'object') return item;
+      return item.code ?? item.id ?? item.value ?? item;
+    };
+
+    this.lookupTrackByCache.set(key, fn);
+    return fn;
+  }
+
   displayCode = (opt: any): string => {
     if (!opt) return '';
     if (typeof opt === 'string') return opt;
@@ -506,6 +598,67 @@ export class AuthsmartcheckComponent implements OnInit {
   onServiceSelected(i: number, opt: CodeOption): void {
     const g = this.services.at(i) as FormGroup;
     g.patchValue({ serviceCode: opt.code, serviceDesc: opt.desc }, { emitEvent: false });
+  }
+
+
+  // ui-smart-lookup event handlers (keep description controls in sync)
+  onIcdLookupSelected(i: number, item: any): void {
+    const opt = this.mapAnyToCodeOption(item);
+    const g = this.icds.at(i) as FormGroup;
+    g.patchValue({ icd10: opt.code, icd10Desc: opt.desc }, { emitEvent: false });
+    g.get('icd10')?.markAsDirty();
+  }
+
+  onIcdLookupTextChange(i: number, text: string): void {
+    const v = (text ?? '').toString();
+    const g = this.icds.at(i) as FormGroup;
+
+    if (!v) {
+      g.patchValue({ icd10Desc: '' }, { emitEvent: false });
+      return;
+    }
+
+    // If user starts typing after selection, clear the description so it can't mismatch
+    const currentCode = g.get('icd10')?.value;
+    const currentCodeStr = typeof currentCode === 'string' ? currentCode : (currentCode?.code ?? '');
+    if (currentCodeStr && currentCodeStr !== v) {
+      g.patchValue({ icd10Desc: '' }, { emitEvent: false });
+    }
+  }
+
+  onIcdLookupCleared(i: number): void {
+    const g = this.icds.at(i) as FormGroup;
+    g.patchValue({ icd10: null, icd10Desc: '' }, { emitEvent: false });
+    g.get('icd10')?.markAsDirty();
+  }
+
+  onServiceLookupSelected(i: number, item: any): void {
+    const opt = this.mapAnyToCodeOption(item);
+    const g = this.services.at(i) as FormGroup;
+    g.patchValue({ serviceCode: opt.code, serviceDesc: opt.desc }, { emitEvent: false });
+    g.get('serviceCode')?.markAsDirty();
+  }
+
+  onServiceLookupTextChange(i: number, text: string): void {
+    const v = (text ?? '').toString();
+    const g = this.services.at(i) as FormGroup;
+
+    if (!v) {
+      g.patchValue({ serviceDesc: '' }, { emitEvent: false });
+      return;
+    }
+
+    const currentCode = g.get('serviceCode')?.value;
+    const currentCodeStr = typeof currentCode === 'string' ? currentCode : (currentCode?.code ?? '');
+    if (currentCodeStr && currentCodeStr !== v) {
+      g.patchValue({ serviceDesc: '' }, { emitEvent: false });
+    }
+  }
+
+  onServiceLookupCleared(i: number): void {
+    const g = this.services.at(i) as FormGroup;
+    g.patchValue({ serviceCode: null, serviceDesc: '' }, { emitEvent: false });
+    g.get('serviceCode')?.markAsDirty();
   }
 
   // --- Date parsing (D / D+1 / D-1) ---
@@ -570,20 +723,34 @@ export class AuthsmartcheckComponent implements OnInit {
     if (controlName === 'dueDateTime') this.dueDateText = v;
   }
 
+
+  private openSmartCheckDialog(data: SmartCheckDialogData, width: string = '600px') {
+    return this.dialog.open(SmartCheckResultDialogComponent, {
+      width,
+      panelClass: 'smartcheck-dialog-panel',
+      data,
+      disableClose: true,
+    });
+  }
+
+  // --- Navigation / Decision ---
+  // --- Navigation / Decision ---
+
   // --- Navigation / Decision ---
   onNextContinue(): void {
+
     // validate required UI pieces
     if (!this.selectedEnrollment) {
-      this.dialog.open(AuthconfirmleavedialogComponent, {
-        width: '520px',
-        data: {
-          title: 'Coverage Context Required',
+      this.openSmartCheckDialog(
+        {
+          title: 'Coverage context required',
+          tone: 'info',
           message: 'Please select a coverage/LOB card before continuing.',
-          okText: 'OK',
-          cancelText: '',
-          showCancel: false,
+          primaryText: 'OK',
+          showSecondary: false,
         },
-      });
+        '520px'
+      );
       return;
     }
 
@@ -592,87 +759,410 @@ export class AuthsmartcheckComponent implements OnInit {
       return;
     }
 
-    const serviceCode = this.getFirstServiceCode();
-    const lob = this.selectedEnrollment?.Coverage_Type || 'TX Medicaid';
+    // --- 1) SMART_AUTH_CHECK ---
+    const triggerKeySmart = 'SMART_AUTH_CHECK.BUTTON_CLICK';
 
-    const body: any = {
-      'Service Code': serviceCode || '',
-      'Service Type': 'CPT Code',
-      'LOB': lob,
-    };
+    const serviceCode = this.getFirstServiceCode() || 'A9600';
 
-    const triggerKey = 'SMART_AUTH_CHECK.BUTTON_CLICK';
-    const facts = {
-      serviceCode: '11922',
+    // Prefer form values when available; keep current defaults so existing rules keep matching.
+    const fromDate = this.toMdyOrFallback(this.smartAuthCheckForm.get('scheduledDateTime')?.value, '1/1/2026');
+    const toDate = this.toMdyOrFallback(this.smartAuthCheckForm.get('dueDateTime')?.value, '1/1/2027');
+    console.log('Running SMART_AUTH_CHECK with:', { serviceCode, fromDate, toDate });
+    const smartFacts: any = {
+      serviceCode,
       procedure: {
-        fromDate: '1/1/2021',
-        toDate: '12/31/2999'
+        fromDate,
+        toDate
       }
     };
 
-    this.rulesengineService.executeTrigger(triggerKey, facts).subscribe({
+    this.rulesengineService.executeTrigger(triggerKeySmart, smartFacts).subscribe({
       next: (res: ExecuteTriggerResponse) => {
-        console.log('Rules response:', res);
+        console.log('SMART_AUTH_CHECK response:', res);
 
-        const authRequired = (res?.outputs?.result1 ?? '').toString().toUpperCase() === 'YES';
+        const outputs: Record<string, any> = (res as any)?.outputs ?? {};
 
-        if (authRequired) {
-          const ref = this.dialog.open(AuthconfirmleavedialogComponent, {
-            width: '520px',
-            data: {
-              title: 'Authorization Required',
-              message: 'Authorization is required based on the selected inputs. Continue to create Authorization?',
-              okText: 'Continue',
-              cancelText: 'Cancel',
-              showCancel: true,
+        // Store outputs for the next step if the user chooses to continue
+        try {
+          sessionStorage.setItem('SMART_AUTH_CHECK_OUTPUTS', JSON.stringify(outputs));
+          sessionStorage.setItem('SMART_AUTH_CHECK_MATCHED', JSON.stringify(!!(res as any)?.matched));
+          sessionStorage.setItem('SMART_AUTH_CHECK_STATUS', String((res as any)?.status ?? ''));
+        } catch { /* ignore */ }
+
+        const authRequiredRaw =
+          this.getOutput(outputs, 'dt.result.AuthRequired') ||
+          this.getOutput(outputs, 'result1'); // backward-compat fallback
+        const authApproveRaw =
+          this.getOutput(outputs, 'dt.result.AuthApprove') ||
+          this.getOutput(outputs, 'result2');
+        const generateLetterRaw =
+          this.getOutput(outputs, 'dt.result.GenerateLetter') ||
+          this.getOutput(outputs, 'result3');
+
+        const matched = !!(res as any)?.matched && String((res as any)?.status ?? '').toUpperCase() !== 'NO_MATCH';
+        const isAuthRequired = this.isYes(authRequiredRaw);
+
+        // NO_MATCH (or unmatched): allow user to continue manually or stay
+        if (!matched) {
+          const details = [
+            { label: 'Service Code', value: serviceCode || '—' },
+            { label: 'From Date', value: fromDate || '—' },
+            { label: 'To Date', value: toDate || '—' },
+            { label: 'Auth Required', value: (this.getOutput(outputs, 'dt.result.AuthRequired') || this.getOutput(outputs, 'result1') || '—') },
+            { label: 'Auth Approve', value: (this.getOutput(outputs, 'dt.result.AuthApprove') || this.getOutput(outputs, 'result2') || '—') },
+            { label: 'Generate Letter', value: (this.getOutput(outputs, 'dt.result.GenerateLetter') || this.getOutput(outputs, 'result3') || '—') },
+          ];
+
+          const ref = this.openSmartCheckDialog(
+            {
+              title: 'Smart Auth Check: No Match',
+              tone: 'info',
+              message: `No matching Smart Auth Check rule was found for the selected inputs.
+
+You can stay on this step, or continue to Authorization Details and proceed manually.`,
+              details,
+              primaryText: 'Continue to Authorization Details',
+              secondaryText: 'Stay on Smart Check',
             },
+            '560px'
+          );
+
+          ref.afterClosed().subscribe((action: SmartCheckDialogAction) => {
+            if (action === 'primary') this.runDueDateThenProceed();
           });
 
-          ref.afterClosed().subscribe((ok: boolean) => {
-            if (ok) this.gotoDetails();
+          return;
+        }
+
+        // Matched: show message based on AuthRequired
+        if (isAuthRequired) {
+          const details = [
+            { label: 'Service Code', value: serviceCode || '—' },
+            { label: 'From Date', value: fromDate || '—' },
+            { label: 'To Date', value: toDate || '—' },
+            { label: 'Auth Required', value: (this.getOutput(outputs, 'dt.result.AuthRequired') || this.getOutput(outputs, 'result1') || '—') },
+            { label: 'Auth Approve', value: (this.getOutput(outputs, 'dt.result.AuthApprove') || this.getOutput(outputs, 'result2') || '—') },
+            { label: 'Generate Letter', value: (this.getOutput(outputs, 'dt.result.GenerateLetter') || this.getOutput(outputs, 'result3') || '—') },
+          ];
+
+          const ref = this.openSmartCheckDialog(
+            {
+              title: 'Authorization Required',
+              tone: 'warning',
+              message: `Authorization is required for the selected service code(s) and date range.
+
+Would you like to continue to Authorization Details now?`,
+              details,
+              primaryText: 'Continue to Authorization Details',
+              secondaryText: 'Stay on Smart Check',
+            },
+            '560px'
+          );
+
+          ref.afterClosed().subscribe((action: SmartCheckDialogAction) => {
+            if (action === 'primary') this.runDueDateThenProceed();
           });
         } else {
-          this.gotoDetails();
+          const details = [
+            { label: 'Service Code', value: serviceCode || '—' },
+            { label: 'From Date', value: fromDate || '—' },
+            { label: 'To Date', value: toDate || '—' },
+            { label: 'Auth Required', value: (this.getOutput(outputs, 'dt.result.AuthRequired') || this.getOutput(outputs, 'result1') || '—') },
+            { label: 'Auth Approve', value: (this.getOutput(outputs, 'dt.result.AuthApprove') || this.getOutput(outputs, 'result2') || '—') },
+            { label: 'Generate Letter', value: (this.getOutput(outputs, 'dt.result.GenerateLetter') || this.getOutput(outputs, 'result3') || '—') },
+          ];
+
+          const ref = this.openSmartCheckDialog(
+            {
+              title: 'Authorization Not Required',
+              tone: 'info',
+              message: `Authorization is not required for the selected service code(s) and date range.
+
+Would you like to stay on this step, or add authorization details anyway?`,
+              details,
+              primaryText: 'Add Authorization Details',
+              secondaryText: 'Stay on Smart Check',
+            },
+            '600px'
+          );
+
+          ref.afterClosed().subscribe((action: SmartCheckDialogAction) => {
+            if (action === 'primary') this.runDueDateThenProceed();
+          });
         }
       },
       error: (e) => {
-        console.error('Rules trigger failed', e);
-        // fail-open (same behavior you already had)
-        this.gotoDetails();
+        console.error('SMART_AUTH_CHECK trigger failed', e);
+
+        const details = [
+          { label: 'Service Code', value: serviceCode || '—' },
+          { label: 'From Date', value: fromDate || '—' },
+          { label: 'To Date', value: toDate || '—' },
+        ];
+
+        const ref = this.openSmartCheckDialog(
+          {
+            title: 'Smart Auth Check Unavailable',
+            tone: 'error',
+            message: `Smart Auth Check could not be completed at this time.
+
+Would you like to continue to Authorization Details?`,
+            details,
+            primaryText: 'Continue to Authorization Details',
+            secondaryText: 'Stay on Smart Check',
+          },
+          '560px'
+        );
+
+        ref.afterClosed().subscribe((action: SmartCheckDialogAction) => {
+          if (action === 'primary') this.runDueDateThenProceed();
+        });
       }
     });
 
-    //this.http.post(this.decisionTableUrl, body, { responseType: 'text' }).subscribe({
-    //  next: (raw: string) => {
-    //    let data: any = raw;
-    //    try { data = JSON.parse(raw); } catch { }
+  }
 
-    //    // If auth is required → show confirm then route
-    //    if (data === 'Y') {
-    //      const ref = this.dialog.open(AuthconfirmleavedialogComponent, {
-    //        width: '520px',
-    //        data: {
-    //          title: 'Authorization Required',
-    //          message: 'Authorization is required based on the selected LOB and Service Code. Continue to create Authorization?',
-    //          okText: 'Continue',
-    //          cancelText: 'Cancel',
-    //          showCancel: true,
-    //        },
-    //      });
+  private buildDueDateFacts(anchorSource: 'NotificationDate' | 'AdditionalDate'): any {
+    // These MUST exactly match your DT row values:
+    // Member Program: "Comm" | "Medicaid"
+    // Auth Class: "Inpatient"
+    // Auth Type: "Standard" | "Expedited"
+    // Anchor Source: "NotificationDate" | "AdditionalDate"
+    return {
+      memberDetails: { memberProgram: 'Comm' },
+      authClass: 'Inpatient',
+      authType: 'Expedited',
+      anchorSource
+    };
+  }
 
-    //      ref.afterClosed().subscribe((ok: boolean) => {
-    //        if (ok) this.gotoDetails();
-    //      });
-    //    } else {
-    //      this.gotoDetails();
-    //    }
-    //  },
-    //  error: (e) => {
-    //    console.error('Decision table failed', e);
-    //    // fail-open → still allow user to proceed
-    //    this.gotoDetails();
-    //  },
-    //});
+
+  /**
+   * Calls AUTH_DUE_DATE trigger (best-effort) and then navigates to Details.
+   * - Tries anchorSource = NotificationDate first
+   * - If no match, retries with anchorSource = AdditionalDate
+   * Stores outputs (and computed due date if possible) in sessionStorage for the next step.
+   */
+
+  private persistSmartCheckPrefillForDetails(): void {
+    try {
+      const authClassId = Number(this.smartAuthCheckForm.get('authClassId')?.value || this.selectedAuthClassId || 0);
+      const authTypeId = Number(this.smartAuthCheckForm.get('authTypeId')?.value || this.selectedAuthTypeId || 0);
+
+      const icdCodes: string[] = (this.icds?.controls || [])
+        .map((g: any) => {
+          const v = (g as FormGroup)?.get('icd10')?.value;
+          if (!v) return '';
+          if (typeof v === 'string') return v.trim();
+          return String(v.code ?? v.Code ?? v.icdcode ?? '').trim();
+        })
+        .filter((x: string) => !!x);
+
+      const serviceCodes: string[] = (this.services?.controls || [])
+        .map((g: any) => {
+          const v = (g as FormGroup)?.get('serviceCode')?.value;
+          if (!v) return '';
+          if (typeof v === 'string') return v.trim();
+          return String(v.code ?? v.Code ?? v.cptcode ?? v.cptCode ?? '').trim();
+        })
+        .filter((x: string) => !!x);
+
+      const enrollmentId = 1;// Number(this.selectedEnrollment?.memberEnrollmentId || 0);
+
+      // Ensure AuthDetails loads the same member context
+      const memberDetailsId = Number(this.memberDetailsId || this.memberDetailsId || 0);
+      if (memberDetailsId > 0) {
+        sessionStorage.setItem('selectedMemberDetailsId', String(memberDetailsId));
+      }
+
+      const payload = {
+        authClassId,
+        authTypeId,
+        enrollmentId,
+        icdCodes,
+        serviceCodes,
+        // From/To dates from Smart Check (used to prefill Procedure section in Auth Details)
+        fromDateIso: this.smartAuthCheckForm.get('scheduledDateTime')?.value ?? null,
+        toDateIso: this.smartAuthCheckForm.get('dueDateTime')?.value ?? null,
+        // Alias keys for clarity/forward-compat
+        procedureFromDateIso: this.smartAuthCheckForm.get('scheduledDateTime')?.value ?? null,
+        procedureToDateIso: this.smartAuthCheckForm.get('dueDateTime')?.value ?? null
+      };
+
+      sessionStorage.setItem('SMART_AUTH_CHECK_PREFILL', JSON.stringify(payload));
+    } catch {
+      // ignore (fail open)
+    }
+  }
+
+
+  private runDueDateThenProceed(): void {
+    // Persist Smart Check selections so Auth Details can prefill fields
+    this.persistSmartCheckPrefillForDetails();
+
+    const triggerKeyDue = 'AUTH_DUE_DATE'; // update if your trigger key differs
+
+    const tryAnchor = (anchorSource: 'NotificationDate' | 'AdditionalDate') => {
+      const dueFacts = this.buildDueDateFacts('NotificationDate');
+
+      this.rulesengineService.executeTrigger(triggerKeyDue, dueFacts).subscribe({
+        next: (res: ExecuteTriggerResponse) => {
+          console.log(`AUTH_DUE_DATE response (${anchorSource}):`, res);
+
+          const isMatched = !!(res as any)?.matched || (res as any)?.status === 'SUCCESS';
+          if (!isMatched && anchorSource === 'NotificationDate') {
+            // fallback try
+            tryAnchor('AdditionalDate');
+            return;
+          }
+
+          // Persist outputs for next screen (Details)
+          try {
+            sessionStorage.setItem('AUTH_DUE_DATE_OUTPUTS', JSON.stringify(res?.outputs ?? {}));
+            sessionStorage.setItem('AUTH_DUE_DATE_MATCHED', JSON.stringify(isMatched));
+            sessionStorage.setItem('AUTH_DUE_DATE_ANCHOR', anchorSource);
+          } catch { /* ignore */ }
+
+          // Optionally compute & prefill dueDateTime from scheduledDateTime + offsets
+          this.applyComputedDueDateIfEmpty(res?.outputs ?? {}, anchorSource);
+          console.log('Navigating to Details step after AUTH_DUE_DATE');
+          this.gotoDetails();
+        },
+        error: (e) => {
+          console.error(`AUTH_DUE_DATE trigger failed (${anchorSource})`, e);
+          // fail-open
+          this.gotoDetails();
+        }
+      });
+    };
+
+    tryAnchor('NotificationDate');
+  }
+
+  private applyComputedDueDateIfEmpty(outputs: Record<string, any>, anchorSource: string): void {
+    const dueCtrl = this.smartAuthCheckForm.get('dueDateTime');
+    const cur = String(dueCtrl?.value ?? '').trim();
+    console.log(`Checking to auto-fill dueDateTime (anchorSource=${anchorSource}) - current value:`, cur);
+    // Only auto-fill if empty
+    // if (cur) return;
+
+    const offsetValue = String(outputs['dt.result.OffsetValue'] ?? '').trim();
+    const offsetUnit = String(outputs['dt.result.OffsetUnit'] ?? '').trim();
+    const dayType = String(outputs['dt.result.DayType'] ?? '').trim();
+
+    const schedIso = String(this.smartAuthCheckForm.get('scheduledDateTime')?.value ?? '').trim();
+    const anchor = schedIso ? new Date(schedIso) : new Date();
+
+    const computed = this.computeDueDate(anchor, offsetValue, offsetUnit, dayType);
+    if (!computed) return;
+
+    dueCtrl?.setValue(computed.toISOString());
+    dueCtrl?.markAsTouched();
+
+    // Update the textbox display (YYYY-MM-DD) for the native date input
+    this.dueDateText = this.formatDateOnly(computed);
+    console.log('Auto-filled dueDateTime with computed due date:', this.dueDateText);
+    try {
+      sessionStorage.setItem('AUTH_DUE_DATE_COMPUTED_ISO', computed.toISOString());
+    } catch { /* ignore */ }
+  }
+
+  private computeDueDate(anchor: Date, offsetValue: string, offsetUnit: string, dayType: string): Date | null {
+    const n = parseInt(String(offsetValue ?? '').trim(), 10);
+    if (!Number.isFinite(n)) return null;
+
+    const unit = String(offsetUnit ?? '').trim().toLowerCase();
+    const dtype = String(dayType ?? '').trim().toLowerCase();
+
+    // Months/Years handled via Date setters; Days/Weeks handled as day increments.
+    if (unit.startsWith('month')) {
+      const d = new Date(anchor);
+      d.setMonth(d.getMonth() + n);
+      return d;
+    }
+
+    if (unit.startsWith('year')) {
+      const d = new Date(anchor);
+      d.setFullYear(d.getFullYear() + n);
+      return d;
+    }
+
+    const days = unit.startsWith('week') ? n * 7 : n;
+
+    if (dtype.startsWith('week')) {
+      return this.addWeekdays(anchor, days);
+    }
+
+    return this.addCalendarDays(anchor, days);
+  }
+
+  private addCalendarDays(anchor: Date, days: number): Date {
+    const d = new Date(anchor);
+    d.setDate(d.getDate() + days);
+    return d;
+  }
+
+  private addWeekdays(anchor: Date, days: number): Date {
+    const d = new Date(anchor);
+    const step = days >= 0 ? 1 : -1;
+    let remaining = Math.abs(days);
+
+    while (remaining > 0) {
+      d.setDate(d.getDate() + step);
+      const day = d.getDay(); // 0 Sun, 6 Sat
+      if (day !== 0 && day !== 6) remaining--;
+    }
+
+    return d;
+  }
+
+  private formatDateOnly(d: Date): string {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+
+
+  private getOutput(outputs: Record<string, any>, key: string): string {
+    const v = (outputs ?? ({} as any))[key];
+    if (v === null || v === undefined) return '';
+    return String(v).trim();
+  }
+
+  private isYes(v: any): boolean {
+    const s = String(v ?? '').trim().toLowerCase();
+    return s === 'y' || s === 'yes' || s === 'true' || s === '1';
+  }
+
+  private toMdyOrFallback(value: any, fallback: string): string {
+    if (value === null || value === undefined) return fallback;
+    if (value instanceof Date && !isNaN(value.getTime())) {
+      const m = value.getMonth() + 1;
+      const d = value.getDate();
+      const y = value.getFullYear();
+      return `${m}/${d}/${y}`;
+    }
+
+    const s = String(value).trim();
+    if (!s) return fallback;
+
+    // Already in M/D/YYYY (or MM/DD/YYYY) format
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)) return s;
+
+    // Convert YYYY-MM-DD (or YYYY-MM-DDTHH:mm...) -> M/D/YYYY
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+    if (m) {
+      const y = Number(m[1]);
+      const mo = Number(m[2]);
+      const d = Number(m[3]);
+      if (!isNaN(y) && !isNaN(mo) && !isNaN(d)) return `${mo}/${d}/${y}`;
+    }
+
+    // If user typed relative date tokens (D, D+1, etc) or any other format, pass through as-is.
+    // Backend may still be able to interpret it; otherwise the rule may no-match.
+    return s;
   }
 
   private gotoDetails(): void {

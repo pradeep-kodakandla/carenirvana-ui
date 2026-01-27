@@ -1,0 +1,121 @@
+.smartcheck-dialog-panel .mat-mdc-dialog-container,
+.smartcheck-dialog-panel .mat-dialog-container {
+  border-radius: 14px;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+/* Root */
+.sc-dialog {
+  width: 100%;
+  background: #fff;
+  color: #101828;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.sc-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid rgba(16, 24, 40, 0.08);
+}
+
+.sc-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+.sc-icon mat-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+/* Title */
+.sc-title {
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+/* Content */
+.sc-content {
+  padding: 14px 20px 6px;
+}
+
+.sc-message {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #344054;
+  white-space: pre-line; /* renders \n as line breaks */
+}
+
+/* Details */
+.sc-details {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f9fafb;
+  border: 1px solid rgba(16, 24, 40, 0.06);
+}
+
+.sc-details-title {
+  font-size: 13px;
+  font-weight: 650;
+  margin-bottom: 10px;
+  color: #101828;
+}
+
+.sc-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 14px;
+}
+
+.sc-detail-label {
+  font-size: 12px;
+  color: #667085;
+  line-height: 1.2;
+}
+
+.sc-detail-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #101828;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+/* Actions */
+.sc-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px 18px;
+  border-top: 1px solid rgba(16, 24, 40, 0.08);
+}
+
+.sc-btn-primary, .sc-btn-secondary {
+  border-radius: 10px !important;
+  min-height: 36px;
+  font-weight: 650;
+}
+
+/* Tone coloring (subtle) */
+.sc-info .sc-icon { background: rgba(2, 106, 162, 0.10); color: #026AA2; }
+.sc-warning .sc-icon { background: rgba(245, 158, 11, 0.14); color: #B45309; }
+.sc-success .sc-icon { background: rgba(16, 185, 129, 0.14); color: #047857; }
+.sc-error .sc-icon { background: rgba(239, 68, 68, 0.14); color: #B91C1C; }
+
+/* Responsive: stack details on small widths */
+@media (max-width: 520px) {
+  .sc-details-grid { grid-template-columns: 1fr; }
+  .sc-actions { flex-direction: column-reverse; }
+}

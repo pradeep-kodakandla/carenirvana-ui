@@ -34,7 +34,7 @@
       <!-- Row 2 -->
       <div class="details-row">
         <div class="form-outline">
-          <input class="form-control" matInput type="date" placeholder=" " formControlName="dateOfBirth" [readonly]="!editMode" />
+          <input class="form-control" matInput [type]="editMode ? 'date' : 'text'" placeholder=" " formControlName="dateOfBirth" [readonly]="!editMode" />
           <label class="floating-label">Date of Birth</label>
         </div>
         <div class="form-outline">
@@ -128,7 +128,7 @@
           <label class="floating-label">Service Interruption</label>
         </div>
         <div class="form-outline">
-          <input class="form-control" matInput type="date" placeholder=" " formControlName="dateOfDeath" [readonly]="!editMode" />
+          <input class="form-control" matInput [type]="editMode ? 'date' : 'text'" placeholder=" " formControlName="dateOfDeath" [readonly]="!editMode" />
           <label class="floating-label">Date of Death</label>
         </div>
         <div class="form-outline">
@@ -147,7 +147,7 @@
 
 
         <div class="form-outline">
-          <input class="form-control" matInput type="time" placeholder=" " formControlName="preferredTimeOfCall" [readonly]="!editMode" />
+          <input class="form-control" matInput [type]="editMode ? 'time' : 'text'" placeholder=" " formControlName="preferredTimeOfCall" [readonly]="!editMode" />
           <label class="floating-label">Preferred Time of Call</label>
         </div>
         <div class="form-outline">
@@ -168,15 +168,15 @@
       <!-- Row A (stacked in narrow column) -->
       <div class="details-row" style="padding-top:10px;">
         <div class="form-outline">
-          <input class="form-control" matInput placeholder=" " value="N/A" [readonly]="!editModeMI" />
+          <input class="form-control" matInput placeholder=" " [value]="identifiers.memberId || 'N/A'" [readonly]="!editModeMI" />
           <label class="floating-label">Member ID</label>
         </div>
         <div class="form-outline">
-          <input class="form-control" matInput placeholder=" " value="N/A" [readonly]="!editModeMI" />
+          <input class="form-control" matInput placeholder=" " [value]="identifiers.subscriberId || 'N/A'" [readonly]="!editModeMI" />
           <label class="floating-label">Subscriber ID</label>
         </div>
         <div class="form-outline">
-          <input class="form-control" matInput placeholder=" " value="N/A" [readonly]="!editModeMI" />
+          <input class="form-control" matInput placeholder=" " [value]="identifiers.medicaidId || 'N/A'" [readonly]="!editModeMI" />
           <label class="floating-label">Medicaid ID</label>
         </div>
       </div>
@@ -184,15 +184,15 @@
       <!-- Row B -->
       <div class="details-row">
         <div class="form-outline">
-          <input class="form-control" matInput placeholder=" " value="N/A" [readonly]="!editModeMI" />
+          <input class="form-control" matInput placeholder=" " [value]="identifiers.mrn || 'N/A'" [readonly]="!editModeMI" />
           <label class="floating-label">MRN</label>
         </div>
         <div class="form-outline">
-          <input class="form-control" matInput placeholder=" " value="N/A" [readonly]="!editModeMI" />
+          <input class="form-control" matInput placeholder=" " [value]="identifiers.medicareId || 'N/A'" [readonly]="!editModeMI" />
           <label class="floating-label">Medicare ID</label>
         </div>
         <div class="form-outline">
-          <input class="form-control" matInput placeholder=" " value="N/A" [readonly]="!editModeMI" />
+          <input class="form-control" matInput placeholder=" " [value]="identifiers.familyId || 'N/A'" [readonly]="!editModeMI" />
           <label class="floating-label">Family ID</label>
         </div>
       </div>
@@ -201,7 +201,7 @@
 
   </div>
 
-  <!-- COMMUNICATION DETAILS (unchanged tables) -->
+  <!-- COMMUNICATION DETAILS -->
   <div class="communication-details-container">
     <div class="details-header">
       <h6 style="color: #007BFF; font-weight: bold;">Communication Details</h6>
@@ -211,89 +211,159 @@
       <!-- Phone Numbers -->
       <div class="communication-section">
         <div class="section-header">
-          Phone Numbers
+          <div class="section-title-inline">
+            Phone Numbers
+            <span class="count-pill">{{ phoneNumbers?.length || 0 }}</span>
+          </div>
           <button mat-icon-button (click)="onEdit('phone')">
             <mat-icon style="color:white;">edit</mat-icon>
           </button>
         </div>
-        <table mat-table [dataSource]="phoneNumbers" class="mat-elevation-z1">
-          <ng-container matColumnDef="type">
-            <th mat-header-cell *matHeaderCellDef> Phone Type </th>
-            <td mat-cell *matCellDef="let element"> {{ element.type }} </td>
-          </ng-container>
-          <ng-container matColumnDef="number">
-            <th mat-header-cell *matHeaderCellDef> Phone Number </th>
-            <td mat-cell *matCellDef="let element"> {{ element.number }} </td>
-          </ng-container>
-          <tr mat-header-row *matHeaderRowDef="phoneColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: phoneColumns;"></tr>
-        </table>
+
+        <ng-container *ngIf="phoneNumbers?.length; else phoneEmpty">
+          <div class="table-wrap">
+            <table mat-table [dataSource]="phoneNumbers" class="mat-elevation-z1 mi-table">
+              <ng-container matColumnDef="type">
+                <th mat-header-cell *matHeaderCellDef> Phone Type </th>
+                <td mat-cell *matCellDef="let element">
+                  {{ element.type }}
+                  <span class="badge primary" *ngIf="element.isPrimary">Primary</span>
+                  <span class="badge preferred" *ngIf="!element.isPrimary && element.isPreferred">Preferred</span>
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="number">
+                <th mat-header-cell *matHeaderCellDef> Phone Number </th>
+                <td mat-cell *matCellDef="let element">
+                  {{ element.number || 'N/A' }}
+                  <span class="mi-cell-muted" *ngIf="element.extension"> ext {{ element.extension }}</span>
+                </td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="phoneColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: phoneColumns;"></tr>
+            </table>
+          </div>
+        </ng-container>
+        <ng-template #phoneEmpty>
+          <div class="mi-empty">N/A</div>
+        </ng-template>
       </div>
 
       <!-- Address -->
       <div class="communication-section">
         <div class="section-header">
-          Address
+          <div class="section-title-inline">
+            Address
+            <span class="count-pill">{{ addresses?.length || 0 }}</span>
+          </div>
           <button mat-icon-button (click)="onEdit('address')">
             <mat-icon style="color:white;">edit</mat-icon>
           </button>
         </div>
-        <table mat-table [dataSource]="addresses" class="mat-elevation-z1">
-          <ng-container matColumnDef="type">
-            <th mat-header-cell *matHeaderCellDef> Address Type </th>
-            <td mat-cell *matCellDef="let element"> {{ element.type }} </td>
-          </ng-container>
-          <ng-container matColumnDef="number">
-            <th mat-header-cell *matHeaderCellDef> Address Number </th>
-            <td mat-cell *matCellDef="let element"> {{ element.number }} </td>
-          </ng-container>
-          <tr mat-header-row *matHeaderRowDef="addressColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: addressColumns;"></tr>
-        </table>
+
+        <ng-container *ngIf="addresses?.length; else addressEmpty">
+          <div class="table-wrap">
+            <table mat-table [dataSource]="addresses" class="mat-elevation-z1 mi-table">
+              <ng-container matColumnDef="type">
+                <th mat-header-cell *matHeaderCellDef> Address Type </th>
+                <td mat-cell *matCellDef="let element">
+                  {{ element.type }}
+                  <span class="badge primary" *ngIf="element.isPrimary">Primary</span>
+                  <span class="badge preferred" *ngIf="!element.isPrimary && element.isPreferred">Preferred</span>
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="number">
+                <th mat-header-cell *matHeaderCellDef> Address </th>
+                <td mat-cell *matCellDef="let element">
+                  <div class="mi-cell-multiline" *ngIf="element.lines?.length; else addrSingle">
+                    <div *ngFor="let line of element.lines">{{ line }}</div>
+                  </div>
+                  <ng-template #addrSingle>
+                    {{ element.number || 'N/A' }}
+                  </ng-template>
+                </td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="addressColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: addressColumns;"></tr>
+            </table>
+          </div>
+        </ng-container>
+        <ng-template #addressEmpty>
+          <div class="mi-empty">N/A</div>
+        </ng-template>
       </div>
 
       <!-- Emails -->
       <div class="communication-section">
         <div class="section-header">
-          Emails
+          <div class="section-title-inline">
+            Emails
+            <span class="count-pill">{{ emails?.length || 0 }}</span>
+          </div>
           <button mat-icon-button (click)="onEdit('email')">
             <mat-icon style="color:white;">edit</mat-icon>
           </button>
         </div>
-        <table mat-table [dataSource]="emails" class="mat-elevation-z1">
-          <ng-container matColumnDef="type">
-            <th mat-header-cell *matHeaderCellDef> Email Type </th>
-            <td mat-cell *matCellDef="let element"> {{ element.type }} </td>
-          </ng-container>
-          <ng-container matColumnDef="email">
-            <th mat-header-cell *matHeaderCellDef> Email </th>
-            <td mat-cell *matCellDef="let element"> {{ element.email }} </td>
-          </ng-container>
-          <tr mat-header-row *matHeaderRowDef="emailColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: emailColumns;"></tr>
-        </table>
+
+        <ng-container *ngIf="emails?.length; else emailEmpty">
+          <div class="table-wrap">
+            <table mat-table [dataSource]="emails" class="mat-elevation-z1 mi-table">
+              <ng-container matColumnDef="type">
+                <th mat-header-cell *matHeaderCellDef> Email Type </th>
+                <td mat-cell *matCellDef="let element">
+                  {{ element.type }}
+                  <span class="badge primary" *ngIf="element.isPrimary">Primary</span>
+                  <span class="badge preferred" *ngIf="!element.isPrimary && element.isPreferred">Preferred</span>
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="email">
+                <th mat-header-cell *matHeaderCellDef> Email </th>
+                <td mat-cell *matCellDef="let element"> {{ element.email || 'N/A' }} </td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="emailColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: emailColumns;"></tr>
+            </table>
+          </div>
+        </ng-container>
+        <ng-template #emailEmpty>
+          <div class="mi-empty">N/A</div>
+        </ng-template>
       </div>
 
       <!-- Languages -->
       <div class="communication-section">
         <div class="section-header">
-          Languages
+          <div class="section-title-inline">
+            Languages
+            <span class="count-pill">{{ languages?.length || 0 }}</span>
+          </div>
           <button mat-icon-button (click)="onEdit('language')">
             <mat-icon style="color:white;">edit</mat-icon>
           </button>
         </div>
-        <table mat-table [dataSource]="languages" class="mat-elevation-z1">
-          <ng-container matColumnDef="type">
-            <th mat-header-cell *matHeaderCellDef> Language Type </th>
-            <td mat-cell *matCellDef="let element"> {{ element.type }} </td>
-          </ng-container>
-          <ng-container matColumnDef="language">
-            <th mat-header-cell *matHeaderCellDef> Language </th>
-            <td mat-cell *matCellDef="let element"> {{ element.language }} </td>
-          </ng-container>
-          <tr mat-header-row *matHeaderRowDef="languageColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: languageColumns;"></tr>
-        </table>
+
+        <ng-container *ngIf="languages?.length; else languageEmpty">
+          <div class="table-wrap">
+            <table mat-table [dataSource]="languages" class="mat-elevation-z1 mi-table">
+              <ng-container matColumnDef="type">
+                <th mat-header-cell *matHeaderCellDef> Language Type </th>
+                <td mat-cell *matCellDef="let element">
+                  {{ element.type }}
+                  <span class="badge primary" *ngIf="element.isPrimary">Primary</span>
+                  <span class="badge preferred" *ngIf="!element.isPrimary && element.isPreferred">Preferred</span>
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="language">
+                <th mat-header-cell *matHeaderCellDef> Language </th>
+                <td mat-cell *matCellDef="let element"> {{ element.language || 'N/A' }} </td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="languageColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: languageColumns;"></tr>
+            </table>
+          </div>
+        </ng-container>
+        <ng-template #languageEmpty>
+          <div class="mi-empty">N/A</div>
+        </ng-template>
       </div>
     </div>
   </div>
