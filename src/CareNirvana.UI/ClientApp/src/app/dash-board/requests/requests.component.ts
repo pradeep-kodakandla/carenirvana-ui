@@ -4,13 +4,14 @@ import { FormBuilder, FormGroup } from '@angular/forms';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
-import { Observable, of } from 'rxjs';
+import { Observable } from 'rxjs';
 import { DashboardServiceService } from 'src/app/service/dashboard.service.service';
 import { HeaderService } from 'src/app/service/header.service';
 import { Router, ActivatedRoute } from '@angular/router';
 import { MemberService } from 'src/app/service/shared-member.service';
-import { MemberactivityService, AcceptWorkGroupActivityRequest, RejectWorkGroupActivityRequest, DeleteMemberActivityRequest } from 'src/app/service/memberactivity.service';
+import { MemberactivityService, AcceptWorkGroupActivityRequest, RejectWorkGroupActivityRequest } from 'src/app/service/memberactivity.service';
 import { FormsModule } from '@angular/forms';
+
 interface ActivityItem {
   activityType?: string;
   followUpDateTime?: string | Date;
@@ -20,16 +21,20 @@ interface ActivityItem {
   memberId?: number;
   status?: string;
   memberActivityWorkGroupId?: number;
-  // ...other fields you already have
 }
 
 interface CalendarDay {
   date: Date;
   isCurrentMonth: boolean;
   isToday: boolean;
-  activities: ActivityItem[]; // same shape as rows in dataSource
+  activities: ActivityItem[];
 }
 
+interface FacetOption {
+  key: string;
+  label: string;
+  count: number;
+}
 
 export interface WorkGroupAssignment {
   userId: number;
@@ -68,28 +73,23 @@ export class RequestsComponent implements OnInit, AfterViewInit {
   weekDays: string[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   currentMonth: Date = new Date();
   calendarDays: CalendarDay[] = [];
-  calendarViewRange: CalendarViewRange = 'workweek';  // default like Outlook
+  calendarViewRange: CalendarViewRange = 'workweek';
   currentDate: Date = new Date();
   selectedDate: Date = new Date();
 
   visibleCalendarDays: CalendarDay[] = [];
   activeRangeDays: CalendarDay[] = [];
 
-  // hours shown in the time grid (change to taste)
-  //hours: number[] = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
   hours: number[] = Array.from({ length: 24 }, (_, i) => i);
-
   rangeLabel = '';
 
-  // sample “My calendars” data – wire to your own filters later
   userCalendars = [
     { id: 1, name: 'Calendar', color: '#2563eb', selected: true },
     { id: 2, name: 'Reminders', color: '#16a34a', selected: true }
   ];
 
-  // this should already exist in your component
+  // filtered view rows (table + calendar)
   activities: ActivityItem[] = [];
-
 
   displayedColumns: string[] = [
     'module',
@@ -107,24 +107,32 @@ export class RequestsComponent implements OnInit, AfterViewInit {
   dataSource = new MatTableDataSource<any>([]);
   rawData: any[] = [];
 
-  // filter panel (keep grid empty for now)
   showFilters = false;
   filtersForm!: FormGroup;
 
-  // quick search
   quickSearchTerm = '';
 
-  // due chips
+  // due chips counts (dynamic)
   dueChip: 'OVERDUE' | 'TODAY' | 'FUTURE' | null = null;
   overdueCount = 0;
   dueTodayCount = 0;
   dueFutureCount = 0;
 
-  // expand placeholder (kept for parity)
+  // Faceted filters (Module -> Type -> Work basket)
+  selectedModule: string | null = null;       // null = all
+  selectedSubType: string | null = null;      // module-specific: Activity/Member/Auth/Case
+  selectedWorkBasket: string | null = null;   // workBasketName
+
+  moduleFacets: FacetOption[] = [];
+  moduleTotalCount = 0;
+
+  typeFacets: FacetOption[] = [];
+  typeTotalCount = 0;
+
+  basketFacets: FacetOption[] = [];
+  basketTotalCount = 0;
+
   expandedElement: any | null = null;
-
-
-
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -139,7 +147,7 @@ export class RequestsComponent implements OnInit, AfterViewInit {
     private memberActivityService: MemberactivityService) { }
 
   ngOnInit(): void {
-    this.filtersForm = this.fb.group({}); // empty grid per request
+    this.filtersForm = this.fb.group({});
     this.buildMonthGrid();
     this.buildActiveRangeDays();
     this.loadData();
@@ -158,7 +166,6 @@ export class RequestsComponent implements OnInit, AfterViewInit {
   initializeWorkGroups(rows: WorkGroupAssignment[]): void {
     this.workGroupAssignments = rows || [];
 
-    // build distinct work group list for chips
     const map = new Map<number, string>();
     for (const row of this.workGroupAssignments) {
       if (!map.has(row.workGroupId)) {
@@ -171,40 +178,41 @@ export class RequestsComponent implements OnInit, AfterViewInit {
       workGroupName: name
     }));
 
-    // default: "all groups" selected
     this.selectedWorkGroupId = null;
     this.selectedWorkGroupName = 'All work groups';
     this.updateVisibleUsers();
   }
 
-
   ngAfterViewInit(): void {
     this.dataSource.paginator = this.paginator;
     this.dataSource.sort = this.sort;
 
-    // quick search across a few fields (keep payload AS-IS / PascalCase)
+    // kept for compatibility (we do NOT use dataSource.filter anymore; we filter ourselves)
     this.dataSource.filterPredicate = (row: any, filter: string) => {
       const q = (filter || '').trim().toLowerCase();
       if (!q) return true;
 
-      const name = `${row?.FirstName ?? ''} ${row?.LastName ?? ''}`.trim();
+      const f = row?.firstName ?? row?.FirstName ?? '';
+      const l = row?.lastName ?? row?.LastName ?? '';
+      const name = `${f} ${l}`.trim();
+
       const fields = [
-        row?.Module,
+        row?.module ?? row?.Module,
+        row?.workGroupName ?? row?.WorkGroupName,
+        row?.workBasketName ?? row?.WorkBasketName,
         name,
-        row?.MemberId?.toString(),
-        row?.UserName,                 // Refer To (username)
-        row?.ActivityType,
-        row?.Status
+        (row?.memberId ?? row?.MemberId)?.toString(),
+        row?.userName ?? row?.UserName,
+        row?.referredTo ?? row?.ReferredTo,
+        row?.activityType ?? row?.ActivityType,
+        row?.status ?? row?.Status,
+        row?.authNumber ?? row?.AuthNumber
       ];
 
       return fields.some(v => (v ?? '').toString().toLowerCase().includes(q));
     };
   }
 
-  /** Wire your real service here (kept AS-IS). It should return rows with PascalCase keys:
-   * Module, FirstName, LastName, MemberId, CreatedOn, ReferredTo, UserName, ActivityType,
-   * FollowUpDateTime, DueDate, Status, (and optionally StatusId / ActivityTypeId).
-   */
   private getMyActivities$(): Observable<any[]> {
     return this.activityService.getrequestactivitydetails(sessionStorage.getItem('loggedInUserid'));
   }
@@ -215,24 +223,15 @@ export class RequestsComponent implements OnInit, AfterViewInit {
         console.log('My Activities rows', rows);
         const filtered = (rows || []).filter((row: any) => {
           const rejected = row.rejectedUserIds || [];
-
-          // keep the row ONLY if current user is NOT in rejectedUserIds
           return !rejected.some((id: any) => Number(id) === Number(sessionStorage.getItem('loggedInUserid')));
         });
-        this.activities = filtered || [];
-        this.dataSource.data = this.activities;
+
         this.rawData = Array.isArray(filtered) ? filtered : [];
         this.recomputeAll();
-        this.buildMonthGrid();
-        this.buildActiveRangeDays();
-
       },
       error: () => {
         this.rawData = [];
         this.recomputeAll();
-        this.activities = [];
-        this.dataSource.data = [];
-
       }
     });
   }
@@ -251,7 +250,6 @@ export class RequestsComponent implements OnInit, AfterViewInit {
   }
 
   setDueChip(kind: 'OVERDUE' | 'TODAY' | 'FUTURE'): void {
-    //this.dueChip = which;
     if (this.selectedDue.has(kind)) {
       this.selectedDue.delete(kind);
     } else {
@@ -261,19 +259,219 @@ export class RequestsComponent implements OnInit, AfterViewInit {
   }
 
   // ===== Pipeline =====
+
+  setModule(module: string | null): void {
+    const next = module ? module.toUpperCase() : null;
+
+    // toggling the same module chip turns it off
+    if (this.selectedModule === next) {
+      this.selectedModule = null;
+      this.selectedSubType = null;
+      this.selectedWorkBasket = null;
+    } else {
+      this.selectedModule = next;
+      // reset dependent filters when module changes
+      this.selectedSubType = null;
+      this.selectedWorkBasket = null;
+    }
+
+    this.recomputeAll();
+  }
+
+  setSubType(type: string | null): void {
+    if (!this.selectedModule) {
+      this.selectedSubType = null;
+      return;
+    }
+
+    if (this.selectedSubType === type) {
+      this.selectedSubType = null;
+    } else {
+      this.selectedSubType = type;
+    }
+
+    this.recomputeAll();
+  }
+
+  setWorkBasket(basket: string | null): void {
+    if (!this.selectedModule) {
+      this.selectedWorkBasket = null;
+      return;
+    }
+
+    if (this.selectedWorkBasket === basket) {
+      this.selectedWorkBasket = null;
+    } else {
+      this.selectedWorkBasket = basket;
+    }
+
+    this.recomputeAll();
+  }
+
   private recomputeAll(): void {
-    this.computeDueCounts();
+    // (1) rebuild facet counts/options first (may clear invalid selections)
+    this.rebuildFacetsAndCounts();
 
-    let base = [...this.rawData];
+    // (2) due counts should reflect everything except the due chips themselves
+    const baseForDueCounts = this.applyFilters(this.rawData, {
+      due: false,
+      module: true,
+      type: true,
+      basket: true,
+      search: true
+    });
+    this.computeDueCounts(baseForDueCounts);
 
-    if (this.selectedDue && this.selectedDue.size > 0) {
+    // (3) final filtered list for table / calendar
+    const finalRows = this.applyFilters(this.rawData, {
+      due: true,
+      module: true,
+      type: true,
+      basket: true,
+      search: true
+    });
+
+    this.activities = finalRows;
+    this.dataSource.data = finalRows;
+
+    // Disable MatTableDataSource.filter because we already filtered
+    this.dataSource.filter = '';
+
+    if (this.paginator) this.paginator.firstPage();
+
+    // keep calendar grids in sync (if you enable calendar view later)
+    this.buildMonthGrid();
+    this.buildActiveRangeDays();
+  }
+
+  private rebuildFacetsAndCounts(): void {
+    // Module facets: based on current due + search, but NOT module/type/basket selections
+    const moduleBase = this.applyFilters(this.rawData, {
+      due: true,
+      module: false,
+      type: false,
+      basket: false,
+      search: true
+    });
+
+    this.moduleTotalCount = moduleBase.length;
+
+    const moduleMap = new Map<string, number>();
+    for (const r of moduleBase) {
+      const key = this.getModuleKey(r);
+      if (!key) continue;
+      const k = key.toUpperCase();
+      moduleMap.set(k, (moduleMap.get(k) || 0) + 1);
+    }
+    this.moduleFacets = this.toFacetOptions(moduleMap);
+
+    // If selected module no longer exists, clear it (and dependent filters)
+    if (this.selectedModule && !moduleMap.has(this.selectedModule)) {
+      this.selectedModule = null;
+      this.selectedSubType = null;
+      this.selectedWorkBasket = null;
+    }
+
+    // Type facets (only when a module is selected)
+    if (this.selectedModule) {
+      const typeBase = this.applyFilters(this.rawData, {
+        due: true,
+        module: true,
+        type: false,
+        basket: true,   // keep basket selection affecting type counts
+        search: true
+      });
+
+      this.typeTotalCount = typeBase.length;
+
+      const typeMap = new Map<string, number>();
+      for (const r of typeBase) {
+        const t = this.getModuleSubType(r);
+        if (!t) continue;
+        typeMap.set(t, (typeMap.get(t) || 0) + 1);
+      }
+      this.typeFacets = this.toFacetOptions(typeMap);
+
+      if (this.selectedSubType && !typeMap.has(this.selectedSubType)) {
+        this.selectedSubType = null;
+      }
+    } else {
+      this.typeFacets = [];
+      this.typeTotalCount = 0;
+      this.selectedSubType = null;
+    }
+
+    // Work basket facets (only when a module is selected)
+    if (this.selectedModule) {
+      const basketBase = this.applyFilters(this.rawData, {
+        due: true,
+        module: true,
+        type: true,
+        basket: false,
+        search: true
+      });
+
+      this.basketTotalCount = basketBase.length;
+
+      const basketMap = new Map<string, number>();
+      for (const r of basketBase) {
+        const b = this.getWorkBasketName(r);
+        if (!b) continue;
+        basketMap.set(b, (basketMap.get(b) || 0) + 1);
+      }
+      this.basketFacets = this.toFacetOptions(basketMap);
+
+      if (this.selectedWorkBasket && !basketMap.has(this.selectedWorkBasket)) {
+        this.selectedWorkBasket = null;
+      }
+    } else {
+      this.basketFacets = [];
+      this.basketTotalCount = 0;
+      this.selectedWorkBasket = null;
+    }
+  }
+
+  private applyFilters(rows: any[], flags?: {
+    due?: boolean;
+    module?: boolean;
+    type?: boolean;
+    basket?: boolean;
+    search?: boolean;
+  }): any[] {
+    const use = {
+      due: true,
+      module: true,
+      type: true,
+      basket: true,
+      search: true,
+      ...(flags || {})
+    };
+
+    let out = Array.isArray(rows) ? [...rows] : [];
+
+    // Module
+    if (use.module && this.selectedModule) {
+      out = out.filter(r => this.getModuleKey(r).toUpperCase() === this.selectedModule);
+    }
+
+    // Module Type (Activity/Member/Auth/Case)
+    if (use.type && this.selectedSubType) {
+      out = out.filter(r => this.getModuleSubType(r) === this.selectedSubType);
+    }
+
+    // Work basket
+    if (use.basket && this.selectedWorkBasket) {
+      out = out.filter(r => this.getWorkBasketName(r) === this.selectedWorkBasket);
+    }
+
+    // Due chips
+    if (use.due && this.selectedDue && this.selectedDue.size > 0) {
       const today = new Date();
-
-      base = base.filter(r => {
-        const d = this.toDate(r?.dueDate);
+      out = out.filter(r => {
+        const d = this.toDate(this.pick(r, ['dueDate', 'DueDate']));
         if (!d) return false;
 
-        const cmp = this.compareDateOnly(d, today); // <0 overdue, 0 today, >0 future
+        const cmp = this.compareDateOnly(d, today);
 
         let match = false;
         if (this.selectedDue.has('OVERDUE') && cmp < 0) match = true;
@@ -282,32 +480,107 @@ export class RequestsComponent implements OnInit, AfterViewInit {
 
         return match;
       });
-    } else {
-      base = base;
     }
 
-    // quick search
-    this.dataSource.data = base;
-    this.dataSource.filter = this.quickSearchTerm;
+    // Quick search
+    if (use.search && this.quickSearchTerm) {
+      out = out.filter(r => this.matchesQuickSearch(r, this.quickSearchTerm));
+    }
 
-    if (this.paginator) this.paginator.firstPage();
+    return out;
   }
 
-  private computeDueCounts(): void {
+  private matchesQuickSearch(row: any, termLower: string): boolean {
+    const f = this.pick(row, ['firstName', 'FirstName']) ?? '';
+    const l = this.pick(row, ['lastName', 'LastName']) ?? '';
+    const name = `${f} ${l}`.trim();
+
+    const fields: any[] = [
+      this.pick(row, ['module', 'Module']),
+      this.pick(row, ['workGroupName', 'WorkGroupName']),
+      this.pick(row, ['workBasketName', 'WorkBasketName']),
+      name,
+      this.pick(row, ['memberId', 'MemberId']),
+      this.pick(row, ['userName', 'UserName']),
+      this.pick(row, ['referredTo', 'ReferredTo']),
+      this.pick(row, ['activityType', 'ActivityType']),
+      this.pick(row, ['status', 'Status']),
+      this.pick(row, ['authNumber', 'AuthNumber'])
+    ];
+
+    return fields.some(v => (v ?? '').toString().toLowerCase().includes(termLower));
+  }
+
+  private computeDueCounts(rows: any[]): void {
     const today = new Date();
-    const counts = this.rawData.reduce((acc, r) => {
-      const d = this.toDate(r?.dueDate);
+
+    const counts = (rows || []).reduce((acc, r) => {
+      const d = this.toDate(this.pick(r, ['dueDate', 'DueDate']));
       if (!d) return acc;
+
       const cmp = this.compareDateOnly(d, today);
       if (cmp < 0) acc.overdue++;
       else if (cmp === 0) acc.today++;
       else acc.future++;
+
       return acc;
     }, { overdue: 0, today: 0, future: 0 });
 
     this.overdueCount = counts.overdue;
     this.dueTodayCount = counts.today;
     this.dueFutureCount = counts.future;
+  }
+
+  private toFacetOptions(map: Map<string, number>): FacetOption[] {
+    return Array.from(map.entries())
+      .map(([key, count]) => ({ key, label: key, count }))
+      .sort((a, b) => (b.count - a.count) || a.label.localeCompare(b.label));
+  }
+
+  private getModuleKey(row: any): string {
+    return ((this.pick(row, ['module', 'Module']) ?? '') as any).toString().trim();
+  }
+
+  private getWorkBasketName(row: any): string {
+    return ((this.pick(row, ['workBasketName', 'WorkBasketName']) ?? '') as any).toString().trim();
+  }
+
+  /**
+   * Module-specific "type" rules requested:
+   * - CM: followUpDateTime present => Activity else Member
+   * - UM: Auth if authNumber present else Activity
+   * - AG: Case if authNumber present else Activity
+   */
+  private getModuleSubType(row: any): string | null {
+    const module = this.getModuleKey(row).toUpperCase();
+    const followUp = this.pick(row, ['followUpDateTime', 'FollowUpDateTime']);
+    const authNumber = this.pick(row, ['authNumber', 'AuthNumber']);
+    const activityType = this.pick(row, ['activityType', 'ActivityType']);
+
+    if (module === 'CM') {
+      return followUp ? 'Activity' : 'Member';
+    }
+
+    if (module === 'UM') {
+      return authNumber ? 'Auth' : 'Activity';
+    }
+
+    if (module === 'AG') {
+      return authNumber ? 'Case' : 'Activity';
+    }
+
+    // fallback for any unknown module
+    if (followUp) return 'Activity';
+    if (activityType) return 'Activity';
+    return null;
+  }
+
+  private pick(row: any, keys: string[]): any {
+    for (const k of keys) {
+      const v = row?.[k];
+      if (v !== undefined && v !== null && v !== '') return v;
+    }
+    return null;
   }
 
   // ===== Date helpers =====
@@ -325,8 +598,8 @@ export class RequestsComponent implements OnInit, AfterViewInit {
 
   // ===== Template helpers =====
   fullName(row: any): string {
-    const f = row?.FirstName ?? '';
-    const l = row?.LastName ?? '';
+    const f = this.pick(row, ['firstName', 'FirstName']) ?? '';
+    const l = this.pick(row, ['lastName', 'LastName']) ?? '';
     return `${f} ${l}`.trim();
   }
 
@@ -381,10 +654,8 @@ export class RequestsComponent implements OnInit, AfterViewInit {
 
     if (!authNumber) authNumber = 'DRAFT';
 
-    // read member id once (prefer your own field; fall back to route)
     const memberId = memId ?? Number(this.route.parent?.snapshot.paramMap.get('id'));
 
-    // ✅ point tab to the CHILD route under the shell
     const tabRoute = `/member-info/${memberId}/member-auth/${authNumber}`;
     const tabLabel = `Auth No ${authNumber}`;
 
@@ -403,8 +674,9 @@ export class RequestsComponent implements OnInit, AfterViewInit {
       this.router.navigate([tabRoute]);
     });
   }
+
   toggleThumb(row: any, event: MouseEvent): void {
-    event.stopPropagation(); // prevent row expansion click
+    event.stopPropagation();
     if (row.thumb === 'up') {
       row.thumb = 'down';
     } else if (row.thumb === 'down') {
@@ -420,22 +692,17 @@ export class RequestsComponent implements OnInit, AfterViewInit {
     return 'thumb-neutral';
   }
 
-
-  // Calendar view methods (kept for parity; not used currently)
   setViewMode(mode: 'calendar' | 'table'): void {
     this.viewMode = mode;
   }
 
-
   /************Calendar Control**********/
-  /** Build month grid (6x7) for currentMonth */
   private buildMonthGrid(): void {
     const base = this.stripTime(this.currentMonth);
     const firstOfMonth = new Date(base.getFullYear(), base.getMonth(), 1);
     const start = new Date(firstOfMonth);
-    const dayOfWeek = start.getDay(); // 0..6
+    const dayOfWeek = start.getDay();
 
-    // go back to Sunday of the first row
     start.setDate(start.getDate() - dayOfWeek);
 
     this.visibleCalendarDays = [];
@@ -456,7 +723,6 @@ export class RequestsComponent implements OnInit, AfterViewInit {
     this.updateRangeLabel();
   }
 
-  /** For day/week/work-week time grid */
   private buildActiveRangeDays(): void {
     const base = this.stripTime(this.selectedDate || this.currentDate);
     let start: Date;
@@ -465,16 +731,14 @@ export class RequestsComponent implements OnInit, AfterViewInit {
     if (this.calendarViewRange === 'day') {
       start = end = base;
     } else if (this.calendarViewRange === 'week') {
-      // Sunday–Saturday
       start = new Date(base);
       start.setDate(base.getDate() - base.getDay());
       end = new Date(start);
       end.setDate(start.getDate() + 6);
     } else {
-      // work week: Monday–Friday
-      const dow = base.getDay(); // 0=Sun..6=Sat
+      const dow = base.getDay();
       start = new Date(base);
-      start.setDate(base.getDate() - ((dow + 6) % 7)); // back to Monday
+      start.setDate(base.getDate() - ((dow + 6) % 7));
       end = new Date(start);
       end.setDate(start.getDate() + 4);
     }
@@ -488,7 +752,7 @@ export class RequestsComponent implements OnInit, AfterViewInit {
         date: new Date(cursor),
         isCurrentMonth: cursor.getMonth() === this.currentMonth.getMonth(),
         isToday: this.isSameDate(cursor, today),
-        activities: this.getActivitiesForDate(cursor)   // 🔴 same as month
+        activities: this.getActivitiesForDate(cursor)
       });
       cursor.setDate(cursor.getDate() + 1);
     }
@@ -496,18 +760,15 @@ export class RequestsComponent implements OnInit, AfterViewInit {
     this.updateRangeLabel(start, end);
   }
 
-  /** Get activities whose followUpDateTime (or dueDate) is on a specific date */
   private getActivitiesForDate(date: Date): ActivityItem[] {
     const target = this.stripTime(date).getTime();
     return (this.activities || []).filter(ev => {
-      const src = ev.followUpDateTime || ev.dueDate;
+      const src = (ev as any).followUpDateTime ?? (ev as any).FollowUpDateTime ?? (ev as any).dueDate ?? (ev as any).DueDate;
       if (!src) { return false; }
       const d = this.stripTime(new Date(src));
       return d.getTime() === target;
     });
   }
-
-  // === toolbar / nav actions ===
 
   setCalendarViewRange(range: CalendarViewRange): void {
     this.calendarViewRange = range;
@@ -545,7 +806,6 @@ export class RequestsComponent implements OnInit, AfterViewInit {
       base.setDate(base.getDate() - 7);
       this.selectedDate = base;
     } else {
-      // work week
       base.setDate(base.getDate() - 7);
       this.selectedDate = base;
     }
@@ -586,12 +846,7 @@ export class RequestsComponent implements OnInit, AfterViewInit {
 
   onMiniDayClick(day: CalendarDay): void {
     this.selectedDate = new Date(day.date);
-    if (this.calendarViewRange === 'month') {
-      // keep month view but move active range anchor
-      this.buildActiveRangeDays();
-    } else {
-      this.buildActiveRangeDays();
-    }
+    this.buildActiveRangeDays();
   }
 
   onCalendarDayClick(day: CalendarDay, event: MouseEvent): void {
@@ -600,15 +855,11 @@ export class RequestsComponent implements OnInit, AfterViewInit {
     if (this.calendarViewRange !== 'month') {
       this.buildActiveRangeDays();
     }
-    // existing logic you may already have (open drawer, etc.)
   }
 
   onCalendarEventClick(ev: ActivityItem, event: MouseEvent): void {
     event.stopPropagation();
-    // hook into your existing event click handler
   }
-
-  // === helpers ===
 
   isSameDate(a: Date, b: Date): boolean {
     return a.getFullYear() === b.getFullYear() &&
@@ -658,35 +909,30 @@ export class RequestsComponent implements OnInit, AfterViewInit {
 
   getEventsForHour(day: CalendarDay, hour: number): ActivityItem[] {
     return day.activities.filter(ev => {
-      if (!ev.followUpDateTime && !ev.dueDate) { return false; }
-      const src = ev.followUpDateTime || ev.dueDate;
+      const src = (ev as any).followUpDateTime ?? (ev as any).FollowUpDateTime ?? (ev as any).dueDate ?? (ev as any).DueDate;
+      if (!src) { return false; }
       const d = new Date(src as any);
       return d.getHours() === hour;
     });
   }
 
-
   toggleCalendar(cal: { id: number; name: string; color: string; selected: boolean }): void {
     cal.selected = !cal.selected;
-    // You can use this to filter activities by calendar later.
   }
 
   onAccept(ev: any): void {
     const confirmed = confirm('Are you sure want to accept the activity?');
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
     const payload: AcceptWorkGroupActivityRequest = {
       memberActivityWorkGroupId: ev.memberActivityWorkGroupId,
       userId: Number(sessionStorage.getItem('loggedInUserid')),
-       comment: 'Accepted from calendar' // optional
+      comment: 'Accepted from calendar'
     };
 
     this.memberActivityService.acceptWorkGroupActivity(payload).subscribe({
       next: () => {
         console.log('Work-group activity accepted:', payload);
-        // TODO: refresh list / calendar if needed
         this.loadData();
       },
       error: err => {
@@ -697,20 +943,17 @@ export class RequestsComponent implements OnInit, AfterViewInit {
 
   onReject(ev: any): void {
     const confirmed = confirm('Are you sure want to reject the activity?');
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
     const payload: RejectWorkGroupActivityRequest = {
       memberActivityWorkGroupId: ev.memberActivityWorkGroupId,
       userId: Number(sessionStorage.getItem('loggedInUserid')),
-      comment: 'Rejected from calendar' // or prompt for reason
+      comment: 'Rejected from calendar'
     };
 
     this.memberActivityService.rejectWorkGroupActivity(payload).subscribe({
       next: () => {
         console.log('Work-group activity rejected:', payload);
-        // TODO: refresh list / calendar if needed
         this.loadData();
       },
       error: err => {
@@ -719,24 +962,15 @@ export class RequestsComponent implements OnInit, AfterViewInit {
     });
   }
 
-
   onView(ev: any): void {
-    // your view logic here (maybe open details dialog)
   }
 
   /**********Work Group************/
-
-  // raw result from API
   workGroupAssignments: WorkGroupAssignment[] = [];
-
-  // distinct work groups to show as chips
   workGroups: SimpleWorkGroup[] = [];
-
-  // currently selected group; null = all groups
   selectedWorkGroupId: number | null = null;
   selectedWorkGroupName = 'All work groups';
 
-  // users shown on the left side
   visibleUsers: SimpleUser[] = [];
   maxUserSelection = 1;
   selectedUserIds: number[] = [];
@@ -771,7 +1005,7 @@ export class RequestsComponent implements OnInit, AfterViewInit {
     }
 
     const relevant = this.selectedWorkGroupId == null
-      ? this.workGroupAssignments                     // all groups
+      ? this.workGroupAssignments
       : this.workGroupAssignments.filter(a => a.workGroupId === this.selectedWorkGroupId);
 
     this.visibleUsers = this.buildUsersForAssignments(relevant);
@@ -789,15 +1023,9 @@ export class RequestsComponent implements OnInit, AfterViewInit {
     }
 
     this.updateVisibleUsers();
-
-
-    // reset selection when group changes
     this.selectedUserIds = [];
-    // reset search when switching group
     this.userSearchTerm = '';
-
   }
-
 
   isUserSelected(userId: number): boolean {
     return this.selectedUserIds.includes(userId);
@@ -808,9 +1036,7 @@ export class RequestsComponent implements OnInit, AfterViewInit {
     const checked = input.checked;
 
     if (checked) {
-      // trying to select
       if (this.selectedUserIds.length >= this.maxUserSelection) {
-        // undo the check in UI
         input.checked = false;
         alert(`You can select maximum ${this.maxUserSelection} users.`);
         return;
@@ -820,12 +1046,8 @@ export class RequestsComponent implements OnInit, AfterViewInit {
         this.selectedUserIds.push(user.userId);
       }
     } else {
-      // unselect
       this.selectedUserIds = this.selectedUserIds.filter(id => id !== user.userId);
     }
-
-    // TODO: apply this.selectedUserIds to filter calendar events if needed
-    // this.filterActivitiesBySelectedUsers();
   }
 
   applyUserFilter(): void {
@@ -841,5 +1063,4 @@ export class RequestsComponent implements OnInit, AfterViewInit {
       String(u.userId).includes(term)
     );
   }
-
 }

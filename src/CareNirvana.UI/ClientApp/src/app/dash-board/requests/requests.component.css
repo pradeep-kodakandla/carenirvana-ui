@@ -891,3 +891,135 @@ tr.example-element-row:not(.example-expanded-row):active {
 }
 
 
+
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+
+.facet-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.facet-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.facet-title {
+  min-width: 90px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  padding-top: 6px;
+}
+
+
+/* keep your existing .pill styles; this is layout only */
+
+.facet-bar-inline {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.facet-title {
+  min-width: 70px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  padding-top: 6px;
+  white-space: nowrap;
+}
+
+.module-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.module-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+/* This is what makes Type + Basket sit BESIDE the selected module chip */
+.module-subfacets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  padding-left: 10px;
+  margin-left: 2px;
+  border-left: 1px solid #e5e7eb;
+}
+
+.subfacet {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.subfacet-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  white-space: nowrap;
+}
+
+/* Make sure chip rows wrap nicely */
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+
+.module-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+}
+
+  /* Border + subtle background for the selected group */
+  .module-group.group-selected {
+    border-color: #93c5fd; /* light blue border */
+    background: #eff6ff; /* very light blue bg */
+  }
+
+/* Make the left divider optional now (border already exists) */
+.module-subfacets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  padding-left: 10px;
+  margin-left: 2px;
+  border-left: 1px solid rgba(148, 163, 184, 0.5); /* subtle divider inside group */
+}
+
+/* (optional) tighten on small screens */
+@media (max-width: 768px) {
+  .module-subfacets {
+    padding-left: 0;
+    margin-left: 0;
+    border-left: none;
+  }
+}

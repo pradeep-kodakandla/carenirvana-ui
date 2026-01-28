@@ -757,7 +757,7 @@ export class AuthsmartcheckComponent implements OnInit {
       this.smartAuthCheckForm.markAllAsTouched();
       return;
     }
-    this.runDueDateThenProceed();
+    // this.runDueDateThenProceed();
     // --- 1) SMART_AUTH_CHECK ---
     const triggerKeySmart = 'SMART_AUTH_CHECK.BUTTON_CLICK';
 
@@ -1002,42 +1002,42 @@ Would you like to continue to Authorization Details?`,
     this.persistSmartCheckPrefillForDetails();
 
     const triggerKeyDue = 'AUTH_DUE_DATE'; // update if your trigger key differs
+    this.gotoDetails();
+    //const tryAnchor = (anchorSource: 'NotificationDate' | 'AdditionalDate') => {
+    //  const dueFacts = this.buildDueDateFacts('NotificationDate');
 
-    const tryAnchor = (anchorSource: 'NotificationDate' | 'AdditionalDate') => {
-      const dueFacts = this.buildDueDateFacts('NotificationDate');
+    //  this.rulesengineService.executeTrigger(triggerKeyDue, dueFacts).subscribe({
+    //    next: (res: ExecuteTriggerResponse) => {
+    //      console.log(`AUTH_DUE_DATE response (${anchorSource}):`, res);
 
-      this.rulesengineService.executeTrigger(triggerKeyDue, dueFacts).subscribe({
-        next: (res: ExecuteTriggerResponse) => {
-          console.log(`AUTH_DUE_DATE response (${anchorSource}):`, res);
+    //      const isMatched = !!(res as any)?.matched || (res as any)?.status === 'SUCCESS';
+    //      if (!isMatched && anchorSource === 'NotificationDate') {
+    //        // fallback try
+    //        tryAnchor('AdditionalDate');
+    //        return;
+    //      }
 
-          const isMatched = !!(res as any)?.matched || (res as any)?.status === 'SUCCESS';
-          if (!isMatched && anchorSource === 'NotificationDate') {
-            // fallback try
-            tryAnchor('AdditionalDate');
-            return;
-          }
+    //      // Persist outputs for next screen (Details)
+    //      try {
+    //        sessionStorage.setItem('AUTH_DUE_DATE_OUTPUTS', JSON.stringify(res?.outputs ?? {}));
+    //        sessionStorage.setItem('AUTH_DUE_DATE_MATCHED', JSON.stringify(isMatched));
+    //        sessionStorage.setItem('AUTH_DUE_DATE_ANCHOR', anchorSource);
+    //      } catch { /* ignore */ }
 
-          // Persist outputs for next screen (Details)
-          try {
-            sessionStorage.setItem('AUTH_DUE_DATE_OUTPUTS', JSON.stringify(res?.outputs ?? {}));
-            sessionStorage.setItem('AUTH_DUE_DATE_MATCHED', JSON.stringify(isMatched));
-            sessionStorage.setItem('AUTH_DUE_DATE_ANCHOR', anchorSource);
-          } catch { /* ignore */ }
+    //      // Optionally compute & prefill dueDateTime from scheduledDateTime + offsets
+    //      this.applyComputedDueDateIfEmpty(res?.outputs ?? {}, anchorSource);
+    //      console.log('Navigating to Details step after AUTH_DUE_DATE');
 
-          // Optionally compute & prefill dueDateTime from scheduledDateTime + offsets
-          this.applyComputedDueDateIfEmpty(res?.outputs ?? {}, anchorSource);
-          console.log('Navigating to Details step after AUTH_DUE_DATE');
-          this.gotoDetails();
-        },
-        error: (e) => {
-          console.error(`AUTH_DUE_DATE trigger failed (${anchorSource})`, e);
-          // fail-open
-          this.gotoDetails();
-        }
-      });
-    };
+    //    },
+    //    error: (e) => {
+    //      console.error(`AUTH_DUE_DATE trigger failed (${anchorSource})`, e);
+    //      // fail-open
+    //      this.gotoDetails();
+    //    }
+    //  });
+    //};
 
-    tryAnchor('NotificationDate');
+    //tryAnchor('NotificationDate');
   }
 
   private applyComputedDueDateIfEmpty(outputs: Record<string, any>, anchorSource: string): void {

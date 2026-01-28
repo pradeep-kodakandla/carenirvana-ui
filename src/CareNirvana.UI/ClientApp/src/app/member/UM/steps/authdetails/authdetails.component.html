@@ -371,8 +371,7 @@
   <!-- Recursive subsection template -->
   <ng-template #subTpl let-sub let-depth="depth">
     <div class="sub-card" [class.sub-nested]="depth > 0">
-      <div class="sub-float-label">{{ sub.title }}</div>
-
+      <!--<div class="sub-float-label">{{ sub.title }}</div>-->
       <!-- Subsection-level action buttons -->
       <ng-container *ngIf="getActionButtons(sub.fields) as subBtns">
         <div class="ff-buttonbar" *ngIf="subBtns.length">

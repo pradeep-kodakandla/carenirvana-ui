@@ -118,7 +118,7 @@
           <!-- Click file name to open preview (keep existing rules: disable when parent has children) -->
           <a *ngIf="!r.hasChildren"
              href="#"
-             class="font-medium"
+             class="font-medium" matTooltip="Click to preview"
              style="text-decoration: underline; cursor: pointer;"
              (click)="$event.preventDefault(); openPreview(r)">
             {{ r.fileName }}

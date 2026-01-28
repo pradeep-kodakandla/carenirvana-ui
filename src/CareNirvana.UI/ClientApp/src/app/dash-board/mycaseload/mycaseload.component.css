@@ -851,11 +851,11 @@ mat-chip.norisk {
   height: 28px;
   border-radius: 8px;
   border: 1px solid #e5e7eb;
-  background: #fff;
+  background: red;
   cursor: pointer;
   font-size: 18px;
   line-height: 1;
-  color: #e53935;
+  color: white;
 }
 
 /* Optional: stack on very small screens */

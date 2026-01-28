@@ -93,6 +93,83 @@
         </div>
       </div>
     </div>
+    <!-- Faceted filters: Module -> Type -> Work basket -->
+    <!-- Faceted filters: Module chip + (Type + Work basket) inline beside selected module -->
+    <section class="facet-bar-inline" style="margin:8px 0;">
+      <div class="facet-title">Module</div>
+
+      <div class="module-chips">
+        <!-- All -->
+        <button type="button"
+                class="pill"
+                [class.active]="selectedModule === null"
+                (click)="setModule(null)">
+          All <span class="count">{{ moduleTotalCount }}</span>
+        </button>
+
+        <!-- Each module as a group -->
+        <div class="module-group"
+             *ngFor="let m of moduleFacets"
+             [class.group-selected]="selectedModule === m.key">
+
+          <button type="button"
+                  class="pill"
+                  [class.active]="selectedModule === m.key"
+                  (click)="setModule(m.key)">
+            {{ m.label }} <span class="count">{{ m.count }}</span>
+          </button>
+
+          <!-- Inline sub-facets beside the selected module -->
+          <div class="module-subfacets" *ngIf="selectedModule === m.key">
+            <!-- Type -->
+            <div class="subfacet">
+              <!--<span class="subfacet-label">{{ selectedModule }} Type</span>-->
+
+              <div class="chip-list">
+                <!--<button type="button"
+                        class="pill"
+                        [class.active]="selectedSubType === null"
+                        (click)="setSubType(null)">
+                  All <span class="count">{{ typeTotalCount }}</span>
+                </button>-->
+
+                <button type="button"
+                        class="pill"
+                        *ngFor="let t of typeFacets"
+                        [class.active]="selectedSubType === t.key"
+                        (click)="setSubType(t.key)">
+                  {{ t.label }} <span class="count">{{ t.count }}</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Work basket -->
+            <div class="subfacet">
+              <span class="subfacet-label">Work basket</span>
+
+              <div class="chip-list">
+                <!--<button type="button"
+                        class="pill"
+                        [class.active]="selectedWorkBasket === null"
+                        (click)="setWorkBasket(null)">
+                  All <span class="count">{{ basketTotalCount }}</span>
+                </button>-->
+
+                <button type="button"
+                        class="pill"
+                        *ngFor="let b of basketFacets"
+                        [class.active]="selectedWorkBasket === b.key"
+                        (click)="setWorkBasket(b.key)">
+                  {{ b.label }} <span class="count">{{ b.count }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
 
     <!-- Filters panel (unchanged) -->
     <section class="filters-wrapper" *ngIf="showFilters" style="margin:8px 0;">
@@ -432,7 +509,7 @@
 
               <!--Auth Number -->
               <ng-container matColumnDef="authnumber">
-                <th mat-header-cell *matHeaderCellDef mat-sort-header>Auth #</th>
+                <th mat-header-cell *matHeaderCellDef mat-sort-header> #</th>
                 <td mat-cell *matCellDef="let row">
                   <a href="#"
                      (click)="onAuthClick(row.authNumber, row.memberId, row.memberDetailsId); $event.preventDefault()">
@@ -494,7 +571,7 @@
 
                 <td class="actions-cell" mat-cell
                     *matCellDef="let row">
-                  <button mat-icon-button class="icon-btn approve" matTooltip="Approve" (click)="onAccept(row); $event.stopPropagation()">
+                  <button mat-icon-button class="icon-btn approve" matTooltip="Accept" (click)="onAccept(row); $event.stopPropagation()">
                     <mat-icon>check_circle</mat-icon>
                   </button>
 

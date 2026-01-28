@@ -2309,7 +2309,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
       authType: authTypeLabel || 'Standard',
       anchorSource: 'Requested Datetime',
       requestType: (this.form.get('requestType')?.value ?? 'Prospective'),
-      requestPriority: (this.form.get('requestPriority')?.value ?? 'Standard')
+      requestPriority: this.form.get('requestPriority')?.value == 1 ? 'Standard' : 'Expedited'
     };
   }
 

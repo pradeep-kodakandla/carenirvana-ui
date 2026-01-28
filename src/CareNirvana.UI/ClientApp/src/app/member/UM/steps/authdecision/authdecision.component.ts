@@ -297,6 +297,11 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
           const rawSections = res?.tmpl?.sections ?? res?.tmpl?.Sections ?? [];
           this.templateSections = Array.isArray(rawSections) ? rawSections : [];
           console.log('AuthDecisionComponent.reload: templateSections fragments=', this.templateSections?.length);
+          // Build reactive form controls
+          //this.buildFormForSections(this.templateSections, procedureNo);
+
+          // prefetch options for select fields (datasource/static)
+          //  this.prefetchDropdownOptions(this.templateSections);
 
           this.itemsBySection = res?.items ?? {};
 
@@ -308,7 +313,7 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
               this.errorMsg = 'No decision rows found. Please save Auth Details to initialize Decision tabs.';
               return;
             }
-
+            console.log('AuthDecisionComponent.reload: tabs=', this.tabs);
             this.selectedTabId = this.tabs[0].id;
             this.buildActiveState(this.tabs[0]);
           });
