@@ -199,6 +199,18 @@ type DepDropdownCfg = {
   linkProp: string;
 };
 
+/**
+ * Some templates introduce "field groups" that look like a field but actually contain a
+ * nested `fields: []` array (e.g., a row with a select + checkbox).
+ *
+ * Older rendering assumed `section.fields` was a flat list of real fields (each with an `id`).
+ * If a group object is passed through as-is, it will have no `id` / `controlName`, so it will
+ * not render and none of its children will be added to the reactive form.
+ *
+ * We fix this by flattening any group objects into their child fields while preserving
+ * the overall ordering (group order first, then child order).
+ */
+
 type RepeatKind = 'section' | 'subsection';
 
 type RepeatRegistryMeta = {
@@ -1092,6 +1104,51 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
   // ============================================================
   // Render-model build (repeat aware)
   // ============================================================
+
+  /**
+   * Flatten any template "group" fields that contain a nested `fields: []` array.
+   *
+   * Example payload (simplified):
+   * {
+   *   type: 'select',
+   *   order: 4,
+   *   layout: 'row',
+   *   fields: [ { id: 'requestPriority', type:'select', ... }, { id:'extension', type:'checkbox', ... } ]
+   * }
+   */
+  private expandTplFields(fields: any[] | null | undefined): TplField[] {
+    const out: TplField[] = [];
+    const src = Array.isArray(fields) ? fields : [];
+
+    for (const item of src) {
+      const nested = (item as any)?.fields;
+      if (Array.isArray(nested) && nested.length > 0) {
+        const groupOrder = Number((item as any)?.order ?? 0);
+        const groupLayout = (item as any)?.layout;
+        const groupId = (item as any)?.id;
+
+        for (const child of nested) {
+          const c: any = { ...(child as any) };
+          // Preserve group context for debugging / future layout work (no functional dependency today)
+          c._group = { id: groupId ?? null, order: groupOrder, layout: groupLayout ?? null };
+
+          // Preserve ordering: group order first, then child order.
+          // Use a fractional offset so we don't distort ordering relative to other fields.
+          // Example: group order 4 with children 1,2 => 4.001, 4.002
+          const childOrder = Number(c?.order ?? 0);
+          c.order = groupOrder + (childOrder / 1000);
+
+          out.push(c as TplField);
+        }
+        continue;
+      }
+
+      out.push(item as TplField);
+    }
+
+    return out;
+  }
+
   private normalizeTemplate(root: TemplateJsonRoot): TemplateJsonRoot {
     const sections = (root?.sections || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
     return { sections };
@@ -1108,7 +1165,8 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
         const pathKey = `sec:${this.safeKey(title)}:${i}`;
 
         // non-repeat fields keep original naming: controlName = safeControlName(field.id)
-        const fieldsSorted = (sec.fields || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
+        const flatFields = this.expandTplFields(sec.fields);
+        const fieldsSorted = flatFields.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
         const baseFields: RenderField[] = fieldsSorted.map(f => this.toRenderField(f, this.safeControlName(f.id)));
 
         // section repeat (rare). Use baseKey if available, else sectionName.
@@ -1122,14 +1180,14 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
           repeatKey = `${repeatPrefix}__repeat__sec`;
 
           const count = this.getInitialRepeatCount(repeatKey, secRepeat, repeatPrefix, persistedObj);
-          instances = this.buildRepeatInstances(sec.fields || [], repeatPrefix, count);
+          instances = this.buildRepeatInstances(flatFields, repeatPrefix, count);
 
           this.repeatRegistry[repeatKey] = {
             key: repeatKey,
             kind: 'section',
             title,
             prefix: repeatPrefix,
-            fieldIds: (sec.fields || []).map(x => x.id),
+            fieldIds: (flatFields || []).map(x => x.id).filter(Boolean),
             min: secRepeat.min,
             max: secRepeat.max,
             pathKey
@@ -1165,7 +1223,8 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
     const subRepeat = this.normalizeRepeat(rawSub.repeat, title);
 
     // non-repeat fields keep original naming: safeControlName(field.id)
-    const fieldsSorted = (rawSub.fields || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
+    const flatFields = this.expandTplFields(rawSub.fields);
+    const fieldsSorted = flatFields.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
     const baseFields: RenderField[] = fieldsSorted.map(f => this.toRenderField(f, this.safeControlName(f.id)));
 
     let instances: RenderRepeatInstance[] | undefined;
@@ -1178,14 +1237,14 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
       repeatKey = `${repeatPrefix}__repeat__sub`;
 
       const count = this.getInitialRepeatCount(repeatKey, subRepeat, repeatPrefix, persistedObj);
-      instances = this.buildRepeatInstances(rawSub.fields || [], repeatPrefix, count);
+      instances = this.buildRepeatInstances(flatFields, repeatPrefix, count);
 
       this.repeatRegistry[repeatKey] = {
         key: repeatKey,
         kind: 'subsection',
         title,
         prefix: repeatPrefix,
-        fieldIds: (rawSub.fields || []).map(x => x.id),
+        fieldIds: (flatFields || []).map(x => x.id).filter(Boolean),
         min: subRepeat.min,
         max: subRepeat.max,
         pathKey

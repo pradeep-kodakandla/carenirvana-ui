@@ -705,3 +705,73 @@
   position: relative;
   z-index: 1;
 }
+
+
+/* Fix: ensure ui-smart-dropdown panels render above neighboring cards/sections.
+   Symptoms: Auth Case / Auth Type dropdown list appears "behind" the template.
+   Approach: remove clipping and raise stacking context for the active field. */
+
+:host {
+  position: relative;
+}
+
+/* Prevent parent containers from clipping absolutely-positioned dropdown panels */
+.auth-details,
+.section-card,
+.grid,
+.ff-field,
+.ff-outline,
+.ff-body {
+  overflow: visible;
+}
+
+/* Create a sane stacking context for each field and lift the focused one */
+.ff-field {
+  position: relative;
+  z-index: 1;
+}
+
+  .ff-field:focus-within {
+    z-index: 50;
+  }
+
+/* Ensure the dropdown component itself sits above siblings */
+:host ::ng-deep ui-smart-dropdown.ff-ui,
+:host ::ng-deep ui-smart-dropdown {
+  position: relative;
+  z-index: 60;
+}
+
+/* Try common panel/menu classnames used by custom dropdowns */
+:host ::ng-deep .dropdown-menu,
+:host ::ng-deep .dropdown-panel,
+:host ::ng-deep .options-panel,
+:host ::ng-deep .panel,
+:host ::ng-deep .menu {
+  z-index: 9999 !important;
+}
+
+
+
+/* =========================
+   FIX: Auth Case/Auth Type dropdown behind next section
+   Cause: subsequent section-cards create a higher stacking context than the first card;
+          dropdown panel z-index can't escape its ancestor stacking context.
+   Fix: lift the *entire* section-card while any child control is focused/open.
+========================= */
+
+/* Ensure each card participates in stacking and can be lifted */
+.section-card {
+  position: relative;
+  z-index: 0;
+}
+
+  /* When interacting with any control inside a card, lift that card above siblings */
+  .section-card:focus-within {
+    z-index: 2000;
+  }
+
+/* Extra safety: some dropdown panels attach under their host; lift the outline too */
+.ff-outline:focus-within {
+  z-index: 2500;
+}
