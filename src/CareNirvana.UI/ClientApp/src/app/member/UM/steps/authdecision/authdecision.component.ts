@@ -1741,7 +1741,7 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
 
     const statusText = this.getDecisionStatusText(statusField, statusKey).toLowerCase();
     const isApproved = statusText.startsWith('approv');
-    const isDenied = statusText.startsWith('deny');
+    const isDenied = statusText.includes('deni') || statusText.includes('deny'); 
 
     if (!isApproved && !isDenied) return;
 
