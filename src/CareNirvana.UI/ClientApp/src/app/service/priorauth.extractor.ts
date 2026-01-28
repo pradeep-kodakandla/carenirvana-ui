@@ -371,13 +371,26 @@ const arizonaAdapter: Extractor = (raw) => {
   else if (/INITIAL/i.test(banner)) reviewType = 'Initial';
   else if (/RENEWAL/i.test(banner)) reviewType = 'Renewal';
 
+  const cleanPersonName = (s?: string): string | undefined => {
+    if (!s) return undefined;
+    let t = s;
+    // Examples: "(Last, First, M.I.) King, Alexander", "Last, First, M.I.) King, Alexander"
+    t = t.replace(/^\s*\(?\s*Last,\s*First,\s*M\.?I\.?\s*\)?\s*/i, '');
+    // Examples: "(Print or type) Mathew Jones", "Print or type) Mathew Jones"
+    t = t.replace(/^\s*\(?\s*Print\s*or\s*type\s*\)?\s*/i, '');
+    t = t.replace(/^\s*[\)\(:\-]+\s*/g, '');
+    t = t.replace(/\s{2,}/g, ' ').trim();
+    return t || undefined;
+  };
   // Patient
-  const patientName = between(text, L.PATIENT_NAME, L.CMDP_ID);
+  const patientNameRaw = between(text, L.PATIENT_NAME, L.CMDP_ID);
+  const patientName = cleanPersonName(patientNameRaw);
   const memberId = between(text, L.CMDP_ID, L.DOB)?.match(/\b[0-9A-Z\-]{3,}\b/)?.[0];
   const dob = first(dateRe, between(text, L.DOB, L.REF_NAME));
 
   // Referring (requesting) physician
-  const refName = between(text, L.REF_NAME, L.AHCCCS);
+  const refNameRaw = between(text, L.REF_NAME, L.AHCCCS);
+  const refName = cleanPersonName(refNameRaw);
   const refAddr = between(text, L.REF_ADDR, L.PHONE_NO);
   const refPhone = phonesFrom(between(text, L.PHONE_NO, L.DATE_BEGIN))[0];
   const svcStart = first(dateRe, between(text, L.DATE_BEGIN, L.TO_END));
@@ -392,15 +405,30 @@ const arizonaAdapter: Extractor = (raw) => {
 
   // Service & rationale
   const svcRec = between(text, L.SVC_RECOMMENDED, L.SVC_RATIONALE) || '';
-  const svcCode = first(cptHcpcsGlobal, svcRec);
-  const rationale = between(text, L.SVC_RATIONALE, L.REF_SIGNATURE);
+  const svcCodeFromSvcRec = first(cptHcpcsGlobal, svcRec);
+
+
+  // Bottom table usually looks like: "HCPCS/CPT DESCRIPTION CHARGES A9600 STRONTIUM ... $108.00"
+  const hcpcsRow = text.match(/HCPCS\/CPT\s+DESCRIPTION\s+CHARGES\s+(\b(?:\d{5}|[A-Z]\d{4})\b)\s+(.+?)(?=\s+\$?\d)/i);
+  const hcpcsCode = hcpcsRow?.[1];
+  const hcpcsDesc = hcpcsRow?.[2]?.trim();
+
+  const svcCode = svcCodeFromSvcRec || hcpcsCode || undefined;
+
+  const rationaleRaw = between(text, L.SVC_RATIONALE, L.REF_SIGNATURE);
+  const rationale = rationaleRaw
+    ?.replace(/^\s*(?:AND\s+PROGNOSIS)?\s*(?:\([^)]*\))?\s*/i, '')
+    ?.trim();
+
+  const svcDesc = hcpcsDesc || (svcRec.trim() || undefined) || rationale || undefined;
 
   // NPI (search the region after signature first, else global)
   let npiTop = between(text, L.REF_SIGNATURE, L.PROV_NAME)?.match(/\bNPI\W*NO\.?\W*([0-9]{6,})/i)?.[1];
   if (!npiTop) npiTop = text.match(/\bNPI\W*NO\.?\W*([0-9]{6,})/i)?.[1];
 
   // Servicing provider / facility
-  const provName = between(text, L.PROV_NAME, L.AHCCCS) || between(text, L.PROV_NAME, L.FAX_NO);
+  const provNameRaw = between(text, L.PROV_NAME, L.AHCCCS) || between(text, L.PROV_NAME, L.FAX_NO);
+  const provName = cleanPersonName(provNameRaw);
   const provAddr = between(text, L.PROV_ADDR, L.PHONE_NO);
   const provPhone = phonesFrom(between(text, loose("PROVIDER'S PHONE NO."), L.FACILITY_NAME))[0]
     || phonesFrom(between(text, L.PHONE_NO, L.FACILITY_NAME))[0];
@@ -430,7 +458,7 @@ const arizonaAdapter: Extractor = (raw) => {
       facility: facility || undefined
       // If you want: include facilityFax/facilityAddr in address/notes
     },
-    services: [{ code: svcCode, description: rationale, startDate: svcStart, endDate: svcEnd }]
+    services: [{ code: svcCode, description: svcDesc, startDate: svcStart, endDate: svcEnd }]
   };
 
   if (dxCodes.length) out.dx = { codes: dxCodes, description: dxBlk || undefined };

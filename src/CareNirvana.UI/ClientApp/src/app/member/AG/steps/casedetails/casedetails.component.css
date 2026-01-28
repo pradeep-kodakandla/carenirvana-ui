@@ -349,7 +349,7 @@
 /* Wrap a field + its validation message so error never flows beside */
 .ff-field {
   display: flex;
-  flex-direction: column;
+  gap: 20px;
   align-items: stretch;
   width: 100%;
   min-width: 0;
@@ -371,8 +371,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-/*  border: 1px solid #d0d0d0;
-*/  border-radius: 10px;
+  /*  border: 1px solid #d0d0d0;
+*/ border-radius: 10px;
   padding: 10px 12px;
   background: #fff;
   min-height: 44px;
@@ -527,3 +527,112 @@
   background: #fff;
   margin-top: 14px;
 }
+
+
+
+
+/* Enrollment cards */
+.selection-container {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.rounded-box {
+  border: 1px solid #e6e8ec;
+  border-radius: 12px;
+  padding: 12px;
+  background: #fff;
+  cursor: pointer;
+  transition: box-shadow .15s ease, border-color .15s ease, transform .05s ease;
+}
+
+  .rounded-box:hover {
+    border-color: #c7d0dc;
+    box-shadow: 0 6px 18px rgba(17, 24, 39, 0.06);
+  }
+
+  .rounded-box.selected {
+    border-color: #4c6fff;
+    box-shadow: 0 0 0 3px rgba(76, 111, 255, .12);
+    background: #f7f9ff;
+  }
+
+.pairs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pair-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 10px;
+}
+
+.label {
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+  .label.key {
+    font-weight: 700;
+    color: #374151;
+  }
+
+  .label.value {
+    color: #111827;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+
+/* =========================
+   Case Type (below Enrollment)
+========================= */
+.case-type-field {
+  /* keep it nicely sized on large screens */
+  grid-column: 1 / span 2;
+}
+
+@media (max-width: 900px) {
+  .case-type-field {
+    grid-column: 1 / -1;
+  }
+}
+
+/* First-time guidance message (professional) */
+.ff-hint {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid #e6e8ec;
+  border-left: 4px solid #4c6fff;
+  border-radius: 10px;
+  background: #f8fafc;
+  font-size: 12px;
+  color: #111827;
+  width:100%;
+
+}
+
+  .ff-hint .hint-icon {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(76, 111, 255, .12);
+    color: #2f49d1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    line-height: 1;
+    flex: 0 0 auto;
+    margin-top: 1px;
+  }
+
+  .ff-hint strong {
+    font-weight: 800;
+  }

@@ -1,0 +1,59 @@
+:host {
+  display: block;
+}
+
+.leave-dialog {
+  min-width: 360px;
+  max-width: 560px;
+}
+
+.leave-dialog__title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 0 0 8px 0;
+}
+
+.leave-dialog__icon {
+  width: 24px;
+  height: 24px;
+  font-size: 24px;
+  line-height: 24px;
+  flex: 0 0 24px;
+}
+
+.leave-dialog__titleText {
+  font-weight: 600;
+}
+
+.leave-dialog__content {
+  padding-top: 4px;
+}
+
+.leave-dialog__message {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.leave-dialog__helper {
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0.75;
+}
+
+.leave-dialog__actions {
+  padding-top: 16px;
+}
+
+  .leave-dialog__actions button + button {
+    margin-left: 8px;
+  }
+
+@media (max-width: 420px) {
+  .leave-dialog {
+    min-width: 0;
+    width: 100%;
+  }
+}

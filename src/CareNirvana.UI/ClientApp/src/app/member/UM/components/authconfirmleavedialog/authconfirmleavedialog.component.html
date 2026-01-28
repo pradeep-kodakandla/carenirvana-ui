@@ -1,15 +1,25 @@
-<h2 class="dialogTitle">{{ title }}</h2>
+<div class="leave-dialog" role="dialog" aria-modal="true">
+  <h2 mat-dialog-title class="leave-dialog__title">
+    <mat-icon class="leave-dialog__icon" aria-hidden="true">warning_amber</mat-icon>
+    <span class="leave-dialog__titleText">{{ title }}</span>
+  </h2>
 
-<div class="dialogBody">
-  <p>{{ message }}</p>
-</div>
+  <mat-dialog-content class="leave-dialog__content">
+    <p class="leave-dialog__message">{{ message }}</p>
 
-<div class="dialogActions">
-  <button type="button" class="btn secondary" (click)="stay()">
-    {{ cancelText }}
-  </button>
+    <div class="leave-dialog__helper">
+      Select <strong>{{ cancelText }}</strong> to continue editing, or
+      <strong>{{ confirmText }}</strong> to discard changes.
+    </div>
+  </mat-dialog-content>
 
-  <button type="button" class="btn primary" (click)="leave()">
-    {{ confirmText }}
-  </button>
+  <mat-dialog-actions align="end" class="leave-dialog__actions">
+    <button mat-button type="button" (click)="stay()" cdkFocusInitial>
+      {{ cancelText }}
+    </button>
+
+    <button mat-raised-button color="warn" type="button" (click)="leave()">
+      {{ confirmText }}
+    </button>
+  </mat-dialog-actions>
 </div>

@@ -14,6 +14,29 @@ import { AuthenticateService } from 'src/app/service/authentication.service';
 import { tap, catchError } from 'rxjs/operators';
 import { HeaderService } from 'src/app/service/header.service';
 import { WorkbasketService } from 'src/app/service/workbasket.service';
+import { MemberenrollmentService } from 'src/app/service/memberenrollment.service';
+
+/** ---- Enrollment interfaces (shared w/ Auth Details) ---- */
+interface LevelItem {
+  levelcode: string;
+  levelname: string;
+  levelsequence: number;
+  level_value_id: number;
+  level_value_code: string;
+  level_value_name: string;
+}
+
+interface MemberEnrollment {
+  memberEnrollmentId?: number;
+  memberDetailsId?: number;
+  startDate?: string;
+  endDate?: string;
+  status?: boolean;
+
+  levels?: string;   // JSON array
+  levelMap?: string; // JSON object
+  [k: string]: any;
+}
 
 export type WizardMode = 'new' | 'edit';
 
@@ -242,9 +265,19 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
   renderSections: RenderSection[] = [];
   optionsByControlName: Record<string, UiSmartOption[]> = {};
 
+  // Case Type selector (moved from CaseWizardShell)
+  caseTypeOptions: UiSmartOption[] = [];
+  caseTypeCtrl = new FormControl<number | null>(null);
+
+
   isSaving = false;
 
   private destroy$ = new Subject<void>();
+
+  // ---------- Enrollment (display only, like Auth Details) ----------
+  memberEnrollments: MemberEnrollment[] = [];
+  selectedDiv = 0;               // 1-based
+  enrollmentSelect = false;
 
   // ---------- Repeat state ----------
   /** Current instance count per repeatKey (survives rebuilds) */
@@ -267,6 +300,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     private userService: AuthenticateService,
     private headerService: HeaderService,
     private router: Router,
+    private memberEnrollment: MemberenrollmentService,
     private wbService: WorkbasketService,
     private notify: CaseWizardNotifyService
   ) { }
@@ -275,11 +309,40 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     return this.form?.dirty ?? false;
   }
 
+  isCaseTypeLocked(): boolean {
+    const cn = (this.caseNumberFromRoute ?? '').trim();
+    return !!cn && cn !== '0';
+  }
+
+
   ngOnInit(): void {
     this.form = this.fb.group({});
 
     // caseNumber is defined on the shell route (":caseNumber") - find it from any ancestor.
     this.caseNumberFromRoute = this.getCaseNumberFromRoute() ?? '';
+
+
+
+    // Load Case Types (selector moved here from CaseWizardShell)
+    this.authService.getTemplates('AG', 0)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((rows: any[]) => {
+        const list = rows ?? [];
+        this.caseTypeOptions = list.map(x => ({
+          value: x.id,
+          label: x.templateName
+        }));
+      });
+
+    // Case Type selection => push templateId to store (all steps listen)
+    this.caseTypeCtrl.valueChanges
+      .pipe(takeUntil(this.destroy$), distinctUntilChanged())
+      .subscribe((templateId: number | null) => {
+        if (this.isCaseTypeLocked()) return;
+        this.state.setTemplateId(templateId);
+      });
+    // Enrollment cards (same UX as Auth Details)
+    this.loadMemberEnrollment();
 
     // Track active level and load json into current step form (edit mode).
     this.state.activeLevelId$
@@ -302,7 +365,10 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     // Keep in sync with the shell dropdown (fixes: first load shows blank until you navigate away/back)
     this.state.templateId$
       .pipe(takeUntil(this.destroy$), distinctUntilChanged())
-      .subscribe(tid => this.setTemplateId(tid));
+      .subscribe(tid => {
+        this.caseTypeCtrl.setValue(tid as any, { emitEvent: false });
+        this.setTemplateId(tid);
+      });
     // Load users for Case Owner dropdown
     this.loadAllUsers();
     this.loadWorkBasket();
@@ -463,6 +529,84 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  // ============================================================
+  // Enrollment (display section at top, like Auth Details)
+  // ============================================================
+  private loadMemberEnrollment(): void {
+    const mdId = Number(sessionStorage.getItem('selectedMemberDetailsId') || 0);
+    if (!mdId) {
+      this.memberEnrollments = [];
+      this.selectedDiv = 0;
+      this.enrollmentSelect = false;
+      return;
+    }
+
+    this.memberEnrollment.getMemberEnrollment(mdId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (data: MemberEnrollment[]) => this.setMemberEnrollments(data),
+        error: (e) => console.error('Error fetching member enrollment data:', e)
+      });
+  }
+
+  private setMemberEnrollments(data: MemberEnrollment[]): void {
+    this.memberEnrollments = (data ?? []).map(d => ({ ...d }));
+
+    if (!this.memberEnrollments.length) {
+      this.selectedDiv = 0;
+      this.enrollmentSelect = false;
+      return;
+    }
+
+    // Default select the first enrollment card
+    this.selectEnrollment(0);
+  }
+
+  selectEnrollment(i: number): void {
+    this.selectedDiv = i + 1;
+    this.enrollmentSelect = true;
+  }
+
+  getEnrollmentDisplayPairs(enr: MemberEnrollment): Array<{ label: string; value: string }> {
+    let levelMap: Record<string, string> = {};
+    let levels: LevelItem[] = [];
+
+    try { levelMap = JSON.parse(enr.levelMap || '{}'); } catch { levelMap = {}; }
+    try { levels = JSON.parse(enr.levels || '[]') as LevelItem[]; } catch { levels = []; }
+
+    const orderedLevels = [...levels].sort((a, b) => (a?.levelsequence ?? 0) - (b?.levelsequence ?? 0));
+    const pairs: Array<{ label: string; value: string }> = [];
+
+    for (const lvl of orderedLevels) {
+      const code = (lvl.levelcode || '').trim();
+      const label = code || lvl.levelname || 'Level';
+
+      const value =
+        (lvl.level_value_name?.trim?.() || '') ||
+        (levelMap[code] ?? '') ||
+        (lvl.level_value_code ? String(lvl.level_value_code) : '') ||
+        '';
+
+      if (label && value) pairs.push({ label, value });
+    }
+
+    const start = enr.startDate ? this.formatDateMMDDYYYY(enr.startDate) : '';
+    const end = enr.endDate ? this.formatDateMMDDYYYY(enr.endDate) : '';
+    if (start) pairs.push({ label: 'Start Date', value: start });
+    if (end) pairs.push({ label: 'End Date', value: end });
+
+    return pairs;
+  }
+
+  private formatDateMMDDYYYY(iso: string): string {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${mm}/${dd}/${yyyy}`;
   }
 
   // ---------------- SAVE ----------------
@@ -2350,5 +2494,17 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
     return Array.from(new Set(out));
   }
+
+  /** Route-level indicator: true when editing an existing case (caseNumber present and not '0'). */
+  private hasExistingCaseNumberInRoute(): boolean {
+    const routeCase = String(this.getCaseNumberFromRoute() ?? '').trim();
+    return !!routeCase && routeCase !== '0';
+  }
+
+  get showCaseTypeFirstLoadHint(): boolean {
+    if (this.hasExistingCaseNumberInRoute()) return false;
+    return !this.caseTypeCtrl?.value && this.caseTypeCtrl?.pristine;
+  }
+
 
 }

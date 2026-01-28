@@ -146,6 +146,27 @@ export interface RuleActionDto {
   deletedBy?: number | null;
 }
 
+
+export interface RuleExecutionLogRow {
+  ruleExecutionLogId: number;
+  correlationId: string;
+  triggerKey: string;
+  moduleId: number | null;
+  moduleName: string | null;
+  status: string;
+  matchedRuleName: string | null;
+  receivedOn: string; // ISO
+  responseTimeMs: number | null;
+  errorMessage: string | null;
+}
+
+export interface PagedResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export interface DropdownOption<T> { value: T; label: string; }
 
 @Injectable({ providedIn: 'root' })
@@ -349,5 +370,10 @@ export class RulesengineService {
   /** GET api/rulesengine/ruleactions/{id} */
   getRuleActionById(id: number): Observable<RuleActionDto> {
     return this.http.get<RuleActionDto>(`${this.baseUrl}/ruleactions/${id}`);
+  }
+
+  getRuleExecutionLogs(page: number, pageSize: number) {
+    return this.http.get<PagedResult<RuleExecutionLogRow>>(`${this.baseUrl}/executionlogs`, { params: { page, pageSize } as any }
+    );
   }
 }

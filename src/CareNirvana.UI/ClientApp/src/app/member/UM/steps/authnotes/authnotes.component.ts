@@ -8,6 +8,7 @@ import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown
 import { AuthDetailApiService } from 'src/app/service/authdetailapi.service';
 import { AuthNoteDto, TemplateSectionResponse, CreateAuthNoteRequest, UpdateAuthNoteRequest } from 'src/app/member/UM/services/authdetail';
 import { WizardToastService } from 'src/app/member/UM/components/authwizardshell/wizard-toast.service';
+import { AuthunsavedchangesawareService } from 'src/app/member/UM/services/authunsavedchangesaware.service';
 
 type NotesContext = { authDetailId: number; authTemplateId: number };
 
@@ -32,7 +33,7 @@ type AnyField = {
   templateUrl: './authnotes.component.html',
   styleUrls: ['./authnotes.component.css']
 })
-export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy {
+export class AuthnotesComponent implements OnInit, OnChanges, OnDestroy, AuthunsavedchangesawareService {
   @Input() authDetailId?: number;
   @Input() authTemplateId?: number;
 
@@ -1103,5 +1104,17 @@ onCancel(): void {
     this.editing = undefined;
   }
 
+  authHasUnsavedChanges(): boolean {
+    return this.form?.dirty ?? false;
+  }
 
+  // Alias for CanDeactivate guards that expect a different method name
+  hasPendingChanges(): boolean {
+    return this.authHasUnsavedChanges();
+  }
+
+  // Alias for older naming
+  hasUnsavedChanges(): boolean {
+    return this.authHasUnsavedChanges();
+  }
 }

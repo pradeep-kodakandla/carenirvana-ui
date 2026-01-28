@@ -71,6 +71,10 @@
           Auth Type is required.
         </div>
       </div>
+      <div class="ff-hint" *ngIf="showAuthTypeFirstLoadHint">
+        <span class="hint-icon">i</span>
+        <span>Please select the <strong>Auth Case & Auth Type</strong> to continue.</span>
+      </div>
     </div>
   </div>
 
@@ -87,18 +91,31 @@
         <ng-container *ngIf="sec.expanded">
 
           <div *ngIf="sectionValidationMessages[sec.title]?.length" class="validation-messages">
-            <div *ngFor="let msg of sectionValidationMessages[sec.title]" class="text-danger" style="padding-left:40px;">
+            <div *ngFor="let msg of sectionValidationMessages[sec.title]" class="text-danger">
               {{ msg }}
             </div>
           </div>
 
+
+          <!-- Section-level action buttons -->
+          <ng-container *ngIf="getActionButtons(sec.fields) as secBtns">
+            <div class="ff-buttonbar" *ngIf="secBtns.length">
+              <button type="button"
+                      class="ff-action-btn"
+                      *ngFor="let b of secBtns"
+                      [disabled]="!isActionButtonEnabled(b)"
+                      (click)="onActionButtonClick(b)">
+                {{ b.buttonText || b.displayName }}
+              </button>
+            </div>
+          </ng-container>
 
           <!-- =========================
                SECTION FIELDS (NON-REPEAT)
           ========================= -->
           <ng-container *ngIf="!sec.repeat?.enabled; else sectionRepeatTpl">
             <div class="grid" style="padding-bottom: 15px;">
-              <ng-container *ngFor="let f of sec.fields">
+              <ng-container *ngFor="let f of getNonActionFields(sec.fields)">
                 <ng-container *ngIf="isVisible(f)">
                   <ng-container *ngIf="form.get(f.controlName) as ctrl">
 
@@ -204,8 +221,22 @@
                     <div class="ff-repeat-title">{{ sec.repeat?.instanceLabel }} #{{ inst.index }}</div>
                   </div>
 
+
+                  <!-- Repeat-group action buttons -->
+                  <ng-container *ngIf="getActionButtons(inst.fields) as repBtns">
+                    <div class="ff-buttonbar" *ngIf="repBtns.length">
+                      <button type="button"
+                              class="ff-action-btn"
+                              *ngFor="let b of repBtns"
+                              [disabled]="!isActionButtonEnabled(b)"
+                              (click)="onActionButtonClick(b)">
+                        {{ b.buttonText || b.displayName }}
+                      </button>
+                    </div>
+                  </ng-container>
+
                   <div class="grid ff-repeat-grid">
-                    <ng-container *ngFor="let f of inst.fields">
+                    <ng-container *ngFor="let f of getNonActionFields(inst.fields)">
                       <ng-container *ngIf="isVisible(f)">
                         <ng-container *ngIf="form.get(f.controlName) as ctrl">
 
@@ -342,12 +373,27 @@
     <div class="sub-card" [class.sub-nested]="depth > 0">
       <div class="sub-float-label">{{ sub.title }}</div>
 
+      <!-- Subsection-level action buttons -->
+      <ng-container *ngIf="getActionButtons(sub.fields) as subBtns">
+        <div class="ff-buttonbar" *ngIf="subBtns.length">
+          <button type="button"
+                  class="ff-action-btn"
+                  *ngFor="let b of subBtns"
+                  [disabled]="!isActionButtonEnabled(b)"
+                  (click)="onActionButtonClick(b)">
+            {{ b.buttonText || b.displayName }}
+          </button>
+        </div>
+      </ng-container>
+
+
+
       <!-- =========================
            SUBSECTION FIELDS (NON-REPEAT)
       ========================= -->
       <ng-container *ngIf="!sub.repeat?.enabled; else subRepeatTpl">
         <div class="grid" style="padding-bottom: 10px;">
-          <ng-container *ngFor="let f of sub.fields">
+          <ng-container *ngFor="let f of getNonActionFields(sub.fields)">
             <ng-container *ngIf="isVisible(f)">
               <ng-container *ngIf="form.get(f.controlName) as ctrl">
                 <!-- (same as your existing subsection field rendering) -->
@@ -451,8 +497,22 @@
                 <div class="ff-repeat-title">{{ sub.repeat?.instanceLabel }} #{{ inst.index }}</div>
               </div>
 
+
+              <!-- Repeat-group action buttons -->
+              <ng-container *ngIf="getActionButtons(inst.fields) as repBtns">
+                <div class="ff-buttonbar" *ngIf="repBtns.length">
+                  <button type="button"
+                          class="ff-action-btn"
+                          *ngFor="let b of repBtns"
+                          [disabled]="!isActionButtonEnabled(b)"
+                          (click)="onActionButtonClick(b)">
+                    {{ b.buttonText || b.displayName }}
+                  </button>
+                </div>
+              </ng-container>
+
               <div class="grid ff-repeat-grid">
-                <ng-container *ngFor="let f of inst.fields">
+                <ng-container *ngFor="let f of getNonActionFields(inst.fields)">
                   <ng-container *ngIf="isVisible(f)">
                     <ng-container *ngIf="form.get(f.controlName) as ctrl">
 

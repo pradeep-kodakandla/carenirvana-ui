@@ -95,7 +95,7 @@
   flex-direction: column;
   align-items: stretch;
   width: 100%;
-  min-width: 0;
+  min-width: 250px;
 }
 
 .authmdreview .ff-outline {
@@ -444,4 +444,129 @@
   .authmdreview .activity-item .row2 span,
   .authmdreview .activity-item .row3 span {
     white-space: nowrap;
+  }
+/* ===========================
+   FIXES: sizing + layout polish
+   =========================== */
+
+/* Base sizing (prevents "tiny" look inside this component) */
+.authmdreview {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+  /* Left panel header/title */
+  .authmdreview .left-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  /* Utility: padding used by loading/empty states */
+  .authmdreview .pad {
+    padding: 10px 2px;
+  }
+
+  /* Make activity "tabs" fill the left panel and be comfortably clickable */
+  .authmdreview .activity-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    padding: 12px;
+  }
+
+    .authmdreview .activity-item .activity-type {
+      font-size: 14px;
+      line-height: 18px;
+    }
+
+    .authmdreview .activity-item .row2,
+    .authmdreview .activity-item .row3 {
+      font-size: 13px;
+    }
+
+  /* Make the split view feel less cramped and avoid the left panel collapsing */
+  .authmdreview .mdr-left {
+    /* Use clamp instead of a hard width so it doesn't look tiny on wide screens */
+    width: auto;
+    flex: 0 0 clamp(340px, 28vw, 460px);
+    min-width: 200px;
+    max-width: 320px;
+    border-right: 1px solid #d0d7de;
+  }
+
+  /* Keep the right side flexible */
+  .authmdreview .mdr-right {
+    min-width: 0;
+  }
+
+  /* Search input (currently commented in HTML, but keep it consistent) */
+  .authmdreview .input {
+    width: 100%;
+    height: 36px;
+    border: 1px solid #cfd4dc;
+    border-radius: 8px;
+    padding: 0 10px;
+    font-size: 14px;
+    outline: none;
+  }
+
+    .authmdreview .input:focus {
+      border-color: #1f6feb;
+      box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.15);
+    }
+
+  /* Table sizing fixes:
+   - Do NOT force the table itself to display:block (that shrinks columns)
+   - Let .table-responsive handle horizontal scroll
+*/
+  .authmdreview table.mdr-table {
+    display: table;
+    width: 100%;
+    overflow: visible;
+    font-size: 14px;
+    min-width: 980px; /* prevents the table from "compressing" too much */
+  }
+
+  .authmdreview .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Comfortable cell padding even if table-sm is present */
+  .authmdreview table.mdr-table th,
+  .authmdreview table.mdr-table td {
+    padding: 0.5rem 0.75rem;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+
+    /* Allow Description column to wrap so the table doesn't look squeezed */
+    .authmdreview table.mdr-table th:nth-child(3),
+    .authmdreview table.mdr-table td:nth-child(3) {
+      white-space: normal;
+      min-width: 260px;
+    }
+
+  /* Numeric columns */
+  .authmdreview .num {
+    text-align: right;
+  }
+
+  /* Missing style used in template */
+  .authmdreview .md-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    border: 1px solid #d0d7de;
+    background: #f6f8fa;
+    color: #24292f;
+  }
+
+  /* Optional: slightly larger inputs inside ff-outline */
+  .authmdreview .ff-input {
+    font-size: 14px;
   }

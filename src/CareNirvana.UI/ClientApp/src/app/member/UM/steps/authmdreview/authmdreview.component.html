@@ -157,7 +157,7 @@
         <div *ngIf="!serviceLines?.length" class="muted">No service lines found in the auth data.</div>
 
         <div class="table-responsive" *ngIf="serviceLines?.length">
-          <table class="table table-sm mdr-table">
+          <table class="table mdr-table">
             <thead>
               <tr>
                 <th style="width:40px;"></th>
@@ -221,7 +221,7 @@
 
           <div class="left-header">
             <div class="left-title">MD Review Activities</div>
-            <button class="btn btn-sm btn-primary me-2" type="button" (click)="onCreateNewFromList()">Create New</button>
+            <button class="btn btn-primary me-2" type="button" (click)="onCreateNewFromList()">Create New</button>
           </div>
 
           <!--<div class="left-search">
@@ -306,7 +306,7 @@
             </div>
 
             <div class="table-responsive" *ngIf="selectedActivity.lines?.length; else noLines">
-              <table class="table table-sm mdr-table">
+              <table class="table mdr-table">
                 <thead>
                   <tr>
                     <th style="width:40px;"></th>

@@ -29,9 +29,7 @@
         </button>
 
 
-        <button mat-stroked-button color="primary" (click)="reload()">Search</button>
-
-
+        <!--<button mat-stroked-button color="primary" (click)="reload()">Search</button>-->
         <!-- Add / Upload -->
         <button mat-flat-button color="primary" (click)="fileInput.click()">
           <mat-icon>add</mat-icon>
@@ -67,32 +65,46 @@
   </div>
 </div>
 
+<!-- Inline success/error message (replaces toast) -->
+<div *ngIf="inlineMessageText"
+     style="padding:0 5px 8px 5px;">
+  <div [ngStyle]="{
+        'padding': '10px 12px',
+        'border-radius': '10px',
+        'border': inlineMessageType === 'error' ? '1px solid #f5c2c7' : '1px solid #badbcc',
+        'background': inlineMessageType === 'error' ? '#f8d7da' : '#d1e7dd',
+        'color': inlineMessageType === 'error' ? '#842029' : '#0f5132'
+      }">
+    {{ inlineMessageText }}
+  </div>
+</div>
+
 <!-- Table -->
 <div class="table-wrapper" *ngIf="!showPreview" style="padding:5px;">
   <table mat-table [dataSource]="dataSource" class="mat-elevation-z1 full-width-table pro-table mng-table">
 
     <!-- Fax File Name -->
     <!--<ng-container matColumnDef="fileName">
-    <th mat-header-cell *matHeaderCellDef>Fax File Name</th>
-    <td mat-cell *matCellDef="let r">
-      <div class="font-medium">{{ r.fileName }}</div>-->
+  <th mat-header-cell *matHeaderCellDef>Fax File Name</th>
+  <td mat-cell *matCellDef="let r">
+    <div class="font-medium">{{ r.fileName }}</div>-->
     <!--<div class="sub-id">#{{ r.faxId }}</div>-->
     <!--</td>
-    </ng-container>-->
+  </ng-container>-->
     <!--<ng-container matColumnDef="fileName">
-      <th mat-header-cell *matHeaderCellDef>Fax File Name</th>
-      <td mat-cell *matCellDef="let r">
-        <div class="fax-name" [ngClass]="{ 'is-child': r.isChild }">
-          <span *ngIf="r.isChild" class="child-badge">↳</span>
-          <span class="font-medium">{{ r.fileName }}</span>
+    <th mat-header-cell *matHeaderCellDef>Fax File Name</th>
+    <td mat-cell *matCellDef="let r">
+      <div class="fax-name" [ngClass]="{ 'is-child': r.isChild }">
+        <span *ngIf="r.isChild" class="child-badge">↳</span>
+        <span class="font-medium">{{ r.fileName }}</span>
 
-          <span *ngIf="r.hasChildren"
-                class="child-count-badge">
-            ({{ r.children?.length }} split page{{ (r.children?.length || 0) > 1 ? 's' : '' }})
-          </span>
-        </div>
-      </td>
-    </ng-container>-->
+        <span *ngIf="r.hasChildren"
+              class="child-count-badge">
+          ({{ r.children?.length }} split page{{ (r.children?.length || 0) > 1 ? 's' : '' }})
+        </span>
+      </div>
+    </td>
+  </ng-container>-->
     <ng-container matColumnDef="fileName">
       <th mat-header-cell *matHeaderCellDef>Fax File Name</th>
       <td mat-cell *matCellDef="let r">
@@ -102,7 +114,16 @@
              *ngIf="editingFileNameFaxId !== r.faxId"
              [ngClass]="{ 'is-child': r.isChild }">
           <span *ngIf="r.isChild" class="child-badge">↳</span>
-          <span class="font-medium">{{ r.fileName }}</span>
+
+          <!-- Click file name to open preview (keep existing rules: disable when parent has children) -->
+          <a *ngIf="!r.hasChildren"
+             href="#"
+             class="font-medium"
+             style="text-decoration: underline; cursor: pointer;"
+             (click)="$event.preventDefault(); openPreview(r)">
+            {{ r.fileName }}
+          </a>
+          <span *ngIf="r.hasChildren" class="font-medium">{{ r.fileName }}</span>
 
           <span *ngIf="r.hasChildren"
                 class="child-count-badge">
@@ -141,16 +162,37 @@
     </ng-container>
 
     <!-- Member -->
+    <!--<ng-container matColumnDef="member">
+    <th mat-header-cell *matHeaderCellDef>Member</th>
+    <td mat-cell *matCellDef="let r">{{ r.memberId || '—' }}</td>
+  </ng-container>-->
+
     <ng-container matColumnDef="member">
       <th mat-header-cell *matHeaderCellDef>Member</th>
-      <td mat-cell *matCellDef="let r">{{ r.memberId || '—' }}</td>
+      <td mat-cell *matCellDef="let r">
+        <ng-container *ngIf="r.memberId !== null && r.memberId !== undefined; else noMemberIdentified">
+          <div class="name-cell">
+            <div class="sub-name">
+              <a href="#"
+                 (click)="onMemberClick(r.memberId, r.memberName, r.memberDetailsId); $event.preventDefault()">
+                {{ r.memberName || '—' }}
+              </a>
+            </div>
+            <div class="sub-id">ID: {{ r.memberId }}</div>
+          </div>
+        </ng-container>
+
+        <ng-template #noMemberIdentified>
+          <div class="text-sm muted">No member identified</div>
+        </ng-template>
+      </td>
     </ng-container>
 
     <!-- Work Basket -->
     <!--<ng-container matColumnDef="workBasket">
-      <th mat-header-cell *matHeaderCellDef>Work Basket</th>
-      <td mat-cell *matCellDef="let r">{{ r.workBasket || '—' }}</td>
-    </ng-container>-->
+    <th mat-header-cell *matHeaderCellDef>Work Basket</th>
+    <td mat-cell *matCellDef="let r">{{ r.workBasket || '—' }}</td>
+  </ng-container>-->
     <ng-container matColumnDef="workBasket">
       <th mat-header-cell *matHeaderCellDef>Work Basket</th>
       <td mat-cell *matCellDef="let r">
@@ -208,35 +250,35 @@
 
     <!-- Actions -->
     <!--<ng-container matColumnDef="actions">
-      <th mat-header-cell *matHeaderCellDef class="is-center">Actions</th>
-      <td mat-cell *matCellDef="let r" class="is-center">
-        <button mat-icon-button matTooltip="Preview" (click)="openPreview(r)">
-          <mat-icon>preview</mat-icon>
-        </button>
-        <a *ngIf="r.url" mat-icon-button [href]="r.url" target="_blank" matTooltip="Open file">
-          <mat-icon>picture_as_pdf</mat-icon>
-        </a>
-      </td>
-    </ng-container>-->
-    <!--<ng-container matColumnDef="actions">
     <th mat-header-cell *matHeaderCellDef class="is-center">Actions</th>
     <td mat-cell *matCellDef="let r" class="is-center">
-      <button mat-icon-button
-              matTooltip="Preview"
-              (click)="openPreview(r)"
-              *ngIf="!r.hasChildren">
+      <button mat-icon-button matTooltip="Preview" (click)="openPreview(r)">
         <mat-icon>preview</mat-icon>
-      </button>-->
+      </button>
+      <a *ngIf="r.url" mat-icon-button [href]="r.url" target="_blank" matTooltip="Open file">
+        <mat-icon>picture_as_pdf</mat-icon>
+      </a>
+    </td>
+  </ng-container>-->
+    <!--<ng-container matColumnDef="actions">
+  <th mat-header-cell *matHeaderCellDef class="is-center">Actions</th>
+  <td mat-cell *matCellDef="let r" class="is-center">
+    <button mat-icon-button
+            matTooltip="Preview"
+            (click)="openPreview(r)"
+            *ngIf="!r.hasChildren">
+      <mat-icon>preview</mat-icon>
+    </button>-->
     <!-- Still allow direct link if you want, or likewise disable -->
     <!--<a *ngIf="r.url"
-           mat-icon-button
-           [href]="r.url"
-           target="_blank"
-           matTooltip="Open file">
-          <mat-icon>picture_as_pdf</mat-icon>
-        </a>
-      </td>
-    </ng-container>-->
+         mat-icon-button
+         [href]="r.url"
+         target="_blank"
+         matTooltip="Open file">
+        <mat-icon>picture_as_pdf</mat-icon>
+      </a>
+    </td>
+  </ng-container>-->
     <ng-container matColumnDef="actions">
       <th mat-header-cell *matHeaderCellDef class="is-center">Actions</th>
       <td mat-cell *matCellDef="let r" class="is-center">
@@ -400,13 +442,43 @@
         </div>
 
         <div class="card">
-          <div *ngIf="pa.patient?.memberId; else noMember" class="info-highlight">
-            <!--Member identified (Member ID: {{ pa.patient?.memberId }}) and ready for linkage.
-            Authorization can be initiated for this request using the extracted Service Codes and valid Start–End dates.-->
-            Member identified (Member ID: {{ pa.patient?.memberId }}) and ready for linkage.
+          <!--<div *ngIf="pa.patient?.memberId; else noMember" class="info-highlight">-->
+          <!--Member identified (Member ID: {{ pa.patient?.memberId }}) and ready for linkage.
+          Authorization can be initiated for this request using the extracted Service Codes and valid Start–End dates.-->
+          <!--Member identified (Member ID: {{ pa.patient?.memberId }}) and ready for linkage.
             <strong class="smart-check">Smart Auth Check completed.</strong> Authorization is required for this request based on the extracted
             <strong>Service Codes</strong> and verified <strong>Start–End dates</strong>.
+          </div>-->
+          <div *ngIf="pa.patient?.memberId; else noMember" class="info-highlight">
+            Member identified (Member ID: {{ pa.patient?.memberId }}) and ready for linkage.
+
+            <ng-container *ngIf="smartAuthCheckInProgress">
+              <strong class="smart-check">Running Smart Auth Check...</strong>
+            </ng-container>
+
+            <ng-container *ngIf="!smartAuthCheckInProgress && smartAuthCheckCompleted">
+              <strong class="smart-check">Smart Auth Check completed.</strong>
+
+              <ng-container *ngIf="smartAuthCheckAuthRequired === true">
+                Authorization is required for this request based on the extracted
+                <strong>Service Codes</strong> and verified <strong>Start–End dates</strong>.
+              </ng-container>
+
+              <ng-container *ngIf="smartAuthCheckAuthRequired === false">
+                Authorization is <strong>not</strong> required for this request based on the extracted
+                <strong>Service Codes</strong> and verified <strong>Start–End dates</strong>.
+              </ng-container>
+
+              <ng-container *ngIf="smartAuthCheckAuthRequired === null">
+                No matching Smart Auth Check rule was found for the extracted inputs.
+              </ng-container>
+            </ng-container>
+
+            <ng-container *ngIf="!smartAuthCheckInProgress && !smartAuthCheckCompleted && smartAuthCheckError">
+              <strong class="smart-check">Smart Auth Check unavailable.</strong> {{ smartAuthCheckError }}
+            </ng-container>
           </div>
+
 
           <ng-template #noMember>
             <div class="info-highlight no-match">
@@ -491,7 +563,14 @@
   <div class="pane pane-right">
 
     <div class="pane-header">
-      <span>Preview</span>
+      <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+        <span>Preview</span>
+        <button mat-stroked-button
+                color="primary"
+                (click)="closePreview()">
+          Cancel
+        </button>
+      </div>
     </div>
 
     <!-- PDF IFRAME -->

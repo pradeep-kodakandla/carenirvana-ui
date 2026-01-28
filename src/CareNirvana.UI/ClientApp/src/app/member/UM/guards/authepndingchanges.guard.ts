@@ -1,17 +1,22 @@
 import { inject } from '@angular/core';
 import { CanDeactivateFn } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
-import { Observable, of } from 'rxjs';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { AuthconfirmleavedialogComponent } from 'src/app/member/UM/components/authconfirmleavedialog/authconfirmleavedialog.component';
 
-export interface AuthPendingChanges {
-  hasPendingChanges: () => boolean;
-}
+export const authpendingchangesGuard: CanDeactivateFn<any> = (component) => {
+  const c: any = component;
 
-export const authpendingchangesGuard: CanDeactivateFn<AuthPendingChanges> = (component) => {
-  if (!component || !component.hasPendingChanges || !component.hasPendingChanges()) {
-    return true;
-  }
+  // Support multiple naming styles across wizard steps/shell
+  const hasChanges = !!(
+    c?.hasPendingChanges?.() ??
+    c?.authHasUnsavedChanges?.() ??
+    c?.hasUnsavedChanges?.() ??
+    false
+  );
+
+  if (!hasChanges) return true;
 
   const dialog = inject(MatDialog);
 
@@ -26,5 +31,6 @@ export const authpendingchangesGuard: CanDeactivateFn<AuthPendingChanges> = (com
         cancelText: 'Stay',
       },
     })
-    .afterClosed() as Observable<boolean>;
+    .afterClosed()
+    .pipe(map(result => result === true)) as Observable<boolean>;
 };

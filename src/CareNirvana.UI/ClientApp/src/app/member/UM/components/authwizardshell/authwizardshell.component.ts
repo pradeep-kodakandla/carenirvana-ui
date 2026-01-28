@@ -1,11 +1,11 @@
-import { AfterViewInit, Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, OnDestroy, OnInit, ViewChild, ComponentRef } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, Subscription, take } from 'rxjs';
 import { WizardToastService, WizardToastMessage } from './wizard-toast.service';
 import { AuthDetailApiService } from 'src/app/service/authdetailapi.service';
 import { AuthDetailRow } from 'src/app/member/UM/services/authdetail';
 import { AuthService } from 'src/app/service/auth.service';
-
+import { AuthunsavedchangesawareService } from 'src/app/member/UM/services/authunsavedchangesaware.service';
 export interface AuthWizardStep {
   id: string;
   label: string;
@@ -34,7 +34,7 @@ export interface AuthWizardContext {
   templateUrl: './authwizardshell.component.html',
   styleUrls: ['./authwizardshell.component.css']
 })
-export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestroy {
+export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestroy, AuthunsavedchangesawareService {
   @ViewChild(RouterOutlet) outlet?: RouterOutlet;
 
   steps: AuthWizardStep[] = [];
@@ -86,7 +86,7 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
   };
 
   private sub = new Subscription();
-
+  private currentStepRef?: ComponentRef<any>;
   constructor(
     private router: Router,
     private route: ActivatedRoute,
@@ -166,15 +166,65 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     );
   }
 
+  //ngAfterViewInit(): void {
+  //  // When routed step activates, push context and also try to hydrate header from that step
+  //  if ((this.outlet as any)?.activateEvents) {
+  //    this.sub.add(
+  //      (this.outlet as any).activateEvents.subscribe((cmp: any) => {
+  //        this.refreshHeaderFromStep(cmp);
+  //      })
+  //    );
+  //  }
+  //}
+
   ngAfterViewInit(): void {
-    // When routed step activates, push context and also try to hydrate header from that step
-    if ((this.outlet as any)?.activateEvents) {
+    // Track the currently-active routed step so shell-level guards (unsaved changes) can query it.
+    const outletAny: any = this.outlet as any;
+
+    if (outletAny?.activateEvents) {
       this.sub.add(
-        (this.outlet as any).activateEvents.subscribe((cmp: any) => {
+        outletAny.activateEvents.subscribe((cmp: any) => {
+          // RouterOutlet emits the *instance*; some Angular versions also keep a ComponentRef internally.
+          this.setCurrentStepRef(cmp);
+
+          // Hydrate header + ensure the step gets the latest context
           this.refreshHeaderFromStep(cmp);
+          queueMicrotask(() => this.pushContextIntoCurrentStep());
         })
       );
     }
+
+    if (outletAny?.deactivateEvents) {
+      this.sub.add(
+        outletAny.deactivateEvents.subscribe(() => {
+          this.currentStepRef = undefined;
+        })
+      );
+    }
+  }
+
+
+  private setCurrentStepRef(activatedInstance: any): void {
+    const outletAny: any = this.outlet as any;
+
+    const refCandidate =
+      outletAny?._activated ??          // common internal name
+      outletAny?.activatedRef ??        // just in case of custom outlet wrappers
+      outletAny?.activated ??           // may be ComponentRef<any> in some versions
+      null;
+
+    if (refCandidate && typeof refCandidate === 'object' && (refCandidate as any).instance) {
+      this.currentStepRef = refCandidate as ComponentRef<any>;
+      return;
+    }
+
+    if (activatedInstance) {
+      // Fallback: wrap the instance to satisfy `.instance` usage.
+      this.currentStepRef = ({ instance: activatedInstance } as unknown) as ComponentRef<any>;
+      return;
+    }
+
+    this.currentStepRef = undefined;
   }
 
 
@@ -271,7 +321,7 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     const p = inst?.pendingAuth ?? inst?.auth ?? inst?.authDetails ?? inst?.model ?? null;
     if (!p) return;
 
-    const createdBy = p?.createdBy ?? p?.createdby ?? p?.created_user ?? p?.createdUser ?? null;
+    const createdBy = sessionStorage.getItem('loggedInUsername') || ''; //p?.createdBy ?? p?.createdby ?? p?.created_user ?? p?.createdUser ?? null;
     const createdOn = p?.createdOn ?? p?.createdon ?? p?.createdDate ?? p?.created_date ?? null;
     const due = p?.authDueDate ?? p?.authduedate ?? p?.dueDate ?? p?.duedate ?? null;
 
@@ -282,7 +332,7 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
 
   private refreshHeaderFromAuthRow(row: any, dataObj: any): void {
     // Prefer explicit row fields; fallback to parsed json
-    const createdBy = row?.createdBy ?? row?.createdby ?? dataObj?.createdBy ?? dataObj?.createdby ?? null;
+    const createdBy = sessionStorage.getItem('loggedInUsername') || ''; //row?.createdBy ?? row?.createdby ?? dataObj?.createdBy ?? dataObj?.createdby ?? null;
     const createdOn = row?.createdOn ?? row?.createdon ?? dataObj?.createdOn ?? dataObj?.createdon ?? null;
     const due = row?.authDueDate ?? row?.authduedate ?? dataObj?.authDueDate ?? dataObj?.authduedate ?? dataObj?.dueDate ?? null;
 
@@ -547,9 +597,6 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     this.activeStepId = match?.id ?? (this.isNewAuth ? 'smartcheck' : 'details');
   }
 
-  // ---------------------------
-  // ✅ CaseWizardShell-style push
-  // ---------------------------
   private pushContextIntoCurrentStep(): void {
     const inst: any =
       (this.outlet as any)?.activatedComponent ??
@@ -585,6 +632,19 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     if (typeof inst?.reload === 'function' && inst.reload.length === 0) {
       inst.reload();
     }
+  }
+  authHasUnsavedChanges(): boolean {
+    const inst: any = this.currentStepRef?.instance;
 
+    // support both naming styles so all steps work
+    return !!(
+      inst?.authHasUnsavedChanges?.() ??
+      inst?.hasUnsavedChanges?.() ??
+      false
+    );
+  }
+  // Alias for CanDeactivate guards that expect hasPendingChanges()
+  hasPendingChanges(): boolean {
+    return this.authHasUnsavedChanges();
   }
 }

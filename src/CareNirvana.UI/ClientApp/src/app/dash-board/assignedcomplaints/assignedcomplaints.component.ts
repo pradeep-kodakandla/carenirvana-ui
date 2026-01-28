@@ -498,7 +498,8 @@ export class AssignedcomplaintsComponent implements OnInit, AfterViewInit {
 
     this.activityViewMode = mode;
     this.selectedActionLabel = mode === 'full' ? 'Activities' : 'Add Activity';
-    this.panelSubtitle = this.selectedCaseNumber ? `Case #${this.selectedCaseNumber}` : '';
+    this.panelSubtitle = (row?.MemberName ?? row?.memberName ?? '').toString() + (' (ID: ' + row?.memberId + ')') + (' (Case #: ' + this.selectedCaseNumber + ')');
+    //this.panelSubtitle = this.selectedCaseNumber ? `Case #${this.selectedCaseNumber}` : '';
   }
 
   openNotes(row: any, mode: 'add' | 'full' = 'add'): void {
@@ -513,7 +514,7 @@ export class AssignedcomplaintsComponent implements OnInit, AfterViewInit {
     this.selectedMemberDetailsId = this.extractMemberDetailsId(row);
     this.notesViewMode = mode;
     this.selectedActionLabel = mode === 'full' ? 'Notes' : 'Add Notes';
-    this.panelSubtitle = this.selectedCaseNumber ? `Case #${this.selectedCaseNumber}` : '';
+    this.panelSubtitle = (row?.MemberName ?? row?.memberName ?? '').toString() + (' (ID: ' + row?.memberId + ')') + (' (Case #: ' + this.selectedCaseNumber + ')');
   }
 
   openDocuments(row: any, mode: 'add' | 'full' = 'add'): void {
@@ -530,7 +531,7 @@ export class AssignedcomplaintsComponent implements OnInit, AfterViewInit {
     this.documentsViewMode = mode;
     this.startAddDocuments = mode === 'add';
     this.selectedActionLabel = mode === 'full' ? 'Documents' : 'Add Documents';
-    this.panelSubtitle = this.selectedCaseNumber ? `Case #${this.selectedCaseNumber}` : '';
+    this.panelSubtitle = (row?.MemberName ?? row?.memberName ?? '').toString() + (' (ID: ' + row?.memberId + ')') + (' (Case #: ' + this.selectedCaseNumber + ')');
   }
 
   // ---- callbacks from embedded components (View All / Add Only toggles)

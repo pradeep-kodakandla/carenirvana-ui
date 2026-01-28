@@ -282,7 +282,7 @@
 
 /* Span full width for long fields */
 .ff-span-all {
-  grid-column: 1 / -8;
+  grid-column: 1 / -1;
 }
 
 /* Checkbox row */
@@ -327,4 +327,44 @@
     flex: 1;
     min-width: 220px;
   }
+}
+
+
+
+.ff-input {
+  /* Match ui-smart-dropdown input sizing and improve readability in Decision Notes */
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.ff-body {
+  min-height: 36px;
+}
+
+.ff-input:not(.ff-textarea) {
+  height: 36px;
+}
+
+.ff-textarea {
+  min-height: 110px;
+}
+
+/* also match embedded dropdown/date inputs */
+:host ::ng-deep .ff-outline ui-smart-dropdown input,
+:host ::ng-deep .ff-outline ui-datetime-picker input {
+  height: 36px !important;
+}
+
+
+/* Make field containers behave consistently */
+.ff-field {
+  display: flex; /* flex-direction was set but display was missing */
+}
+
+/* Prevent shrink-to-fit (this is what makes fields look tiny) */
+.ff-outline {
+  width: 100%;
+  justify-self: stretch;
+  align-self: stretch; /* or just remove align-self entirely */
+  height: auto; /* optional: avoids weird fit-content sizing */
 }

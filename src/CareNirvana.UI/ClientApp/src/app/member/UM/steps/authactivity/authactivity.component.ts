@@ -10,6 +10,7 @@ import { AuthService } from 'src/app/service/auth.service';
 import { WorkbasketService } from 'src/app/service/workbasket.service';
 import { UiOption } from 'src/app/shared/ui/shared/uioption.model';
 import { WizardToastService } from 'src/app/member/UM/components/authwizardshell/wizard-toast.service';
+import { AuthunsavedchangesawareService } from 'src/app/member/UM/services/authunsavedchangesaware.service';
 
 type DropdownKind = 'workGroup' | 'workBasket' | 'workBasketUser' | 'activityType' | 'priority' | 'assignTo';
 interface Option {
@@ -30,7 +31,7 @@ interface Option {
   ]
 })
 
-export class AuthactivityComponent implements OnChanges {
+export class AuthactivityComponent implements OnChanges, AuthunsavedchangesawareService {
   activityForm: FormGroup;
   activities: AuthActivity[] = [];
   filteredActivities: AuthActivity[] = [];
@@ -772,4 +773,17 @@ export class AuthactivityComponent implements OnChanges {
     this.formKey++; // <== forces Angular to recreate the subtree
   }
 
+  authHasUnsavedChanges(): boolean {
+    return this.activityForm?.dirty ?? false;
+  }
+
+  // Alias for CanDeactivate guards that expect a different method name
+  hasPendingChanges(): boolean {
+    return this.authHasUnsavedChanges();
+  }
+
+  // Alias for older naming
+  hasUnsavedChanges(): boolean {
+    return this.authHasUnsavedChanges();
+  }
 }

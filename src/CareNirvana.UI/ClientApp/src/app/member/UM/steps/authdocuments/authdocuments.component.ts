@@ -7,6 +7,7 @@ import { DatasourceLookupService } from 'src/app/service/crud.service';
 import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
 import { AuthDetailApiService } from 'src/app/service/authdetailapi.service';
 import { WizardToastService } from 'src/app/member/UM/components/authwizardshell/wizard-toast.service';
+import { AuthunsavedchangesawareService } from 'src/app/member/UM/services/authunsavedchangesaware.service';
 
 import {
   AuthDocumentDto,
@@ -38,7 +39,7 @@ type AnyField = {
   templateUrl: './authdocuments.component.html',
   styleUrls: ['./authdocuments.component.css']
 })
-export class AuthdocumentsComponent implements OnDestroy, OnChanges {
+export class AuthdocumentsComponent implements OnDestroy, OnChanges, AuthunsavedchangesawareService {
 // --------------------------
 // Inputs/Outputs (AssignedAuths embedded mode)
 // --------------------------
@@ -839,4 +840,18 @@ private openEditInternal(d: AuthDocumentDto): void {
 
   trackByDoc = (_: number, d: AuthDocumentDto) => String(this.getDocumentId(d) ?? _);
   trackByField = (_: number, f: AnyField) => String(f.controlName || f.id || _);
+
+  authHasUnsavedChanges(): boolean {
+    return this.form?.dirty ?? false;
+  }
+
+  // Alias for CanDeactivate guards that expect a different method name
+  hasPendingChanges(): boolean {
+    return this.authHasUnsavedChanges();
+  }
+
+  // Alias for older naming
+  hasUnsavedChanges(): boolean {
+    return this.authHasUnsavedChanges();
+  }
 }

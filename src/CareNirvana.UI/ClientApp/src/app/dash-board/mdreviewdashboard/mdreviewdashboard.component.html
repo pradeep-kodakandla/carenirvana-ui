@@ -68,14 +68,12 @@
             <!-- Member (FirstName LastName + ID) -->
             <ng-container matColumnDef="member">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Member</th>
-              <td mat-cell *matCellDef="let row">
+              <td mat-cell *matCellDef="let m">
                 <div class="name-cell">
                   <div class="sub-name">
-                    <a href="#" (click)="onMemberClick(row.memberId, (row.firstName || '') + ' ' + (row.lastName || '')); $event.preventDefault()">
-                      {{ (row.firstName || '') + ' ' + (row.lastName || '') }}
-                    </a>
+                    <a href="#" (click)="onMemberClick(m.memberId, m.firstName + ' ' + m.lastName,m.memberDetailsId); $event.preventDefault()">{{ m.firstName }} {{ m.lastName }}</a>
                   </div>
-                  <div class="sub-id">ID: {{ row.memberId }}</div>
+                  <div class="sub-id">ID: {{ m.memberId }}</div>
                 </div>
               </td>
             </ng-container>
@@ -255,152 +253,138 @@
         </div>
 
 
-        <h6>Service Lines</h6>
-        <div class="table-wrapper">
-          <table mat-table
-                 [dataSource]="serviceLinesDS"
-                 class="mat-elevation-z1 full-width-table pro-table mng-table">
-            <ng-container matColumnDef="select">
-              <th mat-header-cell *matHeaderCellDef class="col-select">
-                <mat-checkbox (change)="masterToggle()"
-                              [checked]="isAllSelected()"
-                              [indeterminate]="selection.hasValue() && !isAllSelected()"
-                              [disabled]="!hasSelectableRows()"
-                              [aria-label]="checkboxLabel()">
-                </mat-checkbox>
-              </th>
-              <td mat-cell *matCellDef="let line" class="col-select">
-                <mat-checkbox (click)="$event.stopPropagation()"
-                              (change)="$event ? selection.toggle(line) : null"
-                              [checked]="selection.isSelected(line)"
-                              [disabled]="!isLineSelectable(line)"
-                              [aria-label]="checkboxLabel(line)">
-                </mat-checkbox>
-              </td>
-            </ng-container>
-            <!-- Service Code -->
-            <ng-container matColumnDef="serviceCode">
-              <th mat-header-cell *matHeaderCellDef>Service Code</th>
-              <td mat-cell *matCellDef="let line">{{ line.ServiceCode || '—' }}</td>
-            </ng-container>
+        <!-- Service Lines (AUTH-LIKE REVIEW TABLE) -->
+        <div class="lines-header" style="margin-top:12px;">
+          <div class="lines-title">Service Lines</div>
+          <div class="lines-actions">
+            <label class="muted" style="display:flex; align-items:center; gap:8px; margin:0;">
+              <input #selectAllReview type="checkbox"
+                     (change)="toggleSelectAllReviewLines(selectAllReview.checked)" />
+              Select all
+            </label>
+          </div>
+        </div>
 
-            <!-- Description -->
-            <ng-container matColumnDef="description">
-              <th mat-header-cell *matHeaderCellDef>Description</th>
-              <td mat-cell *matCellDef="let line">{{ line.Description || '—' }}</td>
-            </ng-container>
+        <div class="table-responsive" *ngIf="selectedAuth?.lines?.length; else noLines">
+          <table class="table mdr-table">
+            <thead>
+              <tr>
+                <th style="width:40px;"></th>
+                <th>Service Code</th>
+                <th>Description</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Req</th>
+                <th>Appr</th>
+                <th>Den</th>
+                <th>Initial Recommendation</th>
+                <th>MD Review Status</th>
+              </tr>
+            </thead>
 
-            <!-- From -->
-            <ng-container matColumnDef="fromDate">
-              <th mat-header-cell *matHeaderCellDef>From</th>
-              <td mat-cell *matCellDef="let line">{{ line.FromDate | date:'MM/dd/yyyy' }}</td>
-            </ng-container>
-
-            <!-- To -->
-            <ng-container matColumnDef="toDate">
-              <th mat-header-cell *matHeaderCellDef>To</th>
-              <td mat-cell *matCellDef="let line">{{ line.ToDate | date:'MM/dd/yyyy' }}</td>
-            </ng-container>
-
-            <!-- Requested -->
-            <ng-container matColumnDef="requested">
-              <th mat-header-cell *matHeaderCellDef>Req.</th>
-              <td mat-cell *matCellDef="let line">{{ line.Requested }}</td>
-            </ng-container>
-
-            <!-- Approved -->
-            <ng-container matColumnDef="approved">
-              <th mat-header-cell *matHeaderCellDef>Appr.</th>
-              <td mat-cell *matCellDef="let line">{{ line.Approved }}</td>
-            </ng-container>
-
-            <!-- Denied -->
-            <ng-container matColumnDef="denied">
-              <th mat-header-cell *matHeaderCellDef>Den.</th>
-              <td mat-cell *matCellDef="let line">{{ line.Denied }}</td>
-            </ng-container>
-
-            <!-- Initial Recommendation -->
-            <ng-container matColumnDef="initial">
-              <th mat-header-cell *matHeaderCellDef>Initial Recommendation</th>
-              <td mat-cell *matCellDef="let line">{{ line.InitialRecommendation || '—' }}</td>
-            </ng-container>
-
-            <!-- MD Decision -->
-            <ng-container matColumnDef="mdDecision">
-              <th mat-header-cell *matHeaderCellDef>MD Decision</th>
-              <!--<td mat-cell *matCellDef="let line">{{ line.MdDecision || 'Not Reviewed' }}</td>-->
-              <td mat-cell *matCellDef="let line">
-                <span class="md-badge" [ngClass]="mdDecisionClass(line.MdDecision)">
-                  {{ line.MdDecision || 'Not Reviewed' }}
-                </span>
-              </td>
-            </ng-container>
-
-            <!-- MD Notes -->
-            <ng-container matColumnDef="mdNotes">
-              <th mat-header-cell *matHeaderCellDef>MD Notes</th>
-              <td mat-cell *matCellDef="let line">{{ line.MdNotes || '—' }}</td>
-            </ng-container>
-
-            <!-- Header / Rows -->
-            <tr mat-header-row *matHeaderRowDef="displayedServiceColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedServiceColumns;"></tr>
-
-            <!-- Empty state -->
-            <tr class="mat-row" *matNoDataRow>
-              <td class="mat-cell dim" [attr.colspan]="displayedServiceColumns.length">
-                No service lines found.
-              </td>
-            </tr>
+            <tbody>
+              <tr *ngFor="let l of selectedAuth.lines; trackBy: trackByLineId">
+                <td>
+                  <input type="checkbox"
+                         [checked]="!!l.selected"
+                         (change)="onToggleReviewLine(l, $any($event.target).checked)" />
+                </td>
+                <td>{{ l.serviceCode }}</td>
+                <td>{{ l.serviceDescription }}</td>
+                <td>{{ l.fromDate | date:'MM/dd/yyyy' }}</td>
+                <td>{{ l.toDate | date:'MM/dd/yyyy' }}</td>
+                <td class="num">{{ l.requested ?? '-' }}</td>
+                <td class="num">{{ l.approved ?? '-' }}</td>
+                <td class="num">{{ l.denied ?? '-' }}</td>
+                <td>{{ l.initialRecommendation || '-' }}</td>
+                <td><span class="pill">{{ l.status || '-' }}</span></td>
+              </tr>
+            </tbody>
           </table>
         </div>
 
+        <ng-template #noLines>
+          <div class="muted">No service lines found.</div>
+        </ng-template>
 
-        <h6>Medical Director's Decision</h6>
-        <div class="decision-options">
-          <div class="form-outline dropdown-container">
-            <label class="floating-label">Decision Status <span class="text-danger">*</span></label>
+        <!-- Medical Director's Decision (AUTH-LIKE) -->
+        <div class="lines-title" style="margin-top:18px;">Medical Director's Decision</div>
+        <hr />
 
-            <div class="input-with-icon">
-              <input type="text"
-                     class="form-control"
-                     [value]="DecisionStatusDisplay"
-                     (input)="onTypeaheadInput($event)"
-                     (keydown)="handleDropdownKeydown($event, 'DecisionStatus')"
-                     (focus)="openDropdown('DecisionStatus')"
-                     (focusout)="closeDropdown('DecisionStatus')">
-              <!--[ngClass]="{'is-invalid': activityForm.get('DecisionStatus')?.touched && activityForm.get('DecisionStatus')?.invalid}"-->
+        <div class="decision-grid">
 
-              <span class="dropdown-arrow">&#9662;</span>
-
-              <div class="autocomplete-dropdown" *ngIf="showDropdowns.DecisionStatus && filteredDecisionStatus?.length">
-                <div class="autocomplete-option"
-                     *ngFor="let option of filteredDecisionStatus; let i = index"
-                     [ngClass]="{'highlighted': i === highlightedIndex}"
-                     (mousedown)="selectDropdownOption('DecisionStatus', option)">
-                  {{ option.label }}
-                </div>
-
+          <div class="ff-field">
+            <div class="ff-outline">
+              <div class="ff-float-label">Decision Status <span class="req">*</span></div>
+              <div class="ff-body">
+                <ui-smart-dropdown class="ff-ui"
+                                   label=""
+                                   placeholder="Select"
+                                   [options]="decisionStatusOptions"
+                                   [(ngModel)]="overallDecisionStatus"
+                                   (ngModelChange)="onDecisionStatusChanged()">
+                </ui-smart-dropdown>
               </div>
             </div>
-
-            <!--<div *ngIf="activityForm.get('DecisionStatus')?.touched && activityForm.get('DecisionStatus')?.invalid" class="text-danger">
-              Activity Type is required.
-            </div>-->
           </div>
-          <!--<label><input type="radio" name="decision"> <span class="green">Approve</span></label><br />-->
-          <!--<label><input type="radio" name="decision"> <span class="red">Deny</span></label><br />-->
-          <label><input type="radio" name="decision"> <span class="blue">Request more information</span></label>
+
+          <div class="ff-field">
+            <div class="ff-outline">
+              <div class="ff-float-label">Decision Status Code</div>
+              <div class="ff-body">
+                <ui-smart-dropdown class="ff-ui"
+                                   label=""
+                                   placeholder="Select"
+                                   [options]="decisionStatusCodeOptions"
+                                   [(ngModel)]="overallDecisionStatusCode">
+                </ui-smart-dropdown>
+              </div>
+            </div>
+          </div>
+
+          <div class="ff-field" style="display:flex; align-items:center;">
+            <label class="muted" style="display:flex; align-items:center; gap:8px; margin:0;">
+              <input type="checkbox" [(ngModel)]="requestMoreInformation" />
+              Request more information
+            </label>
+          </div>
+
+          <div class="ff-field field-wide">
+            <div class="ff-outline">
+              <div class="ff-float-label">Comments and Recommendations</div>
+              <div class="ff-body">
+                <textarea class="ff-input ff-textarea"
+                          rows="6"
+                          placeholder=""
+                          [(ngModel)]="mdNotesText"></textarea>
+              </div>
+            </div>
+          </div>
+
         </div>
 
-        <textarea rows="4" placeholder="Comments and Recommendations" [(ngModel)]="mdNotesText"></textarea>
+        <div class="footer-row">
+          <button class="btn primary"
+                  type="button"
+                  (click)="submitDecision()"
+                  [disabled]="!hasSelectedReviewLines()">
+            Submit Decision
+          </button>
 
-        <div class="action-buttons">
-          <button class="submit" (click)="onSaveSelection()">Submit Decision</button>
-          <button class="save" (click)="onSaveSelection()">Save & Continue</button>
-          <button class="close" (click)="closeReview()">Close</button>
+          <button class="btn"
+                  type="button"
+                  (click)="saveAndContinue()"
+                  [disabled]="!hasSelectedReviewLines()">
+            Save &amp; Continue
+          </button>
+
+          <button class="btn danger"
+                  type="button"
+                  (click)="closeReview()">
+            Close
+          </button>
         </div>
+
       </div>
     </div>
 

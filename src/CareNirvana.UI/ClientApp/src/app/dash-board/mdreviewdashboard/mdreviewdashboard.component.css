@@ -100,24 +100,7 @@
   text-align: left;
 }
 
-.decision-options {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-  margin: 10px 0 6px;
-  font-size: 13px;
-  align-items: center;
-}
-
-  .decision-options label {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    margin-bottom: 0;
-    cursor: pointer;
-  }
-
-.green {
+  .green {
   color: #2E7D32;
 }
 
@@ -140,44 +123,7 @@ textarea {
   margin-top: 6px;
 }
 
-.action-buttons {
-  margin-top: 16px;
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  padding-top: 8px;
-  background: rgba(255, 255, 255, 0.9);
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.04);
-}
-
-  .action-buttons button {
-    padding: 6px 14px;
-    font-size: 13px;
-    border: none;
-    border-radius: 20px;
-    cursor: pointer;
-  }
-
-.submit {
-  background-color: #32b3a3;
-  color: white;
-}
-
-.save {
-  background-color: #aaa;
-  color: white;
-}
-
-.close {
-  background-color: #f44336;
-  color: white;
-}
-
-.review-header-bar {
+  .review-header-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -661,52 +607,13 @@ button.mat-stroked-button {
 }
 
 .form-grid .form-outline,
-.form-grid .dropdown-container {
-  margin-bottom: 15px !important;
-  padding-bottom: 0 !important;
-}
-
-.dropdown-container {
-  position: relative;
-}
-
-.autocomplete-dropdown {
-  position: absolute;
-  background: #fff;
-  z-index: 1000;
-  width: 100%;
-  max-height: 200px;
-  overflow-y: auto;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-
-.autocomplete-option {
-  padding: 8px 12px;
-  cursor: pointer;
-}
-
-  .autocomplete-option:hover {
+.form-grid   .autocomplete-option:hover {
     background-color: #f1f1f1;
   }
 
 .form-outline {
   position: relative;
   margin-bottom: 1.5rem;
-}
-
-.dropdown-arrow {
-  position: absolute;
-  right: 10px;
-  top: 30px;
-  pointer-events: none;
-  font-size: 0.85rem;
-  color: #777;
-}
-
-.autocomplete-option.highlighted {
-  background-color: #007BFF;
-  color: white;
 }
 
 .col-select {
@@ -767,4 +674,159 @@ button.mat-stroked-button {
   background: #f5f5f5;
   color: #424242;
   border-color: #e0e0e0;
+}
+
+/* ----------------------------
+   AUTH-LIKE Review section styles
+   ---------------------------- */
+.muted {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.lines-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lines-title {
+  font-weight: 700;
+  color: #007BFF;
+}
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+.mdr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.mdr-table thead th {
+  background-color: #eaf3f8;
+  color: #007BFF;
+  font-weight: 700;
+  border-bottom: 1px solid #d6e0f0;
+  padding: 6px 8px;
+  white-space: nowrap;
+}
+
+.mdr-table tbody td {
+  border-bottom: 1px solid #e6ebf2;
+  padding: 6px 8px;
+  vertical-align: middle;
+}
+
+.mdr-table tbody tr:hover {
+  background: #f8fbff;
+}
+
+.mdr-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.mdr-table .pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #f3f4f6;
+  color: #374151;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+/* Decision form */
+.decision-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.field-wide {
+  grid-column: 1 / -1;
+}
+
+.ff-outline {
+  position: relative;
+  border: 1px solid #cfd8dc;
+  border-radius: 10px;
+  padding: 14px 12px 10px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.ff-float-label {
+  position: absolute;
+  top: -9px;
+  left: 12px;
+  background: #fff;
+  padding: 0 6px;
+  font-size: 12px;
+  color: #007BFF;
+  font-weight: 600;
+}
+
+.ff-body {
+  margin-top: 6px;
+}
+
+.ff-textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 8px;
+  border: 1px solid #bbb;
+  border-radius: 8px;
+  font-size: 13px;
+  resize: vertical;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.req {
+  color: #dc3545;
+}
+
+/* Footer actions (replaces .action-buttons) */
+.footer-row {
+  margin-top: 16px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding-top: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.04);
+}
+
+.btn {
+  padding: 6px 14px;
+  font-size: 13px;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.btn.primary {
+  background-color: #32b3a3;
+  color: white;
+}
+
+.btn.danger {
+  background-color: #f44336;
+  color: white;
+}
+
+.btn:disabled {
+  background: #cccccc;
+  cursor: not-allowed;
 }

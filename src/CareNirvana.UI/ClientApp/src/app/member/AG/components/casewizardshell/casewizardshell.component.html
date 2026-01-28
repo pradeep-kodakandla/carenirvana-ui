@@ -6,17 +6,12 @@
     <div class="caseWizardHeader card mb-2">
       <div class="card-body py-2">
         <div class="row g-2 align-items-end">
-
-          <!-- Case Type -->
+          <!-- Case Type (display only; selector moved to Case Details) -->
           <div class="col-12 col-md-4">
-            <form [formGroup]="headerForm">
-              <ui-smart-dropdown label="Select Case Type"
-                                 placeholder="Select Case Type..."
-                                 [options]="caseTypeOptions"
-                                 formControlName="caseType"
-                                 [disabled]="isCaseTypeLocked(aggregate$ | async)">
-              </ui-smart-dropdown>
-            </form>
+            <div class="small">
+              <div class="text-muted">Case Type</div>
+              <div class="fw-semibold">{{ getCaseTypeLabel(headerForm.get('caseType')?.value) || '-' }}</div>
+            </div>
           </div>
 
           <!-- Case meta + Save -->

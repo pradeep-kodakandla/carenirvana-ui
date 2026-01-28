@@ -12,6 +12,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatButtonModule } from '@angular/material/button';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatIcon } from '@angular/material/icon';
+import { MatDialogModule } from '@angular/material/dialog';
 
 import { AuthwizardshellComponent } from 'src/app/member/UM/components/authwizardshell/authwizardshell.component';
 import { AuthchevronstepperComponent } from 'src/app/member/UM/components/authchevronstepper/authchevronstepper.component';
@@ -52,6 +53,7 @@ import { UmsharedwidgetsModule } from 'src/app/member/UM/umwizard/authwizard/ums
     MatInputModule,
     MatFormFieldModule,
     MatButtonModule,
+    MatDialogModule,
     DragDropModule,
     UmsharedwidgetsModule
   ],

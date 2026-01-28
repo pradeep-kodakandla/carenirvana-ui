@@ -218,3 +218,55 @@ tr:last-child td {
     stroke-linejoin: round;
   }
 
+
+/* Status pills */
+.pill.red {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+}
+
+/* Pager */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 6px 0;
+  color: #475569;
+  font-size: 12px;
+}
+
+.pager-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pager-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pager select {
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  border-radius: 10px;
+  padding: 6px 10px;
+  background: #fff;
+  font-size: 12px;
+  color: #0f172a;
+}
+
+.pager-btn {
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  background: #fff;
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+  .pager-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }

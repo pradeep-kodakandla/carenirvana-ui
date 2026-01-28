@@ -37,7 +37,7 @@
     <div *ngIf="loading" class="py-3 px-2">Loading...</div>
 
     <div *ngIf="!loading && (!documents || documents.length === 0)" class="text-muted py-3 px-2">
-      No documents yet.
+      No documents found. Please click "Add Document" to create one.
     </div>
 
     <div class="resp-list" *ngIf="!loading && documents && documents.length > 0">

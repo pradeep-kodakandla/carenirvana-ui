@@ -13,6 +13,7 @@ export interface HeaderTab {
 export class HeaderService {
   private tabs: HeaderTab[] = [];
   private selectedRoute: string | null = null;
+  // NOTE: keep selection by ROUTE (labels can change after save)
   private selected: string | null = null;
 
 
@@ -21,19 +22,20 @@ export class HeaderService {
   }
 
   addTab(label: string, route: string, memberId?: string | null, memberDetailsId?: string | null): void {
-    const exists = this.tabs.some(t => t.route === route);
+    const exists = this.tabs.some(t => this.sameRoute(t.route, route));
     if (!exists) {
-      this.tabs.push({ label, route, memberId: memberId ?? null, memberDetailsId: memberDetailsId ?? null });
+      this.tabs.push({ label, route: this.cleanRoute(route), memberId: memberId ?? null, memberDetailsId: memberDetailsId ?? null });
     } else {
       // Keep metadata fresh if you re-open with updated IDs
-      this.tabs = this.tabs.map(t => t.route === route ? { ...t, memberId, memberDetailsId, label } : t);
+      this.tabs = this.tabs.map(t => this.sameRoute(t.route, route) ? { ...t, memberId, memberDetailsId, label, route: this.cleanRoute(route) } : t);
     }
-    this.selectedRoute = route;
+    this.selectedRoute = this.cleanRoute(route);
   }
 
   selectTab(route: string): void {
-    this.selectedRoute = route;
-    const tab = this.tabs.find(t => t.route === route);
+    const cleaned = this.cleanRoute(route);
+    this.selectedRoute = cleaned;
+    const tab = this.tabs.find(t => this.key(t.route) === this.key(cleaned));
     const mdId = tab?.memberDetailsId ?? null;
     if (mdId) sessionStorage.setItem('selectedMemberDetailsId', mdId);
     else sessionStorage.removeItem('selectedMemberDetailsId');
@@ -44,24 +46,27 @@ export class HeaderService {
   }
 
   getMemberId(route: string): string | null {
-    return this.tabs.find(t => t.route === route)?.memberId ?? null;
+    const cleaned = this.cleanRoute(route);
+    return this.tabs.find(t => this.key(t.route) === this.key(cleaned))?.memberId ?? null;
   }
 
   getMemberDetailsId(route: string): string | null {
-    return this.tabs.find(t => t.route === route)?.memberDetailsId ?? null;
+    const cleaned = this.cleanRoute(route);
+    return this.tabs.find(t => this.key(t.route) === this.key(cleaned))?.memberDetailsId ?? null;
   }
 
 
   // header.service.ts
   removeTab(route: string): string | null {
-    const i = this.tabs.findIndex(t => t.route === route);
+    const cleaned = this.cleanRoute(route);
+    const i = this.tabs.findIndex(t => this.key(t.route) === this.key(cleaned));
     if (i === -1) return this.selectedRoute;
 
     // remove the tab
     this.tabs.splice(i, 1);
 
     // if we closed the selected tab, pick a neighbor
-    if (this.selectedRoute === route) {
+    if (this.selectedRoute && this.key(this.selectedRoute) === this.key(cleaned)) {
       // try the tab that shifted into the same index (to the right)
       const right = this.tabs[i];
       // else use the left neighbor
@@ -73,21 +78,21 @@ export class HeaderService {
   }
 
   updateTab(oldRoute: string, patch: Partial<HeaderTab>): void {
-    const oldR = this.norm(oldRoute);
-    const idx = this.tabs.findIndex(t => this.sameRoute(t.route, oldR));
+    const oldKey = this.key(oldRoute);
+    const idx = this.tabs.findIndex(t => this.key(t.route) === oldKey);
 
     if (idx === -1) {
       // Optional: if you meant the selected tab, update that instead
       if (this.selectedRoute) {
-        const selIdx = this.tabs.findIndex(t => this.sameRoute(t.route, this.selectedRoute!));
+        const selIdx = this.tabs.findIndex(t => this.key(t.route) === this.key(this.selectedRoute!));
         if (selIdx !== -1) {
-          this.applyPatch(selIdx, patch, oldR);
+          this.applyPatch(selIdx, patch, oldKey);
         }
       }
       return;
     }
 
-    this.applyPatch(idx, patch, oldR);
+    this.applyPatch(idx, patch, oldKey);
   }
 
   getSelectedTab(): string | null {
@@ -108,11 +113,13 @@ export class HeaderService {
 
   // ---- Internal helpers ----------------------------------------------------
 
-  private applyPatch(index: number, patch: Partial<HeaderTab>, oldR: string): void {
+  private applyPatch(index: number, patch: Partial<HeaderTab>, oldKey: string): void {
     const current = this.tabs[index];
 
-    // Normalize new route if provided; otherwise keep existing
-    const newRoute = patch.route ? this.norm(patch.route) : current.route;
+    // IMPORTANT: Do NOT lowercase the stored route.
+    // We only normalize for comparisons; storing a lowercased URL will lower-case route params
+    // like Auth# and breaks fetching by authNumber.
+    const newRoute = patch.route ? this.cleanRoute(patch.route) : current.route;
 
     const updated: HeaderTab = {
       ...current,
@@ -124,7 +131,7 @@ export class HeaderService {
     this.tabs = this.replaceAt(this.tabs, index, updated);
 
     // If the updated tab was selected (by old route), move selection to new route
-    if (this.selectedRoute && this.sameRoute(this.selectedRoute, oldR)) {
+    if (this.selectedRoute && this.key(this.selectedRoute) === oldKey) {
       this.selectTab(newRoute);
     }
 
@@ -138,20 +145,28 @@ export class HeaderService {
   }
 
   private sameRoute(a: string, b: string): boolean {
-    return this.norm(a) === this.norm(b);
+    return this.key(a) === this.key(b);
   }
 
-  /** Normalize: strip host, query/hash, decode, lowercase, strip trailing slash */
-  private norm(route: string): string {
+  /**
+   * Clean a route for STORAGE (preserve case): strip host, query/hash, decode, strip trailing slash.
+   * This prevents authNumber route params from being forced to lowercase.
+   */
+  private cleanRoute(route: string): string {
     if (!route) return '';
     try {
       const noHost = route.replace(/^https?:\/\/[^/]+/i, '');
       let r = decodeURIComponent(noHost).split('#')[0].split('?')[0];
       r = r.replace(/\/+$/, '');
-      return r.toLowerCase();
+      return r;
     } catch {
-      return route.toLowerCase().split('#')[0].split('?')[0].replace(/\/+$/, '');
+      return route.split('#')[0].split('?')[0].replace(/\/+$/, '');
     }
+  }
+
+  /** Normalize for COMPARISON only (case-insensitive). */
+  private key(route: string): string {
+    return this.cleanRoute(route).toLowerCase();
   }
 }
 

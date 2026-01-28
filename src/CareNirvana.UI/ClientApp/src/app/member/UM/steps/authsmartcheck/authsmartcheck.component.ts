@@ -14,7 +14,6 @@ import { MemberenrollmentService } from 'src/app/service/memberenrollment.servic
 import { SmartCheckResultDialogComponent, SmartCheckDialogAction, SmartCheckDialogData } from './smartcheck-result-dialog.component';
 import { RulesengineService, ExecuteTriggerResponse } from 'src/app/service/rulesengine.service'; // adjust path if needed
 
-
 interface MemberEnrollment {
   Account_PCP?: string;
   Account_Plan?: string;
@@ -758,7 +757,7 @@ export class AuthsmartcheckComponent implements OnInit {
       this.smartAuthCheckForm.markAllAsTouched();
       return;
     }
-
+    this.runDueDateThenProceed();
     // --- 1) SMART_AUTH_CHECK ---
     const triggerKeySmart = 'SMART_AUTH_CHECK.BUTTON_CLICK';
 
@@ -929,10 +928,12 @@ Would you like to continue to Authorization Details?`,
     // Auth Type: "Standard" | "Expedited"
     // Anchor Source: "NotificationDate" | "AdditionalDate"
     return {
-      memberDetails: { memberProgram: 'Comm' },
-      authClass: 'Inpatient',
-      authType: 'Expedited',
-      anchorSource
+      "enrollment": "Medicaid",
+      "authClass": "Inpatient",
+      "authType": "Acute Hospitalization",
+      "anchorSource": "Requested Datetime",
+      "requestType": "Prospective",
+      "requestPriority": "Standard"
     };
   }
 
@@ -1216,4 +1217,6 @@ Would you like to continue to Authorization Details?`,
     const g = this.services.at(i) as FormGroup;
     if (!v) g.patchValue({ serviceDesc: '' }, { emitEvent: false });
   }
+
+
 }

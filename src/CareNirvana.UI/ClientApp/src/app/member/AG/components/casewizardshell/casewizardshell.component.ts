@@ -63,7 +63,7 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     { id: 'activities', label: 'Activities', route: 'activities' },
     { id: 'notes', label: 'Notes', route: 'notes' },
     { id: 'documents', label: 'Documents', route: 'documents' },
-    { id: 'close', label: 'Close', route: 'close' }
+/*    { id: 'close', label: 'Close', route: 'close' }*/
   ];
 
   activeStepId = 'details';
@@ -105,12 +105,12 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
           label: x.templateName
         }));
       });
-
-    // Case Type selection => push templateId to store (all steps listen)
-    this.headerForm.get('caseType')!.valueChanges
+    // Keep header caseType in sync with wizard store
+    // (Case Type selector is now shown inside Case Details step)
+    this.state.templateId$
       .pipe(takeUntil(this.destroy$), distinctUntilChanged())
       .subscribe((templateId: number | null) => {
-        this.state.setTemplateId(templateId);
+        this.headerForm.patchValue({ caseType: templateId }, { emitEvent: false });
         this.updateStepDisabled(templateId);
         this.pushTemplateIdIntoCurrentStep(templateId);
       });
@@ -327,6 +327,13 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   // ---------------- header extractors ----------------
+
+  getCaseTypeLabel(id: any): string {
+    const n = id == null ? NaN : Number(id);
+    if (!Number.isFinite(n) || n <= 0) return '';
+    return this.caseTypeOptions.find(o => Number(o.value) === n)?.label ?? '';
+  }
+
   // (these are called by the HTML) :contentReference[oaicite:1]{index=1}
 
   getCaseNumber(agg: any): string {

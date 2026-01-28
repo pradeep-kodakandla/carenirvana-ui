@@ -8,6 +8,7 @@ import { AuthDetailApiService, DecisionSectionName } from 'src/app/service/authd
 import { DatasourceLookupService } from 'src/app/service/crud.service';
 import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
 import { WizardToastService } from 'src/app/member/UM/components/authwizardshell/wizard-toast.service';
+import { AuthunsavedchangesawareService } from 'src/app/member/UM/services/authunsavedchangesaware.service';
 
 type DecisionTab = {
   id: number;              // UI tab id
@@ -89,7 +90,7 @@ type TabState = {
   templateUrl: './authdecision.component.html',
   styleUrls: ['./authdecision.component.css']
 })
-export class AuthdecisionComponent implements OnDestroy {
+export class AuthdecisionComponent implements OnDestroy, AuthunsavedchangesawareService {
   loading = false;
   saving = false;
   errorMsg = '';
@@ -304,7 +305,7 @@ export class AuthdecisionComponent implements OnDestroy {
             this.buildTabsFromAuthData();
             this.updateTabStatuses();
             if (!this.tabs.length) {
-              this.errorMsg = 'No service details found to build Decision tabs.';
+              this.errorMsg = 'No decision rows found. Please save Auth Details to initialize Decision tabs.';
               return;
             }
 
@@ -420,8 +421,7 @@ export class AuthdecisionComponent implements OnDestroy {
   private getExistingDecisionDetails(procedureNo: number): any {
     const picked = this.findItemForSectionAndProcedure('Decision Details', procedureNo);
     const d = picked?.data ?? {};
-    if (d && Object.keys(d).length) return d;
-    return this.getDecisionDetailsFromAuthData(procedureNo) ?? {};
+    return d ?? {};
   }
 
   /**
@@ -512,15 +512,6 @@ export class AuthdecisionComponent implements OnDestroy {
   }
 
 
-
-  private getDecisionDetailsFromAuthData(procedureNo: number): any | null {
-    const arr: any[] = (this.authData as any)?.decisionDetails ?? [];
-    if (!Array.isArray(arr) || !arr.length) return null;
-
-    const hit = arr.find((x: any) => Number(x?.data?.procedureNo) === Number(procedureNo));
-    return hit?.data ?? null;
-  }
-
   private getDecisionStatusForProcedure(procedureNo: number): { statusText: string; statusCode: string } {
     // Default per requirement
     let statusText = 'Pended';
@@ -528,11 +519,7 @@ export class AuthdecisionComponent implements OnDestroy {
 
     try {
       const picked = this.findItemForSectionAndProcedure('Decision Details', procedureNo);
-      const pickedData = picked?.data ?? {};
-      // If we don't have Decision Details items yet, fallback to authData.decisionDetails.
-      const data = (pickedData && Object.keys(pickedData).length)
-        ? pickedData
-        : (this.getDecisionDetailsFromAuthData(procedureNo) ?? {});
+      const data = picked?.data ?? {};
 
       // Prefer the actual Decision Status (id/code). decisionStatusCode is usually the *reason* dropdown.
       let raw =
@@ -647,18 +634,41 @@ export class AuthdecisionComponent implements OnDestroy {
 
 
   private buildTabsFromAuthData(): void {
-    const keys = Object.keys(this.authData ?? {});
     const set = new Set<number>();
 
-    for (const k of keys) {
-      const m = /^procedure(\d+)_/i.exec(k);
-      if (m) set.add(Number(m[1]));
+    // 1) Prefer Decision Details items (seeded after AuthDetails save)
+    const ddList = (this.itemsBySection?.['Decision Details'] ?? []) as any[];
+    for (const x of (ddList ?? [])) {
+      const rawData: any = (x as any)?.data ?? (x as any)?.jsonData ?? (x as any)?.payload ?? (x as any)?.itemData ?? null;
+      const parsedData: any = this.safeParseJson(rawData) ?? rawData ?? null;
+
+      const p = Number(
+        (x as any)?.procedureNo ??
+        (x as any)?.procedureIndex ??
+        (x as any)?.serviceIndex ??
+        (x as any)?.serviceNo ??
+        parsedData?.procedureNo ??
+        parsedData?.procedureIndex ??
+        parsedData?.serviceIndex ??
+        parsedData?.serviceNo
+      );
+
+      if (Number.isFinite(p) && p > 0) set.add(p);
+    }
+
+    // 2) Backward compatible fallback: derive procedureNos from authData procedureN_* keys
+    if (!set.size) {
+      const keys = Object.keys(this.authData ?? {});
+      for (const k of keys) {
+        const m = /^procedure(\d+)_/i.exec(k);
+        if (m) set.add(Number(m[1]));
+      }
     }
 
     const nums = Array.from(set)
       .filter((n) => Number.isFinite(n) && n > 0)
       .sort((a, b) => a - b);
-    const procedureNos = nums.length ? nums : [1];
+    const procedureNos = nums.length ? nums : [];
 
     this.tabs = procedureNos.map((n, idx) => {
       const dd = this.getExistingDecisionDetails(n) ?? {};
@@ -987,17 +997,7 @@ export class AuthdecisionComponent implements OnDestroy {
       for (const field of sec.fields) {
         // 1) item data wins
         let v = data?.[field.id];
-
-        // 2) fallback to authData procedureN_*
-        if (v === undefined) {
-          const k = `procedure${procedureNo}_${field.id}`;
-          v = this.authData?.[k];
-        }
-
-        // 3) Pre-populate decision fields from the Service section (same behavior as the legacy Decision step)
-        if (v === undefined) {
-          v = this.getServicePrefillValue(procedureNo, field.id);
-        }
+        // No cross-step fallback here: Decision Details are seeded after AuthDetails save.
 
         const normalized = String(field.type ?? '').toLowerCase() === 'select'
           ? (this.extractPrimitive(v) ?? v)
@@ -1041,109 +1041,6 @@ export class AuthdecisionComponent implements OnDestroy {
     if (t === 'datetime-local') return null;
     if (t === 'textarea') return '';
     return '';
-  }
-
-  private getServicePrefillValue(procedureNo: number, fieldId: string): any {
-    const fid = String(fieldId || '').trim();
-    if (!fid) return undefined;
-
-    const get = (suffix: string) => this.authData?.[`procedure${procedureNo}_${suffix}`];
-
-    // Decision Details can arrive either from itemsBySection (API) OR embedded inside authData.decisionDetails
-    const dd: any = this.getDecisionDetailsFromAuthData(procedureNo) ?? {};
-
-    switch (fid) {
-      case 'decisionStatus':
-        // Default is set via dropdown options (see ensureDecisionStatusDefaultIfNeeded).
-        // If the API already has a value, keep it; otherwise leave empty so we can select "Pended" safely.
-        return dd?.decisionStatus ?? dd?.decisionStatusId ?? undefined;
-
-      case 'createdDateTime':
-        // Default to auth createdOn when Decision Details.createdDateTime is null.
-        // Prefer Decision Details value if already set.
-        return dd?.createdDateTime ?? get('createdDateTime') ?? this.authCreatedOn ?? undefined;
-
-      case 'updatedDateTime':
-        // On first load this can stay null; it will be set on save.
-        return dd?.updatedDateTime ?? undefined;
-
-      case 'decisionDateTime':
-        // Only meaningful once decision is moved away from Pended.
-        return dd?.decisionDateTime ?? undefined;
-
-      case 'decisionNumber':
-        return dd?.decisionNumber ?? String(procedureNo);
-
-      case 'serviceCode':
-        // prefer Decision Details.serviceCode/procedureCode (object from API) -> fallback to procedureN_procedureCode
-        return this.extractServiceCodeString(
-          dd?.serviceCode ??
-          dd?.procedureCode ??
-          get('procedureCode') ??
-          get('serviceCode')
-        );
-
-      case 'serviceDescription':
-        return dd?.serviceDescription ?? dd?.procedureDescription ?? get('procedureDescription') ?? get('serviceDescription');
-
-      case 'fromDate':
-        return dd?.fromDate ?? get('fromDate') ?? get('effectiveDate');
-
-      case 'toDate':
-        return dd?.toDate ?? get('toDate');
-
-      case 'requested':
-        // first-time default comes from serviceReq in authData OR Decision Details.requested
-        return (
-          dd?.requested ??
-          dd?.serviceReq ??
-          get('serviceReq') ??
-          get('recommendedUnits') ??
-          get('requested') ??
-          get('hours') ??
-          get('days') ??
-          get('weeks')
-        );
-
-      case 'approved':
-        return dd?.approved ?? get('serviceAppr') ?? get('approvedPsp');
-
-      case 'denied':
-        return dd?.denied ?? get('serviceDenied');
-
-      case 'used':
-        return dd?.used ?? get('used');
-
-      case 'reviewType':
-        return dd?.reviewType ?? get('reviewType');
-
-      case 'treatmentType':
-        // Requirement: assign treatmentType (from auth data) to decision on first load
-        return dd?.treatmentType ?? this.authData?.treatmentType ?? get('treatmentType');
-
-      case 'requestType':
-        // Requirement: assign requestType (from auth data) to decision on first load.
-        // Some templates use requestReceivedVia instead; support both.
-        return dd?.requestType ?? this.authData?.requestSent ?? dd?.requestReceivedVia ?? this.authData?.requestReceivedVia ?? get('requestSent');
-
-      case 'requestReceivedVia':
-        return dd?.requestReceivedVia ?? this.authData?.requestSent ?? this.authData?.requestReceivedVia ?? get('requestSent');
-
-      case 'requestPriority':
-        return dd?.requestPriority ?? this.authData?.requestPriority ?? get('requestPriority');
-
-      case 'modifier':
-        return dd?.modifier ?? get('modifier');
-
-      case 'unitType':
-        return dd?.unitType ?? get('unitType');
-
-      case 'alternateServiceId':
-        return dd?.alternateServiceId ?? get('alternateServiceId');
-
-      default:
-        return undefined;
-    }
   }
 
   /**
@@ -1696,5 +1593,19 @@ export class AuthdecisionComponent implements OnDestroy {
     if (k.startsWith('decisiontype')) return row?.decisionTypeName ?? row?.typeName ?? row?.name ?? null;
 
     return null;
+  }
+
+  authHasUnsavedChanges(): boolean {
+    return this.form?.dirty ?? false;
+  }
+
+  // Alias for CanDeactivate guards that expect a different method name
+  hasPendingChanges(): boolean {
+    return this.authHasUnsavedChanges();
+  }
+
+  // Alias for older naming
+  hasUnsavedChanges(): boolean {
+    return this.authHasUnsavedChanges();
   }
 }

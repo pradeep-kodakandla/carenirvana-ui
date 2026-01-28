@@ -196,9 +196,11 @@ export class HeaderComponent implements OnInit {
     this.headerService.selectTab(route);
 
     const memberDetailsId = this.headerService.getMemberDetailsId(route);
+    const mdNum = Number(memberDetailsId || 0);
 
-    if (memberDetailsId) {
-      sessionStorage.setItem('selectedMemberDetailsId', memberDetailsId);
+    // IMPORTANT: treat "0" as missing (string '0' is truthy and was breaking enrollment loads)
+    if (mdNum > 0) {
+      sessionStorage.setItem('selectedMemberDetailsId', String(mdNum));
     } else {
       sessionStorage.removeItem('selectedMemberDetailsId');
     }

@@ -382,7 +382,7 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
     this.selectedRow = row ?? null;
     this.selectedPanel = key;
     this.selectedActionLabel = this.getActionLabel(key);
-    this.panelSubtitle = (row?.MemberName ?? row?.memberName ?? row?.MemberId ?? row?.memberId ?? '').toString();
+    this.panelSubtitle = (row?.MemberName ?? row?.memberName ?? '').toString() + (' (ID: ' + row?.memberId + ')') + (' (Auth #: ' + row?.authNumber + ')');
     this.showNotesPanel = true;
   }
 
@@ -391,7 +391,7 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
     this.selectedRow = row ?? null;
     this.selectedPanel = 'documents';
     this.selectedActionLabel = mode === 'full' ? 'Documents' : 'Add Documents';
-    this.panelSubtitle = (row?.MemberName ?? row?.memberName ?? row?.MemberId ?? row?.memberId ?? '').toString();
+    this.panelSubtitle = (row?.MemberName ?? row?.memberName ?? '').toString() + (' (ID: ' + row?.memberId + ')') + (' (Auth #: ' + row?.authNumber + ')');
 
     this.selectedAuthDetailId = this.extractAuthDetailId(row);
     this.selectedAuthNumber = (row?.AuthNumber ?? row?.authNumber ?? null) ? String(row?.AuthNumber ?? row?.authNumber) : null;
@@ -406,8 +406,8 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
     this.selectedRow = row ?? null;
     this.selectedPanel = 'activity';
     this.selectedActionLabel = 'Add Activity';
-    this.panelSubtitle = (row?.MemberName ?? row?.memberName ?? row?.MemberId ?? row?.memberId ?? '').toString();
-
+    this.panelSubtitle = (row?.MemberName ?? row?.memberName ?? '').toString() + (' (ID: ' + row?.memberId + ')') + (' (Auth #: ' + row?.authNumber + ')');
+    //member?.firstName + ' ' + member?.lastName + (' (ID: ' + memberId + ')');
     this.selectedAuthDetailId = this.extractAuthDetailId(row);
     this.selectedAuthNumber = (row?.AuthNumber ?? row?.authNumber ?? null) ? String(row?.AuthNumber ?? row?.authNumber) : null;
     this.selectedAuthTemplateId = (row?.authtemplateId ?? row?.templateId ?? null) ? Number(row?.authtemplateId ?? row?.templateId) : null;

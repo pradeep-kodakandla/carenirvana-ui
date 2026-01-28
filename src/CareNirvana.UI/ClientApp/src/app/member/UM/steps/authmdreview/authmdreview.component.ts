@@ -10,6 +10,7 @@ import { AuthService } from 'src/app/service/auth.service';
 import { AuthDetailApiService } from 'src/app/service/authdetailapi.service';
 
 import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
+import { AuthunsavedchangesawareService } from 'src/app/member/UM/services/authunsavedchangesaware.service';
 
 type AssignmentType = 'Specific Medical Director' | 'Work Basket';
 
@@ -89,7 +90,7 @@ export interface MdReviewActivityDetail extends MdReviewActivitySummary {
   templateUrl: './authmdreview.component.html',
   styleUrls: ['./authmdreview.component.css']
 })
-export class AuthmdreviewComponent implements OnDestroy {
+export class AuthmdreviewComponent implements OnDestroy, AuthunsavedchangesawareService {
   private destroy$ = new Subject<void>();
 
   // Wizard context
@@ -1684,6 +1685,20 @@ export class AuthmdreviewComponent implements OnDestroy {
     if (s.includes('pending')) return 'pill-warn';
 
     return '';
+  }
+
+  authHasUnsavedChanges(): boolean {
+    return this.mdrForm?.dirty ?? false;
+  }
+
+  // Alias for CanDeactivate guards that expect a different method name
+  hasPendingChanges(): boolean {
+    return this.authHasUnsavedChanges();
+  }
+
+  // Alias for older naming
+  hasUnsavedChanges(): boolean {
+    return this.authHasUnsavedChanges();
   }
 
 }

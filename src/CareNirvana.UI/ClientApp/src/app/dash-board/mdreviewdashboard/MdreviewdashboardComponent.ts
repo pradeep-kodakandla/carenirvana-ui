@@ -10,10 +10,9 @@ import { AuthService } from 'src/app/service/auth.service';
 import { MemberService } from 'src/app/service/shared-member.service';
 import { Observable, Subscription } from 'rxjs';
 import { CrudService } from 'src/app/service/crud.service';
-import { SelectionModel } from '@angular/cdk/collections';
-
 type Row = any;
 
+type UiSmartOption = { value: string; label: string };
 @Component({
   selector: 'app-mdreviewdashboard',
   templateUrl: './mdreviewdashboard.component.html',
@@ -28,38 +27,24 @@ export class MdreviewdashboardComponent {
   selectedIndex: number = 0;
   selectedAuth: any | null = null;
   selectedAuthRaw: Row | null = null;
-  serviceLinesDS = new MatTableDataSource<any>([]);
-  displayedServiceColumns: string[] = [
-    'select',
-    'serviceCode',
-    'description',
-    'fromDate',
-    'toDate',
-    'requested',
-    'approved',
-    'denied',
-    'initial',
-    'mdDecision',
-    'mdNotes'
-  ];
   showSummary = false;
-  DecisionStatus: { value: string, label: string }[] = [{ value: '', label: 'Select' }];
-  DecisionStatusDisplay: string = 'Select';
-  filteredDecisionStatus: { value: string, label: string }[] = [];
-  selection = new SelectionModel<any>(true, []);
+
+  // ----------------------------
+  // AUTH-LIKE review decision state
+  // ----------------------------
+  decisionStatusOptions: UiSmartOption[] = [{ value: '', label: 'Select' }];
+  decisionStatusCodeOptions: UiSmartOption[] = [{ value: '', label: 'Select' }];
+  private decisionStatusCodeRaw: any[] = [];
+
+  overallDecisionStatus: string = '';
+  overallDecisionStatusCode: string = '';
+  requestMoreInformation: boolean = false;
+
+  mdNotesText: string = '';
+
   overallInitialRecommendation: string = '-';
   selectedRowforRefresh: number = 0;
   firstServiceLineComment: string | null = null;
-
-  showDropdowns: { [key: string]: boolean } = {
-    DecisionStatus: false,
-    priority: false,
-    workBasket: false,
-    assignTo: false,
-    workBasketUser: false
-  };
-  highlightedIndex: number = -1;
-
   constructor(
     private fb: FormBuilder,
     private activtyService: DashboardServiceService,
@@ -106,6 +91,7 @@ export class MdreviewdashboardComponent {
   serviceLinesLoading = false;
   private serviceLinesSub?: Subscription;
 
+
   private loadServiceLinesFor(activityId: number): void {
     if (!this.selectedAuth) return;
 
@@ -117,24 +103,27 @@ export class MdreviewdashboardComponent {
     const obs = this.activtyService.getwqactivitylinedetails(activityId) as Observable<any[]>;
     this.serviceLinesSub = obs.subscribe({
       next: (rows) => {
-        console.log('Fetched activity lines:', rows);
         const data = Array.isArray(rows) ? rows : [];
-        // keep raw for any other logic you have
-        this.selectedAuth.serviceLines = data;
-        // feed the Material table so it matches your main table design
-        this.serviceLinesDS.data = data;
-        this.firstServiceLineComment = rows.length ? (rows[0]?.Comments || null) : null;
-        this.computeOverallInitialRecommendation(rows);
+        const normalized = this.normalizeLines(data);
+
+        // keep both keys for backwards-compat with any other code
+        this.selectedAuth.lines = normalized;
+        this.selectedAuth.serviceLines = normalized;
+
+        this.firstServiceLineComment = normalized.find(l => !!l.comment)?.comment ?? null;
+
+        this.computeOverallInitialRecommendation(normalized);
       },
       error: () => {
+        this.selectedAuth.lines = [];
         this.selectedAuth.serviceLines = [];
-        this.serviceLinesDS.data = [];
       }
     });
 
     // stop the spinner regardless of outcome
     this.serviceLinesSub.add(() => (this.serviceLinesLoading = false));
   }
+
 
   private mapRowToSelected(row: Row) {
     return {
@@ -147,7 +136,7 @@ export class MdreviewdashboardComponent {
       recommendation: row.InitialRecommendation ?? '-',
       facility: row.Facility ?? '-',
       networkStatus: row.NetworkStatus ?? '-',
-      serviceLines: row.ServiceLines ?? []  // fill from your data if you have it
+      lines: []  // filled by loadServiceLinesFor()
     };
   }
 
@@ -299,21 +288,12 @@ export class MdreviewdashboardComponent {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
-
-
   ngOnInit(): void {
     this.filtersForm = this.fb.group({}); // empty grid per request
     this.loadData();
-    this.crudService.getData('um', 'decisionstatus').subscribe((response) => {
-      const options = response.map(item => ({
-        value: item.code || item.id || item.id,
-        label: item.label || item.decisionStatus || item.display
-      }));
-
-      this.DecisionStatus = [{ value: '', label: 'Select' }, ...options];
-      this.filteredDecisionStatus = [...this.DecisionStatus];
-    });
+    this.loadDecisionDropdowns();
   }
+
 
   ngAfterViewInit(): void {
     this.dataSource.paginator = this.paginator;
@@ -492,7 +472,8 @@ export class MdreviewdashboardComponent {
     return `In ${diff}d`;
   }
 
-  onMemberClick(memberId: string, memberName: string): void {
+  onMemberClick(memberId: string, memberName: string, memberDetailsId: string): void {
+    console.log('Member clicked:', memberId, memberName, memberDetailsId);
     const tabLabel = `Member: ${memberName}`;
     const tabRoute = `/member-info/${memberId}`;
 
@@ -500,15 +481,21 @@ export class MdreviewdashboardComponent {
 
     if (existingTab) {
       this.headerService.selectTab(tabRoute);
+
+      const mdId = existingTab.memberDetailsId ?? null;
+      if (mdId) sessionStorage.setItem('selectedMemberDetailsId', mdId);
       this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
         this.router.navigate([tabRoute]);
       });
     } else {
-      this.headerService.addTab(tabLabel, tabRoute, memberId);
+      this.headerService.addTab(tabLabel, tabRoute, memberId, memberDetailsId);
+      sessionStorage.setItem('selectedMemberDetailsId', memberDetailsId);
       this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
         this.router.navigate([tabRoute]);
       });
     }
+
+
   }
 
   @Output() addClicked = new EventEmitter<string>();
@@ -588,200 +575,12 @@ export class MdreviewdashboardComponent {
 
   /******Select field******/
 
-
-  onTypeaheadInput(event: Event): void {
-    const input = (event.target as HTMLInputElement).value;
-    this.DecisionStatusDisplay = input;
-    this.filterDropdown('DecisionStatus');
-  }
-
-  filterDropdown(field: 'DecisionStatus'): void {
-    const search = this.DecisionStatusDisplay?.toLowerCase() || '';
-    this.filteredDecisionStatus = this.DecisionStatus.filter(opt =>
-      opt.label.toLowerCase().includes(search)
-    );
-  }
-
-  selectDropdownOption(field: string, option: { value: string, label: string }) {
-    // this.activityForm.get(field)?.setValue(option.value);
-
-    const displayMap: any = {
-      DecisionStatus: 'DecisionStatusDisplay',
-      priority: 'priorityDisplay',
-      workBasket: 'workBasketDisplay',
-      assignTo: 'assignToDisplay',
-      workBasketUser: 'workBasketUserDisplay'
-    };
-
-    if (displayMap[field]) {
-      (this as any)[displayMap[field]] = option.label;
-    }
-
-    this.showDropdowns[field] = false;
-    this.highlightedIndex = -1;
-  }
-
-
-
-  openDropdown(field: string): void {
-    this.showDropdowns[field] = true;
-    //  this.activeDropdown = field;
-
-  }
-
-  //closeDropdown(field: string): void {
-  //  setTimeout(() => this.showDropdowns[field] = false, 200);
-  //}
-  closeDropdown(field: string): void {
-    this.showDropdowns[field] = false;
-  }
-
-
-
-  handleDropdownKeydown(event: KeyboardEvent, field: string) {
-    const list = field === 'DecisionStatus' ? this.filteredDecisionStatus : [];
-
-    if (!list.length) return;
-
-    switch (event.key) {
-      case 'ArrowDown':
-        event.preventDefault();
-        this.highlightedIndex = (this.highlightedIndex + 1) % list.length;
-        this.scrollHighlightedIntoView(field);
-        break;
-      case 'ArrowUp':
-        event.preventDefault();
-        this.highlightedIndex = (this.highlightedIndex - 1 + list.length) % list.length;
-        this.scrollHighlightedIntoView(field);
-        break;
-      case 'Enter':
-        if (this.highlightedIndex >= 0 && this.highlightedIndex < list.length) {
-          this.selectDropdownOption(field, list[this.highlightedIndex]);
-          this.highlightedIndex = -1;
-          event.preventDefault();
-        }
-        break;
-      case 'Escape':
-        this.showDropdowns[field] = false;
-        this.highlightedIndex = -1;
-        break;
-    }
-  }
-
-  scrollHighlightedIntoView(field: string) {
-    setTimeout(() => {
-      const container = document.querySelector(`.autocomplete-dropdown`);
-      if (!container) return;
-      const options = container.querySelectorAll('.autocomplete-option');
-      if (this.highlightedIndex >= 0 && this.highlightedIndex < options.length) {
-        const selected = options[this.highlightedIndex] as HTMLElement;
-        selected.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
-    }, 50);
-  }
-
-  // Convenience to extract the line id (use whatever your API returns)
-  private getLineId(line: any) {
-    return line?.ServiceLineId ?? line?.serviceLineId ?? line?.Id ?? line?.id;
-  }
-
   // Master toggle helpers (used by header checkbox)
-  isAllSelected(): boolean {
-    const numSelected = this.selection.selected.length;
-    const numRows = this.serviceLinesDS?.data?.length ?? 0;
-    return numSelected === numRows && numRows > 0;
-  }
-
-
-
-  checkboxLabel(row?: any): string {
-    if (!row) {
-      return `${this.isAllSelected() ? 'deselect' : 'select'} all`;
-    }
-    const id = this.getLineId(row);
-    return `${this.selection.isSelected(row) ? 'deselect' : 'select'} row ${id}`;
-  }
 
   // Call this on save to get only the selected IDs
-  //onSaveSelection(): void {
-  //  const selectedIds = this.selection.selected
-  //    .map(line => this.getLineId(line))
-  //    .filter(id => id != null);
-
-  //  // TODO: send selectedIds to your API / parent component
-  //  console.log('Selected ServiceLine IDs:', selectedIds);
-  //}
-  mdNotesText: string = '';
-
-  onSaveSelection(): void {
-    const selectedIds = this.selection.selected
-      .map(l => this.getLineId(l))
-      .filter((id: number | null | undefined) => id != null) as number[];
-
-    if (!selectedIds.length) {
-      // show toast/snackbar as you like
-      console.warn('No service lines selected.');
-      return;
-    }
-
-    // Map DecisionStatusDisplay (label) to the value you want to persist.
-    // If your BE expects the label itself, send it as-is.
-    const statusToSave = this.DecisionStatusDisplay && this.DecisionStatusDisplay !== 'Select'
-      ? this.DecisionStatusDisplay
-      : 'Reviewed'; // fallback if nothing chosen
-
-    const payload: UpdateActivityLinesRequest = {
-      lineIds: selectedIds,
-      status: statusToSave,       // e.g., "Approved" / "Denied" / etc.
-      mdDecision: statusToSave,   // or map separately if they differ
-      mdNotes: this.mdNotesText || '',
-      reviewedByUserId: 1         // TODO: plug in real current user id
-    };
-
-    this.activtyService.updateActivityLines(payload).subscribe({
-      next: (res) => {
-        // success UI: toast/snackbar, then refresh lines if desired
-        this.loadServiceLinesFor(this.selectedRowforRefresh);
-        // e.g., reload service lines:
-        // this.loadServiceLinesFor(this.selectedAuth?.authActivityId);
-      },
-      error: (err) => {
-        console.error('Update failed', err);
-      }
-    });
-  }
-
-  isLineSelectable(line: any): boolean {
-    const v = (line?.MdDecision ?? '').toString().trim().toLowerCase();
-    return v === '' || v === 'not reviewed' || v === 'notreviewed' || v === 'pending';
-  }
-
   // If none of the rows are selectable, disable the master checkbox
-  hasSelectableRows(): boolean {
-    const rows: any[] = this.serviceLinesDS?.data ?? [];
-    return rows.some(r => this.isLineSelectable(r));
-  }
 
   // Master toggle should only select selectable rows
-  masterToggle(): void {
-
-    //if (!this.serviceLinesDS?.data) return;
-    //this.isAllSelected()
-    //  ? this.selection.clear()
-    //  : this.serviceLinesDS.data.forEach(row => this.selection.select(row));
-
-    const rows: any[] = this.serviceLinesDS?.data ?? [];
-    if (!rows.length) return;
-
-    const selectable = rows.filter(r => this.isLineSelectable(r));
-    if (!selectable.length) return;
-
-    if (selectable.every(r => this.selection.isSelected(r))) {
-      selectable.forEach(r => this.selection.deselect(r));
-    } else {
-      selectable.forEach(r => this.selection.select(r));
-    }
-  }
 
   // Label classes for MD Decision badge
   mdDecisionClass(decision: string | null | undefined): string {
@@ -803,10 +602,203 @@ export class MdreviewdashboardComponent {
     return s ? 'other' : 'pending';
   }
 
+  // ----------------------------
+  // Auth-like Service Lines table selection (checkboxes)
+  // ----------------------------
+  trackByLineId = (_: number, l: any) => l?.lineId ?? l?.LineId ?? l?.id ?? l?.Id ?? _;
+
+  toggleSelectAllReviewLines(checked: boolean): void {
+    const lines = this.selectedAuth?.lines ?? [];
+    (lines as any[]).forEach(l => (l.selected = !!checked));
+  }
+
+  onToggleReviewLine(line: any, checked: boolean): void {
+    if (!line) return;
+    line.selected = !!checked;
+  }
+
+  hasSelectedReviewLines(): boolean {
+    const lines = this.selectedAuth?.lines ?? [];
+    return (lines as any[]).some(l => !!l.selected);
+  }
+
+  private getSelectedLines(): any[] {
+    return (this.selectedAuth?.lines ?? []).filter((l: any) => !!l.selected);
+  }
+
+  private normalizeLines(rows: any[]): any[] {
+    return (rows ?? []).map((r: any) => ({
+      lineId: r?.lineId ?? r?.LineId ?? r?.Id ?? r?.id,
+      serviceCode: r?.ServiceCode ?? r?.serviceCode ?? '',
+      serviceDescription: r?.Description ?? r?.serviceDescription ?? '',
+      fromDate: r?.FromDate ?? r?.fromDate ?? null,
+      toDate: r?.ToDate ?? r?.toDate ?? null,
+      requested: r?.Requested ?? r?.requested ?? null,
+      approved: r?.Approved ?? r?.approved ?? null,
+      denied: r?.Denied ?? r?.denied ?? null,
+      initialRecommendation: r?.InitialRecommendation ?? r?.initialRecommendation ?? '',
+      status: r?.Status ?? r?.status ?? '',
+      comment: r?.Comments ?? r?.Comment ?? r?.comment ?? '',
+      // keep original key for existing logic
+      InitialRecommendation: r?.InitialRecommendation ?? r?.initialRecommendation ?? '',
+      selected: false
+    }));
+  }
+
+  // ----------------------------
+  // Auth-like Decision dropdowns
+  // ----------------------------
+  loadDecisionDropdowns(): void {
+    this.crudService.getData('um', 'decisionstatus').subscribe({
+      next: (res: any) => {
+        const arr = Array.isArray(res) ? res : (res?.status ?? res?.data ?? res?.items ?? res?.result ?? []);
+        this.decisionStatusOptions = [
+          { value: '', label: 'Select' },
+          ...(arr ?? []).map((x: any) => {
+            const value =
+              x?.id ?? x?.Id ??
+              x?.decisionStatusId ?? x?.DecisionStatusId ??
+              x?.value ?? x?.Value ?? '';
+            const label =
+              x?.decisionStatus ?? x?.DecisionStatus ??
+              x?.name ?? x?.Name ??
+              x?.label ?? x?.Label ??
+              String(value ?? '');
+            return { value: String(value ?? ''), label: String(label ?? '') } as UiSmartOption;
+          })
+        ];
+      },
+      error: () => {
+        this.decisionStatusOptions = [{ value: '', label: 'Select' }];
+      }
+    });
+
+    this.crudService.getData('um', 'decisionstatuscode').subscribe({
+      next: (res: any) => {
+        const arr = Array.isArray(res) ? res : (res?.statusCode ?? res?.data ?? res?.items ?? res?.result ?? []);
+        this.decisionStatusCodeRaw = (arr ?? []).slice();
+        this.decisionStatusCodeOptions = [
+          { value: '', label: 'Select' },
+          ...(this.decisionStatusCodeRaw ?? []).map((x: any) => {
+            const value =
+              x?.id ?? x?.Id ??
+              x?.decisionStatusCode ?? x?.DecisionStatusCode ??
+              x?.value ?? x?.Value ?? '';
+            const label =
+              x?.decisionStatusCode ?? x?.DecisionStatusCode ??
+              x?.decisionStatusName ?? x?.DecisionStatusName ??
+              x?.name ?? x?.Name ??
+              x?.label ?? x?.Label ??
+              String(value ?? '');
+            return { value: String(value ?? ''), label: String(label ?? '') } as UiSmartOption;
+          })
+        ];
+
+        if (this.overallDecisionStatus) this.onDecisionStatusChanged();
+      },
+      error: () => {
+        this.decisionStatusCodeRaw = [];
+        this.decisionStatusCodeOptions = [{ value: '', label: 'Select' }];
+      }
+    });
+  }
+
+  onDecisionStatusChanged(): void {
+    const selectedStatusId = String(this.overallDecisionStatus ?? '');
+
+    const filtered = (this.decisionStatusCodeRaw ?? []).filter((x: any) => {
+      const sid = String(x?.decisionStatusId ?? x?.DecisionStatusId ?? '');
+      return !!selectedStatusId && sid === selectedStatusId;
+    });
+
+    this.decisionStatusCodeOptions = [
+      { value: '', label: 'Select' },
+      ...(filtered ?? []).map((x: any) => {
+        const value = x?.id ?? x?.Id ?? x?.decisionStatusCode ?? x?.DecisionStatusCode ?? '';
+        const label = x?.decisionStatusCode ?? x?.DecisionStatusCode ?? x?.decisionStatusName ?? x?.DecisionStatusName ?? String(value ?? '');
+        return { value: String(value ?? ''), label: String(label ?? '') } as UiSmartOption;
+      })
+    ];
+
+    const exists = this.decisionStatusCodeOptions.some(o => String(o.value) === String(this.overallDecisionStatusCode ?? ''));
+    if (!exists) this.overallDecisionStatusCode = '';
+  }
+
+  private getOptionLabel(options: UiSmartOption[], value: any): string {
+    const v = String(value ?? '');
+    const match = (options ?? []).find(o => String(o.value) === v);
+    return match?.label ?? '';
+  }
+
+  // ----------------------------
+  // Auth-like actions
+  // ----------------------------
+  submitDecision(): void {
+    this.updateSelectedLines('Completed', true);
+  }
+
+  saveAndContinue(): void {
+    this.updateSelectedLines('InProgress', false);
+  }
+
+  private updateSelectedLines(status: 'Completed' | 'InProgress', autoNext: boolean): void {
+    if (!this.selectedAuth) return;
+
+    const selectedLines = this.getSelectedLines();
+    if (!selectedLines.length) {
+      console.warn('No service lines selected.');
+      return;
+    }
+
+    const decisionLabel =
+      this.getOptionLabel(this.decisionStatusOptions, this.overallDecisionStatus) ||
+      String(this.overallDecisionStatus ?? '');
+
+    if (!decisionLabel || decisionLabel === 'Select') {
+      console.warn('Decision Status is required.');
+      return;
+    }
+
+    const codeLabel =
+      this.getOptionLabel(this.decisionStatusCodeOptions, this.overallDecisionStatusCode) ||
+      String(this.overallDecisionStatusCode ?? '');
+
+    const note = (this.mdNotesText ?? '').trim();
+    const reqMore = !!this.requestMoreInformation;
+
+    const composedNotes = [
+      codeLabel ? `Decision Status Code: ${codeLabel}` : '',
+      reqMore ? 'Request more information' : '',
+      note ? note : ''
+    ].filter(Boolean).join(', ');
+
+    const lineIds = selectedLines.map(l => l.lineId).filter((x: any) => x != null);
+
+    const payload: UpdateActivityLinesRequest = {
+      lineIds,
+      status,
+      mdDecision: decisionLabel,
+      mdNotes: composedNotes,
+      reviewedByUserId: 1
+    };
+
+    this.activtyService.updateActivityLines(payload).subscribe({
+      next: () => {
+        const actId = Number(this.selectedRowforRefresh || this.selectedAuth?.authActivityId || 0);
+        if (actId) this.loadServiceLinesFor(actId);
+
+        if (autoNext) this.onNext();
+      },
+      error: (err) => console.error('Update failed', err)
+    });
+  }
+
+
+
   computeOverallInitialRecommendation(lines?: any[]): void {
-    const rows = (lines ?? this.serviceLinesDS?.data ?? []) as Array<any>;
+    const rows = (lines ?? this.selectedAuth?.lines ?? this.selectedAuth?.serviceLines ?? []) as Array<any>;
     const vals = rows
-      .map(r => this.normalizeIR(r?.InitialRecommendation))
+      .map(r => this.normalizeIR((r?.InitialRecommendation ?? r?.initialRecommendation ?? r?.initialRecommendation)))
       .filter(Boolean);
 
     if (!vals.length) { this.overallInitialRecommendation = '—'; return; }

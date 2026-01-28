@@ -1,6 +1,7 @@
 import { Component, OnInit, ViewChild, ElementRef, DestroyRef } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
-import { finalize } from 'rxjs';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { finalize, firstValueFrom } from 'rxjs';
 import { DashboardServiceService, FaxFile as ApiFaxFile } from 'src/app/service/dashboard.service.service';
 import { PdfOcrService, OcrResult } from 'src/app/service/pdfocr.service';
 import { extractPriorAuth, extractTexasFromText, extractGeorgiaFromText, extractArizonaFromText } from 'src/app/service/priorauth.extractor';
@@ -8,6 +9,11 @@ import { PriorAuth } from 'src/app/service/priorauth.schema';
 import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { PDFDocument } from 'pdf-lib';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { SmartCheckResultDialogComponent, SmartCheckDialogAction, SmartCheckDialogData } from 'src/app/member/UM/steps/authsmartcheck/smartcheck-result-dialog.component';
+import { RulesengineService, ExecuteTriggerResponse } from 'src/app/service/rulesengine.service';
+import { HeaderService } from 'src/app/service/header.service';
+import { Router } from '@angular/router';
 
 // Keep this in sync with your C# FaxFile DTO
 export interface FaxFile {
@@ -25,7 +31,10 @@ export interface FaxFile {
   uploadedAt?: string | null;
 
   pageCount?: number;
+  memberDetailsId?: number | null;
   memberId?: number | null;
+  memberName?: string | null;
+
   workBasket?: string | null;
   priority?: 1 | 2 | 3;
   status?: string;         // 'New'|'Processing'|'Ready'|'Failed' ...
@@ -107,6 +116,7 @@ export class FaxesComponent implements OnInit {
   splitFirstPageCount: number | null = 1;
   isSplitting = false;
 
+  loadedMemberId: number | null = null;
 
   faxesRaw: FaxFile[] = [];
   groupedFaxes: FaxFile[] = []; // what we bind to the table
@@ -122,9 +132,43 @@ export class FaxesComponent implements OnInit {
 
   constructor(private pdfOcr: PdfOcrService, private destroyRef: DestroyRef,
     private api: DashboardServiceService, private sanitizer: DomSanitizer,
-    private http: HttpClient) { }
+    private rulesengineService: RulesengineService,
+    private headerService: HeaderService,
+    private router: Router,
+    private snackBar: MatSnackBar,
+    private http: HttpClient) {
+    // snackBar is intentionally kept injected for compatibility with older call-sites,
+    // but we now show messages inline below the search bar.
+    void this.snackBar;
+  }
+
+  // Inline message (replaces toast/snackbar)
+  inlineMessageText: string | null = null;
+  inlineMessageType: 'success' | 'error' = 'success';
+  private inlineMessageTimer: any = null;
+
+  private showInlineMessage(message: string, type: 'success' | 'error' = 'success', ms = 4000): void {
+    this.inlineMessageText = message;
+    this.inlineMessageType = type;
+
+    if (this.inlineMessageTimer) {
+      clearTimeout(this.inlineMessageTimer);
+      this.inlineMessageTimer = null;
+    }
+
+    this.inlineMessageTimer = setTimeout(() => {
+      this.inlineMessageText = null;
+      this.inlineMessageTimer = null;
+    }, ms);
+  }
+
+  private toast(message: string, isError = false): void {
+    // Keep existing call-sites intact, but render the message below the search bar instead of a toast/snackbar.
+    this.showInlineMessage(message, isError ? 'error' : 'success', 4000);
+  }
 
   // helper: pick the most likely Texas page, falling back to last page
+
   private pickTexasPage(byPage: { page: number; text: string }[]): number {
     // look for tokens that only appear on the filled form page
     const signals = [
@@ -147,9 +191,9 @@ export class FaxesComponent implements OnInit {
   ngOnInit(): void {
     this.reload();
 
+    this.currentUserId = Number(sessionStorage.getItem('loggedInUserid')) || 1;
     this.api.getuserworkgroups(Number(sessionStorage.getItem('loggedInUserid'))).subscribe({
       next: (res: any[]) => {
-        console.log('User work groups:', res);
 
         this.faxWorkBaskets = (res || [])
           .filter(wg => wg.isFax === true)
@@ -182,7 +226,10 @@ export class FaxesComponent implements OnInit {
           console.log("data", rawItems);
           // 🔁 normalize every row to camelCase FaxFile
           const rows = rawItems.map(this.normalizeFax);
-          this.faxesRaw = rawItems || [];
+          console.log("Raw faxes", rows);
+          this.faxesRaw = rows; // ✅ always work with normalized rows
+          console.log("Normalized faxes", this.faxesRaw);
+          this.total = this.getTotal(res);
           this.buildFaxHierarchy();
           //this.dataSource.data = rows;
 
@@ -208,32 +255,36 @@ export class FaxesComponent implements OnInit {
   private buildFaxHierarchy(): void {
     const byId = new Map<number, FaxFile>();
 
-    // initialize map + helper flags
-    this.faxesRaw.forEach(f => {
+    // Initialize helper flags and map, but only when we have a real id
+    (this.faxesRaw || []).forEach(f => {
       f.children = [];
       f.hasChildren = false;
       f.isChild = false;
-      byId.set(f.faxId ?? 0, f);
+
+      const id = f.faxId;
+      if (id !== undefined && id !== null && id > 0) {
+        byId.set(id, f);
+      }
     });
 
     const roots: FaxFile[] = [];
 
-    this.faxesRaw.forEach(f => {
-      const parentId = f.parentFaxId ?? 0;
+    (this.faxesRaw || []).forEach(f => {
+      const parentId = f.parentFaxId ?? null;
 
       // If parentFaxId has a valid parent in list -> attach as child
-      if (parentId > 0 && byId.has(parentId)) {
+      if (parentId && parentId > 0 && byId.has(parentId)) {
         const parent = byId.get(parentId)!;
         parent.children!.push(f);
         parent.hasChildren = true;
         f.isChild = true;
       } else {
-        // Either parentFaxId is 0/null OR parent not found -> treat as root
+        // Either parentFaxId is null/0 OR parent not found -> treat as root
         roots.push(f);
       }
     });
 
-    // flatten for mat-table: parent followed by its children
+    // Flatten for mat-table: parent followed by its children
     const flat: FaxFile[] = [];
     roots.forEach(p => {
       flat.push(p);
@@ -244,10 +295,12 @@ export class FaxesComponent implements OnInit {
 
     this.groupedFaxes = flat;
     this.dataSource.data = this.groupedFaxes;
+
+    // Keep an unfiltered reference for chip counts & workbasket filtering
     this.allFaxes = this.groupedFaxes || [];
-    this.total = this.getTotal(this.groupedFaxes);
+    // total comes from API paging response; keep as-is
+
     this.applyWorkBasketFilter();
-    // update chip counts
     this.updateFaxCounts();
   }
 
@@ -258,6 +311,8 @@ export class FaxesComponent implements OnInit {
     receivedAt: r.receivedAt ?? r.ReceivedAt,
     pageCount: r.pageCount ?? r.PageCount,
     memberId: r.memberId ?? r.MemberId ?? null,
+    memberName: r.memberName ?? r.MemberName ?? null,
+    memberDetailsId: r.memberDetailsId ?? r.MemberDetailsId ?? null,
     workBasket: r.workBasket ?? r.WorkBasket ?? null,
     priority: r.priority ?? r.Priority ?? 2,
     status: r.status ?? r.Status ?? 'New',
@@ -276,7 +331,10 @@ export class FaxesComponent implements OnInit {
     createdBy: r.createdBy ?? r.CreatedBy ?? null,
     createdOn: r.createdOn ?? r.CreatedOn ?? null,
     updatedOn: r.updatedOn ?? r.UpdatedOn ?? null,
-    updatedBy: r.updatedBy ?? r.UpdatedBy ?? null
+    updatedBy: r.updatedBy ?? r.UpdatedBy ?? null,
+    parentFaxId: r.parentFaxId ?? r.ParentFaxId ?? null,
+    deletedOn: r.deletedOn ?? r.DeletedOn ?? null,
+    deletedBy: r.deletedBy ?? r.DeletedBy ?? null
   });
 
   // If the list object itself might be camel/Pascal, normalize those too:
@@ -326,6 +384,10 @@ export class FaxesComponent implements OnInit {
 
         if (fileBytes) {
           const u8 = this.base64ToUint8Array(fileBytes);
+          // ✅ Keep bytes around so we can split without re-fetching
+          this.currentFaxBytes = u8;
+          this.currentFaxContentType = contentType;
+          this.currentFaxOriginalName = row.fileName ?? 'preview.pdf';
           const objUrl = this.makePdfBlobUrl(u8, contentType);
           this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(objUrl);
           return; // Keep loader running until priorAuth is set elsewhere.
@@ -334,6 +396,9 @@ export class FaxesComponent implements OnInit {
         // Fallback: stream from server
         if (fileUrl) {
           this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fileUrl);
+          this.currentFaxBytes = null;
+          this.currentFaxContentType = contentType;
+          this.currentFaxOriginalName = row.fileName ?? 'preview.pdf';
           return; // Keep loader running until priorAuth is set elsewhere.
         }
 
@@ -354,6 +419,8 @@ export class FaxesComponent implements OnInit {
     this.showPreview = false;
     this.selectedFax = undefined;
     this.previewUrl = null;          // if you created an ObjectURL, you can also revoke it here
+    this.currentFaxBytes = null;
+    this.currentFaxOriginalName = null;
     this.priorAuth = null;           // clear OCR details if you prefer
     this.progress = 0;
     this.error = '';
@@ -365,7 +432,67 @@ export class FaxesComponent implements OnInit {
     this.fileInput?.nativeElement.click();
   }
 
-  async saveFileData(e?: Event | null, fileOverride?: File): Promise<void> {
+  private async getPageCountFromFile(file: File, contentType: string): Promise<number> {
+    const isPdf =
+      contentType === 'application/pdf' ||
+      file.name.toLowerCase().endsWith('.pdf');
+
+    if (!isPdf) return 1;
+
+    try {
+      const ab = await file.arrayBuffer();
+      const pdf = await PDFDocument.load(ab, { ignoreEncryption: true });
+      return pdf.getPageCount() || 1;
+    } catch (err) {
+      console.warn('Could not read PDF pageCount; defaulting to 1', err);
+      return 1;
+    }
+  }
+
+  private async tryExtractMemberIdFromPdf(file: File): Promise<string | number | null> {
+    try {
+      // Run extraction without updating the UI progress bar.
+      const res: any = await this.pdfOcr.extract(file, () => void 0);
+
+      // First pass: generic extractor over the whole text
+      const pa = extractPriorAuth(res?.text ?? '');
+      const direct = pa?.patient?.memberId ?? null;
+      if (direct) return direct;
+
+      // Texas forms sometimes need the filled form page parsed specifically
+      const allText: string = String(res?.text ?? '');
+      const isTexas = /TEXAS STANDARD PRIOR AUTHORIZATION|NOFR001/i.test(allText);
+
+      const byPage: Array<{ page: number; text: string }> =
+        (res?.byPage ?? []).map((p: any, i: number) => ({
+          page: Number(p?.page ?? (i + 1)),
+          text: String(p?.text ?? '')
+        }));
+
+      if (isTexas && byPage.length) {
+        const formPage = this.pickTexasPage(byPage);
+        const pageText = byPage.find(p => p.page === formPage)?.text ?? '';
+        if (pageText) {
+          const tx = extractTexasFromText(pageText);
+          const txMember = tx?.patient?.memberId ?? null;
+          if (txMember) return txMember;
+        }
+      }
+
+      return null;
+    } catch (e) {
+      console.warn('MemberId extraction from PDF failed; continuing without memberId.', e);
+      return null;
+    }
+  }
+
+
+
+  async saveFileData(
+    e?: Event | null,
+    fileOverride?: File,
+    opts?: { parentFaxId?: number | null; inheritFrom?: FaxFile; metaJson?: string; suppressToast?: boolean; suppressReload?: boolean; successMessage?: string }
+  ): Promise<void> {
     // if split provided a file, use that
     let file: File | undefined;
 
@@ -387,31 +514,60 @@ export class FaxesComponent implements OnInit {
     const contentType = file.type || 'application/pdf';
     const sizeBytes = file.size;
     const originalName = file.name;
-    const [sha256Hex, fileDataBase64] = await Promise.all([
+    const [sha256Hex, fileDataBase64, pageCount] = await Promise.all([
       this.computeSha256Hex(file),
-      this.readFileAsBase64(file)
+      this.readFileAsBase64(file),
+      this.getPageCountFromFile(file, contentType),
     ]);
 
     const fileBytes = fileDataBase64.includes('base64,')
       ? fileDataBase64.split('base64,')[1]
       : fileDataBase64;
 
-    // --- pull UI fields (adjust form control names as needed)
-    //const memberId: number | null = this.form?.get('memberId')?.value ?? null;
-    //const workBasket: string | null = this.form?.get('workBasket')?.value ?? null;
-    const priority: 1 | 2 | 3 = 2;
-    const pageCount: number = 1;
+    // --- inherit fields when saving a split child (or keep defaults)
+    const inherit = opts?.inheritFrom;
+    console.log("Opts", opts);
+    const priority: 1 | 2 | 3 = (inherit?.priority as 1 | 2 | 3) ?? 2;
+
+
+    let detectedMemberIdRaw: any =
+      inherit?.memberId ??
+      (this.priorAuth as any)?.patient?.memberId ??
+      null;
+
+    // When uploading a new fax via <input type="file">, we haven't populated `priorAuth` yet.
+    // Extract memberId from the PDF itself so the save payload can include it.
+    if (detectedMemberIdRaw === null || detectedMemberIdRaw === undefined || String(detectedMemberIdRaw).trim() === '') {
+      detectedMemberIdRaw = await this.tryExtractMemberIdFromPdf(file);
+    }
+
+
+    const memberId: number | null =
+      detectedMemberIdRaw !== null && detectedMemberIdRaw !== undefined && String(detectedMemberIdRaw).trim() !== ''
+        ? (Number(detectedMemberIdRaw) as any)
+        : null;
+
+    // guard against NaN
+    const memberIdToSend: number | null =
+      memberId !== null && Number.isFinite(memberId) ? memberId : null;
+
+
+    const workBasket: string = ('2' ?? '2') as any;
 
     // --- status/audit/meta
     const nowIso = new Date().toISOString();
     const uploadedBy: number | null = this.currentUserId ?? null;
     const createdBy: number | null = this.currentUserId ?? null;
     const fileName = originalName; // display name in DB
-    // { "metaJson": "{\"source\":\"UI:Faxes\",\"note\":\"test upload\"}" }
+
+    const parentFaxId: number | null = (opts?.parentFaxId ?? null) as any;
+    const metaJson: string =
+      opts?.metaJson ?? JSON.stringify({ source: "UI:Faxes" });
+
 
 
     // --- payload for insertFaxFile (JSON)
-    const payload: ApiFaxFile = {
+    const payload: (ApiFaxFile & { parentFaxId?: number | null; metaJson?: string }) = {
       fileName: originalName,
       url: undefined,                 // let API set the actual saved path (or send ''/null)
       originalName,
@@ -424,12 +580,13 @@ export class FaxesComponent implements OnInit {
       uploadedAt: nowIso,
 
       pageCount,
-      memberId: null,
-      workBasket: "2",
+      memberId: memberIdToSend as any,
+      workBasket,
       priority,
       status: 'New',
       processStatus: 'Pending',
-      metaJson: "{\"source\":\"UI:Faxes\",\"note\":\"test upload\"}",
+      metaJson,
+      parentFaxId,
       createdBy,
       createdOn: nowIso,
       updatedOn: null,
@@ -440,60 +597,92 @@ export class FaxesComponent implements OnInit {
     // call your API
     this.uploading = true;
     this.uploadPercent = 0; // (optional, kept for UI consistency)
-    this.api.insertFaxFile(payload).subscribe({
-      next: () => {
-        this.uploading = false;
-        this.uploadPercent = 0;
-        //this.form?.reset({ priority: 2, pageCount: 1 });
-        this.reload?.(); // refresh grid/cards
-      },
-      error: (err) => {
-        console.error('insertFaxFile failed', err);
-        this.uploading = false;
-        this.uploadPercent = 0;
-        // show snackbar/toast here if you have one
+
+    try {
+      await firstValueFrom(this.api.insertFaxFile(payload as any));
+
+      if (!opts?.suppressToast) {
+        const msg =
+          opts?.successMessage ??
+          (parentFaxId
+            ? `Split page saved: ${originalName}`
+            : `Uploaded successfully: ${originalName}`);
+        this.toast(msg, false);
       }
-    });
+
+      if (!opts?.suppressReload) {
+        this.reload?.(); // refresh grid/cards
+      }
+    } catch (err) {
+      console.error('insertFaxFile failed', err);
+      if (!opts?.suppressToast) {
+        this.toast(`Failed to save: ${originalName}`, true);
+      }
+    } finally {
+      this.uploading = false;
+      this.uploadPercent = 0;
+    }
   }
 
+  private coerceMemberIdForApi(raw: any): number | string | null {
+    if (raw === null || raw === undefined) return null;
+    const s = String(raw).trim();
+    if (!s) return null;
+
+    // If it's purely digits, send as number.
+    if (/^\d+$/.test(s)) {
+      const n = Number(s);
+      return Number.isFinite(n) ? n : s;
+    }
+
+    // Otherwise send the trimmed string.
+    return s;
+  }
 
   // -------- Update --------
-  saveUpdate(): void {
+  async saveUpdate(): Promise<void> {
     if (!this.selectedFax) return;
 
-    //filename : this.selectedFax.filename,
-    //  memberid : this.selectedFax.memberid,
-    //  workbasket : this.selectedFax.workbasket,
-    //  priority : this.selectedFax.priority,
-    //  status : this.selectedFax.status,
-    //  processstatus : this.selectedFax.processstatus,
-    //  updatedon : this.selectedFax.updatedon,
-    //  updatedby : this.selectedFax.updatedby,
-    //  deletedon : this.selectedFax.deletedon,
-    //  deletedby : this.selectedFax.deletedby
+    const nowIso = new Date().toISOString();
+    const updatedBy = this.selectedFax.updatedBy ?? this.currentUserId ?? 1;
 
-    const toSave: ApiFaxFile = {
+    const detectedMemberIdRaw: any =
+      (this.selectedFax as any).memberId ??
+      (this.priorAuth as any)?.patient?.memberId ??
+      null;
 
-      /*memberId: this.selectedFax.memberid,*/
+    const memberIdParsed: number | null =
+      detectedMemberIdRaw !== null && detectedMemberIdRaw !== undefined && String(detectedMemberIdRaw).trim() !== ''
+        ? (Number(detectedMemberIdRaw) as any)
+        : null;
+
+    const memberIdToSend: number | null =
+      memberIdParsed !== null && Number.isFinite(memberIdParsed) ? memberIdParsed : null;
+
+    // NOTE: ApiFaxFile doesn't include soft-delete fields in typings here, but backend supports them.
+    const toSave: any = {
       faxId: this.selectedFax.faxId,
-      workBasket: "2",//this.selectedFax.workBasket ?? undefined,
+      workBasket: "2", // TODO: wire real workbasket value if needed
       fileName: this.selectedFax.fileName,
       priority: this.selectedFax.priority,
       status: this.selectedFax.status,
-      /*processStatus: this.selectedFax.processstatus,*/
-      //deletedOn: this.selectedFax.deletedOn,
-      //deletedBy: this.selectedFax.deletedBy ?? 1,
-      updatedOn: new Date().toISOString(),
-      updatedBy: this.selectedFax.updatedBy ?? 1
+      updatedOn: nowIso,
+      updatedBy,
+      deletedOn: this.selectedFax.deletedOn ?? null,
+      deletedBy: this.selectedFax.deletedBy ?? null
     };
 
     this.saving = true;
-    this.api.updateFaxFile(toSave)
-      .pipe(finalize(() => (this.saving = false)))
-      .subscribe({
-        next: () => this.reload(),
-        error: () => alert('Update failed')
-      });
+    try {
+      await firstValueFrom(this.api.updateFaxFile(toSave));
+      this.toast('Saved successfully.', false);
+      this.reload();
+    } catch (e) {
+      console.error('updateFaxFile failed', e);
+      this.toast('Update failed.', true);
+    } finally {
+      this.saving = false;
+    }
   }
 
   // -------- Helpers --------
@@ -596,7 +785,7 @@ export class FaxesComponent implements OnInit {
 
       if (Array.isArray(pa.services) && pa.services.length > 0) {
         const firstService = pa.services[0];
-        if (firstService?.description?.toLowerCase().includes('documentation')) {
+        if (!firstService?.code && firstService?.description?.toLowerCase().includes('documentation')) {
           firstService.description = 'Office Visit';
         }
       }
@@ -606,15 +795,7 @@ export class FaxesComponent implements OnInit {
 
       this.priorAuth = pa;
       this.isLoadingDetails = false;
-      const url = 'https://carenirvanabre-b2ananexbwedbfes.eastus2-01.azurewebsites.net/api/DecisionTable/rundecision?decisionTableName=PayorCatalogueSpec';
-
-      const body = {
-        'Service Code': "11920",//this.smartAuthCheckForm.get('serviceCode')?.value,
-        'LOB': 'TX Medicaid',
-        "Start Date": "01-01-2026",
-        "End Date": "01-01-2027"
-      };
-
+      this.runSmartAuthCheckFromExtracted(pa);
 
     } catch (e: any) {
       this.error = e?.message || 'Failed to parse PDF';
@@ -622,6 +803,108 @@ export class FaxesComponent implements OnInit {
     } finally {
       this.isProcessing = false;
     }
+  }
+  smartAuthCheckInProgress = false;
+  smartAuthCheckCompleted = false;
+  smartAuthCheckMatched: boolean | null = null;
+  smartAuthCheckAuthRequired: boolean | null = null; // true/false when matched; null when NO_MATCH/unmatched
+  smartAuthCheckError = '';
+
+  private resetSmartAuthCheckState(): void {
+    this.smartAuthCheckInProgress = false;
+    this.smartAuthCheckCompleted = false;
+    this.smartAuthCheckMatched = null;
+    this.smartAuthCheckAuthRequired = null;
+    this.smartAuthCheckError = '';
+  }
+
+  private runSmartAuthCheckFromExtracted(pa: PriorAuth): void {
+    // reset state for every new file
+    this.resetSmartAuthCheckState();
+
+    const firstSvc = pa.services?.[0];
+
+    const serviceCode = (firstSvc?.code ?? '').trim() || 'A9600';
+    const fromDate = this.toMdyOrFallback(firstSvc?.startDate, '1/1/2026');
+    const toDate = this.toMdyOrFallback(firstSvc?.endDate, '1/1/2027');
+
+    const triggerKeySmart = 'SMART_AUTH_CHECK.BUTTON_CLICK';
+    const smartFacts: any = {
+      serviceCode,
+      procedure: { fromDate, toDate }
+    };
+
+    this.smartAuthCheckInProgress = true;
+
+    this.rulesengineService.executeTrigger(triggerKeySmart, smartFacts)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => (this.smartAuthCheckInProgress = false))
+      )
+      .subscribe({
+        next: (res: ExecuteTriggerResponse) => {
+          const outputs: Record<string, any> = (res as any)?.outputs ?? {};
+
+          const authRequiredRaw =
+            this.getOutput(outputs, 'dt.result.AuthRequired') ||
+            this.getOutput(outputs, 'result1'); // fallback
+
+          const matched =
+            !!(res as any)?.matched &&
+            String((res as any)?.status ?? '').toUpperCase() !== 'NO_MATCH';
+
+          this.smartAuthCheckMatched = matched;
+          this.smartAuthCheckAuthRequired = matched ? this.isYes(authRequiredRaw) : null;
+          this.smartAuthCheckCompleted = true;
+        },
+        error: (e: any) => {
+          console.error('SMART_AUTH_CHECK trigger failed', e);
+          this.smartAuthCheckError = 'Smart Auth Check could not be completed.';
+          this.smartAuthCheckCompleted = false;
+          this.smartAuthCheckMatched = null;
+          this.smartAuthCheckAuthRequired = null;
+        }
+      });
+  }
+
+  private toMdyOrFallback(value: any, fallback: string): string {
+    if (value === null || value === undefined) return fallback;
+    if (value instanceof Date && !isNaN(value.getTime())) {
+      const m = value.getMonth() + 1;
+      const d = value.getDate();
+      const y = value.getFullYear();
+      return `${m}/${d}/${y}`;
+    }
+
+    const s = String(value).trim();
+    if (!s) return fallback;
+
+    // Already in M/D/YYYY (or MM/DD/YYYY) format
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)) return s;
+
+    // Convert YYYY-MM-DD (or YYYY-MM-DDTHH:mm...) -> M/D/YYYY
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+    if (m) {
+      const y = Number(m[1]);
+      const mo = Number(m[2]);
+      const d = Number(m[3]);
+      if (!isNaN(y) && !isNaN(mo) && !isNaN(d)) return `${mo}/${d}/${y}`;
+    }
+
+    // If user typed relative date tokens (D, D+1, etc) or any other format, pass through as-is.
+    // Backend may still be able to interpret it; otherwise the rule may no-match.
+    return s;
+  }
+
+  private getOutput(outputs: Record<string, any>, key: string): string {
+    const v = (outputs ?? ({} as any))[key];
+    if (v === null || v === undefined) return '';
+    return String(v).trim();
+  }
+
+  private isYes(v: any): boolean {
+    const s = String(v ?? '').trim().toLowerCase();
+    return s === 'y' || s === 'yes' || s === 'true' || s === '1';
   }
 
   private async computeSha256Hex(file: File): Promise<string> {
@@ -715,120 +998,137 @@ export class FaxesComponent implements OnInit {
   private currentFaxContentType: string = 'application/pdf';
   private currentFaxOriginalName: string | null = null;
 
+  private async getSelectedFaxPdfBytesOrThrow(): Promise<Uint8Array> {
+    // Prefer already-loaded bytes (set during openPreview)
+    if (this.currentFaxBytes && this.currentFaxBytes.length) {
+      return this.currentFaxBytes;
+    }
+
+    const faxId = this.selectedFax?.faxId;
+    if (!faxId) {
+      throw new Error('No fax selected.');
+    }
+
+    // Fetch the fax again and extract bytes
+    const res: any = await firstValueFrom(this.api.getFaxFileById(faxId));
+    const fileBytes = res?.fileBytes ?? res?.FileBytes ?? null;
+    const contentType = res?.contentType ?? res?.ContentType ?? 'application/pdf';
+    const fileUrl = res?.url ?? res?.Url ?? null;
+
+    this.currentFaxContentType = contentType;
+    this.currentFaxOriginalName = this.selectedFax?.fileName ?? 'preview.pdf';
+
+    if (fileBytes) {
+      const u8 = this.base64ToUint8Array(fileBytes);
+      this.currentFaxBytes = u8;
+      return u8;
+    }
+
+    if (fileUrl) {
+      const ab = await firstValueFrom(this.http.get(fileUrl, { responseType: 'arraybuffer' }));
+      const u8 = new Uint8Array(ab);
+      this.currentFaxBytes = u8;
+      return u8;
+    }
+
+    throw new Error('No PDF bytes available for this fax.');
+  }
+
 
   async splitCurrentFaxOnClient(): Promise<void> {
     if (!this.selectedFax || !this.selectedFax.pageCount || this.selectedFax.pageCount < 2) {
-      alert('Not enough pages to split.');
+      this.toast('Not enough pages to split.', true);
       return;
     }
 
     const total = this.selectedFax.pageCount;
-    const first = this.splitFirstPageCount ?? 1;
-    console.log("Step 3", this.selectedFax);
+    const firstRaw: any = this.splitFirstPageCount;
+    const first = Number.isFinite(Number(firstRaw)) ? Math.trunc(Number(firstRaw)) : 1;
+
     if (first <= 0 || first >= total) {
-      alert(`First document pages must be between 1 and ${total - 1}.`);
+      this.toast(`First document pages must be between 1 and ${total - 1}.`, true);
       return;
     }
 
-    this.api.getFaxFileById(this.selectedFax.faxId ?? 0).subscribe({
-      next: (res: any) => {
+    this.isSplitting = true;
+    this.saving = true;
+
+    try {
+      // Ensure we have raw PDF bytes. Prefer cached preview bytes; otherwise fetch from API.
+      let bytes = this.currentFaxBytes;
+
+      if (!bytes || bytes.length === 0) {
+        const res: any = await firstValueFrom(this.api.getFaxFileById(this.selectedFax.faxId ?? 0));
         const fileBytes = res.fileBytes ?? res.FileBytes ?? null;
-        const contentType = res.contentType ?? res.ContentType ?? 'application/pdf';
-        const fileUrl = res.url ?? res.Url ?? null;
 
-        this.currentFaxContentType = contentType;
-        this.currentFaxOriginalName = this.selectedFax?.fileName ?? 'preview.pdf';
-
-        // If backend returns base64 data, pass it to your existing handler
-        const base64 = fileBytes;
-        if (base64) {
-          // OCR / extraction
-          this.onFileChosen(undefined, base64, this.currentFaxOriginalName);
-
-          // ✅ Also decode to bytes and keep for splitting
-          const u8 = this.base64ToUint8Array(base64);
-          console.log('Decoded bytes length for splitting:', u8.length);
-          this.currentFaxBytes = u8;
-
-          // Build preview URL from bytes
-          const objUrl = this.makePdfBlobUrl(u8, contentType);
-          this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(objUrl);
-          return;
+        if (!fileBytes) {
+          throw new Error('No PDF bytes returned from server.');
         }
 
-        // Fallback: stream from server (no bytes)
-        if (fileUrl) {
-          this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fileUrl);
-          this.currentFaxBytes = null; // we don't have raw bytes in this path
-          return;
-        }
-
-        // If nothing usable came back, clear preview and stop loader
-        this.previewUrl = null;
-        this.currentFaxBytes = null;
-        this.isLoadingDetails = false;
-      },
-      error: err => {
-        console.error('getFaxFileById error', err);
-        this.previewUrl = null;
-        this.currentFaxBytes = null;
-        this.isLoadingDetails = false;
+        bytes = this.base64ToUint8Array(fileBytes);
+        this.currentFaxBytes = bytes;
+        this.currentFaxContentType = res.contentType ?? res.ContentType ?? 'application/pdf';
+        this.currentFaxOriginalName = this.selectedFax.fileName ?? 'document.pdf';
       }
-    });
 
-    // ✅ 1) Get raw PDF bytes from the fax, not from a URL
-    // ✅ Use the bytes captured when we loaded the fax
-    const bytes = this.currentFaxBytes;
-    console.log('splitCurrentFaxOnClient bytes len =', bytes?.length ?? -1);
+      const originalPdf = await PDFDocument.load(bytes, { ignoreEncryption: true });
+      const pageCount = originalPdf.getPageCount();
 
-    if (!bytes || bytes.length === 0) {
-      alert('No PDF data loaded for this fax. Open the fax first, then try splitting.');
-      return;
+      // Split indices (0-based)
+      const pdf1 = await PDFDocument.create();
+      const pdf2 = await PDFDocument.create();
+
+      const part1Indices = Array.from({ length: first }, (_, i) => i);
+      const part2Indices = Array.from({ length: pageCount - first }, (_, i) => i + first);
+
+      const copied1 = await pdf1.copyPages(originalPdf, part1Indices);
+      copied1.forEach(p => pdf1.addPage(p));
+
+      const copied2 = await pdf2.copyPages(originalPdf, part2Indices);
+      copied2.forEach(p => pdf2.addPage(p));
+
+      const bytes1 = await pdf1.save();
+      const bytes2 = await pdf2.save();
+
+      const originalName = this.currentFaxOriginalName || this.selectedFax.fileName || 'document.pdf';
+      const dot = originalName.lastIndexOf('.');
+      const base = dot >= 0 ? originalName.substring(0, dot) : originalName;
+      const ext = dot >= 0 ? originalName.substring(dot) : '.pdf';
+
+      const file1Name = `${base}_Split1${ext}`;
+      const file2Name = `${base}_Split2${ext}`;
+
+      const file1 = new File([new Blob([bytes1], { type: 'application/pdf' })], file1Name, { type: 'application/pdf' });
+      const file2 = new File([new Blob([bytes2], { type: 'application/pdf' })], file2Name, { type: 'application/pdf' });
+
+      const parentFaxId = this.selectedFax.faxId ?? null;
+      const metaJson = JSON.stringify({ source: 'UI:Faxes', action: 'Split', parentFaxId });
+
+      // Save both split parts as children (suppress per-file toasts/reloads; we'll do one at end)
+      await this.saveFileData(null, file1, {
+        parentFaxId,
+        inheritFrom: this.selectedFax,
+        metaJson,
+        suppressToast: true,
+        suppressReload: true
+      });
+      await this.saveFileData(null, file2, {
+        parentFaxId,
+        inheritFrom: this.selectedFax,
+        metaJson,
+        suppressToast: true,
+        suppressReload: true
+      });
+
+      this.toast(`Split saved: "${file1Name}" and "${file2Name}".`, false);
+      this.reload();
+    } catch (e) {
+      console.error('Split failed', e);
+      this.toast('Split failed. Please try again.', true);
+    } finally {
+      this.isSplitting = false;
+      this.saving = false;
     }
-
-    // optional sanity check
-    console.log('First 4 bytes:', Array.from(bytes.slice(0, 4)));
-
-    const originalPdf = await PDFDocument.load(bytes);
-    const pageCount = originalPdf.getPageCount();
-
-    console.log('original PDF pageCount', pageCount);
-
-    if (pageCount !== total) {
-      console.warn('pageCount mismatch', { db: total, pdf: pageCount });
-    }
-
-    const pdf1 = await PDFDocument.create();
-    const pdf2 = await PDFDocument.create();
-
-    const part1Indices = Array.from({ length: first }, (_, i) => i);
-    const part2Indices = Array.from({ length: pageCount - first }, (_, i) => i + first);
-
-    const copied1 = await pdf1.copyPages(originalPdf, part1Indices);
-    copied1.forEach(p => pdf1.addPage(p));
-
-    const copied2 = await pdf2.copyPages(originalPdf, part2Indices);
-    copied2.forEach(p => pdf2.addPage(p));
-
-    const bytes1 = await pdf1.save();
-    const bytes2 = await pdf2.save();
-
-    const originalName = this.currentFaxOriginalName || this.selectedFax.fileName || 'document.pdf';
-    const dot = originalName.lastIndexOf('.');
-    const base = dot >= 0 ? originalName.substring(0, dot) : originalName;
-    const ext = dot >= 0 ? originalName.substring(dot) : '.pdf';
-
-    const file1Name = `${base}_Split1${ext}`;
-    const file2Name = `${base}_Split2${ext}`;
-
-    const blob1 = new Blob([bytes1], { type: 'application/pdf' });
-    const blob2 = new Blob([bytes2], { type: 'application/pdf' });
-
-    const file1 = new File([blob1], file1Name, { type: 'application/pdf' });
-    const file2 = new File([blob2], file2Name, { type: 'application/pdf' });
-
-    await this.saveFileData(null, file1);
-    await this.saveFileData(null, file2);
   }
 
   // FaxesComponent
@@ -837,7 +1137,13 @@ export class FaxesComponent implements OnInit {
 
 
   openSplitDialog(row: FaxFile): void {
-    /* open split dialog, then use saveFileData(...) */
+    // The row-menu "Split" should behave the same as splitting from the preview pane:
+    // 1) Open the preview for this fax
+    // 2) Initialize the split count to 1 (or max-1)
+    // 3) User can then click "Split & Save" (preview pane button)
+    this.openPreview(row);
+    const pc = row.pageCount ?? 0;
+    this.splitFirstPageCount = pc > 1 ? 1 : null;
   }
 
   openUpdateWorkBasketDialog(row: FaxFile): void {
@@ -989,32 +1295,71 @@ export class FaxesComponent implements OnInit {
     }
   }
 
-  confirmDelete(row: FaxFile): void {
-    if (!row || !row.faxId) {
-      return;
-    }
+  async confirmDelete(row: FaxFile): Promise<void> {
+    if (!row || !row.faxId) return;
 
     const nowIso = new Date().toISOString();
+    const deletedBy = this.currentUserId ?? row.deletedBy ?? 1;
 
-    // Mark the selected fax for delete; saveUpdate will use deletedBy/deletedOn
-    this.selectedFax = {
-      ...row,
-      deletedBy: this.currentUserId ?? row.deletedBy ?? 1,
-      deletedOn: nowIso
-    };
+    // Build target list: parent + its children if applicable
+    const targets: FaxFile[] = [];
+    if (row.hasChildren && row.children?.length) {
+      targets.push(row, ...(row.children || []));
+    } else {
+      targets.push(row);
+    }
 
-    this.saveUpdate();
+    this.saving = true;
+    try {
+      await Promise.all(
+        targets.map(t => {
+          // reuse saveUpdate plumbing by setting selectedFax per item
+          this.selectedFax = {
+            ...t,
+            status: 'Deleted',
+            deletedOn: nowIso,
+            deletedBy,
+            updatedBy: deletedBy
+          };
+          // suppress duplicate toasts/reloads
+          return (async () => {
+            const toSave: any = {
+              faxId: this.selectedFax!.faxId,
+              workBasket: "2",
+              fileName: this.selectedFax!.fileName,
+              priority: this.selectedFax!.priority,
+              status: this.selectedFax!.status,
+              updatedOn: nowIso,
+              updatedBy: deletedBy,
+              deletedOn: nowIso,
+              deletedBy
+            };
+            return firstValueFrom(this.api.updateFaxFile(toSave));
+          })();
+        })
+      );
 
-    // Clear inline UI
-    this.deletingFaxId = null;
-    this.deleteMessage = '';
+      this.toast(
+        row.hasChildren
+          ? `Deleted "${row.fileName}" and its split pages.`
+          : `Deleted "${row.fileName}".`,
+        false
+      );
+      this.reload();
+    } catch (e) {
+      console.error('Delete failed', e);
+      this.toast(`Delete failed for "${row.fileName}".`, true);
+    } finally {
+      this.saving = false;
+      this.deletingFaxId = null;
+      this.deleteMessage = '';
+    }
   }
 
   cancelDelete(): void {
     this.deletingFaxId = null;
     this.deleteMessage = '';
   }
-
   /* END Update Methods */
 
   private updateFaxCounts(): void {
@@ -1041,6 +1386,34 @@ export class FaxesComponent implements OnInit {
   selectWorkBasket(name: string | null): void {
     this.selectedWorkBasket = name;
     this.applyWorkBasketFilter();
+  }
+
+
+  onMemberClick(memberId: string, memberName: string, memberDetailsId: string): void {
+    console.log('Member clicked:', memberId, memberName, memberDetailsId);
+    const tabLabel = `Member: ${memberName}`;
+    const tabRoute = `/member-info/${memberId}`;
+
+    const existingTab = this.headerService.getTabs().find(tab => tab.route === tabRoute);
+
+
+    if (existingTab) {
+      this.headerService.selectTab(tabRoute);
+
+      const mdId = existingTab.memberDetailsId ?? null;
+      if (mdId) sessionStorage.setItem('selectedMemberDetailsId', mdId);
+      this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+        this.router.navigate([tabRoute]);
+      });
+    } else {
+      this.headerService.addTab(tabLabel, tabRoute, memberId, memberDetailsId);
+      sessionStorage.setItem('selectedMemberDetailsId', memberDetailsId);
+      this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+        this.router.navigate([tabRoute]);
+      });
+    }
+
+
   }
 
 }

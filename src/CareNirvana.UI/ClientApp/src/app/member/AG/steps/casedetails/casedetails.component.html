@@ -1,5 +1,70 @@
 <form class="case-details" [formGroup]="form">
 
+  <!-- Enrollment Details (same as Auth Details) -->
+  <div class="section-card">
+    <div class="section-header">
+      <span class="section-acc-icon open">▸</span>
+      <div class="section-title">Enrollment Details</div>
+    </div>
+
+    <div class="selection-container">
+      <div class="rounded-box"
+           *ngFor="let enr of memberEnrollments; let i = index"
+           (click)="selectEnrollment(i)"
+           [ngClass]="{ 'selected': selectedDiv === (i + 1) }">
+
+        <div class="pairs">
+          <div class="pair-row" *ngFor="let pair of getEnrollmentDisplayPairs(enr)">
+            <label class="label key">{{ pair.label }}</label>
+            <label class="label value" [title]="pair.value">{{ pair.value }}</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+
+    <div class="ff-error" *ngIf="!enrollmentSelect">
+      Please select an Enrollment card.
+    </div>
+  </div>
+
+  <!-- Case Type (mandatory for new cases) -->
+  <div class="section-card">
+
+    <div class="grid">
+      <div class="ff-field case-type-field">
+        <div class="ff-outline"
+             [class.ff-disabled]="isCaseTypeLocked()"
+             [class.ff-invalid]="caseTypeCtrl.touched && caseTypeCtrl.invalid">
+          <div class="ff-float-label">
+            Case Type <span class="req-star">*</span>
+          </div>
+
+          <div class="ff-body">
+            <ui-smart-dropdown class="ff-ui"
+                               label=""
+                               placeholder="Select Case Type..."
+                               [options]="caseTypeOptions"
+                               [formControl]="caseTypeCtrl"
+                               [disabled]="isCaseTypeLocked()">
+            </ui-smart-dropdown>
+          </div>
+        </div>
+
+        <!-- First-time guidance (new case only; hidden for existing case#) -->
+        <div class="ff-hint" *ngIf="showCaseTypeFirstLoadHint">
+          <span class="hint-icon">i</span>
+          <span>Please select the <strong>Case Type</strong> to continue.</span>
+        </div>
+
+        <!-- Validation -->
+        <div class="ff-error" *ngIf="caseTypeCtrl.touched && caseTypeCtrl.invalid">
+          Case Type is required.
+        </div>
+      </div>
+    </div>
+  </div>
   <ng-container *ngFor="let sec of renderSections; let i = index; trackBy: trackBySection">
     <div class="section-card" *ngIf="visibleSection(sec) && shouldShowSection(sec)">
 

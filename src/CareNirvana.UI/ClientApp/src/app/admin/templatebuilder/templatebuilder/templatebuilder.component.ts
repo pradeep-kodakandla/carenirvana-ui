@@ -2028,8 +2028,8 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
 
         try {
           // FIX: Use correct casing "ValidationJson" instead of "validationJson"
-          validations = response?.ValidationJson
-            ? JSON.parse(response.ValidationJson)
+          validations = response?.validationJson
+            ? JSON.parse(response.validationJson)
             : [];
         } catch (e) {
           console.error('Failed to parse ValidationJson:', e);
