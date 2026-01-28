@@ -1346,7 +1346,7 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
     const applyFilter = () => {
       const rawStatus = this.extractPrimitive(this.unwrapValue(statusCtrl.value)) ?? this.unwrapValue(statusCtrl.value);
       const statusKey = String(rawStatus ?? '').trim();
-
+      this.syncApprovedDeniedToRequested(ddSection, statusField, statusKey);
       const full = getFullOpts();
 
       // Pended => clear statusCode
