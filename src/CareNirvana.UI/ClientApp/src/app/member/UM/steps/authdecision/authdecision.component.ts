@@ -158,18 +158,20 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
   private prefetchDecisionStatusForTabs(done: () => void): void {
     const ds = this.getDecisionStatusDatasourceFromTemplate();
     if (!ds) {
+      console.warn('Decision Status datasource not found in template; cannot prefetch options.');
       done();
       return;
     }
 
-    if (this.dropdownCache.has(ds)) {
-      // If already cached, also try to lock pended value
-      const cached = (this.dropdownCache.get(ds) ?? []) as any[];
-      const p = this.findPendedStatusOption(cached as any);
-      if (p) this.pendedDecisionStatusValue = (p as any).value;
-      done();
-      return;
-    }
+    //if (this.dropdownCache.has(ds)) {
+    //  // If already cached, also try to lock pended value
+    //  const cached = (this.dropdownCache.get(ds) ?? []) as any[];
+    //  const p = this.findPendedStatusOption(cached as any);
+    //  if (p) this.pendedDecisionStatusValue = (p as any).value;
+    //  done();
+    //  console.log('Decision Status options already cached; skipping prefetch.');
+    //  return;
+    //}
 
     this.dsLookup
       .getOptionsWithFallback(
@@ -498,6 +500,8 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
         const raw: any = (o as any)?.raw;
         const cands = [
           (o as any)?.value,
+          raw?.decisionStatusId,
+          raw?.statusId,
           raw?.id,
           raw?.value,
           raw?.code,
@@ -506,7 +510,16 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
         ];
 
         if (cands.some(x => String(x ?? '').trim() === v)) {
-          const label = (o as any)?.label ?? (o as any)?.text ?? raw?.decisionStatusName ?? raw?.name ?? v;
+          const label =
+            (o as any)?.label ??
+            (o as any)?.text ??
+            raw?.decisionStatusName ??
+            raw?.statusName ??
+            raw?.decisionStatus ??
+            raw?.status ??
+            raw?.name ??
+            v;
+
           const code = String((o as any)?.value ?? v);
           return { label: String(label), code };
         }
@@ -515,6 +528,7 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
 
     return null;
   }
+
 
 
   private getDecisionStatusForProcedure(procedureNo: number): { statusText: string; statusCode: string } {
@@ -1326,12 +1340,24 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
     for (const o of (options ?? [])) {
       const lbl = String((o as any)?.label ?? (o as any)?.text ?? '').trim().toLowerCase();
       if (lbl.startsWith('pend')) return o;
+
       const raw: any = (o as any)?.raw;
-      const rawLbl = String(raw?.name ?? raw?.label ?? raw?.text ?? raw?.decisionStatusName ?? '').trim().toLowerCase();
+      const rawLbl = String(
+        raw?.decisionStatusName ??
+        raw?.statusName ??
+        raw?.decisionStatus ??
+        raw?.status ??
+        raw?.name ??
+        raw?.label ??
+        raw?.text ??
+        ''
+      ).trim().toLowerCase();
+
       if (rawLbl.startsWith('pend')) return o;
     }
     return null;
   }
+
 
   /**
    * Requirement: Decision Status dropdown should display "Pended" by default on first load.
@@ -1461,6 +1487,8 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
       const r: any = (o as any)?.raw;
       if (!r) return false;
       const rawCandidates = [
+        r?.decisionStatusId,
+        r?.statusId,
         r?.id,
         r?.value,
         r?.code,
@@ -1490,7 +1518,7 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
     const alt = opts.find(o => {
       const r: any = (o as any)?.raw;
       if (!r) return false;
-      const cands = [r?.id, r?.value, r?.code, r?.key, r?.decisionStatusCode, r?.decisionTypeCode];
+      const cands = [r?.decisionStatusId, r?.statusId, r?.id, r?.value, r?.code, r?.key, r?.decisionStatusCode, r?.decisionTypeCode];
       return cands.some(x => String(x ?? '').trim() === v);
     });
 
@@ -1581,24 +1609,95 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
     const k = this.normDs(ds);
     if (!row) return null;
 
-    // Decision Status Code should use code (not numeric id) when available
-    if (k.startsWith('decisionstatus')) return row?.decisionStatusCode ?? row?.statusCode ?? row?.code ?? row?.value ?? row?.id ?? null;
+    // ✅ Decision Status vs Decision Status Code:
+    // - Decision Status (DecisionStatus) should persist/compare by *id*.
+    // - Decision Status Code (DecisionStatusCode) should persist/compare by *code*.
+    if (k.includes('decisionstatuscode')) {
+      return (
+        row?.decisionStatusCode ??
+        row?.statusCode ??
+        row?.code ??
+        row?.value ??
+        row?.id ??
+        row?.key ??
+        null
+      );
+    }
+
+    if (k.includes('decisionstatus')) {
+      return (
+        row?.decisionStatusId ??
+        row?.statusId ??
+        row?.id ??
+        row?.value ??
+        row?.code ??
+        row?.key ??
+        null
+      );
+    }
 
     // Decision Type often uses code as value
-    if (k.startsWith('decisiontype')) return row?.decisionTypeCode ?? row?.typeCode ?? row?.code ?? row?.value ?? row?.id ?? null;
+    if (k.includes('decisiontype')) {
+      return (
+        row?.decisionTypeCode ??
+        row?.typeCode ??
+        row?.code ??
+        row?.value ??
+        row?.id ??
+        row?.key ??
+        null
+      );
+    }
 
     return null;
   }
+
 
   private getDatasourcePreferredLabel(ds: string, row: any): string | null {
     const k = this.normDs(ds);
     if (!row) return null;
 
-    if (k.startsWith('decisionstatus')) return row?.decisionStatusName ?? row?.statusName ?? row?.name ?? null;
-    if (k.startsWith('decisiontype')) return row?.decisionTypeName ?? row?.typeName ?? row?.name ?? null;
+    if (k.includes('decisionstatuscode')) {
+      return (
+        row?.decisionStatusCodeName ??
+        row?.statusCodeName ??
+        row?.codeName ??
+        row?.description ??
+        row?.displayName ??
+        row?.name ??
+        null
+      );
+    }
+
+    if (k.includes('decisionstatus')) {
+      return (
+        row?.decisionStatusName ??
+        row?.statusName ??
+        row?.decisionStatus ??
+        row?.status ??
+        row?.description ??
+        row?.displayName ??
+        row?.name ??
+        null
+      );
+    }
+
+    if (k.includes('decisiontype')) {
+      return (
+        row?.decisionTypeName ??
+        row?.typeName ??
+        row?.decisionType ??
+        row?.type ??
+        row?.description ??
+        row?.displayName ??
+        row?.name ??
+        null
+      );
+    }
 
     return null;
   }
+
 
   authHasUnsavedChanges(): boolean {
     return this.form?.dirty ?? false;
