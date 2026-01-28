@@ -158,45 +158,23 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
   private prefetchDecisionStatusForTabs(done: () => void): void {
     const ds = this.getDecisionStatusDatasourceFromTemplate();
     if (!ds) {
-      console.warn('Decision Status datasource not found in template; cannot prefetch options.');
       done();
       return;
     }
 
-    //if (this.dropdownCache.has(ds)) {
-    //  // If already cached, also try to lock pended value
-    //  const cached = (this.dropdownCache.get(ds) ?? []) as any[];
-    //  const p = this.findPendedStatusOption(cached as any);
-    //  if (p) this.pendedDecisionStatusValue = (p as any).value;
-    //  done();
-    //  console.log('Decision Status options already cached; skipping prefetch.');
-    //  return;
-    //}
+    if (this.dropdownCache.has(ds)) {
+      // If already cached, also try to lock pended value
+      const cached = (this.dropdownCache.get(ds) ?? []) as any[];
+      const p = this.findPendedStatusOption(cached as any);
+      if (p) this.pendedDecisionStatusValue = (p as any).value;
+      done();
+      return;
+    }
 
     this.dsLookup
       .getOptionsWithFallback(
         ds,
-        (r: any) => {
-          const dsKey = ds ? this.toCamelCase(ds) : '';
-          const value = this.getDatasourcePreferredValue(ds, r) ?? r?.value ?? r?.code ?? r?.id;
-          const special = this.getDatasourcePreferredLabel(ds, r);
-          const label =
-            special ??
-            r?.label ??
-            r?.text ??
-            r?.name ??
-            r?.description ??
-            r?.displayName ??
-            r?.title ??
-            (dsKey
-              ? (r?.[dsKey] ??
-                r?.[dsKey.charAt(0).toUpperCase() + dsKey.slice(1)] ??
-                r?.[ds])
-              : null) ??
-            this.pickDisplayField(r) ??
-            String(value ?? '');
-          return { value, label, text: label, raw: r } as any;
-        },
+        (r: any) => this.mapDatasourceRowToOption(ds, r) as any,
         ['UM', 'Admin', 'Provider']
       )
       .pipe(catchError(() => of([])), takeUntil(this.destroy$))
@@ -500,8 +478,6 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
         const raw: any = (o as any)?.raw;
         const cands = [
           (o as any)?.value,
-          raw?.decisionStatusId,
-          raw?.statusId,
           raw?.id,
           raw?.value,
           raw?.code,
@@ -510,16 +486,7 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
         ];
 
         if (cands.some(x => String(x ?? '').trim() === v)) {
-          const label =
-            (o as any)?.label ??
-            (o as any)?.text ??
-            raw?.decisionStatusName ??
-            raw?.statusName ??
-            raw?.decisionStatus ??
-            raw?.status ??
-            raw?.name ??
-            v;
-
+          const label = (o as any)?.label ?? (o as any)?.text ?? raw?.decisionStatusName ?? raw?.name ?? v;
           const code = String((o as any)?.value ?? v);
           return { label: String(label), code };
         }
@@ -528,7 +495,6 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
 
     return null;
   }
-
 
 
   private getDecisionStatusForProcedure(procedureNo: number): { statusText: string; statusCode: string } {
@@ -1290,30 +1256,7 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
 
       this.dsLookup.getOptionsWithFallback(
         ds,
-        (r: any) => {
-          const dsKey = ds ? this.toCamelCase(ds) : '';
-          const value = this.getDatasourcePreferredValue(ds, r) ?? r?.value ?? r?.code ?? r?.id;
-
-          const special = this.getDatasourcePreferredLabel(ds, r);
-
-          const label =
-            special ??
-            r?.label ??
-            r?.text ??
-            r?.name ??
-            r?.description ??
-            r?.displayName ??
-            r?.title ??
-            (dsKey
-              ? (r?.[dsKey] ??
-                r?.[dsKey.charAt(0).toUpperCase() + dsKey.slice(1)] ??
-                r?.[ds])
-              : null) ??
-            this.pickDisplayField(r) ??
-            String(value ?? '');
-
-          return { value, label, text: label, raw: r } as any;
-        },
+        (r: any) => this.mapDatasourceRowToOption(ds, r) as any,
         ['UM', 'Admin', 'Provider']
       )
         .subscribe((opts) => {
@@ -1340,24 +1283,12 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
     for (const o of (options ?? [])) {
       const lbl = String((o as any)?.label ?? (o as any)?.text ?? '').trim().toLowerCase();
       if (lbl.startsWith('pend')) return o;
-
       const raw: any = (o as any)?.raw;
-      const rawLbl = String(
-        raw?.decisionStatusName ??
-        raw?.statusName ??
-        raw?.decisionStatus ??
-        raw?.status ??
-        raw?.name ??
-        raw?.label ??
-        raw?.text ??
-        ''
-      ).trim().toLowerCase();
-
+      const rawLbl = String(raw?.name ?? raw?.label ?? raw?.text ?? raw?.decisionStatusName ?? '').trim().toLowerCase();
       if (rawLbl.startsWith('pend')) return o;
     }
     return null;
   }
-
 
   /**
    * Requirement: Decision Status dropdown should display "Pended" by default on first load.
@@ -1487,8 +1418,6 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
       const r: any = (o as any)?.raw;
       if (!r) return false;
       const rawCandidates = [
-        r?.decisionStatusId,
-        r?.statusId,
         r?.id,
         r?.value,
         r?.code,
@@ -1518,7 +1447,7 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
     const alt = opts.find(o => {
       const r: any = (o as any)?.raw;
       if (!r) return false;
-      const cands = [r?.decisionStatusId, r?.statusId, r?.id, r?.value, r?.code, r?.key, r?.decisionStatusCode, r?.decisionTypeCode];
+      const cands = [r?.id, r?.value, r?.code, r?.key, r?.decisionStatusCode, r?.decisionTypeCode];
       return cands.some(x => String(x ?? '').trim() === v);
     });
 
@@ -1591,17 +1520,66 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
 
   private pickDisplayField(row: any): string | null {
     if (!row) return null;
-    const skip = new Set(['id', 'value', 'code', 'activeFlag', 'createdBy', 'createdOn', 'updatedBy', 'updatedOn', 'deletedBy', 'deletedOn']);
+
+    const skip = new Set([
+      'id',
+      'value',
+      'code',
+      'activeFlag',
+      'createdBy',
+      'createdOn',
+      'updatedBy',
+      'updatedOn',
+      'deletedBy',
+      'deletedOn'
+    ]);
+
     for (const k of Object.keys(row)) {
       if (skip.has(k)) continue;
       const v = row[k];
       if (typeof v === 'string' && v.trim().length > 0) return v;
     }
+
     return null;
   }
 
+
   private normDs(ds: string): string {
     return String(ds ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+
+
+  /** Map raw datasource values (often 1/2/3 codes) to friendly Decision Status labels. */
+  private decisionStatusLabelFromValue(v: any): string | null {
+    const s = String(v ?? '').trim().toLowerCase();
+    if (!s) return null;
+
+    const n = Number(s);
+    if (!Number.isNaN(n)) {
+      if (n === 0 || n === 1) return 'Pended';
+      if (n === 2) return 'Approved';
+      if (n === 3) return 'Denied';
+      return null;
+    }
+
+    if (s === 'p' || s.startsWith('pend')) return 'Pended';
+    if (s === 'a' || s.startsWith('appr')) return 'Approved';
+    if (s === 'd' || s.startsWith('den')) return 'Denied';
+
+    return null;
+  }
+
+
+  /** True if datasource refers to Decision Status (NOT Decision Status Code). */
+  private isDecisionStatusDatasource(ds: string): boolean {
+    const k = this.normDs(ds);
+    return k.includes('decisionstatus') && !k.includes('decisionstatuscode');
+  }
+
+  /** True if datasource refers to Decision Status Code. */
+  private isDecisionStatusCodeDatasource(ds: string): boolean {
+    const k = this.normDs(ds);
+    return k.includes('decisionstatuscode');
   }
 
   /** Add decision-specific overrides here if needed */
@@ -1609,93 +1587,112 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
     const k = this.normDs(ds);
     if (!row) return null;
 
-    // ✅ Decision Status vs Decision Status Code:
-    // - Decision Status (DecisionStatus) should persist/compare by *id*.
-    // - Decision Status Code (DecisionStatusCode) should persist/compare by *code*.
+    // Decision Status Code => use code when available (often string)
     if (k.includes('decisionstatuscode')) {
-      return (
-        row?.decisionStatusCode ??
-        row?.statusCode ??
-        row?.code ??
-        row?.value ??
-        row?.id ??
-        row?.key ??
-        null
-      );
+      return row?.decisionStatusCode ?? row?.statusCode ?? row?.code ?? row?.value ?? row?.id ?? null;
     }
 
-    if (k.includes('decisionstatus')) {
-      return (
-        row?.decisionStatusId ??
-        row?.statusId ??
-        row?.id ??
-        row?.value ??
-        row?.code ??
-        row?.key ??
-        null
-      );
+    // Decision Status => prefer id when available
+    if (this.isDecisionStatusDatasource(ds)) {
+      return row?.decisionStatusId ?? row?.statusId ?? row?.id ?? row?.value ?? row?.code ?? null;
     }
 
     // Decision Type often uses code as value
     if (k.includes('decisiontype')) {
-      return (
-        row?.decisionTypeCode ??
-        row?.typeCode ??
-        row?.code ??
-        row?.value ??
-        row?.id ??
-        row?.key ??
-        null
-      );
+      return row?.decisionTypeCode ?? row?.typeCode ?? row?.code ?? row?.value ?? row?.id ?? null;
     }
 
     return null;
   }
 
+  private getDatasourcePreferredLabel(ds: string, row: any): string {
+    if (!row) return '';
 
-  private getDatasourcePreferredLabel(ds: string, row: any): string | null {
-    const k = this.normDs(ds);
-    if (!row) return null;
+    // Decision Status specific names
+    if (this.isDecisionStatusDatasource(ds)) {
+      const candidate =
+        row.decisionStatusName ??
+        row.statusName ??
+        row.name ??
+        row.label ??
+        row.text ??
+        this.pickDisplayField(row);
 
-    if (k.includes('decisionstatuscode')) {
-      return (
-        row?.decisionStatusCodeName ??
-        row?.statusCodeName ??
-        row?.codeName ??
-        row?.description ??
-        row?.displayName ??
-        row?.name ??
-        null
-      );
+      return String(candidate ?? '').trim();
     }
 
-    if (k.includes('decisionstatus')) {
-      return (
-        row?.decisionStatusName ??
-        row?.statusName ??
-        row?.decisionStatus ??
-        row?.status ??
-        row?.description ??
-        row?.displayName ??
-        row?.name ??
-        null
-      );
+    if (this.isDecisionStatusCodeDatasource(ds)) {
+      const candidate =
+        row.decisionStatusReasonName ??   // example: adjust to your API
+        row.decisionStatusCodeName ??
+        row.reasonDescription ??
+        row.description ??
+        row.label ??
+        row.text ??
+        row.name ??
+        this.pickDisplayField(row);
+
+      return String(candidate ?? '').trim();
     }
 
-    if (k.includes('decisiontype')) {
-      return (
-        row?.decisionTypeName ??
-        row?.typeName ??
-        row?.decisionType ??
-        row?.type ??
-        row?.description ??
-        row?.displayName ??
-        row?.name ??
-        null
-      );
+
+
+    // Generic: any descriptive field or pickDisplayField
+    const candidate =
+      row.label ??
+      row.text ??
+      row.name ??
+      row.description ??
+      this.pickDisplayField(row);
+
+    return String(candidate ?? '').trim();
+  }
+
+
+  /** Build a dropdown option from a datasource row, handling primitive rows like [1,2,3]. */
+  private mapDatasourceRowToOption(ds: string, r: any): UiSmartOption | null {
+    if (r == null) return null;
+
+    // Primitive rows (e.g. [1,2,3])
+    if (typeof r === 'string' || typeof r === 'number') {
+      const value = r;
+      let label: string | null = null;
+
+      if (this.isDecisionStatusDatasource(ds)) {
+        label = this.decisionStatusLabelFromValue(value);
+      } else if (this.isDecisionStatusCodeDatasource(ds)) {
+        label = this.decisionStatusCodeLabelFromValue(value);
+      }
+
+      const finalLabel = (label ?? String(value)).trim();
+      return { value, label: finalLabel, text: finalLabel, raw: r } as any;
     }
 
-    return null;
+    // object rows (unchanged, but now use DecisionStatusCode branch in getDatasourcePreferredLabel)
+    const value = this.getDatasourcePreferredValue(ds, r) ?? r?.value ?? r?.code ?? r?.id;
+    const special = this.getDatasourcePreferredLabel(ds, r);
+    let label =
+      special ??
+      r?.label ??
+      r?.text ??
+      r?.name ??
+      r?.description ??
+      r?.displayName ??
+      r?.title ??
+      this.pickDisplayField(r) ??
+      null;
+
+    if ((!label || String(label).trim() === '' || String(label) === String(value)) &&
+      this.isDecisionStatusDatasource(ds)) {
+      const hard =
+        this.decisionStatusLabelFromValue(value) ??
+        this.decisionStatusLabelFromValue(r?.decisionStatusId ?? r?.statusId ?? r?.id ?? r?.code ?? r?.value);
+      if (hard) label = hard;
+    }
+
+    if (label == null) label = String(value ?? '');
+    const finalLabel = String(label).trim();
+    return { value, label: finalLabel, text: finalLabel, raw: r } as any;
   }
 
 
@@ -1712,4 +1709,147 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
   hasUnsavedChanges(): boolean {
     return this.authHasUnsavedChanges();
   }
+
+
+  private decisionStatusCodeLabelFromValue(v: any): string | null {
+    const s = String(v ?? '').trim().toLowerCase();
+    if (!s) return null;
+
+    const n = Number(s);
+    if (!Number.isNaN(n)) {
+      if (n === 1) return 'Clinical criteria not met';
+      if (n === 2) return 'Benefit exclusion';
+      if (n === 3) return 'Administrative denial';
+      // extend with your real codes ↖
+      return null;
+    }
+
+    // optional alpha codes (if you have them)
+    if (s === 'c1') return 'Clinical criteria not met';
+    if (s === 'b1') return 'Benefit exclusion';
+    if (s === 'a1') return 'Administrative denial';
+
+    return null;
+  }
+
+  /**
+ * If user selects Approved => Appr = Req and Denied = 0
+ * If user selects Denied   => Appr = 0   and Denied = Req
+ */
+  private syncApprovedDeniedToRequested(ddSection: DecisionSectionVm, statusField: DecisionFieldVm, statusKey: string): void {
+    if (!this.form || !ddSection) return;
+
+    const statusText = this.getDecisionStatusText(statusField, statusKey).toLowerCase();
+    const isApproved = statusText.startsWith('approv');
+    const isDenied = statusText.startsWith('deny');
+
+    if (!isApproved && !isDenied) return;
+
+    // Best-effort field discovery (ids can vary by template)
+    const reqField =
+      this.findFieldByIdCandidates(ddSection, [
+        'req',
+        'requested',
+        'requestedunits',
+        'requestedunit',
+        'requestedqty',
+        'requestedquantity',
+        'requestqty',
+        'requestquantity',
+        'qtyrequested',
+        'unitsrequested'
+      ], ['requested', 'req']);
+
+    const apprField =
+      this.findFieldByIdCandidates(ddSection, [
+        'appr',
+        'approved',
+        'approvedunits',
+        'approvedunit',
+        'approvedqty',
+        'approvedquantity',
+        'apprtoreq',
+        'appr_to_req',
+        'approvedtoreq',
+        'approved_to_req'
+      ], ['appr', 'approved']);
+
+    const deniedField =
+      this.findFieldByIdCandidates(ddSection, [
+        'denied',
+        'deniedunits',
+        'deniedunit',
+        'deniedqty',
+        'deniedquantity',
+        'deniedtoreq',
+        'denied_to_req'
+      ], ['denied']);
+
+    if (!reqField || !apprField || !deniedField) return;
+
+    const reqCtrl = this.form.get(reqField.controlName);
+    if (!reqCtrl) return;
+
+    const reqVal = this.coerceNumber(reqCtrl.value);
+
+    if (isApproved) {
+      this.safeSetFieldValue(apprField, reqVal);
+      this.safeSetFieldValue(deniedField, 0);
+    } else if (isDenied) {
+      this.safeSetFieldValue(apprField, 0);
+      this.safeSetFieldValue(deniedField, reqVal);
+    }
+  }
+
+  private getDecisionStatusText(statusField: DecisionFieldVm, statusKey: string): string {
+    // Prefer datasource cache mapping (handles id/code -> label)
+    const looked = this.lookupDecisionStatusLabel(String(statusKey ?? '').trim());
+    if (looked?.label) return String(looked.label);
+
+    // Fallback: try status field options if present
+    const opts = (this.optionsByControlName?.[statusField.controlName] ?? []) as any[];
+    const match = opts.find(o => String((o as any)?.value ?? '').trim() === String(statusKey ?? '').trim());
+    if (match?.label) return String(match.label);
+
+    // Last resort
+    return this.asDisplayString(statusKey);
+  }
+
+  private findFieldByIdCandidates(section: DecisionSectionVm, idCandidates: string[], displayNeedles: string[]): DecisionFieldVm | null {
+    const idSet = new Set((idCandidates ?? []).map(x => String(x ?? '').toLowerCase().trim()).filter(Boolean));
+
+    // 1) exact-ish id match
+    const byId = (section.fields ?? []).find(f => idSet.has(String(f?.id ?? '').toLowerCase().trim()));
+    if (byId) return byId;
+
+    // 2) displayName contains needles
+    const needles = (displayNeedles ?? []).map(x => String(x ?? '').toLowerCase().trim()).filter(Boolean);
+    const byDisplay = (section.fields ?? []).find(f => {
+      const dn = String(f?.displayName ?? '').toLowerCase();
+      return needles.some(n => dn.includes(n));
+    });
+
+    return byDisplay ?? null;
+  }
+
+  private coerceNumber(v: any): number {
+    if (v === null || v === undefined) return 0;
+    if (typeof v === 'number' && Number.isFinite(v)) return v;
+
+    // Handle strings like "10", "10.5"
+    const n = Number(String(v).replace(/,/g, '').trim());
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  private safeSetFieldValue(field: DecisionFieldVm, value: any): void {
+    if (!this.form || !field) return;
+    const ctrl = this.form.get(field.controlName);
+    if (!ctrl) return;
+
+    ctrl.setValue(value, { emitEvent: false });
+    // keep vm value in sync too (used in some renders / payload builders)
+    field.value = value;
+  }
+
+
 }
