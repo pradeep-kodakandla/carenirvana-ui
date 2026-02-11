@@ -1,120 +1,197 @@
-<div class="d-flex justify-content-between align-items-center" style="padding:30px 15px 5px 10px; width: 100%; overflow-x: auto;">
+<!-- Unique wrapper for scoped styles in dynamic loading -->
+<div class="ndb-wrapper">
 
-  <div class="card" [ngClass]="{ 'selected': selectedDiv === 1 }" (click)="selectDiv(1)">
-    <div class="icon-container" [ngClass]="{ 'selected': selectedDiv === 1 }">
-      <div class="icon">
-        <i class="material-icons">people</i> <!-- Use Material Icons for the sofa icon -->
+  <!-- Dashboard Container -->
+  <div class="dashboard-container">
+
+    <!-- Welcome Section -->
+    <div class="welcome-section">
+      <div class="welcome-text">
+        <h1>Welcome back, John</h1>
+        <p>Here's your operational overview for today</p>
       </div>
-    </div>
-    <div class="content">
-      <span class="title">My Case Load</span>
-      <span class="number">65</span>
-    </div>
-    <mat-divider [ngClass]="{ 'selected': selectedDiv === 1 }" class="rounded-box"></mat-divider>
-    <!--<div class="warning">
-      <i class="material-icons">error_outline</i>-->
-    <!-- Warning icon -->
-    <!--<span>Get More Space...</span>
-    </div>-->
-  </div>
 
-  <div class="card" [ngClass]="{ 'selected': selectedDiv === 2 }" (click)="selectDiv(2)">
-    <div class="icon-container" [ngClass]="{ 'selected': selectedDiv === 2 }">
-      <div class="icon">
-        <i class="material-icons">assignment_turned_in</i> <!-- Use Material Icons for the sofa icon -->
-      </div>
-    </div>
-    <div class="content">
-      <span class="title">Assigned Auths</span>
-      <span class="number">15</span>
-    </div>
-    <mat-divider [ngClass]="{ 'selected': selectedDiv === 2 }" class="rounded-box"></mat-divider>
+      <!-- Top Navigation -->
+      <div class="top-navigation">
+        <button *ngFor="let tab of navTabs"
+                class="nav-tab"
+                [class.active]="tab.active"
+                (click)="selectTab(tab)">
+          <mat-icon>{{ tab.icon }}</mat-icon>
+          {{ tab.label }}
+        </button>
 
-  </div>
+        <div class="date-filter-container">
+          <button class="date-filter" (click)="toggleDateDropdown()">
+            <mat-icon>event</mat-icon>
+            {{ dateFilter }}
+            <mat-icon>expand_more</mat-icon>
+          </button>
 
-
-  <div class="card" [ngClass]="{ 'selected': selectedDiv === 3 }" (click)="selectDiv(3)">
-    <div class="icon-container" [ngClass]="{ 'selected': selectedDiv === 3 }">
-      <div class="icon">
-        <i class="material-icons">assignment_add</i> <!-- Use Material Icons for the sofa icon -->
-      </div>
-    </div>
-    <div class="content">
-      <span class="title">Requests</span>
-      <span class="number">150</span>
-    </div>
-    <mat-divider [ngClass]="{ 'selected': selectedDiv === 3 }" class="rounded-box"></mat-divider>
-
-  </div>
-
-  <div class="card" [ngClass]="{ 'selected': selectedDiv === 4 }" (click)="selectDiv(4)">
-    <div class="icon-container" [ngClass]="{ 'selected': selectedDiv === 4 }">
-      <div class="icon">
-        <i class="material-icons">event</i> <!-- Use Material Icons for the sofa icon -->
-      </div>
-    </div>
-    <div class="content">
-      <span class="title">My Activities</span>
-      <span class="number">70</span>
-    </div>
-    <mat-divider [ngClass]="{ 'selected': selectedDiv === 4 }" class="rounded-box"></mat-divider>
-
-  </div>
-
-  <div class="card" [ngClass]="{ 'selected': selectedDiv === 5 }" (click)="selectDiv(5)">
-    <div class="icon-container" [ngClass]="{ 'selected': selectedDiv === 5 }">
-      <div class="icon">
-        <i class="material-icons">assignment</i> <!-- Use Material Icons for the sofa icon -->
-      </div>
-    </div>
-    <div class="content">
-      <span class="title">Assigned Complaints</span>
-      <span class="number">0</span>
-    </div>
-    <mat-divider [ngClass]="{ 'selected': selectedDiv === 5 }" class="rounded-box"></mat-divider>
-
-  </div>
-
-  <div class="card" [ngClass]="{ 'selected': selectedDiv === 6 }" (click)="selectDiv(6)">
-    <div class="icon-container" [ngClass]="{ 'selected': selectedDiv === 6 }">
-      <div class="icon">
-        <i class="material-icons">fax</i> <!-- Use Material Icons for the sofa icon -->
-      </div>
-    </div>
-    <div class="content">
-      <span class="title">Faxes</span>
-      <span class="number">10</span>
-    </div>
-    <mat-divider [ngClass]="{ 'selected': selectedDiv === 6 }" class="rounded-box"></mat-divider>
-
-  </div>
-</div>
-
-<div class="navigation-container">
-
-  <div class="vertical-nav">
-    <!--<mat-list role="list">
-      <mat-list-item *ngfor="let tab of tabs; let i = index"
-                     [ngclass]="{ 'active-tab': selectedindex === i }"
-                     (click)="selecttab(i)"
-                     role="listitem">-->
-        <!--<mat-icon>{{ tab.icon }}</mat-icon>
-        <span class="tab-label">{{ tab.label }}</span>-->
-
-        <!--<div class="card">
-          <div class="content">
-            <span class="title">{{ tab.label }}</span>
-            <span class="number">{{ tab.number }}</span>
+          <!-- Date Filter Dropdown -->
+          <div class="date-dropdown" *ngIf="showDateDropdown">
+            <div *ngFor="let option of dateFilterOptions"
+                 class="dropdown-item"
+                 [class.active]="option === dateFilter"
+                 (click)="selectDateFilter(option)">
+              {{ option }}
+            </div>
           </div>
         </div>
 
-      </mat-list-item>
-    </mat-list>-->
+        <button class="icon-btn dashboard-btn">
+          <span class="material-icons">person</span>
+          <span>My Dashboard</span>
+          <span class="material-icons">expand_more</span>
+        </button>
 
-    <div class="tab-content">
-      <app-mycaseload></app-mycaseload>
+        <!--<button class="icon-btn settings-btn">
+          <span class="material-icons">tune</span>
+        </button>-->
+
+        <button class="icon-btn notification-btn">
+          <span class="material-icons">notifications</span>
+          <span class="notification-badge">2</span>
+        </button>
+
+        <span class="view-label">Manager View</span>
+      </div>
     </div>
+
+    <!-- Main Content Area -->
+    <div class="dashboard-content">
+
+      <!-- Main Stat Cards Grid -->
+      <!--<div class="stat-cards-grid">
+        <div *ngFor="let card of statCards; let i = index"
+             class="stat-card"
+             [ngClass]="getCardColorClass(card.type)"
+             [class.selected]="selectedDiv === i + 1"
+             (click)="selectDiv(i + 1)">
+
+          <div class="card-header">
+            <div class="card-info">
+              <div class="card-label">{{ card.label }}</div>
+              <div class="card-value">{{ card.value }}</div>
+            </div>
+            <div class="card-icon-container">
+              <mat-icon>{{ card.icon }}</mat-icon>
+            </div>
+          </div>
+
+          <div class="card-alert" *ngIf="card.alertCount">
+            <mat-icon>warning</mat-icon>
+            <span>{{ card.alertCount }} {{ card.alertText }}</span>
+          </div>-->
+      <!-- Card Breakdowns (for Utilization Management) -->
+      <!--<div class="card-breakdowns" *ngIf="card.breakdowns && card.breakdowns.length > 0">
+        <div *ngFor="let breakdown of card.breakdowns" class="breakdown-item">
+          <span class="breakdown-label">{{ breakdown.label }}</span>
+          <span class="breakdown-value">{{ breakdown.value }}</span>
+        </div>
+      </div>-->
+      <!-- Card Actions (for Care Management) -->
+      <!--<div class="card-actions" *ngIf="card.actions && card.actions.length > 0">
+            <button *ngFor="let action of card.actions"
+                    class="card-btn"
+                    [class.primary]="action.type === 'primary'"
+                    (click)="onCardAction(card, action); $event.stopPropagation()">
+              {{ action.label }}
+            </button>
+          </div>
+
+          <mat-divider class="card-divider"
+                       [class.selected]="selectedDiv === i + 1">
+          </mat-divider>
+        </div>
+      </div>-->
+      <!-- Metrics Grid -->
+      <div class="metrics-grid">
+        <div *ngFor="let metric of metrics" class="metric-item">
+          <div class="metric-icon" [ngClass]="getMetricIconClass(metric.iconColor)">
+            <mat-icon>{{ metric.icon }}</mat-icon>
+          </div>
+          <div class="metric-content">
+            <div class="metric-value">{{ metric.value }}</div>
+            <div class="metric-label">{{ metric.label }}</div>
+          </div>
+          <div class="metric-change" [ngClass]="metric.change.type">
+            {{ metric.change.value }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Section: Actions, Risk, Programs -->
+      <div class="bottom-section">
+
+        <!-- Recommended Actions Panel -->
+        <div class="panel recommended-actions-panel">
+          <div class="panel-header">
+            <div class="panel-icon">
+              <mat-icon>lightbulb</mat-icon>
+            </div>
+            <div class="panel-title-container">
+              <h3>Recommended Actions</h3>
+              <p>AI-powered suggestions based on your workload</p>
+            </div>
+          </div>
+
+          <div class="action-list">
+            <div *ngFor="let action of recommendedActions" class="action-item">
+              <div class="action-number">{{ action.number }}</div>
+              <div class="action-content">
+                <div class="action-title">{{ action.title }}</div>
+                <div class="action-subtitle">{{ action.subtitle }}</div>
+              </div>
+              <button class="action-btn" (click)="onActionClick(action)">
+                Start
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Risk Stratification Panel -->
+        <div class="panel risk-panel">
+          <div class="panel-header">
+            <h3>Risk Stratification</h3>
+          </div>
+
+          <div class="risk-list">
+            <div *ngFor="let risk of riskLevels" class="risk-item">
+              <span class="risk-dot" [style.background-color]="risk.color"></span>
+              <span class="risk-label">{{ risk.label }}</span>
+              <span class="risk-value">{{ risk.count }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Program Enrollment Panel -->
+        <div class="panel program-panel">
+          <div class="panel-header">
+            <h3>Program Enrollment</h3>
+          </div>
+
+          <div class="program-list">
+            <div *ngFor="let program of programs" class="program-item">
+              <div class="program-info">
+                <span class="program-name">{{ program.name }}</span>
+                <span class="program-count">{{ program.current }}/{{ program.total }}</span>
+              </div>
+              <div class="progress-bar-container">
+                <div class="progress-bar">
+                  <div class="progress-fill"
+                       [style.width.%]="program.percentage">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
   </div>
+
 </div>
-
-

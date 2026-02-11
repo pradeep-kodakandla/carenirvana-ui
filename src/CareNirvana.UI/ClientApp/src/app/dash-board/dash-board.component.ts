@@ -8,9 +8,7 @@ import { FaxesComponent } from './faxes/faxes.component';
 import { RolepermissionService, CfgRole } from 'src/app/service/rolepermission.service';
 import { MdreviewdashboardComponent } from './mdreviewdashboard/MdreviewdashboardComponent';
 import { DashboardServiceService } from 'src/app/service/dashboard.service.service';
-import { MembersearchComponent } from 'src/app/member/membersearch/membersearch.component';
-import { CasewizardshellComponent } from 'src/app/member/AG/components/casewizardshell/casewizardshell.component';
-
+import { NewDashBoardComponent } from './new-dash-board/new-dash-board.component';
 interface DashboardWidget {
   key: string;
   defaultLabel: string;
@@ -153,8 +151,8 @@ export class DashBoardComponent {
 
     switch (selection) {
       case 'myCaseLoad':
-        //this.loadComponent(AuthorizationComponent);
-        this.loadComponent(MycaseloadComponent);
+        this.loadComponent(NewDashBoardComponent);
+        //this.loadComponent(MycaseloadComponent);
         break;
       case 'assignedAuthorizations':
         this.loadComponent(AssignedauthsComponent);

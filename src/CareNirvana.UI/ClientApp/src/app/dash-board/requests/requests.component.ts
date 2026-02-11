@@ -1,5 +1,5 @@
 import { Component, OnInit, AfterViewInit, ViewChild } from '@angular/core';
-import { EventEmitter, Output, } from '@angular/core';
+import { EventEmitter, Output } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
@@ -10,7 +10,6 @@ import { HeaderService } from 'src/app/service/header.service';
 import { Router, ActivatedRoute } from '@angular/router';
 import { MemberService } from 'src/app/service/shared-member.service';
 import { MemberactivityService, AcceptWorkGroupActivityRequest, RejectWorkGroupActivityRequest } from 'src/app/service/memberactivity.service';
-import { FormsModule } from '@angular/forms';
 
 interface ActivityItem {
   activityType?: string;
@@ -59,7 +58,19 @@ export interface SimpleWorkGroup {
   workGroupName: string;
 }
 
+interface ActiveFilter {
+  key: string;
+  label: string;
+}
+
 type CalendarViewRange = 'day' | 'workweek' | 'week' | 'month';
+
+/* ─── Module metadata for color-coded pills ─── */
+const MODULE_META: Record<string, { label: string; colorClass: string }> = {
+  UM: { label: 'Utilization Mgmt', colorClass: 'mod-um' },
+  AG: { label: 'Appeals & Grievances', colorClass: 'mod-ag' },
+  CM: { label: 'Care Management', colorClass: 'mod-cm' },
+};
 
 @Component({
   selector: 'app-requests',
@@ -67,6 +78,8 @@ type CalendarViewRange = 'day' | 'workweek' | 'week' | 'month';
   styleUrl: './requests.component.css'
 })
 export class RequestsComponent implements OnInit, AfterViewInit {
+
+  readonly MODULE_META = MODULE_META;
 
   selectedDue = new Set<'OVERDUE' | 'TODAY' | 'FUTURE'>();
   viewMode: 'calendar' | 'table' = 'table';
@@ -95,13 +108,13 @@ export class RequestsComponent implements OnInit, AfterViewInit {
     'module',
     'member',
     'authnumber',
-    'createdOn',
-    'referredTo',
+    'subType',
     'activityType',
-    'followUpDate',
+    'workBasket',
+    'referredTo',
     'dueDate',
     'status',
-    'thumb'
+    'actions'
   ];
 
   dataSource = new MatTableDataSource<any>([]);
@@ -119,9 +132,9 @@ export class RequestsComponent implements OnInit, AfterViewInit {
   dueFutureCount = 0;
 
   // Faceted filters (Module -> Type -> Work basket)
-  selectedModule: string | null = null;       // null = all
-  selectedSubType: string | null = null;      // module-specific: Activity/Member/Auth/Case
-  selectedWorkBasket: string | null = null;   // workBasketName
+  selectedModule: string | null = null;
+  selectedSubType: string | null = null;
+  selectedWorkBasket: string | null = null;
 
   moduleFacets: FacetOption[] = [];
   moduleTotalCount = 0;
@@ -155,7 +168,6 @@ export class RequestsComponent implements OnInit, AfterViewInit {
     this.activityService.getuserworkgroups(Number(sessionStorage.getItem('loggedInUserid'))).subscribe({
       next: (res) => {
         this.initializeWorkGroups(res);
-        console.log('User work groups:', res);
       },
       error: (err) => {
         console.error('Error fetching user work groups:', err);
@@ -187,7 +199,6 @@ export class RequestsComponent implements OnInit, AfterViewInit {
     this.dataSource.paginator = this.paginator;
     this.dataSource.sort = this.sort;
 
-    // kept for compatibility (we do NOT use dataSource.filter anymore; we filter ourselves)
     this.dataSource.filterPredicate = (row: any, filter: string) => {
       const q = (filter || '').trim().toLowerCase();
       if (!q) return true;
@@ -220,7 +231,6 @@ export class RequestsComponent implements OnInit, AfterViewInit {
   private loadData(): void {
     this.getMyActivities$().subscribe({
       next: rows => {
-        console.log('My Activities rows', rows);
         const filtered = (rows || []).filter((row: any) => {
           const rejected = row.rejectedUserIds || [];
           return !rejected.some((id: any) => Number(id) === Number(sessionStorage.getItem('loggedInUserid')));
@@ -236,12 +246,18 @@ export class RequestsComponent implements OnInit, AfterViewInit {
     });
   }
 
-  // UI events
+  // ===== UI events =====
+
   toggleFilters(): void { this.showFilters = !this.showFilters; }
 
   onQuickSearch(ev: Event): void {
     const v = (ev.target as HTMLInputElement).value ?? '';
     this.quickSearchTerm = v.trim().toLowerCase();
+    this.recomputeAll();
+  }
+
+  clearSearch(): void {
+    this.quickSearchTerm = '';
     this.recomputeAll();
   }
 
@@ -258,19 +274,89 @@ export class RequestsComponent implements OnInit, AfterViewInit {
     this.recomputeAll();
   }
 
+  // ===== Active filter chips for the new design =====
+
+  getActiveFilters(): ActiveFilter[] {
+    const chips: ActiveFilter[] = [];
+    if (this.selectedModule) {
+      chips.push({
+        key: 'module',
+        label: MODULE_META[this.selectedModule]?.label || this.selectedModule
+      });
+    }
+    if (this.selectedSubType) {
+      chips.push({ key: 'subType', label: 'Type: ' + this.selectedSubType });
+    }
+    if (this.selectedWorkBasket) {
+      chips.push({ key: 'basket', label: 'Basket: ' + this.selectedWorkBasket });
+    }
+    if (this.selectedWorkGroupId !== null) {
+      chips.push({ key: 'workGroup', label: 'Group: ' + this.selectedWorkGroupName });
+    }
+    this.selectedDue.forEach(d => {
+      const labels: Record<string, string> = { OVERDUE: 'Overdue', TODAY: 'Due Today', FUTURE: 'Upcoming' };
+      chips.push({ key: 'due-' + d, label: labels[d] || d });
+    });
+    return chips;
+  }
+
+  hasActiveFilters(): boolean {
+    return this.getActiveFilters().length > 0 || !!this.quickSearchTerm;
+  }
+
+  clearSingleFilter(key: string): void {
+    if (key === 'module') {
+      this.selectedModule = null;
+      this.selectedSubType = null;
+      this.selectedWorkBasket = null;
+    } else if (key === 'subType') {
+      this.selectedSubType = null;
+    } else if (key === 'basket') {
+      this.selectedWorkBasket = null;
+    } else if (key === 'workGroup') {
+      this.selectedWorkGroupId = null;
+      this.selectedWorkGroupName = 'All work groups';
+      this.updateVisibleUsers();
+    } else if (key.startsWith('due-')) {
+      const d = key.replace('due-', '') as 'OVERDUE' | 'TODAY' | 'FUTURE';
+      this.selectedDue.delete(d);
+    }
+    this.recomputeAll();
+  }
+
+  clearAllFilters(): void {
+    this.selectedModule = null;
+    this.selectedSubType = null;
+    this.selectedWorkBasket = null;
+    this.selectedWorkGroupId = null;
+    this.selectedWorkGroupName = 'All work groups';
+    this.selectedDue.clear();
+    this.quickSearchTerm = '';
+    this.updateVisibleUsers();
+    this.recomputeAll();
+  }
+
+  /** Expose sub-type to the template for table column */
+  getRowSubType(row: any): string {
+    return this.getModuleSubType(row) || '—';
+  }
+
+  /** Module color class for badge rendering */
+  getModuleColorClass(moduleKey: string): string {
+    return MODULE_META[moduleKey?.toUpperCase()]?.colorClass || 'mod-default';
+  }
+
   // ===== Pipeline =====
 
   setModule(module: string | null): void {
     const next = module ? module.toUpperCase() : null;
 
-    // toggling the same module chip turns it off
     if (this.selectedModule === next) {
       this.selectedModule = null;
       this.selectedSubType = null;
       this.selectedWorkBasket = null;
     } else {
       this.selectedModule = next;
-      // reset dependent filters when module changes
       this.selectedSubType = null;
       this.selectedWorkBasket = null;
     }
@@ -309,10 +395,8 @@ export class RequestsComponent implements OnInit, AfterViewInit {
   }
 
   private recomputeAll(): void {
-    // (1) rebuild facet counts/options first (may clear invalid selections)
     this.rebuildFacetsAndCounts();
 
-    // (2) due counts should reflect everything except the due chips themselves
     const baseForDueCounts = this.applyFilters(this.rawData, {
       due: false,
       module: true,
@@ -322,7 +406,6 @@ export class RequestsComponent implements OnInit, AfterViewInit {
     });
     this.computeDueCounts(baseForDueCounts);
 
-    // (3) final filtered list for table / calendar
     const finalRows = this.applyFilters(this.rawData, {
       due: true,
       module: true,
@@ -333,19 +416,15 @@ export class RequestsComponent implements OnInit, AfterViewInit {
 
     this.activities = finalRows;
     this.dataSource.data = finalRows;
-
-    // Disable MatTableDataSource.filter because we already filtered
     this.dataSource.filter = '';
 
     if (this.paginator) this.paginator.firstPage();
 
-    // keep calendar grids in sync (if you enable calendar view later)
     this.buildMonthGrid();
     this.buildActiveRangeDays();
   }
 
   private rebuildFacetsAndCounts(): void {
-    // Module facets: based on current due + search, but NOT module/type/basket selections
     const moduleBase = this.applyFilters(this.rawData, {
       due: true,
       module: false,
@@ -365,20 +444,18 @@ export class RequestsComponent implements OnInit, AfterViewInit {
     }
     this.moduleFacets = this.toFacetOptions(moduleMap);
 
-    // If selected module no longer exists, clear it (and dependent filters)
     if (this.selectedModule && !moduleMap.has(this.selectedModule)) {
       this.selectedModule = null;
       this.selectedSubType = null;
       this.selectedWorkBasket = null;
     }
 
-    // Type facets (only when a module is selected)
     if (this.selectedModule) {
       const typeBase = this.applyFilters(this.rawData, {
         due: true,
         module: true,
         type: false,
-        basket: true,   // keep basket selection affecting type counts
+        basket: true,
         search: true
       });
 
@@ -401,7 +478,6 @@ export class RequestsComponent implements OnInit, AfterViewInit {
       this.selectedSubType = null;
     }
 
-    // Work basket facets (only when a module is selected)
     if (this.selectedModule) {
       const basketBase = this.applyFilters(this.rawData, {
         due: true,
@@ -449,22 +525,18 @@ export class RequestsComponent implements OnInit, AfterViewInit {
 
     let out = Array.isArray(rows) ? [...rows] : [];
 
-    // Module
     if (use.module && this.selectedModule) {
       out = out.filter(r => this.getModuleKey(r).toUpperCase() === this.selectedModule);
     }
 
-    // Module Type (Activity/Member/Auth/Case)
     if (use.type && this.selectedSubType) {
       out = out.filter(r => this.getModuleSubType(r) === this.selectedSubType);
     }
 
-    // Work basket
     if (use.basket && this.selectedWorkBasket) {
       out = out.filter(r => this.getWorkBasketName(r) === this.selectedWorkBasket);
     }
 
-    // Due chips
     if (use.due && this.selectedDue && this.selectedDue.size > 0) {
       const today = new Date();
       out = out.filter(r => {
@@ -482,7 +554,6 @@ export class RequestsComponent implements OnInit, AfterViewInit {
       });
     }
 
-    // Quick search
     if (use.search && this.quickSearchTerm) {
       out = out.filter(r => this.matchesQuickSearch(r, this.quickSearchTerm));
     }
@@ -545,12 +616,6 @@ export class RequestsComponent implements OnInit, AfterViewInit {
     return ((this.pick(row, ['workBasketName', 'WorkBasketName']) ?? '') as any).toString().trim();
   }
 
-  /**
-   * Module-specific "type" rules requested:
-   * - CM: followUpDateTime present => Activity else Member
-   * - UM: Auth if authNumber present else Activity
-   * - AG: Case if authNumber present else Activity
-   */
   private getModuleSubType(row: any): string | null {
     const module = this.getModuleKey(row).toUpperCase();
     const followUp = this.pick(row, ['followUpDateTime', 'FollowUpDateTime']);
@@ -569,7 +634,6 @@ export class RequestsComponent implements OnInit, AfterViewInit {
       return authNumber ? 'Case' : 'Activity';
     }
 
-    // fallback for any unknown module
     if (followUp) return 'Activity';
     if (activityType) return 'Activity';
     return null;
@@ -665,7 +729,6 @@ export class RequestsComponent implements OnInit, AfterViewInit {
       this.headerService.selectTab(tabRoute);
       const mdId = existingTab.memberDetailsId ?? null;
       if (mdId) sessionStorage.setItem('selectedMemberDetailsId', mdId);
-
     } else {
       this.headerService.addTab(tabLabel, tabRoute, String(memberId));
       sessionStorage.setItem('selectedMemberDetailsId', memberDetailsId);
@@ -696,7 +759,149 @@ export class RequestsComponent implements OnInit, AfterViewInit {
     this.viewMode = mode;
   }
 
-  /************Calendar Control**********/
+  onAccept(ev: any): void {
+    const confirmed = confirm('Are you sure want to accept the activity?');
+    if (!confirmed) return;
+
+    const payload: AcceptWorkGroupActivityRequest = {
+      memberActivityWorkGroupId: ev.memberActivityWorkGroupId,
+      userId: Number(sessionStorage.getItem('loggedInUserid')),
+      comment: 'Accepted from calendar'
+    };
+
+    this.memberActivityService.acceptWorkGroupActivity(payload).subscribe({
+      next: () => {
+        this.loadData();
+      },
+      error: err => {
+        console.error('Error accepting work-group activity', err);
+      }
+    });
+  }
+
+  onReject(ev: any): void {
+    const confirmed = confirm('Are you sure want to reject the activity?');
+    if (!confirmed) return;
+
+    const payload: RejectWorkGroupActivityRequest = {
+      memberActivityWorkGroupId: ev.memberActivityWorkGroupId,
+      userId: Number(sessionStorage.getItem('loggedInUserid')),
+      comment: 'Rejected from calendar'
+    };
+
+    this.memberActivityService.rejectWorkGroupActivity(payload).subscribe({
+      next: () => {
+        this.loadData();
+      },
+      error: err => {
+        console.error('Error rejecting work-group activity', err);
+      }
+    });
+  }
+
+  onView(ev: any): void {
+  }
+
+  /************ Work Group ************/
+  workGroupAssignments: WorkGroupAssignment[] = [];
+  workGroups: SimpleWorkGroup[] = [];
+  selectedWorkGroupId: number | null = null;
+  selectedWorkGroupName = 'All work groups';
+
+  visibleUsers: SimpleUser[] = [];
+  maxUserSelection = 1;
+  selectedUserIds: number[] = [];
+  userSearchTerm = '';
+  filteredVisibleUsers: SimpleUser[] = [];
+
+  private buildUsersForAssignments(assignments: WorkGroupAssignment[]): SimpleUser[] {
+    const userMap = new Map<number, string>();
+
+    for (const row of assignments) {
+      const ids = row.assignedUserIds || [];
+      const names = row.assignedUserNames || [];
+
+      ids.forEach((id, index) => {
+        const name = names[index] ?? '';
+        if (!userMap.has(id)) {
+          userMap.set(id, name);
+        }
+      });
+    }
+
+    return Array.from(userMap.entries()).map(([userId, userFullName]) => ({
+      userId,
+      userFullName
+    }));
+  }
+
+  private updateVisibleUsers(): void {
+    if (!this.workGroupAssignments || this.workGroupAssignments.length === 0) {
+      this.visibleUsers = [];
+      return;
+    }
+
+    const relevant = this.selectedWorkGroupId == null
+      ? this.workGroupAssignments
+      : this.workGroupAssignments.filter(a => a.workGroupId === this.selectedWorkGroupId);
+
+    this.visibleUsers = this.buildUsersForAssignments(relevant);
+    this.applyUserFilter();
+  }
+
+  onWorkGroupChipClick(workGroupId: number | null): void {
+    this.selectedWorkGroupId = workGroupId;
+
+    if (workGroupId == null) {
+      this.selectedWorkGroupName = 'All work groups';
+    } else {
+      const found = this.workGroups.find(w => w.workGroupId === workGroupId);
+      this.selectedWorkGroupName = found?.workGroupName || 'Selected group';
+    }
+
+    this.updateVisibleUsers();
+    this.selectedUserIds = [];
+    this.userSearchTerm = '';
+  }
+
+  isUserSelected(userId: number): boolean {
+    return this.selectedUserIds.includes(userId);
+  }
+
+  onUserCheckboxChange(user: SimpleUser, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const checked = input.checked;
+
+    if (checked) {
+      if (this.selectedUserIds.length >= this.maxUserSelection) {
+        input.checked = false;
+        alert(`You can select maximum ${this.maxUserSelection} users.`);
+        return;
+      }
+
+      if (!this.selectedUserIds.includes(user.userId)) {
+        this.selectedUserIds.push(user.userId);
+      }
+    } else {
+      this.selectedUserIds = this.selectedUserIds.filter(id => id !== user.userId);
+    }
+  }
+
+  applyUserFilter(): void {
+    const term = (this.userSearchTerm || '').toLowerCase().trim();
+
+    if (!term) {
+      this.filteredVisibleUsers = [...this.visibleUsers];
+      return;
+    }
+
+    this.filteredVisibleUsers = this.visibleUsers.filter(u =>
+      (u.userFullName || '').toLowerCase().includes(term) ||
+      String(u.userId).includes(term)
+    );
+  }
+
+  /************ Calendar Control **********/
   private buildMonthGrid(): void {
     const base = this.stripTime(this.currentMonth);
     const firstOfMonth = new Date(base.getFullYear(), base.getMonth(), 1);
@@ -893,7 +1098,7 @@ export class RequestsComponent implements OnInit, AfterViewInit {
     } else {
       const left = s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       const right = e.toLocaleDateString('en-US', {
-        month: s.getMonth() === e.getMonth() ? 'short' : 'short',
+        month: 'short',
         day: 'numeric',
         year: s.getFullYear() === e.getFullYear() ? undefined : 'numeric'
       });
@@ -918,149 +1123,5 @@ export class RequestsComponent implements OnInit, AfterViewInit {
 
   toggleCalendar(cal: { id: number; name: string; color: string; selected: boolean }): void {
     cal.selected = !cal.selected;
-  }
-
-  onAccept(ev: any): void {
-    const confirmed = confirm('Are you sure want to accept the activity?');
-    if (!confirmed) return;
-
-    const payload: AcceptWorkGroupActivityRequest = {
-      memberActivityWorkGroupId: ev.memberActivityWorkGroupId,
-      userId: Number(sessionStorage.getItem('loggedInUserid')),
-      comment: 'Accepted from calendar'
-    };
-
-    this.memberActivityService.acceptWorkGroupActivity(payload).subscribe({
-      next: () => {
-        console.log('Work-group activity accepted:', payload);
-        this.loadData();
-      },
-      error: err => {
-        console.error('Error accepting work-group activity', err);
-      }
-    });
-  }
-
-  onReject(ev: any): void {
-    const confirmed = confirm('Are you sure want to reject the activity?');
-    if (!confirmed) return;
-
-    const payload: RejectWorkGroupActivityRequest = {
-      memberActivityWorkGroupId: ev.memberActivityWorkGroupId,
-      userId: Number(sessionStorage.getItem('loggedInUserid')),
-      comment: 'Rejected from calendar'
-    };
-
-    this.memberActivityService.rejectWorkGroupActivity(payload).subscribe({
-      next: () => {
-        console.log('Work-group activity rejected:', payload);
-        this.loadData();
-      },
-      error: err => {
-        console.error('Error rejecting work-group activity', err);
-      }
-    });
-  }
-
-  onView(ev: any): void {
-  }
-
-  /**********Work Group************/
-  workGroupAssignments: WorkGroupAssignment[] = [];
-  workGroups: SimpleWorkGroup[] = [];
-  selectedWorkGroupId: number | null = null;
-  selectedWorkGroupName = 'All work groups';
-
-  visibleUsers: SimpleUser[] = [];
-  maxUserSelection = 1;
-  selectedUserIds: number[] = [];
-  userSearchTerm = '';
-  filteredVisibleUsers: SimpleUser[] = []
-
-  private buildUsersForAssignments(assignments: WorkGroupAssignment[]): SimpleUser[] {
-    const userMap = new Map<number, string>();
-
-    for (const row of assignments) {
-      const ids = row.assignedUserIds || [];
-      const names = row.assignedUserNames || [];
-
-      ids.forEach((id, index) => {
-        const name = names[index] ?? '';
-        if (!userMap.has(id)) {
-          userMap.set(id, name);
-        }
-      });
-    }
-
-    return Array.from(userMap.entries()).map(([userId, userFullName]) => ({
-      userId,
-      userFullName
-    }));
-  }
-
-  private updateVisibleUsers(): void {
-    if (!this.workGroupAssignments || this.workGroupAssignments.length === 0) {
-      this.visibleUsers = [];
-      return;
-    }
-
-    const relevant = this.selectedWorkGroupId == null
-      ? this.workGroupAssignments
-      : this.workGroupAssignments.filter(a => a.workGroupId === this.selectedWorkGroupId);
-
-    this.visibleUsers = this.buildUsersForAssignments(relevant);
-    this.applyUserFilter();
-  }
-
-  onWorkGroupChipClick(workGroupId: number | null): void {
-    this.selectedWorkGroupId = workGroupId;
-
-    if (workGroupId == null) {
-      this.selectedWorkGroupName = 'All work groups';
-    } else {
-      const found = this.workGroups.find(w => w.workGroupId === workGroupId);
-      this.selectedWorkGroupName = found?.workGroupName || 'Selected group';
-    }
-
-    this.updateVisibleUsers();
-    this.selectedUserIds = [];
-    this.userSearchTerm = '';
-  }
-
-  isUserSelected(userId: number): boolean {
-    return this.selectedUserIds.includes(userId);
-  }
-
-  onUserCheckboxChange(user: SimpleUser, event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const checked = input.checked;
-
-    if (checked) {
-      if (this.selectedUserIds.length >= this.maxUserSelection) {
-        input.checked = false;
-        alert(`You can select maximum ${this.maxUserSelection} users.`);
-        return;
-      }
-
-      if (!this.selectedUserIds.includes(user.userId)) {
-        this.selectedUserIds.push(user.userId);
-      }
-    } else {
-      this.selectedUserIds = this.selectedUserIds.filter(id => id !== user.userId);
-    }
-  }
-
-  applyUserFilter(): void {
-    const term = (this.userSearchTerm || '').toLowerCase().trim();
-
-    if (!term) {
-      this.filteredVisibleUsers = [...this.visibleUsers];
-      return;
-    }
-
-    this.filteredVisibleUsers = this.visibleUsers.filter(u =>
-      (u.userFullName || '').toLowerCase().includes(term) ||
-      String(u.userId).includes(term)
-    );
   }
 }
