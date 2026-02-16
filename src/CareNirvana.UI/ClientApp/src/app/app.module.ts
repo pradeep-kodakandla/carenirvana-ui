@@ -150,6 +150,16 @@ import { AgresolutionsubcategoryComponent } from './admin/AG/agresolutionsubcate
 
 import { UiDropdownComponent } from './shared/ui/uidropdown/uidropdown.component';
 
+import { UiTextboxComponent } from './shared/ui/textbox/uitextbox.component';
+import { UiTextareaComponent } from './shared/ui/textarea/uitextarea.component';
+import { UiDatepickerComponent } from './shared/ui/datepicker/uidatepicker.component';
+import { UiDatetimeComponent } from './shared/ui/datetime/uidatetime.component';
+import { UiCheckboxComponent } from './shared/ui/checkbox/uicheckbox.component';
+import { UiRadioGroupComponent } from './shared/ui/radio/uiradio.component';
+import { UiButtonComponent } from './shared/ui/button/uibutton.component';
+import { UiDropdownCheckboxComponent } from './shared/ui/dropdown-checkbox/uidropdowncheckbox.component';
+import { UiListboxComponent } from './shared/ui/listbox/uilistbox.component';
+import { UiMultiColumnDropdownComponent } from './shared/ui/multi-column-dropdown/uimulticolumndropdown.component';
 
 const routes: Routes = [
 
@@ -202,6 +212,16 @@ const routes: Routes = [
     AgresolutionsubcategoryComponent, MembercasedetailsComponent, MemberauthdetailsComponent,
 
     UiDropdownComponent,
+    UiTextboxComponent,
+    UiTextareaComponent,
+    UiDatepickerComponent,
+    UiDatetimeComponent,
+    UiCheckboxComponent,
+    UiRadioGroupComponent,
+    UiButtonComponent,
+    UiDropdownCheckboxComponent,
+    UiListboxComponent,
+    UiMultiColumnDropdownComponent,
   ],
   imports: [
     BrowserModule.withServerTransition({ appId: 'ng-cli-universal' }),
@@ -358,6 +378,16 @@ const routes: Routes = [
       { path: 'admin-bre', component: BretestComponent },
 
       { path: 'ui-dropdown', component: UiDropdownComponent },
+      { path: 'ui-textbox', component: UiTextboxComponent },
+      { path: 'ui-textarea', component: UiTextareaComponent },
+      { path: 'ui-datepicker', component: UiDatepickerComponent },
+      { path: 'ui-datetime', component: UiDatetimeComponent },
+      { path: 'ui-checkbox', component: UiCheckboxComponent },
+      { path: 'ui-radiogroup', component: UiRadioGroupComponent },
+      { path: 'ui-button', component: UiButtonComponent },
+      { path: 'ui-dropdowncheckbox', component: UiDropdownCheckboxComponent },
+      { path: 'ui-listbox', component: UiListboxComponent },
+      { path: 'ui-multicolumndropdown', component: UiMultiColumnDropdownComponent },
 
       //{
       //  path: 'rulesengine',

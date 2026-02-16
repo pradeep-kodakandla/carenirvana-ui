@@ -51,7 +51,6 @@
     <Folder Include="ClientApp\src\app\member\member-caregiver\" />
     <Folder Include="ClientApp\src\app\member\UM\guards\" />
     <Folder Include="ClientApp\src\app\member\UM\services\" />
-    <Folder Include="ClientApp\src\app\member\UM\steps\" />
     <Folder Include="ClientApp\src\app\member\UM\components\" />
     <Folder Include="ClientApp\src\app\Provider\" />
     <Folder Include="ClientApp\src\app\login\" />
