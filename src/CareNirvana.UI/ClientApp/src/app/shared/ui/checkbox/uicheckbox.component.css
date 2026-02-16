@@ -1,0 +1,5 @@
+/* ── ui-checkbox.component.css ── */
+/* All styles come from shared ui-theme.css (.ui-check classes) */
+/* Component-specific overrides only: */
+.ui-check__label { line-height: 1.4; }
+:host(.ff-ui) .ui-check { padding: 0; }

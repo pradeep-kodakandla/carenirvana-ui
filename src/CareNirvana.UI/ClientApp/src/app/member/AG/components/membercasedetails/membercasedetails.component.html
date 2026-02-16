@@ -1,204 +1,329 @@
+<!-- ─── Context Menu (shared by card + table) ─── -->
 <mat-menu #menu="matMenu">
   <button mat-menu-item *ngIf="hasPermission('Add Case Activity', 'add')">
+    <mat-icon>add_task</mat-icon>
     <span>Add Case Activity</span>
   </button>
   <button mat-menu-item *ngIf="hasPermission('Run Case Assessment', 'add')">
+    <mat-icon>assessment</mat-icon>
     <span>Run Case Assessment</span>
   </button>
   <button mat-menu-item *ngIf="hasPermission('Transfer Case', 'add')">
+    <mat-icon>swap_horiz</mat-icon>
     <span>Transfer Case</span>
   </button>
   <button mat-menu-item *ngIf="hasPermission('Send Case Message', 'add')">
+    <mat-icon>mail</mat-icon>
     <span>Send Case Message</span>
   </button>
   <button mat-menu-item *ngIf="hasPermission('Add Case Notes', 'add')">
+    <mat-icon>note_add</mat-icon>
     <span>Add Case Notes</span>
   </button>
   <button mat-menu-item *ngIf="hasPermission('Case Summary', 'view')">
+    <mat-icon>summarize</mat-icon>
     <span>Case Summary</span>
   </button>
   <button mat-menu-item *ngIf="hasPermission('Case History', 'view')">
+    <mat-icon>history</mat-icon>
     <span>Case History</span>
   </button>
 </mat-menu>
 
-<!-- 🔍 Search + Add + View Toggles -->
-<div class="d-flex justify-content-between align-items-center w-100 pb-2"
-     style="padding-right:12px;padding-left:5px; padding-top:5px;">
 
-  <!-- Search Box -->
-  <div class="search-section">
-    <input type="text" placeholder="🔍 Search..." (input)="applyFilter($event)" class="search-input" #input />
+<!-- ═══════════════════════════════════════════
+     TOOLBAR: Search + Stats + Actions
+     ═══════════════════════════════════════════ -->
+<div class="mcd-toolbar">
+
+  <!-- Search -->
+  <div class="mcd-search">
+    <mat-icon class="mcd-search-icon">search</mat-icon>
+    <input type="text"
+           class="mcd-search-input"
+           placeholder="Search cases..."
+           (input)="applyFilter($event)"
+           #input />
+    <button class="mcd-search-clear"
+            *ngIf="input.value"
+            (click)="input.value = ''; applyFilter($event)">
+      <mat-icon>close</mat-icon>
+    </button>
   </div>
 
-  <!-- Add & Toggles -->
-  <div class="d-flex align-items-center ms-3">
-    <button matTooltip="Click to add a new case"
-            class="btn btn-primary ms-2"
-            (click)="onAddCaseClick()" [disabled]="!hasPagePermission('add')">
-      Add Case
-    </button>
+  <!-- Quick stats -->
+  <div class="mcd-stats">
+    <div class="mcd-stat">
+      <span class="mcd-stat-dot mcd-stat-dot--total"></span>
+      <span class="mcd-stat-label">Total</span>
+      <span class="mcd-stat-value">{{ dataSource.data.length }}</span>
+    </div>
+    <div class="mcd-stat" *ngIf="getStatusCount('In Progress') > 0">
+      <span class="mcd-stat-dot mcd-stat-dot--inprogress"></span>
+      <span class="mcd-stat-label">In Progress</span>
+      <span class="mcd-stat-value">{{ getStatusCount('In Progress') }}</span>
+    </div>
+    <div class="mcd-stat" *ngIf="getStatusCount('On Hold') > 0">
+      <span class="mcd-stat-dot mcd-stat-dot--onhold"></span>
+      <span class="mcd-stat-label">On Hold</span>
+      <span class="mcd-stat-value">{{ getStatusCount('On Hold') }}</span>
+    </div>
+    <div class="mcd-stat" *ngIf="getStatusCount('Pending') > 0">
+      <span class="mcd-stat-dot mcd-stat-dot--pending"></span>
+      <span class="mcd-stat-label">Pending</span>
+      <span class="mcd-stat-value">{{ getStatusCount('Pending') }}</span>
+    </div>
+  </div>
 
-    <!-- Toggle View Mode -->
-    <button mat-icon-button (click)="toggleViewMode()" matTooltip="Toggle View">
+  <!-- Actions -->
+  <div class="mcd-actions">
+    <button class="mcd-icon-btn"
+            (click)="toggleViewMode()"
+            [matTooltip]="viewMode === 'card' ? 'Switch to table view' : 'Switch to card view'">
       <mat-icon>{{ viewMode === 'card' ? 'table_chart' : 'view_module' }}</mat-icon>
     </button>
 
-    <!-- Toggle Compact Mode -->
-    <button mat-icon-button (click)="toggleCompactMode()" matTooltip="Toggle Compact Mode">
+    <button class="mcd-icon-btn"
+            *ngIf="viewMode === 'card'"
+            (click)="toggleCompactMode()"
+            [class.mcd-icon-btn--active]="compactMode"
+            matTooltip="Toggle compact mode">
       <mat-icon>{{ compactMode ? 'zoom_out' : 'zoom_in' }}</mat-icon>
+    </button>
+
+    <button class="mcd-btn-add"
+            (click)="onAddCaseClick()"
+            [disabled]="!hasPagePermission('add')">
+      <mat-icon>add</mat-icon>
+      Add Case
     </button>
   </div>
 </div>
 
-<!-- 🔁 CARD VIEW -->
-<div *ngIf="viewMode === 'card'" class="d-flex flex-column" style="margin: 0 10px;">
-  <div class="row g-3">
-    <div class="col-lg-4 col-md-6" *ngFor="let row of pagedCardData">
-      <mat-card [ngClass]="{ 'case-card': true, 'compact': compactMode }">
 
-        <!-- Header: Case Number | Chips | Menu -->
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <a class="case-link" (click)="onCaseClick(row.caseNumber)">
-            {{ row.caseNumber }}
-          </a>
+<!-- ═══════════════════════════════════════════
+     CARD VIEW
+     ═══════════════════════════════════════════ -->
+<div *ngIf="viewMode === 'card'" class="mcd-card-grid">
+  <div *ngFor="let row of pagedCardData; trackBy: trackByCaseNumber"
+       class="mcd-case-card"
+       [class.mcd-case-card--compact]="compactMode">
 
-          <div class="d-flex align-items-center">
-            <span class="case-chip me-2 type">
-              {{ row.caseTypeText || row.caseType || '—' }}
-            </span>
-            <span class="case-chip me-2 status">
-              {{ row.caseStatusText || '—' }}
-            </span>
-            <button mat-icon-button [matMenuTriggerFor]="menu">
-              <mat-icon>more_vert</mat-icon>
-            </button>
+    <!-- Card header: Case # + Status + Menu -->
+    <div class="mcd-card-header">
+      <div class="mcd-card-identity">
+        <a class="mcd-case-link" (click)="onCaseClick(row.caseNumber)">
+          {{ row.caseNumber }}
+        </a>
+        <span class="mcd-status-badge"
+              [ngClass]="'mcd-status--' + getStatusSlug(row)">
+          <span class="mcd-status-dot"></span>
+          {{ row.caseStatusText || '—' }}
+        </span>
+      </div>
+
+      <button mat-icon-button class="mcd-card-menu" [matMenuTriggerFor]="menu">
+        <mat-icon>more_vert</mat-icon>
+      </button>
+    </div>
+
+    <!-- Badges row: Type + Priority -->
+    <div class="mcd-card-badges">
+      <span class="mcd-type-badge"
+            [ngClass]="'mcd-type--' + getTypeSlug(row)">
+        {{ row.caseTypeText || row.caseType || '—' }}
+      </span>
+      <span class="mcd-priority-badge"
+            [ngClass]="'mcd-priority--' + getPrioritySlug(row)">
+        {{ row.casePriorityText || row.casePriority || '—' }}
+      </span>
+    </div>
+
+    <!-- Level Stepper -->
+    <div class="mcd-level-row">
+      <span class="mcd-level-label">Level</span>
+      <div class="mcd-level-stepper">
+        <ng-container *ngFor="let step of getLevelSteps(row); let last = last">
+          <div class="mcd-level-step"
+               [ngClass]="{
+                 'mcd-level--completed': step.status === 'completed',
+                 'mcd-level--current':   step.status === 'current',
+                 'mcd-level--future':    step.status === 'future'
+               }">
+            <mat-icon *ngIf="step.status === 'completed'" class="mcd-level-check">check</mat-icon>
+            <span *ngIf="step.status !== 'completed'">{{ step.number }}</span>
           </div>
-        </div>
-
-        <!-- Body -->
-        <div class="d-flex flex-column gap-1">
-          <!--<div class="text-sm">
-            <mat-icon class="me-1" fontIcon="person" inline></mat-icon>
-            <strong>Member:</strong>&nbsp; {{ row.memberName || '—' }}
-            <span class="muted">({{ row.memberId || '—' }})</span>
-          </div>-->
-
-          <div class="text-sm">
-            <mat-icon class="me-1" fontIcon="flag" inline></mat-icon>
-            <strong>Priority: </strong>&nbsp; {{ row.casePriorityText || row.casePriority || '—' }}
+          <div class="mcd-level-connector"
+               *ngIf="!last"
+               [ngClass]="{ 'mcd-connector--done': step.status === 'completed' }">
           </div>
+        </ng-container>
+      </div>
+      <span class="mcd-level-count">{{ row.caseLevelId || 1 }} of {{ getTotalLevels(row) }}</span>
+    </div>
 
-          <div class="text-sm">
-            <mat-icon class="me-1" fontIcon="layers" inline></mat-icon>
-            <strong>Level: </strong>&nbsp; {{ row.caseLevelId || row.levelId || '—' }}
-          </div>
+    <!-- Detail rows (hidden in compact) — COLORED ICONS -->
+    <div class="mcd-card-details" *ngIf="!compactMode">
 
-          <div class="text-sm">
-            <mat-icon class="me-1" fontIcon="schedule" inline></mat-icon>
-            <strong>Received: </strong>&nbsp;
-            {{ row.receivedDateTime ? (row.receivedDateTime | date:'MM/dd/yyyy HH:mm') : '—' }}
-          </div>
+      <div class="mcd-detail-row">
+        <mat-icon class="mcd-detail-icon mcd-detail-icon--received">schedule</mat-icon>
+        <span class="mcd-detail-label">Received</span>
+        <span class="mcd-detail-value">
+          {{ row.receivedDateTime ? (row.receivedDateTime | date:'MM/dd/yyyy HH:mm') : '—' }}
+        </span>
+      </div>
 
-          <div class="text-sm">
-            <mat-icon class="me-1" fontIcon="event" inline></mat-icon>
-            <strong>Last Update: </strong>&nbsp;
-            {{ row.lastDetailOn ? (row.lastDetailOn | date:'MM/dd/yyyy HH:mm') : '—' }}
-          </div>
+      <div class="mcd-detail-row">
+        <mat-icon class="mcd-detail-icon mcd-detail-icon--updated">update</mat-icon>
+        <span class="mcd-detail-label">Updated</span>
+        <span class="mcd-detail-value">
+          {{ row.lastDetailOn ? (row.lastDetailOn | date:'MM/dd/yyyy HH:mm') : '—' }}
+        </span>
+      </div>
 
-          <div class="text-sm">
-            <mat-icon class="me-1" fontIcon="account_circle" inline></mat-icon>
-            <strong>Created: </strong>&nbsp;
-            {{ row.createdByUserName || '—' }}
-            <span class="muted">• {{ row.createdOn | date:'MM/dd/yyyy HH:mm' }}</span>
-          </div>
-        </div>
+      <div class="mcd-detail-row">
+        <mat-icon class="mcd-detail-icon mcd-detail-icon--created">person</mat-icon>
+        <span class="mcd-detail-label">Created</span>
+        <span class="mcd-detail-value">
+          {{ row.createdByUserName || '—' }}
+          <span class="mcd-detail-muted">· {{ row.createdOn | date:'MM/dd/yyyy HH:mm' }}</span>
+        </span>
+      </div>
 
-      </mat-card>
     </div>
   </div>
 </div>
 
-<!-- 🔁 TABLE VIEW -->
-<div *ngIf="viewMode === 'table'" class="d-flex flex-column"
-     style="margin-left:10px; margin-right:10px; width: 100%;">
-  <table class="responsive-table" mat-table [dataSource]="dataSource" multiTemplateDataRows matSort>
 
-    <!-- Action Column -->
+<!-- ═══════════════════════════════════════════
+     TABLE VIEW
+     ═══════════════════════════════════════════ -->
+<div *ngIf="viewMode === 'table'" class="mcd-table-wrap">
+  <table class="mcd-table" mat-table [dataSource]="dataSource" matSort>
+
+    <!-- Actions -->
     <ng-container matColumnDef="actions">
-      <th mat-header-cell *matHeaderCellDef></th>
-      <td mat-cell *matCellDef="let row">
-        <button mat-icon-button [matMenuTriggerFor]="menu">
-          <mat-icon>list</mat-icon>
+      <th mat-header-cell *matHeaderCellDef class="mcd-th mcd-th--actions"></th>
+      <td mat-cell *matCellDef="let row" class="mcd-td mcd-td--actions">
+        <button mat-icon-button class="mcd-table-menu" [matMenuTriggerFor]="menu">
+          <mat-icon>more_vert</mat-icon>
         </button>
       </td>
     </ng-container>
 
+    <!-- Case # -->
     <ng-container matColumnDef="caseNumber">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header> Case # </th>
-      <td mat-cell *matCellDef="let row">
-        <a mat-button (click)="onCaseClick(row.caseNumber)">{{ row.caseNumber }}</a>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="mcd-th">Case #</th>
+      <td mat-cell *matCellDef="let row" class="mcd-td">
+        <a class="mcd-case-link" (click)="onCaseClick(row.caseNumber)">{{ row.caseNumber }}</a>
       </td>
     </ng-container>
 
+    <!-- Type -->
     <ng-container matColumnDef="caseTypeText">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header> Case Type </th>
-      <td mat-cell *matCellDef="let row"> {{ row.caseTypeText || row.caseType || '' }} </td>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="mcd-th">Type</th>
+      <td mat-cell *matCellDef="let row" class="mcd-td">
+        <span class="mcd-type-badge mcd-type-badge--sm"
+              [ngClass]="'mcd-type--' + getTypeSlug(row)">
+          {{ row.caseTypeText || row.caseType || '' }}
+        </span>
+      </td>
     </ng-container>
 
-    <!--<ng-container matColumnDef="memberName">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header> Member </th>
-      <td mat-cell *matCellDef="let row"> {{ row.memberName || '' }} </td>
-    </ng-container>-->
-
-    <ng-container matColumnDef="casePriorityText">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header> Priority </th>
-      <td mat-cell *matCellDef="let row"> {{ row.casePriorityText || row.casePriority || '' }} </td>
-    </ng-container>
-
+    <!-- Status -->
     <ng-container matColumnDef="caseStatusText">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header> Status </th>
-      <td mat-cell *matCellDef="let row"> {{ row.caseStatusText || '' }} </td>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="mcd-th">Status</th>
+      <td mat-cell *matCellDef="let row" class="mcd-td">
+        <span class="mcd-status-badge mcd-status-badge--sm"
+              [ngClass]="'mcd-status--' + getStatusSlug(row)">
+          <span class="mcd-status-dot"></span>
+          {{ row.caseStatusText || '' }}
+        </span>
+      </td>
     </ng-container>
 
+    <!-- Priority -->
+    <ng-container matColumnDef="casePriorityText">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="mcd-th">Priority</th>
+      <td mat-cell *matCellDef="let row" class="mcd-td">
+        <span class="mcd-priority-badge mcd-priority-badge--sm"
+              [ngClass]="'mcd-priority--' + getPrioritySlug(row)">
+          {{ row.casePriorityText || row.casePriority || '' }}
+        </span>
+      </td>
+    </ng-container>
+
+    <!-- Level (stepper circles) -->
+    <ng-container matColumnDef="caseLevelId">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="mcd-th">Level</th>
+      <td mat-cell *matCellDef="let row" class="mcd-td">
+        <div class="mcd-level-stepper mcd-level-stepper--sm">
+          <ng-container *ngFor="let step of getLevelSteps(row); let last = last">
+            <div class="mcd-level-step mcd-level-step--sm"
+                 [ngClass]="{
+                   'mcd-level--completed': step.status === 'completed',
+                   'mcd-level--current':   step.status === 'current',
+                   'mcd-level--future':    step.status === 'future'
+                 }">
+              <mat-icon *ngIf="step.status === 'completed'" class="mcd-level-check mcd-level-check--sm">check</mat-icon>
+              <span *ngIf="step.status !== 'completed'">{{ step.number }}</span>
+            </div>
+            <div class="mcd-level-connector mcd-level-connector--sm"
+                 *ngIf="!last"
+                 [ngClass]="{ 'mcd-connector--done': step.status === 'completed' }">
+            </div>
+          </ng-container>
+        </div>
+      </td>
+    </ng-container>
+
+    <!-- Received -->
     <ng-container matColumnDef="receivedDateTime">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header> Received </th>
-      <td mat-cell *matCellDef="let row">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="mcd-th">Received</th>
+      <td mat-cell *matCellDef="let row" class="mcd-td mcd-td--date">
         {{ row.receivedDateTime ? (row.receivedDateTime | date:'MM/dd/yyyy HH:mm') : '' }}
       </td>
     </ng-container>
 
+    <!-- Last Update -->
     <ng-container matColumnDef="lastDetailOn">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header> Last Update </th>
-      <td mat-cell *matCellDef="let row">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="mcd-th">Last Update</th>
+      <td mat-cell *matCellDef="let row" class="mcd-td mcd-td--date">
         {{ row.lastDetailOn ? (row.lastDetailOn | date:'MM/dd/yyyy HH:mm') : '' }}
       </td>
     </ng-container>
 
-    <ng-container matColumnDef="createdOn">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header> Created On </th>
-      <td mat-cell *matCellDef="let row">
-        {{ row.createdOn ? (row.createdOn | date:'MM/dd/yyyy HH:mm') : '' }}
+    <!-- Created By -->
+    <ng-container matColumnDef="createdByUserName">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="mcd-th">Created By</th>
+      <td mat-cell *matCellDef="let row" class="mcd-td">
+        {{ row.createdByUserName || '' }}
       </td>
     </ng-container>
 
-    <ng-container matColumnDef="createdByUserName">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header> Created By </th>
-      <td mat-cell *matCellDef="let row"> {{ row.createdByUserName || '' }} </td>
-    </ng-container>
-
     <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+        class="mcd-table-row"></tr>
   </table>
 </div>
 
-<!-- 🛑 No Data State -->
-<div *ngIf="isEmpty && !isLoading" class="text-center w-100 mt-3 no-data">
-  <p class="text-muted">No data available</p>
+
+<!-- ═══ Empty State ═══ -->
+<div *ngIf="isEmpty && !isLoading" class="mcd-empty">
+  <mat-icon class="mcd-empty-icon">folder_open</mat-icon>
+  <div class="mcd-empty-title">No cases found</div>
+  <div class="mcd-empty-desc">Try adjusting your search or add a new case.</div>
 </div>
 
-<!-- Pagination -->
+<!-- ═══ Loading ═══ -->
+<div *ngIf="isLoading" class="mcd-loading">
+  <mat-spinner diameter="32"></mat-spinner>
+  <span>Loading cases...</span>
+</div>
+
+<!-- ═══ Pagination ═══ -->
 <mat-paginator #paginator
+               class="mcd-paginator"
                [pageSizeOptions]="[5, 10, 15, 20]"
                showFirstLastButtons
                [length]="viewMode === 'card' ? dataSource.filteredData.length : dataSource.data.length"

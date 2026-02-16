@@ -1,0 +1,42 @@
+<!-- ui-radio-group.component.html -->
+<div class="ui-field" role="radiogroup"
+     [attr.aria-label]="ariaLabel || label"
+     [attr.aria-required]="required">
+
+  <span *ngIf="label" class="ui-field__static-label">
+    {{ label }}
+    <span *ngIf="required" class="ui-field__required"></span>
+  </span>
+
+  <div class="ui-radio-group"
+       [class.ui-radio-group--inline]="inline">
+    <label *ngFor="let opt of options"
+           class="ui-check"
+           [class.ui-check--disabled]="opt.disabled || disabled"
+           [class.ui-check--error]="hasError">
+
+      <input class="ui-check__input"
+             type="radio"
+             [name]="name"
+             [value]="opt.value"
+             [checked]="isSelected(opt)"
+             [disabled]="opt.disabled || disabled"
+             [required]="required"
+             [attr.aria-label]="opt.label"
+             (change)="select(opt)"
+             (blur)="onBlur()" />
+
+      <span class="ui-check__box ui-check__box--radio" aria-hidden="true"></span>
+
+      <span class="ui-check__label">
+        {{ opt.label }}
+        <span *ngIf="opt.description" class="ui-radio__desc">{{ opt.description }}</span>
+      </span>
+    </label>
+  </div>
+
+  <div *ngFor="let msg of messages" class="ui-field__message"
+       [class.ui-field__message--error]="msg.type === 'error'" role="alert">
+    {{ msg.text }}
+  </div>
+</div>

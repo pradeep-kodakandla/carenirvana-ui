@@ -2,56 +2,136 @@
 <div class="cw-shell">
   <div class="cw-top">
 
-    <!-- Case Header -->
-    <div class="caseWizardHeader card mb-2">
-      <div class="card-body py-2">
-        <div class="row g-2 align-items-end">
-          <!-- Case Type (display only; selector moved to Case Details) -->
-          <div class="col-12 col-md-4">
-            <div class="small">
-              <div class="text-muted">Case Type</div>
-              <div class="fw-semibold">{{ getCaseTypeLabel(headerForm.get('caseType')?.value) || '-' }}</div>
-            </div>
+    <!-- ═══════ CASE HEADER (redesigned) ═══════ -->
+    <div class="cw-header-card">
+
+      <!-- Row 1: Primary info + Actions -->
+      <div class="cw-header-row">
+
+        <!-- Case identity block -->
+        <div class="cw-header-identity">
+          <div class="cw-case-icon">AG</div>
+          <div class="cw-header-field">
+            <span class="cw-field-label">Case Number</span>
+            <span class="cw-field-value cw-case-number">{{ getCaseNumber(aggregate$ | async) || '—' }}</span>
+          </div>
+        </div>
+
+        <div class="cw-header-divider"></div>
+
+        <!-- Meta fields -->
+        <div class="cw-header-fields">
+
+          <div class="cw-header-field">
+            <span class="cw-field-label">Case Type</span>
+            <span class="cw-field-value">{{ getCaseTypeLabel(headerForm.get('caseType')?.value) || '—' }}</span>
           </div>
 
-          <!-- Case meta + Save -->
-          <div class="col-12 col-md-8">
-            <div class="d-flex flex-wrap justify-content-md-end gap-3 align-items-end">
-
-              <div class="small">
-                <div class="text-muted">Case Number</div>
-                <div class="fw-semibold">{{ getCaseNumber(aggregate$ | async) || '-' }}</div>
-              </div>
-
-              <div class="small">
-                <div class="text-muted">Received Date</div>
-                <div class="fw-semibold">
-                  {{ getReceivedOn(aggregate$ | async) ? (getReceivedOn(aggregate$ | async) | date:'MM/dd/yyyy hh:mm a') : '-' }}
-                </div>
-              </div>
-
-              <div class="small d-flex align-items-end gap-2">
-                <div>
-                  <div class="text-muted">Created On</div>
-                  <div class="fw-semibold">
-                    {{ getCreatedOn(aggregate$ | async) ? (getCreatedOn(aggregate$ | async) | date:'MM/dd/yyyy hh:mm a') : '-' }}
-                  </div>
-                </div>
-
-                <button type="button"
-                        class="btn btn-primary btn-sm"
-                        (click)="saveFromTop()"
-                        [disabled]="!headerForm.get('caseType')?.value || savingTop">
-                  {{ savingTop ? 'Saving...' : 'Save' }}
-                </button>
-              </div>
-
-            </div>
+          <div class="cw-header-field">
+            <span class="cw-field-label">Level</span>
+            <span class="cw-field-value cw-level-value">
+              <span class="cw-level-dot"></span>
+              {{ getLevelLabel(activeLevelId$ | async) || '—' }}
+            </span>
           </div>
 
+          <div class="cw-header-field">
+            <span class="cw-field-label">Status</span>
+            <span class="cw-status-badge"
+                  [ngClass]="'cw-status--' + getStatusSlug(aggregate$ | async)">
+              <span class="cw-status-dot"></span>
+              {{ getStatus(aggregate$ | async) || '—' }}
+            </span>
+          </div>
+
+          <div class="cw-header-field">
+            <span class="cw-field-label">Priority</span>
+            <span class="cw-priority-badge"
+                  [ngClass]="'cw-priority--' + getPrioritySlug(aggregate$ | async)">
+              {{ getPriority(aggregate$ | async) || '—' }}
+            </span>
+          </div>
+
+          <div class="cw-header-field">
+            <span class="cw-field-label">Due Date</span>
+            <span class="cw-field-value"
+                  [class.cw-due-warning]="isDueSoon(aggregate$ | async)"
+                  [class.cw-due-overdue]="isOverdue(aggregate$ | async)">
+              {{ getDueDate(aggregate$ | async) ? (getDueDate(aggregate$ | async) | date:'MM/dd/yyyy') : '—' }}
+            </span>
+          </div>
+
+          <div class="cw-header-field">
+            <span class="cw-field-label">Assignee</span>
+            <span class="cw-field-value cw-assignee">
+              <span class="cw-avatar" *ngIf="getAssignee(aggregate$ | async)">
+                {{ getAssigneeInitials(aggregate$ | async) }}
+              </span>
+              {{ getAssignee(aggregate$ | async) || '—' }}
+            </span>
+          </div>
+
+          <div class="cw-header-field">
+            <span class="cw-field-label">Received</span>
+            <span class="cw-field-value">
+              {{ getReceivedOn(aggregate$ | async) ? (getReceivedOn(aggregate$ | async) | date:'MM/dd/yyyy hh:mm a') : '—' }}
+            </span>
+          </div>
+
+          <div class="cw-header-field">
+            <span class="cw-field-label">Created</span>
+            <span class="cw-field-value">
+              {{ getCreatedOn(aggregate$ | async) ? (getCreatedOn(aggregate$ | async) | date:'MM/dd/yyyy hh:mm a') : '—' }}
+            </span>
+          </div>
+        </div>
+
+        <div class="cw-header-divider"></div>
+
+        <!-- Action buttons -->
+        <div class="cw-header-actions">
+          <button type="button"
+                  class="cw-btn cw-btn-escalate"
+                  (click)="toggleEscalateConfirm()"
+                  [disabled]="!getCaseNumber(aggregate$ | async)"
+                  title="Escalate case">
+            ⚡ Escalate
+          </button>
+
+          <button type="button"
+                  class="btn btn-primary"
+                  (click)="saveFromTop()"
+                  [disabled]="!headerForm.get('caseType')?.value || savingTop">
+            {{ savingTop ? 'Saving...' : 'Save' }}
+          </button>
+
+          <!-- AI Panel toggle -->
+          <button type="button"
+                  class="cw-btn-ai-toggle"
+                  [class.active]="aiPanelOpen"
+                  (click)="toggleAiPanel()"
+                  [disabled]="!getCaseNumber(aggregate$ | async)"
+                  title="Toggle AI Assistant">
+            🤖
+            <span class="cw-ai-online-dot" *ngIf="getCaseNumber(aggregate$ | async)"></span>
+          </button>
         </div>
       </div>
+
+      <!-- Escalate confirmation bar -->
+      <div class="cw-escalate-bar" *ngIf="showEscalateConfirm">
+        <span class="cw-escalate-msg">
+          Escalate this case to the next level? This will notify the supervisor.
+        </span>
+        <button type="button" class="cw-btn cw-btn-escalate-confirm" (click)="confirmEscalate()">
+          Confirm Escalate
+        </button>
+        <button type="button" class="cw-btn cw-btn-cancel" (click)="cancelEscalate()">
+          Cancel
+        </button>
+      </div>
     </div>
+
     <!-- Save banner (global) -->
     <div *ngIf="saveBannerText"
          class="cw-save-banner alert alert-success py-1 px-2 mb-2 d-flex align-items-center justify-content-between">
@@ -71,15 +151,117 @@
       </li>
     </ul>
 
+    <!-- Chevron Stepper -->
     <caseChevronStepper [steps]="steps"
                         [activeStepId]="activeStepId"
                         (stepSelected)="onStepSelected($event)">
     </caseChevronStepper>
-
   </div>
 
-  <!-- Scrollable content only -->
-  <div class="cw-content caseWizardBody">
-    <ng-template #stepContainer></ng-template>
+  <!-- ═══════ BODY: content + AI panel ═══════ -->
+  <div class="cw-body">
+
+    <!-- Scrollable step content -->
+    <div class="cw-content caseWizardBody" [class.cw-content--ai-open]="aiPanelOpen">
+      <ng-template #stepContainer></ng-template>
+    </div>
+
+    <!-- AI Suggestions Side Panel -->
+    <div class="cw-ai-panel" [class.cw-ai-panel--open]="aiPanelOpen">
+
+      <!-- Panel header -->
+      <div class="cw-ai-panel-header">
+        <div class="cw-ai-panel-title-block">
+          <span class="cw-ai-panel-icon">🤖</span>
+          <div>
+            <div class="cw-ai-panel-title">AI Assistant</div>
+            <div class="cw-ai-panel-subtitle">Case Intelligence</div>
+          </div>
+        </div>
+        <button class="cw-ai-close" (click)="toggleAiPanel()">✕</button>
+      </div>
+
+      <!-- Panel scrollable body -->
+      <div class="cw-ai-panel-body">
+
+        <!-- SLA Tracker -->
+        <div class="cw-ai-section">
+          <div class="cw-ai-section-header">
+            <span class="cw-ai-section-label">⏱ SLA Tracker</span>
+            <span class="cw-ai-badge cw-ai-badge--warning" *ngIf="slaAtRiskCount > 0">
+              {{ slaAtRiskCount }} at risk
+            </span>
+          </div>
+          <div class="cw-sla-list">
+            <div class="cw-sla-item" *ngFor="let sla of slaItems"
+                 [ngClass]="'cw-sla--' + sla.status">
+              <div class="cw-sla-info">
+                <div class="cw-sla-label">{{ sla.label }}</div>
+                <div class="cw-sla-deadline">Due: {{ sla.deadline }}</div>
+              </div>
+              <div class="cw-sla-remaining">{{ sla.remaining }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="cw-ai-section">
+          <div class="cw-ai-section-header">
+            <span class="cw-ai-section-label">⚡ Quick Actions</span>
+          </div>
+          <div class="cw-quick-actions-grid">
+            <button class="cw-quick-action" *ngFor="let action of quickActions"
+                    (click)="onQuickAction(action)">
+              <span class="cw-qa-icon">{{ action.icon }}</span>
+              <span class="cw-qa-label">{{ action.label }}</span>
+              <span class="cw-qa-desc">{{ action.description }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- AI Suggestions -->
+        <div class="cw-ai-section">
+          <div class="cw-ai-section-header">
+            <span class="cw-ai-section-label">🧠 AI Insights</span>
+            <span class="cw-ai-badge cw-ai-badge--info">
+              {{ aiSuggestions.length }} suggestions
+            </span>
+          </div>
+          <div class="cw-ai-suggestions-list">
+            <div class="cw-ai-card" *ngFor="let suggestion of aiSuggestions"
+                 [ngClass]="'cw-ai-card--' + suggestion.type">
+              <div class="cw-ai-card-header">
+                <div class="cw-ai-card-title-row">
+                  <span class="cw-ai-card-icon">{{ suggestion.icon }}</span>
+                  <span class="cw-ai-card-title">{{ suggestion.title }}</span>
+                </div>
+                <span class="cw-ai-confidence" [ngClass]="'cw-ai-confidence--' + suggestion.type">
+                  {{ suggestion.confidence }}% conf.
+                </span>
+              </div>
+              <p class="cw-ai-card-body">{{ suggestion.body }}</p>
+              <div class="cw-ai-card-actions" *ngIf="suggestion.actionLabel">
+                <button class="cw-btn cw-btn-ai-action" (click)="onAiAction(suggestion)">
+                  {{ suggestion.actionLabel }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel footer: Ask AI -->
+      <div class="cw-ai-panel-footer">
+        <div class="cw-ai-input-wrap">
+          <span class="cw-ai-input-icon">💬</span>
+          <input type="text"
+                 class="cw-ai-input"
+                 placeholder="Ask AI about this case..."
+                 [(ngModel)]="aiQuery"
+                 (keydown.enter)="askAi()" />
+          <button class="cw-ai-send" (click)="askAi()" [disabled]="!aiQuery?.trim()">→</button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>

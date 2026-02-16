@@ -1,0 +1,4 @@
+/* ── ui-radio.component.css ── */
+.ui-radio-group { display: flex; flex-direction: column; gap: 6px; }
+.ui-radio-group--inline { flex-direction: row; flex-wrap: wrap; gap: 16px; }
+.ui-radio__desc { display: block; font-size: 11px; color: var(--ui-gray-500); margin-top: 1px; }

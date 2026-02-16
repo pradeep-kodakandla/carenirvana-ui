@@ -1,0 +1,24 @@
+/* ── ui-textarea.component.css ── */
+
+.ui-textarea__input {
+  min-height: 80px;
+  line-height: 1.5;
+  padding-top: 10px;
+}
+
+.ui-textarea__label {
+  top: 14px;
+  transform: translateY(0);
+}
+
+.ui-field__wrapper--has-value .ui-textarea__label,
+.ui-field__wrapper--focused .ui-textarea__label {
+  top: 0;
+  transform: translateY(-50%) scale(0.88);
+}
+
+:host(.ff-ui) .ui-control {
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}

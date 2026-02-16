@@ -151,8 +151,8 @@ export class DashBoardComponent {
 
     switch (selection) {
       case 'myCaseLoad':
-        this.loadComponent(NewDashBoardComponent);
-        //this.loadComponent(MycaseloadComponent);
+        // this.loadComponent(NewDashBoardComponent);
+        this.loadComponent(MycaseloadComponent);
         break;
       case 'assignedAuthorizations':
         this.loadComponent(AssignedauthsComponent);

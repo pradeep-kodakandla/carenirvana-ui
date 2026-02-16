@@ -1,6 +1,6 @@
 <form class="case-details" [formGroup]="form">
 
-  <!-- Enrollment Details (same as Auth Details) -->
+  <!-- ═══════ Enrollment Details ═══════ -->
   <div class="section-card">
     <div class="section-header">
       <span class="section-acc-icon open">▸</span>
@@ -12,7 +12,6 @@
            *ngFor="let enr of memberEnrollments; let i = index"
            (click)="selectEnrollment(i)"
            [ngClass]="{ 'selected': selectedDiv === (i + 1) }">
-
         <div class="pairs">
           <div class="pair-row" *ngFor="let pair of getEnrollmentDisplayPairs(enr)">
             <label class="label key">{{ pair.label }}</label>
@@ -22,16 +21,13 @@
       </div>
     </div>
 
-
-
-    <div class="ff-error" *ngIf="!enrollmentSelect">
+    <div class="ff-error" *ngIf="!enrollmentSelect" style="padding: 0 18px 12px;">
       Please select an Enrollment card.
     </div>
   </div>
 
-  <!-- Case Type (mandatory for new cases) -->
+  <!-- ═══════ Case Type ═══════ -->
   <div class="section-card">
-
     <div class="grid">
       <div class="ff-field case-type-field">
         <div class="ff-outline"
@@ -40,7 +36,6 @@
           <div class="ff-float-label">
             Case Type <span class="req-star">*</span>
           </div>
-
           <div class="ff-body">
             <ui-smart-dropdown class="ff-ui"
                                label=""
@@ -51,20 +46,18 @@
             </ui-smart-dropdown>
           </div>
         </div>
-
-        <!-- First-time guidance (new case only; hidden for existing case#) -->
         <div class="ff-hint" *ngIf="showCaseTypeFirstLoadHint">
           <span class="hint-icon">i</span>
           <span>Please select the <strong>Case Type</strong> to continue.</span>
         </div>
-
-        <!-- Validation -->
         <div class="ff-error" *ngIf="caseTypeCtrl.touched && caseTypeCtrl.invalid">
           Case Type is required.
         </div>
       </div>
     </div>
   </div>
+
+  <!-- ═══════ Dynamic Sections ═══════ -->
   <ng-container *ngFor="let sec of renderSections; let i = index; trackBy: trackBySection">
     <div class="section-card" *ngIf="visibleSection(sec) && shouldShowSection(sec)">
 
@@ -75,135 +68,90 @@
            (keydown.enter)="toggleSection(sec, i)"
            (keydown.space)="$event.preventDefault(); toggleSection(sec, i)"
            [attr.aria-expanded]="isSectionOpen(sec, i)">
-
         <span class="section-acc-icon" [class.open]="isSectionOpen(sec, i)">▸</span>
         <div class="section-title">{{ sec.title }}</div>
       </div>
 
       <ng-container *ngIf="isSectionOpen(sec, i)">
 
-        <!-- =========================
-             SECTION FIELDS (NON-REPEAT)
-        ========================= -->
+        <!-- ═══════ SECTION FIELDS (non-repeat) ═══════ -->
         <ng-container *ngIf="!sec.repeat?.enabled; else sectionRepeatTpl">
-          <div class="grid" style="padding-bottom:15px;">
+          <div class="grid">
             <ng-container *ngFor="let f of sec.fields; trackBy: trackByField">
               <ng-container *ngIf="visibleField(f, sec)">
                 <ng-container *ngIf="form.get(f.controlName) as ctrl">
 
-                  <!-- CHECKBOX -->
                   <ng-container *ngIf="f.type === 'checkbox'; else outlinedSec">
                     <div class="ff-field">
                       <div class="ff-checkbox">
-                        <input type="checkbox"
-                               class="form-check-input"
-                               [formControlName]="f.controlName" />
+                        <input type="checkbox" class="form-check-input" [formControlName]="f.controlName" />
                         <label class="form-check-label ff-checkbox-text">
                           {{ f.displayName }}
                           <span class="req-star" *ngIf="isRequired(ctrl, f)">*</span>
                         </label>
                       </div>
-
                       <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
                         {{ f.requiredMsg || (f.displayName + ' is required') }}
                       </div>
                     </div>
                   </ng-container>
 
-                  <!-- OUTLINED (text/select/datetime/textarea/search) -->
                   <ng-template #outlinedSec>
-                    <div class="ff-field">
+                    <!-- Search fields span 2 cols in section grids (NOT full row) -->
+                    <div class="ff-field" [class.ff-span-search]="f.type==='search'">
                       <div class="ff-outline"
                            [class.ff-disabled]="ctrl.disabled"
                            [class.ff-invalid]="ctrl.touched && ctrl.invalid"
                            (click)="selectField(f)"
                            (focusin)="selectField(f)"
                            [ngClass]="{
-                                       'ff-selected': isSelected(f),
-                                       'ff-changed': isChangedField(f),
-                                       'ff-unchanged': !isChangedField(f)
-                                     }"
+                             'ff-selected': isSelected(f),
+                             'ff-changed': isChangedField(f),
+                             'ff-unchanged': !isChangedField(f)
+                           }"
                            tabindex="-1">
-
                         <div class="ff-float-label">
                           {{ f.displayName }}
                           <span class="req-star" *ngIf="isRequired(ctrl, f)">*</span>
-
-                          <span class="edited-badge"
-                                *ngIf="isChangedField(f)"
-                                title="Value changed">
-                            Edited
-                          </span>
+                          <span class="edited-badge" *ngIf="isChangedField(f)" title="Value changed">Edited</span>
                         </div>
-
                         <div class="ff-body">
                           <ng-container [ngSwitch]="f.type">
-
-                            <!-- Dropdown -->
                             <ng-container *ngSwitchCase="'select'">
-                              <ui-smart-dropdown class="ff-ui"
-                                                 label=""
-                                                 placeholder="Select..."
-                                                 [options]="getDropdownOptions(f.controlName)"
-                                                 [formControlName]="f.controlName">
+                              <ui-smart-dropdown class="ff-ui" label="" placeholder="Select..."
+                                [options]="getDropdownOptions(f.controlName)" [formControlName]="f.controlName">
                               </ui-smart-dropdown>
                             </ng-container>
-
-                            <!-- Datetime -->
                             <ng-container *ngSwitchCase="'datetime-local'">
-                              <ui-datetime-picker class="ff-ui"
-                                                  placeholderDate="mm/dd/yyyy"
-                                                  placeholderDateTime="mm/dd/yyyy --:--"
-                                                  [formControlName]="f.controlName">
+                              <ui-datetime-picker class="ff-ui" placeholderDate="mm/dd/yyyy"
+                                placeholderDateTime="mm/dd/yyyy --:--" [formControlName]="f.controlName">
                               </ui-datetime-picker>
                             </ng-container>
-
-                            <!-- JSON typo variant -->
                             <ng-container *ngSwitchCase="'datatime-local'">
-                              <ui-datetime-picker class="ff-ui"
-                                                  placeholderDate="mm/dd/yyyy"
-                                                  placeholderDateTime="mm/dd/yyyy --:--"
-                                                  [formControlName]="f.controlName">
+                              <ui-datetime-picker class="ff-ui" placeholderDate="mm/dd/yyyy"
+                                placeholderDateTime="mm/dd/yyyy --:--" [formControlName]="f.controlName">
                               </ui-datetime-picker>
                             </ng-container>
-
-                            <!-- Textarea -->
                             <ng-container *ngSwitchCase="'textarea'">
-                              <textarea class="ff-input ff-textarea"
-                                        rows="3"
-                                        [formControlName]="f.controlName"></textarea>
+                              <textarea class="ff-input ff-textarea" rows="3" [formControlName]="f.controlName"></textarea>
                             </ng-container>
-
-                            <!-- SEARCH (full width) -->
                             <ng-container *ngSwitchCase="'search'">
-                              <div class="ff-field ff-span-all">
-                                <ui-smart-lookup class="ff-ui ff-lookup"
-                                                 [placeholder]="getLookupPlaceholder(f)"
-                                                 [minChars]="getLookupMinChars(f)"
-                                                 [debounceMs]="getLookupDebounceMs(f)"
-                                                 [limit]="getLookupLimit(f)"
-                                                 [searchFn]="getLookupSearchFn(f)"
-                                                 [displayWith]="getLookupDisplayWith(f)"
-                                                 [trackBy]="getLookupTrackBy(f)"
-                                                 [formControlName]="f.controlName"
-                                                 (selected)="onLookupSelected(f, $event)"
-                                                 (textChange)="onLookupTextChange(f, $event)"
-                                                 (cleared)="onLookupCleared(f)">
-                                </ui-smart-lookup>
-                              </div>
+                              <ui-smart-lookup class="ff-ui ff-lookup"
+                                [placeholder]="getLookupPlaceholder(f)" [minChars]="getLookupMinChars(f)"
+                                [debounceMs]="getLookupDebounceMs(f)" [limit]="getLookupLimit(f)"
+                                [searchFn]="getLookupSearchFn(f)" [displayWith]="getLookupDisplayWith(f)"
+                                [trackBy]="getLookupTrackBy(f)" [formControlName]="f.controlName"
+                                (selected)="onLookupSelected(f, $event)"
+                                (textChange)="onLookupTextChange(f, $event)"
+                                (cleared)="onLookupCleared(f)">
+                              </ui-smart-lookup>
                             </ng-container>
-
-                            <!-- Default text -->
                             <ng-container *ngSwitchDefault>
-                              <input class="ff-input"
-                                     type="text"
-                                     [formControlName]="f.controlName" />
+                              <input class="ff-input" type="text" [formControlName]="f.controlName" />
                             </ng-container>
-
                           </ng-container>
                         </div>
                       </div>
-
                       <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
                         {{ f.requiredMsg || (f.label + ' is required') }}
                       </div>
@@ -216,126 +164,97 @@
           </div>
         </ng-container>
 
-        <!-- =========================
-             SECTION FIELDS (REPEAT)
-        ========================= -->
+        <!-- ═══════ SECTION FIELDS (repeat) ═══════ -->
         <ng-template #sectionRepeatTpl>
           <div class="ff-repeat-wrap">
             <ng-container *ngFor="let inst of sec.instances; trackBy: trackByRepeatInst">
               <div class="ff-repeat-group">
+
+                <!-- Repeat header WITH +/- buttons inline -->
                 <div class="ff-repeat-header">
                   <div class="ff-repeat-title">{{ sec.repeat?.instanceLabel }} #{{ inst.index }}</div>
+                  <div class="ff-repeat-actions" *ngIf="sec.repeat?.showControls">
+                    <button type="button" class="ff-repeat-btn" [disabled]="!canAddRepeat(sec)" (click)="addRepeat(sec)" title="Add">+</button>
+                    <button type="button" class="ff-repeat-btn danger" [disabled]="!canRemoveRepeat(sec)" (click)="removeRepeat(sec, inst.index)" title="Remove">−</button>
+                  </div>
                 </div>
 
+                <!-- Fields grid (NO +/- inside grid anymore) -->
                 <div class="grid ff-repeat-grid">
                   <ng-container *ngFor="let f of inst.fields; trackBy: trackByField">
                     <ng-container *ngIf="visibleField(f, sec, undefined, { repeatPrefix: sec.repeatPrefix!, repeatIndex: inst.index })">
                       <ng-container *ngIf="form.get(f.controlName) as ctrl">
 
-                        <!-- CHECKBOX -->
                         <ng-container *ngIf="f.type === 'checkbox'; else outlinedSecRep">
                           <div class="ff-field">
                             <div class="ff-checkbox">
-                              <input type="checkbox"
-                                     class="form-check-input"
-                                     [formControlName]="f.controlName" />
+                              <input type="checkbox" class="form-check-input" [formControlName]="f.controlName" />
                               <label class="form-check-label ff-checkbox-text">
                                 {{ f.displayName }}
                                 <span class="req-star" *ngIf="isRequired(ctrl, f)">*</span>
                               </label>
                             </div>
-
                             <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
                               {{ f.requiredMsg || (f.displayName + ' is required') }}
                             </div>
                           </div>
                         </ng-container>
 
-                        <!-- OUTLINED -->
                         <ng-template #outlinedSecRep>
-                          <div class="ff-field" [class.ff-span-all]="f.type==='search'">
+                          <!-- NO ff-span-all in repeat grids — search gets normal column -->
+                          <div class="ff-field">
                             <div class="ff-outline"
                                  [class.ff-disabled]="ctrl.disabled"
                                  [class.ff-invalid]="ctrl.touched && ctrl.invalid"
                                  (click)="selectField(f)"
                                  (focusin)="selectField(f)"
                                  [ngClass]="{
-                                       'ff-selected': isSelected(f),
-                                       'ff-changed': isChangedField(f),
-                                       'ff-unchanged': !isChangedField(f)
-                                     }"
+                                   'ff-selected': isSelected(f),
+                                   'ff-changed': isChangedField(f),
+                                   'ff-unchanged': !isChangedField(f)
+                                 }"
                                  tabindex="-1">
-
                               <div class="ff-float-label">
                                 {{ f.displayName }}
                                 <span class="req-star" *ngIf="isRequired(ctrl, f)">*</span>
                               </div>
-
                               <div class="ff-body">
                                 <ng-container [ngSwitch]="f.type">
-
-                                  <!-- Dropdown -->
                                   <ng-container *ngSwitchCase="'select'">
-                                    <ui-smart-dropdown class="ff-ui"
-                                                       label=""
-                                                       placeholder="Select..."
-                                                       [options]="getDropdownOptions(f.controlName)"
-                                                       [formControlName]="f.controlName">
+                                    <ui-smart-dropdown class="ff-ui" label="" placeholder="Select..."
+                                      [options]="getDropdownOptions(f.controlName)" [formControlName]="f.controlName">
                                     </ui-smart-dropdown>
                                   </ng-container>
-
-                                  <!-- Datetime -->
                                   <ng-container *ngSwitchCase="'datetime-local'">
-                                    <ui-datetime-picker class="ff-ui"
-                                                        placeholderDate="mm/dd/yyyy"
-                                                        placeholderDateTime="mm/dd/yyyy --:--"
-                                                        [formControlName]="f.controlName">
+                                    <ui-datetime-picker class="ff-ui" placeholderDate="mm/dd/yyyy"
+                                      placeholderDateTime="mm/dd/yyyy --:--" [formControlName]="f.controlName">
                                     </ui-datetime-picker>
                                   </ng-container>
-
                                   <ng-container *ngSwitchCase="'datatime-local'">
-                                    <ui-datetime-picker class="ff-ui"
-                                                        placeholderDate="mm/dd/yyyy"
-                                                        placeholderDateTime="mm/dd/yyyy --:--"
-                                                        [formControlName]="f.controlName">
+                                    <ui-datetime-picker class="ff-ui" placeholderDate="mm/dd/yyyy"
+                                      placeholderDateTime="mm/dd/yyyy --:--" [formControlName]="f.controlName">
                                     </ui-datetime-picker>
                                   </ng-container>
-
-                                  <!-- Textarea -->
                                   <ng-container *ngSwitchCase="'textarea'">
-                                    <textarea class="ff-input ff-textarea"
-                                              rows="3"
-                                              [formControlName]="f.controlName"></textarea>
+                                    <textarea class="ff-input ff-textarea" rows="3" [formControlName]="f.controlName"></textarea>
                                   </ng-container>
-
-                                  <!-- SEARCH -->
                                   <ng-container *ngSwitchCase="'search'">
                                     <ui-smart-lookup class="ff-ui ff-lookup"
-                                                     [placeholder]="getLookupPlaceholder(f)"
-                                                     [minChars]="getLookupMinChars(f)"
-                                                     [debounceMs]="getLookupDebounceMs(f)"
-                                                     [limit]="getLookupLimit(f)"
-                                                     [searchFn]="getLookupSearchFn(f)"
-                                                     [displayWith]="getLookupDisplayWith(f)"
-                                                     [trackBy]="getLookupTrackBy(f)"
-                                                     [formControlName]="f.controlName"
-                                                     (selected)="onLookupSelected(f, $event, { repeatPrefix: sec.repeatPrefix!, repeatIndex: inst.index })"
-                                                     (textChange)="onLookupTextChange(f, $event, { repeatPrefix: sec.repeatPrefix!, repeatIndex: inst.index })"
-                                                     (cleared)="onLookupCleared(f, { repeatPrefix: sec.repeatPrefix!, repeatIndex: inst.index })">
+                                      [placeholder]="getLookupPlaceholder(f)" [minChars]="getLookupMinChars(f)"
+                                      [debounceMs]="getLookupDebounceMs(f)" [limit]="getLookupLimit(f)"
+                                      [searchFn]="getLookupSearchFn(f)" [displayWith]="getLookupDisplayWith(f)"
+                                      [trackBy]="getLookupTrackBy(f)" [formControlName]="f.controlName"
+                                      (selected)="onLookupSelected(f, $event, { repeatPrefix: sec.repeatPrefix!, repeatIndex: inst.index })"
+                                      (textChange)="onLookupTextChange(f, $event, { repeatPrefix: sec.repeatPrefix!, repeatIndex: inst.index })"
+                                      (cleared)="onLookupCleared(f, { repeatPrefix: sec.repeatPrefix!, repeatIndex: inst.index })">
                                     </ui-smart-lookup>
                                   </ng-container>
-
-                                  <!-- Default text -->
                                   <ng-container *ngSwitchDefault>
-                                    <input class="ff-input"
-                                           type="text"
-                                           [formControlName]="f.controlName" />
+                                    <input class="ff-input" type="text" [formControlName]="f.controlName" />
                                   </ng-container>
-
                                 </ng-container>
                               </div>
                             </div>
-
                             <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
                               {{ f.requiredMsg || (f.displayName + ' is required') }}
                             </div>
@@ -345,34 +264,13 @@
                       </ng-container>
                     </ng-container>
                   </ng-container>
-
-                  <!-- Repeat controls in last cell -->
-                  <div class="ff-repeat-cell" *ngIf="sec.repeat?.showControls">
-                    <button type="button"
-                            class="ff-repeat-btn"
-                            [disabled]="!canAddRepeat(sec)"
-                            (click)="addRepeat(sec)"
-                            title="Add">
-                      +
-                    </button>
-                    <button type="button"
-                            class="ff-repeat-btn danger"
-                            [disabled]="!canRemoveRepeat(sec)"
-                            (click)="removeRepeat(sec, inst.index)"
-                            title="Remove this group">
-                      −
-                    </button>
-                  </div>
-
                 </div>
               </div>
             </ng-container>
           </div>
         </ng-template>
 
-        <!-- =========================
-             SUBSECTIONS (recursive)
-        ========================= -->
+        <!-- ═══════ SUBSECTIONS (recursive) ═══════ -->
         <ng-container *ngFor="let sub of sec.subsections; trackBy: trackBySub">
           <ng-container *ngTemplateOutlet="subTpl; context: { $implicit: sub, sec: sec, depth: 0 }"></ng-container>
         </ng-container>
@@ -381,14 +279,12 @@
     </div>
   </ng-container>
 
-  <!-- =========================
-       Recursive subsection template
-  ========================= -->
+  <!-- ═══════ Recursive Subsection Template ═══════ -->
   <ng-template #subTpl let-sub let-sec="sec" let-depth="depth">
     <div class="sub-card"
          [class.sub-nested]="depth > 0"
          *ngIf="visibleSubsection(sub, sec)">
-      <!--[style.marginLeft.px]="depth * 12"-->
+
       <div class="sub-float-label">{{ sub.title }}</div>
 
       <!-- Non-repeat subsection fields -->
@@ -398,107 +294,77 @@
             <ng-container *ngIf="visibleField(f, sec, sub)">
               <ng-container *ngIf="form.get(f.controlName) as ctrl">
 
-                <!-- CHECKBOX -->
                 <ng-container *ngIf="f.type === 'checkbox'; else outlinedSub">
                   <div class="ff-field">
                     <div class="ff-checkbox">
-                      <input type="checkbox"
-                             class="form-check-input"
-                             [formControlName]="f.controlName" />
+                      <input type="checkbox" class="form-check-input" [formControlName]="f.controlName" />
                       <label class="form-check-label ff-checkbox-text">
                         {{ f.displayName }}
                         <span class="req-star" *ngIf="isRequired(ctrl, f)">*</span>
                       </label>
                     </div>
-
                     <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
                       {{ f.requiredMsg || (f.displayName + ' is required') }}
                     </div>
                   </div>
                 </ng-container>
 
-                <!-- OUTLINED -->
                 <ng-template #outlinedSub>
-                  <div class="ff-field" [class.ff-span-all]="f.type==='search'">
+                  <!-- Search spans 2 cols in subsection grids -->
+                  <div class="ff-field" [class.ff-span-search]="f.type==='search'">
                     <div class="ff-outline"
                          [class.ff-disabled]="ctrl.disabled"
                          [class.ff-invalid]="ctrl.touched && ctrl.invalid"
                          (click)="selectField(f)"
                          (focusin)="selectField(f)"
                          [ngClass]="{
-                                        'ff-selected': isSelected(f),
-                                        'ff-changed': isChangedField(f),
-                                        'ff-unchanged': !isChangedField(f)
-                                      }"
+                           'ff-selected': isSelected(f),
+                           'ff-changed': isChangedField(f),
+                           'ff-unchanged': !isChangedField(f)
+                         }"
                          tabindex="-1">
-
                       <div class="ff-float-label">
                         {{ f.displayName }}
                         <span class="req-star" *ngIf="isRequired(ctrl, f)">*</span>
+                        <span class="edited-badge" *ngIf="isChangedField(f)" title="Value changed">Edited</span>
                       </div>
-
                       <div class="ff-body">
                         <ng-container [ngSwitch]="f.type">
-
-                          <!-- Dropdown -->
                           <ng-container *ngSwitchCase="'select'">
-                            <ui-smart-dropdown class="ff-ui"
-                                               label=""
-                                               placeholder="Select..."
-                                               [options]="getDropdownOptions(f.controlName)"
-                                               [formControlName]="f.controlName">
+                            <ui-smart-dropdown class="ff-ui" label="" placeholder="Select..."
+                              [options]="getDropdownOptions(f.controlName)" [formControlName]="f.controlName">
                             </ui-smart-dropdown>
                           </ng-container>
-
-                          <!-- Datetime -->
                           <ng-container *ngSwitchCase="'datetime-local'">
-                            <ui-datetime-picker class="ff-ui"
-                                                placeholderDate="mm/dd/yyyy"
-                                                placeholderDateTime="mm/dd/yyyy --:--"
-                                                [formControlName]="f.controlName">
+                            <ui-datetime-picker class="ff-ui" placeholderDate="mm/dd/yyyy"
+                              placeholderDateTime="mm/dd/yyyy --:--" [formControlName]="f.controlName">
                             </ui-datetime-picker>
                           </ng-container>
-
                           <ng-container *ngSwitchCase="'datatime-local'">
-                            <ui-datetime-picker class="ff-ui"
-                                                placeholderDate="mm/dd/yyyy"
-                                                placeholderDateTime="mm/dd/yyyy --:--"
-                                                [formControlName]="f.controlName">
+                            <ui-datetime-picker class="ff-ui" placeholderDate="mm/dd/yyyy"
+                              placeholderDateTime="mm/dd/yyyy --:--" [formControlName]="f.controlName">
                             </ui-datetime-picker>
                           </ng-container>
-
                           <ng-container *ngSwitchCase="'textarea'">
-                            <textarea class="ff-input ff-textarea"
-                                      rows="3"
-                                      [formControlName]="f.controlName"></textarea>
+                            <textarea class="ff-input ff-textarea" rows="3" [formControlName]="f.controlName"></textarea>
                           </ng-container>
-
                           <ng-container *ngSwitchCase="'search'">
                             <ui-smart-lookup class="ff-ui ff-lookup"
-                                             [placeholder]="getLookupPlaceholder(f)"
-                                             [minChars]="getLookupMinChars(f)"
-                                             [debounceMs]="getLookupDebounceMs(f)"
-                                             [limit]="getLookupLimit(f)"
-                                             [searchFn]="getLookupSearchFn(f)"
-                                             [displayWith]="getLookupDisplayWith(f)"
-                                             [trackBy]="getLookupTrackBy(f)"
-                                             [formControlName]="f.controlName"
-                                             (selected)="onLookupSelected(f, $event)"
-                                             (textChange)="onLookupTextChange(f, $event)"
-                                             (cleared)="onLookupCleared(f)">
+                              [placeholder]="getLookupPlaceholder(f)" [minChars]="getLookupMinChars(f)"
+                              [debounceMs]="getLookupDebounceMs(f)" [limit]="getLookupLimit(f)"
+                              [searchFn]="getLookupSearchFn(f)" [displayWith]="getLookupDisplayWith(f)"
+                              [trackBy]="getLookupTrackBy(f)" [formControlName]="f.controlName"
+                              (selected)="onLookupSelected(f, $event)"
+                              (textChange)="onLookupTextChange(f, $event)"
+                              (cleared)="onLookupCleared(f)">
                             </ui-smart-lookup>
                           </ng-container>
-
                           <ng-container *ngSwitchDefault>
-                            <input class="ff-input"
-                                   type="text"
-                                   [formControlName]="f.controlName" />
+                            <input class="ff-input" type="text" [formControlName]="f.controlName" />
                           </ng-container>
-
                         </ng-container>
                       </div>
                     </div>
-
                     <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
                       {{ f.requiredMsg || (f.displayName + ' is required') }}
                     </div>
@@ -509,123 +375,169 @@
             </ng-container>
           </ng-container>
         </div>
-      </ng-container>
 
-      <!-- Repeat subsection fields -->
+        <!-- ── Multi-Select Claim Cards Grid ── -->
+        <ng-container *ngIf="getSelectedClaims(sub).length > 0">
+          <div class="ff-claims-header">
+            <span class="ff-claims-count">{{ getSelectedClaims(sub).length }} claim{{ getSelectedClaims(sub).length > 1 ? 's' : '' }} selected</span>
+            <button type="button"
+                    class="ff-claims-clear-all"
+                    (click)="clearAllSelectedClaims(sub)"
+                    *ngIf="getSelectedClaims(sub).length > 1">
+              Clear all
+            </button>
+          </div>
+          <div class="ff-claims-grid">
+            <div class="ff-claim-card"
+                 *ngFor="let claim of getSelectedClaims(sub); let ci = index; trackBy: trackByClaimId">
+
+              <button type="button"
+                      class="ff-claim-card__dismiss"
+                      (click)="removeSelectedClaim(sub, ci)"
+                      title="Remove this claim">&times;</button>
+
+              <!-- Row 1: Claim # + badge -->
+              <div class="ff-claim-card__top">
+                <span class="ff-claim-card__id">{{ claim.claimNumber }}</span>
+                <span class="ff-claim-card__badge">Claim</span>
+              </div>
+
+              <!-- Row 2: Provider + DOS -->
+              <div class="ff-claim-card__details">
+                <div class="ff-claim-card__row">
+                  <span class="ff-claim-card__icon">👨‍⚕️</span>
+                  <span class="ff-claim-card__value">{{ claim.providerName || '—' }}</span>
+                </div>
+                <div class="ff-claim-card__row">
+                  <span class="ff-claim-card__icon">📅</span>
+                  <span class="ff-claim-card__value ff-claim-card__value--muted">
+                    {{ formatCardDate(claim.dosFrom) }}
+                    <ng-container *ngIf="claim.dosFrom !== claim.dosTo"> — {{ formatCardDate(claim.dosTo) }}</ng-container>
+                  </span>
+                </div>
+                <div class="ff-claim-card__row" *ngIf="claim.reasonForVisit">
+                  <span class="ff-claim-card__icon">📋</span>
+                  <span class="ff-claim-card__value ff-claim-card__value--muted">{{ claim.reasonForVisit }}</span>
+                </div>
+              </div>
+
+              <!-- Row 3: Amount pills -->
+              <div class="ff-claim-card__amounts">
+                <div class="ff-claim-card__amt">
+                  <span class="ff-claim-card__amt-lbl">Billed</span>
+                  <span class="ff-claim-card__amt-val">{{ formatCurrency(claim.billed) }}</span>
+                </div>
+                <div class="ff-claim-card__amt">
+                  <span class="ff-claim-card__amt-lbl">Allowed</span>
+                  <span class="ff-claim-card__amt-val">{{ formatCurrency(claim.allowedAmount) }}</span>
+                </div>
+                <div class="ff-claim-card__amt">
+                  <span class="ff-claim-card__amt-lbl">Copay</span>
+                  <span class="ff-claim-card__amt-val">{{ formatCurrency(claim.copayAmount) }}</span>
+                </div>
+                <div class="ff-claim-card__amt">
+                  <span class="ff-claim-card__amt-lbl">Paid</span>
+                  <span class="ff-claim-card__amt-val"
+                        [class.ff-claim-card__amt-val--zero]="!claim.paid || claim.paid === 0">
+                    {{ formatCurrency(claim.paid) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </ng-container>
+
+      </ng-container>
       <ng-template #subRepeatTpl>
         <div class="ff-repeat-wrap">
           <ng-container *ngFor="let inst of sub.instances; trackBy: trackByRepeatInst">
             <div class="ff-repeat-group">
+
+              <!-- Compact header: title + inline +/- buttons -->
               <div class="ff-repeat-header">
                 <div class="ff-repeat-title">{{ sub.repeat?.instanceLabel }} #{{ inst.index }}</div>
+                <div class="ff-repeat-actions" *ngIf="sub.repeat?.showControls">
+                  <button type="button" class="ff-repeat-btn" [disabled]="!canAddRepeat(sub)" (click)="addRepeat(sub)" title="Add">+</button>
+                  <button type="button" class="ff-repeat-btn danger" [disabled]="!canRemoveRepeat(sub)" (click)="removeRepeat(sub, inst.index)" title="Remove">−</button>
+                </div>
               </div>
 
+              <!-- Fields grid — NO full-width search, NO +/- inside grid -->
               <div class="grid ff-repeat-grid">
                 <ng-container *ngFor="let f of inst.fields; trackBy: trackByField">
                   <ng-container *ngIf="visibleField(f, sec, sub, { repeatPrefix: sub.repeatPrefix!, repeatIndex: inst.index })">
                     <ng-container *ngIf="form.get(f.controlName) as ctrl">
 
-                      <!-- CHECKBOX -->
                       <ng-container *ngIf="f.type === 'checkbox'; else outlinedSubRep">
                         <div class="ff-field">
                           <div class="ff-checkbox">
-                            <input type="checkbox"
-                                   class="form-check-input"
-                                   [formControlName]="f.controlName" />
+                            <input type="checkbox" class="form-check-input" [formControlName]="f.controlName" />
                             <label class="form-check-label ff-checkbox-text">
                               {{ f.displayName }}
                               <span class="req-star" *ngIf="isRequired(ctrl, f)">*</span>
                             </label>
                           </div>
-
                           <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
                             {{ f.requiredMsg || (f.displayName + ' is required') }}
                           </div>
                         </div>
                       </ng-container>
 
-                      <!-- OUTLINED -->
                       <ng-template #outlinedSubRep>
-                        <div class="ff-field" [class.ff-span-all]="f.type==='search'">
+                        <!-- NO span-all — search fields are normal-width in repeat grids -->
+                        <div class="ff-field">
                           <div class="ff-outline"
                                [class.ff-disabled]="ctrl.disabled"
                                [class.ff-invalid]="ctrl.touched && ctrl.invalid"
                                (click)="selectField(f)"
                                (focusin)="selectField(f)"
                                [ngClass]="{
-                                        'ff-selected': isSelected(f),
-                                        'ff-changed': isChangedField(f),
-                                        'ff-unchanged': !isChangedField(f)
-                                      }"
+                                 'ff-selected': isSelected(f),
+                                 'ff-changed': isChangedField(f),
+                                 'ff-unchanged': !isChangedField(f)
+                               }"
                                tabindex="-1">
-
                             <div class="ff-float-label">
                               {{ f.displayName }}
                               <span class="req-star" *ngIf="isRequired(ctrl, f)">*</span>
                             </div>
-
                             <div class="ff-body">
                               <ng-container [ngSwitch]="f.type">
-
-                                <!-- Dropdown -->
                                 <ng-container *ngSwitchCase="'select'">
-                                  <ui-smart-dropdown class="ff-ui"
-                                                     label=""
-                                                     placeholder="Select..."
-                                                     [options]="getDropdownOptions(f.controlName)"
-                                                     [formControlName]="f.controlName">
+                                  <ui-smart-dropdown class="ff-ui" label="" placeholder="Select..."
+                                    [options]="getDropdownOptions(f.controlName)" [formControlName]="f.controlName">
                                   </ui-smart-dropdown>
                                 </ng-container>
-
-                                <!-- Datetime -->
                                 <ng-container *ngSwitchCase="'datetime-local'">
-                                  <ui-datetime-picker class="ff-ui"
-                                                      placeholderDate="mm/dd/yyyy"
-                                                      placeholderDateTime="mm/dd/yyyy --:--"
-                                                      [formControlName]="f.controlName">
+                                  <ui-datetime-picker class="ff-ui" placeholderDate="mm/dd/yyyy"
+                                    placeholderDateTime="mm/dd/yyyy --:--" [formControlName]="f.controlName">
                                   </ui-datetime-picker>
                                 </ng-container>
-
                                 <ng-container *ngSwitchCase="'datatime-local'">
-                                  <ui-datetime-picker class="ff-ui"
-                                                      placeholderDate="mm/dd/yyyy"
-                                                      placeholderDateTime="mm/dd/yyyy --:--"
-                                                      [formControlName]="f.controlName">
+                                  <ui-datetime-picker class="ff-ui" placeholderDate="mm/dd/yyyy"
+                                    placeholderDateTime="mm/dd/yyyy --:--" [formControlName]="f.controlName">
                                   </ui-datetime-picker>
                                 </ng-container>
-
                                 <ng-container *ngSwitchCase="'textarea'">
-                                  <textarea class="ff-input ff-textarea"
-                                            rows="3"
-                                            [formControlName]="f.controlName"></textarea>
+                                  <textarea class="ff-input ff-textarea" rows="3" [formControlName]="f.controlName"></textarea>
                                 </ng-container>
-
                                 <ng-container *ngSwitchCase="'search'">
                                   <ui-smart-lookup class="ff-ui ff-lookup"
-                                                   [placeholder]="getLookupPlaceholder(f)"
-                                                   [minChars]="getLookupMinChars(f)"
-                                                   [debounceMs]="getLookupDebounceMs(f)"
-                                                   [limit]="getLookupLimit(f)"
-                                                   [searchFn]="getLookupSearchFn(f)"
-                                                   [displayWith]="getLookupDisplayWith(f)"
-                                                   [trackBy]="getLookupTrackBy(f)"
-                                                   [formControlName]="f.controlName"
-                                                   (selected)="onLookupSelected(f, $event, { repeatPrefix: sub.repeatPrefix!, repeatIndex: inst.index })"
-                                                   (textChange)="onLookupTextChange(f, $event, { repeatPrefix: sub.repeatPrefix!, repeatIndex: inst.index })"
-                                                   (cleared)="onLookupCleared(f, { repeatPrefix: sub.repeatPrefix!, repeatIndex: inst.index })">
+                                    [placeholder]="getLookupPlaceholder(f)" [minChars]="getLookupMinChars(f)"
+                                    [debounceMs]="getLookupDebounceMs(f)" [limit]="getLookupLimit(f)"
+                                    [searchFn]="getLookupSearchFn(f)" [displayWith]="getLookupDisplayWith(f)"
+                                    [trackBy]="getLookupTrackBy(f)" [formControlName]="f.controlName"
+                                    (selected)="onLookupSelected(f, $event, { repeatPrefix: sub.repeatPrefix!, repeatIndex: inst.index })"
+                                    (textChange)="onLookupTextChange(f, $event, { repeatPrefix: sub.repeatPrefix!, repeatIndex: inst.index })"
+                                    (cleared)="onLookupCleared(f, { repeatPrefix: sub.repeatPrefix!, repeatIndex: inst.index })">
                                   </ui-smart-lookup>
                                 </ng-container>
-
                                 <ng-container *ngSwitchDefault>
-                                  <input class="ff-input"
-                                         type="text"
-                                         [formControlName]="f.controlName" />
+                                  <input class="ff-input" type="text" [formControlName]="f.controlName" />
                                 </ng-container>
-
                               </ng-container>
                             </div>
                           </div>
-
                           <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
                             {{ f.requiredMsg || (f.displayName + ' is required') }}
                           </div>
@@ -635,26 +547,8 @@
                     </ng-container>
                   </ng-container>
                 </ng-container>
-
-                <!-- Repeat controls in last cell -->
-                <div class="ff-repeat-cell" *ngIf="sub.repeat?.showControls">
-                  <button type="button"
-                          class="ff-repeat-btn"
-                          [disabled]="!canAddRepeat(sub)"
-                          (click)="addRepeat(sub)"
-                          title="Add">
-                    +
-                  </button>
-                  <button type="button"
-                          class="ff-repeat-btn danger"
-                          [disabled]="!canRemoveRepeat(sub)"
-                          (click)="removeRepeat(sub, inst.index)"
-                          title="Remove this group">
-                    −
-                  </button>
-                </div>
-
               </div>
+
             </div>
           </ng-container>
         </div>

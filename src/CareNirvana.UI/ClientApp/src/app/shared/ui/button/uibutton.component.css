@@ -1,0 +1,4 @@
+/* ── ui-button.component.css ── */
+/* All base styles from shared ui-theme.css (.ui-btn classes) */
+.ui-btn__icon { display: inline-flex; font-size: 14px; }
+.ui-btn__label { display: inline-flex; align-items: center; }

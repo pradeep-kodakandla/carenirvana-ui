@@ -1,638 +1,551 @@
-/* Layout */
-.case-details {
-  width: 100%;
-}
+/* ═══════════════════════════════════════════════════════════
+   CASE DETAILS — Fixed Layout
+   ─────────────────────────────────────────────────────────
+   FIXES:
+   1. Search fields span 2 cols max (NOT full row)
+   2. +/- buttons inline in repeat header (NOT separate row)
+   3. Repeat grids: simple equal columns, no extra auto col
+   4. Subsection spacing tightened
+   5. Repeat instance titles compact
+   ═══════════════════════════════════════════════════════════ */
 
-/*.grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-}*/
+.case-details { width: 100%; }
 
-/* Cards */
-.section-card, .sub-card {
-  border: 1px solid #e6e8ec;
-  border-radius: 10px;
-  padding: 14px;
+
+/* ═══════════════════════════════════════════
+   1. SECTION CARDS
+   ═══════════════════════════════════════════ */
+.section-card {
   background: #fff;
-  margin-bottom: 14px;
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
+  padding: 0;
+  margin-bottom: 6px;
+  overflow: hidden;
 }
 
 .section-header {
   display: flex;
   align-items: center;
-  /* header bar look */
-  background: #f3f4f6;
-  border-bottom: 1px solid #e6e8ec;
-  /* make it span full card width */
-  margin: -14px -14px 12px;
-  padding: 10px 14px;
-  /* match card top corners */
-  border-radius: 10px 10px 0 0;
-}
-
-.section-title {
-  font-weight: 800;
-  font-size: 14px;
-  color: #111827;
-}
-
-.sub-title {
-  font-weight: 700;
-  font-size: 13px;
-  margin: 6px 0 10px;
-}
-
-/* ============ Outlined Floating Field (like screenshot) ============ */
-.ff-outline {
-  position: relative;
-  border: 1px solid #cfd4dc;
-  border-radius: 8px;
-  background: #fff;
-  /* space for the floating label + consistent control padding */
-  padding: 1px 1px 1px;
-  /*min-height: 52px;*/
-  /* In grid rows with textareas, don't stretch this box to match row height */
-  align-self: start;
-  height: fit-content;
-}
-
-  .ff-outline:hover {
-    border-color: #aeb6c2;
-  }
-
-  .ff-outline.ff-disabled {
-    opacity: 0.65;
-    pointer-events: none;
-  }
-
-  .ff-outline.ff-invalid {
-    border-color: #dc3545;
-  }
-
-.ff-float-label {
-  position: absolute;
-  top: -9px;
-  left: 10px;
-  padding: 0 6px;
-  background: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  color: #444;
-  line-height: 18px;
-}
-
-/* body holds the actual control */
-.ff-body {
-  display: flex;
-  align-items: center;
-  min-height: 34px;
-}
-
-/* Native inputs inside outlined */
-.ff-input {
-  width: 100%;
-  border: 0;
-  outline: none;
-  background: transparent;
-  font-size: 12px;
-  line-height: 22px;
-  padding-left: 5px;
-}
-
-  /* Consistent height for non-textarea inputs */
-  .ff-input:not(.ff-textarea) {
-    height: 34px;
-  }
-
-.ff-textarea {
-  resize: vertical;
-  min-height: 72px;
-  padding-top: 5px;
-}
-
-/* Required asterisk */
-.req-star {
-  color: #dc3545;
-  margin-left: 4px;
-  font-weight: 800;
-}
-
-/* Your UI controls should fill the width */
-.ff-ui {
-  display: block;
-  width: 100%;
-}
-
-/* Try to remove double-borders if ui-smart-dropdown / ui-datetime-picker render their own border */
-:host ::ng-deep .ff-outline ui-smart-dropdown,
-:host ::ng-deep .ff-outline ui-datetime-picker {
-  width: 100%;
-  display: block;
-}
-
-  :host ::ng-deep .ff-outline ui-smart-dropdown input,
-  :host ::ng-deep .ff-outline ui-datetime-picker input {
-    border: 0 !important;
-    outline: none !important;
-    box-shadow: none !important;
-    font-size: 14px !important;
-    background: transparent !important;
-    height: 34px !important;
-    line-height: 22px !important;
-  }
-
-/* Checkbox row (keep clean) */
-.ff-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 2px;
-  align-self: start;
-}
-
-  .ff-checkbox .form-check-input {
-    margin: 0;
-    margin-top: 1px;
-  }
-
-  .ff-checkbox .form-check-label {
-    margin: 0;
-    cursor: pointer;
-  }
-
-/* Errors */
-.ff-error {
-  color: #dc3545;
-  font-size: 12px;
-  margin-top: 6px;
-}
-
-.form-outline .ff-ui,
-.field-box .ff-ui {
-  border: 0 !important;
-}
-
-.ff-ui {
-  border: 0 !important;
-  box-shadow: none !important;
-}
-
-/* Subsection card as an outlined block with floating title */
-.sub-card {
-  position: relative;
-  padding-top: 18px; /* space for floating label */
-}
-
-.sub-float-label {
-  position: absolute;
-  top: -9px;
-  left: 12px;
-  padding: 0 8px;
-  background: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  color: #6b7280;
-  line-height: 18px;
-}
-
-
-.case-savebar {
-  display: flex;
-  justify-content: flex-end;
-  padding: 10px 0;
-}
-
-
-/* Responsive grid: max 5 columns, auto adjusts down on smaller screens */
-.grid {
-  display: grid;
-  gap: 14px;
-  /* Prevent tall controls (e.g., textarea) from stretching other fields in the same row */
-  align-items: start;
-  /* default: up to 4 columns */
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-/* drop to 4 */
-@media (max-width: 1400px) {
-  .grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-/* drop to 3 */
-@media (max-width: 1200px) {
-  .grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-/* drop to 2 */
-@media (max-width: 900px) {
-  .grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-/* drop to 1 */
-@media (max-width: 600px) {
-  .grid {
-    grid-template-columns: repeat(1, minmax(0, 1fr));
-  }
-}
-
-
-/* Make section header clickable like accordion */
-.section-header {
+  gap: 2px;
+  background: #F9FAFB;
+  border-bottom: 1px solid #F3F4F6;
+  margin: 0;
+  padding: 11px 18px;
+  border-radius: 0;
   cursor: pointer;
   user-select: none;
+  transition: background 0.15s ease;
 }
+.section-header:hover { background: #F3F4F6; }
+.section-header:focus { outline: 2px solid rgba(79,70,229,0.25); outline-offset: -2px; }
 
-  .section-header:focus {
-    outline: 2px solid rgba(59, 130, 246, 0.35);
-    outline-offset: 2px;
-  }
-
-/* Chevron icon before title */
 .section-acc-icon {
-  display: inline-flex;
-  width: 18px;
-  height: 18px;
-  align-items: center;
-  justify-content: center;
-  margin-right: 8px;
-  font-size: 24px;
-  transition: transform 150ms ease;
-  color: #374151;
+  display: inline-flex; width: 20px; height: 20px;
+  align-items: center; justify-content: center;
+  margin-right: 6px; font-size: 14px; color: #9CA3AF;
+  transition: transform 200ms ease, color 200ms ease; flex-shrink: 0;
 }
+.section-acc-icon.open { transform: rotate(90deg); color: #4F46E5; }
 
-  .section-acc-icon.open {
-    transform: rotate(90deg);
-  }
-
-
-.ff-outline {
-  position: relative;
-  border: 1px solid #ccc;
-  border-radius: 10px;
-  background: #fff;
-  transition: box-shadow .15s ease, border-color .15s ease, background .15s ease;
-}
-
-/* Unchanged baseline */
-.ff-unchanged:hover {
-  border-color: #c7d0dc;
-}
-
-/* CHANGED: subtle cue always visible */
-.ff-changed {
-  border-color: #b9c7ff; /* soft accent */
-  background: #fbfcff; /* almost white tint */
-}
-
-  /* optional: tiny "edited" dot in the corner */
-  .ff-changed::after {
-    content: "";
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #4c6fff; /* accent dot */
-    opacity: .9;
-  }
-
-/* SELECTED: higher emphasis than changed */
-.ff-selected {
-  border-color: #4c6fff;
-  box-shadow: 0 0 0 3px rgba(76, 111, 255, .12);
-  background: #f7f9ff;
-}
-
-  /* optional: left accent bar for selected */
-  .ff-selected::before {
-    content: "";
-    position: absolute;
-    left: -1px;
-    top: 10px;
-    bottom: 10px;
-    width: 3px;
-    border-radius: 3px;
-    background: #4c6fff;
-  }
-
-  /* If selected + changed, keep selected dominant */
-  .ff-selected.ff-changed {
-    background: #f4f7ff;
-  }
+.section-title { font-weight: 700; font-size: 13px; color: #1F2937; letter-spacing: -0.1px; }
 
 
-.edited-badge {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 8px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1;
-  border: 1px solid rgba(76, 111, 255, .22);
-  background: rgba(76, 111, 255, .10);
-  color: #2f49d1;
-  vertical-align: middle;
-  transform: translateY(-1px);
-}
-
-
-/* Wrap a field + its validation message so error never flows beside */
-.ff-field {
-  display: flex;
-  gap: 20px;
-  align-items: stretch;
-  width: 100%;
-  min-width: 0;
-}
-
-/* Ensure checkbox stays on one line and error below */
-.ff-checkbox, .ff-outline {
-  width: 100%;
-}
-
-
-/* Make search span the full grid width */
-.ff-span-all {
-  grid-column: 1 / -8;
-}
-
-/* Search bar styling to match screenshot */
-.ff-searchbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  /*  border: 1px solid #d0d0d0;
-*/ border-radius: 10px;
-  padding: 10px 12px;
-  background: #fff;
-  min-height: 44px;
-}
-
-  .ff-searchbar:focus-within {
-    border-color: #6aa9ff;
-    box-shadow: 0 0 0 3px rgba(106,169,255,.18);
-  }
-
-.ff-search-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  color: #6b7280;
-}
-
-  .ff-search-icon svg {
-    fill: currentColor;
-  }
-
-.ff-search-input {
-  width: 100%;
-  border: none;
-  outline: none;
+/* ═══════════════════════════════════════════
+   2. SUBSECTION → Left Accent Bar
+   ═══════════════════════════════════════════ */
+.sub-card {
+  position: relative; border: none;
+  border-left: 3px solid #E0E7FF; border-radius: 0;
   background: transparent;
-  font-size: 12px;
+  margin: 2px 18px 10px;         /* ← tighter margin */
+  padding: 10px 0 0 16px;        /* ← tighter padding */
+}
+.sub-card:hover { border-left-color: #C7D2FE; }
+
+.sub-float-label {
+  position: static; display: inline-flex;
+  align-items: center; gap: 6px;
+  padding: 0 0 6px 0;             /* ← tighter bottom */
+  background: transparent; font-size: 12px; font-weight: 700;
+  color: #4F46E5; text-transform: uppercase; letter-spacing: 0.4px; line-height: 1;
 }
 
-  .ff-search-input::-webkit-search-cancel-button {
-    -webkit-appearance: none;
-  }
-/* =========================
-   Repeat groups (+ / −)
-========================= */
+.sub-card.sub-nested {
+  border: none; border-left: 2px dashed #D1D5DB;
+  background: transparent; margin: 4px 0 8px 4px;
+  padding: 8px 0 0 14px; border-radius: 0;
+}
+.sub-card.sub-nested .sub-float-label { color: #6B7280; font-size: 11px; }
+.sub-card.sub-nested:hover { border-left-color: #9CA3AF; }
+
+
+/* ═══════════════════════════════════════════
+   3. FIELD GRID
+   ═══════════════════════════════════════════ */
+.grid {
+  display: grid; gap: 12px; align-items: start;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 12px 18px 14px;       /* ← tighter */
+}
+@media (max-width: 1400px) { .grid { grid-template-columns: repeat(4, minmax(0,1fr)); } }
+@media (max-width: 1200px) { .grid { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+@media (max-width: 900px)  { .grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 600px)  { .grid { grid-template-columns: repeat(1, minmax(0,1fr)); } }
+
+
+/* ═══════════════════════════════════════════
+   4. SEARCH SPAN — 2 columns max (NOT full row)
+   ─────────────────────────────────────────
+   OLD: .ff-span-all { grid-column: 1 / -1 }
+   NEW: .ff-span-search { grid-column: span 2 }
+   ═══════════════════════════════════════════ */
+
+/* Legacy full-span (kept for textarea etc if needed) */
+.ff-span-all {
+  grid-column: 1 / -1;
+}
+
+/* Search fields: span 2 columns instead of full row */
+.ff-span-search {
+  grid-column: span 2;
+}
+
+/* On small screens, search goes full width */
+@media (max-width: 900px) {
+  .ff-span-search { grid-column: 1 / -1; }
+}
+
+
+/* ═══════════════════════════════════════════
+   5. REPEAT GROUPS — Compact, Inline Buttons
+   ═══════════════════════════════════════════ */
 .ff-repeat-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 10px;
+  display: flex; flex-direction: column; gap: 0;
+  margin-bottom: 4px; padding: 0 0 0 0;       /* ← no horizontal padding, sub-card provides indent */
 }
 
 .ff-repeat-group {
-  border: 1px dashed #e1e5ee;
-  border-radius: 12px;
-  padding: 12px;
-  background: #fcfcfd;
+  border: none; border-radius: 0; background: transparent;
+  padding: 8px 0;                               /* ← tighter */
+  border-top: 1px solid #F3F4F6;
 }
+.ff-repeat-group:first-child { border-top: none; }
 
+/* ── Header with title + inline +/- buttons ── */
 .ff-repeat-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: 8px;                           /* ← tighter */
+  gap: 8px;
 }
 
 .ff-repeat-title {
-  font-size: 12px;
-  font-weight: 700;
-  color: #374151;
-  letter-spacing: .2px;
+  font-size: 11px; font-weight: 700; color: #4F46E5;
+  letter-spacing: 0.2px;
+  display: flex; align-items: center; gap: 5px;
+}
+.ff-repeat-title::before {
+  content: ""; display: inline-block;
+  width: 3px; height: 12px; background: #4F46E5; border-radius: 2px;
 }
 
+/* +/- buttons container (now in header, not grid) */
+.ff-repeat-actions {
+  display: flex; gap: 4px; align-items: center;
+}
+
+/* ── Repeat grid: simple equal columns, NO extra auto col ── */
 .grid.ff-repeat-grid {
-  /* add an extra "actions" column as the LAST cell */
-  grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 0;
+  gap: 10px;                                    /* ← tighter gap */
 }
+@media (max-width: 1400px) { .grid.ff-repeat-grid { grid-template-columns: repeat(4, minmax(0,1fr)); } }
+@media (max-width: 1200px) { .grid.ff-repeat-grid { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+@media (max-width: 900px)  { .grid.ff-repeat-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 600px)  { .grid.ff-repeat-grid { grid-template-columns: repeat(1, minmax(0,1fr)); } }
 
-/* Keep responsiveness: repeat(N) + auto actions col */
-@media (max-width: 1400px) {
-  .grid.ff-repeat-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
-  }
-}
-
-@media (max-width: 1200px) {
-  .grid.ff-repeat-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
-  }
-}
-
-@media (max-width: 900px) {
-  .grid.ff-repeat-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
-  }
-}
-
-@media (max-width: 600px) {
-  .grid.ff-repeat-grid {
-    grid-template-columns: repeat(1, minmax(0, 1fr)) auto;
-  }
-}
-
-/* In repeat grids, a full-width field should NOT cover the actions column */
-.grid.ff-repeat-grid .ff-span-all {
-  grid-column: 1 / -8;
-}
-
+/* Legacy: keep ff-repeat-cell for backward compat but hide if empty */
 .ff-repeat-cell {
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-  gap: 8px;
-  padding-top: 1px;
+  display: flex; align-items: flex-start;
+  justify-content: flex-end; gap: 4px; padding-top: 1px;
 }
 
 .ff-repeat-btn {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  border: 1px solid #d7dde5;
-  background: #fff;
-  cursor: pointer;
-  display: inline-flex;
+  width: 28px; height: 28px; border-radius: 7px;
+  border: 1px solid #E5E7EB; background: #fff;
+  cursor: pointer; display: inline-flex;
+  align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 800; line-height: 1;
+  color: #6B7280; user-select: none;
+  transition: all 0.15s ease;
+}
+.ff-repeat-btn:hover { border-color: #9CA3AF; background: #F9FAFB; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.ff-repeat-btn:active { transform: translateY(1px); }
+.ff-repeat-btn:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; }
+.ff-repeat-btn.danger { color: #EF4444; border-color: rgba(239,68,68,0.25); }
+.ff-repeat-btn.danger:hover { border-color: rgba(239,68,68,0.5); background: #FEF2F2; }
+
+
+/* ═══════════════════════════════════════════
+   6. FORM FIELDS
+   ═══════════════════════════════════════════ */
+.ff-field { display: flex; flex-direction: column; width: 100%; min-width: 0; }
+
+.ff-outline {
+  position: relative; border: 1px solid #D1D5DB; border-radius: 10px;
+  background: #fff; padding: 1px; align-self: start; height: fit-content; width: 100%;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.ff-outline:hover { border-color: #9CA3AF; }
+.ff-outline.ff-disabled { opacity: 0.55; pointer-events: none; background: #F9FAFB; }
+.ff-outline.ff-invalid { border-color: #EF4444; box-shadow: 0 0 0 2px rgba(239,68,68,0.08); }
+
+.ff-float-label {
+  position: absolute; top: -9px; left: 10px; padding: 0 6px;
+  background: #fff; font-size: 11px; font-weight: 700; color: #6B7280;
+  line-height: 18px; display: flex; align-items: center; gap: 2px;
+}
+
+.ff-body { display: flex; align-items: center; min-height: 34px; }
+
+.ff-input {
+  width: 100%; border: 0; outline: none; background: transparent;
+  font-size: 12px; line-height: 22px; padding-left: 10px; color: #1F2937;
+}
+.ff-input:not(.ff-textarea) { height: 34px; }
+.ff-input::placeholder { color: #C1C7D0; }
+
+.ff-textarea { resize: vertical; min-height: 72px; padding: 8px 10px; line-height: 1.5; }
+
+.req-star { color: #EF4444; margin-left: 2px; font-weight: 800; font-size: 12px; }
+
+/* UI component overrides */
+.ff-ui { display: block; width: 100%; border: 0 !important; box-shadow: none !important; }
+:host ::ng-deep .ff-outline ui-smart-dropdown,
+:host ::ng-deep .ff-outline ui-datetime-picker { width: 100%; display: block; }
+:host ::ng-deep .ff-outline ui-smart-dropdown input,
+:host ::ng-deep .ff-outline ui-datetime-picker input {
+  border: 0 !important; outline: none !important; box-shadow: none !important;
+  font-size: 12px !important; background: transparent !important;
+  height: 34px !important; line-height: 22px !important; padding-left: 10px !important; color: #1F2937 !important;
+}
+.form-outline .ff-ui, .field-box .ff-ui { border: 0 !important; }
+
+/* Changed state */
+.ff-unchanged:hover { border-color: #9CA3AF; }
+.ff-changed { border-color: #93C5FD; background: #F0F7FF; }
+.ff-changed::after {
+  content: ""; position: absolute; top: 10px; right: 10px;
+  width: 6px; height: 6px; border-radius: 50%; background: #3B82F6; opacity: 0.85;
+}
+
+/* Selected state */
+.ff-selected { border-color: #4F46E5; box-shadow: 0 0 0 3px rgba(79,70,229,0.08); background: #FAFAFF; }
+.ff-selected::before {
+  content: ""; position: absolute; left: -1px; top: 10px; bottom: 10px;
+  width: 3px; border-radius: 3px; background: #4F46E5;
+}
+.ff-selected .ff-float-label { color: #4F46E5; }
+.ff-selected.ff-changed { background: #F0F4FF; }
+
+.edited-badge {
+  display: inline-flex; align-items: center; margin-left: 6px;
+  padding: 1px 7px; border-radius: 999px; font-size: 10px; font-weight: 700; line-height: 1;
+  border: 1px solid rgba(59,130,246,0.2); background: rgba(59,130,246,0.06); color: #2563EB;
+}
+
+
+/* ═══════════════════════════════════════════
+   7. CHECKBOX
+   ═══════════════════════════════════════════ */
+.ff-checkbox { display: flex; align-items: center; gap: 8px; padding: 8px 4px; align-self: start; width: 100%; }
+.ff-checkbox .form-check-input { margin: 0; margin-top: 1px; width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid #D1D5DB; cursor: pointer; accent-color: #4F46E5; }
+.ff-checkbox .form-check-label { margin: 0; cursor: pointer; font-size: 12px; font-weight: 600; color: #374151; }
+
+
+/* ═══════════════════════════════════════════
+   8. VALIDATION
+   ═══════════════════════════════════════════ */
+.ff-error { color: #EF4444; font-size: 11px; font-weight: 500; margin-top: 4px; padding-left: 2px; }
+
+
+/* ═══════════════════════════════════════════
+   9. SEARCH BAR
+   ═══════════════════════════════════════════ */
+.ff-searchbar { display: flex; align-items: center; gap: 8px; border-radius: 10px; padding: 10px 12px; background: #fff; min-height: 44px; }
+.ff-searchbar:focus-within { border-color: #93C5FD; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+.ff-search-icon { display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; color: #9CA3AF; }
+.ff-search-icon svg { fill: currentColor; }
+.ff-search-input { width: 100%; border: none; outline: none; background: transparent; font-size: 12px; color: #1F2937; }
+.ff-search-input::-webkit-search-cancel-button { -webkit-appearance: none; }
+
+
+/* ═══════════════════════════════════════════
+   10. ENROLLMENT CARDS
+   ═══════════════════════════════════════════ */
+.selection-container { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; padding: 14px 18px 16px; }
+@media (max-width: 900px) { .selection-container { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 600px) { .selection-container { grid-template-columns: 1fr; } }
+
+.rounded-box { border: 1.5px solid #E5E7EB; border-radius: 12px; padding: 14px; background: #fff; cursor: pointer; transition: all 0.2s ease; }
+.rounded-box:hover { border-color: #C7D2FE; box-shadow: 0 4px 14px rgba(16,24,40,0.06); transform: translateY(-1px); }
+.rounded-box.selected { border-color: #4F46E5; box-shadow: 0 0 0 3px rgba(79,70,229,0.1); background: #FAFAFF; }
+
+.pairs { display: flex; flex-direction: column; gap: 6px; }
+.pair-row { display: grid; grid-template-columns: 130px 1fr; gap: 8px; }
+.label { font-size: 12px; line-height: 1.3; }
+.label.key { font-weight: 700; color: #6B7280; }
+.label.value { color: #1F2937; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+
+/* ═══════════════════════════════════════════
+   11. CASE TYPE
+   ═══════════════════════════════════════════ */
+.case-type-field { grid-column: 1 / span 2; }
+@media (max-width: 900px) { .case-type-field { grid-column: 1 / -1; } }
+
+.ff-hint {
+  display: flex; gap: 8px; align-items: flex-start;
+  padding: 10px 12px; border: 1px solid #E0E7FF; border-left: 3px solid #4F46E5;
+  border-radius: 8px; background: #F5F7FF; font-size: 12px; color: #1F2937; width: 100%; margin-top: 8px;
+}
+.ff-hint .hint-icon {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: rgba(79,70,229,0.1); color: #4F46E5;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 11px; line-height: 1; flex: 0 0 auto;
+}
+.ff-hint strong { font-weight: 700; color: #4F46E5; }
+
+
+/* ═══════════════════════════════════════════
+   12. SAVE BAR & MISC
+   ═══════════════════════════════════════════ */
+.case-savebar { display: flex; justify-content: flex-end; padding: 10px 0; }
+.sub-title { font-weight: 700; font-size: 13px; margin: 6px 0 10px; color: #374151; }
+
+
+/* ═══════════════════════════════════════════════════════════
+   13. MULTI-SELECT CLAIM CARDS
+   ─────────────────────────────────────────────────────────
+   Responsive grid: 3 per row → 2 → 1 on mobile.
+   Cards are compact with dismiss button, identity row,
+   detail rows, and amount pills.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Header: "X claims selected" + "Clear all" */
+.ff-claims-header {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  font-weight: 800;
-  line-height: 1;
-  user-select: none;
-  transition: box-shadow .15s ease, border-color .15s ease, transform .05s ease;
+  justify-content: space-between;
+  margin: 4px 0 6px;
 }
 
-  .ff-repeat-btn:hover {
-    border-color: #aeb6c2;
-    box-shadow: 0 2px 10px rgba(17,24,39,.06);
-  }
-
-  .ff-repeat-btn:active {
-    transform: translateY(1px);
-  }
-
-  .ff-repeat-btn:disabled {
-    opacity: .45;
-    cursor: not-allowed;
-    box-shadow: none;
-  }
-
-  .ff-repeat-btn.danger {
-    border-color: rgba(220,53,69,.32);
-  }
-
-    .ff-repeat-btn.danger:hover {
-      border-color: rgba(220,53,69,.6);
-    }
-
-/* Nested subsection visual hint */
-.sub-card.sub-nested {
-  border-style: dashed;
-  background: #fff;
-  margin-top: 14px;
+.ff-claims-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: #4F46E5;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.ff-claims-count::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4F46E5;
 }
 
+.ff-claims-clear-all {
+  border: none;
+  background: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: #EF4444;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+.ff-claims-clear-all:hover {
+  background: #FEF2F2;
+  color: #DC2626;
+}
 
-
-
-/* Enrollment cards */
-.selection-container {
+/* Cards grid: 3 → 2 → 1 columns */
+.ff-claims-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
+  margin-bottom: 8px;
 }
 
-.rounded-box {
-  border: 1px solid #e6e8ec;
-  border-radius: 12px;
-  padding: 12px;
-  background: #fff;
-  cursor: pointer;
-  transition: box-shadow .15s ease, border-color .15s ease, transform .05s ease;
+@media (max-width: 1200px) {
+  .ff-claims-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 700px) {
+  .ff-claims-grid { grid-template-columns: 1fr; }
 }
 
-  .rounded-box:hover {
-    border-color: #c7d0dc;
-    box-shadow: 0 6px 18px rgba(17, 24, 39, 0.06);
-  }
 
-  .rounded-box.selected {
-    border-color: #4c6fff;
-    box-shadow: 0 0 0 3px rgba(76, 111, 255, .12);
-    background: #f7f9ff;
-  }
-
-.pairs {
+/* ── Individual Claim Card ── */
+.ff-claim-card {
+  position: relative;
+  padding: 10px 12px;
+  border: 1px solid #E0E7FF;
+  border-left: 3px solid #4F46E5;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #FAFAFF 0%, #F5F7FF 100%);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
+  animation: ffClaimSlideIn 0.2s ease-out;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.ff-claim-card:hover {
+  border-color: #C7D2FE;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.08);
 }
 
-.pair-row {
-  display: grid;
-  grid-template-columns: 140px 1fr;
-  gap: 10px;
+@keyframes ffClaimSlideIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.label {
-  font-size: 12px;
-  line-height: 1.2;
-}
-
-  .label.key {
-    font-weight: 700;
-    color: #374151;
-  }
-
-  .label.value {
-    color: #111827;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-
-/* =========================
-   Case Type (below Enrollment)
-========================= */
-.case-type-field {
-  /* keep it nicely sized on large screens */
-  grid-column: 1 / span 2;
-}
-
-@media (max-width: 900px) {
-  .case-type-field {
-    grid-column: 1 / -1;
-  }
-}
-
-/* First-time guidance message (professional) */
-.ff-hint {
+/* Dismiss × */
+.ff-claim-card__dismiss {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: 1px solid #E5E7EB;
+  background: #fff;
+  cursor: pointer;
   display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  padding: 10px 12px;
-  border: 1px solid #e6e8ec;
-  border-left: 4px solid #4c6fff;
-  border-radius: 10px;
-  background: #f8fafc;
-  font-size: 12px;
-  color: #111827;
-  width:100%;
-
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: #9CA3AF;
+  line-height: 1;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+.ff-claim-card__dismiss:hover {
+  border-color: #FCA5A5;
+  color: #EF4444;
+  background: #FEF2F2;
 }
 
-  .ff-hint .hint-icon {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: rgba(76, 111, 255, .12);
-    color: #2f49d1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 800;
-    line-height: 1;
-    flex: 0 0 auto;
-    margin-top: 1px;
-  }
+/* Top row: Claim # + badge */
+.ff-claim-card__top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-right: 24px;
+}
 
-  .ff-hint strong {
-    font-weight: 800;
-  }
+.ff-claim-card__id {
+  font-size: 12px;
+  font-weight: 800;
+  color: #1F2937;
+  letter-spacing: -0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ff-claim-card__badge {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  background: #EEF2FF;
+  border: 1px solid #C7D2FE;
+  color: #4338CA;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+/* Detail rows */
+.ff-claim-card__details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ff-claim-card__row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  line-height: 1.4;
+  min-width: 0;
+}
+
+.ff-claim-card__icon {
+  font-size: 11px;
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
+}
+
+.ff-claim-card__value {
+  color: #374151;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ff-claim-card__value--muted {
+  color: #6B7280;
+  font-weight: 500;
+}
+
+/* Amount pills */
+.ff-claim-card__amounts {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding-top: 5px;
+  border-top: 1px solid rgba(224, 231, 255, 0.7);
+}
+
+.ff-claim-card__amt {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: #fff;
+  border: 1px solid #E5E7EB;
+}
+
+.ff-claim-card__amt-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  color: #9CA3AF;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.ff-claim-card__amt-val {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1F2937;
+  font-variant-numeric: tabular-nums;
+}
+
+.ff-claim-card__amt-val--zero {
+  color: #D1D5DB;
+}

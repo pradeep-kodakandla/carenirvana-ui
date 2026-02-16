@@ -1,0 +1,773 @@
+/* ============================================================
+   UI COMPONENT LIBRARY — SHARED THEME & COMMON STYLES
+   Healthcare-compliant, WCAG 2.1 AA accessible
+   ============================================================ */
+
+/* ─── CSS Custom Properties (Design Tokens) ─── */
+:root {
+  /* ── Brand / Primary ── */
+  --ui-primary:            #0078d4;
+  --ui-primary-dark:       #005a9e;
+  --ui-primary-light:      #deecf9;
+  --ui-primary-lighter:    #f0f7ff;
+  --ui-primary-ring:       rgba(0, 120, 212, 0.22);
+
+  /* ── Semantic ── */
+  --ui-success:            #0e7a0d;
+  --ui-success-bg:         #dff6dd;
+  --ui-warning:            #d48c00;
+  --ui-warning-bg:         #fff4ce;
+  --ui-danger:             #c4314b;
+  --ui-danger-bg:          #fde7e9;
+  --ui-danger-dark:        #a4262c;
+  --ui-info:               #0078d4;
+  --ui-info-bg:            #deecf9;
+
+  /* ── Neutral / Gray Scale ── */
+  --ui-white:              #ffffff;
+  --ui-gray-50:            #fafafa;
+  --ui-gray-100:           #f5f5f5;
+  --ui-gray-200:           #eeeeee;
+  --ui-gray-300:           #e0e0e0;
+  --ui-gray-400:           #c4c4c4;
+  --ui-gray-500:           #9e9e9e;
+  --ui-gray-600:           #757575;
+  --ui-gray-700:           #616161;
+  --ui-gray-800:           #424242;
+  --ui-gray-900:           #212121;
+
+  /* ── Typography ── */
+  --ui-font-family:        'Segoe UI', -apple-system, BlinkMacSystemFont,
+                           'Helvetica Neue', Arial, sans-serif;
+  --ui-font-size-xs:       11px;
+  --ui-font-size-sm:       12px;
+  --ui-font-size-base:     13px;
+  --ui-font-size-md:       14px;
+  --ui-font-size-lg:       16px;
+  --ui-font-weight-normal: 400;
+  --ui-font-weight-medium: 500;
+  --ui-font-weight-semi:   600;
+  --ui-font-weight-bold:   700;
+  --ui-line-height:        1.5;
+
+  /* ── Spacing ── */
+  --ui-spacing-xxs:        2px;
+  --ui-spacing-xs:         4px;
+  --ui-spacing-sm:         6px;
+  --ui-spacing-md:         8px;
+  --ui-spacing-lg:         12px;
+  --ui-spacing-xl:         16px;
+  --ui-spacing-xxl:        24px;
+
+  /* ── Border ── */
+  --ui-border-radius:      4px;
+  --ui-border-radius-lg:   6px;
+  --ui-border-color:       #c4c4c4;
+  --ui-border-hover:       #999999;
+  --ui-border-focus:       var(--ui-primary);
+  --ui-border-error:       var(--ui-danger);
+
+  /* ── Control Sizing ── */
+  --ui-control-height-sm:  28px;
+  --ui-control-height:     36px;
+  --ui-control-height-lg:  42px;
+
+  /* ── Shadow ── */
+  --ui-shadow-sm:          0 1px 3px rgba(0, 0, 0, 0.08);
+  --ui-shadow-md:          0 2px 8px rgba(0, 0, 0, 0.12);
+  --ui-shadow-lg:          0 4px 16px rgba(0, 0, 0, 0.15);
+  --ui-focus-ring:         0 0 0 2px var(--ui-primary-ring);
+
+  /* ── Transitions ── */
+  --ui-transition-fast:    0.12s ease;
+  --ui-transition-base:    0.18s ease;
+  --ui-transition-slow:    0.3s ease;
+
+  /* ── Z-Index Layers ── */
+  --ui-z-dropdown:         1000;
+  --ui-z-modal:            1050;
+  --ui-z-tooltip:          1100;
+}
+
+
+/* ─── Shared Control Wrapper ─── */
+.ui-field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-spacing-xs);
+  font-family: var(--ui-font-family);
+  font-size: var(--ui-font-size-sm);
+  width: 100%;
+}
+
+.ui-field--inline {
+  flex-direction: row;
+  align-items: center;
+}
+
+
+/* ─── Floating Label Wrapper ─── */
+.ui-field__wrapper {
+  position: relative;
+  width: 100%;
+}
+
+
+/* ─── Floating Label ─── */
+.ui-field__label {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--ui-font-size-base);
+  color: var(--ui-gray-600);
+  pointer-events: none;
+  background: var(--ui-white);
+  padding: 0 4px;
+  transition: all var(--ui-transition-fast);
+  z-index: 1;
+  line-height: 1.2;
+}
+
+/* Float up when has-value or focused */
+.ui-field__wrapper--has-value .ui-field__label,
+.ui-field__wrapper--focused .ui-field__label {
+  top: 0;
+  transform: translateY(-50%) scale(0.88);
+  font-size: var(--ui-font-size-base);
+  color: var(--ui-gray-700);
+}
+
+.ui-field__wrapper--focused .ui-field__label {
+  color: var(--ui-primary);
+}
+
+/* Error state label color */
+.ui-field__wrapper--error .ui-field__label {
+  color: var(--ui-danger) !important;
+}
+
+
+/* ─── Static Label (above the control) ─── */
+.ui-field__static-label {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-spacing-xs);
+  font-size: var(--ui-font-size-sm);
+  font-weight: var(--ui-font-weight-semi);
+  color: var(--ui-gray-800);
+  line-height: 1.3;
+  margin-bottom: var(--ui-spacing-xxs);
+}
+
+
+/* ─── Mandatory / Required Indicator ─── */
+.ui-field__required {
+  color: var(--ui-danger);
+  font-weight: var(--ui-font-weight-bold);
+  font-size: var(--ui-font-size-md);
+  margin-left: 1px;
+  line-height: 1;
+}
+
+.ui-field__required::after {
+  content: '*';
+}
+
+
+/* ─── Optional Indicator ─── */
+.ui-field__optional {
+  font-size: var(--ui-font-size-xs);
+  font-weight: var(--ui-font-weight-normal);
+  color: var(--ui-gray-500);
+  font-style: italic;
+}
+
+
+/* ─── Shared Control Base (input, select, textarea) ─── */
+.ui-control {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--ui-control-height);
+  padding: var(--ui-spacing-sm) var(--ui-spacing-lg)
+           var(--ui-spacing-sm) var(--ui-spacing-lg);
+  font-family: var(--ui-font-family);
+  font-size: var(--ui-font-size-base);
+  font-weight: var(--ui-font-weight-normal);
+  line-height: var(--ui-line-height);
+  color: var(--ui-gray-900);
+  background-color: var(--ui-white);
+  border: 1px solid var(--ui-border-color);
+  border-radius: var(--ui-border-radius);
+  outline: none;
+  transition: border-color var(--ui-transition-fast),
+              box-shadow var(--ui-transition-fast),
+              background-color var(--ui-transition-fast);
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* Size Variants */
+.ui-control--sm {
+  min-height: var(--ui-control-height-sm);
+  padding: var(--ui-spacing-xs) var(--ui-spacing-md);
+  font-size: var(--ui-font-size-sm);
+}
+
+.ui-control--lg {
+  min-height: var(--ui-control-height-lg);
+  padding: var(--ui-spacing-md) var(--ui-spacing-xl);
+  font-size: var(--ui-font-size-md);
+}
+
+
+/* ─── State: Hover ─── */
+.ui-control:hover:not(:disabled):not(:focus):not(.ui-control--error) {
+  border-color: var(--ui-border-hover);
+}
+
+/* ─── State: Focus ─── */
+.ui-control:focus,
+.ui-control:focus-visible {
+  border-color: var(--ui-border-focus);
+  box-shadow: var(--ui-focus-ring);
+}
+
+/* ─── State: Active / Selection ─── */
+.ui-control:active:not(:disabled) {
+  border-color: var(--ui-primary-dark);
+}
+
+/* ─── State: Disabled ─── */
+.ui-control:disabled,
+.ui-control--disabled {
+  opacity: 0.55;
+  background-color: var(--ui-gray-100);
+  border-color: var(--ui-gray-300);
+  color: var(--ui-gray-500);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ─── State: Read-only ─── */
+.ui-control:read-only:not(:disabled) {
+  background-color: var(--ui-gray-50);
+  border-color: var(--ui-gray-300);
+  cursor: default;
+}
+
+/* ─── State: Error / Invalid ─── */
+.ui-control--error,
+.ui-control:invalid:not(:focus):not(:placeholder-shown) {
+  border-color: var(--ui-border-error) !important;
+  box-shadow: none;
+}
+
+.ui-control--error:focus {
+  border-color: var(--ui-border-error) !important;
+  box-shadow: 0 0 0 2px rgba(196, 49, 75, 0.2) !important;
+}
+
+
+/* ─── Placeholder ─── */
+.ui-control::placeholder {
+  color: var(--ui-gray-500);
+  font-weight: var(--ui-font-weight-normal);
+  opacity: 1;
+}
+
+
+/* ─── Validation / Help Messages ─── */
+.ui-field__message {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ui-spacing-xs);
+  font-size: var(--ui-font-size-xs);
+  line-height: 1.4;
+  min-height: 16px;
+  padding: 0 2px;
+  transition: color var(--ui-transition-fast);
+}
+
+.ui-field__message--error {
+  color: var(--ui-danger);
+  font-weight: var(--ui-font-weight-medium);
+}
+
+.ui-field__message--error::before {
+  content: '⚠';
+  font-size: 11px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.ui-field__message--warning {
+  color: var(--ui-warning);
+}
+
+.ui-field__message--success {
+  color: var(--ui-success);
+}
+
+.ui-field__message--hint {
+  color: var(--ui-gray-500);
+}
+
+
+/* ─── Character / Word Counter ─── */
+.ui-field__counter {
+  font-size: var(--ui-font-size-xs);
+  color: var(--ui-gray-500);
+  text-align: right;
+  margin-top: var(--ui-spacing-xxs);
+}
+
+.ui-field__counter--limit {
+  color: var(--ui-danger);
+  font-weight: var(--ui-font-weight-semi);
+}
+
+
+/* ─── Dropdown Panel (shared) ─── */
+.ui-panel {
+  position: absolute;
+  z-index: var(--ui-z-dropdown);
+  left: 0;
+  right: 0;
+  margin-top: var(--ui-spacing-xs);
+  border-radius: var(--ui-border-radius);
+  border: 1px solid var(--ui-gray-300);
+  background: var(--ui-white);
+  box-shadow: var(--ui-shadow-md);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ui-panel__search {
+  border: none;
+  border-bottom: 1px solid var(--ui-gray-200);
+  padding: var(--ui-spacing-sm) var(--ui-spacing-md);
+  outline: none;
+  font-size: var(--ui-font-size-base);
+  font-family: var(--ui-font-family);
+  background: var(--ui-gray-50);
+}
+
+.ui-panel__search:focus {
+  background: var(--ui-white);
+  border-bottom-color: var(--ui-primary);
+}
+
+.ui-panel__options {
+  overflow-y: auto;
+  max-height: inherit;
+}
+
+.ui-panel__option {
+  padding: var(--ui-spacing-sm) var(--ui-spacing-lg);
+  cursor: pointer;
+  font-size: var(--ui-font-size-base);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: var(--ui-spacing-md);
+  transition: background-color var(--ui-transition-fast);
+  border-left: 3px solid transparent;
+  min-height: 32px;
+}
+
+.ui-panel__option:not(.ui-panel__option--disabled):hover {
+  background-color: var(--ui-gray-100);
+}
+
+.ui-panel__option--highlighted {
+  background-color: var(--ui-primary-lighter) !important;
+  border-left-color: var(--ui-primary);
+}
+
+.ui-panel__option--selected {
+  font-weight: var(--ui-font-weight-semi);
+  background-color: var(--ui-primary-light);
+  color: var(--ui-primary-dark);
+}
+
+.ui-panel__option--disabled {
+  color: var(--ui-gray-400);
+  cursor: not-allowed;
+  font-style: italic;
+}
+
+.ui-panel__empty {
+  padding: var(--ui-spacing-lg);
+  font-size: var(--ui-font-size-sm);
+  color: var(--ui-gray-500);
+  text-align: center;
+  font-style: italic;
+}
+
+
+/* ─── Checkmark for selected options ─── */
+.ui-panel__checkmark {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--ui-primary);
+  visibility: hidden;
+}
+
+.ui-panel__option--selected .ui-panel__checkmark {
+  visibility: visible;
+}
+
+
+/* ─── Pill / Tag / Chip (for multi-select) ─── */
+.ui-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-spacing-xs);
+  padding: 2px 6px 2px 8px;
+  font-size: var(--ui-font-size-xs);
+  font-weight: var(--ui-font-weight-medium);
+  background: var(--ui-primary-light);
+  color: var(--ui-primary-dark);
+  border-radius: 12px;
+  line-height: 1.4;
+  max-width: 140px;
+  white-space: nowrap;
+}
+
+.ui-chip__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ui-chip__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 10px;
+  color: var(--ui-primary-dark);
+  border-radius: 50%;
+  padding: 0;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: background var(--ui-transition-fast);
+}
+
+.ui-chip__remove:hover {
+  background: rgba(0, 90, 158, 0.15);
+}
+
+
+/* ─── Checkbox / Radio Shared Base ─── */
+.ui-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-spacing-md);
+  cursor: pointer;
+  font-size: var(--ui-font-size-base);
+  color: var(--ui-gray-800);
+  line-height: 1.4;
+  padding: var(--ui-spacing-xxs) 0;
+  user-select: none;
+  position: relative;
+}
+
+.ui-check--disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.ui-check__input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.ui-check__box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--ui-gray-400);
+  background: var(--ui-white);
+  transition: all var(--ui-transition-fast);
+  flex-shrink: 0;
+}
+
+/* Checkbox is square */
+.ui-check__box--checkbox {
+  border-radius: 3px;
+}
+
+/* Radio is round */
+.ui-check__box--radio {
+  border-radius: 50%;
+}
+
+/* Hover */
+.ui-check:hover .ui-check__box {
+  border-color: var(--ui-primary);
+}
+
+/* Focus ring */
+.ui-check__input:focus-visible + .ui-check__box {
+  border-color: var(--ui-primary);
+  box-shadow: var(--ui-focus-ring);
+}
+
+/* Checked */
+.ui-check__input:checked + .ui-check__box {
+  background: var(--ui-primary);
+  border-color: var(--ui-primary);
+}
+
+/* Check icon (for checkbox) */
+.ui-check__input:checked + .ui-check__box--checkbox::after {
+  content: '';
+  display: block;
+  width: 5px;
+  height: 9px;
+  border: solid var(--ui-white);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  margin-top: -2px;
+}
+
+/* Radio dot (for radio) */
+.ui-check__input:checked + .ui-check__box--radio::after {
+  content: '';
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ui-white);
+}
+
+/* Indeterminate checkbox */
+.ui-check__input:indeterminate + .ui-check__box--checkbox {
+  background: var(--ui-primary);
+  border-color: var(--ui-primary);
+}
+
+.ui-check__input:indeterminate + .ui-check__box--checkbox::after {
+  content: '';
+  display: block;
+  width: 8px;
+  height: 2px;
+  background: var(--ui-white);
+  border: none;
+  transform: none;
+  margin: 0;
+}
+
+/* Error state for checkbox/radio */
+.ui-check--error .ui-check__box {
+  border-color: var(--ui-danger) !important;
+}
+
+
+/* ─── Button Base ─── */
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ui-spacing-md);
+  font-family: var(--ui-font-family);
+  font-size: var(--ui-font-size-base);
+  font-weight: var(--ui-font-weight-semi);
+  line-height: 1;
+  padding: var(--ui-spacing-md) var(--ui-spacing-xl);
+  min-height: var(--ui-control-height);
+  border-radius: var(--ui-border-radius);
+  border: 1px solid transparent;
+  cursor: pointer;
+  outline: none;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all var(--ui-transition-fast);
+  user-select: none;
+  position: relative;
+}
+
+.ui-btn:focus-visible {
+  box-shadow: var(--ui-focus-ring);
+}
+
+.ui-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.ui-btn--sm {
+  min-height: var(--ui-control-height-sm);
+  padding: var(--ui-spacing-xs) var(--ui-spacing-lg);
+  font-size: var(--ui-font-size-sm);
+}
+
+.ui-btn--lg {
+  min-height: var(--ui-control-height-lg);
+  padding: var(--ui-spacing-lg) var(--ui-spacing-xxl);
+  font-size: var(--ui-font-size-md);
+}
+
+/* Primary */
+.ui-btn--primary {
+  background: var(--ui-primary);
+  color: var(--ui-white);
+}
+.ui-btn--primary:hover:not(:disabled) {
+  background: var(--ui-primary-dark);
+}
+.ui-btn--primary:active:not(:disabled) {
+  background: #004578;
+}
+
+/* Secondary / Outline */
+.ui-btn--secondary {
+  background: var(--ui-white);
+  color: var(--ui-primary);
+  border-color: var(--ui-primary);
+}
+.ui-btn--secondary:hover:not(:disabled) {
+  background: var(--ui-primary-lighter);
+}
+
+/* Danger */
+.ui-btn--danger {
+  background: var(--ui-danger);
+  color: var(--ui-white);
+}
+.ui-btn--danger:hover:not(:disabled) {
+  background: var(--ui-danger-dark);
+}
+
+/* Ghost / Text */
+.ui-btn--ghost {
+  background: transparent;
+  color: var(--ui-primary);
+  border-color: transparent;
+}
+.ui-btn--ghost:hover:not(:disabled) {
+  background: var(--ui-primary-lighter);
+}
+
+/* Success */
+.ui-btn--success {
+  background: var(--ui-success);
+  color: var(--ui-white);
+}
+.ui-btn--success:hover:not(:disabled) {
+  background: #065e06;
+}
+
+/* Full width */
+.ui-btn--block {
+  width: 100%;
+}
+
+/* Loading state */
+.ui-btn--loading {
+  pointer-events: none;
+  position: relative;
+  color: transparent !important;
+}
+
+.ui-btn--loading::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: ui-spin 0.6s linear infinite;
+}
+
+@keyframes ui-spin {
+  to { transform: rotate(360deg); }
+}
+
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+  .ui-control {
+    font-size: var(--ui-font-size-md);
+    min-height: 40px;
+  }
+  .ui-btn {
+    min-height: 40px;
+    font-size: var(--ui-font-size-md);
+  }
+}
+
+@media (max-width: 480px) {
+  .ui-control {
+    font-size: 16px; /* prevents iOS zoom */
+    min-height: 44px;
+  }
+  .ui-btn {
+    min-height: 44px;
+    width: 100%;
+  }
+}
+
+
+/* ─── High Contrast / Forced Colors (accessibility) ─── */
+@media (forced-colors: active) {
+  .ui-control {
+    border: 2px solid ButtonText;
+  }
+  .ui-control:focus {
+    outline: 2px solid Highlight;
+  }
+  .ui-btn--primary {
+    background: ButtonFace;
+    color: ButtonText;
+    border: 2px solid ButtonText;
+  }
+  .ui-check__box {
+    border: 2px solid ButtonText;
+  }
+  .ui-check__input:checked + .ui-check__box {
+    background: Highlight;
+    border-color: Highlight;
+  }
+}
+
+
+/* ─── Reduced Motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+
+/* ─── Print ─── */
+@media print {
+  .ui-panel,
+  .ui-chip__remove,
+  .ui-field__message--hint {
+    display: none !important;
+  }
+}

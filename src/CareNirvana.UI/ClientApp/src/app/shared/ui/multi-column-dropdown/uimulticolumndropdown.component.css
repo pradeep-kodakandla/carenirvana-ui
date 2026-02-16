@@ -1,0 +1,93 @@
+/* ── ui-multi-column-dropdown.component.css ── */
+
+.ui-mcd__panel {
+  min-width: 100%;
+  width: max-content;
+}
+
+.ui-mcd__header {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  background: var(--ui-gray-100, #f5f5f5);
+  border-bottom: 2px solid var(--ui-gray-300, #e0e0e0);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ui-gray-600, #757575);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.ui-mcd__header-cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 2px 4px;
+}
+
+.ui-mcd__body {
+  overflow-y: auto;
+}
+
+.ui-mcd__row {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px !important;
+  border-left: 3px solid transparent;
+  transition: background-color 0.12s;
+}
+
+.ui-mcd__row:hover:not(.ui-panel__option--disabled) {
+  background-color: var(--ui-gray-100, #f5f5f5);
+}
+
+.ui-mcd__row.ui-panel__option--highlighted {
+  background-color: var(--ui-primary-lighter, #f0f7ff) !important;
+  border-left-color: var(--ui-primary, #0078d4);
+}
+
+.ui-mcd__row.ui-panel__option--selected {
+  background-color: var(--ui-primary-light, #deecf9);
+  font-weight: 600;
+}
+
+.ui-mcd__cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+/* Alternating row background for readability */
+.ui-mcd__row:nth-child(even) {
+  background-color: var(--ui-gray-50, #fafafa);
+}
+
+.ui-mcd__row:nth-child(even):hover:not(.ui-panel__option--disabled) {
+  background-color: var(--ui-gray-100, #f5f5f5);
+}
+
+.ui-mcd__row:nth-child(even).ui-panel__option--highlighted {
+  background-color: var(--ui-primary-lighter, #f0f7ff) !important;
+}
+
+/* Scrollbar styling */
+.ui-mcd__body::-webkit-scrollbar {
+  width: 6px;
+}
+.ui-mcd__body::-webkit-scrollbar-thumb {
+  background: var(--ui-gray-400, #c4c4c4);
+  border-radius: 3px;
+}
+
+:host(.ff-ui) .ui-dropdown__control {
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}

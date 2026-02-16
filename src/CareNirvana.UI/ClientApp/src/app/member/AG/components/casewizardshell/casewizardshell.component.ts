@@ -33,7 +33,32 @@ export interface CaseStep {
   id: string;
   label: string;
   route: string;
-  disabled?: boolean; // ✅ fixes your stepper TS2339 errors
+  disabled?: boolean;
+}
+
+// ── AI panel interfaces ──
+export interface SlaItem {
+  label: string;
+  deadline: string;
+  remaining: string;
+  status: 'ok' | 'warning' | 'critical';
+}
+
+export interface QuickAction {
+  icon: string;
+  label: string;
+  description: string;
+  actionId: string;
+}
+
+export interface AiSuggestion {
+  type: 'insight' | 'action' | 'recommendation';
+  icon: string;
+  title: string;
+  body: string;
+  confidence: number;
+  actionLabel?: string;
+  actionId?: string;
 }
 
 @Component({
@@ -63,12 +88,10 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     { id: 'activities', label: 'Activities', route: 'activities' },
     { id: 'notes', label: 'Notes', route: 'notes' },
     { id: 'documents', label: 'Documents', route: 'documents' },
-/*    { id: 'close', label: 'Close', route: 'close' }*/
   ];
 
   activeStepId = 'details';
   private currentStepRef?: ComponentRef<any>;
-
   private destroy$ = new Subject<void>();
 
   private stepMap: Record<string, Type<any>> = {
@@ -81,6 +104,27 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     close: CasecloseComponent
   };
 
+  // ════════════════════════════════════
+  //  NEW: Escalate
+  // ════════════════════════════════════
+  showEscalateConfirm = false;
+
+  // ════════════════════════════════════
+  //  NEW: AI Panel state
+  // ════════════════════════════════════
+  aiPanelOpen = false;
+  aiQuery = '';
+
+  // SLA data (populated from API or derived from aggregate)
+  slaItems: SlaItem[] = [];
+  slaAtRiskCount = 0;
+
+  // Quick actions (context-sensitive per level/step)
+  quickActions: QuickAction[] = [];
+
+  // AI suggestions (populated from AI service)
+  aiSuggestions: AiSuggestion[] = [];
+
   constructor(
     private componentFactoryResolver: ComponentFactoryResolver,
     private fb: FormBuilder,
@@ -88,14 +132,16 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     private authService: AuthService,
     private caseApi: CasedetailService,
     private state: CaseWizardStoreService
+    // TODO: inject your AI suggestion service here
+    // private aiService: CaseAiService
   ) { }
 
   ngOnInit(): void {
     this.headerForm = this.fb.group({
-      caseType: [null] // holds templateId
+      caseType: [null]
     });
 
-    // Load Case Types (NO default selection)
+    // Load Case Types
     this.authService.getTemplates('AG', 0)
       .pipe(takeUntil(this.destroy$))
       .subscribe((rows: any[]) => {
@@ -105,8 +151,8 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
           label: x.templateName
         }));
       });
+
     // Keep header caseType in sync with wizard store
-    // (Case Type selector is now shown inside Case Details step)
     this.state.templateId$
       .pipe(takeUntil(this.destroy$), distinctUntilChanged())
       .subscribe((templateId: number | null) => {
@@ -115,43 +161,41 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
         this.pushTemplateIdIntoCurrentStep(templateId);
       });
 
-    // EDIT MODE detection: caseNumber in route
+    // EDIT MODE detection
     this.watchParamFromAnyLevel('caseNumber')
       .pipe(takeUntil(this.destroy$), distinctUntilChanged())
       .subscribe(caseNumber => {
         if (!caseNumber || caseNumber === '0') {
           this.state.resetForNew();
           this.updateStepDisabled(this.state.getTemplateId());
+          this.closeAiPanel(); // no AI for brand-new unsaved cases
           return;
         }
 
-        // Load aggregate once for edit
         this.caseApi.getCaseByNumber(caseNumber)
           .pipe(takeUntil(this.destroy$))
           .subscribe({
             next: (agg: any) => {
               this.state.setAggregate(agg);
 
-              // derive templateId from agg.header.caseType
               const templateId = this.deriveTemplateIdFromAggregate(agg);
               this.state.setTemplateId(templateId);
-
-              // patch dropdown without firing valueChanges again
               this.headerForm.patchValue({ caseType: templateId }, { emitEvent: false });
               this.updateStepDisabled(templateId);
 
-              // choose first available level
               const level = this.deriveActiveLevelIdFromAggregate(agg) ?? 1;
               this.state.setActiveLevel(level);
 
-              // push template into whatever step is currently rendered
               this.pushTemplateIdIntoCurrentStep(templateId);
+
+              // ✅ Load AI panel data now that case is loaded
+              this.loadAiPanelData(agg, level);
             },
             error: (e: any) => console.error(e)
           });
       });
 
-    // Also recalc disabled whenever aggregate/template changes externally
+    // Recalc disabled whenever aggregate/template changes
     combineLatest([this.state.templateId$, this.state.aggregate$])
       .pipe(takeUntil(this.destroy$))
       .subscribe(([tid]) => this.updateStepDisabled(tid));
@@ -167,18 +211,253 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     this.currentStepRef?.destroy();
   }
 
-  // ---------------- UI actions ----------------
+  // ═══════════════════════════════════
+  //  HEADER FIELD EXTRACTORS (new)
+  // ═══════════════════════════════════
+
+  /** Status text from aggregate (map your actual status codes) */
+  getStatus(agg: any): string {
+    return agg?.header?.caseStatus ?? agg?.header?.status ?? '';
+  }
+
+  /** Slug for CSS class binding: "In Review" → "in-review" */
+  getStatusSlug(agg: any): string {
+    const raw = this.getStatus(agg);
+    if (!raw) return '';
+    return raw.toLowerCase().replace(/\s+/g, '-');
+  }
+
+  getPriority(agg: any): string {
+    return agg?.header?.priority ?? '';
+  }
+
+  getPrioritySlug(agg: any): string {
+    return (this.getPriority(agg) || '').toLowerCase();
+  }
+
+  getDueDate(agg: any): any {
+    return agg?.header?.dueDate ?? agg?.header?.targetDate ?? null;
+  }
+
+  isDueSoon(agg: any): boolean {
+    const due = this.getDueDate(agg);
+    if (!due) return false;
+    const diff = new Date(due).getTime() - Date.now();
+    return diff > 0 && diff < 2 * 24 * 60 * 60 * 1000; // < 2 days
+  }
+
+  isOverdue(agg: any): boolean {
+    const due = this.getDueDate(agg);
+    if (!due) return false;
+    return new Date(due).getTime() < Date.now();
+  }
+
+  getAssignee(agg: any): string {
+    return agg?.header?.assigneeName ?? agg?.header?.assignedTo ?? '';
+  }
+
+  getAssigneeInitials(agg: any): string {
+    const name = this.getAssignee(agg);
+    if (!name) return '';
+    return name.split(' ').map((w: string) => w[0]).join('').substring(0, 2).toUpperCase();
+  }
+
+  getLevelLabel(levelId: number | null): string {
+    if (!levelId) return '';
+    return `Level ${levelId}`;
+  }
+
+  // ═══════════════════════════════════
+  //  ESCALATE
+  // ═══════════════════════════════════
+
+  toggleEscalateConfirm(): void {
+    this.showEscalateConfirm = !this.showEscalateConfirm;
+  }
+
+  confirmEscalate(): void {
+    this.showEscalateConfirm = false;
+
+    // TODO: Call your escalation API
+    // this.caseApi.escalateCase(caseHeaderId).subscribe(...)
+
+    this.showSaveBanner('Case escalated successfully.', 3000);
+    // Optionally refresh aggregate to reflect new status
+  }
+
+  cancelEscalate(): void {
+    this.showEscalateConfirm = false;
+  }
+
+  // ═══════════════════════════════════
+  //  AI PANEL
+  // ═══════════════════════════════════
+
+  toggleAiPanel(): void {
+    this.aiPanelOpen = !this.aiPanelOpen;
+  }
+
+  closeAiPanel(): void {
+    this.aiPanelOpen = false;
+  }
+
+  /** Load AI panel content after case is saved and has a case number */
+  loadAiPanelData(agg: any, levelId: number): void {
+    const caseNumber = this.getCaseNumber(agg);
+    if (!caseNumber) return;
+
+    // ── SLA (derive from aggregate or call SLA API) ──
+    this.loadSlaData(agg, levelId);
+
+    // ── Quick Actions (context-sensitive) ──
+    this.loadQuickActions(agg, levelId);
+
+    // ── AI Suggestions (call your AI service) ──
+    this.loadAiSuggestions(agg, levelId);
+  }
+
+  private loadSlaData(agg: any, levelId: number): void {
+    // TODO: Replace with actual SLA API call
+    // this.slaService.getSlaForCase(caseHeaderId, levelId).subscribe(items => { ... })
+
+    // Placeholder logic — compute from aggregate dates
+    this.slaItems = [
+      {
+        label: 'Initial Review',
+        deadline: '02/16/2026 5:00 PM',
+        remaining: '1d 3h',
+        status: 'warning'
+      },
+      {
+        label: 'MD Decision Due',
+        deadline: '02/20/2026 EOD',
+        remaining: '5d 0h',
+        status: 'ok'
+      },
+      {
+        label: 'Member Notification',
+        deadline: '02/22/2026 EOD',
+        remaining: '7d 0h',
+        status: 'ok'
+      }
+    ];
+
+    this.slaAtRiskCount = this.slaItems.filter(s => s.status !== 'ok').length;
+  }
+
+  private loadQuickActions(agg: any, levelId: number): void {
+    // Build context-sensitive actions based on level and case state
+    const actions: QuickAction[] = [
+      { icon: '📋', label: 'Request Medical Records', description: 'Send request to provider', actionId: 'requestRecords' },
+      { icon: '👨‍⚕️', label: 'Assign MD Reviewer', description: 'Route to clinical review', actionId: 'assignMd' },
+      { icon: '📞', label: 'Log Member Contact', description: 'Record outreach attempt', actionId: 'logContact' },
+      { icon: '📄', label: 'Generate Letter', description: 'Create determination letter', actionId: 'generateLetter' },
+    ];
+
+    // Conditionally add/remove based on level
+    if (levelId >= 2) {
+      actions.push({
+        icon: '🔄', label: 'Request Peer Review',
+        description: 'Initiate peer-to-peer review', actionId: 'peerReview'
+      });
+    }
+
+    this.quickActions = actions;
+  }
+
+  private loadAiSuggestions(agg: any, levelId: number): void {
+    // TODO: Replace with actual AI service call
+    // this.aiService.getSuggestions(caseHeaderId, levelId).subscribe(suggestions => { ... })
+
+    // Placeholder suggestions
+    this.aiSuggestions = [
+      {
+        type: 'insight',
+        icon: '💡',
+        title: 'Similar Case Pattern Detected',
+        body: '3 cases with matching diagnosis and procedure were approved in the last 90 days. Average turnaround: 4.2 days.',
+        confidence: 92,
+        actionLabel: 'View Similar Cases',
+        actionId: 'viewSimilar'
+      },
+      {
+        type: 'action',
+        icon: '⚡',
+        title: 'Missing Documentation Alert',
+        body: 'Clinical notes from referring provider are not yet attached. This is required for MD review per protocol.',
+        confidence: 88,
+        actionLabel: 'Request Documents',
+        actionId: 'requestDocs'
+      },
+      {
+        type: 'recommendation',
+        icon: '🎯',
+        title: 'Recommended Next Step',
+        body: 'Based on case type and current level, consider routing to specialist reviewer with relevant expertise.',
+        confidence: 85,
+        actionLabel: 'Route Case',
+        actionId: 'routeCase'
+      }
+    ];
+  }
+
+  onQuickAction(action: QuickAction): void {
+    // TODO: Implement quick action routing
+    console.log('Quick action:', action.actionId);
+
+    switch (action.actionId) {
+      case 'requestRecords':
+        // navigate or open dialog
+        break;
+      case 'assignMd':
+        // navigate to MD review step or open assignment dialog
+        break;
+      case 'logContact':
+        // navigate to activities step
+        this.onStepSelected('activities');
+        break;
+      case 'generateLetter':
+        // open letter generation dialog
+        break;
+    }
+  }
+
+  onAiAction(suggestion: AiSuggestion): void {
+    // TODO: Implement AI action routing
+    console.log('AI action:', suggestion.actionId);
+  }
+
+  askAi(): void {
+    if (!this.aiQuery?.trim()) return;
+
+    const query = this.aiQuery.trim();
+    this.aiQuery = '';
+
+    // TODO: Call your AI chat service
+    // this.aiService.askQuestion(caseHeaderId, query).subscribe(response => {
+    //   this.aiSuggestions.unshift({ type: 'insight', ... });
+    // });
+
+    console.log('AI query:', query);
+  }
+
+  // ═══════════════════════════════════
+  //  UI ACTIONS (existing)
+  // ═══════════════════════════════════
 
   selectLevel(levelId: number): void {
     if (!this.canNavigateAway()) return;
     this.state.setActiveLevel(levelId);
 
-    // ✅ push new level into current step (notes/documents should reload)
     this.currentStepRef?.setInput?.('levelId', levelId);
 
     const inst: any = this.currentStepRef?.instance;
     if (typeof inst?.onLevelChanged === 'function') inst.onLevelChanged(levelId);
-    if (typeof inst?.reload === 'function') inst.reload(); // if you built reload()
+    if (typeof inst?.reload === 'function') inst.reload();
+
+    // ✅ Refresh AI panel data for new level
+    const agg: any = (this.state as any).getAggregate?.() ?? null;
+    if (agg) this.loadAiPanelData(agg, levelId);
   }
 
   onStepSelected(step: any): void {
@@ -200,14 +479,15 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
 
     try {
       this.savingTop = true;
-      // wrapper steps forward save() to inner casedetails
       inst.save();
     } finally {
       this.savingTop = false;
     }
   }
 
-  // ---------------- dynamic load ----------------
+  // ═══════════════════════════════════
+  //  DYNAMIC STEP LOADING (existing)
+  // ═══════════════════════════════════
 
   private loadStep(stepId: string): void {
     const cmp = this.stepMap[stepId] ?? CasedetailsComponent;
@@ -220,20 +500,17 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
 
     const inst: any = this.currentStepRef.instance;
     inst.showSavedMessage = (msg: string) => this.showSaveBanner(msg);
-    // ✅ Set stepId FIRST (prevents "empty" on first load)
+
     if (inst && 'stepId' in inst) {
       inst.stepId = stepId;
     }
 
-    // Push current templateId (may be null on new until user selects)
     const templateId = this.state.getTemplateId?.() ?? this.headerForm.get('caseType')?.value;
     if (typeof inst?.setTemplateId === 'function') {
       inst.setTemplateId(templateId);
     }
 
     this.pushContextIntoCurrentStep();
-
-    // ✅ Force immediate CD so inputs are applied before user sees it
     this.currentStepRef.changeDetectorRef.detectChanges();
   }
 
@@ -246,23 +523,20 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     const caseTemplateId = this.state.getTemplateId?.() ?? null;
     const levelId = this.state.getActiveLevelId() ?? 1;
 
-    // from your shell header you already display case number via aggregate$ :contentReference[oaicite:0]{index=0}
     const agg: any = (this.state as any).getAggregate?.() ?? null;
     const caseNumber = agg?.header?.caseNumber ?? agg?.caseNumber ?? null;
     const memeberDetailsId = Number(sessionStorage.getItem('selectedMemberDetailsId') || 0);
-    // ✅ Only set inputs if the component declares them
-    if ('caseHeaderId' in inst) this.currentStepRef.setInput('caseHeaderId', caseHeaderId);
-    if ('caseTemplateId' in inst) this.currentStepRef.setInput('caseTemplateId', caseTemplateId);
-    if ('levelId' in inst) this.currentStepRef.setInput('levelId', levelId);
-    if ('caseNumber' in inst) this.currentStepRef.setInput('caseNumber', caseNumber);
-    if ('memberDetailsId' in inst) this.currentStepRef.setInput('memberDetailsId', memeberDetailsId);
 
-    // optional hook
+    if ('caseHeaderId' in inst) this.currentStepRef!.setInput('caseHeaderId', caseHeaderId);
+    if ('caseTemplateId' in inst) this.currentStepRef!.setInput('caseTemplateId', caseTemplateId);
+    if ('levelId' in inst) this.currentStepRef!.setInput('levelId', levelId);
+    if ('caseNumber' in inst) this.currentStepRef!.setInput('caseNumber', caseNumber);
+    if ('memberDetailsId' in inst) this.currentStepRef!.setInput('memberDetailsId', memeberDetailsId);
+
     if (typeof inst?.setContext === 'function') {
       inst.setContext({ caseHeaderId, caseTemplateId, levelId, caseNumber, memeberDetailsId });
     }
   }
-
 
   private pushTemplateIdIntoCurrentStep(templateId: number | null): void {
     const inst: any = this.currentStepRef?.instance;
@@ -277,7 +551,6 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     const hasType = !!templateId;
     this.steps = this.steps.map(s => ({
       ...s,
-      // allow details always; block other steps until template chosen
       disabled: !hasType && s.id !== 'details'
     }));
   }
@@ -286,12 +559,12 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     const inst: any = this.currentStepRef?.instance;
     const hasUnsaved = !!inst?.hasUnsavedChanges?.();
     if (!hasUnsaved) return true;
-
-    // Keep your existing UX here if you already have a confirmation flow
     return confirm('You have unsaved changes. Do you want to continue?');
   }
 
-  // ---------------- route helpers ----------------
+  // ═══════════════════════════════════
+  //  ROUTE HELPERS (existing)
+  // ═══════════════════════════════════
 
   private watchParamFromAnyLevel(paramName: string) {
     const chain: ActivatedRoute[] = [];
@@ -326,7 +599,9 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     return ids.length ? ids[0] : null;
   }
 
-  // ---------------- header extractors ----------------
+  // ═══════════════════════════════════
+  //  HEADER EXTRACTORS (existing)
+  // ═══════════════════════════════════
 
   getCaseTypeLabel(id: any): string {
     const n = id == null ? NaN : Number(id);
@@ -334,25 +609,19 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     return this.caseTypeOptions.find(o => Number(o.value) === n)?.label ?? '';
   }
 
-  // (these are called by the HTML) :contentReference[oaicite:1]{index=1}
-
   getCaseNumber(agg: any): string {
     return agg?.header?.caseNumber ?? agg?.caseNumber ?? '';
   }
 
   public isCaseTypeLocked(agg: any): boolean {
-    const cn = (this.getCaseNumber(agg));
-    return !!cn; // true when real caseNumber exists (not '', not '0')
+    const cn = this.getCaseNumber(agg);
+    return !!cn;
   }
 
   getCreatedOn(agg: any): any {
     return agg?.header?.createdOn ?? agg?.createdOn ?? null;
   }
 
-  /**
-   * Received Date is not in your header sample, so fallback to Level 1 jsonData.
-   * Looks for Case_Overview_receivedDateTime.
-   */
   getReceivedOn(agg: any): any {
     const direct = agg?.header?.receivedOn ?? agg?.receivedOn ?? null;
     if (direct) return direct;
@@ -369,10 +638,12 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     }
   }
 
+  // ═══════════════════════════════════
+  //  UNSAVED CHANGES (existing)
+  // ═══════════════════════════════════
+
   caseHasUnsavedChanges(): boolean {
     const inst: any = this.currentStepRef?.instance;
-
-    // support both naming styles so all steps work
     return !!(
       inst?.caseHasUnsavedChanges?.() ??
       inst?.hasUnsavedChanges?.() ??
@@ -380,10 +651,9 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     );
   }
 
-  //private canNavigateAway(): boolean {
-  //  if (!this.caseHasUnsavedChanges()) return true;
-  //  return confirm('You have unsaved changes. Do you want to continue?');
-  //}
+  // ═══════════════════════════════════
+  //  SAVE BANNER (existing)
+  // ═══════════════════════════════════
 
   saveBannerText: string | null = null;
   private saveBannerTimer: any;
@@ -398,5 +668,4 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     this.saveBannerText = null;
     clearTimeout(this.saveBannerTimer);
   }
-
 }

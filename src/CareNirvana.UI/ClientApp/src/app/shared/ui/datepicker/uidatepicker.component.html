@@ -1,0 +1,57 @@
+<!-- ui-datepicker.component.html -->
+<div class="ui-field" [style.width]="width">
+
+  <label *ngIf="label && labelMode === 'static'" class="ui-field__static-label">
+    {{ label }}
+    <span *ngIf="required" class="ui-field__required"></span>
+    <span *ngIf="optional" class="ui-field__optional">(optional)</span>
+  </label>
+
+  <div class="ui-field__wrapper"
+       [class.ui-field__wrapper--has-value]="hasValue"
+       [class.ui-field__wrapper--focused]="isFocused"
+       [class.ui-field__wrapper--error]="hasError">
+
+    <input class="ui-control ui-datepicker__input"
+           [class.ui-control--sm]="size === 'sm'"
+           [class.ui-control--lg]="size === 'lg'"
+           [class.ui-control--error]="hasError"
+           type="date"
+           [disabled]="disabled"
+           [readonly]="readonly"
+           [required]="required"
+           [attr.min]="min"
+           [attr.max]="max"
+           [attr.aria-label]="ariaLabel || label"
+           [attr.aria-required]="required"
+           [attr.aria-invalid]="hasError"
+           [style.height]="height"
+           [value]="innerValue"
+           (input)="onInput($event)"
+           (focus)="onFocus()"
+           (blur)="onBlur()" />
+
+    <label *ngIf="label && labelMode === 'float'" class="ui-field__label">
+      {{ label }}
+      <span *ngIf="required" class="ui-field__required"></span>
+    </label>
+
+    <button *ngIf="hasValue && !disabled && !readonly"
+            class="ui-datepicker__clear"
+            type="button"
+            tabindex="-1"
+            aria-label="Clear date"
+            (click)="clear($event)">
+      ✕
+    </button>
+  </div>
+
+  <div *ngFor="let msg of messages"
+       class="ui-field__message"
+       [class.ui-field__message--error]="msg.type === 'error'"
+       [class.ui-field__message--warning]="msg.type === 'warning'"
+       [class.ui-field__message--hint]="msg.type === 'hint'"
+       role="alert">
+    {{ msg.text }}
+  </div>
+</div>

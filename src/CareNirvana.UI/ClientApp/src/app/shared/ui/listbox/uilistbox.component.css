@@ -1,0 +1,32 @@
+/* ── ui-listbox.component.css ── */
+.ui-listbox {
+  border: 1px solid var(--ui-border-color, #c4c4c4);
+  border-radius: var(--ui-border-radius, 4px);
+  background: var(--ui-white, #fff);
+  overflow: hidden; display: flex; flex-direction: column;
+}
+.ui-listbox:focus { border-color: var(--ui-primary, #0078d4); box-shadow: var(--ui-focus-ring); outline: none; }
+.ui-listbox--error { border-color: var(--ui-danger, #c4314b) !important; }
+.ui-listbox--disabled { opacity: 0.55; pointer-events: none; background: var(--ui-gray-100); }
+
+.ui-listbox__search {
+  border: none; border-bottom: 1px solid var(--ui-gray-200, #eee);
+  padding: 6px 10px; font-size: 13px; outline: none;
+  font-family: inherit; background: var(--ui-gray-50);
+}
+.ui-listbox__search:focus { background: #fff; border-bottom-color: var(--ui-primary); }
+
+.ui-listbox__options { overflow-y: auto; flex: 1; }
+
+.ui-listbox__option {
+  padding: 6px 12px; cursor: pointer; font-size: 13px;
+  display: flex; align-items: center; gap: 8px;
+  transition: background 0.12s; border-left: 3px solid transparent;
+}
+.ui-listbox__option:hover:not(.ui-listbox__option--disabled) { background: var(--ui-gray-100); }
+.ui-listbox__option--highlighted { background: var(--ui-primary-lighter) !important; border-left-color: var(--ui-primary); }
+.ui-listbox__option--selected { font-weight: 600; background: var(--ui-primary-light); color: var(--ui-primary-dark); }
+.ui-listbox__option--disabled { color: var(--ui-gray-400); cursor: not-allowed; }
+.ui-listbox__check { font-size: 14px; flex-shrink: 0; }
+.ui-listbox__label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-listbox__desc { font-size: 11px; color: var(--ui-gray-500); flex-shrink: 0; }

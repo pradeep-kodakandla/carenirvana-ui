@@ -1,0 +1,61 @@
+<!-- ui-textarea.component.html -->
+<div class="ui-field" [style.width]="width">
+
+  <label *ngIf="label && labelMode === 'static'"
+         class="ui-field__static-label">
+    {{ label }}
+    <span *ngIf="required" class="ui-field__required"></span>
+    <span *ngIf="optional" class="ui-field__optional">(optional)</span>
+  </label>
+
+  <div class="ui-field__wrapper"
+       [class.ui-field__wrapper--has-value]="hasValue"
+       [class.ui-field__wrapper--focused]="isFocused"
+       [class.ui-field__wrapper--error]="hasError">
+
+    <textarea #textareaRef
+              class="ui-control ui-textarea__input"
+              [class.ui-control--sm]="size === 'sm'"
+              [class.ui-control--lg]="size === 'lg'"
+              [class.ui-control--error]="hasError"
+              [placeholder]="labelMode === 'float' ? ' ' : placeholder"
+              [disabled]="disabled"
+              [readonly]="readonly"
+              [required]="required"
+              [rows]="rows"
+              [attr.maxlength]="maxlength"
+              [attr.minlength]="minlength"
+              [attr.aria-label]="ariaLabel || label"
+              [attr.aria-required]="required"
+              [attr.aria-invalid]="hasError"
+              [style.resize]="resize"
+              [style.height]="height"
+              [value]="innerValue"
+              (input)="onInput($event)"
+              (focus)="onFocus()"
+              (blur)="onBlur()">
+    </textarea>
+
+    <label *ngIf="label && labelMode === 'float'"
+           class="ui-field__label ui-textarea__label">
+      {{ label }}
+      <span *ngIf="required" class="ui-field__required"></span>
+    </label>
+  </div>
+
+  <div *ngIf="maxlength"
+       class="ui-field__counter"
+       [class.ui-field__counter--limit]="innerValue.length >= maxlength">
+    {{ innerValue.length }} / {{ maxlength }}
+  </div>
+
+  <div *ngFor="let msg of messages"
+       class="ui-field__message"
+       [class.ui-field__message--error]="msg.type === 'error'"
+       [class.ui-field__message--warning]="msg.type === 'warning'"
+       [class.ui-field__message--success]="msg.type === 'success'"
+       [class.ui-field__message--hint]="msg.type === 'hint'"
+       role="alert">
+    {{ msg.text }}
+  </div>
+</div>

@@ -1,0 +1,11 @@
+/* ── ui-datetime.component.css ── */
+.ui-datetime__input { padding-right: 32px; }
+.ui-datetime__input::-webkit-calendar-picker-indicator { cursor:pointer;opacity:.6;transition:opacity .15s; }
+.ui-datetime__input::-webkit-calendar-picker-indicator:hover { opacity:1; }
+.ui-datetime__clear {
+  position:absolute;right:28px;top:50%;transform:translateY(-50%);
+  border:none;background:transparent;cursor:pointer;font-size:11px;
+  color:var(--ui-gray-500);padding:2px 4px;border-radius:50%;
+}
+.ui-datetime__clear:hover { color:var(--ui-gray-800);background:var(--ui-gray-200); }
+:host(.ff-ui) .ui-control { border:0!important;box-shadow:none!important;background:transparent!important; }

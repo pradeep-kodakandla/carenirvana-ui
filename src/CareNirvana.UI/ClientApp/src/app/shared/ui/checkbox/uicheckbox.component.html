@@ -1,0 +1,36 @@
+<!-- ui-checkbox.component.html -->
+<div class="ui-field">
+  <label class="ui-check"
+         [class.ui-check--disabled]="disabled"
+         [class.ui-check--error]="hasError">
+
+    <input class="ui-check__input"
+           type="checkbox"
+           [checked]="innerValue"
+           [disabled]="disabled"
+           [required]="required"
+           [indeterminate]="indeterminate"
+           [attr.aria-label]="ariaLabel || label"
+           [attr.aria-required]="required"
+           [attr.aria-invalid]="hasError"
+           [attr.aria-checked]="indeterminate ? 'mixed' : innerValue"
+           (change)="toggle()"
+           (keydown)="onKeydown($event)"
+           (focus)="onFocus()"
+           (blur)="onBlur()" />
+
+    <span class="ui-check__box ui-check__box--checkbox"
+          aria-hidden="true"></span>
+
+    <span class="ui-check__label">
+      {{ label }}
+      <span *ngIf="required" class="ui-field__required"></span>
+    </span>
+  </label>
+
+  <div *ngFor="let msg of messages" class="ui-field__message"
+       [class.ui-field__message--error]="msg.type === 'error'"
+       role="alert">
+    {{ msg.text }}
+  </div>
+</div>

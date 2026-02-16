@@ -62,7 +62,7 @@
     <div class="dashboard-content">
 
       <!-- Main Stat Cards Grid -->
-      <!--<div class="stat-cards-grid">
+      <div class="stat-cards-grid">
         <div *ngFor="let card of statCards; let i = index"
              class="stat-card"
              [ngClass]="getCardColorClass(card.type)"
@@ -82,16 +82,16 @@
           <div class="card-alert" *ngIf="card.alertCount">
             <mat-icon>warning</mat-icon>
             <span>{{ card.alertCount }} {{ card.alertText }}</span>
-          </div>-->
-      <!-- Card Breakdowns (for Utilization Management) -->
-      <!--<div class="card-breakdowns" *ngIf="card.breakdowns && card.breakdowns.length > 0">
+          </div>
+       <!--Card Breakdowns (for Utilization Management)--> 
+      <div class="card-breakdowns" *ngIf="card.breakdowns && card.breakdowns.length > 0">
         <div *ngFor="let breakdown of card.breakdowns" class="breakdown-item">
           <span class="breakdown-label">{{ breakdown.label }}</span>
           <span class="breakdown-value">{{ breakdown.value }}</span>
         </div>
-      </div>-->
-      <!-- Card Actions (for Care Management) -->
-      <!--<div class="card-actions" *ngIf="card.actions && card.actions.length > 0">
+      </div>
+       <!--Card Actions (for Care Management)--> 
+      <div class="card-actions" *ngIf="card.actions && card.actions.length > 0">
             <button *ngFor="let action of card.actions"
                     class="card-btn"
                     [class.primary]="action.type === 'primary'"
@@ -104,7 +104,7 @@
                        [class.selected]="selectedDiv === i + 1">
           </mat-divider>
         </div>
-      </div>-->
+      </div>
       <!-- Metrics Grid -->
       <div class="metrics-grid">
         <div *ngFor="let metric of metrics" class="metric-item">

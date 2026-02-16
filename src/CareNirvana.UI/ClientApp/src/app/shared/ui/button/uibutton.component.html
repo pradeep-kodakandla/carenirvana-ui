@@ -1,0 +1,31 @@
+<!-- ui-button.component.html -->
+<button class="ui-btn"
+        [class.ui-btn--primary]="variant === 'primary'"
+        [class.ui-btn--secondary]="variant === 'secondary'"
+        [class.ui-btn--danger]="variant === 'danger'"
+        [class.ui-btn--ghost]="variant === 'ghost'"
+        [class.ui-btn--success]="variant === 'success'"
+        [class.ui-btn--sm]="size === 'sm'"
+        [class.ui-btn--lg]="size === 'lg'"
+        [class.ui-btn--block]="block"
+        [class.ui-btn--loading]="loading"
+        [type]="type"
+        [disabled]="disabled || loading"
+        [style.width]="width"
+        [attr.aria-label]="ariaLabel || label"
+        [attr.aria-busy]="loading"
+        [attr.aria-disabled]="disabled || loading"
+        (click)="onClick($event)">
+
+  <span *ngIf="iconLeft && !loading" class="ui-btn__icon" aria-hidden="true">
+    {{ iconLeft }}
+  </span>
+
+  <span class="ui-btn__label">
+    <ng-content>{{ label }}</ng-content>
+  </span>
+
+  <span *ngIf="iconRight && !loading" class="ui-btn__icon" aria-hidden="true">
+    {{ iconRight }}
+  </span>
+</button>

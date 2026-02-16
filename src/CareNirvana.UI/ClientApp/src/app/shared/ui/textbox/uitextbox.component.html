@@ -1,0 +1,96 @@
+<!-- ui-textbox.component.html -->
+<div class="ui-field"
+     [style.width]="width">
+
+  <!-- Static label (above) -->
+  <label *ngIf="label && labelMode === 'static'"
+         class="ui-field__static-label"
+         [attr.for]="controlId">
+    {{ label }}
+    <span *ngIf="required" class="ui-field__required" aria-hidden="true"></span>
+    <span *ngIf="optional" class="ui-field__optional">(optional)</span>
+  </label>
+
+  <!-- Floating-label wrapper -->
+  <div class="ui-field__wrapper"
+       [class.ui-field__wrapper--has-value]="hasValue"
+       [class.ui-field__wrapper--focused]="isFocused"
+       [class.ui-field__wrapper--error]="hasError">
+
+    <!-- Prefix -->
+    <span *ngIf="prefix" class="ui-textbox__prefix" aria-hidden="true">
+      {{ prefix }}
+    </span>
+
+    <!-- Input -->
+    <input #inputRef
+           class="ui-control ui-textbox__input"
+           [class.ui-control--sm]="size === 'sm'"
+           [class.ui-control--lg]="size === 'lg'"
+           [class.ui-control--error]="hasError"
+           [class.ui-textbox__input--has-prefix]="prefix"
+           [class.ui-textbox__input--has-suffix]="suffix || (clearable && hasValue)"
+           [id]="controlId"
+           [type]="type"
+           [placeholder]="labelMode === 'float' ? ' ' : placeholder"
+           [disabled]="disabled"
+           [readonly]="readonly"
+           [required]="required"
+           [attr.maxlength]="maxlength"
+           [attr.minlength]="minlength"
+           [attr.pattern]="pattern"
+           [attr.autocomplete]="autocomplete"
+           [attr.aria-label]="ariaLabel || label"
+           [attr.aria-required]="required"
+           [attr.aria-invalid]="hasError"
+           [attr.aria-describedby]="ariaDescribedBy"
+           [style.height]="height"
+           [value]="innerValue"
+           (input)="onInput($event)"
+           (focus)="onFocus()"
+           (blur)="onBlur()" />
+
+    <!-- Floating label -->
+    <label *ngIf="label && labelMode === 'float'"
+           class="ui-field__label"
+           [attr.for]="controlId">
+      {{ label }}
+      <span *ngIf="required" class="ui-field__required" aria-hidden="true"></span>
+    </label>
+
+    <!-- Clear button -->
+    <button *ngIf="clearable && hasValue && !disabled && !readonly"
+            class="ui-textbox__clear"
+            type="button"
+            tabindex="-1"
+            aria-label="Clear input"
+            (click)="clear($event)">
+      ✕
+    </button>
+
+    <!-- Suffix -->
+    <span *ngIf="suffix" class="ui-textbox__suffix" aria-hidden="true">
+      {{ suffix }}
+    </span>
+  </div>
+
+  <!-- Character counter -->
+  <div *ngIf="maxlength"
+       class="ui-field__counter"
+       [class.ui-field__counter--limit]="innerValue.length >= maxlength"
+       aria-live="polite">
+    {{ innerValue.length }} / {{ maxlength }}
+  </div>
+
+  <!-- Validation / Help messages -->
+  <div *ngFor="let msg of messages"
+       class="ui-field__message"
+       [class.ui-field__message--error]="msg.type === 'error'"
+       [class.ui-field__message--warning]="msg.type === 'warning'"
+       [class.ui-field__message--success]="msg.type === 'success'"
+       [class.ui-field__message--hint]="msg.type === 'hint'"
+       role="alert"
+       [attr.aria-live]="msg.type === 'error' ? 'assertive' : 'polite'">
+    {{ msg.text }}
+  </div>
+</div>

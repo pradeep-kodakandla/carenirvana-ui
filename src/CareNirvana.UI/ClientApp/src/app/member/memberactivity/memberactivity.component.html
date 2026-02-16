@@ -1,20 +1,26 @@
 <!-- Call type header -->
-<div class="call-type-header">
+<div class="call-type-header" role="tablist">
   <div class="call-type-item"
        [ngClass]="{ 'selected': callType === 'Scheduled' }"
-       (click)="setCallType('Scheduled')">
+       (click)="setCallType('Scheduled')"
+       role="tab"
+       [attr.aria-selected]="callType === 'Scheduled'">
     Scheduled
   </div>
 
   <div class="call-type-item"
        [ngClass]="{ 'selected': callType === 'CompletedCall' }"
-       (click)="setCallType('CompletedCall')">
+       (click)="setCallType('CompletedCall')"
+       role="tab"
+       [attr.aria-selected]="callType === 'CompletedCall'">
     Complete Call
   </div>
 
   <div class="call-type-item"
        [ngClass]="{ 'selected': callType === 'ConferenceCall' }"
-       (click)="setCallType('ConferenceCall')">
+       (click)="setCallType('ConferenceCall')"
+       role="tab"
+       [attr.aria-selected]="callType === 'ConferenceCall'">
     Conference Call
   </div>
 </div>
@@ -24,9 +30,11 @@
       (ngSubmit)="onSubmit()" style="padding-left:5px; padding-right:5px;">
 
   <!-- Activity Type -->
-  <div class="form-outline dropdown-container">
+  <div class="form-outline dropdown-container"
+       [ngClass]="{'has-error': activityForm.get('activityType')?.touched &&
+                                activityForm.get('activityType')?.invalid}">
     <label class="floating-label">
-      Activity Type <span class="text-danger">*</span>
+      Activity Type <span class="required-star">*</span>
     </label>
     <ui-dropdown formControlName="activityType"
                  [options]="activityTypeOptions"
@@ -35,15 +43,17 @@
     </ui-dropdown>
     <div *ngIf="activityForm.get('activityType')?.touched &&
                 activityForm.get('activityType')?.invalid"
-         class="text-danger">
+         class="field-error">
       Activity Type is required.
     </div>
   </div>
 
   <!-- Priority -->
-  <div class="form-outline dropdown-container">
+  <div class="form-outline dropdown-container"
+       [ngClass]="{'has-error': activityForm.get('priority')?.touched &&
+                                activityForm.get('priority')?.invalid}">
     <label class="floating-label">
-      Priority <span class="text-danger">*</span>
+      Priority <span class="required-star">*</span>
     </label>
     <ui-dropdown formControlName="priority"
                  [options]="priorityOptions"
@@ -52,7 +62,7 @@
     </ui-dropdown>
     <div *ngIf="activityForm.get('priority')?.touched &&
                 activityForm.get('priority')?.invalid"
-         class="text-danger">
+         class="field-error">
       Priority is required.
     </div>
   </div>
@@ -76,10 +86,13 @@
                  placeholder="Select contact mode">
     </ui-dropdown>
   </div>
+
   <!-- Scheduled Date & Time -->
-  <div class="form-outline position-relative">
+  <div class="form-outline position-relative"
+       [ngClass]="{'has-error': activityForm.get('followUpDateTime')?.touched &&
+                                activityForm.get('followUpDateTime')?.invalid}">
     <label class="floating-label">
-      Scheduled Date &amp; Time <span class="text-danger">*</span>
+      Scheduled Date &amp; Time <span class="required-star">*</span>
     </label>
     <ui-datetime-picker formControlName="followUpDateTime"
                         placeholderDate="Select date"
@@ -87,15 +100,17 @@
     </ui-datetime-picker>
     <div *ngIf="activityForm.get('followUpDateTime')?.touched &&
                 activityForm.get('followUpDateTime')?.invalid"
-         class="text-danger">
+         class="field-error">
       Scheduled date is required.
     </div>
   </div>
 
   <!-- Due Date & Time -->
-  <div class="form-outline position-relative">
+  <div class="form-outline position-relative"
+       [ngClass]="{'has-error': activityForm.get('dueDate')?.touched &&
+                                activityForm.get('dueDate')?.invalid}">
     <label class="floating-label">
-      Due Date &amp; Time <span class="text-danger">*</span>
+      Due Date &amp; Time <span class="required-star">*</span>
     </label>
     <ui-datetime-picker formControlName="dueDate"
                         placeholderDate="Select date"
@@ -103,16 +118,19 @@
     </ui-datetime-picker>
     <div *ngIf="activityForm.get('dueDate')?.touched &&
                 activityForm.get('dueDate')?.invalid"
-         class="text-danger">
+         class="field-error">
       Due date is required.
     </div>
   </div>
 
   <!-- Assign To + Work basket activity toggle -->
   <div class="assign-to-row">
-    <div class="form-outline dropdown-container flex-fill">
+    <div class="form-outline dropdown-container flex-fill"
+         [ngClass]="{'has-error': activityForm.get('assignTo')?.touched &&
+                                  activityForm.get('assignTo')?.invalid &&
+                                  !activityForm.get('isWorkBasketActivity')?.value}">
       <label class="floating-label">
-        Assign To <span class="text-danger">*</span>
+        Assign To <span class="required-star">*</span>
       </label>
       <ui-dropdown formControlName="assignTo"
                    [options]="assignToOptions"
@@ -122,7 +140,7 @@
       <div *ngIf="activityForm.get('assignTo')?.touched &&
                   activityForm.get('assignTo')?.invalid &&
                   !activityForm.get('isWorkBasketActivity')?.value"
-           class="text-danger">
+           class="field-error">
         Assign To is required.
       </div>
     </div>
@@ -136,7 +154,6 @@
       </label>
     </div>
   </div>
-
 
   <!-- Show these ONLY when Work Basket is checked -->
   <ng-container *ngIf="activityForm.get('isWorkBasketActivity')?.value && !isView">
@@ -179,9 +196,15 @@
   <!-- spacer cell for grid alignment -->
   <div></div>
 
-  <!-- ********** NEW: Outcome / Contact Section ********** -->
-  <!-- Activity Outcome Type -->
+  <!-- ********** Outcome / Contact Section ********** -->
   <ng-container *ngIf="callType === 'CompletedCall'">
+
+    <!-- Section divider -->
+    <div class="outcome-section-divider">
+      <span>Call Outcome</span>
+    </div>
+
+    <!-- Activity Outcome Type -->
     <div class="form-outline dropdown-container">
       <label class="floating-label">Activity Outcome Type</label>
       <ui-dropdown formControlName="activityOutcomeType"
@@ -201,8 +224,6 @@
       </ui-dropdown>
     </div>
 
-
-
     <!-- Activity Duration -->
     <div class="form-outline">
       <label class="floating-label">Activity Duration (minutes)</label>
@@ -218,25 +239,30 @@
       <label class="floating-label">Outcome Notes</label>
       <textarea class="form-control"
                 formControlName="outcomeNotes"
-                rows="3">
-    </textarea>
+                rows="3"
+                placeholder="Add notes about the outcome...">
+      </textarea>
     </div>
   </ng-container>
   <!-- ********** END: Outcome / Contact Section ********** -->
+
   <!-- Comments -->
-  <div class="form-outline full-width" style="grid-column: span 2;">
+  <div class="form-outline full-width" style="grid-column: span 2;"
+       [ngClass]="{'has-error': activityForm.get('comments')?.touched &&
+                                activityForm.get('comments')?.invalid}">
     <label class="floating-label">
-      Comments <span class="text-danger">*</span>
+      Comments <span class="required-star">*</span>
     </label>
     <textarea class="form-control" style="height:200px;"
               formControlName="comments"
               rows="3"
+              placeholder="Enter comments..."
               [ngClass]="{'is-invalid': activityForm.get('comments')?.touched &&
                                       activityForm.get('comments')?.invalid}">
     </textarea>
     <div *ngIf="activityForm.get('comments')?.touched &&
                 activityForm.get('comments')?.invalid"
-         class="invalid-feedback">
+         class="field-error">
       Comments are required.
     </div>
   </div>

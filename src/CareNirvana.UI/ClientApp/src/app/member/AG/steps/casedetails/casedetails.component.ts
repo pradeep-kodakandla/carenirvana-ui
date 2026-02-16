@@ -1703,37 +1703,110 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     const entity = this.getLookupEntity(f);
     const svc: any = this.authService as any;
 
+    console.log('[lookup] build fn', { key, entity, field: f });
+
     const fn = (q: string, limit: number): Observable<any[]> => {
-      if (!entity) return of([]);
+      if (!entity) {
+        console.log('[lookup] no entity', { key, q, limit });
+        return of([]);
+      }
+
+      const cfg = this.getLookupCfg(f);
+      const methodFromCfg = cfg?.serviceMethod ? String(cfg.serviceMethod) : null;
+
+      let obs: Observable<any[]>;
+
       switch (entity) {
         case 'icd':
-          return (svc.searchIcd ? svc.searchIcd(q, limit) : of([]));
+          obs = (svc.searchIcd ? svc.searchIcd(q, limit) : of([]));
+          break;
         case 'medicalcodes':
-          return (svc.searchMedicalCodes ? svc.searchMedicalCodes(q, limit) : of([]));
+          obs = (svc.searchMedicalCodes ? svc.searchMedicalCodes(q, limit) : of([]));
+          break;
         case 'members':
-          return (svc.searchMembers ? svc.searchMembers(q, limit) : of([]));
+          obs = (svc.searchMembers ? svc.searchMembers(q, limit) : of([]));
+          break;
         case 'providers':
-          return (svc.searchProviders ? svc.searchProviders(q, limit) : of([]));
+          obs = (svc.searchProviders ? svc.searchProviders(q, limit) : of([]));
+          break;
         case 'staff':
-          return (svc.searchStaff ? svc.searchStaff(q, limit) : of([]));
-
+          obs = (svc.searchStaff ? svc.searchStaff(q, limit) : of([]));
+          break;
         case 'medication':
-          return (svc.searchMedications ? svc.searchMedications(q, limit) : of([]));
+          obs = (svc.searchMedications ? svc.searchMedications(q, limit) : of([]));
+          break;
         case 'claims':
         case 'claim':
-          return (svc.searchClaims ? svc.searchClaims(q, limit) : of([]));
-        default:
-          // support custom function name if provided in lookup config
-          const cfg = this.getLookupCfg(f);
-          const method = cfg?.serviceMethod ? String(cfg.serviceMethod) : null;
+          obs = (svc.searchClaims ? svc.searchClaims(q, limit) : of([]));
+          break;
+        default: {
+          const method = methodFromCfg;
           const callable = method && typeof (svc as any)[method] === 'function' ? (svc as any)[method] : null;
-          return callable ? callable.call(svc, q, limit) : of([]);
+
+          console.log('[lookup] default entity', { key, entity, method, callable: !!callable, q, limit });
+
+          obs = callable ? callable.call(svc, q, limit) : of([]);
+          break;
+        }
       }
+
+      // Log what comes out of the Observable
+      return obs.pipe(
+        tap({
+          next: (res) => console.log('[lookup] result', { key, entity, q, limit, count: res?.length ?? 0, res }),
+          error: (err) => console.error('[lookup] error', { key, entity, q, limit, err }),
+          complete: () => console.log('[lookup] complete', { key, entity, q, limit })
+        }),
+        catchError((err) => {
+          // keep UI safe if API fails
+          return of([]);
+        })
+      );
     };
 
     this.lookupSearchFnCache.set(key, fn);
     return fn;
   }
+
+  //getLookupSearchFn(f: any): (q: string, limit: number) => Observable<any[]> {
+  //  const key = (f?.controlName || f?.id || Math.random().toString()).toString();
+  //  const cached = this.lookupSearchFnCache.get(key);
+  //  if (cached) return cached;
+
+  //  const entity = this.getLookupEntity(f);
+  //  const svc: any = this.authService as any;
+
+  //  const fn = (q: string, limit: number): Observable<any[]> => {
+  //    if (!entity) return of([]);
+  //    switch (entity) {
+  //      case 'icd':
+  //        return (svc.searchIcd ? svc.searchIcd(q, limit) : of([]));
+  //      case 'medicalcodes':
+  //        return (svc.searchMedicalCodes ? svc.searchMedicalCodes(q, limit) : of([]));
+  //      case 'members':
+  //        return (svc.searchMembers ? svc.searchMembers(q, limit) : of([]));
+  //      case 'providers':
+  //        return (svc.searchProviders ? svc.searchProviders(q, limit) : of([]));
+  //      case 'staff':
+  //        return (svc.searchStaff ? svc.searchStaff(q, limit) : of([]));
+
+  //      case 'medication':
+  //        return (svc.searchMedications ? svc.searchMedications(q, limit) : of([]));
+  //      case 'claims':
+  //      case 'claim':
+  //        return (svc.searchClaims ? svc.searchClaims(q, limit) : of([]));
+  //      default:
+  //        // support custom function name if provided in lookup config
+  //        const cfg = this.getLookupCfg(f);
+  //        const method = cfg?.serviceMethod ? String(cfg.serviceMethod) : null;
+  //        const callable = method && typeof (svc as any)[method] === 'function' ? (svc as any)[method] : null;
+  //        return callable ? callable.call(svc, q, limit) : of([]);
+  //    }
+  //  };
+
+  //  this.lookupSearchFnCache.set(key, fn);
+  //  return fn;
+  //}
 
   getLookupDisplayWith(f: any): (item: any) => string {
     const key = (f?.controlName || f?.id || Math.random().toString()).toString();
@@ -1850,10 +1923,46 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
   private lookupSelectedByControl: Record<string, any> = {};
 
+  /**
+   * Multi-select claims: stores arrays of selected claim objects
+   * keyed by the search field's controlName.
+   */
+  selectedClaimsMap: Record<string, any[]> = {};
+
 
   onLookupSelected(f: any, item: any, ctx?: RepeatContext): void {
     if (!f || !item) return;
 
+    const entity = this.getLookupEntity(f);
+    const isClaim = entity === 'claims' || entity === 'claim';
+
+    // ── Multi-select: claims accumulate in an array ──
+    if (isClaim) {
+      const key = f.controlName;
+      if (!this.selectedClaimsMap[key]) this.selectedClaimsMap[key] = [];
+
+      // Deduplicate by memberClaimHeaderId or claimNumber
+      const id = item.memberClaimHeaderId ?? item.claimNumber;
+      const alreadyExists = this.selectedClaimsMap[key].some(
+        c => (c.memberClaimHeaderId ?? c.claimNumber) === id
+      );
+      if (!alreadyExists) {
+        this.selectedClaimsMap[key] = [...this.selectedClaimsMap[key], item];
+      }
+
+      // Clear the search input so user can pick another claim
+      const ctrl = this.form.get(f.controlName);
+      if (ctrl) {
+        // Use setTimeout to clear AFTER the lookup component finishes its cycle
+        setTimeout(() => {
+          ctrl.setValue(null, { emitEvent: false });
+        });
+      }
+      delete this.lookupSelectedByControl[f.controlName];
+      return;
+    }
+
+    // ── Original single-select logic for non-claim lookups ──
     const cfg = this.getLookupCfg(f);
     const valueField = cfg?.valueField ? String(cfg.valueField) : null;
 
@@ -2505,6 +2614,66 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     if (this.hasExistingCaseNumberInRoute()) return false;
     return !this.caseTypeCtrl?.value && this.caseTypeCtrl?.pristine;
   }
+
+
+  // ═══════════════════════════════════════════════════════
+  //  MULTI-SELECT CLAIM CARDS
+  // ═══════════════════════════════════════════════════════
+
+  /**
+   * Find the claim search field controlName inside a subsection,
+   * then return the array of selected claims from selectedClaimsMap.
+   */
+  getSelectedClaims(sub: any): any[] {
+    const key = this.findClaimControlName(sub);
+    return key ? (this.selectedClaimsMap[key] ?? []) : [];
+  }
+
+  /** Remove a single claim from the multi-select array by its index. */
+  removeSelectedClaim(sub: any, idx: number): void {
+    const key = this.findClaimControlName(sub);
+    if (!key || !this.selectedClaimsMap[key]) return;
+    this.selectedClaimsMap[key] = this.selectedClaimsMap[key].filter((_, i) => i !== idx);
+  }
+
+  /** Clear ALL selected claims in a subsection. */
+  clearAllSelectedClaims(sub: any): void {
+    const key = this.findClaimControlName(sub);
+    if (key) this.selectedClaimsMap[key] = [];
+  }
+
+  /** Scan subsection fields and return the controlName of the claim search field. */
+  private findClaimControlName(sub: any): string | null {
+    if (!sub?.fields?.length) return null;
+    for (const f of sub.fields) {
+      const entity = this.getLookupEntity(f);
+      if (entity === 'claims' || entity === 'claim') return f.controlName;
+    }
+    return null;
+  }
+
+  /** Format number as $X,XXX.XX */
+  formatCurrency(val: any): string {
+    const n = Number(val);
+    if (!Number.isFinite(n)) return '—';
+    return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  /** Format ISO date string as MM/DD/YYYY */
+  formatCardDate(val: any): string {
+    if (!val) return '—';
+    try {
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return String(val);
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${mm}/${dd}/${d.getFullYear()}`;
+    } catch { return String(val); }
+  }
+
+  /** TrackBy for claim cards */
+  trackByClaimId = (_: number, c: any) =>
+    c?.memberClaimHeaderId ?? c?.claimNumber ?? _;
 
 
 }
