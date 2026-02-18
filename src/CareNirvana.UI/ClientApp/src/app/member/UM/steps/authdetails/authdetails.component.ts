@@ -367,6 +367,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
   private lookupDisplayFnCache = new Map<string, (item: any) => string>();
   private lookupTrackByFnCache = new Map<string, (item: any) => any>();
 
+  // ---------- Provider card data (stores full search response per instance) ----------
+  providerDataByInstance: Record<string, any> = {};
+
   // ---------- Save ----------
   isSaving = false;
 
@@ -794,6 +797,8 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
           // Patch values after controls exist
           if (this.pendingAuth) {
             this.patchAuthorizationToForm(this.pendingAuth);
+            // Rebuild provider card display data from patched form values
+            this.rehydrateProviderData();
           }
 
           // Smart Check prefill: if user arrived from Smart Check, fill ICD + Procedure codes (new auth only)
@@ -1075,6 +1080,64 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
 
   toggleSection(sec: RenderSection): void {
     sec.expanded = !sec.expanded;
+  }
+
+  /**
+   * Maps a section title to a Material icon name.
+   * Uses keyword matching so it works with any dynamic template.
+   */
+  getSectionIcon(title: string): string {
+    const t = (title || '').toLowerCase();
+
+    // Notification / Admission
+    if (t.includes('notification') || t.includes('admission'))     return 'notifications';
+    // Authorization / Auth
+    if (t.includes('auth'))                                         return 'verified_user';
+    // Enrollment
+    if (t.includes('enrollment') || t.includes('eligibility'))      return 'badge';
+    // Member / Patient / Demographics
+    if (t.includes('member') || t.includes('patient') || t.includes('demographic'))  return 'person';
+    // Provider / Facility
+    if (t.includes('provider') || t.includes('facility'))           return 'local_hospital';
+    // Diagnosis / Clinical
+    if (t.includes('diagnosis') || t.includes('diagnos') || t.includes('clinical'))  return 'medical_information';
+    // Procedure / Service / CPT
+    if (t.includes('procedure') || t.includes('service') || t.includes('cpt'))       return 'healing';
+    // Decision / Determination
+    if (t.includes('decision') || t.includes('determination'))      return 'gavel';
+    // Review / Assessment
+    if (t.includes('review') || t.includes('assessment'))           return 'rate_review';
+    // Notes / Comments
+    if (t.includes('note') || t.includes('comment'))                return 'edit_note';
+    // Documents / Attachments
+    if (t.includes('document') || t.includes('attachment'))         return 'description';
+    // History / Timeline
+    if (t.includes('history') || t.includes('timeline'))            return 'history';
+    // Contact / Communication
+    if (t.includes('contact') || t.includes('communication'))       return 'phone';
+    // Appeal / Grievance
+    if (t.includes('appeal') || t.includes('grievance'))            return 'balance';
+    // Schedule / Date
+    if (t.includes('schedule') || t.includes('date') || t.includes('timeline')) return 'event';
+    // Referral
+    if (t.includes('referral'))                                     return 'send';
+    // Summary / Overview
+    if (t.includes('summary') || t.includes('overview'))            return 'summarize';
+    // Settings / Configuration
+    if (t.includes('setting') || t.includes('config'))              return 'settings';
+    // Financial / Billing / Cost
+    if (t.includes('financial') || t.includes('billing') || t.includes('cost'))  return 'payments';
+    // Medication / Pharmacy / Drug
+    if (t.includes('medication') || t.includes('pharmacy') || t.includes('drug')) return 'medication';
+    // Treatment / Care
+    if (t.includes('treatment') || t.includes('care'))              return 'health_and_safety';
+    // Letter / Correspondence
+    if (t.includes('letter') || t.includes('correspondence'))       return 'mail';
+    // Additional Info / Other
+    if (t.includes('additional') || t.includes('other'))            return 'more_horiz';
+
+    // Default fallback
+    return 'article';
   }
 
   // ============================================================
@@ -2138,6 +2201,11 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
     // Cache the full object so displayWith can render correctly even when the control stores a primitive.
     if (f?.controlName) {
       this.lookupSelectedByControl[f.controlName] = item;
+
+      // Store full provider data for display card (only for provider search fields)
+      if (f?.type === 'search' && item) {
+        this.providerDataByInstance[f.controlName] = item;
+      }
     }
 
     const ctrl = this.form.get(f.controlName);
@@ -2185,6 +2253,8 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
     const fill = (cfg?.fill && Array.isArray(cfg.fill)) ? cfg.fill : this.defaultLookupFill(f);
 
     delete this.lookupSelectedByControl[f.controlName];
+    // Clear stored provider display data
+    delete this.providerDataByInstance[f.controlName];
 
     const ctrl = this.form.get(f.controlName);
     if (ctrl) {
@@ -3049,6 +3119,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
     this.repeatRegistry = {};
     this.normalizedTemplate = null;
 
+    // Reset provider card data
+    this.providerDataByInstance = {};
+
     // Reset base form
     if (this.form) {
       this.form.reset({ authClassId: null, authTypeId: null }, { emitEvent: false });
@@ -3067,6 +3140,229 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
   // ============================================================
   isFullRowField(f: any): boolean {
     return (f?.type || '').toString().toLowerCase() === 'search';
+  }
+
+  // ============================================================
+  // Provider Card Helpers
+  // ============================================================
+
+  /** Section title contains "provider" */
+  isProviderSection(sec: RenderSection): boolean {
+    return (sec?.title ?? '').toLowerCase().includes('provider');
+  }
+
+  /** Detects provider repeat groups ONLY by title containing "provider" */
+  isProviderRepeatGroup(target: any): boolean {
+    if (!target?.repeat?.enabled) return false;
+    const t = (target?.title ?? '').toLowerCase();
+    return t.includes('provider');
+  }
+
+  /** Finds the provider repeat subsection (or section if section-level) */
+  getProviderRepeatSub(sec: RenderSection): any | null {
+    if (sec.repeat?.enabled && this.isProviderRepeatGroup(sec)) return sec;
+    for (const sub of (sec.subsections || [])) {
+      if (sub.repeat?.enabled && this.isProviderRepeatGroup(sub)) return sub;
+    }
+    return null;
+  }
+
+  /** First select field in instance = Role dropdown */
+  getProvRoleField(inst: RenderRepeatInstance): any | null {
+    return (inst?.fields ?? []).find((f: any) =>
+      f?.type === 'select' && !this.isButtonType(f?.type)
+    ) ?? null;
+  }
+
+  /** Search-type field = Provider lookup */
+  getProvSearchField(inst: RenderRepeatInstance): any | null {
+    return (inst?.fields ?? []).find((f: any) => f?.type === 'search') ?? null;
+  }
+
+  /** All fields except role, search, and action buttons */
+  getProvBodyFields(inst: RenderRepeatInstance): any[] {
+    const role = this.getProvRoleField(inst);
+    const search = this.getProvSearchField(inst);
+    return this.getNonActionFields(inst?.fields).filter((f: any) =>
+      f !== role && f !== search
+    );
+  }
+
+  /** Current role display text */
+  getProvRoleDisplay(inst: RenderRepeatInstance): string {
+    const f = this.getProvRoleField(inst);
+    if (!f) return '';
+    const v = this.form?.get(f.controlName)?.value;
+    if (!v) return '';
+    if (typeof v === 'string') return v;
+    return String(v?.label ?? v?.text ?? v?.name ?? v?.value ?? '');
+  }
+
+  /** Action buttons for each card (excluding "Add New Provider") */
+  getProvCardBtns(sec: any, inst: RenderRepeatInstance): any[] {
+    return [
+      ...(this.getActionButtons(sec?.fields) || []),
+      ...(this.getActionButtons(inst?.fields) || [])
+    ].filter((b: any) => {
+      const id = (b?.id ?? '').toLowerCase();
+      const txt = (b?.buttonText ?? b?.displayName ?? '').toLowerCase();
+      return !id.includes('providerbutton3') && !id.includes('addnew') && !txt.includes('add new');
+    });
+  }
+
+  trackProvIdx(_i: number, inst: any): number { return inst?.index ?? _i; }
+
+  /** Unique key for a provider instance (used to store/retrieve provider data) */
+  getProvInstanceKey(inst: RenderRepeatInstance): string {
+    const sf = this.getProvSearchField(inst);
+    return sf?.controlName ?? `prov_${inst?.index ?? 0}`;
+  }
+
+  /** Whether a provider has been selected for this instance */
+  hasProviderSelected(inst: RenderRepeatInstance): boolean {
+    const key = this.getProvInstanceKey(inst);
+    return !!this.providerDataByInstance[key];
+  }
+
+  /** Get the stored provider data for this instance */
+  getProviderData(inst: RenderRepeatInstance): any | null {
+    const key = this.getProvInstanceKey(inst);
+    return this.providerDataByInstance[key] ?? null;
+  }
+
+  /** Full display name */
+  getProviderFullName(inst: RenderRepeatInstance): string {
+    const d = this.getProviderData(inst);
+    if (!d) return '';
+    const full = (d.fullName ?? '').trim();
+    if (full) return full;
+    return [d.firstName, d.middleName, d.lastName].filter(Boolean).join(' ').trim() || '';
+  }
+
+  /** Single-line address */
+  getProviderAddress(inst: RenderRepeatInstance): string {
+    const d = this.getProviderData(inst);
+    if (!d) return '';
+    const parts = [
+      d.addressLine1,
+      d.addressLine2,
+      d.city,
+      d.stateName || d.state,
+      d.zipCode
+    ].filter(p => p && String(p).trim());
+    return parts.join(', ');
+  }
+
+  /** NPI value */
+  getProviderNpi(inst: RenderRepeatInstance): string {
+    return this.getProviderData(inst)?.npi || '';
+  }
+
+  /** Specialty value */
+  getProviderSpecialty(inst: RenderRepeatInstance): string {
+    return this.getProviderData(inst)?.specialty || this.getProviderData(inst)?.specialtyName || '';
+  }
+
+  /** Organization / facility name */
+  getProviderOrganization(inst: RenderRepeatInstance): string {
+    return this.getProviderData(inst)?.organizationName || this.getProviderData(inst)?.facilityName || '';
+  }
+
+  /** Network status — defaults to "In-Network" when provider is selected but no explicit status */
+  getProviderNetworkStatus(inst: RenderRepeatInstance): string {
+    const d = this.getProviderData(inst);
+    if (!d) return '';
+    if (d.networkStatus) return d.networkStatus;
+    if (d.inNetwork === false) return 'Out-of-Network';
+    // Default to In-Network when provider selected
+    return 'In-Network';
+  }
+
+  /** Clear provider display data for a given instance */
+  clearProviderData(inst: RenderRepeatInstance): void {
+    const key = this.getProvInstanceKey(inst);
+    delete this.providerDataByInstance[key];
+
+    // Also clear the search field and body fields
+    const sf = this.getProvSearchField(inst);
+    if (sf?.controlName) {
+      const ctrl = this.form.get(sf.controlName);
+      if (ctrl) {
+        ctrl.setValue(null, { emitEvent: true });
+        ctrl.markAsDirty();
+      }
+      this.onLookupCleared(sf);
+    }
+  }
+
+  /**
+   * Rebuild providerDataByInstance from form control values (used after patchAuthorizationToForm
+   * so that reopened authorizations display the provider info cards correctly).
+   */
+  private rehydrateProviderData(): void {
+    if (!this.renderSections?.length) return;
+
+    const processInstances = (target: any) => {
+      if (!this.isProviderRepeatGroup(target)) return;
+      for (const inst of (target.instances || [])) {
+        const sf = this.getProvSearchField(inst);
+        if (!sf?.controlName) continue;
+
+        const searchCtrl = this.form.get(sf.controlName);
+        if (!searchCtrl?.value) continue;
+
+        // Already has data (from lookup selection)
+        if (this.providerDataByInstance[sf.controlName]) continue;
+
+        // Rebuild from body field values
+        const data: any = {};
+        const bodyFields = this.getProvBodyFields(inst);
+        for (const f of bodyFields) {
+          const ctrl = this.form.get(f?.controlName);
+          if (!ctrl) continue;
+          const val = ctrl.value;
+          if (val == null || val === '') continue;
+
+          const id = String(f?._rawId ?? f?.id ?? f?.displayName ?? '').toLowerCase();
+
+          if (id.includes('firstname') || id.includes('first_name')) data.firstName = val;
+          else if (id.includes('lastname') || id.includes('last_name')) data.lastName = val;
+          else if (id.includes('providername') || id.includes('provider_name') || id.includes('fullname')) data.fullName = val;
+          else if (id.includes('npi')) data.npi = val;
+          else if (id.includes('taxid') || id.includes('tax_id')) data.taxId = val;
+          else if (id.includes('specialty')) data.specialty = val;
+          else if (id.includes('addressline1') || id.includes('address_line1') || id.includes('address1')) data.addressLine1 = val;
+          else if (id.includes('addressline2') || id.includes('address_line2') || id.includes('address2')) data.addressLine2 = val;
+          else if (id.includes('city')) data.city = val;
+          else if (id.includes('state')) data.state = val;
+          else if (id.includes('zip')) data.zipCode = val;
+          else if (id.includes('phone')) data.phone = val;
+          else if (id.includes('fax')) data.fax = val;
+          else if (id.includes('email')) data.email = val;
+          else if (id.includes('organization') || id.includes('facility')) data.organizationName = val;
+        }
+
+        // Also check the search control display value as fullName fallback
+        if (!data.fullName && !data.firstName) {
+          const searchVal = searchCtrl.value;
+          if (typeof searchVal === 'string' && searchVal.trim()) {
+            data.fullName = searchVal.trim();
+          }
+        }
+
+        // Only store if we have meaningful data
+        if (Object.keys(data).length > 0) {
+          this.providerDataByInstance[sf.controlName] = data;
+        }
+      }
+    };
+
+    for (const sec of this.renderSections) {
+      if (sec.repeat?.enabled) processInstances(sec);
+      for (const sub of (sec.subsections || [])) {
+        if (sub.repeat?.enabled) processInstances(sub);
+      }
+    }
   }
 
 

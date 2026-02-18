@@ -54,6 +54,38 @@ export class MemberauthdetailsComponent implements OnInit {
   pageIndex = 0;
   pagedCardData: MemberAuthGridRow[] = [];
 
+  /** Status filter bar state */
+  activeStatusFilter: string | null = null;   // null = show all (Total)
+  searchFilterValue = '';
+  statusCountList: { status: string; count: number; slug: string }[] = [];
+
+  /** Color map for dynamic status dots */
+  private statusColorMap: Record<string, string> = {
+    approved:             '#22C55E',
+    'partially-approved': '#10B981',
+    partial:              '#10B981',
+    pending:              '#8B5CF6',
+    pended:               '#8B5CF6',
+    'in-progress':        '#3B82F6',
+    inprogress:           '#3B82F6',
+    open:                 '#0EA5E9',
+    submitted:            '#06B6D4',
+    'under-review':       '#6366F1',
+    underreview:          '#6366F1',
+    denied:               '#EF4444',
+    cancelled:            '#64748B',
+    canceled:             '#64748B',
+    withdrawn:            '#78716C',
+    closed:               '#6B7280',
+    close:                '#6B7280',
+    voided:               '#475569',
+    void:                 '#475569',
+    modified:             '#F59E0B',
+    expired:              '#F43F5E',
+    'on-hold':            '#F97316',
+    onhold:               '#F97316',
+  };
+
   displayedColumns: string[] = [
     'actions',
     'authNumber',
@@ -93,6 +125,31 @@ export class MemberauthdetailsComponent implements OnInit {
       this.memberId ??
       routeMemberId;
 
+    // Custom filter predicate: combines text search + status filter
+    this.dataSource.filterPredicate = (row: MemberAuthGridRow, filter: string) => {
+      const parsed = JSON.parse(filter) as { text: string; status: string | null };
+
+      // Status filter
+      if (parsed.status) {
+        const rowStatus = (row.authStatusText || '').toString().trim().toLowerCase();
+        if (rowStatus !== parsed.status.toLowerCase()) {
+          return false;
+        }
+      }
+
+      // Text search filter
+      if (parsed.text) {
+        const search = parsed.text.toLowerCase();
+        const haystack = Object.values(row)
+          .filter(v => v !== null && v !== undefined)
+          .map(v => String(v).toLowerCase())
+          .join(' ');
+        return haystack.includes(search);
+      }
+
+      return true;
+    };
+
     this.loadPermissionsForAuthActions();
     this.getAuthDetails(memberId);
   }
@@ -118,22 +175,43 @@ export class MemberauthdetailsComponent implements OnInit {
 
         this.dataSource.data = rows;
         this.pageIndex = 0;
-        this.updatePagedCardData();
+        this.activeStatusFilter = null;
+        this.searchFilterValue = '';
+        this.buildStatusCounts();
+        this.applyFilters();
       },
       error: (err: any) => {
         console.error('Error fetching auth details:', err);
         this.isLoading = false;
         this.isEmpty = true;
         this.dataSource.data = [];
-        this.updatePagedCardData();
+        this.statusCountList = [];
+        this.applyFilters();
       },
     });
   }
 
   applyFilter(event: Event) {
-    const filterValue = (event.target as HTMLInputElement).value ?? '';
-    this.dataSource.filter = filterValue.trim().toLowerCase();
+    this.searchFilterValue = ((event.target as HTMLInputElement).value ?? '').trim().toLowerCase();
     this.pageIndex = 0;
+    this.applyFilters();
+  }
+
+  clearSearch(): void {
+    this.searchFilterValue = '';
+    this.pageIndex = 0;
+    this.applyFilters();
+  }
+
+  /** Apply combined text + status filter to dataSource */
+  private applyFilters(): void {
+    const filterObj = JSON.stringify({
+      text: this.searchFilterValue,
+      status: this.activeStatusFilter,
+    });
+    this.dataSource.filter = filterObj;
+    this.pageIndex = 0;
+    this.isEmpty = this.dataSource.filteredData.length === 0 && !this.isLoading;
     this.updatePagedCardData();
   }
 
@@ -217,6 +295,122 @@ export class MemberauthdetailsComponent implements OnInit {
   hasPagePermission(action: string): boolean {
     if (!Object.keys(this.globalActionPermissions || {}).length) return true;
     return this.globalActionPermissions[action.toLowerCase()] ?? false;
+  }
+
+  /******** Slug + Count helpers (used by template) ********/
+  getStatusSlug(row: MemberAuthGridRow): string {
+    const raw = (row.authStatusText || row.authStatus || '').toString().trim();
+    return raw.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || 'default';
+  }
+
+  getTypeSlug(row: MemberAuthGridRow): string {
+    const raw = (row.authTemplateName || row.authTypeText || row.authTypeId || '').toString().trim();
+    return raw.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || 'default';
+  }
+
+  getPrioritySlug(row: MemberAuthGridRow): string {
+    const raw = (row.requestPriority || 'standard').toString().trim();
+    return raw.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  }
+
+  getStatusCount(statusText: string): number {
+    return this.dataSource.data.filter(
+      (r) => (r.authStatusText || '').toLowerCase() === statusText.toLowerCase()
+    ).length;
+  }
+
+  /** Builds dynamic status count list from current data */
+  buildStatusCounts(): void {
+    const countMap = new Map<string, number>();
+
+    for (const row of this.dataSource.data) {
+      const status = (row.authStatusText || '').toString().trim();
+      if (!status) continue;
+      countMap.set(status, (countMap.get(status) || 0) + 1);
+    }
+
+    this.statusCountList = Array.from(countMap.entries())
+      .map(([status, count]) => ({
+        status,
+        count,
+        slug: status.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+      }))
+      .sort((a, b) => b.count - a.count); // sort by count descending
+  }
+
+  /** Handles clicking a status chip to toggle filtering */
+  onStatusFilterClick(status: string | null): void {
+    // Toggle: if same status clicked again, reset to "all"
+    if (this.activeStatusFilter === status) {
+      this.activeStatusFilter = null;
+    } else {
+      this.activeStatusFilter = status;
+    }
+    this.pageIndex = 0;
+    this.applyFilters();
+  }
+
+  /** Returns the dot color for a given status slug */
+  getStatusDotColor(slug: string): string {
+    return this.statusColorMap[slug] || '#6B7280';
+  }
+
+  trackByAuthNumber(_index: number, row: MemberAuthGridRow): string {
+    return row.authNumber;
+  }
+
+  /**
+   * Calculates due-date countdown info for display.
+   * Returns { daysLeft, label, level, tooltip }
+   *   level: 'overdue' | 'warning' | 'safe' | 'none'
+   */
+  getDueDateInfo(row: MemberAuthGridRow): { daysLeft: number; label: string; level: string; tooltip: string } {
+    if (!row.authDueDate) {
+      return { daysLeft: 0, label: '', level: 'none', tooltip: '' };
+    }
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    const due = new Date(row.authDueDate);
+    due.setHours(0, 0, 0, 0);
+
+    const diffMs = due.getTime() - now.getTime();
+    const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+    if (daysLeft < 0) {
+      // Overdue
+      const overdueDays = Math.abs(daysLeft);
+      return {
+        daysLeft,
+        label: `${daysLeft}d overdue`,
+        level: 'overdue',
+        tooltip: `Overdue by ${overdueDays} day${overdueDays !== 1 ? 's' : ''}`
+      };
+    } else if (daysLeft === 0) {
+      return {
+        daysLeft: 0,
+        label: 'Due today',
+        level: 'warning',
+        tooltip: 'Due today'
+      };
+    } else if (daysLeft <= 7) {
+      // Warning zone
+      return {
+        daysLeft,
+        label: `${daysLeft}d left`,
+        level: 'warning',
+        tooltip: `${daysLeft} day${daysLeft !== 1 ? 's' : ''} remaining`
+      };
+    } else {
+      // Safe
+      return {
+        daysLeft,
+        label: `${daysLeft}d left`,
+        level: 'safe',
+        tooltip: `${daysLeft} days remaining`
+      };
+    }
   }
 
   private getMemberIdFromRoute(): number {

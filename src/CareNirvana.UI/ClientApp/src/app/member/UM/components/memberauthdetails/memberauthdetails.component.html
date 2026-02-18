@@ -1,224 +1,363 @@
+<!-- ─── Context Menu (shared by card + table) ─── -->
 <mat-menu #menu="matMenu">
-  <button mat-menu-item class="row-menu-item row-menu-item--primary">
-    <span class="row-menu-icon">
-      <mat-icon>add</mat-icon>
-    </span>
-    <span class="row-menu-label">Add Activity</span>
+  <button mat-menu-item>
+    <mat-icon>add</mat-icon>
+    <span>Add Activity</span>
   </button>
-
-  <button mat-menu-item class="row-menu-item">
-    <span class="row-menu-icon">
-      <mat-icon>edit_note</mat-icon>
-    </span>
-    <span class="row-menu-label">Add Notes</span>
+  <button mat-menu-item>
+    <mat-icon>edit_note</mat-icon>
+    <span>Add Notes</span>
   </button>
-
-  <button mat-menu-item class="row-menu-item">
-    <span class="row-menu-icon">
-      <mat-icon>assignment</mat-icon>
-    </span>
-    <span class="row-menu-label">Run Assessment</span>
+  <button mat-menu-item>
+    <mat-icon>assignment</mat-icon>
+    <span>Run Assessment</span>
   </button>
-
-  <button mat-menu-item class="row-menu-item">
-    <span class="row-menu-icon">
-      <mat-icon>description</mat-icon>
-    </span>
-    <span class="row-menu-label">Add Documents</span>
+  <button mat-menu-item>
+    <mat-icon>description</mat-icon>
+    <span>Add Documents</span>
   </button>
-
-  <button mat-menu-item class="row-menu-item">
-    <span class="row-menu-icon">
-      <mat-icon>outgoing_mail</mat-icon>
-    </span>
-    <span class="row-menu-label">Send Letter</span>
+  <button mat-menu-item>
+    <mat-icon>outgoing_mail</mat-icon>
+    <span>Send Letter</span>
   </button>
-
-  <button mat-menu-item class="row-menu-item">
-    <span class="row-menu-icon">
-      <mat-icon>content_copy</mat-icon>
-    </span>
-    <span class="row-menu-label">Clone Auth</span>
+  <button mat-menu-item>
+    <mat-icon>content_copy</mat-icon>
+    <span>Clone Auth</span>
   </button>
-
-  <button mat-menu-item class="row-menu-item">
-    <span class="row-menu-icon">
-      <mat-icon>person_remove</mat-icon>
-    </span>
-    <span class="row-menu-label">Transfer</span>
+  <button mat-menu-item>
+    <mat-icon>person_remove</mat-icon>
+    <span>Transfer</span>
   </button>
-
-  <button mat-menu-item class="row-menu-item">
-    <span class="row-menu-icon">
-      <mat-icon>summarize</mat-icon>
-    </span>
-    <span class="row-menu-label">Auth Summary </span>
+  <button mat-menu-item>
+    <mat-icon>summarize</mat-icon>
+    <span>Auth Summary</span>
   </button>
 </mat-menu>
 
-<!-- Search + Add + Toggles -->
-<div class="d-flex justify-content-between align-items-center w-100 pb-2"
-     style="padding-right:12px;padding-left:5px; padding-top:5px;">
 
-  <div class="search-section">
-    <input type="text" placeholder="🔍 Search..." (input)="applyFilter($event)" class="search-input" #input />
+<!-- ═══════════════════════════════════════════════
+     TOOLBAR: Search + Stats + Actions
+     ═══════════════════════════════════════════════ -->
+<div class="mad-toolbar">
+
+  <!-- Search -->
+  <div class="mad-search">
+    <mat-icon class="mad-search-icon">search</mat-icon>
+    <input type="text"
+           class="mad-search-input"
+           placeholder="Search authorizations..."
+           (input)="applyFilter($event)"
+           #input />
+    <button class="mad-search-clear"
+            *ngIf="input.value"
+            (click)="input.value = ''; clearSearch()">
+      <mat-icon>close</mat-icon>
+    </button>
   </div>
 
-  <div class="d-flex align-items-center ms-3">
-    <button matTooltip="Click to add a new authorization"
-            class="btn btn-primary ms-2"
-            (click)="onAddAuthClick()" [disabled]="!hasPagePermission('add')">
-      Add Auth
-    </button>
+  <!-- Quick stats / Filter bar -->
+  <div class="mad-stats">
+    <!-- Total (resets filter) -->
+    <div class="mad-stat mad-stat--clickable"
+         [class.mad-stat--active]="activeStatusFilter === null"
+         (click)="onStatusFilterClick(null)"
+         matTooltip="Show all authorizations">
+      <span class="mad-stat-dot mad-stat-dot--total"></span>
+      <span class="mad-stat-label">Total</span>
+      <span class="mad-stat-value">{{ dataSource.data.length }}</span>
+    </div>
 
-    <button mat-icon-button (click)="toggleViewMode()" matTooltip="Toggle View">
+    <!-- Dynamic status chips -->
+    <div class="mad-stat mad-stat--clickable"
+         *ngFor="let sc of statusCountList"
+         [class.mad-stat--active]="activeStatusFilter === sc.status"
+         (click)="onStatusFilterClick(sc.status)"
+         [matTooltip]="activeStatusFilter === sc.status ? 'Click to clear filter' : 'Filter by ' + sc.status">
+      <span class="mad-stat-dot" [style.background]="getStatusDotColor(sc.slug)"></span>
+      <span class="mad-stat-label">{{ sc.status }}</span>
+      <span class="mad-stat-value">{{ sc.count }}</span>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="mad-actions">
+    <button class="mad-icon-btn"
+            (click)="toggleViewMode()"
+            [matTooltip]="viewMode === 'card' ? 'Switch to table view' : 'Switch to card view'">
       <mat-icon>{{ viewMode === 'card' ? 'table_chart' : 'view_module' }}</mat-icon>
     </button>
 
-    <button mat-icon-button (click)="toggleCompactMode()" matTooltip="Toggle Compact Mode">
+    <button class="mad-icon-btn"
+            *ngIf="viewMode === 'card'"
+            (click)="toggleCompactMode()"
+            [class.mad-icon-btn--active]="compactMode"
+            matTooltip="Toggle compact mode">
       <mat-icon>{{ compactMode ? 'zoom_out' : 'zoom_in' }}</mat-icon>
+    </button>
+
+    <button class="mad-btn-add"
+            matTooltip="Click to add a new authorization"
+            (click)="onAddAuthClick()"
+            [disabled]="!hasPagePermission('add')">
+      <mat-icon>add</mat-icon>
+      Add Auth
     </button>
   </div>
 </div>
 
-<!-- CARD VIEW -->
-<div *ngIf="viewMode === 'card'" class="d-flex flex-column" style="margin: 0 10px;">
-  <div class="row g-3">
-    <div class="col-lg-4 col-md-6" *ngFor="let row of pagedCardData">
-      <mat-card [ngClass]="{ 'case-card': true, 'compact': compactMode }">
 
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <div>
-            <span *ngIf="row.requestPriority === 'Expedited'" class="priority-cell" matTooltip="Expedited">
-              <svg class="expedited-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="red" class="bi bi-exclamation-circle-fill" viewBox="0 0 16 16">
-                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M8 4a.905.905 0 0 0-.9.995l.35 3.507a.552.552 0 0 0 1.1 0l.35-3.507A.905.905 0 0 0 8 4m.002 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2" />
-              </svg>
-              <!--<mat-icon class="expedited-icon" aria-hidden="true">error</mat-icon>-->
-            </span>
-            <a class="case-link" (click)="onAuthClick(row.authNumber)" matTooltip="Click to access auth details">
+<!-- ═══════════════════════════════════════════════
+     CARD VIEW
+     ═══════════════════════════════════════════════ -->
+<div *ngIf="viewMode === 'card'" class="mad-card-grid">
+  <div *ngFor="let row of pagedCardData; trackBy: trackByAuthNumber"
+       class="mad-auth-card"
+       [class.mad-auth-card--compact]="compactMode">
 
-              {{ row.authNumber }}
-            </a>
-          </div>
-          <div class="d-flex align-items-center">
-            <span class="case-chip me-2 type" matTooltip="Auth Type">
-              {{ row.authTemplateName || row.authTypeId || '—' }}
-            </span>
-            <span class="case-chip me-2 status" matTooltip="Auth Status">
-              {{ row.authStatusText || row.authStatus || '—' }}
-            </span>
-            <button mat-icon-button [matMenuTriggerFor]="menu">
-              <mat-icon>more_vert</mat-icon>
-            </button>
-          </div>
-        </div>
+    <!-- Card header: Auth # + Status + Priority + Menu -->
+    <div class="mad-card-header">
+      <div class="mad-card-identity">
+        <!-- Expedited icon -->
+        <span *ngIf="row.requestPriority === 'Expedited'" matTooltip="Expedited">
+          <svg class="mad-expedited-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#dc2626" viewBox="0 0 16 16">
+            <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M8 4a.905.905 0 0 0-.9.995l.35 3.507a.552.552 0 0 0 1.1 0l.35-3.507A.905.905 0 0 0 8 4m.002 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2"/>
+          </svg>
+        </span>
 
-        <div class="d-flex flex-column gap-1">
-          <div class="text-sm">
-            <mat-icon class="me-1" fontIcon="schedule" inline></mat-icon>
-            <strong>Due Date: </strong>&nbsp;
-            {{ row.authDueDate ? (row.authDueDate | date) : '—' }}
-          </div>
+        <!-- Auth Number -->
+        <a class="mad-auth-link" (click)="onAuthClick(row.authNumber)" matTooltip="Click to access auth details">
+          {{ row.authNumber }}
+        </a>
 
-          <div class="text-sm">
-            <mat-icon class="me-1" fontIcon="event" inline></mat-icon>
-            <strong>Next Review: </strong>&nbsp;
-            {{ row.nextReviewDate ? (row.nextReviewDate | date) : '—' }}
-          </div>
+        <!-- Status Badge -->
+        <span class="mad-status-badge"
+              [ngClass]="'mad-status--' + getStatusSlug(row)"
+              matTooltip="Auth Status">
+          <span class="mad-status-dot"></span>
+          {{ row.authStatusText || row.authStatus || '—' }}
+        </span>
 
-          <div class="text-sm">
-            <mat-icon class="me-1" fontIcon="healing" inline></mat-icon>
-            <strong>Treatment: </strong>&nbsp;
-            {{ row.treatementType || '—' }}
-          </div>
+        <!-- Priority Badge (beside status) -->
+        <span class="mad-priority-badge"
+              [ngClass]="'mad-priority--' + getPrioritySlug(row)"
+              matTooltip="Auth Priority">
+          {{ row.requestPriority || 'Standard' }}
+        </span>
+      </div>
 
-          <div class="text-sm">
-            <mat-icon class="me-1" fontIcon="account_circle" inline></mat-icon>
-            <strong>Created: </strong>&nbsp;
-            {{ row.createdByUserName || '—' }}
-            <span class="muted">• {{ row.createdOn ? (row.createdOn | date) : '' }}</span>
-          </div>
-        </div>
+      <button mat-icon-button class="mad-card-menu" [matMenuTriggerFor]="menu">
+        <mat-icon>more_vert</mat-icon>
+      </button>
+    </div>
 
-      </mat-card>
+    <!-- Auth Type — Styled prominent row -->
+    <div class="mad-card-badges">
+      <span class="mad-type-badge"
+            [ngClass]="'mad-type--' + getTypeSlug(row)"
+            matTooltip="Auth Type">
+        {{ row.authTemplateName || row.authTypeText || row.authTypeId || '—' }}
+      </span>
+    </div>
+
+    <!-- Detail rows (hidden in compact) — COLORED ICONS -->
+    <div class="mad-card-details" *ngIf="!compactMode">
+
+      <!-- Due Date with countdown -->
+      <div class="mad-detail-row">
+        <mat-icon class="mad-detail-icon mad-detail-icon--due">schedule</mat-icon>
+        <span class="mad-detail-label">Due Date</span>
+        <span class="mad-detail-value"
+              [ngClass]="{
+                'mad-detail-value--overdue': getDueDateInfo(row).level === 'overdue',
+                'mad-detail-value--warning': getDueDateInfo(row).level === 'warning',
+                'mad-detail-value--safe':    getDueDateInfo(row).level === 'safe'
+              }">
+          {{ row.authDueDate ? (row.authDueDate | date:'MM/dd/yyyy') : '—' }}
+        </span>
+        <!-- Countdown tag -->
+        <span *ngIf="row.authDueDate && getDueDateInfo(row).level !== 'none'"
+              class="mad-due-tag"
+              [ngClass]="{
+                'mad-due--overdue': getDueDateInfo(row).level === 'overdue',
+                'mad-due--warning': getDueDateInfo(row).level === 'warning',
+                'mad-due--safe':    getDueDateInfo(row).level === 'safe'
+              }"
+              [matTooltip]="getDueDateInfo(row).tooltip">
+          <mat-icon *ngIf="getDueDateInfo(row).level === 'overdue'">warning</mat-icon>
+          <mat-icon *ngIf="getDueDateInfo(row).level === 'warning'">timelapse</mat-icon>
+          {{ getDueDateInfo(row).label }}
+        </span>
+      </div>
+
+      <!-- Next Review -->
+      <div class="mad-detail-row">
+        <mat-icon class="mad-detail-icon mad-detail-icon--review">event</mat-icon>
+        <span class="mad-detail-label">Next Review</span>
+        <span class="mad-detail-value">
+          {{ row.nextReviewDate ? (row.nextReviewDate | date:'MM/dd/yyyy') : '—' }}
+        </span>
+      </div>
+
+      <!-- Treatment -->
+      <div class="mad-detail-row">
+        <mat-icon class="mad-detail-icon mad-detail-icon--treatment">healing</mat-icon>
+        <span class="mad-detail-label">Treatment</span>
+        <span class="mad-detail-value">
+          {{ row.treatementType || row.treatmentType || '—' }}
+        </span>
+      </div>
+
+      <!-- Created -->
+      <div class="mad-detail-row">
+        <mat-icon class="mad-detail-icon mad-detail-icon--created">person</mat-icon>
+        <span class="mad-detail-label">Created</span>
+        <span class="mad-detail-value">
+          {{ row.createdByUserName || '—' }}
+          <span class="mad-detail-muted">· {{ row.createdOn ? (row.createdOn | date:'MM/dd/yyyy HH:mm') : '' }}</span>
+        </span>
+      </div>
+
     </div>
   </div>
 </div>
 
-<!-- TABLE VIEW -->
-<div *ngIf="viewMode === 'table'" class="d-flex flex-column"
-     style="margin-left:10px; margin-right:10px; width: 100%;">
-  <table class="responsive-table" mat-table [dataSource]="dataSource" multiTemplateDataRows matSort>
 
+<!-- ═══════════════════════════════════════════════
+     TABLE VIEW
+     ═══════════════════════════════════════════════ -->
+<div *ngIf="viewMode === 'table'" class="mad-table-wrap">
+  <table class="mad-table" mat-table [dataSource]="dataSource" matSort>
+
+    <!-- Actions -->
     <ng-container matColumnDef="actions">
-      <th mat-header-cell *matHeaderCellDef></th>
-      <td mat-cell *matCellDef="let row">
-        <button mat-icon-button [matMenuTriggerFor]="menu">
-          <mat-icon>list</mat-icon>
+      <th mat-header-cell *matHeaderCellDef class="mad-th mad-th--actions"></th>
+      <td mat-cell *matCellDef="let row" class="mad-td mad-td--actions">
+        <button mat-icon-button class="mad-table-menu" [matMenuTriggerFor]="menu">
+          <mat-icon>more_vert</mat-icon>
         </button>
       </td>
     </ng-container>
 
+    <!-- Auth # -->
     <ng-container matColumnDef="authNumber">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header> Auth # </th>
-      <td mat-cell *matCellDef="let row">
-        <a mat-button (click)="onAuthClick(row.authNumber)">{{ row.authNumber }}</a>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="mad-th">Auth #</th>
+      <td mat-cell *matCellDef="let row" class="mad-td">
+        <a class="mad-auth-link" (click)="onAuthClick(row.authNumber)" matTooltip="Click to access auth details">{{ row.authNumber }}</a>
       </td>
     </ng-container>
 
+    <!-- Type -->
     <ng-container matColumnDef="authTypeText">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header> Type </th>
-      <td mat-cell *matCellDef="let row"> {{ row.authTypeText || row.authTypeId || '' }} </td>
-    </ng-container>
-
-    <ng-container matColumnDef="authStatusText">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header> Status </th>
-      <td mat-cell *matCellDef="let row"> {{ row.authStatusText || row.authStatus || '' }} </td>
-    </ng-container>
-
-    <ng-container matColumnDef="authDueDate">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header> Due Date </th>
-      <td mat-cell *matCellDef="let row">
-        {{ row.authDueDate ? (row.authDueDate | date:'MM/dd/yyyy') : '' }}
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="mad-th">Type</th>
+      <td mat-cell *matCellDef="let row" class="mad-td">
+        <span class="mad-type-badge mad-type-badge--sm"
+              [ngClass]="'mad-type--' + getTypeSlug(row)"
+              matTooltip="Auth Type">
+          {{ row.authTypeText || row.authTypeId || '' }}
+        </span>
       </td>
     </ng-container>
 
+    <!-- Status + Priority (combined cell) -->
+    <ng-container matColumnDef="authStatusText">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="mad-th">Status</th>
+      <td mat-cell *matCellDef="let row" class="mad-td">
+        <div class="mad-table-status-cell">
+          <span class="mad-status-badge mad-status-badge--sm"
+                [ngClass]="'mad-status--' + getStatusSlug(row)"
+                matTooltip="Auth Status">
+            <span class="mad-status-dot"></span>
+            {{ row.authStatusText || row.authStatus || '' }}
+          </span>
+          <span class="mad-priority-badge mad-priority-badge--sm"
+                [ngClass]="'mad-priority--' + getPrioritySlug(row)"
+                matTooltip="Auth Priority">
+            {{ row.requestPriority || 'Standard' }}
+          </span>
+        </div>
+      </td>
+    </ng-container>
+
+    <!-- Due Date with countdown -->
+    <ng-container matColumnDef="authDueDate">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="mad-th">Due Date</th>
+      <td mat-cell *matCellDef="let row" class="mad-td mad-td--date">
+        <span class="mad-td-due-wrap"
+              [ngClass]="{
+                'mad-td-due--overdue': getDueDateInfo(row).level === 'overdue',
+                'mad-td-due--warning': getDueDateInfo(row).level === 'warning',
+                'mad-td-due--safe':    getDueDateInfo(row).level === 'safe'
+              }">
+          {{ row.authDueDate ? (row.authDueDate | date:'MM/dd/yyyy') : '' }}
+          <span *ngIf="row.authDueDate && getDueDateInfo(row).level !== 'none'"
+                class="mad-due-tag"
+                [ngClass]="{
+                  'mad-due--overdue': getDueDateInfo(row).level === 'overdue',
+                  'mad-due--warning': getDueDateInfo(row).level === 'warning',
+                  'mad-due--safe':    getDueDateInfo(row).level === 'safe'
+                }"
+                [matTooltip]="getDueDateInfo(row).tooltip">
+            {{ getDueDateInfo(row).label }}
+          </span>
+        </span>
+      </td>
+    </ng-container>
+
+    <!-- Next Review -->
     <ng-container matColumnDef="nextReviewDate">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header> Next Review </th>
-      <td mat-cell *matCellDef="let row">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="mad-th">Next Review</th>
+      <td mat-cell *matCellDef="let row" class="mad-td mad-td--date">
         {{ row.nextReviewDate ? (row.nextReviewDate | date:'MM/dd/yyyy') : '' }}
       </td>
     </ng-container>
 
+    <!-- Treatment -->
     <ng-container matColumnDef="treatmentType">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header> Treatment </th>
-      <td mat-cell *matCellDef="let row"> {{ row.treatmentType || '' }} </td>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="mad-th">Treatment</th>
+      <td mat-cell *matCellDef="let row" class="mad-td">
+        {{ row.treatmentType || '' }}
+      </td>
     </ng-container>
 
+    <!-- Created On -->
     <ng-container matColumnDef="createdOn">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header> Created On </th>
-      <td mat-cell *matCellDef="let row">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="mad-th">Created On</th>
+      <td mat-cell *matCellDef="let row" class="mad-td mad-td--date">
         {{ row.createdOn ? (row.createdOn | date:'MM/dd/yyyy HH:mm') : '' }}
       </td>
     </ng-container>
 
+    <!-- Created By -->
     <ng-container matColumnDef="createdByUserName">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header> Created By </th>
-      <td mat-cell *matCellDef="let row"> {{ row.createdByUserName || '' }} </td>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="mad-th">Created By</th>
+      <td mat-cell *matCellDef="let row" class="mad-td">
+        {{ row.createdByUserName || '' }}
+      </td>
     </ng-container>
 
     <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+        class="mad-table-row"></tr>
   </table>
 </div>
 
-<!-- No Data -->
-<div *ngIf="isEmpty && !isLoading" class="text-center w-100 mt-3 no-data">
-  <p class="text-muted">No data available</p>
+
+<!-- ═══ Empty State ═══ -->
+<div *ngIf="isEmpty && !isLoading" class="mad-empty">
+  <mat-icon class="mad-empty-icon">folder_open</mat-icon>
+  <div class="mad-empty-title">No authorizations found</div>
+  <div class="mad-empty-desc">Try adjusting your search or add a new authorization.</div>
 </div>
 
-<!-- Pagination -->
+<!-- ═══ Loading ═══ -->
+<div *ngIf="isLoading" class="mad-loading">
+  <mat-spinner diameter="32"></mat-spinner>
+  <span>Loading authorizations...</span>
+</div>
+
+<!-- ═══ Pagination ═══ -->
 <mat-paginator #paginator
+               class="mad-paginator"
                [pageSizeOptions]="[5, 10, 15, 20]"
                showFirstLastButtons
                [length]="viewMode === 'card' ? dataSource.filteredData.length : dataSource.data.length"

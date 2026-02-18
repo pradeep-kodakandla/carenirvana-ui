@@ -5,6 +5,10 @@ export interface AuthWizardStep {
   label: string;       // ex: 'Details'
   route: string;       // ex: 'details'
   disabled?: boolean;
+
+  // Optional (doesn't break existing usage):
+  icon?: string;       // material icon name (e.g., 'folder')
+  badge?: number | string; // count (e.g., 2)
 }
 
 @Component({
@@ -21,5 +25,17 @@ export class AuthchevronstepperComponent {
   clickStep(step: AuthWizardStep): void {
     if (step.disabled) return;
     this.stepSelected.emit(step);
+  }
+
+  iconFor(step: AuthWizardStep): string {
+    if (step.icon) return step.icon;
+
+    const id = (step.id || '').toLowerCase();
+    if (id.includes('detail')) return 'assignment';
+    if (id.includes('decision')) return 'task_alt';
+    if (id.includes('note')) return 'note_alt';
+    if (id.includes('document')) return 'folder';
+    if (id.includes('activ')) return 'timeline';
+    return 'chevron_right';
   }
 }

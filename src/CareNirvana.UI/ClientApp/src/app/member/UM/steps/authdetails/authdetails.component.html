@@ -3,6 +3,7 @@
   <!-- Enrollment Details -->
   <div class="section-card">
     <div class="section-header">
+      <span class="section-icon"><mat-icon>badge</mat-icon></span>
       <span class="section-acc-icon open">▸</span>
       <div class="section-title">Enrollment Details</div>
     </div>
@@ -34,7 +35,7 @@
       <div class="section-title">Auth Details</div>
     </div>-->
 
-    <div class="grid" style="padding-bottom: 14px;">
+    <div class="grid" >
       <div class="ff-field">
         <div class="ff-outline"
              [class.ff-invalid]="form.get('authClassId')?.touched && form.get('authClassId')?.invalid">
@@ -84,8 +85,16 @@
     <ng-container *ngFor="let sec of renderSections">
       <div class="section-card" [attr.id]="sectionDomId(sec)">
         <div class="section-header" (click)="toggleSection(sec)">
+          <span class="section-icon"><mat-icon>{{ getSectionIcon(sec.title) }}</mat-icon></span>
           <span class="section-acc-icon" [class.open]="sec.expanded">▸</span>
           <div class="section-title">{{ sec.title }}</div>
+          <ng-container *ngIf="isProviderSection(sec) && getProviderRepeatSub(sec) as ps">
+            <button type="button" class="pc-add-btn"
+                    [disabled]="!canAddRepeat(ps)"
+                    (click)="addRepeat(ps); $event.stopPropagation()">
+              <mat-icon>person_add</mat-icon> Add Provider
+            </button>
+          </ng-container>
         </div>
 
         <ng-container *ngIf="sec.expanded">
@@ -97,17 +106,18 @@
           </div>
 
 
-          <!-- Section-level action buttons -->
-          <ng-container *ngIf="getActionButtons(sec.fields) as secBtns">
-            <div class="ff-buttonbar" *ngIf="secBtns.length">
-              <button type="button"
-                      class="ff-action-btn"
-                      *ngFor="let b of secBtns"
-                      [disabled]="!isActionButtonEnabled(b)"
-                      (click)="onActionButtonClick(b)">
-                {{ b.buttonText || b.displayName }}
-              </button>
-            </div>
+          <!-- Section-level action buttons (hidden for provider — moved into cards) -->
+          <ng-container *ngIf="!isProviderSection(sec)">
+            <ng-container *ngIf="getActionButtons(sec.fields) as secBtns">
+              <div class="ff-buttonbar" *ngIf="secBtns.length">
+                <button type="button" class="ff-action-btn"
+                        *ngFor="let b of secBtns"
+                        [disabled]="!isActionButtonEnabled(b)"
+                        (click)="onActionButtonClick(b)">
+                  {{ b.buttonText || b.displayName }}
+                </button>
+              </div>
+            </ng-container>
           </ng-container>
 
           <!-- =========================
@@ -214,146 +224,173 @@
                SECTION FIELDS (REPEAT)
           ========================= -->
           <ng-template #sectionRepeatTpl>
+
+            <!-- Provider card layout (section-level) -->
+            <ng-container *ngIf="isProviderRepeatGroup(sec); else normalSecRepeat">
+              <div class="pc-grid">
+                <ng-container *ngFor="let inst of sec.instances; trackBy: trackProvIdx">
+                  <div class="pc">
+                    <!--<div class="pc-role-label">{{ getProvRoleDisplay(inst) || (sec.repeat?.instanceLabel + ' #' + inst.index) }}</div>-->
+                    <div class="pc-card" [class.pc-card--filled]="hasProviderSelected(inst)"
+                         [class.pc-card--oon]="getProviderNetworkStatus(inst) === 'Out-of-Network'">
+
+                      <!-- Top row: role dropdown + delete -->
+                      <div class="pc-card-top">
+                        <ng-container *ngIf="getProvRoleField(inst) as rf">
+                          <ng-container *ngIf="form.get(rf.controlName) as rc">
+                            <div class="pc-role-wrap pc-role-bordered">
+                              <!--<label class="pc-lbl">{{ rf.displayName }}<span class="req-star" *ngIf="rf.required">*</span></label>-->
+                              <ui-smart-dropdown class="ff-ui pc-dropdown" label="{{ rf.displayName }}" placeholder="Select role..."
+                                [options]="getDropdownOptions(rf.controlName)" [formControlName]="rf.controlName">
+                              </ui-smart-dropdown>
+                            </div>
+                          </ng-container>
+                        </ng-container>
+                        <button type="button" class="pc-close"
+                                *ngIf="sec.repeat?.showControls"
+                                [disabled]="!canRemoveRepeat(sec)"
+                                (click)="removeRepeat(sec, inst.index)">
+                          <mat-icon class="pc-delete-icon">delete</mat-icon>
+                        </button>
+                      </div>
+
+                      <!-- Search + Buttons: visible only when NO provider selected -->
+                      <ng-container *ngIf="!hasProviderSelected(inst)">
+                        <ng-container *ngIf="getProvSearchField(inst) as sf">
+                          <ng-container *ngIf="form.get(sf.controlName) as sc">
+                            <div class="pc-search pc-search-bordered">
+                              <!--<label class="pc-lbl">{{ sf.displayName }}</label>-->
+                              <ui-smart-lookup class="ff-ui pc-search-input"
+                                [placeholder]="getLookupPlaceholder(sf)" [minChars]="getLookupMinChars(sf)"
+                                [debounceMs]="getLookupDebounceMs(sf)" [limit]="getLookupLimit(sf)"
+                                [searchFn]="getLookupSearchFn(sf)" [displayWith]="getLookupDisplayWith(sf)"
+                                [trackBy]="getLookupTrackBy(sf)" [formControlName]="sf.controlName"
+                                (selected)="onLookupSelected(sf, $event)"
+                                (textChange)="onLookupTextChange(sf, $event)"
+                                (cleared)="onLookupCleared(sf)">
+                              </ui-smart-lookup>
+                            </div>
+                          </ng-container>
+                        </ng-container>
+                        <ng-container *ngIf="getProvCardBtns(sec, inst) as cbtns">
+                          <div class="pc-actions" *ngIf="cbtns.length">
+                            <button type="button" class="pc-action-btn" *ngFor="let b of cbtns"
+                                    [disabled]="!isActionButtonEnabled(b)" (click)="onActionButtonClick(b)">
+                              {{ b.buttonText || b.displayName }}
+                            </button>
+                          </div>
+                        </ng-container>
+                        <div class="pc-empty-state">
+                          <mat-icon class="pc-empty-icon">person_search</mat-icon>
+                          <span>Search and select a provider</span>
+                        </div>
+                      </ng-container>
+
+                      <!-- Provider Info Card: visible when provider IS selected -->
+                      <ng-container *ngIf="hasProviderSelected(inst)">
+                        <div class="pc-info">
+                          <div class="pc-info-header">
+                            <div class="pc-info-name-row">
+                              <span class="pc-info-name">{{ getProviderFullName(inst) }}</span>
+                              <span class="pc-network-badge"
+                                    [class.pc-badge--in]="getProviderNetworkStatus(inst) === 'In-Network'"
+                                    [class.pc-badge--out]="getProviderNetworkStatus(inst) === 'Out-of-Network'">
+                                <span class="pc-badge-dot"></span>
+                                {{ getProviderNetworkStatus(inst) }}
+                              </span>
+                            </div>
+                            <button type="button" class="pc-info-clear" (click)="clearProviderData(inst)" title="Remove provider">
+                              <mat-icon class="pc-delete-icon">delete</mat-icon>
+                            </button>
+                          </div>
+                          <div class="pc-info-details">
+                            <div class="pc-info-line" *ngIf="getProviderNpi(inst) || getProviderSpecialty(inst)">
+                              <span *ngIf="getProviderNpi(inst)"><strong>NPI:</strong> {{ getProviderNpi(inst) }}</span>
+                              <span *ngIf="getProviderNpi(inst) && getProviderSpecialty(inst)" class="pc-info-sep">&middot;</span>
+                              <span *ngIf="getProviderSpecialty(inst)">{{ getProviderSpecialty(inst) }}</span>
+                            </div>
+                            <div class="pc-info-line pc-info-org" *ngIf="getProviderOrganization(inst)">
+                              {{ getProviderOrganization(inst) }}
+                            </div>
+                            <div class="pc-info-line pc-info-addr" *ngIf="getProviderAddress(inst)">
+                              {{ getProviderAddress(inst) }}
+                            </div>
+                          </div>
+                          <div class="pc-oon-warning" *ngIf="getProviderNetworkStatus(inst) === 'Out-of-Network'">
+                            <mat-icon class="pc-oon-icon">info</mat-icon>
+                            <span>Out-of-Network provider — additional member cost share may apply</span>
+                          </div>
+                        </div>
+                      </ng-container>
+
+                    </div>
+                  </div>
+                </ng-container>
+              </div>
+            </ng-container>
+
+            <!-- Normal section repeat (non-provider) -->
+            <ng-template #normalSecRepeat>
             <div class="ff-repeat-wrap">
               <ng-container *ngFor="let inst of sec.instances">
                 <div class="ff-repeat-group">
                   <div class="ff-repeat-header">
                     <div class="ff-repeat-title">{{ sec.repeat?.instanceLabel }} #{{ inst.index }}</div>
                   </div>
-
-
-                  <!-- Repeat-group action buttons -->
                   <ng-container *ngIf="getActionButtons(inst.fields) as repBtns">
                     <div class="ff-buttonbar" *ngIf="repBtns.length">
-                      <button type="button"
-                              class="ff-action-btn"
-                              *ngFor="let b of repBtns"
-                              [disabled]="!isActionButtonEnabled(b)"
-                              (click)="onActionButtonClick(b)">
+                      <button type="button" class="ff-action-btn" *ngFor="let b of repBtns"
+                              [disabled]="!isActionButtonEnabled(b)" (click)="onActionButtonClick(b)">
                         {{ b.buttonText || b.displayName }}
                       </button>
                     </div>
                   </ng-container>
-
                   <div class="grid ff-repeat-grid">
                     <ng-container *ngFor="let f of getNonActionFields(inst.fields)">
                       <ng-container *ngIf="isVisible(f)">
                         <ng-container *ngIf="form.get(f.controlName) as ctrl">
-
-                          <!-- Checkbox -->
                           <ng-container *ngIf="f.type === 'checkbox'; else outlinedRep">
                             <div class="ff-field">
                               <div class="ff-checkbox" [class.ff-disabled]="ctrl.disabled">
                                 <input type="checkbox" class="form-check-input" [formControlName]="f.controlName" />
-                                <label class="form-check-label ff-checkbox-text">
-                                  {{ f.displayName }}
-                                  <span class="req-star" *ngIf="f.required">*</span>
-                                </label>
-                              </div>
-                              <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
-                                {{ f.requiredMsg || (f.displayName + ' is required') }}
+                                <label class="form-check-label ff-checkbox-text">{{ f.displayName }}<span class="req-star" *ngIf="f.required">*</span></label>
                               </div>
                             </div>
                           </ng-container>
-
                           <ng-template #outlinedRep>
-                            <div class="ff-field"
-                                 [class.ff-span-all]="isFullRowField(f) && f.type !== 'search'"
-                                 [class.ff-span-2]="f.type === 'search'">
+                            <div class="ff-field" [class.ff-span-all]="isFullRowField(f) && f.type !== 'search'" [class.ff-span-2]="f.type === 'search'">
                               <div class="ff-outline" [class.ff-disabled]="ctrl.disabled" [class.ff-invalid]="ctrl.touched && ctrl.invalid">
-                                <div class="ff-float-label">
-                                  {{ f.displayName }}
-                                  <span class="req-star" *ngIf="f.required">*</span>
-                                </div>
-
+                                <div class="ff-float-label">{{ f.displayName }}<span class="req-star" *ngIf="f.required">*</span></div>
                                 <div class="ff-body">
                                   <ng-container [ngSwitch]="f.type">
-
-                                    <ng-container *ngSwitchCase="'select'">
-                                      <ui-smart-dropdown class="ff-ui"
-                                                         label=""
-                                                         placeholder="Select..."
-                                                         [options]="getDropdownOptions(f.controlName)"
-                                                         [formControlName]="f.controlName">
-                                      </ui-smart-dropdown>
-                                    </ng-container>
-
-                                    <ng-container *ngSwitchCase="'datetime-local'">
-                                      <ui-datetime-picker class="ff-ui"
-                                                          placeholderDate="mm/dd/yyyy"
-                                                          placeholderDateTime="mm/dd/yyyy --:--"
-                                                          [dateOnly]="!!f.dateOnly"
-                                                          [formControlName]="f.controlName">
-                                      </ui-datetime-picker>
-                                    </ng-container>
-
-                                    <ng-container *ngSwitchCase="'textarea'">
-                                      <textarea class="ff-input ff-textarea"
-                                                rows="3"
-                                                [formControlName]="f.controlName"></textarea>
-                                    </ng-container>
-
-                                    <ng-container *ngSwitchCase="'search'">
-                                      <ui-smart-lookup class="ff-ui ff-lookup"
-                                                       [placeholder]="getLookupPlaceholder(f)"
-                                                       [minChars]="getLookupMinChars(f)"
-                                                       [debounceMs]="getLookupDebounceMs(f)"
-                                                       [limit]="getLookupLimit(f)"
-                                                       [searchFn]="getLookupSearchFn(f)"
-                                                       [displayWith]="getLookupDisplayWith(f)"
-                                                       [trackBy]="getLookupTrackBy(f)"
-                                                       [formControlName]="f.controlName"
-                                                       (selected)="onLookupSelected(f, $event)"
-                                                       (textChange)="onLookupTextChange(f, $event)"
-                                                       (cleared)="onLookupCleared(f)">
-                                      </ui-smart-lookup>
-                                    </ng-container>
-
-                                    <ng-container *ngSwitchDefault>
-                                      <input class="ff-input" type="text" [formControlName]="f.controlName" />
-                                    </ng-container>
-
+                                    <ng-container *ngSwitchCase="'select'"><ui-smart-dropdown class="ff-ui" label="" placeholder="Select..." [options]="getDropdownOptions(f.controlName)" [formControlName]="f.controlName"></ui-smart-dropdown></ng-container>
+                                    <ng-container *ngSwitchCase="'datetime-local'"><ui-datetime-picker class="ff-ui" placeholderDate="mm/dd/yyyy" placeholderDateTime="mm/dd/yyyy --:--" [dateOnly]="!!f.dateOnly" [formControlName]="f.controlName"></ui-datetime-picker></ng-container>
+                                    <ng-container *ngSwitchCase="'textarea'"><textarea class="ff-input ff-textarea" rows="3" [formControlName]="f.controlName"></textarea></ng-container>
+                                    <ng-container *ngSwitchCase="'search'"><ui-smart-lookup class="ff-ui ff-lookup" [placeholder]="getLookupPlaceholder(f)" [minChars]="getLookupMinChars(f)" [debounceMs]="getLookupDebounceMs(f)" [limit]="getLookupLimit(f)" [searchFn]="getLookupSearchFn(f)" [displayWith]="getLookupDisplayWith(f)" [trackBy]="getLookupTrackBy(f)" [formControlName]="f.controlName" (selected)="onLookupSelected(f, $event)" (textChange)="onLookupTextChange(f, $event)" (cleared)="onLookupCleared(f)"></ui-smart-lookup></ng-container>
+                                    <ng-container *ngSwitchDefault><input class="ff-input" type="text" [formControlName]="f.controlName" /></ng-container>
                                   </ng-container>
                                 </div>
                               </div>
-
-                              <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
-                                {{ f.requiredMsg || (f.displayName + ' is required') }}
-                              </div>
+                              <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">{{ f.requiredMsg || (f.displayName + ' is required') }}</div>
                             </div>
                           </ng-template>
-
                         </ng-container>
                       </ng-container>
                     </ng-container>
-
-                    <!-- Actions pinned to the bottom-right of this repeat grid -->
                     <div class="ff-repeat-cell" *ngIf="sec.repeat?.showControls">
-                      <button type="button"
-                              class="ff-repeat-btn"
-                              [disabled]="!canAddRepeat(sec)"
-                              (click)="addRepeat(sec)"
-                              title="Add">
-                        +
-                      </button>
-                      <button type="button"
-                              class="ff-repeat-btn danger"
-                              [disabled]="!canRemoveRepeat(sec)"
-                              (click)="removeRepeat(sec, inst.index)"
-                              title="Remove this group">
-                        −
-                      </button>
+                      <button type="button" class="ff-repeat-btn" [disabled]="!canAddRepeat(sec)" (click)="addRepeat(sec)" title="Add">+</button>
+                      <button type="button" class="ff-repeat-btn danger" [disabled]="!canRemoveRepeat(sec)" (click)="removeRepeat(sec, inst.index)" title="Remove">−</button>
                     </div>
                   </div>
-
                 </div>
               </ng-container>
             </div>
+            </ng-template>
           </ng-template>
 
           <!-- Subsections (recursive) -->
           <ng-container *ngFor="let sub of sec.subsections">
-            <ng-container *ngTemplateOutlet="subTpl; context: { $implicit: sub, depth: 0 }"></ng-container>
+            <ng-container *ngTemplateOutlet="subTpl; context: { $implicit: sub, depth: 0, parentSec: sec }"></ng-container>
           </ng-container>
 
         </ng-container>
@@ -369,7 +406,7 @@
     </button>
   </div>-->
   <!-- Recursive subsection template -->
-  <ng-template #subTpl let-sub let-depth="depth">
+  <ng-template #subTpl let-sub let-depth="depth" let-parentSec="parentSec">
     <div class="sub-card" [class.sub-nested]="depth > 0">
       <!--<div class="sub-float-label">{{ sub.title }}</div>-->
       <!-- Subsection-level action buttons -->
@@ -489,145 +526,187 @@
            SUBSECTION FIELDS (REPEAT)
       ========================= -->
       <ng-template #subRepeatTpl>
+
+        <!-- ═══ PROVIDER CARDS ═══ -->
+        <ng-container *ngIf="isProviderRepeatGroup(sub); else normalSubRepeat">
+          <div class="pc-grid">
+            <ng-container *ngFor="let inst of sub.instances; trackBy: trackProvIdx">
+              <div class="pc">
+
+                <!-- Role label above card -->
+                <!--<div class="pc-role-label">{{ getProvRoleDisplay(inst) || (sub.repeat?.instanceLabel + ' #' + inst.index) }}</div>-->
+
+                <!-- Card box -->
+                <div class="pc-card" [class.pc-card--filled]="hasProviderSelected(inst)"
+                     [class.pc-card--oon]="getProviderNetworkStatus(inst) === 'Out-of-Network'">
+
+                  <!-- Top row: role dropdown + delete -->
+                  <div class="pc-card-top">
+                    <ng-container *ngIf="getProvRoleField(inst) as rf">
+                      <ng-container *ngIf="form.get(rf.controlName) as rc">
+                        <div class="pc-role-wrap pc-role-bordered">
+                          <!--<label class="pc-lbl">{{ rf.displayName }}<span class="req-star" *ngIf="rf.required">*</span></label>-->
+                          <ui-smart-dropdown class="ff-ui pc-dropdown"
+                            label="{{ rf.displayName }}" placeholder="Select role..."
+                            [options]="getDropdownOptions(rf.controlName)"
+                            [formControlName]="rf.controlName">
+                          </ui-smart-dropdown>
+                        </div>
+                      </ng-container>
+                    </ng-container>
+                    <button type="button" class="pc-close"
+                            *ngIf="sub.repeat?.showControls"
+                            [disabled]="!canRemoveRepeat(sub)"
+                            (click)="removeRepeat(sub, inst.index)" title="Remove">
+                      <mat-icon class="pc-delete-icon">delete</mat-icon>
+                    </button>
+                  </div>
+
+                  <!-- Search + Buttons: visible only when NO provider selected -->
+                  <ng-container *ngIf="!hasProviderSelected(inst)">
+                    <ng-container *ngIf="getProvSearchField(inst) as sf">
+                      <ng-container *ngIf="form.get(sf.controlName) as sc">
+                        <div class="pc-search pc-search-bordered">
+                          <!--<label class="pc-lbl">{{ sf.displayName }}</label>-->
+                          <ui-smart-lookup class="ff-ui pc-search-input"
+                            [placeholder]="getLookupPlaceholder(sf)"
+                            [minChars]="getLookupMinChars(sf)"
+                            [debounceMs]="getLookupDebounceMs(sf)"
+                            [limit]="getLookupLimit(sf)"
+                            [searchFn]="getLookupSearchFn(sf)"
+                            [displayWith]="getLookupDisplayWith(sf)"
+                            [trackBy]="getLookupTrackBy(sf)"
+                            [formControlName]="sf.controlName"
+                            (selected)="onLookupSelected(sf, $event)"
+                            (textChange)="onLookupTextChange(sf, $event)"
+                            (cleared)="onLookupCleared(sf)">
+                          </ui-smart-lookup>
+                        </div>
+                      </ng-container>
+                    </ng-container>
+                    <ng-container *ngIf="getProvCardBtns(parentSec, inst) as cbtns">
+                      <div class="pc-actions" *ngIf="cbtns.length">
+                        <button type="button" class="pc-action-btn"
+                                *ngFor="let b of cbtns"
+                                [disabled]="!isActionButtonEnabled(b)"
+                                (click)="onActionButtonClick(b)">
+                          {{ b.buttonText || b.displayName }}
+                        </button>
+                      </div>
+                    </ng-container>
+                    <div class="pc-empty-state">
+                      <mat-icon class="pc-empty-icon">person_search</mat-icon>
+                      <span>Search and select a provider</span>
+                    </div>
+                  </ng-container>
+
+                  <!-- Provider Info Card: visible when provider IS selected -->
+                  <ng-container *ngIf="hasProviderSelected(inst)">
+                    <div class="pc-info">
+                      <div class="pc-info-header">
+                        <div class="pc-info-name-row">
+                          <span class="pc-info-name">{{ getProviderFullName(inst) }}</span>
+                          <span class="pc-network-badge"
+                                [class.pc-badge--in]="getProviderNetworkStatus(inst) === 'In-Network'"
+                                [class.pc-badge--out]="getProviderNetworkStatus(inst) === 'Out-of-Network'">
+                            <span class="pc-badge-dot"></span>
+                            {{ getProviderNetworkStatus(inst) }}
+                          </span>
+                        </div>
+                        <button type="button" class="pc-info-clear" (click)="clearProviderData(inst)" title="Remove provider">
+                          <mat-icon class="pc-delete-icon">delete</mat-icon>
+                        </button>
+                      </div>
+                      <div class="pc-info-details">
+                        <div class="pc-info-line" *ngIf="getProviderNpi(inst) || getProviderSpecialty(inst)">
+                          <span *ngIf="getProviderNpi(inst)"><strong>NPI:</strong> {{ getProviderNpi(inst) }}</span>
+                          <span *ngIf="getProviderNpi(inst) && getProviderSpecialty(inst)" class="pc-info-sep">&middot;</span>
+                          <span *ngIf="getProviderSpecialty(inst)">{{ getProviderSpecialty(inst) }}</span>
+                        </div>
+                        <div class="pc-info-line pc-info-org" *ngIf="getProviderOrganization(inst)">
+                          {{ getProviderOrganization(inst) }}
+                        </div>
+                        <div class="pc-info-line pc-info-addr" *ngIf="getProviderAddress(inst)">
+                          {{ getProviderAddress(inst) }}
+                        </div>
+                      </div>
+                      <div class="pc-oon-warning" *ngIf="getProviderNetworkStatus(inst) === 'Out-of-Network'">
+                        <mat-icon class="pc-oon-icon">info</mat-icon>
+                        <span>Out-of-Network provider — additional member cost share may apply</span>
+                      </div>
+                    </div>
+                  </ng-container>
+
+                </div>
+              </div>
+            </ng-container>
+          </div>
+        </ng-container>
+
+        <!-- ═══ NORMAL REPEAT (non-provider) — unchanged ═══ -->
+        <ng-template #normalSubRepeat>
         <div class="ff-repeat-wrap">
           <ng-container *ngFor="let inst of sub.instances">
             <div class="ff-repeat-group">
               <div class="ff-repeat-header">
                 <div class="ff-repeat-title">{{ sub.repeat?.instanceLabel }} #{{ inst.index }}</div>
               </div>
-
-
-              <!-- Repeat-group action buttons -->
               <ng-container *ngIf="getActionButtons(inst.fields) as repBtns">
                 <div class="ff-buttonbar" *ngIf="repBtns.length">
-                  <button type="button"
-                          class="ff-action-btn"
-                          *ngFor="let b of repBtns"
-                          [disabled]="!isActionButtonEnabled(b)"
-                          (click)="onActionButtonClick(b)">
+                  <button type="button" class="ff-action-btn"
+                    *ngFor="let b of repBtns"
+                    [disabled]="!isActionButtonEnabled(b)"
+                    (click)="onActionButtonClick(b)">
                     {{ b.buttonText || b.displayName }}
                   </button>
                 </div>
               </ng-container>
-
               <div class="grid ff-repeat-grid">
                 <ng-container *ngFor="let f of getNonActionFields(inst.fields)">
                   <ng-container *ngIf="isVisible(f)">
                     <ng-container *ngIf="form.get(f.controlName) as ctrl">
-
                       <ng-container *ngIf="f.type === 'checkbox'; else outlinedSubRep">
                         <div class="ff-field">
                           <div class="ff-checkbox" [class.ff-disabled]="ctrl.disabled">
                             <input type="checkbox" class="form-check-input" [formControlName]="f.controlName" />
-                            <label class="form-check-label ff-checkbox-text">
-                              {{ f.displayName }}
-                              <span class="req-star" *ngIf="f.required">*</span>
-                            </label>
-                          </div>
-                          <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
-                            {{ f.requiredMsg || (f.displayName + ' is required') }}
+                            <label class="form-check-label ff-checkbox-text">{{ f.displayName }}<span class="req-star" *ngIf="f.required">*</span></label>
                           </div>
                         </div>
                       </ng-container>
-
                       <ng-template #outlinedSubRep>
-                        <div class="ff-field"
-                             [class.ff-span-all]="isFullRowField(f) && f.type !== 'search'"
-                             [class.ff-span-2]="f.type === 'search'">
+                        <div class="ff-field" [class.ff-span-all]="isFullRowField(f) && f.type !== 'search'" [class.ff-span-2]="f.type === 'search'">
                           <div class="ff-outline" [class.ff-disabled]="ctrl.disabled" [class.ff-invalid]="ctrl.touched && ctrl.invalid">
-                            <div class="ff-float-label">
-                              {{ f.displayName }}
-                              <span class="req-star" *ngIf="f.required">*</span>
-                            </div>
-
+                            <div class="ff-float-label">{{ f.displayName }}<span class="req-star" *ngIf="f.required">*</span></div>
                             <div class="ff-body">
                               <ng-container [ngSwitch]="f.type">
-
-                                <ng-container *ngSwitchCase="'select'">
-                                  <ui-smart-dropdown class="ff-ui"
-                                                     label=""
-                                                     placeholder="Select..."
-                                                     [options]="getDropdownOptions(f.controlName)"
-                                                     [formControlName]="f.controlName">
-                                  </ui-smart-dropdown>
-                                </ng-container>
-
-                                <ng-container *ngSwitchCase="'datetime-local'">
-                                  <ui-datetime-picker class="ff-ui"
-                                                      placeholderDate="mm/dd/yyyy"
-                                                      placeholderDateTime="mm/dd/yyyy --:--"
-                                                      [dateOnly]="!!f.dateOnly"
-                                                      [formControlName]="f.controlName">
-                                  </ui-datetime-picker>
-                                </ng-container>
-
-                                <ng-container *ngSwitchCase="'textarea'">
-                                  <textarea class="ff-input ff-textarea"
-                                            rows="3"
-                                            [formControlName]="f.controlName"></textarea>
-                                </ng-container>
-
-                                <ng-container *ngSwitchCase="'search'">
-                                  <ui-smart-lookup class="ff-ui ff-lookup"
-                                                   [placeholder]="getLookupPlaceholder(f)"
-                                                   [minChars]="getLookupMinChars(f)"
-                                                   [debounceMs]="getLookupDebounceMs(f)"
-                                                   [limit]="getLookupLimit(f)"
-                                                   [searchFn]="getLookupSearchFn(f)"
-                                                   [displayWith]="getLookupDisplayWith(f)"
-                                                   [trackBy]="getLookupTrackBy(f)"
-                                                   [formControlName]="f.controlName"
-                                                   (selected)="onLookupSelected(f, $event)"
-                                                   (textChange)="onLookupTextChange(f, $event)"
-                                                   (cleared)="onLookupCleared(f)">
-                                  </ui-smart-lookup>
-                                </ng-container>
-
-                                <ng-container *ngSwitchDefault>
-                                  <input class="ff-input" type="text" [formControlName]="f.controlName" />
-                                </ng-container>
-
+                                <ng-container *ngSwitchCase="'select'"><ui-smart-dropdown class="ff-ui" label="" placeholder="Select..." [options]="getDropdownOptions(f.controlName)" [formControlName]="f.controlName"></ui-smart-dropdown></ng-container>
+                                <ng-container *ngSwitchCase="'datetime-local'"><ui-datetime-picker class="ff-ui" placeholderDate="mm/dd/yyyy" placeholderDateTime="mm/dd/yyyy --:--" [dateOnly]="!!f.dateOnly" [formControlName]="f.controlName"></ui-datetime-picker></ng-container>
+                                <ng-container *ngSwitchCase="'textarea'"><textarea class="ff-input ff-textarea" rows="3" [formControlName]="f.controlName"></textarea></ng-container>
+                                <ng-container *ngSwitchCase="'search'"><ui-smart-lookup class="ff-ui ff-lookup" [placeholder]="getLookupPlaceholder(f)" [minChars]="getLookupMinChars(f)" [debounceMs]="getLookupDebounceMs(f)" [limit]="getLookupLimit(f)" [searchFn]="getLookupSearchFn(f)" [displayWith]="getLookupDisplayWith(f)" [trackBy]="getLookupTrackBy(f)" [formControlName]="f.controlName" (selected)="onLookupSelected(f, $event)" (textChange)="onLookupTextChange(f, $event)" (cleared)="onLookupCleared(f)"></ui-smart-lookup></ng-container>
+                                <ng-container *ngSwitchDefault><input class="ff-input" type="text" [formControlName]="f.controlName" /></ng-container>
                               </ng-container>
                             </div>
                           </div>
-
-                          <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
-                            {{ f.requiredMsg || (f.displayName + ' is required') }}
-                          </div>
+                          <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">{{ f.requiredMsg || (f.displayName + ' is required') }}</div>
                         </div>
                       </ng-template>
-
                     </ng-container>
                   </ng-container>
                 </ng-container>
-
-                <!-- Actions pinned to the bottom-right of this repeat grid -->
                 <div class="ff-repeat-cell" *ngIf="sub.repeat?.showControls">
-                  <button type="button"
-                          class="ff-repeat-btn"
-                          [disabled]="!canAddRepeat(sub)"
-                          (click)="addRepeat(sub)"
-                          title="Add">
-                    +
-                  </button>
-                  <button type="button"
-                          class="ff-repeat-btn danger"
-                          [disabled]="!canRemoveRepeat(sub)"
-                          (click)="removeRepeat(sub, inst.index)"
-                          title="Remove this group">
-                    −
-                  </button>
+                  <button type="button" class="ff-repeat-btn" [disabled]="!canAddRepeat(sub)" (click)="addRepeat(sub)" title="Add">+</button>
+                  <button type="button" class="ff-repeat-btn danger" [disabled]="!canRemoveRepeat(sub)" (click)="removeRepeat(sub, inst.index)" title="Remove">−</button>
                 </div>
               </div>
-
             </div>
           </ng-container>
         </div>
+        </ng-template>
       </ng-template>
 
       <!-- nested subsections -->
       <ng-container *ngFor="let child of sub.subsections">
-        <ng-container *ngTemplateOutlet="subTpl; context: { $implicit: child, depth: depth + 1 }"></ng-container>
+        <ng-container *ngTemplateOutlet="subTpl; context: { $implicit: child, depth: depth + 1, parentSec: parentSec }"></ng-container>
       </ng-container>
     </div>
   </ng-template>

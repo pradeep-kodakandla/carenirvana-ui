@@ -1,64 +1,67 @@
-.caseChevronStepper {
-  display: flex;
-  align-items: stretch;
-  overflow: hidden;
-}
-
-.step {
-  position: relative;
+/* Tab-style stepper (underline + icon + optional count) */
+.authStepper {
   display: flex;
   align-items: center;
-  padding: 14px 28px 20px 42px;
-  font-weight: 600;
-  text-decoration: none;
-  /*  border: 1px solid #2c74b7;
-*/ border-right: none;
-  background: #f3f6fb;
-  color: #1f3b57;
-  cursor: pointer;
-  user-select: none;
+  gap: 18px;
+  padding: 6px 10px;
+  background: #fff;
+  /* subtle baseline like your reference */
+  border-bottom: 1px solid #e6e8ec;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
-  .step:first-child {
-    padding-left: 22px;
+.stepTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 2px;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  color: #6b7280;
+  font-weight: 700;
+  font-size: 13px;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+
+.stepIcon {
+  font-size: 18px;
+  line-height: 18px;
+  opacity: 0.9;
+}
+
+.stepLabel {
+  line-height: 18px;
+}
+
+.stepBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  background: #eef2f7;
+  color: #374151;
+}
+
+.stepTab.active {
+  color: #1f6fb7;
+  border-bottom-color: #1f6fb7;
+}
+
+  .stepTab.active .stepBadge {
+    background: rgba(31, 111, 183, 0.12);
+    color: #1f6fb7;
   }
 
-  .step::after {
-    content: '';
-    position: absolute;
-    top: -1px;
-    right: -34px;
-    width: 0;
-    height: 0;
-    border-top: 27px solid transparent;
-    border-bottom: 27px solid transparent;
-    border-left: 34px solid #f3f6fb;
-    z-index: 2;
-  }
-
-  .step::before {
-    content: '';
-    position: absolute;
-    top: -1px;
-    right: -35px;
-    width: 0;
-    height: 0;
-    border-top: 27px solid transparent;
-    border-bottom: 27px solid transparent;
-    border-left: 35px solid #2c74b7;
-    z-index: 1;
-  }
-
-  .step.active {
-    background: #1f6fb7;
-    color: #fff;
-  }
-
-    .step.active::after {
-      border-left-color: #1f6fb7;
-    }
-
-  .step.disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
+.stepTab.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}

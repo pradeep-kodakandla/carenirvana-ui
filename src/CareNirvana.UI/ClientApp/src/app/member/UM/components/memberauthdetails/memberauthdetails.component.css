@@ -1,101 +1,913 @@
-.search-input {
+/* ═══════════════════════════════════════════
+   MEMBER AUTH DETAILS — Redesigned v2
+   (mirrors membercasedetails design system)
+   ═══════════════════════════════════════════ */
+
+
+/* ── Toolbar ── */
+.mad-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 12px 14px;
+  flex-wrap: wrap;
+}
+
+/* Search */
+.mad-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #D1D5DB;
+  border-radius: 12px;
+  padding: 7px 14px;
+  background: #fff;
   width: 320px;
   max-width: 45vw;
-  border: 1px solid #d9dde3;
-  border-radius: 10px;
-  padding: 9px 12px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.mad-search:focus-within {
+  border-color: #93B4FF;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.mad-search-icon {
+  font-size: 20px;
+  color: #9CA3AF;
+}
+
+.mad-search-input {
+  flex: 1;
+  border: none;
   outline: none;
-  background: #fff;
-}
-
-  .search-input:focus {
-    border-color: #9bbcff;
-    box-shadow: 0 0 0 3px rgba(60,120,255,.12);
-  }
-
-.case-card {
-  border-radius: 14px;
-  padding: 14px 14px 12px;
-  box-shadow: 0 6px 18px rgba(16, 24, 40, 0.08);
-  border: 1px solid rgba(16, 24, 40, 0.08);
-}
-
-  .case-card:hover {
-    box-shadow: 0 10px 22px rgba(16, 24, 40, 0.12);
-  }
-
-  .case-card.compact {
-    padding: 10px 12px;
-  }
-
-.case-link {
-  font-weight: 700;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-  .case-link:hover {
-    text-decoration: underline;
-  }
-
-.case-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  border: 1px solid rgba(16, 24, 40, 0.10);
-  background: rgba(16, 24, 40, 0.04);
-  white-space: nowrap;
-}
-
-  .case-chip.status {
-    background: rgba(34, 197, 94, 0.10);
-    border-color: rgba(34, 197, 94, 0.25);
-  }
-
-  .case-chip.type {
-    background: rgba(59, 130, 246, 0.10);
-    border-color: rgba(59, 130, 246, 0.25);
-  }
-
-.text-sm {
   font-size: 13px;
-  line-height: 1.45;
+  background: transparent;
+  color: #1A2332;
 }
 
-.muted {
-  opacity: .7;
+.mad-search-input::placeholder {
+  color: #9CA3AF;
 }
 
-.responsive-table {
-  width: 100%;
-  border-radius: 12px;
-  overflow: hidden;
+.mad-search-clear {
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
 }
 
-.no-data {
-  opacity: .8;
-}
-
-
-.priority-cell {
-  display: inline-flex;
-  align-items: center; /* vertical center */
-  justify-content: center;
-  gap: 6px; /* space between icon & text */
-}
-
-.expedited-icon {
-  color: #dc2626;
+.mad-search-clear mat-icon {
   font-size: 18px;
   width: 18px;
   height: 18px;
-  line-height: 18px;
+  color: #9CA3AF;
 }
 
-.priority-text {
-  line-height: 1; /* helps keep it visually centered */
+
+/* ── Quick Stats ── */
+.mad-stats {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
+.mad-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #E5E7EB;
+}
+
+.mad-stat-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.mad-stat-dot--total      { background: #0056b3; }
+.mad-stat-dot--approved   { background: #22C55E; }
+.mad-stat-dot--pending    { background: #8B5CF6; }
+.mad-stat-dot--denied     { background: #EF4444; }
+.mad-stat-dot--inprogress { background: #3B82F6; }
+.mad-stat-dot--open       { background: #0EA5E9; }
+
+.mad-stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6B7280;
+}
+
+.mad-stat-value {
+  font-size: 13px;
+  font-weight: 800;
+  color: #1A2332;
+}
+
+/* Clickable stat chip */
+.mad-stat--clickable {
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.mad-stat--clickable:hover {
+  border-color: #80bfff;
+  background: #f0f7ff;
+  box-shadow: 0 2px 6px rgba(0, 98, 204, 0.1);
+  transform: translateY(-1px);
+}
+
+/* Active (selected) stat chip */
+.mad-stat--active {
+  border-color: #007bff !important;
+  background: #e6f2ff !important;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2) !important;
+}
+
+.mad-stat--active .mad-stat-label {
+  color: #0056b3;
+}
+
+.mad-stat--active .mad-stat-value {
+  color: #0056b3;
+}
+
+
+/* ── Action Buttons ── */
+.mad-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mad-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid #D1D5DB;
+  background: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6B7280;
+  transition: all 0.15s ease;
+}
+
+.mad-icon-btn:hover {
+  border-color: #9CA3AF;
+  background: #F9FAFB;
+}
+
+.mad-icon-btn--active {
+  border-color: #007bff;
+  background: #e6f2ff;
+  color: #0062cc;
+}
+
+.mad-icon-btn mat-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+.mad-btn-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 18px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #0062cc, #007bff);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 98, 204, 0.25);
+  transition: all 0.15s ease;
+}
+
+.mad-btn-add:hover:not(:disabled) {
+  box-shadow: 0 4px 14px rgba(0, 98, 204, 0.35);
+  transform: translateY(-1px);
+}
+
+.mad-btn-add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mad-btn-add mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+
+/* ═══════════════════════════════════════════
+   CARD VIEW
+   ═══════════════════════════════════════════ */
+.mad-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(370px, 1fr));
+  gap: 14px;
+  padding: 0 12px;
+}
+
+@media (max-width: 480px) {
+  .mad-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mad-auth-card {
+  border-radius: 14px;
+  padding: 16px 18px;
+  background: #fff;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.05);
+  display: flex;
+  flex-direction: column;
+/*  gap: 12px;
+*/  transition: all 0.2s ease;
+  cursor: default;
+}
+
+.mad-auth-card:hover {
+  border-color: #99c9ff;
+  box-shadow: 0 8px 24px rgba(16, 24, 40, 0.1);
+  transform: translateY(-2px);
+}
+
+.mad-auth-card--compact {
+  padding: 12px 14px;
+  gap: 8px;
+}
+
+
+/* ── Card header ── */
+.mad-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.mad-card-identity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mad-auth-link {
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: none;
+  letter-spacing: -0.2px;
+}
+
+.mad-auth-link:hover {
+  text-decoration: underline;
+  color: #004085;
+}
+
+.mad-card-menu {
+  width: 30px !important;
+  height: 30px !important;
+  line-height: 30px !important;
+}
+
+.mad-card-menu mat-icon {
+  font-size: 18px;
+  color: #9CA3AF;
+}
+
+.mad-card-badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ── Expedited indicator ── */
+.mad-expedited-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+
+/* ═══════════════════════════════════════════
+   AUTH TYPE — Styled prominent label
+   ═══════════════════════════════════════════ */
+.mad-type-badge {
+  display: inline-flex;
+  align-items: center;
+/*  gap: 6px;
+  padding: 5px 14px;*/
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+.mad-type-badge--sm {
+  padding: 3px 10px;
+  font-size: 12px;
+  border-radius: 8px;
+}
+
+/* Prior Authorization — Indigo */
+.mad-type--prior-authorization,
+.mad-type--priorauthorization {
+  background: linear-gradient(135deg, #e6f2ff, #cce5ff);
+  border: 1px solid #80bfff;
+  color: #004085;
+}
+
+/* Concurrent Review — Teal */
+.mad-type--concurrent-review,
+.mad-type--concurrentreview {
+  background: linear-gradient(135deg, #F0FDFA, #CCFBF1);
+  border: 1px solid #5EEAD4;
+  color: #115E59;
+}
+
+/* Retrospective Review — Purple */
+.mad-type--retrospective-review,
+.mad-type--retrospectivereview {
+  background: linear-gradient(135deg, #FDF4FF, #FAE8FF);
+  border: 1px solid #D8B4FE;
+  color: #6B21A8;
+}
+
+/* Appeal Template — Rose */
+.mad-type--appeal-template,
+.mad-type--appealtemplate {
+  background: linear-gradient(135deg, #FFF1F2, #FFE4E6);
+  border: 1px solid #FDA4AF;
+  color: #9F1239;
+}
+
+/* Notification — Sky */
+.mad-type--notification {
+  background: linear-gradient(135deg, #F0F9FF, #E0F2FE);
+  border: 1px solid #7DD3FC;
+  color: #0C4A6E;
+}
+
+/* Referral — Amber */
+.mad-type--referral {
+  background: linear-gradient(135deg, #FFFBEB, #FEF3C7);
+  border: 1px solid #FCD34D;
+  color: #92400E;
+}
+
+/* Default fallback */
+.mad-type--default {
+  background: linear-gradient(135deg, #F9FAFB, #F3F4F6);
+  border: 1px solid #D1D5DB;
+  color: #374151;
+}
+
+
+/* ═══════════════════════════════════════════
+   STATUS BADGES  (Comprehensive Auth Statuses)
+   ─────────────────────────────────────────
+   Approved            → Green
+   Partially Approved  → Emerald
+   Pending / Pended    → Purple
+   In Progress         → Blue
+   Open                → Sky
+   Submitted           → Cyan
+   Under Review        → Indigo
+   Denied              → Red
+   Cancelled           → Slate
+   Withdrawn           → Stone
+   Closed / Close      → Grey
+   Voided / Void       → Dark Slate
+   Modified            → Amber
+   Expired             → Rose
+   On Hold             → Orange
+   ═══════════════════════════════════════════ */
+.mad-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.mad-status-badge--sm {
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+.mad-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Approved — Green */
+.mad-status--approved {
+  background: #F0FDF4;
+  border: 1px solid #86EFAC;
+  color: #166534;
+}
+.mad-status--approved .mad-status-dot { background: #22C55E; }
+
+/* Partially Approved — Emerald */
+.mad-status--partially-approved,
+.mad-status--partial {
+  background: #ECFDF5;
+  border: 1px solid #6EE7B7;
+  color: #065F46;
+}
+.mad-status--partially-approved .mad-status-dot,
+.mad-status--partial .mad-status-dot { background: #10B981; }
+
+/* Pending / Pended — Purple */
+.mad-status--pending,
+.mad-status--pended {
+  background: #f0f7ff;
+  border: 1px solid #C4B5FD;
+  color: #6D28D9;
+}
+.mad-status--pending .mad-status-dot,
+.mad-status--pended .mad-status-dot { background: #8B5CF6; }
+
+/* In Progress — Blue */
+.mad-status--in-progress,
+.mad-status--inprogress {
+  background: #EFF6FF;
+  border: 1px solid #93C5FD;
+  color: #1D4ED8;
+}
+.mad-status--in-progress .mad-status-dot,
+.mad-status--inprogress .mad-status-dot { background: #3B82F6; }
+
+/* Open — Sky */
+.mad-status--open {
+  background: #F0F9FF;
+  border: 1px solid #7DD3FC;
+  color: #0369A1;
+}
+.mad-status--open .mad-status-dot { background: #0EA5E9; }
+
+/* Submitted — Cyan */
+.mad-status--submitted {
+  background: #ECFEFF;
+  border: 1px solid #67E8F9;
+  color: #0E7490;
+}
+.mad-status--submitted .mad-status-dot { background: #06B6D4; }
+
+/* Under Review — Indigo */
+.mad-status--under-review,
+.mad-status--underreview {
+  background: #e6f2ff;
+  border: 1px solid #80bfff;
+  color: #0056b3;
+}
+.mad-status--under-review .mad-status-dot,
+.mad-status--underreview .mad-status-dot { background: #007bff; }
+
+/* Denied — Red */
+.mad-status--denied {
+  background: #FEF2F2;
+  border: 1px solid #FCA5A5;
+  color: #B91C1C;
+}
+.mad-status--denied .mad-status-dot { background: #EF4444; }
+
+/* Cancelled — Slate */
+.mad-status--cancelled,
+.mad-status--canceled {
+  background: #F8FAFC;
+  border: 1px solid #CBD5E1;
+  color: #475569;
+}
+.mad-status--cancelled .mad-status-dot,
+.mad-status--canceled .mad-status-dot { background: #64748B; }
+
+/* Withdrawn — Stone */
+.mad-status--withdrawn {
+  background: #FAFAF9;
+  border: 1px solid #D6D3D1;
+  color: #57534E;
+}
+.mad-status--withdrawn .mad-status-dot { background: #78716C; }
+
+/* Closed / Close — Grey */
+.mad-status--closed,
+.mad-status--close {
+  background: #F3F4F6;
+  border: 1px solid #D1D5DB;
+  color: #374151;
+}
+.mad-status--closed .mad-status-dot,
+.mad-status--close .mad-status-dot { background: #6B7280; }
+
+/* Voided / Void — Dark Slate */
+.mad-status--voided,
+.mad-status--void {
+  background: #F1F5F9;
+  border: 1px solid #94A3B8;
+  color: #334155;
+}
+.mad-status--voided .mad-status-dot,
+.mad-status--void .mad-status-dot { background: #475569; }
+
+/* Modified — Amber */
+.mad-status--modified {
+  background: #FFFBEB;
+  border: 1px solid #FCD34D;
+  color: #92400E;
+}
+.mad-status--modified .mad-status-dot { background: #F59E0B; }
+
+/* Expired — Rose */
+.mad-status--expired {
+  background: #FFF1F2;
+  border: 1px solid #FDA4AF;
+  color: #9F1239;
+}
+.mad-status--expired .mad-status-dot { background: #F43F5E; }
+
+/* On Hold — Orange */
+.mad-status--on-hold,
+.mad-status--onhold {
+  background: #FFF7ED;
+  border: 1px solid #FDBA74;
+  color: #C2410C;
+}
+.mad-status--on-hold .mad-status-dot,
+.mad-status--onhold .mad-status-dot { background: #F97316; }
+
+/* Default fallback */
+.mad-status--default {
+  background: #F3F4F6;
+  border: 1px solid #D1D5DB;
+  color: #374151;
+}
+.mad-status--default .mad-status-dot { background: #6B7280; }
+
+
+/* ═══════════════════════════════════════════
+   PRIORITY BADGES
+   ═══════════════════════════════════════════ */
+.mad-priority-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.mad-priority-badge--sm {
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+/* Standard — calm slate */
+.mad-priority--standard {
+  background: #F1F5F9;
+  border: 1px solid #CBD5E1;
+  color: #334155;
+}
+
+/* Expedited — urgent red */
+.mad-priority--expedited {
+  background: #FEF2F2;
+  border: 1px solid #FCA5A5;
+  color: #B91C1C;
+}
+
+/* Urgent — dark red */
+.mad-priority--urgent {
+  background: #FEE2E2;
+  border: 1px solid #F87171;
+  color: #991B1B;
+}
+
+
+/* ═══════════════════════════════════════════
+   DUE DATE COUNTDOWN INDICATOR
+   ═══════════════════════════════════════════ */
+.mad-due-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  margin-left: 6px;
+  letter-spacing: 0.1px;
+}
+
+.mad-due-tag mat-icon {
+  font-size: 13px !important;
+  width: 13px !important;
+  height: 13px !important;
+}
+
+/* Overdue (past due) — Red */
+.mad-due--overdue {
+  background: #FEE2E2;
+  border: 1px solid #FCA5A5;
+  color: #B91C1C;
+}
+
+.mad-due--overdue .mad-detail-icon {
+  color: #DC2626 !important;
+}
+
+/* Warning (0–7 days left) — Amber */
+.mad-due--warning {
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+  color: #92400E;
+}
+
+.mad-due--warning .mad-detail-icon {
+  color: #D97706 !important;
+}
+
+/* Safe (>7 days left) — Green */
+.mad-due--safe {
+  background: #DCFCE7;
+  border: 1px solid #86EFAC;
+  color: #166534;
+}
+
+/* Due date value color overrides for the detail row */
+.mad-detail-value--overdue {
+  color: #DC2626 !important;
+  font-weight: 700 !important;
+}
+
+.mad-detail-value--warning {
+  color: #D97706 !important;
+  font-weight: 700 !important;
+}
+
+.mad-detail-value--safe {
+  color: #15803D !important;
+}
+
+/* Table cell due date color overrides */
+.mad-td-due--overdue {
+  color: #DC2626 !important;
+  font-weight: 700 !important;
+}
+
+.mad-td-due--warning {
+  color: #D97706 !important;
+  font-weight: 700 !important;
+}
+
+.mad-td-due--safe {
+  color: #15803D !important;
+}
+
+.mad-td-due-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+
+
+/* ═══════════════════════════════════════════
+   DETAIL ROW ICONS — COLORED PER TYPE
+   ═══════════════════════════════════════════ */
+.mad-card-details {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 2px;
+}
+
+.mad-detail-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Base icon style */
+.mad-detail-icon {
+  font-size: 17px !important;
+  width: 17px !important;
+  height: 17px !important;
+  flex-shrink: 0;
+  color: #9CA3AF;
+}
+
+/* Due Date → red/rose */
+.mad-detail-icon--due {
+  color: #F43F5E !important;
+}
+
+/* Next Review → amber */
+.mad-detail-icon--review {
+  color: #F59E0B !important;
+}
+
+/* Treatment → teal */
+.mad-detail-icon--treatment {
+  color: #14B8A6 !important;
+}
+
+/* Created → indigo */
+.mad-detail-icon--created {
+  color: #007bff !important;
+}
+
+.mad-detail-label {
+  font-weight: 700;
+  color: #6B7280;
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+.mad-detail-value {
+  color: #1A2332;
+  font-weight: 500;
+}
+
+.mad-detail-muted {
+  color: #94A3B8;
+  font-weight: 400;
+}
+
+
+/* ═══════════════════════════════════════════
+   TABLE VIEW
+   ═══════════════════════════════════════════ */
+.mad-table-wrap {
+  margin: 0 12px;
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.04);
+  overflow: hidden;
+}
+
+.mad-table {
+  width: 100%;
+}
+
+.mad-th {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #6B7280 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 10px 14px !important;
+  background: #F9FAFB;
+  border-bottom: 1px solid #E5E7EB !important;
+  white-space: nowrap;
+}
+
+.mad-th--actions {
+  width: 48px;
+}
+
+.mad-td {
+  padding: 10px 14px !important;
+  font-size: 12px;
+  color: #4B5563;
+  border-bottom: 1px solid #F3F4F6 !important;
+  vertical-align: middle;
+}
+
+.mad-td--date {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.mad-td--actions {
+  width: 48px;
+}
+
+.mad-table-row:hover {
+  background: #FAFBFE !important;
+}
+
+.mad-table-row:nth-child(even) {
+  background: #FAFBFC;
+}
+
+.mad-table-menu {
+  width: 28px !important;
+  height: 28px !important;
+  line-height: 28px !important;
+}
+
+.mad-table-menu mat-icon {
+  font-size: 18px;
+  color: #9CA3AF;
+}
+
+/* Status + Priority inline in table */
+.mad-table-status-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+
+/* ═══════════════════════════════════════════
+   EMPTY + LOADING
+   ═══════════════════════════════════════════ */
+.mad-empty {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.mad-empty-icon {
+  font-size: 48px !important;
+  width: 48px !important;
+  height: 48px !important;
+  color: #D1D5DB;
+  margin-bottom: 12px;
+}
+
+.mad-empty-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #6B7280;
+}
+
+.mad-empty-desc {
+  font-size: 13px;
+  color: #9CA3AF;
+  margin-top: 4px;
+}
+
+.mad-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px;
+  color: #6B7280;
+  font-size: 13px;
+}
+
+.mad-paginator {
+  margin: 8px 12px 0;
+}
+
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .mad-stats {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .mad-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mad-search {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .mad-actions { justify-content: flex-end; }
+}
+
+@media (max-width: 600px) {
+  .mad-card-grid {
+    grid-template-columns: 1fr;
+    padding: 0 8px;
+  }
+}

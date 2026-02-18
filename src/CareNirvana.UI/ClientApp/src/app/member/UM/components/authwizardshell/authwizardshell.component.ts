@@ -11,6 +11,9 @@ export interface AuthWizardStep {
   label: string;
   route: string;
   disabled?: boolean;
+  // Optional (doesn't break existing usage):
+  icon?: string;       // material icon name (e.g., 'folder')
+  badge?: number | string; // count (e.g., 2)
 }
 
 export interface AuthWizardContext {
@@ -559,12 +562,12 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
   // ---------------------------
   private buildSteps(): void {
     const base: AuthWizardStep[] = [
-      { id: 'details', label: 'Auth Details', route: 'details' },
-      { id: 'decision', label: 'Decisions', route: 'decision' },
-      ...(this.showMdReview ? [{ id: 'mdReview', label: 'MD Review', route: 'mdReview' } as AuthWizardStep] : []),
-      { id: 'activities', label: 'Activities', route: 'activities' },
-      { id: 'notes', label: 'Notes', route: 'notes' },
-      { id: 'documents', label: 'Documents', route: 'documents' }
+      { id: 'details', label: 'Auth Details', route: 'details'},
+      { id: 'decision', label: 'Decisions', route: 'decision', badge: 1 },
+      ...(this.showMdReview ? [{ id: 'mdReview', label: 'MD Review', route: 'mdReview', badge: 2 } as AuthWizardStep] : []),
+      { id: 'activities', label: 'Activities', route: 'activities', badge: 3 },
+      { id: 'notes', label: 'Notes', route: 'notes', badge: 4 },
+      { id: 'documents', label: 'Documents', route: 'documents', badge: 1 }
     ];
 
     // show Smart Check only for NEW auth (authNumber = 0)
