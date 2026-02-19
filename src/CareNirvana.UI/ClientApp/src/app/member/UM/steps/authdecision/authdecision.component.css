@@ -30,12 +30,13 @@
   border-radius: 10px;
   padding: 12px 14px;
   cursor: pointer;
-  transition: box-shadow .15s ease, border-color .15s ease, transform .05s ease;
+  transition: box-shadow .18s ease, border-color .18s ease, transform .05s ease, background .18s ease;
 }
 
   .tab:hover {
     border-color: #c7d0dc;
-    box-shadow: 0 6px 18px rgba(17, 24, 39, 0.06);
+    box-shadow: 0 4px 14px rgba(17, 24, 39, 0.07);
+    background: #fafbfc;
   }
 
   .tab:active {
@@ -48,68 +49,109 @@
     background: #f7f9ff;
   }
 
-  /* ===== Status-based accents for tabs ===== */
+  /* ===== Status-based left accents ===== */
   .tab.status-pended {
-    border-left: 6px solid #f59e0b;
+    border-left: 5px solid #f59e0b;
   }
 
   .tab.status-approved {
-    border-left: 6px solid #22c55e;
+    border-left: 5px solid #22c55e;
   }
 
   .tab.status-denied {
-    border-left: 6px solid #ef4444;
+    border-left: 5px solid #ef4444;
   }
 
   .tab.status-partial {
-    border-left: 6px solid #3b82f6;
+    border-left: 5px solid #3b82f6;
   }
 
   .tab.status-other {
-    border-left: 6px solid #6b7280;
+    border-left: 5px solid #6b7280;
   }
 
-.tab-title {
-  font-weight: 800;
-  font-size: 13px;
-  color: #111827;
+/* ===== Tab header row: title left, badge right ===== */
+.tab-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
-.tab-sub {
-  margin-top: 4px;
-  font-size: 12px;
-  color: #6b7280;
+.tab-line1 {
+  font-weight: 700;
+  font-size: 13px;
+  color: #111827;
+  line-height: 18px;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* Tab lines (3-line layout)
-   1) Decision # + Code
-   2) Dates
-   3) Status
-*/
-.tab-line1 {
-  font-weight: 800;
-  font-size: 13px;
-  color: #111827;
+/* ===== Status badge (pill) ===== */
+.tab-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  flex-shrink: 0;
   line-height: 18px;
 }
 
+.status-pended-badge {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-approved-badge {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-denied-badge {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-partial-badge {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-other-badge {
+  background: #f3f4f6;
+  color: #374151;
+}
+
 .tab-line2 {
-  margin-top: 4px;
+  margin-top: 6px;
   font-size: 12px;
   color: #6b7280;
   line-height: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.tab-line3 {
+/* Status reason line */
+.tab-line4 {
   margin-top: 4px;
-  font-size: 12px;
-  font-weight: 700;
-  color: #111827;
-  line-height: 16px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #6b7280;
+  line-height: 15px;
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+
+/* Remove old tab-line3 / tab-title / tab-sub (no longer used in template) */
 
 
 .tab-content {
@@ -129,17 +171,18 @@
 .section-header {
   display: flex;
   align-items: center;
-  background: #f3f4f6;
-  border-bottom: 1px solid #e6e8ec;
-  margin: -14px -14px 12px;
-  padding: 10px 14px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 2px solid #e2e8f0;
+  margin: -14px -14px 14px;
+  padding: 12px 16px;
   border-radius: 10px 10px 0 0;
 }
 
 .section-title {
-  font-weight: 800;
+  font-weight: 700;
   font-size: 14px;
-  color: #111827;
+  color: #1e293b;
+  letter-spacing: 0.01em;
 }
 
 .case-savebar {

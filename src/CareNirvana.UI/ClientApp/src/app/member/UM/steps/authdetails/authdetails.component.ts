@@ -369,6 +369,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
 
   // ---------- Provider card data (stores full search response per instance) ----------
   providerDataByInstance: Record<string, any> = {};
+  private providerEditMode: Set<string> = new Set();
 
   // ---------- Save ----------
   isSaving = false;
@@ -799,6 +800,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
             this.patchAuthorizationToForm(this.pendingAuth);
             // Rebuild provider card display data from patched form values
             this.rehydrateProviderData();
+            // Rebuild diagnosis card display data from patched form values
+            this.rehydrateDiagnosisData();
+            this.rehydrateServiceData();
           }
 
           // Smart Check prefill: if user arrived from Smart Check, fill ICD + Procedure codes (new auth only)
@@ -808,6 +812,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
           this.getValidationRules();
 
           this.setupVisibilityWatcher();
+          this.setupServiceReqAutoCalc();
         },
         error: (e) => console.error('Template json load failed', e)
       });
@@ -1071,6 +1076,14 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
       this.repeatRegistry = {};
       this.repeatCounts = {};
       this.normalizedTemplate = null;
+
+      // Clear diagnosis card state only on full template reset
+      this.diagnosisDataByInstance = {};
+      this.primaryDiagnosisKey = null;
+      this.diagnosisEditMode.clear();
+      this.providerEditMode.clear();
+      this.serviceDataByInstance = {};
+      this.serviceEditMode.clear();
     }
 
     Object.keys(this.form.controls).forEach(k => {
@@ -1598,6 +1611,20 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
     }
 
     this.setupVisibilityWatcher();
+
+    // Clear stale card data before rehydrating (instance keys may have shifted)
+    this.providerDataByInstance = {};
+    this.providerEditMode.clear();
+    this.diagnosisDataByInstance = {};
+    this.diagnosisEditMode.clear();
+    this.primaryDiagnosisKey = null;
+    this.serviceDataByInstance = {};
+    this.serviceEditMode.clear();
+
+    this.rehydrateProviderData();
+    this.rehydrateDiagnosisData();
+    this.rehydrateServiceData();
+    this.setupServiceReqAutoCalc();
   }
 
   private shiftRepeatSnapshotDown(snapshot: any, meta: RepeatRegistryMeta, removeIndex: number, totalCount: number): any {
@@ -2204,7 +2231,10 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
 
       // Store full provider data for display card (only for provider search fields)
       if (f?.type === 'search' && item) {
-        this.providerDataByInstance[f.controlName] = item;
+        const entity = this.getLookupEntity(f);
+        if (entity === 'providers' || entity === 'provider') {
+          this.providerDataByInstance[f.controlName] = item;
+        }
       }
     }
 
@@ -3121,6 +3151,14 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
 
     // Reset provider card data
     this.providerDataByInstance = {};
+    this.providerEditMode.clear();
+
+    // Reset diagnosis card data
+    this.diagnosisDataByInstance = {};
+    this.primaryDiagnosisKey = null;
+    this.diagnosisEditMode.clear();
+    this.serviceDataByInstance = {};
+    this.serviceEditMode.clear();
 
     // Reset base form
     if (this.form) {
@@ -3221,6 +3259,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
   /** Whether a provider has been selected for this instance */
   hasProviderSelected(inst: RenderRepeatInstance): boolean {
     const key = this.getProvInstanceKey(inst);
+    if (this.providerEditMode.has(key)) return false;
     return !!this.providerDataByInstance[key];
   }
 
@@ -3282,6 +3321,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
   clearProviderData(inst: RenderRepeatInstance): void {
     const key = this.getProvInstanceKey(inst);
     delete this.providerDataByInstance[key];
+    this.providerEditMode.delete(key);
 
     // Also clear the search field and body fields
     const sf = this.getProvSearchField(inst);
@@ -3293,6 +3333,78 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
       }
       this.onLookupCleared(sf);
     }
+  }
+
+  /** Phone display — returns "-" when empty */
+  getProviderPhone(inst: RenderRepeatInstance): string {
+    return this.getProviderData(inst)?.phone || '-';
+  }
+
+  /** Fax display — returns "-" when empty */
+  getProviderFax(inst: RenderRepeatInstance): string {
+    return this.getProviderData(inst)?.fax || '-';
+  }
+
+  /** Switch provider instance to edit mode (re-shows search while keeping old data) */
+  editProvider(inst: RenderRepeatInstance): void {
+    const key = this.getProvInstanceKey(inst);
+    this.providerEditMode.add(key);
+
+    // Pre-fill search with current provider name so user sees what's selected
+    const sf = this.getProvSearchField(inst);
+    if (sf?.controlName) {
+      const ctrl = this.form.get(sf.controlName);
+      if (ctrl) {
+        const data = this.providerDataByInstance[key];
+        if (data) {
+          const displayVal = this.getLookupDisplayWith(sf)(data);
+          ctrl.setValue(displayVal ?? null, { emitEvent: false });
+        }
+      }
+    }
+  }
+
+  /** Cancel provider edit mode — restores display of previously selected provider */
+  cancelEditProvider(inst: RenderRepeatInstance): void {
+    const key = this.getProvInstanceKey(inst);
+    this.providerEditMode.delete(key);
+
+    // Restore search field display from stored data
+    const data = this.providerDataByInstance[key];
+    if (data) {
+      const sf = this.getProvSearchField(inst);
+      if (sf?.controlName) {
+        const ctrl = this.form.get(sf.controlName);
+        if (ctrl) {
+          const displayVal = this.getLookupDisplayWith(sf)(data);
+          ctrl.setValue(displayVal ?? null, { emitEvent: false });
+        }
+      }
+    }
+  }
+
+  /** Check if a provider instance is currently in edit mode */
+  isProviderInEditMode(inst: RenderRepeatInstance): boolean {
+    const key = this.getProvInstanceKey(inst);
+    return this.providerEditMode.has(key);
+  }
+
+  /** Whether provider data exists (ignoring edit mode — used for showing info during edit) */
+  hasProviderData(inst: RenderRepeatInstance): boolean {
+    const key = this.getProvInstanceKey(inst);
+    return !!this.providerDataByInstance[key];
+  }
+
+  /** Called when a provider is selected from lookup — also exits edit mode */
+  onProviderLookupSelected(f: any, inst: RenderRepeatInstance, item: any): void {
+    const key = this.getProvInstanceKey(inst);
+    this.providerDataByInstance[key] = item;
+    this.providerEditMode.delete(key);
+
+    if (f?.controlName) {
+      this.lookupSelectedByControl[f.controlName] = item;
+    }
+    this.onLookupSelected(f, item);
   }
 
   /**
@@ -3365,6 +3477,651 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
     }
   }
 
+
+  // ================================================================
+  // DIAGNOSIS / ICD CARDS — mirrors provider card pattern
+  // ================================================================
+
+  /** Stores full ICD data per instance (keyed by search field controlName) */
+  diagnosisDataByInstance: Record<string, any> = {};
+
+  /** Tracks which instance key is marked as Primary */
+  primaryDiagnosisKey: string | null = null;
+
+  /** Tracks instances in edit mode (search visible even if data exists) */
+  private diagnosisEditMode: Set<string> = new Set();
+
+  // ---------- Service / Procedure Card State ----------
+  serviceDataByInstance: Record<string, any> = {};
+  private serviceEditMode: Set<string> = new Set();
+
+  /** Detects diagnosis sections by title — only "Diagnosis Details", NOT "Additional Details" */
+  isDiagnosisSection(sec: RenderSection): boolean {
+    const t = (sec?.title ?? '').toLowerCase();
+    return t.includes('diagnos');
+  }
+
+  /**
+   * Detects diagnosis repeat groups.
+   * For section-level repeats: matches if section title includes 'diagnos'.
+   * For subsection-level repeats: matches if sub title includes 'icd'/'diagnos'
+   *   AND parentSection is a diagnosis section (prevents Additional Details ICD
+   *   from being treated as a diagnosis card).
+   */
+  isDiagnosisRepeatGroup(target: any, parentSection?: any): boolean {
+    if (!target?.repeat?.enabled) return false;
+    const t = (target?.title ?? '').toLowerCase();
+    const looksLikeDiag = t.includes('diagnos') || t.includes('icd');
+    if (!looksLikeDiag) return false;
+    // If parent section context is given (subsection check), require parent to be a diagnosis section
+    if (parentSection) {
+      return this.isDiagnosisSection(parentSection);
+    }
+    // Section-level: require 'diagnos' in its own title
+    return t.includes('diagnos');
+  }
+
+  /** Finds the diagnosis repeat subsection (or section if section-level) */
+  getDiagnosisRepeatSub(sec: RenderSection): any | null {
+    if (sec.repeat?.enabled && this.isDiagnosisRepeatGroup(sec)) return sec;
+    for (const sub of (sec.subsections || [])) {
+      if (sub.repeat?.enabled && this.isDiagnosisRepeatGroup(sub, sec)) return sub;
+    }
+    return null;
+  }
+
+  /** First select field = Code Type dropdown */
+  getDiagCodeTypeField(inst: RenderRepeatInstance): any | null {
+    return (inst?.fields ?? []).find((f: any) =>
+      f?.type === 'select' && !this.isButtonType(f?.type)
+    ) ?? null;
+  }
+
+  /** Search-type field = ICD lookup */
+  getDiagSearchField(inst: RenderRepeatInstance): any | null {
+    return (inst?.fields ?? []).find((f: any) => f?.type === 'search') ?? null;
+  }
+
+  /** Unique key for a diagnosis instance */
+  getDiagInstanceKey(inst: RenderRepeatInstance): string {
+    const sf = this.getDiagSearchField(inst);
+    return sf?.controlName ?? `diag_${inst?.index ?? 0}`;
+  }
+
+  /** Whether an ICD has been selected for this instance */
+  hasDiagnosisSelected(inst: RenderRepeatInstance): boolean {
+    const key = this.getDiagInstanceKey(inst);
+    // If in edit mode, show search instead
+    if (this.diagnosisEditMode.has(key)) return false;
+    return !!this.diagnosisDataByInstance[key];
+  }
+
+  /** Get stored diagnosis data for this instance */
+  getDiagnosisData(inst: RenderRepeatInstance): any | null {
+    const key = this.getDiagInstanceKey(inst);
+    return this.diagnosisDataByInstance[key] ?? null;
+  }
+
+  /** ICD Code display */
+  getDiagnosisCode(inst: RenderRepeatInstance): string {
+    const d = this.getDiagnosisData(inst);
+    if (!d) return '';
+    return d.code ?? d.icdCode ?? d.icdcode ?? d.Code ?? '';
+  }
+
+  /** ICD Description display */
+  getDiagnosisDescription(inst: RenderRepeatInstance): string {
+    const d = this.getDiagnosisData(inst);
+    if (!d) return '';
+    return d.codeDesc ?? d.description ?? d.codedescription ?? d.desc ?? d.codeDescription ?? '';
+  }
+
+  /** Code Type display (from the Code Type dropdown) */
+  getDiagnosisCodeType(inst: RenderRepeatInstance): string {
+    const ctf = this.getDiagCodeTypeField(inst);
+    if (!ctf) return '';
+    const v = this.form?.get(ctf.controlName)?.value;
+    if (!v) return '';
+    if (typeof v === 'string') return v;
+    return String(v?.label ?? v?.text ?? v?.name ?? v?.value ?? '');
+  }
+
+  /** Whether this instance is marked as primary */
+  isDiagnosisPrimary(inst: RenderRepeatInstance): boolean {
+    const key = this.getDiagInstanceKey(inst);
+    return this.primaryDiagnosisKey === key;
+  }
+
+  /** Set an instance as the primary diagnosis */
+  setDiagnosisPrimary(inst: RenderRepeatInstance): void {
+    const key = this.getDiagInstanceKey(inst);
+    this.primaryDiagnosisKey = key;
+  }
+
+  /** Called when an ICD is selected from the lookup */
+  onDiagnosisLookupSelected(f: any, inst: RenderRepeatInstance, item: any): void {
+    const key = this.getDiagInstanceKey(inst);
+
+    // Store full ICD data
+    this.diagnosisDataByInstance[key] = item;
+
+    // Exit edit mode
+    this.diagnosisEditMode.delete(key);
+
+    // If this is the first ICD, auto-mark as primary
+    const filledCount = Object.keys(this.diagnosisDataByInstance).length;
+    if (filledCount === 1 || !this.primaryDiagnosisKey) {
+      this.primaryDiagnosisKey = key;
+    }
+
+    // Cache for display and fill target fields
+    if (f?.controlName) {
+      this.lookupSelectedByControl[f.controlName] = item;
+    }
+
+    // Run standard lookup fill logic
+    this.onLookupSelected(f, item);
+  }
+
+  /** Called when the ICD lookup is cleared */
+  onDiagnosisLookupCleared(f: any, inst: RenderRepeatInstance): void {
+    const key = this.getDiagInstanceKey(inst);
+    delete this.diagnosisDataByInstance[key];
+    this.diagnosisEditMode.delete(key);
+
+    // If this was primary, clear or reassign
+    if (this.primaryDiagnosisKey === key) {
+      const remaining = Object.keys(this.diagnosisDataByInstance);
+      this.primaryDiagnosisKey = remaining.length > 0 ? remaining[0] : null;
+    }
+
+    this.onLookupCleared(f);
+  }
+
+  /** Clear diagnosis display data for a given instance */
+  clearDiagnosisData(inst: RenderRepeatInstance): void {
+    const key = this.getDiagInstanceKey(inst);
+    delete this.diagnosisDataByInstance[key];
+    this.diagnosisEditMode.delete(key);
+
+    // Reassign primary if needed
+    if (this.primaryDiagnosisKey === key) {
+      const remaining = Object.keys(this.diagnosisDataByInstance);
+      this.primaryDiagnosisKey = remaining.length > 0 ? remaining[0] : null;
+    }
+
+    // Clear the search control and filled fields
+    const sf = this.getDiagSearchField(inst);
+    if (sf?.controlName) {
+      const ctrl = this.form.get(sf.controlName);
+      if (ctrl) {
+        ctrl.setValue(null, { emitEvent: true });
+        ctrl.markAsDirty();
+      }
+      this.onLookupCleared(sf);
+    }
+  }
+
+  /** Switch instance to edit mode (re-shows search while keeping old data until replaced) */
+  editDiagnosis(inst: RenderRepeatInstance): void {
+    const key = this.getDiagInstanceKey(inst);
+    this.diagnosisEditMode.add(key);
+
+    // Pre-fill the search field with the existing code + description so user can see
+    // what's currently selected (they can clear and type fresh if desired)
+    const sf = this.getDiagSearchField(inst);
+    if (sf?.controlName) {
+      const ctrl = this.form.get(sf.controlName);
+      if (ctrl) {
+        const data = this.diagnosisDataByInstance[key];
+        if (data) {
+          const displayVal = this.getLookupDisplayWith(sf)(data);
+          ctrl.setValue(displayVal ?? null, { emitEvent: false });
+        } else {
+          ctrl.setValue(null, { emitEvent: false });
+        }
+      }
+    }
+  }
+
+  /** Cancel edit mode — restores display of previously selected ICD */
+  cancelEditDiagnosis(inst: RenderRepeatInstance): void {
+    const key = this.getDiagInstanceKey(inst);
+    this.diagnosisEditMode.delete(key);
+
+    // Restore the search field display value from stored data
+    const data = this.diagnosisDataByInstance[key];
+    if (data) {
+      const sf = this.getDiagSearchField(inst);
+      if (sf?.controlName) {
+        const ctrl = this.form.get(sf.controlName);
+        if (ctrl) {
+          const displayVal = this.getLookupDisplayWith(sf)(data);
+          ctrl.setValue(displayVal ?? null, { emitEvent: false });
+        }
+      }
+    }
+  }
+
+  /** Check if an instance is currently in edit mode */
+  isDiagnosisInEditMode(inst: RenderRepeatInstance): boolean {
+    const key = this.getDiagInstanceKey(inst);
+    return this.diagnosisEditMode.has(key);
+  }
+
+  /**
+   * Rebuild diagnosisDataByInstance from form control values
+   * (used after patchAuthorizationToForm so reopened auths display correctly).
+   * Only processes ICD repeats inside Diagnosis sections — NOT Additional Details.
+   */
+  private rehydrateDiagnosisData(): void {
+    if (!this.renderSections?.length) return;
+
+    const processInstances = (target: any) => {
+      for (const inst of (target.instances || [])) {
+        const sf = this.getDiagSearchField(inst);
+        if (!sf?.controlName) continue;
+
+        const key = this.getDiagInstanceKey(inst);
+
+        // Already has data
+        if (this.diagnosisDataByInstance[key]) continue;
+
+        let resolved: any = null;
+
+        // --- Strategy 1: check SEARCH control itself for a full object ---
+        // After save/reopen the search field (e.g. icd1_icdCode) often
+        // holds the full lookup object { code:"A00", codeDesc:"CHOLERA", … }
+        const searchVal = this.form.get(sf.controlName)?.value;
+        if (searchVal && typeof searchVal === 'object' && searchVal.code) {
+          resolved = searchVal;
+        }
+
+        // --- Strategy 2: check body fields for a saved full-object value ---
+        const bodyFields = this.getNonActionFields(inst?.fields)
+          .filter((f: any) => f !== sf && f !== this.getDiagCodeTypeField(inst));
+
+        if (!resolved) {
+          for (const f of bodyFields) {
+            const val = this.form.get(f?.controlName)?.value;
+            if (val && typeof val === 'object' && val.code) {
+              resolved = val;
+              break;
+            }
+          }
+        }
+
+        // --- Strategy 3: extract string code + description from separate fields ---
+        if (!resolved) {
+          const data: any = {};
+          for (const f of bodyFields) {
+            const val = this.form.get(f?.controlName)?.value;
+            if (val == null || val === '' || typeof val === 'object') continue;
+
+            const id = String(f?._rawId ?? f?.id ?? f?.displayName ?? '').toLowerCase();
+            if (id.includes('code') && !id.includes('type') && !id.includes('desc')) data.code = val;
+            else if (id.includes('desc') || id.includes('description')) data.codeDesc = val;
+          }
+          if (data.code || data.codeDesc) resolved = data;
+        }
+
+        // --- Strategy 4: parse search control string value ("A01.1 - Description") ---
+        if (!resolved) {
+          if (typeof searchVal === 'string' && searchVal.includes(' - ')) {
+            const parts = searchVal.split(' - ');
+            resolved = { code: parts[0].trim(), codeDesc: parts.slice(1).join(' - ').trim() };
+          } else if (typeof searchVal === 'string' && searchVal.trim()) {
+            resolved = { code: searchVal.trim() };
+          }
+        }
+
+        // --- Strategy 5: merge — if we have resolved data without code, try to pull it from description fields ---
+        if (resolved && !resolved.code && resolved.codeDesc) {
+          // Try body fields for code string
+          for (const f of bodyFields) {
+            const val = this.form.get(f?.controlName)?.value;
+            if (typeof val !== 'string' || !val.trim()) continue;
+            const id = String(f?._rawId ?? f?.id ?? f?.displayName ?? '').toLowerCase();
+            if (id.includes('code') && !id.includes('type') && !id.includes('desc')) {
+              resolved.code = val;
+              break;
+            }
+          }
+        }
+
+        if (resolved) {
+          this.diagnosisDataByInstance[key] = resolved;
+          if (!this.primaryDiagnosisKey) {
+            this.primaryDiagnosisKey = key;
+          }
+        }
+      }
+    };
+
+    for (const sec of this.renderSections) {
+      // Only process diagnosis sections (not Additional Details)
+      if (!this.isDiagnosisSection(sec)) continue;
+
+      if (sec.repeat?.enabled) processInstances(sec);
+      for (const sub of (sec.subsections || [])) {
+        if (sub.repeat?.enabled && this.isDiagnosisRepeatGroup(sub, sec)) {
+          processInstances(sub);
+        }
+      }
+    }
+  }
+
+
+  // ============================================================
+  // Service / Procedure Card Helpers
+  // ============================================================
+
+  /** Detects service/procedure sections */
+  isServiceSection(sec: RenderSection): boolean {
+    const t = (sec?.title ?? '').toLowerCase();
+    return t.includes('service') || t.includes('procedure');
+  }
+
+  /** Detects service/procedure repeat groups */
+  isServiceRepeatGroup(target: any, parentSection?: any): boolean {
+    if (!target?.repeat?.enabled) return false;
+    const t = (target?.title ?? '').toLowerCase();
+    const looks = t.includes('procedure') || t.includes('service') || t.includes('cpt');
+    if (!looks) return false;
+    if (parentSection) return this.isServiceSection(parentSection);
+    return looks;
+  }
+
+  /** Finds the service repeat subsection */
+  getServiceRepeatSub(sec: RenderSection): any | null {
+    if (sec.repeat?.enabled && this.isServiceRepeatGroup(sec)) return sec;
+    for (const sub of (sec.subsections || [])) {
+      if (sub.repeat?.enabled && this.isServiceRepeatGroup(sub, sec)) return sub;
+    }
+    return null;
+  }
+
+  /** Procedure code search field (entity = medicalcodes/cpt) */
+  /** Procedure code search field — first search field that is NOT a provider search */
+  getServiceSearchField(inst: RenderRepeatInstance): any | null {
+    // First pass: match by entity or field id
+    const byEntity = (inst?.fields ?? []).find((f: any) => {
+      if (f?.type !== 'search') return false;
+      const entity = this.getLookupEntity(f);
+      // Exclude provider searches — those render in the card body as normal lookups
+      if (entity === 'providers' || entity === 'provider') return false;
+      // Match known procedure/medical code entities
+      if (entity === 'medicalcodes' || entity === 'cpt' || entity === 'procedure') return true;
+      // Fallback: match by field id pattern
+      const id = (f?._rawId ?? f?.id ?? '').toLowerCase();
+      return id.includes('procedurecode') || id.includes('cpt') || (id.includes('procedure') && id.includes('code'));
+    });
+    if (byEntity) return byEntity;
+
+    // Second pass: first search field that is NOT a provider lookup
+    return (inst?.fields ?? []).find((f: any) => {
+      if (f?.type !== 'search') return false;
+      const entity = this.getLookupEntity(f);
+      return entity !== 'providers' && entity !== 'provider';
+    }) ?? null;
+  }
+
+  /** Description field (auto-filled from lookup, type=text, id contains 'desc') */
+  getServiceDescField(inst: RenderRepeatInstance): any | null {
+    return (inst?.fields ?? []).find((f: any) => {
+      if (f?.type !== 'text') return false;
+      const id = (f?._rawId ?? f?.id ?? '').toLowerCase();
+      return id.includes('desc') || id.includes('description');
+    }) ?? null;
+  }
+
+  /** Body fields = everything except the procedure code search and description */
+  getServiceBodyFields(inst: RenderRepeatInstance): any[] {
+    const search = this.getServiceSearchField(inst);
+    const desc = this.getServiceDescField(inst);
+    return this.getNonActionFields(inst?.fields).filter((f: any) =>
+      f !== search && f !== desc
+    );
+  }
+
+  /** Unique key for a service instance */
+  getServiceInstanceKey(inst: RenderRepeatInstance): string {
+    const sf = this.getServiceSearchField(inst);
+    return sf?.controlName ?? `svc_${inst?.index ?? 0}`;
+  }
+
+  /** Whether procedure code has been selected (and not in edit mode) */
+  hasServiceSelected(inst: RenderRepeatInstance): boolean {
+    const key = this.getServiceInstanceKey(inst);
+    if (this.serviceEditMode.has(key)) return false;
+    return !!this.serviceDataByInstance[key];
+  }
+
+  /** Whether service data exists (ignoring edit mode) */
+  hasServiceData(inst: RenderRepeatInstance): boolean {
+    const key = this.getServiceInstanceKey(inst);
+    return !!this.serviceDataByInstance[key];
+  }
+
+  /** Service code display */
+  getServiceCode(inst: RenderRepeatInstance): string {
+    const d = this.serviceDataByInstance[this.getServiceInstanceKey(inst)];
+    if (!d) return '';
+    return d.code ?? d.procedureCode ?? d.serviceCode ?? '';
+  }
+
+  /** Service description display */
+  getServiceDescription(inst: RenderRepeatInstance): string {
+    const d = this.serviceDataByInstance[this.getServiceInstanceKey(inst)];
+    if (!d) return '';
+    return d.codeDesc ?? d.description ?? d.procedureDescription ?? d.codeShortDesc ?? '';
+  }
+
+  isServiceInEditMode(inst: RenderRepeatInstance): boolean {
+    return this.serviceEditMode.has(this.getServiceInstanceKey(inst));
+  }
+
+  /** Called when a procedure is selected from lookup */
+  onServiceLookupSelected(f: any, inst: RenderRepeatInstance, item: any): void {
+    const key = this.getServiceInstanceKey(inst);
+    this.serviceDataByInstance[key] = item;
+    this.serviceEditMode.delete(key);
+
+    if (f?.controlName) {
+      this.lookupSelectedByControl[f.controlName] = item;
+    }
+    this.onLookupSelected(f, item);
+  }
+
+  /** Called when the procedure lookup is cleared */
+  onServiceLookupCleared(f: any, inst: RenderRepeatInstance): void {
+    const key = this.getServiceInstanceKey(inst);
+    delete this.serviceDataByInstance[key];
+    this.serviceEditMode.delete(key);
+    this.onLookupCleared(f);
+  }
+
+  /** Clear procedure data for a given instance */
+  clearServiceData(inst: RenderRepeatInstance): void {
+    const key = this.getServiceInstanceKey(inst);
+    delete this.serviceDataByInstance[key];
+    this.serviceEditMode.delete(key);
+
+    const sf = this.getServiceSearchField(inst);
+    if (sf?.controlName) {
+      const ctrl = this.form.get(sf.controlName);
+      if (ctrl) { ctrl.setValue(null, { emitEvent: true }); ctrl.markAsDirty(); }
+      this.onLookupCleared(sf);
+    }
+    // Also clear description field
+    const df = this.getServiceDescField(inst);
+    if (df?.controlName) {
+      const ctrl = this.form.get(df.controlName);
+      if (ctrl) { ctrl.setValue(null, { emitEvent: true }); }
+    }
+  }
+
+  /** Edit procedure — shows search pre-filled with current code */
+  editService(inst: RenderRepeatInstance): void {
+    const key = this.getServiceInstanceKey(inst);
+    this.serviceEditMode.add(key);
+
+    const sf = this.getServiceSearchField(inst);
+    if (sf?.controlName) {
+      const ctrl = this.form.get(sf.controlName);
+      if (ctrl) {
+        const data = this.serviceDataByInstance[key];
+        if (data) {
+          const displayVal = this.getLookupDisplayWith(sf)(data);
+          ctrl.setValue(displayVal ?? null, { emitEvent: false });
+        }
+      }
+    }
+  }
+
+  /** Cancel edit — restores previous procedure display */
+  cancelEditService(inst: RenderRepeatInstance): void {
+    const key = this.getServiceInstanceKey(inst);
+    this.serviceEditMode.delete(key);
+
+    const data = this.serviceDataByInstance[key];
+    if (data) {
+      const sf = this.getServiceSearchField(inst);
+      if (sf?.controlName) {
+        const ctrl = this.form.get(sf.controlName);
+        if (ctrl) {
+          const displayVal = this.getLookupDisplayWith(sf)(data);
+          ctrl.setValue(displayVal ?? null, { emitEvent: false });
+        }
+      }
+    }
+  }
+
+  /** Rebuild serviceDataByInstance from saved form values on reopen */
+  private rehydrateServiceData(): void {
+    if (!this.renderSections?.length) return;
+
+    const processInstances = (target: any) => {
+      for (const inst of (target.instances || [])) {
+        const sf = this.getServiceSearchField(inst);
+        if (!sf?.controlName) continue;
+        const key = this.getServiceInstanceKey(inst);
+        if (this.serviceDataByInstance[key]) continue;
+
+        let resolved: any = null;
+
+        // Strategy 1: search control holds a full object
+        const searchVal = this.form.get(sf.controlName)?.value;
+        if (searchVal && typeof searchVal === 'object' && searchVal.code) {
+          resolved = searchVal;
+        }
+
+        // Strategy 2: search control holds a string code, description field has desc
+        if (!resolved && searchVal) {
+          const code = typeof searchVal === 'string' ? searchVal.trim() : null;
+          const df = this.getServiceDescField(inst);
+          const desc = df?.controlName ? (this.form.get(df.controlName)?.value ?? '') : '';
+          if (code) {
+            resolved = { code, codeDesc: typeof desc === 'string' ? desc : '' };
+          }
+        }
+
+        if (resolved) {
+          this.serviceDataByInstance[key] = resolved;
+        }
+      }
+    };
+
+    for (const sec of this.renderSections) {
+      if (!this.isServiceSection(sec)) continue;
+      if (sec.repeat?.enabled) processInstances(sec);
+      for (const sub of (sec.subsections || [])) {
+        if (sub.repeat?.enabled && this.isServiceRepeatGroup(sub, sec)) {
+          processInstances(sub);
+        }
+      }
+    }
+  }
+
+  // ============================================================
+  // Auto-calculate Req field when Unit Type = Days
+  // ============================================================
+  private setupServiceReqAutoCalc(): void {
+    if (!this.renderSections?.length) return;
+
+    const wireInstance = (inst: RenderRepeatInstance) => {
+      const fields = inst?.fields ?? [];
+      const findByRawId = (id: string) => fields.find((f: any) => (f?._rawId ?? '').toLowerCase() === id.toLowerCase());
+
+      const unitTypeField = findByRawId('unitType');
+      const fromDateField = findByRawId('fromDate');
+      const toDateField = findByRawId('toDate');
+      const reqField = findByRawId('serviceReq');
+
+      if (!unitTypeField?.controlName || !fromDateField?.controlName || !toDateField?.controlName || !reqField?.controlName) return;
+
+      const unitCtrl = this.form.get(unitTypeField.controlName);
+      const fromCtrl = this.form.get(fromDateField.controlName);
+      const toCtrl = this.form.get(toDateField.controlName);
+      const reqCtrl = this.form.get(reqField.controlName);
+
+      if (!unitCtrl || !fromCtrl || !toCtrl || !reqCtrl) return;
+
+      // Helper to resolve unitType value to display label
+      const getUnitLabel = (): string => {
+        const val = unitCtrl.value;
+        if (!val) return '';
+        // Check options for label
+        const opts = this.optionsByControlName?.[unitTypeField.controlName] ?? [];
+        const opt = opts.find((o: any) => o?.value === val || String(o?.value) === String(val));
+        if (opt?.label) return String(opt.label).trim().toLowerCase();
+        // Fallback: value might already be the label
+        return String(val).trim().toLowerCase();
+      };
+
+      // Helper to calculate day difference
+      const calcDays = () => {
+        const label = getUnitLabel();
+        if (label !== 'days') return;
+
+        const fromVal = fromCtrl.value;
+        const toVal = toCtrl.value;
+        if (!fromVal || !toVal) return;
+
+        const fromDate = new Date(fromVal);
+        const toDate = new Date(toVal);
+        if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) return;
+
+        // Calculate difference in days (inclusive: same-day = 1)
+        const diffMs = toDate.getTime() - fromDate.getTime();
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
+        if (diffDays >= 1) {
+          reqCtrl.setValue(diffDays, { emitEvent: false });
+          reqCtrl.markAsDirty();
+        }
+      };
+
+      // Watch all three controls
+      unitCtrl.valueChanges.pipe(takeUntil(this.templateDestroy$)).subscribe(() => calcDays());
+      fromCtrl.valueChanges.pipe(takeUntil(this.templateDestroy$)).subscribe(() => calcDays());
+      toCtrl.valueChanges.pipe(takeUntil(this.templateDestroy$)).subscribe(() => calcDays());
+
+      // Run once on setup (handles reopen scenario)
+      calcDays();
+    };
+
+    for (const sec of this.renderSections) {
+      if (!this.isServiceSection(sec)) continue;
+      if (sec.repeat?.enabled && sec.instances) {
+        for (const inst of sec.instances) wireInstance(inst);
+      }
+      for (const sub of (sec.subsections || [])) {
+        if (sub.repeat?.enabled && this.isServiceRepeatGroup(sub, sec) && sub.instances) {
+          for (const inst of sub.instances) wireInstance(inst);
+        }
+      }
+    }
+  }
 
   // ============================================================
   // Conditional visibility + isEnabled handling

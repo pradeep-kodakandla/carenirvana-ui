@@ -95,6 +95,20 @@
               <mat-icon>person_add</mat-icon> Add Provider
             </button>
           </ng-container>
+          <ng-container *ngIf="isDiagnosisSection(sec) && getDiagnosisRepeatSub(sec) as ds">
+            <button type="button" class="dc-add-btn"
+                    [disabled]="!canAddRepeat(ds)"
+                    (click)="addRepeat(ds); $event.stopPropagation()">
+              <mat-icon>add_circle</mat-icon> Add Diagnosis
+            </button>
+          </ng-container>
+          <ng-container *ngIf="isServiceSection(sec) && getServiceRepeatSub(sec) as ss">
+            <button type="button" class="sc-add-btn"
+                    [disabled]="!canAddRepeat(ss)"
+                    (click)="addRepeat(ss); $event.stopPropagation()">
+              <mat-icon>add_circle</mat-icon> Add Procedure
+            </button>
+          </ng-container>
         </div>
 
         <ng-container *ngIf="sec.expanded">
@@ -226,49 +240,58 @@
           <ng-template #sectionRepeatTpl>
 
             <!-- Provider card layout (section-level) -->
-            <ng-container *ngIf="isProviderRepeatGroup(sec); else normalSecRepeat">
+            <ng-container *ngIf="isProviderRepeatGroup(sec); else diagOrNormalSecRepeat">
               <div class="pc-grid">
                 <ng-container *ngFor="let inst of sec.instances; trackBy: trackProvIdx">
                   <div class="pc">
-                    <!--<div class="pc-role-label">{{ getProvRoleDisplay(inst) || (sec.repeat?.instanceLabel + ' #' + inst.index) }}</div>-->
-                    <div class="pc-card" [class.pc-card--filled]="hasProviderSelected(inst)"
+                    <div class="pc-card" [class.pc-card--filled]="hasProviderData(inst)"
                          [class.pc-card--oon]="getProviderNetworkStatus(inst) === 'Out-of-Network'">
 
-                      <!-- Top row: role dropdown + delete -->
+                      <!-- Top row: role dropdown + edit + delete -->
                       <div class="pc-card-top">
                         <ng-container *ngIf="getProvRoleField(inst) as rf">
                           <ng-container *ngIf="form.get(rf.controlName) as rc">
                             <div class="pc-role-wrap pc-role-bordered">
-                              <!--<label class="pc-lbl">{{ rf.displayName }}<span class="req-star" *ngIf="rf.required">*</span></label>-->
                               <ui-smart-dropdown class="ff-ui pc-dropdown" label="{{ rf.displayName }}" placeholder="Select role..."
                                 [options]="getDropdownOptions(rf.controlName)" [formControlName]="rf.controlName">
                               </ui-smart-dropdown>
                             </div>
                           </ng-container>
                         </ng-container>
-                        <button type="button" class="pc-close"
-                                *ngIf="sec.repeat?.showControls"
-                                [disabled]="!canRemoveRepeat(sec)"
-                                (click)="removeRepeat(sec, inst.index)">
-                          <mat-icon class="pc-delete-icon">delete</mat-icon>
-                        </button>
+                        <div class="dc-top-actions">
+                          <button type="button" class="dc-top-btn dc-top-btn--edit"
+                                  *ngIf="hasProviderData(inst) && !isProviderInEditMode(inst)"
+                                  (click)="editProvider(inst)" title="Edit">
+                            <mat-icon class="dc-action-icon">edit</mat-icon>
+                          </button>
+                          <button type="button" class="dc-top-btn dc-top-btn--delete"
+                                  (click)="hasProviderData(inst) ? clearProviderData(inst) : removeRepeat(sec, inst.index)">
+                            <mat-icon class="dc-action-icon">delete</mat-icon>
+                          </button>
+                        </div>
                       </div>
 
-                      <!-- Search + Buttons: visible only when NO provider selected -->
+                      <!-- Search: visible when NO provider selected OR in edit mode -->
                       <ng-container *ngIf="!hasProviderSelected(inst)">
                         <ng-container *ngIf="getProvSearchField(inst) as sf">
                           <ng-container *ngIf="form.get(sf.controlName) as sc">
-                            <div class="pc-search pc-search-bordered">
-                              <!--<label class="pc-lbl">{{ sf.displayName }}</label>-->
-                              <ui-smart-lookup class="ff-ui pc-search-input"
-                                [placeholder]="getLookupPlaceholder(sf)" [minChars]="getLookupMinChars(sf)"
-                                [debounceMs]="getLookupDebounceMs(sf)" [limit]="getLookupLimit(sf)"
-                                [searchFn]="getLookupSearchFn(sf)" [displayWith]="getLookupDisplayWith(sf)"
-                                [trackBy]="getLookupTrackBy(sf)" [formControlName]="sf.controlName"
-                                (selected)="onLookupSelected(sf, $event)"
-                                (textChange)="onLookupTextChange(sf, $event)"
-                                (cleared)="onLookupCleared(sf)">
-                              </ui-smart-lookup>
+                            <div class="dc-search-row">
+                              <div class="pc-search pc-search-bordered">
+                                <ui-smart-lookup class="ff-ui pc-search-input"
+                                  [placeholder]="getLookupPlaceholder(sf)" [minChars]="getLookupMinChars(sf)"
+                                  [debounceMs]="getLookupDebounceMs(sf)" [limit]="getLookupLimit(sf)"
+                                  [searchFn]="getLookupSearchFn(sf)" [displayWith]="getLookupDisplayWith(sf)"
+                                  [trackBy]="getLookupTrackBy(sf)" [formControlName]="sf.controlName"
+                                  (selected)="onProviderLookupSelected(sf, inst, $event)"
+                                  (textChange)="onLookupTextChange(sf, $event)"
+                                  (cleared)="onLookupCleared(sf)">
+                                </ui-smart-lookup>
+                              </div>
+                              <button type="button" class="dc-cancel-btn"
+                                      *ngIf="isProviderInEditMode(inst)"
+                                      (click)="cancelEditProvider(inst)">
+                                Cancel
+                              </button>
                             </div>
                           </ng-container>
                         </ng-container>
@@ -280,13 +303,30 @@
                             </button>
                           </div>
                         </ng-container>
-                        <div class="pc-empty-state">
+
+                        <!-- Show current provider info while editing -->
+                        <ng-container *ngIf="isProviderInEditMode(inst)">
+                          <div class="pc-info pc-info--editing">
+                            <div class="pc-info-header">
+                              <div class="pc-info-name-row">
+                                <span class="pc-info-name">{{ getProviderFullName(inst) }}</span>
+                              </div>
+                            </div>
+                            <div class="pc-info-details">
+                              <div class="pc-info-line"><strong>NPI:</strong> {{ getProviderNpi(inst) || '-' }}</div>
+                              <div class="pc-info-line"><strong>Phone:</strong> {{ getProviderPhone(inst) }} <span class="pc-info-sep">&middot;</span> <strong>Fax:</strong> {{ getProviderFax(inst) }}</div>
+                            </div>
+                          </div>
+                        </ng-container>
+
+                        <!-- Empty state when not editing -->
+                        <div class="pc-empty-state" *ngIf="!isProviderInEditMode(inst)">
                           <mat-icon class="pc-empty-icon">person_search</mat-icon>
                           <span>Search and select a provider</span>
                         </div>
                       </ng-container>
 
-                      <!-- Provider Info Card: visible when provider IS selected -->
+                      <!-- Provider Info Card: visible when provider IS selected and NOT in edit mode -->
                       <ng-container *ngIf="hasProviderSelected(inst)">
                         <div class="pc-info">
                           <div class="pc-info-header">
@@ -299,15 +339,17 @@
                                 {{ getProviderNetworkStatus(inst) }}
                               </span>
                             </div>
-                            <button type="button" class="pc-info-clear" (click)="clearProviderData(inst)" title="Remove provider">
-                              <mat-icon class="pc-delete-icon">delete</mat-icon>
-                            </button>
                           </div>
                           <div class="pc-info-details">
                             <div class="pc-info-line" *ngIf="getProviderNpi(inst) || getProviderSpecialty(inst)">
                               <span *ngIf="getProviderNpi(inst)"><strong>NPI:</strong> {{ getProviderNpi(inst) }}</span>
                               <span *ngIf="getProviderNpi(inst) && getProviderSpecialty(inst)" class="pc-info-sep">&middot;</span>
                               <span *ngIf="getProviderSpecialty(inst)">{{ getProviderSpecialty(inst) }}</span>
+                            </div>
+                            <div class="pc-info-line">
+                              <strong>Phone:</strong> {{ getProviderPhone(inst) }}
+                              <span class="pc-info-sep">&middot;</span>
+                              <strong>Fax:</strong> {{ getProviderFax(inst) }}
                             </div>
                             <div class="pc-info-line pc-info-org" *ngIf="getProviderOrganization(inst)">
                               {{ getProviderOrganization(inst) }}
@@ -328,6 +370,160 @@
                 </ng-container>
               </div>
             </ng-container>
+
+            <!-- ═══ DIAGNOSIS / ICD CARDS (section-level) ═══ -->
+            <ng-template #diagOrNormalSecRepeat>
+              <ng-container *ngIf="isDiagnosisRepeatGroup(sec); else serviceOrNormalSecRepeat">
+                <div class="dc-grid">
+                  <ng-container *ngFor="let inst of sec.instances; trackBy: trackProvIdx">
+                    <div class="dc">
+                      <div class="dc-card"
+                           [class.dc-card--filled]="hasDiagnosisSelected(inst)"
+                           [class.dc-card--primary]="isDiagnosisPrimary(inst)">
+
+                        <!-- Top row: Code Type + Primary + Edit + Delete — all in one row -->
+                        <div class="dc-card-top">
+                          <ng-container *ngIf="getDiagCodeTypeField(inst) as ctf">
+                            <ng-container *ngIf="form.get(ctf.controlName) as ctc">
+                              <div class="dc-codetype-wrap">
+                                <ui-smart-dropdown class="ff-ui dc-dropdown"
+                                  label="{{ ctf.displayName }}" placeholder="Select code type..."
+                                  [options]="getDropdownOptions(ctf.controlName)"
+                                  [formControlName]="ctf.controlName">
+                                </ui-smart-dropdown>
+                              </div>
+                            </ng-container>
+                          </ng-container>
+
+                          <label class="dc-primary-radio" [class.dc-primary-radio--active]="isDiagnosisPrimary(inst)">
+                            <input type="radio" name="primaryDiagnosis"
+                                   [checked]="isDiagnosisPrimary(inst)"
+                                   (change)="setDiagnosisPrimary(inst)" />
+                            <span class="dc-primary-label">Primary</span>
+                          </label>
+
+                          <div class="dc-top-actions">
+                            <button type="button" class="dc-top-btn dc-top-btn--edit"
+                                    *ngIf="hasDiagnosisSelected(inst)"
+                                    (click)="editDiagnosis(inst)" title="Edit">
+                              <mat-icon class="dc-action-icon">edit</mat-icon>
+                            </button>
+                            <button type="button" class="dc-top-btn dc-top-btn--delete"
+                                    (click)="hasDiagnosisSelected(inst) ? clearDiagnosisData(inst) : removeRepeat(sec, inst.index)">
+                              <mat-icon class="dc-action-icon">delete</mat-icon>
+                            </button>
+                          </div>
+                        </div>
+
+                        <!-- Search: visible when NO ICD selected OR in edit mode -->
+                        <ng-container *ngIf="!hasDiagnosisSelected(inst)">
+                          <ng-container *ngIf="getDiagSearchField(inst) as sf">
+                            <ng-container *ngIf="form.get(sf.controlName) as sc">
+                              <div class="dc-search-row">
+                                <div class="dc-search dc-search-bordered">
+                                  <ui-smart-lookup class="ff-ui dc-search-input"
+                                    [placeholder]="getLookupPlaceholder(sf)"
+                                    [minChars]="getLookupMinChars(sf)"
+                                    [debounceMs]="getLookupDebounceMs(sf)"
+                                    [limit]="getLookupLimit(sf)"
+                                    [searchFn]="getLookupSearchFn(sf)"
+                                    [displayWith]="getLookupDisplayWith(sf)"
+                                    [trackBy]="getLookupTrackBy(sf)"
+                                    [formControlName]="sf.controlName"
+                                    (selected)="onDiagnosisLookupSelected(sf, inst, $event)"
+                                    (textChange)="onLookupTextChange(sf, $event)"
+                                    (cleared)="onDiagnosisLookupCleared(sf, inst)">
+                                  </ui-smart-lookup>
+                                </div>
+                                <button type="button" class="dc-cancel-btn"
+                                        *ngIf="isDiagnosisInEditMode(inst)"
+                                        (click)="cancelEditDiagnosis(inst)">
+                                  Cancel
+                                </button>
+                              </div>
+                            </ng-container>
+                          </ng-container>
+                          <div class="dc-empty-state" *ngIf="!isDiagnosisInEditMode(inst)">
+                            <mat-icon class="dc-empty-icon">search</mat-icon>
+                            <span>Search for an ICD code</span>
+                          </div>
+                        </ng-container>
+
+                        <!-- ICD Info: visible when ICD IS selected and NOT in edit mode -->
+                        <ng-container *ngIf="hasDiagnosisSelected(inst)">
+                          <div class="dc-info">
+                            <div class="dc-info-inline">
+                              <span class="dc-icd-code">{{ getDiagnosisCode(inst) }}</span>
+                              <span class="dc-icd-desc">{{ getDiagnosisDescription(inst) }}</span>
+                              <span class="dc-primary-badge" *ngIf="isDiagnosisPrimary(inst)">Primary</span>
+                            </div>
+                            <div class="dc-info-meta" *ngIf="getDiagnosisCodeType(inst)">
+                              <span class="dc-meta-label">Code Type:</span>
+                              <span class="dc-meta-value">{{ getDiagnosisCodeType(inst) }}</span>
+                            </div>
+                          </div>
+                        </ng-container>
+
+                      </div>
+                    </div>
+                  </ng-container>
+                </div>
+              </ng-container>
+            </ng-template>
+
+            <!-- ═══ SERVICE / PROCEDURE CARDS (section-level) ═══ -->
+            <ng-template #serviceOrNormalSecRepeat>
+              <ng-container *ngIf="isServiceRepeatGroup(sec); else normalSecRepeat">
+                <div class="sc-list">
+                  <ng-container *ngFor="let inst of sec.instances; trackBy: trackProvIdx">
+                    <div class="sc-card" [class.sc-card--filled]="hasServiceData(inst)">
+                      <div class="sc-card-top">
+                        <span class="sc-number">{{ sec.repeat?.instanceLabel }} #{{ inst.index }}</span>
+                        <div class="dc-top-actions">
+                          <button type="button" class="dc-top-btn dc-top-btn--edit" *ngIf="hasServiceData(inst) && !isServiceInEditMode(inst)" (click)="editService(inst)" title="Edit"><mat-icon class="dc-action-icon">edit</mat-icon></button>
+                          <button type="button" class="dc-top-btn dc-top-btn--delete" (click)="hasServiceData(inst) ? clearServiceData(inst) : removeRepeat(sec, inst.index)"><mat-icon class="dc-action-icon">delete</mat-icon></button>
+                        </div>
+                      </div>
+                      <ng-container *ngIf="!hasServiceSelected(inst)">
+                        <ng-container *ngIf="getServiceSearchField(inst) as sf">
+                          <ng-container *ngIf="form.get(sf.controlName) as sc">
+                            <div class="dc-search-row"><div class="sc-search"><ui-smart-lookup class="ff-ui ff-lookup sc-search-input" [placeholder]="getLookupPlaceholder(sf)" [minChars]="getLookupMinChars(sf)" [debounceMs]="getLookupDebounceMs(sf)" [limit]="getLookupLimit(sf)" [searchFn]="getLookupSearchFn(sf)" [displayWith]="getLookupDisplayWith(sf)" [trackBy]="getLookupTrackBy(sf)" [formControlName]="sf.controlName" (selected)="onServiceLookupSelected(sf, inst, $event)" (textChange)="onLookupTextChange(sf, $event)" (cleared)="onServiceLookupCleared(sf, inst)"></ui-smart-lookup></div><button type="button" class="dc-cancel-btn" *ngIf="isServiceInEditMode(inst)" (click)="cancelEditService(inst)">Cancel</button></div>
+                          </ng-container>
+                        </ng-container>
+                        <div class="sc-identity sc-identity--muted" *ngIf="isServiceInEditMode(inst)"><span class="sc-code">{{ getServiceCode(inst) }}</span><span class="sc-desc">{{ getServiceDescription(inst) }}</span></div>
+                        <div class="sc-empty" *ngIf="!isServiceInEditMode(inst)"><mat-icon class="sc-empty-icon">search</mat-icon><span>Search for a procedure code</span></div>
+                      </ng-container>
+                      <ng-container *ngIf="hasServiceSelected(inst)">
+                        <div class="sc-identity"><span class="sc-code">{{ getServiceCode(inst) }}</span><span class="sc-desc">{{ getServiceDescription(inst) }}</span></div>
+                      </ng-container>
+                      <div class="sc-body">
+                        <ng-container *ngFor="let f of getServiceBodyFields(inst)">
+                          <ng-container *ngIf="isVisible(f)">
+                            <ng-container *ngIf="form.get(f.controlName) as ctrl">
+                              <div class="sc-field" [ngClass]="{'sc-field--select': f.type === 'select', 'sc-field--date': f.type === 'datetime-local', 'sc-field--num': f.type === 'number'}">
+                                <div class="ff-outline" [class.ff-disabled]="ctrl.disabled" [class.ff-invalid]="ctrl.touched && ctrl.invalid">
+                                  <div class="ff-float-label">{{ f.displayName }}<span class="req-star" *ngIf="f.required">*</span></div>
+                                  <div class="ff-body">
+                                    <ng-container [ngSwitch]="f.type">
+                                      <ui-smart-dropdown *ngSwitchCase="'select'" class="ff-ui" label="" placeholder="Select..." [options]="getDropdownOptions(f.controlName)" [formControlName]="f.controlName"></ui-smart-dropdown>
+                                      <ui-datetime-picker *ngSwitchCase="'datetime-local'" class="ff-ui" placeholderDate="mm/dd/yyyy" [dateOnly]="!!f.dateOnly" [formControlName]="f.controlName"></ui-datetime-picker>
+                                      <ui-smart-lookup *ngSwitchCase="'search'" class="ff-ui ff-lookup" [placeholder]="getLookupPlaceholder(f)" [minChars]="getLookupMinChars(f)" [debounceMs]="getLookupDebounceMs(f)" [limit]="getLookupLimit(f)" [searchFn]="getLookupSearchFn(f)" [displayWith]="getLookupDisplayWith(f)" [trackBy]="getLookupTrackBy(f)" [formControlName]="f.controlName" (selected)="onLookupSelected(f, $event)" (textChange)="onLookupTextChange(f, $event)" (cleared)="onLookupCleared(f)"></ui-smart-lookup>
+                                      <textarea *ngSwitchCase="'textarea'" class="ff-input ff-textarea" rows="2" [formControlName]="f.controlName"></textarea>
+                                      <input *ngSwitchDefault class="ff-input" [type]="f.type === 'number' ? 'number' : 'text'" [formControlName]="f.controlName" />
+                                    </ng-container>
+                                  </div>
+                                </div>
+                                <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">{{ f.requiredMsg || (f.displayName + ' is required') }}</div>
+                              </div>
+                            </ng-container>
+                          </ng-container>
+                        </ng-container>
+                      </div>
+                    </div>
+                  </ng-container>
+                </div>
+              </ng-container>
+            </ng-template>
 
             <!-- Normal section repeat (non-provider) -->
             <ng-template #normalSecRepeat>
@@ -528,24 +724,18 @@
       <ng-template #subRepeatTpl>
 
         <!-- ═══ PROVIDER CARDS ═══ -->
-        <ng-container *ngIf="isProviderRepeatGroup(sub); else normalSubRepeat">
+        <ng-container *ngIf="isProviderRepeatGroup(sub); else diagOrNormalSubRepeat">
           <div class="pc-grid">
             <ng-container *ngFor="let inst of sub.instances; trackBy: trackProvIdx">
               <div class="pc">
-
-                <!-- Role label above card -->
-                <!--<div class="pc-role-label">{{ getProvRoleDisplay(inst) || (sub.repeat?.instanceLabel + ' #' + inst.index) }}</div>-->
-
-                <!-- Card box -->
-                <div class="pc-card" [class.pc-card--filled]="hasProviderSelected(inst)"
+                <div class="pc-card" [class.pc-card--filled]="hasProviderData(inst)"
                      [class.pc-card--oon]="getProviderNetworkStatus(inst) === 'Out-of-Network'">
 
-                  <!-- Top row: role dropdown + delete -->
+                  <!-- Top row: role dropdown + edit + delete -->
                   <div class="pc-card-top">
                     <ng-container *ngIf="getProvRoleField(inst) as rf">
                       <ng-container *ngIf="form.get(rf.controlName) as rc">
                         <div class="pc-role-wrap pc-role-bordered">
-                          <!--<label class="pc-lbl">{{ rf.displayName }}<span class="req-star" *ngIf="rf.required">*</span></label>-->
                           <ui-smart-dropdown class="ff-ui pc-dropdown"
                             label="{{ rf.displayName }}" placeholder="Select role..."
                             [options]="getDropdownOptions(rf.controlName)"
@@ -554,33 +744,44 @@
                         </div>
                       </ng-container>
                     </ng-container>
-                    <button type="button" class="pc-close"
-                            *ngIf="sub.repeat?.showControls"
-                            [disabled]="!canRemoveRepeat(sub)"
-                            (click)="removeRepeat(sub, inst.index)" title="Remove">
-                      <mat-icon class="pc-delete-icon">delete</mat-icon>
-                    </button>
+                    <div class="dc-top-actions">
+                      <button type="button" class="dc-top-btn dc-top-btn--edit"
+                              *ngIf="hasProviderData(inst) && !isProviderInEditMode(inst)"
+                              (click)="editProvider(inst)" title="Edit">
+                        <mat-icon class="dc-action-icon">edit</mat-icon>
+                      </button>
+                      <button type="button" class="dc-top-btn dc-top-btn--delete"
+                              (click)="hasProviderData(inst) ? clearProviderData(inst) : removeRepeat(sub, inst.index)">
+                        <mat-icon class="dc-action-icon">delete</mat-icon>
+                      </button>
+                    </div>
                   </div>
 
-                  <!-- Search + Buttons: visible only when NO provider selected -->
+                  <!-- Search: visible when NO provider selected OR in edit mode -->
                   <ng-container *ngIf="!hasProviderSelected(inst)">
                     <ng-container *ngIf="getProvSearchField(inst) as sf">
                       <ng-container *ngIf="form.get(sf.controlName) as sc">
-                        <div class="pc-search pc-search-bordered">
-                          <!--<label class="pc-lbl">{{ sf.displayName }}</label>-->
-                          <ui-smart-lookup class="ff-ui pc-search-input"
-                            [placeholder]="getLookupPlaceholder(sf)"
-                            [minChars]="getLookupMinChars(sf)"
-                            [debounceMs]="getLookupDebounceMs(sf)"
-                            [limit]="getLookupLimit(sf)"
-                            [searchFn]="getLookupSearchFn(sf)"
-                            [displayWith]="getLookupDisplayWith(sf)"
-                            [trackBy]="getLookupTrackBy(sf)"
-                            [formControlName]="sf.controlName"
-                            (selected)="onLookupSelected(sf, $event)"
-                            (textChange)="onLookupTextChange(sf, $event)"
-                            (cleared)="onLookupCleared(sf)">
-                          </ui-smart-lookup>
+                        <div class="dc-search-row">
+                          <div class="pc-search pc-search-bordered">
+                            <ui-smart-lookup class="ff-ui pc-search-input"
+                              [placeholder]="getLookupPlaceholder(sf)"
+                              [minChars]="getLookupMinChars(sf)"
+                              [debounceMs]="getLookupDebounceMs(sf)"
+                              [limit]="getLookupLimit(sf)"
+                              [searchFn]="getLookupSearchFn(sf)"
+                              [displayWith]="getLookupDisplayWith(sf)"
+                              [trackBy]="getLookupTrackBy(sf)"
+                              [formControlName]="sf.controlName"
+                              (selected)="onProviderLookupSelected(sf, inst, $event)"
+                              (textChange)="onLookupTextChange(sf, $event)"
+                              (cleared)="onLookupCleared(sf)">
+                            </ui-smart-lookup>
+                          </div>
+                          <button type="button" class="dc-cancel-btn"
+                                  *ngIf="isProviderInEditMode(inst)"
+                                  (click)="cancelEditProvider(inst)">
+                            Cancel
+                          </button>
                         </div>
                       </ng-container>
                     </ng-container>
@@ -594,13 +795,30 @@
                         </button>
                       </div>
                     </ng-container>
-                    <div class="pc-empty-state">
+
+                    <!-- Show current provider info while editing -->
+                    <ng-container *ngIf="isProviderInEditMode(inst)">
+                      <div class="pc-info pc-info--editing">
+                        <div class="pc-info-header">
+                          <div class="pc-info-name-row">
+                            <span class="pc-info-name">{{ getProviderFullName(inst) }}</span>
+                          </div>
+                        </div>
+                        <div class="pc-info-details">
+                          <div class="pc-info-line"><strong>NPI:</strong> {{ getProviderNpi(inst) || '-' }}</div>
+                          <div class="pc-info-line"><strong>Phone:</strong> {{ getProviderPhone(inst) }} <span class="pc-info-sep">&middot;</span> <strong>Fax:</strong> {{ getProviderFax(inst) }}</div>
+                        </div>
+                      </div>
+                    </ng-container>
+
+                    <!-- Empty state when not editing -->
+                    <div class="pc-empty-state" *ngIf="!isProviderInEditMode(inst)">
                       <mat-icon class="pc-empty-icon">person_search</mat-icon>
                       <span>Search and select a provider</span>
                     </div>
                   </ng-container>
 
-                  <!-- Provider Info Card: visible when provider IS selected -->
+                  <!-- Provider Info Card: visible when provider IS selected and NOT in edit mode -->
                   <ng-container *ngIf="hasProviderSelected(inst)">
                     <div class="pc-info">
                       <div class="pc-info-header">
@@ -613,15 +831,17 @@
                             {{ getProviderNetworkStatus(inst) }}
                           </span>
                         </div>
-                        <button type="button" class="pc-info-clear" (click)="clearProviderData(inst)" title="Remove provider">
-                          <mat-icon class="pc-delete-icon">delete</mat-icon>
-                        </button>
                       </div>
                       <div class="pc-info-details">
                         <div class="pc-info-line" *ngIf="getProviderNpi(inst) || getProviderSpecialty(inst)">
                           <span *ngIf="getProviderNpi(inst)"><strong>NPI:</strong> {{ getProviderNpi(inst) }}</span>
                           <span *ngIf="getProviderNpi(inst) && getProviderSpecialty(inst)" class="pc-info-sep">&middot;</span>
                           <span *ngIf="getProviderSpecialty(inst)">{{ getProviderSpecialty(inst) }}</span>
+                        </div>
+                        <div class="pc-info-line">
+                          <strong>Phone:</strong> {{ getProviderPhone(inst) }}
+                          <span class="pc-info-sep">&middot;</span>
+                          <strong>Fax:</strong> {{ getProviderFax(inst) }}
                         </div>
                         <div class="pc-info-line pc-info-org" *ngIf="getProviderOrganization(inst)">
                           {{ getProviderOrganization(inst) }}
@@ -642,6 +862,240 @@
             </ng-container>
           </div>
         </ng-container>
+
+        <!-- ═══ DIAGNOSIS / ICD CARDS (subsection-level) ═══ -->
+        <ng-template #diagOrNormalSubRepeat>
+          <ng-container *ngIf="isDiagnosisRepeatGroup(sub, parentSec); else serviceOrNormalSubRepeat">
+            <div class="dc-grid">
+              <ng-container *ngFor="let inst of sub.instances; trackBy: trackProvIdx">
+                <div class="dc">
+                  <div class="dc-card"
+                       [class.dc-card--filled]="hasDiagnosisSelected(inst)"
+                       [class.dc-card--primary]="isDiagnosisPrimary(inst)">
+
+                    <!-- Top row: Code Type + Primary + Edit + Delete — all in one row -->
+                    <div class="dc-card-top">
+                      <ng-container *ngIf="getDiagCodeTypeField(inst) as ctf">
+                        <ng-container *ngIf="form.get(ctf.controlName) as ctc">
+                          <div class="dc-codetype-wrap">
+                            <ui-smart-dropdown class="ff-ui dc-dropdown"
+                              label="{{ ctf.displayName }}" placeholder="Select code type..."
+                              [options]="getDropdownOptions(ctf.controlName)"
+                              [formControlName]="ctf.controlName">
+                            </ui-smart-dropdown>
+                          </div>
+                        </ng-container>
+                      </ng-container>
+
+                      <label class="dc-primary-radio" [class.dc-primary-radio--active]="isDiagnosisPrimary(inst)">
+                        <input type="radio" name="primaryDiagnosisSub"
+                               [checked]="isDiagnosisPrimary(inst)"
+                               (change)="setDiagnosisPrimary(inst)" />
+                        <span class="dc-primary-label">Primary</span>
+                      </label>
+
+                      <div class="dc-top-actions">
+                        <button type="button" class="dc-top-btn dc-top-btn--edit"
+                                *ngIf="hasDiagnosisSelected(inst)"
+                                (click)="editDiagnosis(inst)" title="Edit">
+                          <mat-icon class="dc-action-icon">edit</mat-icon>
+                        </button>
+                        <button type="button" class="dc-top-btn dc-top-btn--delete"
+                                (click)="hasDiagnosisSelected(inst) ? clearDiagnosisData(inst) : removeRepeat(sub, inst.index)">
+                          <mat-icon class="dc-action-icon">delete</mat-icon>
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Search: visible when NO ICD selected OR in edit mode -->
+                    <ng-container *ngIf="!hasDiagnosisSelected(inst)">
+                      <ng-container *ngIf="getDiagSearchField(inst) as sf">
+                        <ng-container *ngIf="form.get(sf.controlName) as sc">
+                          <div class="dc-search-row">
+                            <div class="dc-search dc-search-bordered">
+                              <ui-smart-lookup class="ff-ui dc-search-input"
+                                [placeholder]="getLookupPlaceholder(sf)"
+                                [minChars]="getLookupMinChars(sf)"
+                                [debounceMs]="getLookupDebounceMs(sf)"
+                                [limit]="getLookupLimit(sf)"
+                                [searchFn]="getLookupSearchFn(sf)"
+                                [displayWith]="getLookupDisplayWith(sf)"
+                                [trackBy]="getLookupTrackBy(sf)"
+                                [formControlName]="sf.controlName"
+                                (selected)="onDiagnosisLookupSelected(sf, inst, $event)"
+                                (textChange)="onLookupTextChange(sf, $event)"
+                                (cleared)="onDiagnosisLookupCleared(sf, inst)">
+                              </ui-smart-lookup>
+                            </div>
+                            <button type="button" class="dc-cancel-btn"
+                                    *ngIf="isDiagnosisInEditMode(inst)"
+                                    (click)="cancelEditDiagnosis(inst)">
+                              Cancel
+                            </button>
+                          </div>
+                        </ng-container>
+                      </ng-container>
+                      <div class="dc-empty-state" *ngIf="!isDiagnosisInEditMode(inst)">
+                        <mat-icon class="dc-empty-icon">search</mat-icon>
+                        <span>Search for an ICD code</span>
+                      </div>
+                    </ng-container>
+
+                    <!-- ICD Info: visible when ICD IS selected and NOT in edit mode -->
+                    <ng-container *ngIf="hasDiagnosisSelected(inst)">
+                      <div class="dc-info">
+                        <div class="dc-info-inline">
+                          <span class="dc-icd-code">{{ getDiagnosisCode(inst) }}</span>
+                          <span class="dc-icd-desc">{{ getDiagnosisDescription(inst) }}</span>
+                          <span class="dc-primary-badge" *ngIf="isDiagnosisPrimary(inst)">Primary</span>
+                        </div>
+                        <div class="dc-info-meta" *ngIf="getDiagnosisCodeType(inst)">
+                          <span class="dc-meta-label">Code Type:</span>
+                          <span class="dc-meta-value">{{ getDiagnosisCodeType(inst) }}</span>
+                        </div>
+                      </div>
+                    </ng-container>
+
+                  </div>
+                </div>
+              </ng-container>
+            </div>
+          </ng-container>
+        </ng-template>
+
+        <!-- ═══ SERVICE / PROCEDURE CARDS (subsection-level) ═══ -->
+        <ng-template #serviceOrNormalSubRepeat>
+          <ng-container *ngIf="isServiceRepeatGroup(sub, parentSec); else normalSubRepeat">
+            <div class="sc-list">
+              <ng-container *ngFor="let inst of sub.instances; trackBy: trackProvIdx">
+                <div class="sc-card" [class.sc-card--filled]="hasServiceData(inst)">
+                  <!-- Top bar -->
+                  <div class="sc-card-top">
+                    <span class="sc-number">{{ sub.repeat?.instanceLabel }} #{{ inst.index }}</span>
+                    <div class="dc-top-actions">
+                      <button type="button" class="dc-top-btn dc-top-btn--edit"
+                              *ngIf="hasServiceData(inst) && !isServiceInEditMode(inst)"
+                              (click)="editService(inst)" title="Edit">
+                        <mat-icon class="dc-action-icon">edit</mat-icon>
+                      </button>
+                      <button type="button" class="dc-top-btn dc-top-btn--delete"
+                              (click)="hasServiceData(inst) ? clearServiceData(inst) : removeRepeat(sub, inst.index)">
+                        <mat-icon class="dc-action-icon">delete</mat-icon>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Search: when not selected or editing -->
+                  <ng-container *ngIf="!hasServiceSelected(inst)">
+                    <ng-container *ngIf="getServiceSearchField(inst) as sf">
+                      <ng-container *ngIf="form.get(sf.controlName) as sc">
+                        <div class="dc-search-row">
+                          <div class="sc-search">
+                            <ui-smart-lookup class="ff-ui ff-lookup sc-search-input"
+                              [placeholder]="getLookupPlaceholder(sf)"
+                              [minChars]="getLookupMinChars(sf)"
+                              [debounceMs]="getLookupDebounceMs(sf)"
+                              [limit]="getLookupLimit(sf)"
+                              [searchFn]="getLookupSearchFn(sf)"
+                              [displayWith]="getLookupDisplayWith(sf)"
+                              [trackBy]="getLookupTrackBy(sf)"
+                              [formControlName]="sf.controlName"
+                              (selected)="onServiceLookupSelected(sf, inst, $event)"
+                              (textChange)="onLookupTextChange(sf, $event)"
+                              (cleared)="onServiceLookupCleared(sf, inst)">
+                            </ui-smart-lookup>
+                          </div>
+                          <button type="button" class="dc-cancel-btn"
+                                  *ngIf="isServiceInEditMode(inst)"
+                                  (click)="cancelEditService(inst)">
+                            Cancel
+                          </button>
+                        </div>
+                      </ng-container>
+                    </ng-container>
+                    <!-- Current procedure display during edit -->
+                    <div class="sc-identity sc-identity--muted" *ngIf="isServiceInEditMode(inst)">
+                      <span class="sc-code">{{ getServiceCode(inst) }}</span>
+                      <span class="sc-desc">{{ getServiceDescription(inst) }}</span>
+                    </div>
+                    <!-- Empty state -->
+                    <div class="sc-empty" *ngIf="!isServiceInEditMode(inst)">
+                      <mat-icon class="sc-empty-icon">search</mat-icon>
+                      <span>Search for a procedure code</span>
+                    </div>
+                  </ng-container>
+
+                  <!-- Selected procedure header -->
+                  <ng-container *ngIf="hasServiceSelected(inst)">
+                    <div class="sc-identity">
+                      <span class="sc-code">{{ getServiceCode(inst) }}</span>
+                      <span class="sc-desc">{{ getServiceDescription(inst) }}</span>
+                    </div>
+                  </ng-container>
+
+                  <!-- Body fields: always editable -->
+                  <div class="sc-body">
+                    <ng-container *ngFor="let f of getServiceBodyFields(inst)">
+                      <ng-container *ngIf="isVisible(f)">
+                        <ng-container *ngIf="form.get(f.controlName) as ctrl">
+                          <div class="sc-field"
+                               [ngClass]="{'sc-field--select': f.type === 'select',
+                                           'sc-field--date': f.type === 'datetime-local',
+                                           'sc-field--num': f.type === 'number',
+                                           'sc-field--search': f.type === 'search'}">
+                            <div class="ff-outline"
+                                 [class.ff-disabled]="ctrl.disabled"
+                                 [class.ff-invalid]="ctrl.touched && ctrl.invalid">
+                              <div class="ff-float-label">
+                                {{ f.displayName }}
+                                <span class="req-star" *ngIf="f.required">*</span>
+                              </div>
+                              <div class="ff-body">
+                                <ng-container [ngSwitch]="f.type">
+                                  <ui-smart-dropdown *ngSwitchCase="'select'" class="ff-ui"
+                                    label="" placeholder="Select..."
+                                    [options]="getDropdownOptions(f.controlName)"
+                                    [formControlName]="f.controlName">
+                                  </ui-smart-dropdown>
+                                  <ui-datetime-picker *ngSwitchCase="'datetime-local'" class="ff-ui"
+                                    placeholderDate="mm/dd/yyyy"
+                                    [dateOnly]="!!f.dateOnly"
+                                    [formControlName]="f.controlName">
+                                  </ui-datetime-picker>
+                                  <ui-smart-lookup *ngSwitchCase="'search'" class="ff-ui ff-lookup"
+                                    [placeholder]="getLookupPlaceholder(f)"
+                                    [minChars]="getLookupMinChars(f)"
+                                    [debounceMs]="getLookupDebounceMs(f)"
+                                    [limit]="getLookupLimit(f)"
+                                    [searchFn]="getLookupSearchFn(f)"
+                                    [displayWith]="getLookupDisplayWith(f)"
+                                    [trackBy]="getLookupTrackBy(f)"
+                                    [formControlName]="f.controlName"
+                                    (selected)="onLookupSelected(f, $event)"
+                                    (textChange)="onLookupTextChange(f, $event)"
+                                    (cleared)="onLookupCleared(f)">
+                                  </ui-smart-lookup>
+                                  <textarea *ngSwitchCase="'textarea'" class="ff-input ff-textarea"
+                                    rows="2" [formControlName]="f.controlName"></textarea>
+                                  <input *ngSwitchDefault class="ff-input"
+                                    [type]="f.type === 'number' ? 'number' : 'text'"
+                                    [formControlName]="f.controlName" />
+                                </ng-container>
+                              </div>
+                            </div>
+                            <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
+                              {{ f.requiredMsg || (f.displayName + ' is required') }}
+                            </div>
+                          </div>
+                        </ng-container>
+                      </ng-container>
+                    </ng-container>
+                  </div>
+                </div>
+              </ng-container>
+            </div>
+          </ng-container>
+        </ng-template>
 
         <!-- ═══ NORMAL REPEAT (non-provider) — unchanged ═══ -->
         <ng-template #normalSubRepeat>

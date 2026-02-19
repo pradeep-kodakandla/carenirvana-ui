@@ -25,11 +25,13 @@ type DecisionTab = {
   statusText: string;
   statusCode: string;
   statusClass: string;
+  reasonText?: string;
 
-  /** New 3-line tab layout */
+  /** New 4-line tab layout */
   line1: string;   // Decision # + Code
   line2?: string;  // Dates
-  line3: string;   // Status
+  line3: string;   // Status badge
+  line4?: string;  // Status reason
 };
 
 /** Conditional visibility (same semantics as CaseDetails) */
@@ -154,37 +156,75 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
     }
   }
 
-  /** Prefetch Decision Status options early so left tabs can show labels (not ids like 1/2/3). */
+  /** Prefetch Decision Status AND Decision Status Code options so tabs show labels (not ids). */
   private prefetchDecisionStatusForTabs(done: () => void): void {
-    const ds = this.getDecisionStatusDatasourceFromTemplate();
-    if (!ds) {
+    const statusDs = this.getDecisionStatusDatasourceFromTemplate();
+    const codeDs = this.getDecisionStatusCodeDatasourceFromTemplate();
+
+    const pending: Array<{ ds: string; isStatus: boolean }> = [];
+
+    // Check status datasource
+    if (statusDs) {
+      if (this.dropdownCache.has(statusDs)) {
+        const cached = (this.dropdownCache.get(statusDs) ?? []) as any[];
+        const p = this.findPendedStatusOption(cached as any);
+        if (p) this.pendedDecisionStatusValue = (p as any).value;
+      } else {
+        pending.push({ ds: statusDs, isStatus: true });
+      }
+    }
+
+    // Check reason datasource
+    if (codeDs && !this.dropdownCache.has(codeDs)) {
+      pending.push({ ds: codeDs, isStatus: false });
+    }
+
+    if (!pending.length) {
       done();
       return;
     }
 
-    if (this.dropdownCache.has(ds)) {
-      // If already cached, also try to lock pended value
-      const cached = (this.dropdownCache.get(ds) ?? []) as any[];
-      const p = this.findPendedStatusOption(cached as any);
-      if (p) this.pendedDecisionStatusValue = (p as any).value;
-      done();
-      return;
-    }
+    let remaining = pending.length;
+    const onOne = () => { if (--remaining <= 0) done(); };
 
-    this.dsLookup
-      .getOptionsWithFallback(
-        ds,
-        (r: any) => this.mapDatasourceRowToOption(ds, r) as any,
-        ['UM', 'Admin', 'Provider']
-      )
-      .pipe(catchError(() => of([])), takeUntil(this.destroy$))
-      .subscribe((opts) => {
-        const safe = (opts ?? []) as any[];
-        this.dropdownCache.set(ds, safe as any);
-        const pended = this.findPendedStatusOption(safe as any);
-        if (pended) this.pendedDecisionStatusValue = (pended as any).value;
-        done();
-      });
+    for (const item of pending) {
+      this.dsLookup
+        .getOptionsWithFallback(
+          item.ds,
+          (r: any) => this.mapDatasourceRowToOption(item.ds, r) as any,
+          ['UM', 'Admin', 'Provider']
+        )
+        .pipe(catchError(() => of([])), takeUntil(this.destroy$))
+        .subscribe((opts) => {
+          const safe = (opts ?? []) as any[];
+          this.dropdownCache.set(item.ds, safe as any);
+          if (item.isStatus) {
+            const pended = this.findPendedStatusOption(safe as any);
+            if (pended) this.pendedDecisionStatusValue = (pended as any).value;
+          }
+          onOne();
+        });
+    }
+  }
+
+  /** Find the Decision Status Code datasource name from the template */
+  private getDecisionStatusCodeDatasourceFromTemplate(): string | null {
+    try {
+      const merged = this.extractDecisionSectionsFromTemplate();
+      for (const sec of (merged ?? [])) {
+        const fields: any[] = sec?.fields ?? sec?.Fields ?? [];
+        const hit = (fields ?? []).find((f: any) =>
+          String(f?.id ?? f?.fieldId ?? '').trim().toLowerCase() === 'decisionstatuscode'
+        );
+        if (hit) {
+          const ds = String(hit?.datasource ?? hit?.Datasource ?? '').trim();
+          return ds || null;
+        }
+      }
+      return null;
+    } catch {
+      return null;
+    }
   }
 
   /** Field id -> controlName map for the current tab (used for conditional visibility). */
@@ -470,113 +510,213 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
     const v = String(codeOrId ?? '').trim();
     if (!v) return null;
 
+    // Helper: check if any candidate matches (normalised string comparison)
+    const matches = (x: any) => {
+      if (x === null || x === undefined) return false;
+      return String(x).trim() === v;
+    };
+
+    // 1) Search dropdownCache (keyed by datasource) — Decision Status only (not StatusCode/reason)
     for (const [ds, opts] of this.dropdownCache.entries()) {
       const k = this.normDs(ds);
-      if (!k.startsWith('decisionstatus')) continue;
+      if (!k.includes('decisionstatus') || k.includes('decisionstatuscode')) continue;
 
-      for (const o of (opts ?? [])) {
-        const raw: any = (o as any)?.raw;
-        const cands = [
-          (o as any)?.value,
-          raw?.id,
-          raw?.value,
-          raw?.code,
-          raw?.decisionStatusCode,
-          raw?.statusCode
-        ];
+      const hit = this.findOptionMatch(opts, matches);
+      if (hit) return hit;
+    }
 
-        if (cands.some(x => String(x ?? '').trim() === v)) {
-          const label = (o as any)?.label ?? (o as any)?.text ?? raw?.decisionStatusName ?? raw?.name ?? v;
-          const code = String((o as any)?.value ?? v);
-          return { label: String(label), code };
-        }
+    // 2) Search optionsByControlName for any control whose name includes "decision"+"status" but not "code"/"reason"
+    for (const [cn, opts] of Object.entries(this.optionsByControlName ?? {})) {
+      const low = cn.toLowerCase();
+      if (!low.includes('decision') || !low.includes('status')) continue;
+      if (low.includes('code') || low.includes('reason')) continue;
+
+      const hit = this.findOptionMatch(opts, matches);
+      if (hit) return hit;
+    }
+
+    return null;
+  }
+
+  /** Search a Decision Status Code (reason) value and resolve to label */
+  private lookupDecisionStatusCodeLabel(codeOrId: string): { label: string; code: string } | null {
+    const v = String(codeOrId ?? '').trim();
+    if (!v) return null;
+
+    const matches = (x: any) => {
+      if (x === null || x === undefined) return false;
+      return String(x).trim() === v;
+    };
+
+    // 1) Search dropdownCache for DecisionStatusCode datasources
+    for (const [ds, opts] of this.dropdownCache.entries()) {
+      const k = this.normDs(ds);
+      if (!k.includes('decisionstatuscode')) continue;
+
+      const hit = this.findOptionMatch(opts, matches);
+      if (hit) return hit;
+    }
+
+    // 2) Search optionsByControlName for status code / reason controls
+    for (const [cn, opts] of Object.entries(this.optionsByControlName ?? {})) {
+      const low = cn.toLowerCase();
+      if (low.includes('statuscode') || low.includes('status_code') || low.includes('reason')) {
+        const hit = this.findOptionMatch(opts, matches);
+        if (hit) return hit;
       }
     }
 
     return null;
   }
 
+  /** Universal option matcher: find option where value/raw keys match, return label+code */
+  private findOptionMatch(opts: any[], matches: (x: any) => boolean): { label: string; code: string } | null {
+    for (const o of (opts ?? [])) {
+      const raw: any = (o as any)?.raw;
+      const cands = [
+        (o as any)?.value,
+        raw?.id,
+        raw?.value,
+        raw?.code,
+        raw?.decisionStatusCode,
+        raw?.decisionStatusId,
+        raw?.statusCode,
+        raw?.statusId
+      ];
 
-  private getDecisionStatusForProcedure(procedureNo: number): { statusText: string; statusCode: string } {
-    // Default per requirement
+      if (cands.some(matches)) {
+        const label = String(
+          (o as any)?.label ?? (o as any)?.text ??
+          raw?.decisionStatusName ?? raw?.decisionStatusCodeName ??
+          raw?.reasonDescription ?? raw?.description ??
+          raw?.name ?? raw?.label ?? raw?.text ?? (o as any)?.value ?? ''
+        );
+        const code = String((o as any)?.value ?? '');
+        return { label, code };
+      }
+    }
+    return null;
+  }
+
+
+  private getDecisionStatusForProcedure(procedureNo: number): { statusText: string; statusCode: string; reasonText: string } {
     let statusText = 'Pended';
     let statusCode = 'Pended';
+    let reasonText = '';
 
     try {
       const picked = this.findItemForSectionAndProcedure('Decision Details', procedureNo);
       const data = picked?.data ?? {};
 
-      // Prefer the actual Decision Status (id/code). decisionStatusCode is usually the *reason* dropdown.
+      // ---- 1) Resolve Decision Status ----
+      // Prefer decisionStatus / decisionStatusId; avoid decisionStatusCode (that's the reason)
       let raw =
         data?.decisionStatus ??
         data?.decisionStatusId ??
         data?.status ??
-        data?.decisionStatusCode ??
         null;
 
       if (raw === null) {
-        // fallback: any key containing decisionStatus
-        const k = Object.keys(data || {}).find(x => /decision\s*status/i.test(x));
+        // fallback: any key containing "decisionStatus" but NOT "Code"/"Reason"
+        const k = Object.keys(data || {}).find(x =>
+          /decisionstatus/i.test(x.replace(/[\s_-]/g, '')) &&
+          !/code|reason/i.test(x)
+        );
         if (k) raw = (data as any)[k];
       }
 
-      // if object, try to pick display name
       if (raw && typeof raw === 'object') {
         const obj: any = raw;
-        statusText =
-          obj?.decisionStatusName ??
-          obj?.statusName ??
-          obj?.name ??
-          obj?.label ??
-          obj?.text ??
-          statusText;
-
-        statusCode =
-          this.asDisplayString(obj?.decisionStatusCode ?? obj?.code ?? obj?.value ?? obj?.id) ||
-          this.asDisplayString(raw) ||
-          statusCode;
-
-        return { statusText: String(statusText), statusCode: String(statusCode) };
-      }
-
-      const prim = this.asDisplayString(raw);
-      if (prim) {
-        const looked = this.lookupDecisionStatusLabel(prim);
-        if (looked) {
-          statusText = looked.label;
-          statusCode = looked.code;
-        } else {
-          // fallback: show whatever we have (code/text)
-          statusText = prim;
-          statusCode = prim;
+        statusText = obj?.decisionStatusName ?? obj?.statusName ?? obj?.name ?? obj?.label ?? obj?.text ?? statusText;
+        statusCode = this.asDisplayString(obj?.code ?? obj?.value ?? obj?.id) || statusCode;
+      } else {
+        const prim = this.asDisplayString(raw);
+        if (prim) {
+          // Try cache/options lookup first
+          const looked = this.lookupDecisionStatusLabel(prim);
+          if (looked) {
+            statusText = looked.label;
+            statusCode = looked.code;
+          } else {
+            // Hardcoded fallback for common numeric IDs
+            const hard = this.decisionStatusLabelFromValue(prim);
+            statusText = hard ?? prim;
+            statusCode = prim;
+          }
         }
       }
 
-      return { statusText, statusCode };
+      // Also check for saved label text (from our enhanced payload)
+      if (data?.decisionStatusLabel && typeof data.decisionStatusLabel === 'string') {
+        const saved = data.decisionStatusLabel.trim();
+        // Only use saved label if current resolution looks like an ID
+        if (saved && /^\d+$/.test(statusText)) {
+          statusText = saved;
+        }
+      }
+
+      // ---- 2) Resolve Decision Status Reason (decisionStatusCode field) ----
+      let reasonRaw =
+        data?.decisionStatusCode ??
+        data?.statusReason ??
+        data?.decisionStatusReasonCode ??
+        data?.reasonCode ??
+        null;
+
+      if (reasonRaw && typeof reasonRaw === 'object') {
+        const obj: any = reasonRaw;
+        reasonText = obj?.decisionStatusCodeName ?? obj?.reasonDescription ?? obj?.description ??
+                     obj?.name ?? obj?.label ?? obj?.text ?? '';
+      } else {
+        const reasonPrim = this.asDisplayString(reasonRaw);
+        if (reasonPrim) {
+          const looked = this.lookupDecisionStatusCodeLabel(reasonPrim);
+          if (looked) {
+            reasonText = looked.label;
+          } else {
+            // Hardcoded fallback
+            const hard = this.decisionStatusCodeLabelFromValue(reasonPrim);
+            reasonText = hard ?? reasonPrim;
+          }
+        }
+      }
+
+      // Also check for saved reason label
+      if (data?.decisionStatusCodeLabel && typeof data.decisionStatusCodeLabel === 'string') {
+        const saved = data.decisionStatusCodeLabel.trim();
+        if (saved && /^\d+$/.test(reasonText)) {
+          reasonText = saved;
+        }
+      }
+
+      return { statusText: String(statusText), statusCode: String(statusCode), reasonText: String(reasonText) };
     } catch {
-      return { statusText, statusCode };
+      return { statusText, statusCode, reasonText };
     }
   }
 
 
 
-  private computeTabStatus(procedureNo: number): { label: string; statusClass: string } {
+  private computeTabStatus(procedureNo: number): { label: string; statusClass: string; reasonText: string } {
     const status = this.getDecisionStatusForProcedure(procedureNo);
     const txt = String(status?.statusText ?? '').trim();
     const code = String(status?.statusCode ?? '').trim();
+    const reason = String(status?.reasonText ?? '').trim();
 
     // Treat empty or "pended" statuses as Pended.
     if (this.isPendedStatus(code) || this.isPendedStatus(txt)) {
-      return { label: 'Pended', statusClass: this.statusToClass('Pended') };
+      return { label: 'Pended', statusClass: this.statusToClass('Pended'), reasonText: '' };
     }
 
     // Normalize common display labels
     const low = txt.toLowerCase();
-    if (low.startsWith('approv')) return { label: 'Approved', statusClass: this.statusToClass('Approved') };
-    if (low.startsWith('deny')) return { label: 'Denied', statusClass: this.statusToClass('Denied') };
+    if (low.startsWith('approv')) return { label: 'Approved', statusClass: this.statusToClass('Approved'), reasonText: reason };
+    if (low.startsWith('deny') || low.startsWith('deni')) return { label: 'Denied', statusClass: this.statusToClass('Denied'), reasonText: reason };
+    if (low.startsWith('partial')) return { label: 'Partial Approval', statusClass: this.statusToClass('Partial'), reasonText: reason };
 
     // Fallback: use resolved label/code
-    return { label: txt || code || 'Pended', statusClass: this.statusToClass(txt || code || 'Pended') };
+    const finalLabel = txt || code || 'Pended';
+    return { label: finalLabel, statusClass: this.statusToClass(finalLabel), reasonText: reason };
   }
 
 
@@ -599,6 +739,7 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
 
       const line1 = `Decision #${decisionNo}${code ? ` | Code: ${code}` : ''}`;
       const line3 = status.label;
+      const line4 = status.reasonText || '';
 
       return {
         ...t,
@@ -606,10 +747,11 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
         statusText: status.label,
         statusCode: status.label,
         statusClass: status.statusClass,
+        reasonText: status.reasonText,
         line1,
         line2,
         line3,
-        // Backward compatibility (in case old template still uses name/subtitle)
+        line4,
         name: line1,
         subtitle: line2
       };
@@ -676,10 +818,11 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
         statusText: status.label,
         statusCode: status.label,
         statusClass: status.statusClass,
+        reasonText: status.reasonText,
         line1,
         line2,
         line3: status.label,
-        // Backward compatibility
+        line4: status.reasonText || '',
         name: line1,
         subtitle: line2
       };
@@ -1130,7 +1273,18 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
 
     for (const f of sec.fields) {
       const ctrl = this.form.get(f.controlName);
-      obj[f.id] = this.unwrapValue(ctrl?.value);
+      const rawVal = ctrl?.value;
+      obj[f.id] = this.unwrapValue(rawVal);
+
+      // For select fields, also save the display label so we never show raw IDs on reload
+      if (String(f.type ?? '').toLowerCase() === 'select' && rawVal != null) {
+        const opts = this.optionsByControlName[f.controlName] ?? [];
+        const prim = String(this.unwrapValue(rawVal) ?? '').trim();
+        const matchedOpt = opts.find((o: any) => String((o as any)?.value ?? '').trim() === prim);
+        if (matchedOpt) {
+          obj[f.id + 'Label'] = String((matchedOpt as any)?.label ?? (matchedOpt as any)?.text ?? '').trim();
+        }
+      }
     }
 
     // helpful metadata (optional)
@@ -1269,6 +1423,12 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
             this.optionsByControlName[f.controlName] = finalOpts;
             this.reconcileSelectValue(f);
             this.ensureDecisionStatusDefaultIfNeeded(f);
+          }
+
+          // After status-related options load, refresh tab labels so IDs become display names
+          const dsNorm = this.normDs(ds);
+          if (dsNorm.includes('decisionstatus')) {
+            this.updateTabStatuses();
           }
         });
 
