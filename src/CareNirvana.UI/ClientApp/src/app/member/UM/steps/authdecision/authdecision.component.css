@@ -1,76 +1,113 @@
 /*
-  AuthDecision styles intentionally align with AuthDetails/AuthNotes styling
-  (section-card, section-header, ff-outline floating labels, responsive grid).
+  AuthDecision — Connected tab + content layout
+  Status colors flow from tab → bridge → content panel
+  Matches AuthDetails design language
 */
 
-/* ===== Left tabs + right content layout ===== */
+/* ===== Master layout ===== */
 .decision-details-layout {
   display: flex;
-  gap: 14px;
+  gap: 0;                    /* zero gap — tabs connect to content */
   width: 100%;
   align-items: flex-start;
 }
 
+/* ===== Left tab rail ===== */
 .tabs-container {
-  width: 260px;
-  min-width: 260px;
+  width: 262px;
+  min-width: 262px;
   position: sticky;
   top: 10px;
+  z-index: 2;
 }
 
 .tabs {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
+  padding-right: 0;
 }
 
+/* ===== Individual tab ===== */
 .tab {
+  position: relative;
   background: #fff;
-  border: 1px solid #e6e8ec;
-  border-radius: 10px;
-  padding: 12px 14px;
+  border: 1.5px solid #E2E8F0;
+  border-right-color: transparent;
+  border-radius: 10px 0 0 10px;
+  padding: 12px 14px 12px 14px;
   cursor: pointer;
-  transition: box-shadow .18s ease, border-color .18s ease, transform .05s ease, background .18s ease;
+  transition: all .15s ease;
+  margin-right: -1.5px;          /* overlap content panel border */
+  z-index: 1;
 }
 
-  .tab:hover {
-    border-color: #c7d0dc;
-    box-shadow: 0 4px 14px rgba(17, 24, 39, 0.07);
-    background: #fafbfc;
-  }
+.tab:hover {
+  background: #F8FAFC;
+  border-color: #CBD5E1;
+  border-right-color: transparent;
+  box-shadow: -2px 2px 8px rgba(0,0,0,.04);
+}
 
-  .tab:active {
-    transform: translateY(1px);
-  }
+/* Status left accents (always visible) */
+.tab.status-pended   { border-left: 4px solid #F59E0B; }
+.tab.status-approved  { border-left: 4px solid #22C55E; }
+.tab.status-denied    { border-left: 4px solid #EF4444; }
+.tab.status-partial   { border-left: 4px solid #3B82F6; }
+.tab.status-other     { border-left: 4px solid #94A3B8; }
 
-  .tab.active {
-    border-color: #4c6fff;
-    box-shadow: 0 0 0 3px rgba(76, 111, 255, .12);
-    background: #f7f9ff;
-  }
+/* ===== Active tab — connects to content panel ===== */
+.tab.active {
+  z-index: 3;
+  background: #fff;
+  box-shadow: -3px 0 8px rgba(0,0,0,.04);
+  border-right-color: #fff;       /* white = hides the content panel border behind it */
+}
 
-  /* ===== Status-based left accents ===== */
-  .tab.status-pended {
-    border-left: 5px solid #f59e0b;
-  }
+/* Active tab gets full status-color top+bottom+left border */
+.tab.active.status-pended {
+  border-color: #F59E0B;
+  border-right-color: #fff;
+  background: #FFFDF7;
+}
+.tab.active.status-approved {
+  border-color: #22C55E;
+  border-right-color: #fff;
+  background: #F8FDF9;
+}
+.tab.active.status-denied {
+  border-color: #EF4444;
+  border-right-color: #fff;
+  background: #FFFAF9;
+}
+.tab.active.status-partial {
+  border-color: #3B82F6;
+  border-right-color: #fff;
+  background: #F8FBFF;
+}
+.tab.active.status-other {
+  border-color: #94A3B8;
+  border-right-color: #fff;
+  background: #FAFBFC;
+}
 
-  .tab.status-approved {
-    border-left: 5px solid #22c55e;
-  }
+/* Active left accent override (thicker) */
+.tab.active.status-pended   { border-left: 5px solid #D97706; }
+.tab.active.status-approved  { border-left: 5px solid #16A34A; }
+.tab.active.status-denied    { border-left: 5px solid #DC2626; }
+.tab.active.status-partial   { border-left: 5px solid #2563EB; }
+.tab.active.status-other     { border-left: 5px solid #64748B; }
 
-  .tab.status-denied {
-    border-left: 5px solid #ef4444;
-  }
+/* Inactive tabs: subtle dimming */
+.tab:not(.active) {
+  opacity: 0.72;
+}
+.tab:not(.active):hover {
+  opacity: 1;
+}
 
-  .tab.status-partial {
-    border-left: 5px solid #3b82f6;
-  }
 
-  .tab.status-other {
-    border-left: 5px solid #6b7280;
-  }
-
-/* ===== Tab header row: title left, badge right ===== */
+/* ===== Tab internals ===== */
 .tab-header-row {
   display: flex;
   align-items: center;
@@ -81,7 +118,7 @@
 .tab-line1 {
   font-weight: 700;
   font-size: 13px;
-  color: #111827;
+  color: #1E293B;
   line-height: 18px;
   min-width: 0;
   overflow: hidden;
@@ -89,7 +126,14 @@
   white-space: nowrap;
 }
 
-/* ===== Status badge (pill) ===== */
+/* Active tab title tints to status color */
+.tab.active.status-pended  .tab-line1 { color: #92400E; }
+.tab.active.status-approved .tab-line1 { color: #15803D; }
+.tab.active.status-denied   .tab-line1 { color: #B91C1C; }
+.tab.active.status-partial  .tab-line1 { color: #1D4ED8; }
+.tab.active.status-other    .tab-line1 { color: #475569; }
+
+/* Status badge pill */
 .tab-status-badge {
   display: inline-flex;
   align-items: center;
@@ -103,47 +147,29 @@
   line-height: 18px;
 }
 
-.status-pended-badge {
-  background: #fef3c7;
-  color: #92400e;
-}
+.status-pended-badge   { background: #FEF3C7; color: #92400E; }
+.status-approved-badge  { background: #DCFCE7; color: #166534; }
+.status-denied-badge    { background: #FEE2E2; color: #991B1B; }
+.status-partial-badge   { background: #DBEAFE; color: #1E40AF; }
+.status-other-badge     { background: #F3F4F6; color: #374151; }
 
-.status-approved-badge {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.status-denied-badge {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.status-partial-badge {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.status-other-badge {
-  background: #f3f4f6;
-  color: #374151;
-}
-
+/* Date line */
 .tab-line2 {
-  margin-top: 6px;
-  font-size: 12px;
-  color: #6b7280;
+  margin-top: 5px;
+  font-size: 11.5px;
+  color: #64748B;
   line-height: 16px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* Status reason line */
+/* Status reason */
 .tab-line4 {
-  margin-top: 4px;
+  margin-top: 3px;
   font-size: 11px;
   font-weight: 500;
-  color: #6b7280;
+  color: #94A3B8;
   line-height: 15px;
   font-style: italic;
   overflow: hidden;
@@ -151,38 +177,86 @@
   white-space: nowrap;
 }
 
-/* Remove old tab-line3 / tab-title / tab-sub (no longer used in template) */
 
-
+/* ===================================================
+   RIGHT CONTENT PANEL — status-colored border frame
+   =================================================== */
 .tab-content {
   flex: 1;
   min-width: 0;
-}
-
-/* ===== Cards (copied style from authdetails.component.css) ===== */
-.section-card {
-  border: 1px solid #e6e8ec;
-  border-radius: 10px;
-  padding: 14px;
   background: #fff;
-  margin-bottom: 14px;
+  position: relative;
+  z-index: 2;
+  overflow: hidden;
+
+  /* Default border — overridden by status variants below */
+  border: 1.5px solid #E2E8F0;
+  border-radius: 0 10px 10px 0;
+
+  /* Depth: panel feels "raised" above the inactive tabs */
+  box-shadow: 0 2px 16px rgba(0,0,0,.05);
 }
 
+/* ---- Status-colored content panel borders ---- */
+.tab-content.status-pended-panel {
+  border-color: #F59E0B;
+  border-top: 3px solid #F59E0B;
+  border-left: 3px solid #F59E0B;
+}
+.tab-content.status-approved-panel {
+  border-color: #22C55E;
+  border-top: 3px solid #22C55E;
+  border-left: 3px solid #22C55E;
+}
+.tab-content.status-denied-panel {
+  border-color: #EF4444;
+  border-top: 3px solid #EF4444;
+  border-left: 3px solid #EF4444;
+}
+.tab-content.status-partial-panel {
+  border-color: #3B82F6;
+  border-top: 3px solid #3B82F6;
+  border-left: 3px solid #3B82F6;
+}
+.tab-content.status-other-panel {
+  border-color: #94A3B8;
+  border-top: 3px solid #94A3B8;
+  border-left: 3px solid #94A3B8;
+}
+
+
+/* ===== Section cards (inside content panel) ===== */
+.section-card {
+  border: none;
+  border-radius: 0;
+  padding: 14px 16px;
+  background: #fff;
+  margin-bottom: 0;
+  border-bottom: 1px solid #F1F5F9;
+}
+
+.section-card:last-child {
+  border-bottom: none;
+}
+
+/* Section header — matches AuthDetails (blue bottom line) */
 .section-header {
   display: flex;
   align-items: center;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border-bottom: 2px solid #e2e8f0;
-  margin: -14px -14px 14px;
-  padding: 12px 16px;
-  border-radius: 10px 10px 0 0;
+  gap: 10px;
+  background: transparent;
+  border-bottom: 2px solid #007bff;
+  margin: -14px -16px 14px;
+  padding: 12px 16px 10px;
+  border-radius: 0;
 }
 
 .section-title {
   font-weight: 700;
   font-size: 14px;
-  color: #1e293b;
-  letter-spacing: 0.01em;
+  color: #1E293B;
+  letter-spacing: 0.1px;
+  flex: 1;
 }
 
 .case-savebar {
@@ -191,7 +265,7 @@
   padding: 10px 0;
 }
 
-/* ===== Responsive grid (same as authdetails) ===== */
+/* ===== Grid ===== */
 .grid {
   display: grid;
   gap: 14px;
@@ -200,25 +274,20 @@
 }
 
 @media (max-width: 1200px) {
-  .grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
+  .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 900px) {
-  .grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 600px) {
-  .grid {
-    grid-template-columns: repeat(1, minmax(0, 1fr));
-  }
+  .grid { grid-template-columns: repeat(1, minmax(0, 1fr)); }
 }
 
-/* ===== Outlined floating field (same design language as authdetails) ===== */
+/* ===== Floating label fields ===== */
 .ff-field {
+  display: flex;
   flex-direction: column;
   align-items: stretch;
   width: 100%;
@@ -227,27 +296,30 @@
 
 .ff-outline {
   position: relative;
-  border: 1px solid #cfd4dc;
-  border-radius: 8px;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 10px;
   background: #fff;
   padding: 1px;
-  align-self: start;
-  height: fit-content;
-  transition: box-shadow .15s ease, border-color .15s ease;
+  width: 100%;
+  justify-self: stretch;
+  align-self: stretch;
+  height: auto;
+  transition: box-shadow .2s ease, border-color .2s ease;
 }
 
-  .ff-outline:hover {
-    border-color: #aeb6c2;
-  }
+.ff-outline:hover {
+  border-color: #80bfff;
+  background: #f5f9ff;
+}
 
-  .ff-outline.ff-disabled {
-    opacity: 0.65;
-    pointer-events: none;
-  }
+.ff-outline.ff-disabled {
+  opacity: 0.65;
+  pointer-events: none;
+}
 
-  .ff-outline.ff-invalid {
-    border-color: #dc3545;
-  }
+.ff-outline.ff-invalid {
+  border-color: #dc3545;
+}
 
 .ff-float-label {
   position: absolute;
@@ -270,7 +342,7 @@
 .ff-body {
   display: flex;
   align-items: center;
-  min-height: 34px;
+  min-height: 36px;
 }
 
 .ff-input {
@@ -278,18 +350,18 @@
   border: 0;
   outline: none;
   background: transparent;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 22px;
   padding-left: 5px;
 }
 
-  .ff-input:not(.ff-textarea) {
-    height: 34px;
-  }
+.ff-input:not(.ff-textarea) {
+  height: 36px;
+}
 
 .ff-textarea {
   resize: vertical;
-  min-height: 72px;
+  min-height: 110px;
   padding-top: 5px;
 }
 
@@ -298,37 +370,36 @@
   width: 100%;
 }
 
-/* Try to remove double-borders if ui-smart-dropdown / ui-datetime-picker render their own border */
+/* Embedded components */
 :host ::ng-deep .ff-outline ui-smart-dropdown,
 :host ::ng-deep .ff-outline ui-datetime-picker {
   width: 100%;
   display: block;
 }
 
-  :host ::ng-deep .ff-outline ui-smart-dropdown input,
-  :host ::ng-deep .ff-outline ui-datetime-picker input {
-    border: 0 !important;
-    outline: none !important;
-    box-shadow: none !important;
-    font-size: 14px !important;
-    background: transparent !important;
-    height: 34px !important;
-    line-height: 22px !important;
-  }
+:host ::ng-deep .ff-outline ui-smart-dropdown input,
+:host ::ng-deep .ff-outline ui-datetime-picker input {
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  font-size: 14px !important;
+  background: transparent !important;
+  height: 36px !important;
+  line-height: 22px !important;
+}
 
-/* Errors (same as AuthDetails) */
+/* Errors */
 .ff-error {
   color: #dc3545;
   font-size: 12px;
   margin-top: 6px;
 }
 
-/* Span full width for long fields */
 .ff-span-all {
   grid-column: 1 / -1;
 }
 
-/* Checkbox row */
+/* Checkbox */
 .ff-checkbox {
   display: flex;
   align-items: center;
@@ -337,22 +408,22 @@
   align-self: start;
 }
 
-  .ff-checkbox .form-check-input {
-    margin: 0;
-    margin-top: 1px;
-  }
+.ff-checkbox .form-check-input {
+  margin: 0;
+  margin-top: 1px;
+}
 
-  .ff-checkbox .form-check-label {
-    margin: 0;
-    cursor: pointer;
-  }
+.ff-checkbox .form-check-label {
+  margin: 0;
+  cursor: pointer;
+}
 
-/* (Removed old custom autocomplete dropdown styles - ui-smart-dropdown is used) */
 
-/* ===== Responsive layout ===== */
+/* ===== Responsive (stacked layout) ===== */
 @media (max-width: 1000px) {
   .decision-details-layout {
     flex-direction: column;
+    gap: 10px;
   }
 
   .tabs-container {
@@ -364,50 +435,22 @@
   .tabs {
     flex-direction: row;
     flex-wrap: wrap;
+    gap: 8px;
   }
 
   .tab {
     flex: 1;
     min-width: 220px;
+    border-radius: 10px;
+    border-right-color: #E2E8F0;
+    margin-right: 0;
   }
-}
 
+  .tab.active {
+    border-right-color: inherit;
+  }
 
-
-.ff-input {
-  /* Match ui-smart-dropdown input sizing and improve readability in Decision Notes */
-  font-size: 14px;
-  line-height: 22px;
-}
-
-.ff-body {
-  min-height: 36px;
-}
-
-.ff-input:not(.ff-textarea) {
-  height: 36px;
-}
-
-.ff-textarea {
-  min-height: 110px;
-}
-
-/* also match embedded dropdown/date inputs */
-:host ::ng-deep .ff-outline ui-smart-dropdown input,
-:host ::ng-deep .ff-outline ui-datetime-picker input {
-  height: 36px !important;
-}
-
-
-/* Make field containers behave consistently */
-.ff-field {
-  display: flex; /* flex-direction was set but display was missing */
-}
-
-/* Prevent shrink-to-fit (this is what makes fields look tiny) */
-.ff-outline {
-  width: 100%;
-  justify-self: stretch;
-  align-self: stretch; /* or just remove align-self entirely */
-  height: auto; /* optional: avoids weird fit-content sizing */
+  .tab-content {
+    border-radius: 10px;
+  }
 }

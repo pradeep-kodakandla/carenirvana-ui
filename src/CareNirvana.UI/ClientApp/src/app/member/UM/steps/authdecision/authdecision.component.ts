@@ -579,18 +579,40 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
         raw?.value,
         raw?.code,
         raw?.decisionStatusCode,
+        raw?.decisionStatusCodeId,
         raw?.decisionStatusId,
         raw?.statusCode,
         raw?.statusId
       ];
 
       if (cands.some(matches)) {
-        const label = String(
-          (o as any)?.label ?? (o as any)?.text ??
-          raw?.decisionStatusName ?? raw?.decisionStatusCodeName ??
-          raw?.reasonDescription ?? raw?.description ??
-          raw?.name ?? raw?.label ?? raw?.text ?? (o as any)?.value ?? ''
-        );
+        // Build label — try option-level first, then raw fields, then pickDisplayField
+        let label = String(
+          (o as any)?.label ?? (o as any)?.text ?? ''
+        ).trim();
+
+        // If label is empty or purely numeric, dig into the raw object for descriptive text
+        if (!label || /^\d+$/.test(label)) {
+          const rawLabel = String(
+            raw?.decisionStatusName ?? raw?.decisionStatusCodeName ??
+            raw?.decisionStatusReasonName ?? raw?.statusCodeName ??
+            raw?.reasonDescription ?? raw?.description ??
+            raw?.displayName ?? raw?.name ?? raw?.label ?? raw?.text ??
+            raw?.reason ?? raw?.title ?? ''
+          ).trim();
+
+          if (rawLabel && !/^\d+$/.test(rawLabel)) {
+            label = rawLabel;
+          } else if (raw) {
+            // Last resort: find any non-ID descriptive string in the raw object
+            const picked = this.pickDisplayField(raw);
+            if (picked) label = picked;
+          }
+        }
+
+        // If we still have no real label, fall back to the option value string
+        if (!label) label = String((o as any)?.value ?? '');
+
         const code = String((o as any)?.value ?? '');
         return { label, code };
       }
@@ -1416,6 +1438,14 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
         .subscribe((opts) => {
           const safe = (opts ?? []) as any[];
 
+          // Debug: log loaded options for status datasources
+          const dsNorm = this.normDs(ds);
+          if (dsNorm.includes('decisionstatus')) {
+            console.log(`[AuthDecision] Loaded datasource "${ds}": ${safe.length} options.`,
+              safe.slice(0, 3).map((o: any) => ({ value: o?.value, label: o?.label, rawKeys: o?.raw ? Object.keys(o.raw) : 'primitive' }))
+            );
+          }
+
           this.dropdownCache.set(ds, safe);
 
           for (const f of fields) {
@@ -1426,7 +1456,6 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
           }
 
           // After status-related options load, refresh tab labels so IDs become display names
-          const dsNorm = this.normDs(ds);
           if (dsNorm.includes('decisionstatus')) {
             this.updateTabStatuses();
           }
@@ -1546,7 +1575,31 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
       });
 
       const finalOpts = filtered.length ? filtered : full;
-      this.optionsByControlName[statusCodeField.controlName] = [...finalOpts];
+
+      // Safety net: re-resolve any options whose labels still look like bare numeric IDs
+      const resolvedOpts = finalOpts.map((o: any) => {
+        const lbl = String((o as any)?.label ?? '').trim();
+        if (lbl && /^\d+$/.test(lbl)) {
+          const raw: any = (o as any)?.raw;
+          const val = String((o as any)?.value ?? '').trim();
+          // Try raw object fields first, then hardcoded fallback
+          const betterLabel =
+            (raw ? (
+              raw?.decisionStatusReasonName ?? raw?.decisionStatusCodeName ??
+              raw?.reasonDescription ?? raw?.description ?? raw?.displayName ??
+              raw?.reason ?? raw?.name ?? raw?.label ?? raw?.text ?? raw?.title ??
+              this.pickDisplayField(raw)
+            ) : null) ??
+            this.decisionStatusCodeLabelFromValue(val) ??
+            this.decisionStatusCodeLabelFromValue(lbl);
+          if (betterLabel && String(betterLabel).trim() && !/^\d+$/.test(String(betterLabel).trim())) {
+            return { ...o, label: String(betterLabel).trim(), text: String(betterLabel).trim() };
+          }
+        }
+        return o;
+      });
+
+      this.optionsByControlName[statusCodeField.controlName] = [...resolvedOpts];
 
       // If current selection is not in allowed list, clear it
       const current = this.extractPrimitive(this.unwrapValue(codeCtrl.value)) ?? this.unwrapValue(codeCtrl.value);
@@ -1681,26 +1734,36 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
   private pickDisplayField(row: any): string | null {
     if (!row) return null;
 
+    // Keys that are IDs / metadata — never a display label
     const skip = new Set([
-      'id',
-      'value',
-      'code',
-      'activeFlag',
-      'createdBy',
-      'createdOn',
-      'updatedBy',
-      'updatedOn',
-      'deletedBy',
-      'deletedOn'
+      'id', 'value', 'code', 'key', 'sortOrder', 'sequence', 'order',
+      'activeFlag', 'active', 'isActive', 'enabled',
+      'parentId', 'groupId', 'statusId', 'decisionStatusId',
+      'decisionStatus', 'decisionStatusCode', 'decisionStatusCodeId',
+      'createdBy', 'createdOn', 'createdDate',
+      'updatedBy', 'updatedOn', 'updatedDate',
+      'deletedBy', 'deletedOn', 'deletedDate'
     ]);
+
+    // Prefer longer descriptive strings (description > name > short code)
+    let best: string | null = null;
+    let bestLen = 0;
 
     for (const k of Object.keys(row)) {
       if (skip.has(k)) continue;
       const v = row[k];
-      if (typeof v === 'string' && v.trim().length > 0) return v;
+      if (typeof v !== 'string') continue;
+      const t = v.trim();
+      if (!t) continue;
+      // Skip purely numeric strings — those are IDs in disguise
+      if (/^\d+$/.test(t)) continue;
+      if (t.length > bestLen) {
+        best = t;
+        bestLen = t.length;
+      }
     }
 
-    return null;
+    return best;
   }
 
 
@@ -1749,7 +1812,7 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
 
     // Decision Status Code => use code when available (often string)
     if (k.includes('decisionstatuscode')) {
-      return row?.decisionStatusCode ?? row?.statusCode ?? row?.code ?? row?.value ?? row?.id ?? null;
+      return row?.decisionStatusCode ?? row?.decisionStatusCodeId ?? row?.statusCode ?? row?.code ?? row?.value ?? row?.id ?? null;
     }
 
     // Decision Status => prefer id when available
@@ -1776,23 +1839,40 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
         row.name ??
         row.label ??
         row.text ??
-        this.pickDisplayField(row);
+        row.displayName ??
+        row.description ??
+        null;
 
-      return String(candidate ?? '').trim();
+      const s = String(candidate ?? '').trim();
+      if (s && !/^\d+$/.test(s)) return s;
+
+      return this.pickDisplayField(row) ?? '';
     }
 
     if (this.isDecisionStatusCodeDatasource(ds)) {
       const candidate =
-        row.decisionStatusReasonName ??   // example: adjust to your API
+        row.decisionStatusReasonName ??
         row.decisionStatusCodeName ??
+        row.decisionStatusCodeDescription ??
+        row.statusCodeName ??
+        row.statusCodeDescription ??
         row.reasonDescription ??
+        row.reasonName ??
+        row.reason ??
         row.description ??
+        row.displayName ??
         row.label ??
         row.text ??
         row.name ??
-        this.pickDisplayField(row);
+        row.title ??
+        null;
 
-      return String(candidate ?? '').trim();
+      // Only return if it's a real descriptive string (not numeric)
+      const s = String(candidate ?? '').trim();
+      if (s && !/^\d+$/.test(s)) return s;
+
+      // Fallback: scan all fields for descriptive text
+      return this.pickDisplayField(row) ?? '';
     }
 
 
@@ -1803,9 +1883,14 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
       row.text ??
       row.name ??
       row.description ??
-      this.pickDisplayField(row);
+      row.displayName ??
+      row.title ??
+      null;
 
-    return String(candidate ?? '').trim();
+    const s = String(candidate ?? '').trim();
+    if (s && !/^\d+$/.test(s)) return s;
+
+    return this.pickDisplayField(row) ?? '';
   }
 
 
@@ -1825,33 +1910,57 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
       }
 
       const finalLabel = (label ?? String(value)).trim();
+      if (/^\d+$/.test(finalLabel)) {
+        console.warn(`[AuthDecision] datasource "${ds}" returned primitive "${value}" with no label resolution. Raw:`, r);
+      }
       return { value, label: finalLabel, text: finalLabel, raw: r } as any;
     }
 
-    // object rows (unchanged, but now use DecisionStatusCode branch in getDatasourcePreferredLabel)
+    // Object rows
     const value = this.getDatasourcePreferredValue(ds, r) ?? r?.value ?? r?.code ?? r?.id;
     const special = this.getDatasourcePreferredLabel(ds, r);
-    let label =
-      special ??
-      r?.label ??
-      r?.text ??
-      r?.name ??
-      r?.description ??
-      r?.displayName ??
-      r?.title ??
-      this.pickDisplayField(r) ??
-      null;
 
-    if ((!label || String(label).trim() === '' || String(label) === String(value)) &&
-      this.isDecisionStatusDatasource(ds)) {
-      const hard =
-        this.decisionStatusLabelFromValue(value) ??
-        this.decisionStatusLabelFromValue(r?.decisionStatusId ?? r?.statusId ?? r?.id ?? r?.code ?? r?.value);
-      if (hard) label = hard;
+    // Build label from special, then known field names, then pickDisplayField
+    let label: string | null = (special && special.trim()) ? special.trim() : null;
+
+    if (!label) {
+      // Try common label fields — but skip purely numeric values
+      for (const k of ['label', 'text', 'name', 'description', 'displayName', 'title']) {
+        const v = r?.[k];
+        if (typeof v === 'string' && v.trim() && !/^\d+$/.test(v.trim())) {
+          label = v.trim();
+          break;
+        }
+      }
+    }
+
+    if (!label) {
+      label = this.pickDisplayField(r);
+    }
+
+    // If label is still missing/numeric, try hardcoded maps
+    if (!label || /^\d+$/.test(label.trim())) {
+      if (this.isDecisionStatusDatasource(ds)) {
+        const hard =
+          this.decisionStatusLabelFromValue(value) ??
+          this.decisionStatusLabelFromValue(r?.decisionStatusId ?? r?.statusId ?? r?.id ?? r?.code ?? r?.value);
+        if (hard) label = hard;
+      } else if (this.isDecisionStatusCodeDatasource(ds)) {
+        const hard =
+          this.decisionStatusCodeLabelFromValue(value) ??
+          this.decisionStatusCodeLabelFromValue(r?.decisionStatusCode ?? r?.statusCode ?? r?.code ?? r?.id ?? r?.value);
+        if (hard) label = hard;
+      }
     }
 
     if (label == null) label = String(value ?? '');
     const finalLabel = String(label).trim();
+
+    // Debug: warn if we still have a numeric-only label for status-related datasources
+    if (/^\d+$/.test(finalLabel) && (this.isDecisionStatusDatasource(ds) || this.isDecisionStatusCodeDatasource(ds))) {
+      console.warn(`[AuthDecision] datasource "${ds}" option has numeric label "${finalLabel}". Raw row:`, JSON.stringify(r));
+    }
+
     return { value, label: finalLabel, text: finalLabel, raw: r } as any;
   }
 

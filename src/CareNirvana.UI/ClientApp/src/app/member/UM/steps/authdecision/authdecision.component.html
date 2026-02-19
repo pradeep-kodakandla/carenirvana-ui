@@ -1,7 +1,5 @@
 <div class="d-flex align-items-center justify-content-between mb-2">
-  <div>
-    <!--<div class="h6 mb-0">Authorization Decision</div>-->
-  </div>
+  <div></div>
 
   <div class="case-savebar">
     <button class="btn btn-sm btn-primary me-2" (click)="saveCurrentTab()" [disabled]="loading || saving">
@@ -24,9 +22,10 @@
   Loading...
 </div>
 
-<div *ngIf="!loading && activeState as st" class="decision-details-layout">
+<div *ngIf="!loading && activeState as st" class="decision-details-layout"
+     [ngClass]="activeState?.tab?.statusClass">
 
-  <!-- Left tabs -->
+  <!-- ===== Left tabs ===== -->
   <div class="tabs-container">
     <div class="tabs">
       <div *ngFor="let tab of tabs"
@@ -44,20 +43,19 @@
         <!-- Row 2: Dates -->
         <div class="tab-line2" *ngIf="tab.line2">{{ tab.line2 }}</div>
 
-        <!-- Row 3: Status reason (only when set) -->
+        <!-- Row 3: Status reason -->
         <div class="tab-line4" *ngIf="tab.line4">{{ tab.line4 }}</div>
       </div>
     </div>
   </div>
 
-  <!-- Right content -->
-  <div class="tab-content">
+  <!-- ===== Right content ===== -->
+  <div class="tab-content" [ngClass]="activeState?.tab?.statusClass + '-panel'">
 
     <form class="auth-details" [formGroup]="form">
 
       <ng-container *ngFor="let section of st.sections">
 
-        <!-- show section only if it has at least one visible field -->
         <div class="section-card"
              *ngIf="section?.fields?.length && isSectionVisible(st, section)"
              style="height:auto;max-height:none;overflow:visible;">

@@ -138,7 +138,7 @@
                SECTION FIELDS (NON-REPEAT)
           ========================= -->
           <ng-container *ngIf="!sec.repeat?.enabled; else sectionRepeatTpl">
-            <div class="grid" style="padding-bottom: 15px;">
+            <div class="grid">
               <ng-container *ngFor="let f of getNonActionFields(sec.fields)">
                 <ng-container *ngIf="isVisible(f)">
                   <ng-container *ngIf="form.get(f.controlName) as ctrl">
@@ -457,10 +457,10 @@
                               <span class="dc-icd-desc">{{ getDiagnosisDescription(inst) }}</span>
                               <span class="dc-primary-badge" *ngIf="isDiagnosisPrimary(inst)">Primary</span>
                             </div>
-                            <div class="dc-info-meta" *ngIf="getDiagnosisCodeType(inst)">
+                            <!--<div class="dc-info-meta" *ngIf="getDiagnosisCodeType(inst)">
                               <span class="dc-meta-label">Code Type:</span>
                               <span class="dc-meta-value">{{ getDiagnosisCodeType(inst) }}</span>
-                            </div>
+                            </div>-->
                           </div>
                         </ng-container>
 
@@ -478,7 +478,7 @@
                   <ng-container *ngFor="let inst of sec.instances; trackBy: trackProvIdx">
                     <div class="sc-card" [class.sc-card--filled]="hasServiceData(inst)">
                       <div class="sc-card-top">
-                        <span class="sc-number">{{ sec.repeat?.instanceLabel }} #{{ inst.index }}</span>
+                        <!--<span class="sc-number">{{ sec.repeat?.instanceLabel }} #{{ inst.index }}</span>-->
                         <div class="dc-top-actions">
                           <button type="button" class="dc-top-btn dc-top-btn--edit" *ngIf="hasServiceData(inst) && !isServiceInEditMode(inst)" (click)="editService(inst)" title="Edit"><mat-icon class="dc-action-icon">edit</mat-icon></button>
                           <button type="button" class="dc-top-btn dc-top-btn--delete" (click)="hasServiceData(inst) ? clearServiceData(inst) : removeRepeat(sec, inst.index)"><mat-icon class="dc-action-icon">delete</mat-icon></button>
@@ -624,7 +624,7 @@
            SUBSECTION FIELDS (NON-REPEAT)
       ========================= -->
       <ng-container *ngIf="!sub.repeat?.enabled; else subRepeatTpl">
-        <div class="grid" style="padding-bottom: 10px;">
+        <div class="grid">
           <ng-container *ngFor="let f of getNonActionFields(sub.fields)">
             <ng-container *ngIf="isVisible(f)">
               <ng-container *ngIf="form.get(f.controlName) as ctrl">
@@ -949,10 +949,10 @@
                           <span class="dc-icd-desc">{{ getDiagnosisDescription(inst) }}</span>
                           <span class="dc-primary-badge" *ngIf="isDiagnosisPrimary(inst)">Primary</span>
                         </div>
-                        <div class="dc-info-meta" *ngIf="getDiagnosisCodeType(inst)">
+                        <!--<div class="dc-info-meta" *ngIf="getDiagnosisCodeType(inst)">
                           <span class="dc-meta-label">Code Type:</span>
                           <span class="dc-meta-value">{{ getDiagnosisCodeType(inst) }}</span>
-                        </div>
+                        </div>-->
                       </div>
                     </ng-container>
 
@@ -971,7 +971,7 @@
                 <div class="sc-card" [class.sc-card--filled]="hasServiceData(inst)">
                   <!-- Top bar -->
                   <div class="sc-card-top">
-                    <span class="sc-number">{{ sub.repeat?.instanceLabel }} #{{ inst.index }}</span>
+                    <!--<span class="sc-number">{{ sub.repeat?.instanceLabel }} #{{ inst.index }}</span>-->
                     <div class="dc-top-actions">
                       <button type="button" class="dc-top-btn dc-top-btn--edit"
                               *ngIf="hasServiceData(inst) && !isServiceInEditMode(inst)"
