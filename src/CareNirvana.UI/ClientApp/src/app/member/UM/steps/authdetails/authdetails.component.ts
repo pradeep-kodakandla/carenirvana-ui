@@ -3231,9 +3231,17 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
     const f = this.getProvRoleField(inst);
     if (!f) return '';
     const v = this.form?.get(f.controlName)?.value;
-    if (!v) return '';
-    if (typeof v === 'string') return v;
-    return String(v?.label ?? v?.text ?? v?.name ?? v?.value ?? '');
+    if (v === null || v === undefined || v === '') return '';
+    // Look up label from dropdown options
+    const opts = this.getDropdownOptions(f.controlName);
+    const vStr = String(v);
+    const match = opts.find(o => String(o?.value) === vStr || o?.value === v);
+    if (match?.label) return String(match.label);
+    // Fallback: if value is an object with a label
+    if (typeof v === 'object') {
+      return String(v?.label ?? v?.text ?? v?.name ?? v?.value ?? '');
+    }
+    return '';
   }
 
   /** Action buttons for each card (excluding "Add New Provider") */
@@ -3581,9 +3589,17 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
     const ctf = this.getDiagCodeTypeField(inst);
     if (!ctf) return '';
     const v = this.form?.get(ctf.controlName)?.value;
-    if (!v) return '';
-    if (typeof v === 'string') return v;
-    return String(v?.label ?? v?.text ?? v?.name ?? v?.value ?? '');
+    if (v === null || v === undefined || v === '') return '';
+    // Look up label from dropdown options
+    const opts = this.getDropdownOptions(ctf.controlName);
+    const vStr = String(v);
+    const match = opts.find(o => String(o?.value) === vStr || o?.value === v);
+    if (match?.label) return String(match.label);
+    // Fallback: if value is an object with a label
+    if (typeof v === 'object') {
+      return String(v?.label ?? v?.text ?? v?.name ?? v?.value ?? '');
+    }
+    return '';
   }
 
   /** Whether this instance is marked as primary */

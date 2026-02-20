@@ -247,15 +247,22 @@
                     <div class="pc-card" [class.pc-card--filled]="hasProviderData(inst)"
                          [class.pc-card--oon]="getProviderNetworkStatus(inst) === 'Out-of-Network'">
 
-                      <!-- Top row: role dropdown + edit + delete -->
+                      <!-- Top row: role display/dropdown + edit + delete -->
                       <div class="pc-card-top">
                         <ng-container *ngIf="getProvRoleField(inst) as rf">
                           <ng-container *ngIf="form.get(rf.controlName) as rc">
-                            <div class="pc-role-wrap pc-role-bordered">
-                              <ui-smart-dropdown class="ff-ui pc-dropdown" label="{{ rf.displayName }}" placeholder="Select role..."
-                                [options]="getDropdownOptions(rf.controlName)" [formControlName]="rf.controlName">
-                              </ui-smart-dropdown>
+                            <!-- View mode: bold uppercase text -->
+                            <div class="pc-role-wrap pc-role-static" *ngIf="hasProviderSelected(inst); else secProvRoleDropdown">
+                              <span class="pc-role-value">{{ getProvRoleDisplay(inst) || rf.displayName }}</span>
                             </div>
+                            <!-- Edit / empty mode: dropdown -->
+                            <ng-template #secProvRoleDropdown>
+                              <div class="pc-role-wrap pc-role-bordered">
+                                <ui-smart-dropdown class="ff-ui pc-dropdown" label="{{ rf.displayName }}" placeholder="Select role..."
+                                  [options]="getDropdownOptions(rf.controlName)" [formControlName]="rf.controlName">
+                                </ui-smart-dropdown>
+                              </div>
+                            </ng-template>
                           </ng-container>
                         </ng-container>
                         <div class="dc-top-actions">
@@ -385,13 +392,20 @@
                         <div class="dc-card-top">
                           <ng-container *ngIf="getDiagCodeTypeField(inst) as ctf">
                             <ng-container *ngIf="form.get(ctf.controlName) as ctc">
-                              <div class="dc-codetype-wrap">
-                                <ui-smart-dropdown class="ff-ui dc-dropdown"
-                                  label="{{ ctf.displayName }}" placeholder="Select code type..."
-                                  [options]="getDropdownOptions(ctf.controlName)"
-                                  [formControlName]="ctf.controlName">
-                                </ui-smart-dropdown>
+                              <!-- View mode: bold uppercase text -->
+                              <div class="dc-codetype-wrap dc-codetype-static" *ngIf="hasDiagnosisSelected(inst); else secDiagCodeTypeDropdown">
+                                <span class="dc-codetype-value">{{ getDiagnosisCodeType(inst) || ctf.displayName }}</span>
                               </div>
+                              <!-- Edit / empty mode: dropdown -->
+                              <ng-template #secDiagCodeTypeDropdown>
+                                <div class="dc-codetype-wrap">
+                                  <ui-smart-dropdown class="ff-ui dc-dropdown"
+                                    label="{{ ctf.displayName }}" placeholder="Select code type..."
+                                    [options]="getDropdownOptions(ctf.controlName)"
+                                    [formControlName]="ctf.controlName">
+                                  </ui-smart-dropdown>
+                                </div>
+                              </ng-template>
                             </ng-container>
                           </ng-container>
 
@@ -477,14 +491,14 @@
                 <div class="sc-list">
                   <ng-container *ngFor="let inst of sec.instances; trackBy: trackProvIdx">
                     <div class="sc-card" [class.sc-card--filled]="hasServiceData(inst)">
-                      <div class="sc-card-top">
-                        <!--<span class="sc-number">{{ sec.repeat?.instanceLabel }} #{{ inst.index }}</span>-->
-                        <div class="dc-top-actions">
-                          <button type="button" class="dc-top-btn dc-top-btn--edit" *ngIf="hasServiceData(inst) && !isServiceInEditMode(inst)" (click)="editService(inst)" title="Edit"><mat-icon class="dc-action-icon">edit</mat-icon></button>
-                          <button type="button" class="dc-top-btn dc-top-btn--delete" (click)="hasServiceData(inst) ? clearServiceData(inst) : removeRepeat(sec, inst.index)"><mat-icon class="dc-action-icon">delete</mat-icon></button>
-                        </div>
-                      </div>
+
+                      <!-- When NOT selected: show search + delete -->
                       <ng-container *ngIf="!hasServiceSelected(inst)">
+                        <div class="sc-card-top">
+                          <div class="dc-top-actions">
+                            <button type="button" class="dc-top-btn dc-top-btn--delete" (click)="hasServiceData(inst) ? clearServiceData(inst) : removeRepeat(sec, inst.index)"><mat-icon class="dc-action-icon">delete</mat-icon></button>
+                          </div>
+                        </div>
                         <ng-container *ngIf="getServiceSearchField(inst) as sf">
                           <ng-container *ngIf="form.get(sf.controlName) as sc">
                             <div class="dc-search-row"><div class="sc-search"><ui-smart-lookup class="ff-ui ff-lookup sc-search-input" [placeholder]="getLookupPlaceholder(sf)" [minChars]="getLookupMinChars(sf)" [debounceMs]="getLookupDebounceMs(sf)" [limit]="getLookupLimit(sf)" [searchFn]="getLookupSearchFn(sf)" [displayWith]="getLookupDisplayWith(sf)" [trackBy]="getLookupTrackBy(sf)" [formControlName]="sf.controlName" (selected)="onServiceLookupSelected(sf, inst, $event)" (textChange)="onLookupTextChange(sf, $event)" (cleared)="onServiceLookupCleared(sf, inst)"></ui-smart-lookup></div><button type="button" class="dc-cancel-btn" *ngIf="isServiceInEditMode(inst)" (click)="cancelEditService(inst)">Cancel</button></div>
@@ -493,8 +507,17 @@
                         <div class="sc-identity sc-identity--muted" *ngIf="isServiceInEditMode(inst)"><span class="sc-code">{{ getServiceCode(inst) }}</span><span class="sc-desc">{{ getServiceDescription(inst) }}</span></div>
                         <div class="sc-empty" *ngIf="!isServiceInEditMode(inst)"><mat-icon class="sc-empty-icon">search</mat-icon><span>Search for a procedure code</span></div>
                       </ng-container>
+
+                      <!-- When selected: code + desc + edit/delete in one row -->
                       <ng-container *ngIf="hasServiceSelected(inst)">
-                        <div class="sc-identity"><span class="sc-code">{{ getServiceCode(inst) }}</span><span class="sc-desc">{{ getServiceDescription(inst) }}</span></div>
+                        <div class="sc-identity">
+                          <span class="sc-code">{{ getServiceCode(inst) }}</span>
+                          <span class="sc-desc">{{ getServiceDescription(inst) }}</span>
+                          <div class="dc-top-actions sc-identity-actions">
+                            <button type="button" class="dc-top-btn dc-top-btn--edit" *ngIf="!isServiceInEditMode(inst)" (click)="editService(inst)" title="Edit"><mat-icon class="dc-action-icon">edit</mat-icon></button>
+                            <button type="button" class="dc-top-btn dc-top-btn--delete" (click)="clearServiceData(inst)"><mat-icon class="dc-action-icon">delete</mat-icon></button>
+                          </div>
+                        </div>
                       </ng-container>
                       <div class="sc-body">
                         <ng-container *ngFor="let f of getServiceBodyFields(inst)">
@@ -731,17 +754,24 @@
                 <div class="pc-card" [class.pc-card--filled]="hasProviderData(inst)"
                      [class.pc-card--oon]="getProviderNetworkStatus(inst) === 'Out-of-Network'">
 
-                  <!-- Top row: role dropdown + edit + delete -->
+                  <!-- Top row: role display/dropdown + edit + delete -->
                   <div class="pc-card-top">
                     <ng-container *ngIf="getProvRoleField(inst) as rf">
                       <ng-container *ngIf="form.get(rf.controlName) as rc">
-                        <div class="pc-role-wrap pc-role-bordered">
-                          <ui-smart-dropdown class="ff-ui pc-dropdown"
-                            label="{{ rf.displayName }}" placeholder="Select role..."
-                            [options]="getDropdownOptions(rf.controlName)"
-                            [formControlName]="rf.controlName">
-                          </ui-smart-dropdown>
+                        <!-- View mode: bold uppercase text -->
+                        <div class="pc-role-wrap pc-role-static" *ngIf="hasProviderSelected(inst); else subProvRoleDropdown">
+                          <span class="pc-role-value">{{ getProvRoleDisplay(inst) || rf.displayName }}</span>
                         </div>
+                        <!-- Edit / empty mode: dropdown -->
+                        <ng-template #subProvRoleDropdown>
+                          <div class="pc-role-wrap pc-role-bordered">
+                            <ui-smart-dropdown class="ff-ui pc-dropdown"
+                              label="{{ rf.displayName }}" placeholder="Select role..."
+                              [options]="getDropdownOptions(rf.controlName)"
+                              [formControlName]="rf.controlName">
+                            </ui-smart-dropdown>
+                          </div>
+                        </ng-template>
                       </ng-container>
                     </ng-container>
                     <div class="dc-top-actions">
@@ -877,13 +907,20 @@
                     <div class="dc-card-top">
                       <ng-container *ngIf="getDiagCodeTypeField(inst) as ctf">
                         <ng-container *ngIf="form.get(ctf.controlName) as ctc">
-                          <div class="dc-codetype-wrap">
-                            <ui-smart-dropdown class="ff-ui dc-dropdown"
-                              label="{{ ctf.displayName }}" placeholder="Select code type..."
-                              [options]="getDropdownOptions(ctf.controlName)"
-                              [formControlName]="ctf.controlName">
-                            </ui-smart-dropdown>
+                          <!-- View mode: bold uppercase text -->
+                          <div class="dc-codetype-wrap dc-codetype-static" *ngIf="hasDiagnosisSelected(inst); else subDiagCodeTypeDropdown">
+                            <span class="dc-codetype-value">{{ getDiagnosisCodeType(inst) || ctf.displayName }}</span>
                           </div>
+                          <!-- Edit / empty mode: dropdown -->
+                          <ng-template #subDiagCodeTypeDropdown>
+                            <div class="dc-codetype-wrap">
+                              <ui-smart-dropdown class="ff-ui dc-dropdown"
+                                label="{{ ctf.displayName }}" placeholder="Select code type..."
+                                [options]="getDropdownOptions(ctf.controlName)"
+                                [formControlName]="ctf.controlName">
+                              </ui-smart-dropdown>
+                            </div>
+                          </ng-template>
                         </ng-container>
                       </ng-container>
 
@@ -969,24 +1006,18 @@
             <div class="sc-list">
               <ng-container *ngFor="let inst of sub.instances; trackBy: trackProvIdx">
                 <div class="sc-card" [class.sc-card--filled]="hasServiceData(inst)">
-                  <!-- Top bar -->
-                  <div class="sc-card-top">
-                    <!--<span class="sc-number">{{ sub.repeat?.instanceLabel }} #{{ inst.index }}</span>-->
-                    <div class="dc-top-actions">
-                      <button type="button" class="dc-top-btn dc-top-btn--edit"
-                              *ngIf="hasServiceData(inst) && !isServiceInEditMode(inst)"
-                              (click)="editService(inst)" title="Edit">
-                        <mat-icon class="dc-action-icon">edit</mat-icon>
-                      </button>
-                      <button type="button" class="dc-top-btn dc-top-btn--delete"
-                              (click)="hasServiceData(inst) ? clearServiceData(inst) : removeRepeat(sub, inst.index)">
-                        <mat-icon class="dc-action-icon">delete</mat-icon>
-                      </button>
-                    </div>
-                  </div>
 
-                  <!-- Search: when not selected or editing -->
+                  <!-- When NOT selected: show search + delete -->
                   <ng-container *ngIf="!hasServiceSelected(inst)">
+                    <div class="sc-card-top">
+                      <div class="dc-top-actions">
+                        <button type="button" class="dc-top-btn dc-top-btn--delete"
+                                (click)="hasServiceData(inst) ? clearServiceData(inst) : removeRepeat(sub, inst.index)">
+                          <mat-icon class="dc-action-icon">delete</mat-icon>
+                        </button>
+                      </div>
+                    </div>
+
                     <ng-container *ngIf="getServiceSearchField(inst) as sf">
                       <ng-container *ngIf="form.get(sf.controlName) as sc">
                         <div class="dc-search-row">
@@ -1025,11 +1056,22 @@
                     </div>
                   </ng-container>
 
-                  <!-- Selected procedure header -->
+                  <!-- When selected: code + desc + edit/delete in one row -->
                   <ng-container *ngIf="hasServiceSelected(inst)">
                     <div class="sc-identity">
                       <span class="sc-code">{{ getServiceCode(inst) }}</span>
                       <span class="sc-desc">{{ getServiceDescription(inst) }}</span>
+                      <div class="dc-top-actions sc-identity-actions">
+                        <button type="button" class="dc-top-btn dc-top-btn--edit"
+                                *ngIf="!isServiceInEditMode(inst)"
+                                (click)="editService(inst)" title="Edit">
+                          <mat-icon class="dc-action-icon">edit</mat-icon>
+                        </button>
+                        <button type="button" class="dc-top-btn dc-top-btn--delete"
+                                (click)="clearServiceData(inst)">
+                          <mat-icon class="dc-action-icon">delete</mat-icon>
+                        </button>
+                      </div>
                     </div>
                   </ng-container>
 
