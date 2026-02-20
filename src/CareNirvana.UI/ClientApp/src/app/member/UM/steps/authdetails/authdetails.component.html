@@ -381,105 +381,95 @@
             <!-- ═══ DIAGNOSIS / ICD CARDS (section-level) ═══ -->
             <ng-template #diagOrNormalSecRepeat>
               <ng-container *ngIf="isDiagnosisRepeatGroup(sec); else serviceOrNormalSecRepeat">
-                <div class="dc-grid">
+                <div class="dc-list">
                   <ng-container *ngFor="let inst of sec.instances; trackBy: trackProvIdx">
-                    <div class="dc">
-                      <div class="dc-card"
-                           [class.dc-card--filled]="hasDiagnosisSelected(inst)"
-                           [class.dc-card--primary]="isDiagnosisPrimary(inst)">
 
-                        <!-- Top row: Code Type + Primary + Edit + Delete — all in one row -->
+                    <!-- ── SELECTED VIEW: single inline row ── -->
+                    <div class="dc-row" *ngIf="hasDiagnosisSelected(inst); else secDiagEditCard">
+                      <ng-container *ngIf="getDiagCodeTypeField(inst) as ctf">
+                        <span class="dc-codetype-value">{{ getDiagnosisCodeType(inst) || ctf.displayName }}</span>
+                      </ng-container>
+                      <span class="dc-icd-code">{{ getDiagnosisCode(inst) }}</span>
+                      <span class="dc-icd-desc">{{ getDiagnosisDescription(inst) }}</span>
+                      <label class="dc-primary-radio" [class.dc-primary-radio--active]="isDiagnosisPrimary(inst)">
+                        <input type="radio" name="primaryDiagnosis"
+                               [checked]="isDiagnosisPrimary(inst)"
+                               (change)="setDiagnosisPrimary(inst)" />
+                        <span class="dc-primary-label">Primary</span>
+                      </label>
+                      <div class="dc-top-actions">
+                        <button type="button" class="dc-top-btn dc-top-btn--edit"
+                                (click)="editDiagnosis(inst)" title="Edit">
+                          <mat-icon class="dc-action-icon">edit</mat-icon>
+                        </button>
+                        <button type="button" class="dc-top-btn dc-top-btn--delete"
+                                (click)="clearDiagnosisData(inst)">
+                          <mat-icon class="dc-action-icon">delete</mat-icon>
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- ── EDIT / EMPTY: card layout ── -->
+                    <ng-template #secDiagEditCard>
+                      <div class="dc-card">
                         <div class="dc-card-top">
                           <ng-container *ngIf="getDiagCodeTypeField(inst) as ctf">
                             <ng-container *ngIf="form.get(ctf.controlName) as ctc">
-                              <!-- View mode: bold uppercase text -->
-                              <div class="dc-codetype-wrap dc-codetype-static" *ngIf="hasDiagnosisSelected(inst); else secDiagCodeTypeDropdown">
-                                <span class="dc-codetype-value">{{ getDiagnosisCodeType(inst) || ctf.displayName }}</span>
+                              <div class="dc-codetype-wrap">
+                                <ui-smart-dropdown class="ff-ui dc-dropdown"
+                                  label="{{ ctf.displayName }}" placeholder="Select code type..."
+                                  [options]="getDropdownOptions(ctf.controlName)"
+                                  [formControlName]="ctf.controlName">
+                                </ui-smart-dropdown>
                               </div>
-                              <!-- Edit / empty mode: dropdown -->
-                              <ng-template #secDiagCodeTypeDropdown>
-                                <div class="dc-codetype-wrap">
-                                  <ui-smart-dropdown class="ff-ui dc-dropdown"
-                                    label="{{ ctf.displayName }}" placeholder="Select code type..."
-                                    [options]="getDropdownOptions(ctf.controlName)"
-                                    [formControlName]="ctf.controlName">
-                                  </ui-smart-dropdown>
-                                </div>
-                              </ng-template>
                             </ng-container>
                           </ng-container>
-
                           <label class="dc-primary-radio" [class.dc-primary-radio--active]="isDiagnosisPrimary(inst)">
                             <input type="radio" name="primaryDiagnosis"
                                    [checked]="isDiagnosisPrimary(inst)"
                                    (change)="setDiagnosisPrimary(inst)" />
                             <span class="dc-primary-label">Primary</span>
                           </label>
-
                           <div class="dc-top-actions">
-                            <button type="button" class="dc-top-btn dc-top-btn--edit"
-                                    *ngIf="hasDiagnosisSelected(inst)"
-                                    (click)="editDiagnosis(inst)" title="Edit">
-                              <mat-icon class="dc-action-icon">edit</mat-icon>
-                            </button>
                             <button type="button" class="dc-top-btn dc-top-btn--delete"
-                                    (click)="hasDiagnosisSelected(inst) ? clearDiagnosisData(inst) : removeRepeat(sec, inst.index)">
+                                    (click)="removeRepeat(sec, inst.index)">
                               <mat-icon class="dc-action-icon">delete</mat-icon>
                             </button>
                           </div>
                         </div>
-
-                        <!-- Search: visible when NO ICD selected OR in edit mode -->
-                        <ng-container *ngIf="!hasDiagnosisSelected(inst)">
-                          <ng-container *ngIf="getDiagSearchField(inst) as sf">
-                            <ng-container *ngIf="form.get(sf.controlName) as sc">
-                              <div class="dc-search-row">
-                                <div class="dc-search dc-search-bordered">
-                                  <ui-smart-lookup class="ff-ui dc-search-input"
-                                    [placeholder]="getLookupPlaceholder(sf)"
-                                    [minChars]="getLookupMinChars(sf)"
-                                    [debounceMs]="getLookupDebounceMs(sf)"
-                                    [limit]="getLookupLimit(sf)"
-                                    [searchFn]="getLookupSearchFn(sf)"
-                                    [displayWith]="getLookupDisplayWith(sf)"
-                                    [trackBy]="getLookupTrackBy(sf)"
-                                    [formControlName]="sf.controlName"
-                                    (selected)="onDiagnosisLookupSelected(sf, inst, $event)"
-                                    (textChange)="onLookupTextChange(sf, $event)"
-                                    (cleared)="onDiagnosisLookupCleared(sf, inst)">
-                                  </ui-smart-lookup>
-                                </div>
-                                <button type="button" class="dc-cancel-btn"
-                                        *ngIf="isDiagnosisInEditMode(inst)"
-                                        (click)="cancelEditDiagnosis(inst)">
-                                  Cancel
-                                </button>
+                        <ng-container *ngIf="getDiagSearchField(inst) as sf">
+                          <ng-container *ngIf="form.get(sf.controlName) as sc">
+                            <div class="dc-search-row">
+                              <div class="dc-search dc-search-bordered">
+                                <ui-smart-lookup class="ff-ui dc-search-input"
+                                  [placeholder]="getLookupPlaceholder(sf)"
+                                  [minChars]="getLookupMinChars(sf)"
+                                  [debounceMs]="getLookupDebounceMs(sf)"
+                                  [limit]="getLookupLimit(sf)"
+                                  [searchFn]="getLookupSearchFn(sf)"
+                                  [displayWith]="getLookupDisplayWith(sf)"
+                                  [trackBy]="getLookupTrackBy(sf)"
+                                  [formControlName]="sf.controlName"
+                                  (selected)="onDiagnosisLookupSelected(sf, inst, $event)"
+                                  (textChange)="onLookupTextChange(sf, $event)"
+                                  (cleared)="onDiagnosisLookupCleared(sf, inst)">
+                                </ui-smart-lookup>
                               </div>
-                            </ng-container>
-                          </ng-container>
-                          <div class="dc-empty-state" *ngIf="!isDiagnosisInEditMode(inst)">
-                            <mat-icon class="dc-empty-icon">search</mat-icon>
-                            <span>Search for an ICD code</span>
-                          </div>
-                        </ng-container>
-
-                        <!-- ICD Info: visible when ICD IS selected and NOT in edit mode -->
-                        <ng-container *ngIf="hasDiagnosisSelected(inst)">
-                          <div class="dc-info">
-                            <div class="dc-info-inline">
-                              <span class="dc-icd-code">{{ getDiagnosisCode(inst) }}</span>
-                              <span class="dc-icd-desc">{{ getDiagnosisDescription(inst) }}</span>
-                              <span class="dc-primary-badge" *ngIf="isDiagnosisPrimary(inst)">Primary</span>
+                              <button type="button" class="dc-cancel-btn"
+                                      *ngIf="isDiagnosisInEditMode(inst)"
+                                      (click)="cancelEditDiagnosis(inst)">
+                                Cancel
+                              </button>
                             </div>
-                            <!--<div class="dc-info-meta" *ngIf="getDiagnosisCodeType(inst)">
-                              <span class="dc-meta-label">Code Type:</span>
-                              <span class="dc-meta-value">{{ getDiagnosisCodeType(inst) }}</span>
-                            </div>-->
-                          </div>
+                          </ng-container>
                         </ng-container>
-
+                        <div class="dc-empty-state" *ngIf="!isDiagnosisInEditMode(inst)">
+                          <mat-icon class="dc-empty-icon">search</mat-icon>
+                          <span>Search for an ICD code</span>
+                        </div>
                       </div>
-                    </div>
+                    </ng-template>
+
                   </ng-container>
                 </div>
               </ng-container>
@@ -624,6 +614,22 @@
       {{ isSaving ? 'Saving...' : 'Save' }}
     </button>
   </div>-->
+
+  <!-- Fax mode: Save & Cancel bar -->
+  <div class="fax-action-bar" *ngIf="isFaxMode">
+    <button type="button" class="fax-cancel-btn" (click)="authCancelled.emit()" [disabled]="isSaving">
+      Cancel
+    </button>
+    <button type="button" class="fax-save-btn" (click)="save()" [disabled]="isSaving">
+      <ng-container *ngIf="!isSaving">
+        <mat-icon class="fax-save-icon">save</mat-icon>
+        Save Authorization
+      </ng-container>
+      <ng-container *ngIf="isSaving">
+        Saving...
+      </ng-container>
+    </button>
+  </div>
   <!-- Recursive subsection template -->
   <ng-template #subTpl let-sub let-depth="depth" let-parentSec="parentSec">
     <div class="sub-card" [class.sub-nested]="depth > 0">
@@ -896,105 +902,95 @@
         <!-- ═══ DIAGNOSIS / ICD CARDS (subsection-level) ═══ -->
         <ng-template #diagOrNormalSubRepeat>
           <ng-container *ngIf="isDiagnosisRepeatGroup(sub, parentSec); else serviceOrNormalSubRepeat">
-            <div class="dc-grid">
+            <div class="dc-list">
               <ng-container *ngFor="let inst of sub.instances; trackBy: trackProvIdx">
-                <div class="dc">
-                  <div class="dc-card"
-                       [class.dc-card--filled]="hasDiagnosisSelected(inst)"
-                       [class.dc-card--primary]="isDiagnosisPrimary(inst)">
 
-                    <!-- Top row: Code Type + Primary + Edit + Delete — all in one row -->
+                <!-- ── SELECTED VIEW: single inline row ── -->
+                <div class="dc-row" *ngIf="hasDiagnosisSelected(inst); else subDiagEditCard">
+                  <ng-container *ngIf="getDiagCodeTypeField(inst) as ctf">
+                    <span class="dc-codetype-value">{{ getDiagnosisCodeType(inst) || ctf.displayName }}</span>
+                  </ng-container>
+                  <span class="dc-icd-code">{{ getDiagnosisCode(inst) }}</span>
+                  <span class="dc-icd-desc">{{ getDiagnosisDescription(inst) }}</span>
+                  <label class="dc-primary-radio" [class.dc-primary-radio--active]="isDiagnosisPrimary(inst)">
+                    <input type="radio" name="primaryDiagnosisSub"
+                           [checked]="isDiagnosisPrimary(inst)"
+                           (change)="setDiagnosisPrimary(inst)" />
+                    <span class="dc-primary-label">Primary</span>
+                  </label>
+                  <div class="dc-top-actions">
+                    <button type="button" class="dc-top-btn dc-top-btn--edit"
+                            (click)="editDiagnosis(inst)" title="Edit">
+                      <mat-icon class="dc-action-icon">edit</mat-icon>
+                    </button>
+                    <button type="button" class="dc-top-btn dc-top-btn--delete"
+                            (click)="clearDiagnosisData(inst)">
+                      <mat-icon class="dc-action-icon">delete</mat-icon>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- ── EDIT / EMPTY: card layout ── -->
+                <ng-template #subDiagEditCard>
+                  <div class="dc-card">
                     <div class="dc-card-top">
                       <ng-container *ngIf="getDiagCodeTypeField(inst) as ctf">
                         <ng-container *ngIf="form.get(ctf.controlName) as ctc">
-                          <!-- View mode: bold uppercase text -->
-                          <div class="dc-codetype-wrap dc-codetype-static" *ngIf="hasDiagnosisSelected(inst); else subDiagCodeTypeDropdown">
-                            <span class="dc-codetype-value">{{ getDiagnosisCodeType(inst) || ctf.displayName }}</span>
+                          <div class="dc-codetype-wrap">
+                            <ui-smart-dropdown class="ff-ui dc-dropdown"
+                              label="{{ ctf.displayName }}" placeholder="Select code type..."
+                              [options]="getDropdownOptions(ctf.controlName)"
+                              [formControlName]="ctf.controlName">
+                            </ui-smart-dropdown>
                           </div>
-                          <!-- Edit / empty mode: dropdown -->
-                          <ng-template #subDiagCodeTypeDropdown>
-                            <div class="dc-codetype-wrap">
-                              <ui-smart-dropdown class="ff-ui dc-dropdown"
-                                label="{{ ctf.displayName }}" placeholder="Select code type..."
-                                [options]="getDropdownOptions(ctf.controlName)"
-                                [formControlName]="ctf.controlName">
-                              </ui-smart-dropdown>
-                            </div>
-                          </ng-template>
                         </ng-container>
                       </ng-container>
-
                       <label class="dc-primary-radio" [class.dc-primary-radio--active]="isDiagnosisPrimary(inst)">
                         <input type="radio" name="primaryDiagnosisSub"
                                [checked]="isDiagnosisPrimary(inst)"
                                (change)="setDiagnosisPrimary(inst)" />
                         <span class="dc-primary-label">Primary</span>
                       </label>
-
                       <div class="dc-top-actions">
-                        <button type="button" class="dc-top-btn dc-top-btn--edit"
-                                *ngIf="hasDiagnosisSelected(inst)"
-                                (click)="editDiagnosis(inst)" title="Edit">
-                          <mat-icon class="dc-action-icon">edit</mat-icon>
-                        </button>
                         <button type="button" class="dc-top-btn dc-top-btn--delete"
-                                (click)="hasDiagnosisSelected(inst) ? clearDiagnosisData(inst) : removeRepeat(sub, inst.index)">
+                                (click)="removeRepeat(sub, inst.index)">
                           <mat-icon class="dc-action-icon">delete</mat-icon>
                         </button>
                       </div>
                     </div>
-
-                    <!-- Search: visible when NO ICD selected OR in edit mode -->
-                    <ng-container *ngIf="!hasDiagnosisSelected(inst)">
-                      <ng-container *ngIf="getDiagSearchField(inst) as sf">
-                        <ng-container *ngIf="form.get(sf.controlName) as sc">
-                          <div class="dc-search-row">
-                            <div class="dc-search dc-search-bordered">
-                              <ui-smart-lookup class="ff-ui dc-search-input"
-                                [placeholder]="getLookupPlaceholder(sf)"
-                                [minChars]="getLookupMinChars(sf)"
-                                [debounceMs]="getLookupDebounceMs(sf)"
-                                [limit]="getLookupLimit(sf)"
-                                [searchFn]="getLookupSearchFn(sf)"
-                                [displayWith]="getLookupDisplayWith(sf)"
-                                [trackBy]="getLookupTrackBy(sf)"
-                                [formControlName]="sf.controlName"
-                                (selected)="onDiagnosisLookupSelected(sf, inst, $event)"
-                                (textChange)="onLookupTextChange(sf, $event)"
-                                (cleared)="onDiagnosisLookupCleared(sf, inst)">
-                              </ui-smart-lookup>
-                            </div>
-                            <button type="button" class="dc-cancel-btn"
-                                    *ngIf="isDiagnosisInEditMode(inst)"
-                                    (click)="cancelEditDiagnosis(inst)">
-                              Cancel
-                            </button>
+                    <ng-container *ngIf="getDiagSearchField(inst) as sf">
+                      <ng-container *ngIf="form.get(sf.controlName) as sc">
+                        <div class="dc-search-row">
+                          <div class="dc-search dc-search-bordered">
+                            <ui-smart-lookup class="ff-ui dc-search-input"
+                              [placeholder]="getLookupPlaceholder(sf)"
+                              [minChars]="getLookupMinChars(sf)"
+                              [debounceMs]="getLookupDebounceMs(sf)"
+                              [limit]="getLookupLimit(sf)"
+                              [searchFn]="getLookupSearchFn(sf)"
+                              [displayWith]="getLookupDisplayWith(sf)"
+                              [trackBy]="getLookupTrackBy(sf)"
+                              [formControlName]="sf.controlName"
+                              (selected)="onDiagnosisLookupSelected(sf, inst, $event)"
+                              (textChange)="onLookupTextChange(sf, $event)"
+                              (cleared)="onDiagnosisLookupCleared(sf, inst)">
+                            </ui-smart-lookup>
                           </div>
-                        </ng-container>
-                      </ng-container>
-                      <div class="dc-empty-state" *ngIf="!isDiagnosisInEditMode(inst)">
-                        <mat-icon class="dc-empty-icon">search</mat-icon>
-                        <span>Search for an ICD code</span>
-                      </div>
-                    </ng-container>
-
-                    <!-- ICD Info: visible when ICD IS selected and NOT in edit mode -->
-                    <ng-container *ngIf="hasDiagnosisSelected(inst)">
-                      <div class="dc-info">
-                        <div class="dc-info-inline">
-                          <span class="dc-icd-code">{{ getDiagnosisCode(inst) }}</span>
-                          <span class="dc-icd-desc">{{ getDiagnosisDescription(inst) }}</span>
-                          <span class="dc-primary-badge" *ngIf="isDiagnosisPrimary(inst)">Primary</span>
+                          <button type="button" class="dc-cancel-btn"
+                                  *ngIf="isDiagnosisInEditMode(inst)"
+                                  (click)="cancelEditDiagnosis(inst)">
+                            Cancel
+                          </button>
                         </div>
-                        <!--<div class="dc-info-meta" *ngIf="getDiagnosisCodeType(inst)">
-                          <span class="dc-meta-label">Code Type:</span>
-                          <span class="dc-meta-value">{{ getDiagnosisCodeType(inst) }}</span>
-                        </div>-->
-                      </div>
+                      </ng-container>
                     </ng-container>
-
+                    <div class="dc-empty-state" *ngIf="!isDiagnosisInEditMode(inst)">
+                      <mat-icon class="dc-empty-icon">search</mat-icon>
+                      <span>Search for an ICD code</span>
+                    </div>
                   </div>
-                </div>
+                </ng-template>
+
               </ng-container>
             </div>
           </ng-container>

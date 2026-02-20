@@ -20,7 +20,6 @@ import { AuthconfirmleavedialogComponent } from 'src/app/member/UM/components/au
 
 import { SmartCheckResultDialogComponent } from 'src/app/member/UM/steps/authsmartcheck/smartcheck-result-dialog.component';
 import { AuthsmartcheckComponent } from 'src/app/member/UM/steps/authsmartcheck/authsmartcheck.component';
-import { AuthdetailsComponent } from 'src/app/member/UM/steps/authdetails/authdetails.component';
 import { AuthdecisionComponent } from 'src/app/member/UM/steps/authdecision/authdecision.component';
 import { UmsharedwidgetsModule } from 'src/app/member/UM/umwizard/authwizard/umsharedwidgets.module';
 
@@ -33,7 +32,6 @@ import { UmsharedwidgetsModule } from 'src/app/member/UM/umwizard/authwizard/ums
     AuthconfirmleavedialogComponent,
 
     AuthsmartcheckComponent,
-    AuthdetailsComponent,
     AuthdecisionComponent,
     SmartCheckResultDialogComponent
 

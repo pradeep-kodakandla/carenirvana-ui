@@ -1277,30 +1277,45 @@
   padding: 5px 14px;
   border-radius: 8px;
   border: none;
-  background: linear-gradient(135deg, #7C3AED, #8B5CF6);
+  background: linear-gradient(135deg, #0062cc, #007bff);
   color: #fff;
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(124,58,237,.2);
+  box-shadow: 0 2px 8px rgba(0,98,204,.2);
   transition: all .15s;
   margin-left: auto;
   order: 98;
   white-space: nowrap;
   z-index: 1;
 }
-.dc-add-btn:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(124,58,237,.35); transform: translateY(-1px); }
+.dc-add-btn:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(0,98,204,.35); transform: translateY(-1px); }
 .dc-add-btn:disabled { opacity:.4; cursor:not-allowed; }
 .dc-add-btn mat-icon { font-size:17px; width:17px; height:17px; }
 
-/* 2-per-row grid (matches provider layout) */
-.dc-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 20px;
-  padding: 8px 10px 18px;
+/* Diagnosis list — vertical stack */
+.dc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+/*  padding: 8px 10px 18px;
+*/}
+
+/* Single-line selected row */
+.dc-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 5px 7px;
+  background: #FAFAFE;
+  border: 1.5px solid #E2E5EA;
+  border-left: 3.5px solid gray;
+  border-radius: 10px;
+  transition: box-shadow .2s;
 }
-@media (max-width:1100px) { .dc-grid { grid-template-columns:1fr; } }
+.dc-row:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,.05);
+}
 
 /* Each diagnosis item wrapper */
 .dc { display: flex; flex-direction: column; }
@@ -1376,6 +1391,8 @@
   letter-spacing: 0.6px;
   color: #1E293B;
   line-height: 1.3;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* Dropdown and search inside card */
@@ -1532,18 +1549,17 @@
   gap: 10px;
 }
 
-/* ICD Code — prominent purple badge */
+/* ICD Code — bold blue text */
 .dc-icd-code {
   display: inline-flex;
   align-items: center;
-  padding: 3px 12px;
-  border-radius: 6px;
-  background: linear-gradient(135deg, #7C3AED, #6D28D9);
-  color: #fff;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: #1d4ed8;
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.5px;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
   line-height: 1.4;
   white-space: nowrap;
   flex-shrink: 0;
@@ -1557,6 +1573,9 @@
   font-weight: 500;
   flex: 1;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Primary badge — simple chip, no star */
@@ -1601,14 +1620,23 @@
 
 /* Add Procedure button (section header) */
 .sc-add-btn {
-  display: inline-flex; align-items: center; gap: 4px;
-  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
-  color: #fff; border: none; border-radius: 20px;
-  padding: 5px 14px; font-size: 12.5px; font-weight: 600;
-  cursor: pointer; transition: all .2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 14px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg, #0062cc, #007bff);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,98,204,.2);
+  transition: all .15s;
   margin-left: auto;
+  white-space: nowrap;
 }
-.sc-add-btn:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(5,150,105,.35); transform: translateY(-1px); }
+.sc-add-btn:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(0,98,204,.35); transform: translateY(-1px); }
 .sc-add-btn:disabled { opacity: .4; cursor: not-allowed; }
 .sc-add-btn mat-icon { font-size: 17px; width: 17px; height: 17px; }
 
@@ -1625,15 +1653,15 @@
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
-  padding: 14px 16px;
+  padding: 7px 8px;
   box-shadow: 0 1px 4px rgba(0,0,0,.04);
   transition: border-color .2s, box-shadow .2s;
-  border-left: 4px solid #e2e8f0;
+  border-left: 4px solid gray;
   overflow: visible;
   position: relative;
 }
 .sc-card--filled {
-  border-left-color: #059669;
+  border-left-color: gray;
   box-shadow: 0 2px 8px rgba(5,150,105,.08);
 }
 .sc-card:hover {
@@ -1659,11 +1687,11 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 12px;
+/*  padding: 8px 12px;
   background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
   border-radius: 8px;
   margin-bottom: 12px;
-  border: 1px solid #d1fae5;
+  border: 1px solid #d1fae5;*/
 }
 .sc-identity--muted {
   opacity: .65;
@@ -1671,20 +1699,19 @@
   border-color: #e2e8f0;
 }
 
-/* Procedure code badge */
+/* Procedure code — bold blue text */
 .sc-code {
   display: inline-flex;
   align-items: center;
-  background: linear-gradient(135deg, #059669, #10b981);
-  color: #fff;
-  font-weight: 700;
-  font-size: 12.5px;
-  padding: 4px 10px;
-  border-radius: 6px;
+  background: none;
+  color: #1d4ed8;
+  font-weight: 800;
+  font-size: 13px;
+  padding: 0;
+  border-radius: 0;
   letter-spacing: 0.5px;
   white-space: nowrap;
   min-width: fit-content;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
   flex-shrink: 0;
 }
 
@@ -1733,8 +1760,8 @@
 .sc-body {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 8px 10px;
-  padding-top: 4px;
+  gap: 14px;
+  padding-top: 8px;
   border-top: 1px solid #f1f5f9;
 }
 .sc-body .ff-outline {
@@ -1761,4 +1788,67 @@
 @media (max-width: 600px) {
   .sc-body { grid-template-columns: 1fr; }
   .sc-field--search { grid-column: span 1; }
+}
+
+/* ── Fax mode: Save / Cancel action bar ───────────────────────────── */
+.fax-action-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  margin-top: 16px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  border-radius: 0 0 8px 8px;
+}
+
+.fax-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.fax-save-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+}
+.fax-save-btn:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+.fax-save-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.fax-cancel-btn {
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #475569;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.fax-cancel-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+.fax-cancel-btn:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
 }

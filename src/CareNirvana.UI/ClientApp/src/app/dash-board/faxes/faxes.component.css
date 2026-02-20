@@ -654,3 +654,63 @@
 .inline-delete-message {
   flex: 1;
 }
+
+/* ── Auth form embedded in fax preview ───────────────────────────────── */
+.auth-form-scroll {
+  padding: 8px;
+  overflow-y: auto;
+  max-height: calc(100vh - 200px);
+}
+
+.pane-middle app-authdetails {
+  display: block;
+}
+
+.pane-middle app-authdetails .auth-details {
+  width: 100%;
+}
+
+.pane-middle app-authdetails .section-card {
+  margin-bottom: 4px;
+}
+
+.pane-middle app-authdetails .grid {
+  gap: 8px;
+}
+
+/* Create Authorization button */
+.create-auth-card {
+  text-align: center;
+  padding: 12px;
+}
+
+.create-auth-btn {
+  width: 100%;
+  font-weight: 600;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.create-auth-hint {
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 6px;
+}
+
+/* Linked auth badge in status column */
+.chip-linked-auth {
+  background: #ecfdf5;
+  color: #065f46;
+  margin-left: 4px;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+/* When auth form is open, give middle pane more room */
+.split3.auth-form-active {
+  grid-template-columns: 1fr 1fr;
+}

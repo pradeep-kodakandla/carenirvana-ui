@@ -28,11 +28,15 @@
   <!-- ===== Left tabs ===== -->
   <div class="tabs-container">
     <div class="tabs">
-      <div *ngFor="let tab of tabs"
+      <div *ngFor="let tab of tabs; let ti = index"
            class="tab"
            [class.active]="selectedTabId === tab.id"
+           [class.before-active]="isTabBeforeActive(ti)"
            (click)="selectTab(tab.id)"
-           [ngClass]="tab.statusClass">
+           [ngClass]="[
+             tab.statusClass,
+             isTabBeforeActive(ti) ? 'before-status-' + getActiveStatusKey() : ''
+           ]">
 
         <!-- Row 1: Decision # + Code   |   Status badge -->
         <div class="tab-header-row">
@@ -54,103 +58,138 @@
 
     <form class="auth-details" [formGroup]="form">
 
-      <ng-container *ngFor="let section of st.sections">
+      <ng-container *ngFor="let section of st.sections; let si = index">
 
         <div class="section-card"
              *ngIf="section?.fields?.length && isSectionVisible(st, section)"
+             [class.collapsed]="section._collapsed"
+             [attr.id]="'section-' + si"
              style="height:auto;max-height:none;overflow:visible;">
 
-          <div class="section-header">
+          <div class="section-header" (click)="section._collapsed = !section._collapsed">
+            <!-- Section icon -->
+            <div class="section-icon">
+              <ng-container [ngSwitch]="si % 4">
+                <!-- Decision Details icon -->
+                <svg *ngSwitchCase="0" viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+                  <path d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"/>
+                </svg>
+                <!-- Request & Treatment icon -->
+                <svg *ngSwitchCase="1" viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+                  <path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2h-2.22l-2.07 2.07a1 1 0 01-1.42 0L7.22 15H5a2 2 0 01-2-2V5zm5 2a1 1 0 000 2h4a1 1 0 100-2H8zm0 3a1 1 0 100 2h2a1 1 0 100-2H8z" clip-rule="evenodd"/>
+                </svg>
+                <!-- Member/Provider icon -->
+                <svg *ngSwitchCase="2" viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+                  <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
+                </svg>
+                <!-- Notes icon (default) -->
+                <svg *ngSwitchDefault viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+                  <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
+                </svg>
+              </ng-container>
+            </div>
+
             <div class="section-title">{{ section.sectionName }}</div>
+
+            <!-- Chevron -->
+            <div class="section-chevron">
+              <svg viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd"
+                      d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                      clip-rule="evenodd"/>
+              </svg>
+            </div>
           </div>
 
-          <div class="grid"
-               style="grid-template-rows:unset;grid-auto-rows:minmax(min-content,max-content);overflow:visible;">
+          <div class="section-body">
+            <div class="grid"
+                 style="grid-template-rows:unset;grid-auto-rows:minmax(min-content,max-content);overflow:visible;">
 
-            <ng-container *ngFor="let field of section.fields; let i = index">
-              <ng-container *ngIf="isVisible(st, field)">
+              <ng-container *ngFor="let field of section.fields; let i = index">
+                <ng-container *ngIf="isVisible(st, field)">
 
-                <!-- CHECKBOX -->
-                <ng-container *ngIf="field.type === 'checkbox'; else outlinedTpl">
-                  <div class="ff-field">
-                    <div class="ff-checkbox" [class.ff-disabled]="!field.isEnabled">
-                      <input type="checkbox"
-                             class="form-check-input"
-                             [id]="field.id + '_' + i"
-                             [formControlName]="field.controlName" />
+                  <!-- CHECKBOX -->
+                  <ng-container *ngIf="field.type === 'checkbox'; else outlinedTpl">
+                    <div class="ff-field">
+                      <div class="ff-checkbox" [class.ff-disabled]="!field.isEnabled">
+                        <input type="checkbox"
+                               class="form-check-input"
+                               [id]="field.id + '_' + i"
+                               [formControlName]="field.controlName" />
 
-                      <label class="form-check-label" [for]="field.id + '_' + i">
-                        {{ field.displayName }}
-                        <span class="req-star" *ngIf="field.required || field.isRequired">*</span>
-                      </label>
+                        <label class="form-check-label" [for]="field.id + '_' + i">
+                          {{ field.displayName }}
+                          <span class="req-star" *ngIf="field.required || field.isRequired">*</span>
+                        </label>
+                      </div>
+
+                      <div class="ff-error" *ngIf="isInvalidField(field)">
+                        {{ field.requiredMsg || (field.displayName + ' is required') }}
+                      </div>
                     </div>
+                  </ng-container>
 
-                    <div class="ff-error" *ngIf="isInvalidField(field)">
-                      {{ field.requiredMsg || (field.displayName + ' is required') }}
+                  <!-- OUTLINED -->
+                  <ng-template #outlinedTpl>
+                    <div class="ff-field" [class.ff-span-all]="field.type === 'textarea'">
+                      <div class="ff-outline"
+                           [class.ff-disabled]="!field.isEnabled"
+                           [class.ff-invalid]="isInvalidField(field)">
+
+                        <div class="ff-float-label">
+                          {{ field.displayName }}
+                          <span class="req-star" *ngIf="field.required || field.isRequired">*</span>
+                        </div>
+
+                        <div class="ff-body">
+                          <ng-container [ngSwitch]="field.type">
+
+                            <!-- Select -->
+                            <ng-container *ngSwitchCase="'select'">
+                              <ui-smart-dropdown class="ff-ui"
+                                                 label=""
+                                                 placeholder="Select."
+                                                 [options]="getDropdownOptions(field.controlName)"
+                                                 [formControlName]="field.controlName">
+                              </ui-smart-dropdown>
+                            </ng-container>
+
+                            <!-- Datetime -->
+                            <ng-container *ngSwitchCase="'datetime-local'">
+                              <ui-datetime-picker class="ff-ui"
+                                                  placeholderDate="mm/dd/yyyy"
+                                                  placeholderDateTime="mm/dd/yyyy --:--"
+                                                  [formControlName]="field.controlName">
+                              </ui-datetime-picker>
+                            </ng-container>
+
+                            <!-- Textarea -->
+                            <ng-container *ngSwitchCase="'textarea'">
+                              <textarea class="ff-input ff-textarea"
+                                        rows="3"
+                                        [formControlName]="field.controlName"></textarea>
+                            </ng-container>
+
+                            <!-- Default text -->
+                            <ng-container *ngSwitchDefault>
+                              <input class="ff-input" type="text"
+                                     [formControlName]="field.controlName" />
+                            </ng-container>
+
+                          </ng-container>
+                        </div>
+                      </div>
+
+                      <div class="ff-error" *ngIf="isInvalidField(field)">
+                        {{ field.requiredMsg || (field.displayName + ' is required') }}
+                      </div>
                     </div>
-                  </div>
+                  </ng-template>
+
                 </ng-container>
-
-                <!-- OUTLINED -->
-                <ng-template #outlinedTpl>
-                  <div class="ff-field" [class.ff-span-all]="field.type === 'textarea'">
-                    <div class="ff-outline"
-                         [class.ff-disabled]="!field.isEnabled"
-                         [class.ff-invalid]="isInvalidField(field)">
-
-                      <div class="ff-float-label">
-                        {{ field.displayName }}
-                        <span class="req-star" *ngIf="field.required || field.isRequired">*</span>
-                      </div>
-
-                      <div class="ff-body">
-                        <ng-container [ngSwitch]="field.type">
-
-                          <!-- Select -->
-                          <ng-container *ngSwitchCase="'select'">
-                            <ui-smart-dropdown class="ff-ui"
-                                               label=""
-                                               placeholder="Select."
-                                               [options]="getDropdownOptions(field.controlName)"
-                                               [formControlName]="field.controlName">
-                            </ui-smart-dropdown>
-                          </ng-container>
-
-                          <!-- Datetime -->
-                          <ng-container *ngSwitchCase="'datetime-local'">
-                            <ui-datetime-picker class="ff-ui"
-                                                placeholderDate="mm/dd/yyyy"
-                                                placeholderDateTime="mm/dd/yyyy --:--"
-                                                [formControlName]="field.controlName">
-                            </ui-datetime-picker>
-                          </ng-container>
-
-                          <!-- Textarea -->
-                          <ng-container *ngSwitchCase="'textarea'">
-                            <textarea class="ff-input ff-textarea"
-                                      rows="3"
-                                      [formControlName]="field.controlName"></textarea>
-                          </ng-container>
-
-                          <!-- Default text -->
-                          <ng-container *ngSwitchDefault>
-                            <input class="ff-input" type="text"
-                                   [formControlName]="field.controlName" />
-                          </ng-container>
-
-                        </ng-container>
-                      </div>
-                    </div>
-
-                    <div class="ff-error" *ngIf="isInvalidField(field)">
-                      {{ field.requiredMsg || (field.displayName + ' is required') }}
-                    </div>
-                  </div>
-                </ng-template>
-
               </ng-container>
-            </ng-container>
 
+            </div>
           </div>
         </div>
       </ng-container>

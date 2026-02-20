@@ -17,8 +17,10 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTableModule } from '@angular/material/table';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { DragDropModule } from '@angular/cdk/drag-drop';
+import { MatDialogModule } from '@angular/material/dialog';
 
 // UM step components you want to reuse outside the wizard
+import { AuthdetailsComponent } from 'src/app/member/UM/steps/authdetails/authdetails.component';
 import { AuthnotesComponent } from 'src/app/member/UM/steps/authnotes/authnotes.component';
 import { AuthdocumentsComponent } from 'src/app/member/UM/steps/authdocuments/authdocuments.component';
 import { AuthactivityComponent } from 'src/app/member/UM/steps/authactivity/authactivity.component';
@@ -26,6 +28,7 @@ import { AuthmdreviewComponent } from 'src/app/member/UM/steps/authmdreview/auth
 
 @NgModule({
   declarations: [
+    AuthdetailsComponent,
     AuthnotesComponent,
     AuthdocumentsComponent,
     AuthactivityComponent,
@@ -49,8 +52,10 @@ import { AuthmdreviewComponent } from 'src/app/member/UM/steps/authmdreview/auth
     MatTableModule,
     MatAutocompleteModule,
     DragDropModule,
+    MatDialogModule,
   ],
   exports: [
+    AuthdetailsComponent,
     AuthnotesComponent,
     AuthdocumentsComponent,
     AuthactivityComponent,

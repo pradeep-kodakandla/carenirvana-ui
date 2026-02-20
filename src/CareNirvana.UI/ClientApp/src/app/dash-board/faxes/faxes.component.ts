@@ -14,6 +14,8 @@ import { SmartCheckResultDialogComponent, SmartCheckDialogAction, SmartCheckDial
 import { RulesengineService, ExecuteTriggerResponse } from 'src/app/service/rulesengine.service';
 import { HeaderService } from 'src/app/service/header.service';
 import { Router } from '@angular/router';
+import { FaxAuthPrefill } from './fax-auth-prefill.interface';
+import { AuthdetailsComponent } from 'src/app/member/UM/steps/authdetails/authdetails.component';
 
 // Keep this in sync with your C# FaxFile DTO
 export interface FaxFile {
@@ -129,6 +131,11 @@ export class FaxesComponent implements OnInit {
   faxWorkBaskets: { id: number; name: string; count: number }[] = [];
   selectedWorkBasket: string | null = null;
   totalFaxCount = 0;
+
+  // ── Auth Form (fax-to-auth) ─────────────────────────────────────────
+  showAuthForm = false;
+  currentFaxPrefill: FaxAuthPrefill | null = null;
+  @ViewChild('authDetailsRef') authDetailsRef?: AuthdetailsComponent;
 
   constructor(private pdfOcr: PdfOcrService, private destroyRef: DestroyRef,
     private api: DashboardServiceService, private sanitizer: DomSanitizer,
@@ -1414,6 +1421,157 @@ export class FaxesComponent implements OnInit {
     }
 
 
+  }
+
+  // ============================================================
+  // Fax → Auth Form Methods
+  // ============================================================
+
+  openAuthForm(): void {
+    if (!this.priorAuth || !this.selectedFax) return;
+
+    const pa = this.priorAuth;
+
+    let authClassName = 'Inpatient';
+    if ((pa as any).setting?.outpatient && !(pa as any).setting?.inpatient) {
+      authClassName = 'Outpatient';
+    }
+
+    // NOTE: pa.review?.type is the request classification ("Prior Authorization",
+    // "Concurrent Review" etc.) — this is NOT the UM template type name.
+    // Default to "Observation Stay" which is the most common template.
+    const authTypeName = 'Observation Stay';
+
+    const parseAddress = (addr: string | undefined) => {
+      if (!addr) return {};
+      const parts = addr.split(',').map(s => s.trim());
+      return {
+        address: parts[0] || '',
+        city: parts[1] || '',
+        state: parts[2] || '',
+        zip: parts[3] || ''
+      };
+    };
+
+    const reqAddr = parseAddress((pa as any).providerRequesting?.address);
+    const svcAddr = parseAddress((pa as any).providerServicing?.address);
+
+    this.currentFaxPrefill = {
+      mode: 'fax',
+      memberId: this.selectedFax.memberId ?? 0,
+      memberDetailsId: this.selectedFax.memberDetailsId ?? 0,
+      faxId: this.selectedFax.faxId ?? 0,
+
+      authClassName,
+      authTypeName,
+
+      diagnosisCodes: (pa as any).dx?.codes ?? ((pa as any).services || [])
+        .map((s: any) => s.diagnosisCode)
+        .filter(Boolean),
+
+      services: ((pa as any).services ?? []).map((s: any) => ({
+        code: s.code,
+        description: s.description,
+        startDate: s.startDate,
+        endDate: s.endDate,
+        quantity: s.quantity ?? 1
+      })),
+
+      requestingProvider: (pa as any).providerRequesting ? {
+        name: (pa as any).providerRequesting.name,
+        firstName: (pa as any).providerRequesting.firstName,
+        lastName: (pa as any).providerRequesting.lastName,
+        npi: (pa as any).providerRequesting.npi,
+        phone: (pa as any).providerRequesting.phone,
+        fax: (pa as any).providerRequesting.fax,
+        ...reqAddr
+      } : undefined,
+
+      servicingProvider: (pa as any).providerServicing ? {
+        name: (pa as any).providerServicing.name || (pa as any).providerServicing.facility,
+        firstName: (pa as any).providerServicing.firstName,
+        lastName: (pa as any).providerServicing.lastName,
+        npi: (pa as any).providerServicing.npi,
+        phone: (pa as any).providerServicing.phone,
+        fax: (pa as any).providerServicing.fax,
+        ...svcAddr
+      } : undefined,
+
+      requestDatetime: (pa as any).submission?.date,
+      notes: (pa as any).notes,
+      priorAuth: pa
+    };
+
+    this.showAuthForm = true;
+
+    setTimeout(() => {
+      const pane = document.querySelector('.pane-middle');
+      if (pane) pane.scrollTop = 0;
+    }, 100);
+  }
+
+  cancelAuthForm(): void {
+    if (this.authDetailsRef?.authHasUnsavedChanges?.()) {
+      if (!confirm('You have unsaved changes. Discard and go back?')) return;
+    }
+    this.showAuthForm = false;
+    this.currentFaxPrefill = null;
+  }
+
+  onAuthSaved(event: { authNumber: string; authId: number }): void {
+    this.showAuthForm = false;
+    this.currentFaxPrefill = null;
+
+    if (this.selectedFax?.faxId) {
+      const nowIso = new Date().toISOString();
+      let existingMeta: any = {};
+      if (this.selectedFax.metaJson) {
+        try { existingMeta = JSON.parse(this.selectedFax.metaJson); } catch { /* ignore */ }
+      }
+
+      const updatedMeta = {
+        ...existingMeta,
+        linkedAuthNumber: event.authNumber,
+        linkedAuthId: event.authId,
+        linkedAt: nowIso
+      };
+
+      const toSave: any = {
+        faxId: this.selectedFax.faxId,
+        workBasket: this.selectedFax.workBasket || '2',
+        fileName: this.selectedFax.fileName,
+        priority: this.selectedFax.priority,
+        status: 'Processed',
+        metaJson: JSON.stringify(updatedMeta),
+        updatedOn: nowIso,
+        updatedBy: this.currentUserId ?? 1
+      };
+
+      this.api.updateFaxFile(toSave).subscribe({
+        next: () => {
+          this.toast(`Authorization ${event.authNumber} created and linked to fax.`);
+          this.reload();
+        },
+        error: (err) => {
+          console.error('Failed to link fax to auth', err);
+          this.toast(`Authorization ${event.authNumber} created but fax linking failed.`, true);
+          this.reload();
+        }
+      });
+    } else {
+      this.toast(`Authorization ${event.authNumber} created successfully.`);
+      this.reload();
+    }
+  }
+
+  getLinkedAuth(row: FaxFile): string | null {
+    if (!row.metaJson) return null;
+    try {
+      const meta = JSON.parse(row.metaJson);
+      return meta?.linkedAuthNumber || null;
+    } catch {
+      return null;
+    }
   }
 
 }

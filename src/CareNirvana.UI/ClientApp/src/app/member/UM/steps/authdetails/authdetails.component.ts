@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, Optional } from '@angular/core';
+import { Component, OnDestroy, OnInit, OnChanges, Optional, Input, Output, EventEmitter, SimpleChanges } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { Observable, Subject, firstValueFrom, of } from 'rxjs';
@@ -18,6 +18,7 @@ import { ValidationErrorDialogComponent } from 'src/app/member/validation-error-
 import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
 import { AuthunsavedchangesawareService } from 'src/app/member/UM/services/authunsavedchangesaware.service';
 import { AuthwizardshellComponent } from 'src/app/member/UM/components/authwizardshell/authwizardshell.component';
+import { FaxAuthPrefill, FaxAuthPrefillService } from 'src/app/dash-board/faxes/fax-auth-prefill.interface';
 
 /** ---- Enrollment interfaces ---- */
 interface LevelItem {
@@ -229,7 +230,7 @@ type RepeatRegistryMeta = {
   templateUrl: './authdetails.component.html',
   styleUrl: './authdetails.component.css'
 })
-export class AuthdetailsComponent implements OnInit, OnDestroy, AuthunsavedchangesawareService {
+export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, AuthunsavedchangesawareService {
   private destroy$ = new Subject<void>();
   private templateDestroy$ = new Subject<void>();
   private visibilitySyncInProgress = false;
@@ -374,6 +375,26 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
   // ---------- Save ----------
   isSaving = false;
 
+  // ── FAX MODE ────────────────────────────────────────────────────────────
+  /** When set, the component operates in "fax embedded" mode. */
+  @Input() faxPrefill: FaxAuthPrefill | null = null;
+
+  /** Emitted on successful save in fax mode. */
+  @Output() authSaved = new EventEmitter<{ authNumber: string; authId: number }>();
+
+  /** Emitted when user cancels in fax mode. */
+  @Output() authCancelled = new EventEmitter<void>();
+
+  /** Tracks whether fax prefill values have been applied to the template form. */
+  private faxPrefillApplied = false;
+
+  /** Pending fax prefill data, consumed once the template form is built. */
+  private pendingFaxPrefill: FaxAuthPrefill | null = null;
+
+  get isFaxMode(): boolean {
+    return this.faxPrefill?.mode === 'fax';
+  }
+
 
   // ---------- Template validation (same as AuthorizationComponent) ----------
   validationRules: any[] = [];
@@ -408,6 +429,17 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
     @Optional() private shell?: AuthwizardshellComponent
   ) { }
 
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['faxPrefill'] && this.faxPrefill?.mode === 'fax') {
+      this.faxPrefillApplied = false;
+      this.pendingFaxPrefill = null;
+      this.pendingAuth = null;
+      if (this.form) {
+        this.initFromFaxPrefill(this.faxPrefill);
+      }
+    }
+  }
+
   ngOnInit(): void {
     // Create form first (route subscription will call resetAuthScreenState)
     this.form = this.fb.group({
@@ -415,6 +447,13 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
       authTypeId: new FormControl(null, Validators.required),
     });
 
+    // ── FAX MODE — skip all route-based initialisation ──────────────────
+    if (this.isFaxMode) {
+      this.initFromFaxPrefill(this.faxPrefill!);
+      return;
+    }
+
+    // ── NORMAL MODE (existing code — unchanged) ─────────────────────────
     // Read Smart Auth Check prefill (if user came from Smart Check step)
     this.smartCheckPrefill = this.readSmartCheckPrefill();
 
@@ -807,6 +846,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
 
           // Smart Check prefill: if user arrived from Smart Check, fill ICD + Procedure codes (new auth only)
           void this.applySmartCheckPrefillToTemplateFields();
+
+          // Fax mode prefill: if component is in fax-embedded mode, fill fields from OCR data
+          void this.applyFaxPrefillToTemplateFields();
 
           // Load validation rules for this template (same behavior as AuthorizationComponent)
           this.getValidationRules();
@@ -2653,6 +2695,12 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
 
         // Seed Decision Details rows (idempotent) after save
         await this.seedDecisionAfterSave(authDetailId, merged, userId, authTypeId);
+
+        // Fax mode — emit instead of navigating
+        if (this.isFaxMode) {
+          this.authSaved.emit({ authNumber: String(this.authNumber), authId: authDetailId });
+          return;
+        }
       } else {
         // CREATE: generate authNumber ONLY here
         this.authNumber = this.authNumberService.generateAuthNumber(9, true, true, false, false);
@@ -2696,6 +2744,14 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
           this.shell?.setContext({ authNumber: String(this.authNumber) });
         }
 
+
+        // Fax mode — emit instead of navigating
+        if (this.isFaxMode) {
+          const faxAuthId = Number((this.pendingAuth as any)?.authDetailId ?? (this.pendingAuth as any)?.id ?? 0);
+          this.form.markAsPristine();
+          this.authSaved.emit({ authNumber: String(this.authNumber), authId: faxAuthId });
+          return;
+        }
         // Resolve memberId reliably (don’t depend only on tab metadata)
         const memberId = this.headerService.getMemberId(this.headerService.getSelectedTab() || '') || '';
         //const currentRoute = `/auth/0/details/${memberId}`;
@@ -4581,8 +4637,470 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, Authunsavedchang
   }
 
   get showAuthTypeFirstLoadHint(): boolean {
+    if (this.isFaxMode) return false;
     if (this.hasExistingAuthNumberInRoute()) return false;
     return true;
+  }
+
+  // ============================================================
+  // FAX MODE — Initialisation
+  // ============================================================
+
+  private initFromFaxPrefill(prefill: FaxAuthPrefill): void {
+    this.memberId = Number(prefill.memberId || 0);
+    this.memberDetailsId = Number(prefill.memberDetailsId || 0);
+    this.authNumber = '0';
+
+    this.pendingFaxPrefill = prefill;
+    this.faxPrefillApplied = false;
+
+    if (this.memberDetailsId) {
+      this.loadMemberEnrollment(this.memberDetailsId);
+    }
+
+    this.loadAuthClassForFax(prefill);
+    this.loadAllUsers();
+    this.loadWorkBasket();
+    this.setupFaxFormSubscriptions();
+  }
+
+  private loadAuthClassForFax(prefill: FaxAuthPrefill): void {
+    this.crudService.getData('um', 'authclass')
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response: any[]) => {
+          this.authClassRaw = response || [];
+          this.authClassOptions = this.authClassRaw
+            .map(x => ({
+              value: Number(x.id ?? x.Id),
+              label: x.authClass ?? x.AuthClass ?? x.name ?? ''
+            }) as UiSmartOption)
+            .filter(o => !!o.label && Number(o.value) > 0);
+
+          let matchValue: number | null = null;
+
+          if (prefill.authClassId) {
+            const byId = this.authClassOptions.find(o => Number(o.value) === Number(prefill.authClassId));
+            if (byId) matchValue = Number(byId.value);
+          }
+
+          if (!matchValue && prefill.authClassName) {
+            const needle = prefill.authClassName.toLowerCase();
+            const byName = this.authClassOptions.find(
+              o => String(o.label).toLowerCase().includes(needle)
+            );
+            if (byName) matchValue = Number(byName.value);
+          }
+
+          if (matchValue) {
+            this.form.get('authClassId')?.setValue(matchValue, { emitEvent: true });
+          }
+        },
+        error: (e) => console.error('Fax mode: Error fetching auth class', e)
+      });
+  }
+
+  private setupFaxFormSubscriptions(): void {
+    this.form.get('authClassId')!.valueChanges
+      .pipe(distinctUntilChanged(), takeUntil(this.destroy$))
+      .subscribe((val: any) => {
+        const authClassId = Number(this.unwrapValue(val) || 0);
+        this.form.get('authTypeId')!.setValue(null, { emitEvent: false });
+        this.authTemplatesRaw = [];
+        this.authTypeOptions = [];
+        this.templateId = null;
+        this.clearTemplate(true);
+        if (authClassId > 0) {
+          this.loadAuthTemplatesForFax(authClassId);
+        }
+      });
+
+    this.form.get('authTypeId')!.valueChanges
+      .pipe(distinctUntilChanged(), takeUntil(this.destroy$))
+      .subscribe((val: any) => {
+        const tplId = Number(this.unwrapValue(val) || 0);
+        this.templateId = tplId > 0 ? tplId : null;
+        this.clearTemplate(true);
+        this.validationRules = [];
+        this.sectionValidationMessages = {};
+        if (this.templateId) {
+          this.loadTemplateJson(this.templateId);
+        }
+      });
+  }
+
+  private loadAuthTemplatesForFax(authClassId: number): void {
+    this.authService.getTemplates('UM', authClassId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (data: any[]) => {
+          this.authTemplatesRaw = data || [];
+          this.authTypeOptions = (this.authTemplatesRaw || [])
+            .map(t => ({
+              value: Number(t.Id ?? t.id),
+              label: t.TemplateName ?? t.templateName ?? ''
+            }) as UiSmartOption)
+            .filter(o => !!o.label && Number(o.value) > 0);
+
+          const pf = this.pendingFaxPrefill;
+          if (!pf) return;
+
+          let matchValue: number | null = null;
+
+          if (pf.authTypeId) {
+            const byId = this.authTypeOptions.find(o => Number(o.value) === Number(pf.authTypeId));
+            if (byId) matchValue = Number(byId.value);
+          }
+
+          if (!matchValue && pf.authTypeName) {
+            const needle = pf.authTypeName.toLowerCase();
+            const byName = this.authTypeOptions.find(
+              o => String(o.label).toLowerCase().includes(needle)
+            );
+            if (byName) matchValue = Number(byName.value);
+          }
+
+          // Fallback: try partial keyword match (e.g. "observation" in "Observation Stay")
+          if (!matchValue && pf.authTypeName) {
+            const words = pf.authTypeName.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3);
+            for (const word of words) {
+              const byWord = this.authTypeOptions.find(
+                o => String(o.label).toLowerCase().includes(word)
+              );
+              if (byWord) { matchValue = Number(byWord.value); break; }
+            }
+          }
+
+          if (!matchValue && this.authTypeOptions.length === 1) {
+            matchValue = Number(this.authTypeOptions[0].value);
+          }
+
+          if (matchValue) {
+            this.form.get('authTypeId')?.setValue(matchValue, { emitEvent: true });
+          }
+        },
+        error: (e) => console.error('Fax mode: Error fetching auth templates', e)
+      });
+  }
+
+  // ============================================================
+  // FAX MODE — Template Field Prefill
+  // ============================================================
+
+  private async applyFaxPrefillToTemplateFields(): Promise<void> {
+    if (!this.isFaxMode) return;
+    if (this.faxPrefillApplied) return;
+    if (this.pendingAuth) return;
+
+    const pf = this.pendingFaxPrefill;
+    if (!pf) return;
+
+    // ── 1. DIAGNOSIS CODES ──────────────────────────────────────────────
+    const diagCodes = (pf.diagnosisCodes || []).filter(Boolean);
+    if (diagCodes.length) {
+      if (diagCodes.length > 1) {
+        this.ensureRepeatCountForKind('icd', diagCodes.length);
+      }
+
+      let icdFields = this.getSearchFieldsByEntity('icd');
+      if (!icdFields.length) {
+        icdFields = this.collectAllRenderFields(this.renderSections)
+          .filter(f => String((f as any)?.type || '').toLowerCase() === 'search')
+          .filter(f => {
+            const k = String((f as any)?._rawId ?? (f as any)?.controlName ?? '').toLowerCase();
+            return k.includes('icd') || k.includes('diag');
+          });
+      }
+
+      for (let i = 0; i < diagCodes.length; i++) {
+        if (!icdFields[i]) break;
+        await this.prefillLookupFieldByCode(icdFields[i], diagCodes[i]);
+      }
+
+      // Directly populate the diagnosis card display store from the lookup cache.
+      // onLookupSelected stores the full object in lookupSelectedByControl but NOT
+      // in diagnosisDataByInstance — the card view needs the latter.
+      for (let i = 0; i < diagCodes.length; i++) {
+        if (!icdFields[i]) break;
+        const cn = icdFields[i].controlName;
+        const cached = this.lookupSelectedByControl?.[cn];
+        if (cached) {
+          this.diagnosisDataByInstance[cn] = cached;
+          if (!this.primaryDiagnosisKey) this.primaryDiagnosisKey = cn;
+        } else {
+          // Lookup miss — build a partial object so the card still shows the code
+          const code = diagCodes[i];
+          const descCtrl = this.form.get(cn.replace(/icdCode/i, 'icdDescription'));
+          const desc = descCtrl?.value ?? '';
+          this.diagnosisDataByInstance[cn] = { code, codeDesc: desc };
+          // Put into edit mode so user can correct
+          this.diagnosisEditMode.add(cn);
+          if (!this.primaryDiagnosisKey) this.primaryDiagnosisKey = cn;
+        }
+      }
+    }
+
+    // ── 2. SERVICE / PROCEDURE CODES + DATES ────────────────────────────
+    const services = (pf.services || []).filter((s: FaxAuthPrefillService) => s.code || s.startDate);
+    if (services.length) {
+      const svcCodes = services.map((s: FaxAuthPrefillService) => s.code).filter(Boolean) as string[];
+
+      if (svcCodes.length > 1) {
+        this.ensureRepeatCountForKind('medicalcodes', svcCodes.length);
+      }
+
+      let svcFields = this.getSearchFieldsByEntity('medicalcodes');
+      if (!svcFields.length) {
+        svcFields = this.collectAllRenderFields(this.renderSections)
+          .filter(f => String((f as any)?.type || '').toLowerCase() === 'search')
+          .filter(f => {
+            const k = String((f as any)?._rawId ?? (f as any)?.controlName ?? '').toLowerCase();
+            return k.includes('procedure') || k.includes('cpt') || (k.includes('medical') && k.includes('code'));
+          });
+      }
+
+      for (let i = 0; i < svcCodes.length; i++) {
+        if (!svcFields[i]) break;
+        await this.prefillLookupFieldByCode(svcFields[i], svcCodes[i]);
+      }
+
+      // Fill procedure descriptions
+      const allFields = this.collectAllRenderFields(this.renderSections);
+      const descFields = allFields.filter(f => {
+        const raw = String((f as any)?._rawId ?? '').toLowerCase();
+        return raw === 'proceduredescription' || (raw.includes('procedure') && raw.includes('description'));
+      });
+      services.forEach((svc: FaxAuthPrefillService, i: number) => {
+        if (svc.description && descFields[i]) {
+          this.setControlIfEmpty(descFields[i].controlName, svc.description);
+        }
+      });
+
+      // Directly populate the service card display store from the lookup cache.
+      // Must run AFTER descriptions are filled so the fallback can read them.
+      for (let i = 0; i < svcCodes.length; i++) {
+        if (!svcFields[i]) break;
+        const cn = svcFields[i].controlName;
+        const cached = this.lookupSelectedByControl?.[cn];
+        if (cached) {
+          this.serviceDataByInstance[cn] = cached;
+        } else {
+          const code = svcCodes[i];
+          const descField = descFields?.[i];
+          const desc = descField ? (this.form.get(descField.controlName)?.value ?? '') : '';
+          this.serviceDataByInstance[cn] = { code, codeDesc: desc };
+          this.serviceEditMode.add(cn);
+        }
+      }
+
+      // Fill From/To dates directly on the discovered date controls
+      //  (bypass prefillProcedureFromToDates which re-normalises to ISO+Z)
+      const fromFields = allFields.filter(f => this.isFromDateField(f));
+      const toFields   = allFields.filter(f => this.isToDateField(f));
+
+      for (let i = 0; i < services.length; i++) {
+        const sf = this.normalizeFaxDate(services[i]?.startDate);
+        const st = this.normalizeFaxDate(services[i]?.endDate);
+        if (sf && fromFields[i]) this.setControlIfEmpty(fromFields[i].controlName, sf);
+        if (st && toFields[i])   this.setControlIfEmpty(toFields[i].controlName, st);
+      }
+
+      // Fill serviceReq (quantity)
+      const reqFields = allFields.filter(f => {
+        const raw = String((f as any)?._rawId ?? '').toLowerCase();
+        return raw === 'servicereq' || raw.includes('servicereq');
+      });
+      services.forEach((svc: FaxAuthPrefillService, i: number) => {
+        if (svc.quantity && reqFields[i]) {
+          this.setControlIfEmpty(reqFields[i].controlName, svc.quantity);
+        }
+      });
+    }
+
+    // ── 3. PROVIDER DETAILS ─────────────────────────────────────────────
+    await this.applyFaxProviderPrefill(pf);
+
+    // ── 4. AUTH DETAILS SECTION (dates) ─────────────────────────────────
+    if (pf.requestDatetime) {
+      this.setControlIfEmpty('requestDatetime', this.normalizeFaxDate(pf.requestDatetime));
+    }
+    if (pf.expectedAdmissionDatetime) {
+      this.setControlIfEmpty('expectedAdmissionDatetime', this.normalizeFaxDate(pf.expectedAdmissionDatetime));
+    }
+    if (pf.actualAdmissionDatetime) {
+      this.setControlIfEmpty('actualAdmissionDatetime', this.normalizeFaxDate(pf.actualAdmissionDatetime));
+    }
+
+    // ── 5. Auto-expand sections that have data ──────────────────────────
+    this.autoExpandFaxSections();
+
+    // ── 6. Rehydrate card display data so diagnosis/service show view mode ─
+    this.rehydrateDiagnosisData();
+    this.rehydrateServiceData();
+
+    // ── 7. Force all form controls to re-push values to their ControlValueAccessors.
+    //       Date controls (ui-datetime-picker) are created when the section expands.
+    //       Since we set values BEFORE expansion, the pickers may not have received them.
+    //       Re-patching the entire form after a short delay ensures all pickers render.
+    setTimeout(() => {
+      const snapshot = this.form.getRawValue();
+      this.form.patchValue(snapshot, { emitEvent: false });
+    }, 150);
+
+    // A second, slightly later nudge handles edge cases where the first patch fires
+    // before Angular finishes creating components for newly expanded sections.
+    setTimeout(() => {
+      const snapshot = this.form.getRawValue();
+      this.form.patchValue(snapshot, { emitEvent: false });
+    }, 400);
+
+    this.faxPrefillApplied = true;
+    this.pendingFaxPrefill = null;
+  }
+
+  private async applyFaxProviderPrefill(pf: FaxAuthPrefill): Promise<void> {
+    const allFields = this.collectAllRenderFields(this.renderSections);
+
+    const providers: Array<{ data: any; roleId?: string }> = [];
+
+    if (pf.requestingProvider?.name || pf.requestingProvider?.npi) {
+      providers.push({ data: pf.requestingProvider, roleId: '1' });
+    }
+
+    if (pf.servicingProvider?.name || pf.servicingProvider?.npi) {
+      providers.push({ data: pf.servicingProvider, roleId: '2' });
+    }
+
+    if (!providers.length) return;
+
+    // Ensure enough provider repeat instances
+    if (providers.length > 1) {
+      const provKey = this.findFaxProviderRepeatKey();
+      if (provKey) {
+        const curCount = Number(this.repeatCounts?.[provKey] || 0);
+        if (curCount < providers.length) {
+          this.repeatCounts[provKey] = providers.length;
+          const snap = this.form.getRawValue();
+          this.rebuildFromNormalizedTemplate(snap);
+        }
+      }
+    }
+
+    const freshFields = this.collectAllRenderFields(this.renderSections);
+    const instanceGroups = this.groupFaxProviderFieldsByInstance(freshFields);
+
+    for (let i = 0; i < providers.length; i++) {
+      const group = instanceGroups[i];
+      if (!group) break;
+
+      const prov = providers[i].data;
+      const roleId = providers[i].roleId;
+
+      if (roleId && group['providerRole']) {
+        this.setControlIfEmpty(group['providerRole'], roleId);
+      }
+
+      const fullName = prov.name || '';
+      let firstName = prov.firstName || '';
+      let lastName = prov.lastName || '';
+      if (!firstName && !lastName && fullName.includes(',')) {
+        const parts = fullName.split(',').map((s: string) => s.trim());
+        lastName = parts[0] || '';
+        firstName = parts[1] || '';
+      }
+
+      if (group['providerFirstName']) this.setControlIfEmpty(group['providerFirstName'], firstName);
+      if (group['providerLastName']) this.setControlIfEmpty(group['providerLastName'], lastName);
+      if (group['providerName']) this.setControlIfEmpty(group['providerName'], fullName || `${lastName}, ${firstName}`.trim());
+      if (group['providerNPI']) this.setControlIfEmpty(group['providerNPI'], prov.npi || '');
+      if (group['providerPhone']) this.setControlIfEmpty(group['providerPhone'], prov.phone || '');
+      if (group['providerFax']) this.setControlIfEmpty(group['providerFax'], prov.fax || '');
+      if (group['providerAddressLine1']) this.setControlIfEmpty(group['providerAddressLine1'], prov.address || '');
+      if (group['providerCity']) this.setControlIfEmpty(group['providerCity'], prov.city || '');
+      if (group['providerState']) this.setControlIfEmpty(group['providerState'], prov.state || '');
+      if (group['providerZipCode']) this.setControlIfEmpty(group['providerZipCode'], prov.zip || '');
+
+      // Try NPI lookup
+      if (prov.npi && group['providerSearch']) {
+        const searchField = freshFields.find(f => f.controlName === group['providerSearch']);
+        if (searchField) {
+          await this.prefillLookupFieldByCode(searchField, prov.npi).catch(() => { /* ignore */ });
+        }
+      }
+    }
+  }
+
+  private findFaxProviderRepeatKey(): string | null {
+    const metas = Object.values(this.repeatRegistry || {});
+    const candidate = metas.find(m => {
+      const s = `${m?.prefix ?? ''} ${m?.title ?? ''}`.toLowerCase();
+      return s.includes('provider');
+    });
+    return candidate?.key ?? null;
+  }
+
+  private groupFaxProviderFieldsByInstance(fields: RenderField[]): Array<Record<string, string>> {
+    const provFields = fields.filter(f => {
+      const cn = String(f?.controlName ?? '').toLowerCase();
+      return cn.startsWith('provider') && cn.includes('_');
+    });
+
+    const byInstance = new Map<string, Record<string, string>>();
+
+    for (const f of provFields) {
+      const cn = f.controlName;
+      const underscoreIdx = cn.indexOf('_');
+      if (underscoreIdx <= 0) continue;
+      const instanceKey = cn.substring(0, underscoreIdx);
+      const rawFieldId = cn.substring(underscoreIdx + 1);
+
+      if (!byInstance.has(instanceKey)) byInstance.set(instanceKey, {});
+      byInstance.get(instanceKey)![rawFieldId] = cn;
+    }
+
+    const sorted = [...byInstance.entries()]
+      .sort((a, b) => {
+        const numA = parseInt(a[0].replace(/\D/g, ''), 10) || 0;
+        const numB = parseInt(b[0].replace(/\D/g, ''), 10) || 0;
+        return numA - numB;
+      });
+
+    return sorted.map(([, group]) => group);
+  }
+
+  private normalizeFaxDate(v: any): any {
+    if (!v) return null;
+    if (v instanceof Date) return v.toISOString();
+    const s = String(v).trim();
+    if (!s) return null;
+
+    // Already ISO-ish
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+      const d = new Date(s);
+      return isNaN(d.getTime()) ? s : d.toISOString();
+    }
+
+    // M/D/YY or MM/DD/YYYY
+    const m = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/.exec(s);
+    if (m) {
+      let year = Number(m[3]);
+      if (year < 100) year += 2000;
+      const d = new Date(year, Number(m[1]) - 1, Number(m[2]));
+      return isNaN(d.getTime()) ? s : d.toISOString();
+    }
+
+    return s;
+  }
+
+  private autoExpandFaxSections(): void {
+    if (!this.renderSections?.length) return;
+    const expandTitles = ['diagnosis', 'service', 'provider', 'auth detail'];
+    for (const sec of this.renderSections) {
+      const t = String(sec.title ?? '').toLowerCase();
+      if (expandTitles.some(p => t.includes(p))) {
+        sec.expanded = true;
+      }
+    }
   }
 
 }

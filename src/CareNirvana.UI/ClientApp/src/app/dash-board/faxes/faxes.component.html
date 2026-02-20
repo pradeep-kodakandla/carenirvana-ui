@@ -245,6 +245,9 @@
       <th mat-header-cell *matHeaderCellDef>Status</th>
       <td mat-cell *matCellDef="let r">
         <span class="chip chip-soft">{{ r.status }}</span>
+        <span *ngIf="getLinkedAuth(r)" class="chip chip-linked-auth">
+          Auth: {{ getLinkedAuth(r) }}
+        </span>
       </td>
     </ng-container>
 
@@ -372,7 +375,7 @@
 </div>
 
 <!-- Split preview panel (shows when selectedFax is set) -->
-<div *ngIf="showPreview" class="split3" style="padding:5px;">
+<div *ngIf="showPreview" class="split3" [class.auth-form-active]="showAuthForm" style="padding:5px;">
   <!-- Left: cards list -->
   <div class="pane pane-left" *ngIf="false">
     <div class="pane-header">
@@ -395,167 +398,195 @@
     </div>
   </div>
 
-  <!-- Middle: details (bind to your OCR model when ready) -->
+  <!-- Middle pane: Auth Form OR OCR Details -->
   <div class="pane pane-middle">
-    <!-- Loading -->
-    <div *ngIf="isLoadingDetails" class="loader-container">
-      <div class="spinner"></div>
-      <div class="loader-text">Extracting details, please wait...</div>
-    </div>
 
-    <!-- Not loading: show details if priorAuth exists, else noOcr -->
-    <ng-container *ngIf="!isLoadingDetails && priorAuth as pa; else noOcr">
-      <div class="space-y-3">
-        <div class="pane-header">
+    <!-- ═══ AUTH FORM MODE ═══════════════════════════════════════════════ -->
+    <ng-container *ngIf="showAuthForm && currentFaxPrefill; else ocrDetailView">
+      <div class="pane-header">
+        <span>Create Authorization</span>
+        <button class="close-btn" (click)="cancelAuthForm()">
+          ← Back to Details
+        </button>
+      </div>
 
-          <!-- LEFT: document name -->
-          <div class="doc-name">
-            {{ selectedFax?.fileName || 'No fax selected' }}
-          </div>
-        </div>
-
-        <!-- Split panel: only show if we have a selected fax with more than 1 page -->
-        <div class="split-panel"
-             *ngIf="(selectedFax?.pageCount ?? 0) > 1 ">
-
-          <div class="split-info">
-            Total pages: <strong>{{ selectedFax?.pageCount }}</strong>
-          </div>
-
-          <div class="split-controls">
-            <label>
-              Pages in first document:
-              <input type="number"
-                     min="1"
-                     [max]="(selectedFax?.pageCount ?? 0) - 1"
-                     [(ngModel)]="splitFirstPageCount">
-            </label>
-
-            <button mat-stroked-button
-                    color="primary"
-                    (click)="splitCurrentFaxOnClient()"
-                    [disabled]="!selectedFax || (selectedFax.pageCount ?? 0) <= 1">
-              <mat-icon>call_split</mat-icon>
-              <span>Split &amp; Save</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="card">
-          <!--<div *ngIf="pa.patient?.memberId; else noMember" class="info-highlight">-->
-          <!--Member identified (Member ID: {{ pa.patient?.memberId }}) and ready for linkage.
-          Authorization can be initiated for this request using the extracted Service Codes and valid Start–End dates.-->
-          <!--Member identified (Member ID: {{ pa.patient?.memberId }}) and ready for linkage.
-            <strong class="smart-check">Smart Auth Check completed.</strong> Authorization is required for this request based on the extracted
-            <strong>Service Codes</strong> and verified <strong>Start–End dates</strong>.
-          </div>-->
-          <div *ngIf="pa.patient?.memberId; else noMember" class="info-highlight">
-            Member identified (Member ID: {{ pa.patient?.memberId }}) and ready for linkage.
-
-            <ng-container *ngIf="smartAuthCheckInProgress">
-              <strong class="smart-check">Running Smart Auth Check...</strong>
-            </ng-container>
-
-            <ng-container *ngIf="!smartAuthCheckInProgress && smartAuthCheckCompleted">
-              <strong class="smart-check">Smart Auth Check completed.</strong>
-
-              <ng-container *ngIf="smartAuthCheckAuthRequired === true">
-                Authorization is required for this request based on the extracted
-                <strong>Service Codes</strong> and verified <strong>Start–End dates</strong>.
-              </ng-container>
-
-              <ng-container *ngIf="smartAuthCheckAuthRequired === false">
-                Authorization is <strong>not</strong> required for this request based on the extracted
-                <strong>Service Codes</strong> and verified <strong>Start–End dates</strong>.
-              </ng-container>
-
-              <ng-container *ngIf="smartAuthCheckAuthRequired === null">
-                No matching Smart Auth Check rule was found for the extracted inputs.
-              </ng-container>
-            </ng-container>
-
-            <ng-container *ngIf="!smartAuthCheckInProgress && !smartAuthCheckCompleted && smartAuthCheckError">
-              <strong class="smart-check">Smart Auth Check unavailable.</strong> {{ smartAuthCheckError }}
-            </ng-container>
-          </div>
-
-
-          <ng-template #noMember>
-            <div class="info-highlight no-match">
-              No matching member record found. Please verify patient details before linking or adding an authorization.
-            </div>
-          </ng-template>
-        </div>
-
-        <div class="card">
-          <div class="pane-header">
-            <span>Patient</span>
-            <div class="text-sm muted">
-              <a [class.disabled-link]="!pa.patient?.memberId" href="#" [attr.tabindex]="pa.patient?.memberId ? 0 : -1">
-                Link to member
-              </a>
-              <a style="padding-left:10px;"
-                 [class.disabled-link]="!pa.patient?.memberId"
-                 href="#"
-                 [attr.tabindex]="pa.patient?.memberId ? 0 : -1">
-                Add Auth
-              </a>
-
-            </div>
-          </div>
-          <div class="grid-2">
-            <div><strong>Name</strong>: {{ pa.patient?.name || '—' }}</div>
-            <div><strong>Member ID</strong>: {{ pa.patient?.memberId || '—' }}</div>
-            <div><strong>DOB</strong>: {{ pa.patient?.dob || '—' }}</div>
-            <div><strong>Phone</strong>: {{ pa.patient?.phone || '—' }}</div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="pane-header">Review / Setting</div>
-          <div class="grid-2">
-            <div><strong>Type</strong>: {{ pa.review?.type || '—' }}</div>
-            <div><strong>Inpatient</strong>: {{ pa.setting?.inpatient ? 'Yes' : 'No' }}</div>
-            <div><strong>Outpatient</strong>: {{ pa.setting?.outpatient ? 'Yes' : 'No' }}</div>
-          </div>
-        </div>
-
-        <div class="card" *ngIf="pa.services?.length">
-          <div class="pane-header">Services</div>
-          <div *ngFor="let s of pa.services" class="svc">
-            <div><strong>Code</strong>: {{ s.code || '—' }}</div>
-            <div class="md:col-span-2"><strong>Description</strong>: {{ s.description || '—' }}</div>
-            <div><strong>Start</strong>: {{ s.startDate || '—' }}</div>
-            <div><strong>End</strong>: {{ s.endDate || '—' }}</div>
-            <div><strong>DX</strong>: {{ s.diagnosisCode || s.diagnosisDescription || (pa.dx?.codes?.join(', ') || '—') }}</div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="pane-header">Providers</div>
-          <div class="grid-2">
-            <div>
-              <strong>Requesting</strong>: {{ pa.providerRequesting?.name || '—' }}
-              <span *ngIf="pa.providerRequesting?.npi"> (NPI {{ pa.providerRequesting?.npi }})</span>
-            </div>
-            <div><strong>Servicing/Facility</strong>: {{ pa.providerServicing?.name || pa.providerServicing?.facility || '—' }}</div>
-            <div><strong>Req. Phone</strong>: {{ pa.providerRequesting?.phone || '—' }}</div>
-            <div><strong>Serv. Phone</strong>: {{ pa.providerServicing?.phone || '—' }}</div>
-          </div>
-        </div>
-
-        <div class="card" *ngIf="pa.notes || pa.submission?.issuerName">
-          <div class="pane-header">Submission / Notes</div>
-          <div class="grid-2">
-            <div><strong>Issuer</strong>: {{ pa.submission?.issuerName || '—' }}</div>
-            <div><strong>Date</strong>: {{ pa.submission?.date || '—' }}</div>
-          </div>
-          <div class="mt-2"><strong>Notes</strong>: {{ pa.notes || '—' }}</div>
-        </div>
+      <div class="auth-form-scroll">
+        <app-authdetails #authDetailsRef
+          [faxPrefill]="currentFaxPrefill"
+          (authSaved)="onAuthSaved($any($event))"
+          (authCancelled)="cancelAuthForm()">
+        </app-authdetails>
       </div>
     </ng-container>
-    <ng-template #noOcr>
-      <!--<div class="muted"> No OCR details yet. Choose a fax on the left.</div>-->
+
+    <!-- ═══ OCR DETAIL VIEW (existing, with Create Auth button added) ═══ -->
+    <ng-template #ocrDetailView>
+      <!-- Loading -->
+      <div *ngIf="isLoadingDetails" class="loader-container">
+        <div class="spinner"></div>
+        <div class="loader-text">Extracting details, please wait...</div>
+      </div>
+
+      <!-- Not loading: show details if priorAuth exists, else noOcr -->
+      <ng-container *ngIf="!isLoadingDetails && priorAuth as pa; else noOcr">
+        <div class="space-y-3">
+          <div class="pane-header">
+            <div class="doc-name">
+              {{ selectedFax?.fileName || 'No fax selected' }}
+            </div>
+          </div>
+
+          <!-- Split panel -->
+          <div class="split-panel"
+               *ngIf="(selectedFax?.pageCount ?? 0) > 1">
+            <div class="split-info">
+              Total pages: <strong>{{ selectedFax?.pageCount }}</strong>
+            </div>
+            <div class="split-controls">
+              <label>
+                Pages in first document:
+                <input type="number"
+                       min="1"
+                       [max]="(selectedFax?.pageCount ?? 0) - 1"
+                       [(ngModel)]="splitFirstPageCount">
+              </label>
+              <button mat-stroked-button
+                      color="primary"
+                      (click)="splitCurrentFaxOnClient()"
+                      [disabled]="!selectedFax || (selectedFax.pageCount ?? 0) <= 1">
+                <mat-icon>call_split</mat-icon>
+                <span>Split &amp; Save</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Smart Auth Check info highlight -->
+          <div class="card">
+            <div *ngIf="pa.patient?.memberId; else noMember" class="info-highlight">
+              Member identified (Member ID: {{ pa.patient?.memberId }}) and ready for linkage.
+
+              <ng-container *ngIf="smartAuthCheckInProgress">
+                <strong class="smart-check">Running Smart Auth Check...</strong>
+              </ng-container>
+
+              <ng-container *ngIf="!smartAuthCheckInProgress && smartAuthCheckCompleted">
+                <strong class="smart-check">Smart Auth Check completed.</strong>
+                <ng-container *ngIf="smartAuthCheckAuthRequired === true">
+                  Authorization is required for this request based on the extracted
+                  <strong>Service Codes</strong> and verified <strong>Start–End dates</strong>.
+                </ng-container>
+                <ng-container *ngIf="smartAuthCheckAuthRequired === false">
+                  Authorization is <strong>not</strong> required for this request based on the extracted
+                  <strong>Service Codes</strong> and verified <strong>Start–End dates</strong>.
+                </ng-container>
+                <ng-container *ngIf="smartAuthCheckAuthRequired === null">
+                  No matching Smart Auth Check rule was found for the extracted inputs.
+                </ng-container>
+              </ng-container>
+
+              <ng-container *ngIf="!smartAuthCheckInProgress && !smartAuthCheckCompleted && smartAuthCheckError">
+                <strong class="smart-check">Smart Auth Check unavailable.</strong> {{ smartAuthCheckError }}
+              </ng-container>
+            </div>
+
+            <ng-template #noMember>
+              <div class="info-highlight no-match">
+                No matching member record found. Please verify patient details before linking or adding an authorization.
+              </div>
+            </ng-template>
+          </div>
+
+          <!-- ═══ Create Authorization Button ═══════════════════════════ -->
+          <div class="card create-auth-card"
+               *ngIf="pa.patient?.memberId && selectedFax?.memberDetailsId">
+            <button mat-flat-button
+                    color="primary"
+                    class="create-auth-btn"
+                    (click)="openAuthForm()"
+                    [disabled]="!pa.patient?.memberId || !selectedFax?.memberDetailsId">
+              <mat-icon>add_circle</mat-icon>
+              Create Authorization from Fax
+            </button>
+            <div class="create-auth-hint">
+              Pre-populates Auth Details with extracted diagnosis, services, and provider info
+            </div>
+          </div>
+          <!-- ═══════════════════════════════════════════════════════════ -->
+
+          <!-- Patient -->
+          <div class="card">
+            <div class="pane-header">
+              <span>Patient</span>
+              <div class="text-sm muted">
+                <a [class.disabled-link]="!pa.patient?.memberId" href="#" [attr.tabindex]="pa.patient?.memberId ? 0 : -1">
+                  Link to member
+                </a>
+                <a style="padding-left:10px;"
+                   [class.disabled-link]="!pa.patient?.memberId"
+                   href="#"
+                   [attr.tabindex]="pa.patient?.memberId ? 0 : -1">
+                  Add Auth
+                </a>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div><strong>Name</strong>: {{ pa.patient?.name || '—' }}</div>
+              <div><strong>Member ID</strong>: {{ pa.patient?.memberId || '—' }}</div>
+              <div><strong>DOB</strong>: {{ pa.patient?.dob || '—' }}</div>
+              <div><strong>Phone</strong>: {{ pa.patient?.phone || '—' }}</div>
+            </div>
+          </div>
+
+          <!-- Review / Setting -->
+          <div class="card">
+            <div class="pane-header">Review / Setting</div>
+            <div class="grid-2">
+              <div><strong>Type</strong>: {{ pa.review?.type || '—' }}</div>
+              <div><strong>Inpatient</strong>: {{ pa.setting?.inpatient ? 'Yes' : 'No' }}</div>
+              <div><strong>Outpatient</strong>: {{ pa.setting?.outpatient ? 'Yes' : 'No' }}</div>
+            </div>
+          </div>
+
+          <!-- Services -->
+          <div class="card" *ngIf="pa.services?.length">
+            <div class="pane-header">Services</div>
+            <div *ngFor="let s of pa.services" class="svc">
+              <div><strong>Code</strong>: {{ s.code || '—' }}</div>
+              <div class="md:col-span-2"><strong>Description</strong>: {{ s.description || '—' }}</div>
+              <div><strong>Start</strong>: {{ s.startDate || '—' }}</div>
+              <div><strong>End</strong>: {{ s.endDate || '—' }}</div>
+              <div><strong>DX</strong>: {{ s.diagnosisCode || s.diagnosisDescription || (pa.dx?.codes?.join(', ') || '—') }}</div>
+            </div>
+          </div>
+
+          <!-- Providers -->
+          <div class="card">
+            <div class="pane-header">Providers</div>
+            <div class="grid-2">
+              <div>
+                <strong>Requesting</strong>: {{ pa.providerRequesting?.name || '—' }}
+                <span *ngIf="pa.providerRequesting?.npi"> (NPI {{ pa.providerRequesting?.npi }})</span>
+              </div>
+              <div><strong>Servicing/Facility</strong>: {{ pa.providerServicing?.name || pa.providerServicing?.facility || '—' }}</div>
+              <div><strong>Req. Phone</strong>: {{ pa.providerRequesting?.phone || '—' }}</div>
+              <div><strong>Serv. Phone</strong>: {{ pa.providerServicing?.phone || '—' }}</div>
+            </div>
+          </div>
+
+          <!-- Submission / Notes -->
+          <div class="card" *ngIf="pa.notes || pa.submission?.issuerName">
+            <div class="pane-header">Submission / Notes</div>
+            <div class="grid-2">
+              <div><strong>Issuer</strong>: {{ pa.submission?.issuerName || '—' }}</div>
+              <div><strong>Date</strong>: {{ pa.submission?.date || '—' }}</div>
+            </div>
+            <div class="mt-2"><strong>Notes</strong>: {{ pa.notes || '—' }}</div>
+          </div>
+        </div>
+      </ng-container>
+      <ng-template #noOcr>
+        <!-- empty -->
+      </ng-template>
     </ng-template>
   </div>
 

@@ -1,4 +1,4 @@
-import { Component, OnDestroy } from '@angular/core';
+import { Component, OnDestroy, ElementRef, AfterViewChecked, NgZone } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
 import { forkJoin, of, Subject } from 'rxjs';
@@ -79,6 +79,8 @@ type DecisionFieldVm = {
 type DecisionSectionVm = {
   sectionName: DecisionSectionName;
   fields: DecisionFieldVm[];
+  /** UI-only: tracks accordion collapsed state */
+  _collapsed?: boolean;
 };
 
 type TabState = {
@@ -92,7 +94,7 @@ type TabState = {
   templateUrl: './authdecision.component.html',
   styleUrls: ['./authdecision.component.css']
 })
-export class AuthdecisionComponent implements OnDestroy, AuthunsavedchangesawareService {
+export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, AuthunsavedchangesawareService {
   loading = false;
   saving = false;
   errorMsg = '';
@@ -241,8 +243,33 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
     private dsLookup: DatasourceLookupService,
     private toastSvc: WizardToastService,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private elRef: ElementRef
   ) { }
+
+  ngAfterViewChecked(): void {
+    this.updateContentGap();
+  }
+
+  /** Calculates the active tab's position and sets --gap-top / --gap-bottom
+   *  CSS custom properties on the content panel so the left border has a gap. */
+  private updateContentGap(): void {
+    const host = this.elRef.nativeElement as HTMLElement;
+    const activeTab = host.querySelector('.tab.active') as HTMLElement;
+    const content = host.querySelector('.tab-content') as HTMLElement;
+    if (!activeTab || !content) return;
+
+    const ctRect = content.getBoundingClientRect();
+    const tabRect = activeTab.getBoundingClientRect();
+    const bw = 2; // must match --bw
+
+    const gapTop = Math.max(0, (tabRect.top - ctRect.top) + bw);
+    const gapBottom = (tabRect.bottom - ctRect.top) + bw;
+
+    content.style.setProperty('--gap-top', gapTop + 'px');
+    content.style.setProperty('--gap-bottom', gapBottom + 'px');
+  }
+
   public openMdReview(): void {
     // Make MD Review visible in the stepper (via query param) and navigate to MD Review step.
     this.router.navigate(['../mdReview'], {
@@ -1967,6 +1994,19 @@ export class AuthdecisionComponent implements OnDestroy, Authunsavedchangesaware
 
   authHasUnsavedChanges(): boolean {
     return this.form?.dirty ?? false;
+  }
+
+  /** True if the tab at index `ti` is directly before the currently active tab. */
+  isTabBeforeActive(ti: number): boolean {
+    const activeIdx = this.tabs.findIndex(t => t.id === this.selectedTabId);
+    return activeIdx > 0 && ti === activeIdx - 1;
+  }
+
+  /** Returns the status key (e.g. 'approved') of the active tab, used for before-status-* class. */
+  getActiveStatusKey(): string {
+    const active = this.tabs.find(t => t.id === this.selectedTabId);
+    // statusClass is like 'status-approved' → extract the key after 'status-'
+    return (active?.statusClass ?? '').replace('status-', '');
   }
 
   // Alias for CanDeactivate guards that expect a different method name
