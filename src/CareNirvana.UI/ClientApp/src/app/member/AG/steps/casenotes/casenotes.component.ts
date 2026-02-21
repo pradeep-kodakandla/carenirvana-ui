@@ -52,6 +52,31 @@ export class CasenotesComponent implements OnInit, OnChanges, OnDestroy, CaseUns
   @Input() isAddOnly = false;     // show only editor pane + "view all activities"
   @Input() singlePane = false;    // when true: list-only until select/add, then editor-only
 
+  /** Read-only flag — set by shell for non-latest levels. */
+  private _readOnly = false;
+
+  @Input()
+  set readOnly(v: boolean) {
+    this._readOnly = !!v;
+    this.applyReadOnly();
+  }
+  get readOnly(): boolean {
+    return this._readOnly;
+  }
+
+  setReadOnly(v: boolean): void {
+    this.readOnly = v;
+  }
+
+  private applyReadOnly(): void {
+    if (!this.form) return;
+    if (this._readOnly) {
+      this.form.disable({ emitEvent: false });
+    } else {
+      this.form.enable({ emitEvent: false });
+    }
+  }
+
   @Output() viewAll = new EventEmitter<void>(); // parent dashboard can navigate/open full activity view
 
   // ✅ Search / sort / selection
@@ -126,6 +151,7 @@ export class CasenotesComponent implements OnInit, OnChanges, OnDestroy, CaseUns
     return this.caseHasUnsavedChanges();
   }
   save(): void {
+    if (this._readOnly) return;
     if (this.showEditor) this.onSave();
   }
 
@@ -133,6 +159,7 @@ export class CasenotesComponent implements OnInit, OnChanges, OnDestroy, CaseUns
   // UI actions
   // --------------------------
   onAddClick(): void {
+    if (this._readOnly) return;
     this.editing = undefined;
     this.showEditor = true;
     this.errorMsg = '';
@@ -144,6 +171,10 @@ export class CasenotesComponent implements OnInit, OnChanges, OnDestroy, CaseUns
   }
 
   onEdit(n: CaseNoteDto): void {
+    if (this._readOnly) {
+      this.selectedNoteId = this.getNoteId(n);
+      return;
+    }
     this.editing = n;
     this.showEditor = true;
     this.errorMsg = '';
@@ -161,6 +192,7 @@ export class CasenotesComponent implements OnInit, OnChanges, OnDestroy, CaseUns
   }
 
   onSave(): void {
+    if (this._readOnly) return;
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
@@ -212,6 +244,7 @@ export class CasenotesComponent implements OnInit, OnChanges, OnDestroy, CaseUns
   }
 
   onDelete(n: CaseNoteDto): void {
+    if (this._readOnly) return;
     if (!this.resolved) return;
 
     const noteId = this.getNoteId(n);
@@ -756,6 +789,7 @@ export class CasenotesComponent implements OnInit, OnChanges, OnDestroy, CaseUns
   /** Wrappers: keep your existing functionality untouched */
   editNote(n: any): void {
     this.selectedNoteId = this.getNoteId(n);
+    if (this._readOnly) return;
     this.onEdit(n); // your existing method
   }
 

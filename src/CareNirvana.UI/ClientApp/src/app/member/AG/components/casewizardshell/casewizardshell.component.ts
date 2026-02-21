@@ -16,6 +16,8 @@ import { distinctUntilChanged, map, takeUntil } from 'rxjs/operators';
 
 import { AuthService } from 'src/app/service/auth.service';
 import { CasedetailService } from 'src/app/service/casedetail.service';
+import { DatasourceLookupService } from 'src/app/service/crud.service';
+import { AuthenticateService } from 'src/app/service/authentication.service';
 import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
 
 import { CaseWizardStoreService } from 'src/app/member/AG/services/case-wizard-store.service';
@@ -34,6 +36,10 @@ export interface CaseStep {
   label: string;
   route: string;
   disabled?: boolean;
+
+  // Optional (doesn't break existing usage):
+  icon?: string;             // material icon name (e.g., 'assignment')
+  badge?: number | string;   // count badge (e.g., 2)
 }
 
 // ── AI panel interfaces ──
@@ -82,12 +88,12 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
 
   // Stepper
   steps: CaseStep[] = [
-    { id: 'details', label: 'Case Details', route: 'details' },
-    { id: 'disposition', label: 'Disposition Details', route: 'disposition' },
-    { id: 'mdReview', label: 'MD Review', route: 'mdReview' },
-    { id: 'activities', label: 'Activities', route: 'activities' },
-    { id: 'notes', label: 'Notes', route: 'notes' },
-    { id: 'documents', label: 'Documents', route: 'documents' },
+    { id: 'details',     label: 'Case Details',         route: 'details',     icon: 'assignment' },
+    { id: 'disposition', label: 'Disposition Details',   route: 'disposition', icon: 'task_alt' },
+    { id: 'mdReview',   label: 'MD Review',             route: 'mdReview',    icon: 'medical_services' },
+    { id: 'activities',  label: 'Activities',            route: 'activities',  icon: 'timeline' },
+    { id: 'notes',       label: 'Notes',                 route: 'notes',       icon: 'note_alt' },
+    { id: 'documents',   label: 'Documents',             route: 'documents',   icon: 'folder' },
   ];
 
   activeStepId = 'details';
@@ -115,6 +121,33 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
   aiPanelOpen = false;
   aiQuery = '';
 
+  // ════════════════════════════════════
+  //  Header field lookups (from jsonData)
+  // ════════════════════════════════════
+  private statusLookup: Map<string, string> = new Map();   // id → label
+  private priorityLookup: Map<string, string> = new Map(); // id → label
+  private userLookup: Map<string, string> = new Map();     // userId → userName
+
+  /**
+   * Known jsonData keys for header fields.
+   * Pattern: SectionName_fieldId (safe() converts spaces → underscores)
+   *
+   *  Status   → Case_Status_Details_caseStatus
+   *  Priority → Case_Overview_casePriority
+   *  Assignee → Case_Status_Details_caseOwner
+   *  Due Date → Case_Overview_receivedDateTime (computed) or header.dueDate
+   */
+  private readonly JSON_KEYS = {
+    status:   ['Case_Status_Details_caseStatus', 'caseStatus', 'status'],
+    priority: ['Case_Overview_casePriority', 'casePriority', 'priority'],
+    assignee: ['Case_Status_Details_caseOwner', 'caseOwner', 'assignedTo', 'assigneeName'],
+    dueDate:  ['dueDate', 'targetDate', 'Case_Overview_extendDueDate'],
+  };
+
+  // Read-only for non-latest levels
+  isReadOnly = false;
+  latestLevelId: number | null = null;
+
   // SLA data (populated from API or derived from aggregate)
   slaItems: SlaItem[] = [];
   slaAtRiskCount = 0;
@@ -131,7 +164,9 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     private route: ActivatedRoute,
     private authService: AuthService,
     private caseApi: CasedetailService,
-    private state: CaseWizardStoreService
+    private state: CaseWizardStoreService,
+    private dsLookup: DatasourceLookupService,
+    private userService: AuthenticateService
     // TODO: inject your AI suggestion service here
     // private aiService: CaseAiService
   ) { }
@@ -151,6 +186,9 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
           label: x.templateName
         }));
       });
+
+    // ✅ Load header field lookups (status, priority, users)
+    this.loadHeaderLookups();
 
     // Keep header caseType in sync with wizard store
     this.state.templateId$
@@ -183,8 +221,11 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
               this.headerForm.patchValue({ caseType: templateId }, { emitEvent: false });
               this.updateStepDisabled(templateId);
 
-              const level = this.deriveActiveLevelIdFromAggregate(agg) ?? 1;
+              // ✅ Compute latest (highest) level and default to it
+              this.latestLevelId = this.deriveLatestLevelId(agg);
+              const level = this.latestLevelId ?? 1;
               this.state.setActiveLevel(level);
+              this.isReadOnly = false; // latest level is always editable
 
               this.pushTemplateIdIntoCurrentStep(templateId);
 
@@ -215,9 +256,25 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
   //  HEADER FIELD EXTRACTORS (new)
   // ═══════════════════════════════════
 
-  /** Status text from aggregate (map your actual status codes) */
+  /**
+   * Header status — shows current level's real status,
+   * or "Escalated" when viewing a previous (non-latest) level.
+   */
   getStatus(agg: any): string {
-    return agg?.header?.caseStatus ?? agg?.header?.status ?? '';
+    // ✅ If viewing a non-latest (read-only) level → "Escalated"
+    const activeLevelId = this.state.getActiveLevelId() ?? 1;
+    if (this.latestLevelId && activeLevelId !== this.latestLevelId) {
+      return 'Escalated';
+    }
+
+    // 1) Try header object first
+    const headerVal = agg?.header?.caseStatus ?? agg?.header?.status;
+    if (headerVal) return this.resolveLabel(headerVal, this.statusLookup);
+
+    // 2) Fallback: parse jsonData from active level
+    const json = this.getActiveJsonData(agg);
+    const raw = this.pickFirstKey(json, this.JSON_KEYS.status);
+    return raw != null ? this.resolveLabel(raw, this.statusLookup) : '';
   }
 
   /** Slug for CSS class binding: "In Review" → "in-review" */
@@ -228,7 +285,12 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   getPriority(agg: any): string {
-    return agg?.header?.priority ?? '';
+    const headerVal = agg?.header?.priority;
+    if (headerVal) return this.resolveLabel(headerVal, this.priorityLookup);
+
+    const json = this.getActiveJsonData(agg);
+    const raw = this.pickFirstKey(json, this.JSON_KEYS.priority);
+    return raw != null ? this.resolveLabel(raw, this.priorityLookup) : '';
   }
 
   getPrioritySlug(agg: any): string {
@@ -236,7 +298,14 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   getDueDate(agg: any): any {
-    return agg?.header?.dueDate ?? agg?.header?.targetDate ?? null;
+    // 1) Header
+    const headerVal = agg?.header?.dueDate ?? agg?.header?.targetDate;
+    if (headerVal) return headerVal;
+
+    // 2) jsonData — no direct "dueDate" field in template,
+    //    so check detail-level properties
+    const detail = this.getActiveDetail(agg);
+    return detail?.dueDate ?? detail?.targetDate ?? null;
   }
 
   isDueSoon(agg: any): boolean {
@@ -253,7 +322,15 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   getAssignee(agg: any): string {
-    return agg?.header?.assigneeName ?? agg?.header?.assignedTo ?? '';
+    const headerVal = agg?.header?.assigneeName ?? agg?.header?.assignedTo;
+    if (headerVal) return headerVal;
+
+    const json = this.getActiveJsonData(agg);
+    const raw = this.pickFirstKey(json, this.JSON_KEYS.assignee);
+    if (raw == null) return '';
+
+    // caseOwner stores userId — resolve to userName
+    return this.resolveLabel(raw, this.userLookup) || String(raw);
   }
 
   getAssigneeInitials(agg: any): string {
@@ -265,6 +342,67 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
   getLevelLabel(levelId: number | null): string {
     if (!levelId) return '';
     return `Level ${levelId}`;
+  }
+
+  // ═══════════════════════════════════
+  //  LEVEL CARD HELPERS (Escalation History)
+  // ═══════════════════════════════════
+
+  private getLevelDetail(levelId: number): any {
+    const agg: any = (this.state as any).getAggregate?.() ?? null;
+    const details: any[] = agg?.details ?? [];
+    return details.find((d: any) => {
+      const id = Number(d?.caseLevelId ?? d?.levelId);
+      return id === levelId;
+    }) ?? null;
+  }
+
+  getLevelDate(levelId: number): string {
+    const detail = this.getLevelDetail(levelId);
+    const raw = detail?.createdOn ?? detail?.escalatedOn ?? detail?.startDate ?? null;
+    if (!raw) return '';
+    try {
+      const d = new Date(raw);
+      if (isNaN(d.getTime())) return '';
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    } catch { return ''; }
+  }
+
+  getLevelReviewer(levelId: number): string {
+    const detail = this.getLevelDetail(levelId);
+    return detail?.reviewerName ?? detail?.assigneeName ?? detail?.assignedTo ?? '';
+  }
+
+  getLevelStatus(levelId: number): string {
+    // ✅ Previous (non-latest) levels → always "Escalated"
+    if (this.latestLevelId && levelId !== this.latestLevelId) {
+      return 'Escalated';
+    }
+
+    // ✅ Latest level → resolve actual status
+    const detail = this.getLevelDetail(levelId);
+
+    // 1) Direct properties on the detail record
+    const directVal = detail?.levelStatus ?? detail?.status ?? detail?.caseStatus;
+    if (directVal) return this.resolveLabel(directVal, this.statusLookup);
+
+    // 2) Parse jsonData for Case_Status_Details_caseStatus
+    const raw = detail?.jsonData;
+    if (raw) {
+      try {
+        const json = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        const statusId = json?.Case_Status_Details_caseStatus ?? json?.caseStatus ?? json?.status;
+        if (statusId != null) return this.resolveLabel(statusId, this.statusLookup);
+      } catch { /* ignore parse errors */ }
+    }
+
+    return '';
+  }
+
+  getLevelStatusSlug(levelId: number): string {
+    const raw = this.getLevelStatus(levelId);
+    if (!raw) return '';
+    return raw.toLowerCase().replace(/\s+/g, '-');
   }
 
   // ═══════════════════════════════════
@@ -449,7 +587,17 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     if (!this.canNavigateAway()) return;
     this.state.setActiveLevel(levelId);
 
+    // ✅ Only the latest level is editable; all others are read-only
+    this.isReadOnly = !this.isLatestLevel(levelId);
+
     this.currentStepRef?.setInput?.('levelId', levelId);
+
+    // ✅ Push readOnly into child step
+    if (this.currentStepRef) {
+      const inst: any = this.currentStepRef.instance;
+      if ('readOnly' in inst) this.currentStepRef.setInput('readOnly', this.isReadOnly);
+      if (typeof inst?.setReadOnly === 'function') inst.setReadOnly(this.isReadOnly);
+    }
 
     const inst: any = this.currentStepRef?.instance;
     if (typeof inst?.onLevelChanged === 'function') inst.onLevelChanged(levelId);
@@ -471,6 +619,12 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   saveFromTop(): void {
+    // ✅ Block save for read-only (non-latest) levels
+    if (this.isReadOnly) {
+      this.showSaveBanner('This level is read-only. Only the latest level can be edited.', 3000);
+      return;
+    }
+
     const inst: any = this.currentStepRef?.instance;
     if (!inst || typeof inst.save !== 'function') {
       console.warn('Current step has no save() method.');
@@ -533,8 +687,12 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     if ('caseNumber' in inst) this.currentStepRef!.setInput('caseNumber', caseNumber);
     if ('memberDetailsId' in inst) this.currentStepRef!.setInput('memberDetailsId', memeberDetailsId);
 
+    // ✅ Push readOnly flag into step components
+    if ('readOnly' in inst) this.currentStepRef!.setInput('readOnly', this.isReadOnly);
+    if (typeof inst?.setReadOnly === 'function') inst.setReadOnly(this.isReadOnly);
+
     if (typeof inst?.setContext === 'function') {
-      inst.setContext({ caseHeaderId, caseTemplateId, levelId, caseNumber, memeberDetailsId });
+      inst.setContext({ caseHeaderId, caseTemplateId, levelId, caseNumber, memeberDetailsId, readOnly: this.isReadOnly });
     }
   }
 
@@ -596,7 +754,19 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
       .filter(x => Number.isFinite(x) && x > 0)
       .sort((a, b) => a - b);
 
-    return ids.length ? ids[0] : null;
+    // ✅ Select the LAST (highest) level
+    return ids.length ? ids[ids.length - 1] : null;
+  }
+
+  /** Returns the highest level ID (the latest escalation). */
+  private deriveLatestLevelId(agg: any): number | null {
+    return this.deriveActiveLevelIdFromAggregate(agg);
+  }
+
+  /** True only when levelId is the latest (highest) level — only this level is editable. */
+  isLatestLevel(levelId: number | null): boolean {
+    if (!levelId || !this.latestLevelId) return true;
+    return levelId === this.latestLevelId;
   }
 
   // ═══════════════════════════════════
@@ -626,16 +796,8 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     const direct = agg?.header?.receivedOn ?? agg?.receivedOn ?? null;
     if (direct) return direct;
 
-    const first = agg?.details?.[0];
-    const json = first?.jsonData;
-    if (!json) return null;
-
-    try {
-      const obj = typeof json === 'string' ? JSON.parse(json) : json;
-      return obj?.Case_Overview_receivedDateTime ?? null;
-    } catch {
-      return null;
-    }
+    const json = this.getActiveJsonData(agg);
+    return json?.Case_Overview_receivedDateTime ?? null;
   }
 
   // ═══════════════════════════════════
@@ -667,5 +829,138 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
   clearSaveBanner(): void {
     this.saveBannerText = null;
     clearTimeout(this.saveBannerTimer);
+  }
+
+  // ═══════════════════════════════════════════
+  //  HEADER FIELD LOOKUPS (status, priority, users)
+  // ═══════════════════════════════════════════
+
+  /**
+   * Load dropdown lookups so we can resolve IDs → labels
+   * for Status, Priority, and Assignee (Case Owner).
+   */
+  private loadHeaderLookups(): void {
+    // Status lookup (datasource: 'casestatus')
+    this.dsLookup
+      .getOptionsWithFallback(
+        'casestatus',
+        (r: any) => ({
+          value: r?.value ?? r?.id ?? r?.code,
+          label: r?.label ?? r?.caseStatus ?? r?.name ?? r?.description ?? String(r?.value ?? '')
+        }),
+        ['AG']
+      )
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (opts: any) => {
+          console.log('[casestatus] opts:', opts);
+          console.log('[casestatus] count:', (opts ?? []).length);
+          console.log('[casestatus] first:', (opts ?? [])[0]);
+
+          this.statusLookup.clear();
+          for (const o of (opts ?? [])) {
+            this.statusLookup.set(String(o.value), o.label ?? o.text ?? String(o.value));
+          }
+
+          console.log('[casestatus] map size:', this.statusLookup.size);
+          console.log('[casestatus] map entries sample:', Array.from(this.statusLookup.entries()).slice(0, 5));
+        },
+        error: (err) => console.error('[casestatus] error:', err),
+        complete: () => console.log('[casestatus] complete')
+      });
+
+    // Priority lookup (datasource: 'casepriority')
+    this.dsLookup
+      .getOptionsWithFallback(
+        'casepriority',
+        (r: any) => ({
+          value: r?.value ?? r?.id ?? r?.code,
+          label: r?.label ?? r?.casePriority ?? r?.name ?? r?.description ?? String(r?.value ?? '')
+        }),
+        ['AG']
+      )
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((opts: any) => {
+        this.priorityLookup.clear();
+        for (const o of (opts ?? [])) {
+          this.priorityLookup.set(String(o.value), o.label ?? o.text ?? String(o.value));
+        }
+      });
+
+    // User lookup for Case Owner (userId → userName)
+    this.userService.getAllUsers()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (users: any[]) => {
+          this.userLookup.clear();
+          for (const u of (users ?? [])) {
+            this.userLookup.set(String(u.userId), u.userName ?? u.name ?? String(u.userId));
+          }
+        },
+        error: (e) => console.warn('Failed to load users for header lookup:', e)
+      });
+  }
+
+  // ═══════════════════════════════════════════
+  //  JSON DATA HELPERS
+  // ═══════════════════════════════════════════
+
+  /**
+   * Returns the parsed jsonData from the ACTIVE level's detail record.
+   * This is where all form field values are stored.
+   */
+  private getActiveJsonData(agg: any): any {
+    const detail = this.getActiveDetail(agg);
+    if (!detail) return null;
+
+    const raw = detail?.jsonData;
+    if (!raw) return null;
+
+    try {
+      return typeof raw === 'string' ? JSON.parse(raw) : raw;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Returns the detail record for the currently active level. */
+  private getActiveDetail(agg: any): any {
+    const activeLevelId = this.state.getActiveLevelId() ?? 1;
+    const details: any[] = agg?.details ?? [];
+    return details.find((d: any) => {
+      const id = Number(d?.caseLevelId ?? d?.levelId);
+      return id === activeLevelId;
+    }) ?? details[0] ?? null;
+  }
+
+  /**
+   * Given a parsed jsonData object, returns the value for the first matching key.
+   * Tries multiple candidate keys (to handle different naming conventions).
+   */
+  private pickFirstKey(obj: any, keys: string[]): any {
+    if (!obj || typeof obj !== 'object') return null;
+    for (const k of keys) {
+      if (obj[k] != null && obj[k] !== '') return obj[k];
+    }
+    return null;
+  }
+
+  /**
+   * Resolves a raw ID to a display label via a lookup map.
+   * If no match found, returns the raw value as-is (might already be a label).
+   */
+  private resolveLabel(rawValue: any, lookup: Map<string, string>): string {
+    if (rawValue == null || rawValue === '') return '';
+    const key = String(rawValue);
+
+    // Check lookup map
+    const label = lookup.get(key);
+    if (label) return label;
+
+    // If rawValue is already a string label (not a numeric ID), return as-is
+    if (isNaN(Number(key))) return key;
+
+    // Numeric ID but no lookup match yet (options may still be loading) — return raw
+    return key;
   }
 }

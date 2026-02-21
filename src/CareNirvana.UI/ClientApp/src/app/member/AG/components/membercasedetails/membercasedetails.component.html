@@ -169,7 +169,7 @@
         <mat-icon class="mcd-detail-icon mcd-detail-icon--received">schedule</mat-icon>
         <span class="mcd-detail-label">Received</span>
         <span class="mcd-detail-value">
-          {{ row.receivedDateTime ? (row.receivedDateTime | date:'MM/dd/yyyy HH:mm') : '—' }}
+          {{ row.receivedDateTime ? (row.receivedDateTime | date:'MM/dd/yyyy HH:mm:ss a') : '—' }}
         </span>
       </div>
 
@@ -177,7 +177,7 @@
         <mat-icon class="mcd-detail-icon mcd-detail-icon--updated">update</mat-icon>
         <span class="mcd-detail-label">Updated</span>
         <span class="mcd-detail-value">
-          {{ row.lastDetailOn ? (row.lastDetailOn | date:'MM/dd/yyyy HH:mm') : '—' }}
+          {{ row.lastDetailOn ? (row.lastDetailOn | date:'MM/dd/yyyy HH:mm:ss a') : '—' }}
         </span>
       </div>
 
@@ -186,7 +186,7 @@
         <span class="mcd-detail-label">Created</span>
         <span class="mcd-detail-value">
           {{ row.createdByUserName || '—' }}
-          <span class="mcd-detail-muted">· {{ row.createdOn | date:'MM/dd/yyyy HH:mm' }}</span>
+          <span class="mcd-detail-muted">· {{ row.createdOn | date:'MM/dd/yyyy HH:mm:ss a' }}</span>
         </span>
       </div>
 

@@ -1,8 +1,9 @@
-<form class="case-details" [formGroup]="form">
+<form class="case-details" [formGroup]="form" [class.cw-readonly]="readOnly">
 
   <!-- ═══════ Enrollment Details ═══════ -->
   <div class="section-card">
     <div class="section-header">
+      <span class="section-icon"><mat-icon>badge</mat-icon></span>
       <span class="section-acc-icon open">▸</span>
       <div class="section-title">Enrollment Details</div>
     </div>
@@ -10,7 +11,7 @@
     <div class="selection-container">
       <div class="rounded-box"
            *ngFor="let enr of memberEnrollments; let i = index"
-           (click)="selectEnrollment(i)"
+           (click)="!readOnly && selectEnrollment(i)"
            [ngClass]="{ 'selected': selectedDiv === (i + 1) }">
         <div class="pairs">
           <div class="pair-row" *ngFor="let pair of getEnrollmentDisplayPairs(enr)">
@@ -68,6 +69,7 @@
            (keydown.enter)="toggleSection(sec, i)"
            (keydown.space)="$event.preventDefault(); toggleSection(sec, i)"
            [attr.aria-expanded]="isSectionOpen(sec, i)">
+        <span class="section-icon"><mat-icon>{{ getSectionIcon(sec.title) }}</mat-icon></span>
         <span class="section-acc-icon" [class.open]="isSectionOpen(sec, i)">▸</span>
         <div class="section-title">{{ sec.title }}</div>
       </div>
@@ -379,7 +381,7 @@
         <!-- ── Multi-Select Claim Cards Grid ── -->
         <ng-container *ngIf="getSelectedClaims(sub).length > 0">
           <div class="ff-claims-header">
-            <span class="ff-claims-count">{{ getSelectedClaims(sub).length }} claim{{ getSelectedClaims(sub).length > 1 ? 's' : '' }} selected</span>
+            <span class="ff-claims-count">{{ getSelectedClaims(sub).length + ' claim' + (getSelectedClaims(sub).length > 1 ? 's' : '') + ' selected' }}</span>
             <button type="button"
                     class="ff-claims-clear-all"
                     (click)="clearAllSelectedClaims(sub)"
@@ -443,6 +445,264 @@
                   </span>
                 </div>
               </div>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- ── Multi-Select Authorization Cards ── -->
+        <ng-container *ngIf="getSelectedAuths(sub).length > 0">
+          <div class="ff-lookup-header">
+            <span class="ff-lookup-count ff-lookup-count--auth">
+              {{ getSelectedAuths(sub).length + ' authorization' + (getSelectedAuths(sub).length > 1 ? 's' : '') + ' selected' }}
+            </span>
+            <button type="button" class="ff-lookup-clear-all"
+                    (click)="clearAllSelectedAuths(sub)"
+                    *ngIf="getSelectedAuths(sub).length > 1">Clear all</button>
+          </div>
+          <div class="ff-lookup-grid">
+            <div class="ff-lk-card ff-lk-card--auth"
+                 *ngFor="let auth of getSelectedAuths(sub); let ai = index; trackBy: trackByAuthId">
+              <button type="button" class="ff-lk-card__dismiss"
+                      (click)="removeSelectedAuth(sub, ai)" title="Remove">&times;</button>
+              <div class="ff-lk-card__top">
+                <span class="ff-lk-card__id">{{ auth.authnumber || '—' }}</span>
+                <span class="ff-lk-badge" [ngClass]="getAuthStatusClass(auth.overallstatus)">{{ auth.overallstatus || 'Auth' }}</span>
+                <span class="ff-lk-badge ff-lk-badge--auth-type" *ngIf="auth.authtype">{{ auth.authtype }}</span>
+              </div>
+              <div class="ff-lk-card__details">
+                <div class="ff-lk-card__row" *ngIf="auth.enrollmenthierarchy">
+                  <span class="ff-lk-card__icon">📋</span>
+                  <span class="ff-lk-card__val">{{ auth.enrollmenthierarchy }}</span>
+                </div>
+                <div class="ff-lk-card__row" *ngIf="auth.icdcode">
+                  <span class="ff-lk-card__icon">🔬</span>
+                  <span class="ff-lk-card__val ff-lk-card__val--muted">{{ auth.icdcode }} — {{ auth.icddescription }}</span>
+                </div>
+                <div class="ff-lk-card__row" *ngIf="auth.servicecode">
+                  <span class="ff-lk-card__icon">🩺</span>
+                  <span class="ff-lk-card__val ff-lk-card__val--muted">{{ auth.servicecode }} — {{ auth.servicedescription }}</span>
+                </div>
+                <div class="ff-lk-card__row" *ngIf="auth.fromdate || auth.todate">
+                  <span class="ff-lk-card__icon">📅</span>
+                  <span class="ff-lk-card__val ff-lk-card__val--muted">
+                    {{ formatCardDate(auth.fromdate) }}
+                    <ng-container *ngIf="auth.todate"> — {{ formatCardDate(auth.todate) }}</ng-container>
+                  </span>
+                </div>
+                <div class="ff-lk-card__row" *ngIf="auth.reviewtype">
+                  <span class="ff-lk-card__icon">👁️</span>
+                  <span class="ff-lk-card__val ff-lk-card__val--muted">{{ auth.reviewtype }}</span>
+                </div>
+              </div>
+              <div class="ff-lk-card__footer" *ngIf="auth.decisionstatus || auth.denialreason">
+                <span class="ff-lk-pill ff-lk-pill--green" *ngIf="auth.decisionstatus">
+                  <span class="ff-lk-pill__lbl">Decision</span> {{ auth.decisionstatus }}
+                </span>
+                <span class="ff-lk-pill ff-lk-pill--red" *ngIf="auth.denialreason">
+                  <span class="ff-lk-pill__lbl">Denial</span> {{ auth.denialreason }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- ── Multi-Select Provider Cards ── -->
+        <ng-container *ngIf="getSelectedProviders(sub).length > 0">
+          <div class="ff-lookup-header">
+            <span class="ff-lookup-count ff-lookup-count--provider">
+              {{ getSelectedProviders(sub).length + ' provider' + (getSelectedProviders(sub).length > 1 ? 's' : '') + ' selected' }}
+            </span>
+            <button type="button" class="ff-lookup-clear-all"
+                    (click)="clearAllSelectedProviders(sub)"
+                    *ngIf="getSelectedProviders(sub).length > 1">Clear all</button>
+          </div>
+          <div class="ff-lookup-grid">
+            <div class="ff-lk-card ff-lk-card--provider"
+                 *ngFor="let prov of getSelectedProviders(sub); let pi = index; trackBy: trackByProviderId">
+              <button type="button" class="ff-lk-card__dismiss"
+                      (click)="removeSelectedProvider(sub, pi)" title="Remove">&times;</button>
+              <div class="ff-lk-card__top">
+                <span class="ff-lk-card__id">{{ getProviderDisplayName(prov) }}</span>
+                <span class="ff-lk-badge ff-lk-badge--provider">Provider</span>
+              </div>
+              <div class="ff-lk-card__details">
+                <div class="ff-lk-card__row" *ngIf="prov.npi">
+                  <span class="ff-lk-card__icon">🆔</span>
+                  <span class="ff-lk-card__val">NPI: {{ prov.npi }}</span>
+                </div>
+                <div class="ff-lk-card__row" *ngIf="prov.organizationname">
+                  <span class="ff-lk-card__icon">🏢</span>
+                  <span class="ff-lk-card__val ff-lk-card__val--muted">{{ prov.organizationname }}</span>
+                </div>
+                <div class="ff-lk-card__row" *ngIf="getProviderAddress(prov)">
+                  <span class="ff-lk-card__icon">📍</span>
+                  <span class="ff-lk-card__val ff-lk-card__val--muted">{{ getProviderAddress(prov) }}</span>
+                </div>
+                <div class="ff-lk-card__row" *ngIf="prov.phone">
+                  <span class="ff-lk-card__icon">📞</span>
+                  <span class="ff-lk-card__val ff-lk-card__val--muted">{{ prov.phone }}</span>
+                </div>
+                <div class="ff-lk-card__row" *ngIf="prov.email">
+                  <span class="ff-lk-card__icon">✉️</span>
+                  <span class="ff-lk-card__val ff-lk-card__val--muted">{{ prov.email }}</span>
+                </div>
+              </div>
+              <div class="ff-lk-card__footer" *ngIf="prov.taxid">
+                <span class="ff-lk-pill ff-lk-pill--blue">
+                  <span class="ff-lk-pill__lbl">Tax ID</span> {{ prov.taxid }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- ── Multi-Select Member Cards ── -->
+        <ng-container *ngIf="getSelectedMembers(sub).length > 0">
+          <div class="ff-lookup-header">
+            <span class="ff-lookup-count ff-lookup-count--member">
+              {{ getSelectedMembers(sub).length + ' member' + (getSelectedMembers(sub).length > 1 ? 's' : '') + ' selected' }}
+            </span>
+            <button type="button" class="ff-lookup-clear-all"
+                    (click)="clearAllSelectedMembers(sub)"
+                    *ngIf="getSelectedMembers(sub).length > 1">Clear all</button>
+          </div>
+          <div class="ff-lookup-grid">
+            <div class="ff-lk-card ff-lk-card--member"
+                 *ngFor="let mem of getSelectedMembers(sub); let mi = index; trackBy: trackByMemberId">
+              <button type="button" class="ff-lk-card__dismiss"
+                      (click)="removeSelectedMember(sub, mi)" title="Remove">&times;</button>
+              <div class="ff-lk-card__top">
+                <span class="ff-lk-card__id">{{ getMemberDisplayName(mem) }}</span>
+                <span class="ff-lk-badge ff-lk-badge--member">Member</span>
+              </div>
+              <div class="ff-lk-card__details">
+                <div class="ff-lk-card__row" *ngIf="mem.memberid">
+                  <span class="ff-lk-card__icon">🆔</span>
+                  <span class="ff-lk-card__val">ID: {{ mem.memberid }}</span>
+                </div>
+                <div class="ff-lk-card__row" *ngIf="mem.birthdate">
+                  <span class="ff-lk-card__icon">🎂</span>
+                  <span class="ff-lk-card__val ff-lk-card__val--muted">DOB: {{ formatCardDate(mem.birthdate) }}</span>
+                </div>
+                <div class="ff-lk-card__row" *ngIf="mem.gender">
+                  <span class="ff-lk-card__icon">⚧</span>
+                  <span class="ff-lk-card__val ff-lk-card__val--muted">{{ mem.gender }}</span>
+                </div>
+                <div class="ff-lk-card__row" *ngIf="mem.city">
+                  <span class="ff-lk-card__icon">📍</span>
+                  <span class="ff-lk-card__val ff-lk-card__val--muted">{{ mem.city }}</span>
+                </div>
+                <div class="ff-lk-card__row" *ngIf="mem.phone">
+                  <span class="ff-lk-card__icon">📞</span>
+                  <span class="ff-lk-card__val ff-lk-card__val--muted">{{ mem.phone }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- ── Multi-Select Staff Cards ── -->
+        <ng-container *ngIf="getSelectedStaff(sub).length > 0">
+          <div class="ff-lookup-header">
+            <span class="ff-lookup-count ff-lookup-count--staff">
+              {{ getSelectedStaff(sub).length + ' staff member' + (getSelectedStaff(sub).length > 1 ? 's' : '') + ' selected' }}
+            </span>
+            <button type="button" class="ff-lookup-clear-all"
+                    (click)="clearAllSelectedStaff(sub)"
+                    *ngIf="getSelectedStaff(sub).length > 1">Clear all</button>
+          </div>
+          <div class="ff-lookup-grid">
+            <div class="ff-lk-card ff-lk-card--staff"
+                 *ngFor="let stf of getSelectedStaff(sub); let si = index; trackBy: trackByStaffId">
+              <button type="button" class="ff-lk-card__dismiss"
+                      (click)="removeSelectedStaffItem(sub, si)" title="Remove">&times;</button>
+              <div class="ff-lk-card__top">
+                <span class="ff-lk-card__id">{{ getStaffDisplayName(stf) }}</span>
+                <span class="ff-lk-badge ff-lk-badge--staff">Staff</span>
+              </div>
+              <div class="ff-lk-card__details">
+                <div class="ff-lk-card__row" *ngIf="stf.role">
+                  <span class="ff-lk-card__icon">🧑‍💼</span>
+                  <span class="ff-lk-card__val">{{ stf.role }}</span>
+                </div>
+                <div class="ff-lk-card__row" *ngIf="stf.username">
+                  <span class="ff-lk-card__icon">👤</span>
+                  <span class="ff-lk-card__val ff-lk-card__val--muted">{{ '@' + stf.username }}</span>
+                </div>
+                <div class="ff-lk-card__row" *ngIf="stf.email">
+                  <span class="ff-lk-card__icon">✉️</span>
+                  <span class="ff-lk-card__val ff-lk-card__val--muted">{{ stf.email }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- ── Multi-Select ICD Inline Rows ── -->
+        <ng-container *ngIf="getSelectedIcds(sub).length > 0">
+          <div class="ff-lookup-header">
+            <span class="ff-lookup-count ff-lookup-count--icd">
+              {{ getSelectedIcds(sub).length + ' ICD code' + (getSelectedIcds(sub).length > 1 ? 's' : '') + ' selected' }}
+            </span>
+            <button type="button" class="ff-lookup-clear-all"
+                    (click)="clearAllSelectedIcds(sub)"
+                    *ngIf="getSelectedIcds(sub).length > 1">Clear all</button>
+          </div>
+          <div class="ff-inline-list">
+            <div class="ff-inline-row ff-inline-row--icd"
+                 *ngFor="let icd of getSelectedIcds(sub); let ii = index; trackBy: trackByIcdId">
+              <span class="ff-inline-type">{{ icd.type || 'ICD' }}</span>
+              <span class="ff-inline-code">{{ icd.code || '—' }}</span>
+              <span class="ff-inline-sep">—</span>
+              <span class="ff-inline-desc">{{ icd.codeDesc || icd.codeShortDesc || '—' }}</span>
+              <button type="button" class="ff-inline-dismiss"
+                      (click)="removeSelectedIcd(sub, ii)" title="Remove">&times;</button>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- ── Multi-Select Procedure Inline Rows ── -->
+        <ng-container *ngIf="getSelectedProcedures(sub).length > 0">
+          <div class="ff-lookup-header">
+            <span class="ff-lookup-count ff-lookup-count--procedure">
+              {{ getSelectedProcedures(sub).length + ' procedure' + (getSelectedProcedures(sub).length > 1 ? 's' : '') + ' selected' }}
+            </span>
+            <button type="button" class="ff-lookup-clear-all"
+                    (click)="clearAllSelectedProcedures(sub)"
+                    *ngIf="getSelectedProcedures(sub).length > 1">Clear all</button>
+          </div>
+          <div class="ff-inline-list">
+            <div class="ff-inline-row ff-inline-row--procedure"
+                 *ngFor="let proc of getSelectedProcedures(sub); let pi = index; trackBy: trackByProcedureId">
+              <span class="ff-inline-type">{{ proc.type || 'CPT' }}</span>
+              <span class="ff-inline-code">{{ proc.code || '—' }}</span>
+              <span class="ff-inline-sep">—</span>
+              <span class="ff-inline-desc">{{ proc.codeDesc || proc.codeShortDesc || '—' }}</span>
+              <button type="button" class="ff-inline-dismiss"
+                      (click)="removeSelectedProcedure(sub, pi)" title="Remove">&times;</button>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- ── Multi-Select Medication Inline Rows ── -->
+        <ng-container *ngIf="getSelectedMedications(sub).length > 0">
+          <div class="ff-lookup-header">
+            <span class="ff-lookup-count ff-lookup-count--medication">
+              {{ getSelectedMedications(sub).length + ' medication' + (getSelectedMedications(sub).length > 1 ? 's' : '') + ' selected' }}
+            </span>
+            <button type="button" class="ff-lookup-clear-all"
+                    (click)="clearAllSelectedMedications(sub)"
+                    *ngIf="getSelectedMedications(sub).length > 1">Clear all</button>
+          </div>
+          <div class="ff-inline-list">
+            <div class="ff-inline-row ff-inline-row--medication"
+                 *ngFor="let med of getSelectedMedications(sub); let mi = index; trackBy: trackByMedicationId">
+              <span class="ff-inline-type">NDC</span>
+              <span class="ff-inline-code">{{ med.ndc || '—' }}</span>
+              <span class="ff-inline-sep">—</span>
+              <span class="ff-inline-desc">{{ med.drugName || '—' }}</span>
+              <button type="button" class="ff-inline-dismiss"
+                      (click)="removeSelectedMedication(sub, mi)" title="Remove">&times;</button>
             </div>
           </div>
         </ng-container>
@@ -548,6 +808,205 @@
                   </ng-container>
                 </ng-container>
               </div>
+
+              <!-- ══ Multi-Select Lookup Cards (inside repeat instances) ══ -->
+
+              <!-- Claims Cards -->
+              <ng-container *ngIf="getSelectedClaims(inst).length > 0">
+                <div class="ff-lookup-header">
+                  <span class="ff-claims-count">{{ getSelectedClaims(inst).length + ' claim' + (getSelectedClaims(inst).length > 1 ? 's' : '') + ' selected' }}</span>
+                  <button type="button" class="ff-claims-clear" (click)="clearAllSelectedClaims(inst)" *ngIf="getSelectedClaims(inst).length > 1">Clear all</button>
+                </div>
+                <div class="ff-claims-grid">
+                  <div class="ff-claim-card" *ngFor="let claim of getSelectedClaims(inst); let ci = index; trackBy: trackByClaimId">
+                    <button type="button" class="ff-claim-card__dismiss" (click)="removeSelectedClaim(inst, ci)" title="Remove">&times;</button>
+                    <div class="ff-claim-card__top">
+                      <span class="ff-claim-card__num">{{ claim.claimNumber || claim.claimnumber || '—' }}</span>
+                      <span class="ff-claim-card__badge" *ngIf="claim.claimStatus || claim.claimstatus">{{ claim.claimStatus || claim.claimstatus }}</span>
+                    </div>
+                    <div class="ff-claim-card__details">
+                      <div class="ff-claim-card__row" *ngIf="claim.providerName || claim.providername">
+                        <span class="ff-claim-card__icon">🏥</span>
+                        <span class="ff-claim-card__val">{{ claim.providerName || claim.providername }}</span>
+                      </div>
+                      <div class="ff-claim-card__row" *ngIf="claim.dosFrom || claim.dosfrom">
+                        <span class="ff-claim-card__icon">📅</span>
+                        <span class="ff-claim-card__val ff-claim-card__val--muted">
+                          {{ formatCardDate(claim.dosFrom || claim.dosfrom) }}
+                          <ng-container *ngIf="(claim.dosTo || claim.dosto) && (claim.dosTo || claim.dosto) !== (claim.dosFrom || claim.dosfrom)"> — {{ formatCardDate(claim.dosTo || claim.dosto) }}</ng-container>
+                        </span>
+                      </div>
+                    </div>
+                    <div class="ff-claim-card__amounts">
+                      <div class="ff-claim-card__amt">
+                        <span class="ff-claim-card__amt-lbl">Billed</span>
+                        <span class="ff-claim-card__amt-val" [class.ff-claim-card__amt-val--zero]="!(claim.billed || claim.billedAmount)">{{ formatCurrency(claim.billed || claim.billedAmount || 0) }}</span>
+                      </div>
+                      <div class="ff-claim-card__amt">
+                        <span class="ff-claim-card__amt-lbl">Allowed</span>
+                        <span class="ff-claim-card__amt-val" [class.ff-claim-card__amt-val--zero]="!(claim.allowedAmount || claim.allowed)">{{ formatCurrency(claim.allowedAmount || claim.allowed || 0) }}</span>
+                      </div>
+                      <div class="ff-claim-card__amt">
+                        <span class="ff-claim-card__amt-lbl">Paid</span>
+                        <span class="ff-claim-card__amt-val" [class.ff-claim-card__amt-val--zero]="!(claim.paid || claim.paidAmount)">{{ formatCurrency(claim.paid || claim.paidAmount || 0) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </ng-container>
+
+              <!-- Authorization Cards -->
+              <ng-container *ngIf="getSelectedAuths(inst).length > 0">
+                <div class="ff-lookup-header">
+                  <span class="ff-lookup-count ff-lookup-count--auth">{{ getSelectedAuths(inst).length + ' authorization' + (getSelectedAuths(inst).length > 1 ? 's' : '') + ' selected' }}</span>
+                  <button type="button" class="ff-lookup-clear-all" (click)="clearAllSelectedAuths(inst)" *ngIf="getSelectedAuths(inst).length > 1">Clear all</button>
+                </div>
+                <div class="ff-lookup-grid">
+                  <div class="ff-lk-card ff-lk-card--auth" *ngFor="let auth of getSelectedAuths(inst); let ai = index; trackBy: trackByAuthId">
+                    <button type="button" class="ff-lk-card__dismiss" (click)="removeSelectedAuth(inst, ai)" title="Remove">&times;</button>
+                    <div class="ff-lk-card__top">
+                      <span class="ff-lk-card__id">{{ auth.authnumber || '—' }}</span>
+                      <span class="ff-lk-badge" [ngClass]="getAuthStatusClass(auth.overallstatus)">{{ auth.overallstatus || 'Auth' }}</span>
+                      <span class="ff-lk-badge ff-lk-badge--auth-type" *ngIf="auth.authtype">{{ auth.authtype }}</span>
+                    </div>
+                    <div class="ff-lk-card__details">
+                      <div class="ff-lk-card__row" *ngIf="auth.enrollmenthierarchy"><span class="ff-lk-card__icon">📋</span><span class="ff-lk-card__val">{{ auth.enrollmenthierarchy }}</span></div>
+                      <div class="ff-lk-card__row" *ngIf="auth.icdcode"><span class="ff-lk-card__icon">🔬</span><span class="ff-lk-card__val ff-lk-card__val--muted">{{ auth.icdcode }} — {{ auth.icddescription }}</span></div>
+                      <div class="ff-lk-card__row" *ngIf="auth.servicecode"><span class="ff-lk-card__icon">🩺</span><span class="ff-lk-card__val ff-lk-card__val--muted">{{ auth.servicecode }} — {{ auth.servicedescription }}</span></div>
+                      <div class="ff-lk-card__row" *ngIf="auth.fromdate || auth.todate"><span class="ff-lk-card__icon">📅</span><span class="ff-lk-card__val ff-lk-card__val--muted">{{ formatCardDate(auth.fromdate) }}<ng-container *ngIf="auth.todate"> — {{ formatCardDate(auth.todate) }}</ng-container></span></div>
+                      <div class="ff-lk-card__row" *ngIf="auth.reviewtype"><span class="ff-lk-card__icon">👁️</span><span class="ff-lk-card__val ff-lk-card__val--muted">{{ auth.reviewtype }}</span></div>
+                    </div>
+                    <div class="ff-lk-card__footer" *ngIf="auth.decisionstatus || auth.denialreason">
+                      <span class="ff-lk-pill ff-lk-pill--green" *ngIf="auth.decisionstatus"><span class="ff-lk-pill__lbl">Decision</span> {{ auth.decisionstatus }}</span>
+                      <span class="ff-lk-pill ff-lk-pill--red" *ngIf="auth.denialreason"><span class="ff-lk-pill__lbl">Denial</span> {{ auth.denialreason }}</span>
+                    </div>
+                  </div>
+                </div>
+              </ng-container>
+
+              <!-- Provider Cards -->
+              <ng-container *ngIf="getSelectedProviders(inst).length > 0">
+                <div class="ff-lookup-header">
+                  <span class="ff-lookup-count ff-lookup-count--provider">{{ getSelectedProviders(inst).length + ' provider' + (getSelectedProviders(inst).length > 1 ? 's' : '') + ' selected' }}</span>
+                  <button type="button" class="ff-lookup-clear-all" (click)="clearAllSelectedProviders(inst)" *ngIf="getSelectedProviders(inst).length > 1">Clear all</button>
+                </div>
+                <div class="ff-lookup-grid">
+                  <div class="ff-lk-card ff-lk-card--provider" *ngFor="let prov of getSelectedProviders(inst); let pi = index; trackBy: trackByProviderId">
+                    <button type="button" class="ff-lk-card__dismiss" (click)="removeSelectedProvider(inst, pi)" title="Remove">&times;</button>
+                    <div class="ff-lk-card__top">
+                      <span class="ff-lk-card__id">{{ getProviderDisplayName(prov) }}</span>
+                      <span class="ff-lk-badge ff-lk-badge--provider">Provider</span>
+                    </div>
+                    <div class="ff-lk-card__details">
+                      <div class="ff-lk-card__row" *ngIf="prov.npi"><span class="ff-lk-card__icon">🆔</span><span class="ff-lk-card__val">NPI: {{ prov.npi }}</span></div>
+                      <div class="ff-lk-card__row" *ngIf="prov.organizationname"><span class="ff-lk-card__icon">🏢</span><span class="ff-lk-card__val ff-lk-card__val--muted">{{ prov.organizationname }}</span></div>
+                      <div class="ff-lk-card__row" *ngIf="getProviderAddress(prov)"><span class="ff-lk-card__icon">📍</span><span class="ff-lk-card__val ff-lk-card__val--muted">{{ getProviderAddress(prov) }}</span></div>
+                      <div class="ff-lk-card__row" *ngIf="prov.phone"><span class="ff-lk-card__icon">📞</span><span class="ff-lk-card__val ff-lk-card__val--muted">{{ prov.phone }}</span></div>
+                      <div class="ff-lk-card__row" *ngIf="prov.email"><span class="ff-lk-card__icon">✉️</span><span class="ff-lk-card__val ff-lk-card__val--muted">{{ prov.email }}</span></div>
+                    </div>
+                    <div class="ff-lk-card__footer" *ngIf="prov.taxid">
+                      <span class="ff-lk-pill ff-lk-pill--blue"><span class="ff-lk-pill__lbl">Tax ID</span> {{ prov.taxid }}</span>
+                    </div>
+                  </div>
+                </div>
+              </ng-container>
+
+              <!-- Member Cards -->
+              <ng-container *ngIf="getSelectedMembers(inst).length > 0">
+                <div class="ff-lookup-header">
+                  <span class="ff-lookup-count ff-lookup-count--member">{{ getSelectedMembers(inst).length + ' member' + (getSelectedMembers(inst).length > 1 ? 's' : '') + ' selected' }}</span>
+                  <button type="button" class="ff-lookup-clear-all" (click)="clearAllSelectedMembers(inst)" *ngIf="getSelectedMembers(inst).length > 1">Clear all</button>
+                </div>
+                <div class="ff-lookup-grid">
+                  <div class="ff-lk-card ff-lk-card--member" *ngFor="let mem of getSelectedMembers(inst); let mi = index; trackBy: trackByMemberId">
+                    <button type="button" class="ff-lk-card__dismiss" (click)="removeSelectedMember(inst, mi)" title="Remove">&times;</button>
+                    <div class="ff-lk-card__top">
+                      <span class="ff-lk-card__id">{{ getMemberDisplayName(mem) }}</span>
+                      <span class="ff-lk-badge ff-lk-badge--member">Member</span>
+                    </div>
+                    <div class="ff-lk-card__details">
+                      <div class="ff-lk-card__row" *ngIf="mem.memberid"><span class="ff-lk-card__icon">🆔</span><span class="ff-lk-card__val">ID: {{ mem.memberid }}</span></div>
+                      <div class="ff-lk-card__row" *ngIf="mem.birthdate"><span class="ff-lk-card__icon">🎂</span><span class="ff-lk-card__val ff-lk-card__val--muted">DOB: {{ formatCardDate(mem.birthdate) }}</span></div>
+                      <div class="ff-lk-card__row" *ngIf="mem.gender"><span class="ff-lk-card__icon">⚧</span><span class="ff-lk-card__val ff-lk-card__val--muted">{{ mem.gender }}</span></div>
+                      <div class="ff-lk-card__row" *ngIf="mem.city"><span class="ff-lk-card__icon">📍</span><span class="ff-lk-card__val ff-lk-card__val--muted">{{ mem.city }}</span></div>
+                      <div class="ff-lk-card__row" *ngIf="mem.phone"><span class="ff-lk-card__icon">📞</span><span class="ff-lk-card__val ff-lk-card__val--muted">{{ mem.phone }}</span></div>
+                    </div>
+                  </div>
+                </div>
+              </ng-container>
+
+              <!-- Staff Cards -->
+              <ng-container *ngIf="getSelectedStaff(inst).length > 0">
+                <div class="ff-lookup-header">
+                  <span class="ff-lookup-count ff-lookup-count--staff">{{ getSelectedStaff(inst).length + ' staff member' + (getSelectedStaff(inst).length > 1 ? 's' : '') + ' selected' }}</span>
+                  <button type="button" class="ff-lookup-clear-all" (click)="clearAllSelectedStaff(inst)" *ngIf="getSelectedStaff(inst).length > 1">Clear all</button>
+                </div>
+                <div class="ff-lookup-grid">
+                  <div class="ff-lk-card ff-lk-card--staff" *ngFor="let stf of getSelectedStaff(inst); let si = index; trackBy: trackByStaffId">
+                    <button type="button" class="ff-lk-card__dismiss" (click)="removeSelectedStaffItem(inst, si)" title="Remove">&times;</button>
+                    <div class="ff-lk-card__top">
+                      <span class="ff-lk-card__id">{{ getStaffDisplayName(stf) }}</span>
+                      <span class="ff-lk-badge ff-lk-badge--staff">Staff</span>
+                    </div>
+                    <div class="ff-lk-card__details">
+                      <div class="ff-lk-card__row" *ngIf="stf.role"><span class="ff-lk-card__icon">🧑‍💼</span><span class="ff-lk-card__val">{{ stf.role }}</span></div>
+                      <div class="ff-lk-card__row" *ngIf="stf.username"><span class="ff-lk-card__icon">👤</span><span class="ff-lk-card__val ff-lk-card__val--muted">{{ '@' + stf.username }}</span></div>
+                      <div class="ff-lk-card__row" *ngIf="stf.email"><span class="ff-lk-card__icon">✉️</span><span class="ff-lk-card__val ff-lk-card__val--muted">{{ stf.email }}</span></div>
+                    </div>
+                  </div>
+                </div>
+              </ng-container>
+
+              <!-- ICD Inline Rows -->
+              <ng-container *ngIf="getSelectedIcds(inst).length > 0">
+                <div class="ff-lookup-header">
+                  <span class="ff-lookup-count ff-lookup-count--icd">{{ getSelectedIcds(inst).length + ' ICD code' + (getSelectedIcds(inst).length > 1 ? 's' : '') + ' selected' }}</span>
+                  <button type="button" class="ff-lookup-clear-all" (click)="clearAllSelectedIcds(inst)" *ngIf="getSelectedIcds(inst).length > 1">Clear all</button>
+                </div>
+                <div class="ff-inline-list">
+                  <div class="ff-inline-row ff-inline-row--icd" *ngFor="let icd of getSelectedIcds(inst); let ii = index; trackBy: trackByIcdId">
+                    <span class="ff-inline-type">{{ icd.type || 'ICD' }}</span>
+                    <span class="ff-inline-code">{{ icd.code || '—' }}</span>
+                    <span class="ff-inline-sep">—</span>
+                    <span class="ff-inline-desc">{{ icd.codeDesc || icd.codeShortDesc || '—' }}</span>
+                    <button type="button" class="ff-inline-dismiss" (click)="removeSelectedIcd(inst, ii)" title="Remove">&times;</button>
+                  </div>
+                </div>
+              </ng-container>
+
+              <!-- Procedure Inline Rows -->
+              <ng-container *ngIf="getSelectedProcedures(inst).length > 0">
+                <div class="ff-lookup-header">
+                  <span class="ff-lookup-count ff-lookup-count--procedure">{{ getSelectedProcedures(inst).length + ' procedure' + (getSelectedProcedures(inst).length > 1 ? 's' : '') + ' selected' }}</span>
+                  <button type="button" class="ff-lookup-clear-all" (click)="clearAllSelectedProcedures(inst)" *ngIf="getSelectedProcedures(inst).length > 1">Clear all</button>
+                </div>
+                <div class="ff-inline-list">
+                  <div class="ff-inline-row ff-inline-row--procedure" *ngFor="let proc of getSelectedProcedures(inst); let pi = index; trackBy: trackByProcedureId">
+                    <span class="ff-inline-type">{{ proc.type || 'CPT' }}</span>
+                    <span class="ff-inline-code">{{ proc.code || '—' }}</span>
+                    <span class="ff-inline-sep">—</span>
+                    <span class="ff-inline-desc">{{ proc.codeDesc || proc.codeShortDesc || '—' }}</span>
+                    <button type="button" class="ff-inline-dismiss" (click)="removeSelectedProcedure(inst, pi)" title="Remove">&times;</button>
+                  </div>
+                </div>
+              </ng-container>
+
+              <!-- Medication Inline Rows -->
+              <ng-container *ngIf="getSelectedMedications(inst).length > 0">
+                <div class="ff-lookup-header">
+                  <span class="ff-lookup-count ff-lookup-count--medication">{{ getSelectedMedications(inst).length + ' medication' + (getSelectedMedications(inst).length > 1 ? 's' : '') + ' selected' }}</span>
+                  <button type="button" class="ff-lookup-clear-all" (click)="clearAllSelectedMedications(inst)" *ngIf="getSelectedMedications(inst).length > 1">Clear all</button>
+                </div>
+                <div class="ff-inline-list">
+                  <div class="ff-inline-row ff-inline-row--medication" *ngFor="let med of getSelectedMedications(inst); let mi = index; trackBy: trackByMedicationId">
+                    <span class="ff-inline-type">NDC</span>
+                    <span class="ff-inline-code">{{ med.ndc || '—' }}</span>
+                    <span class="ff-inline-sep">—</span>
+                    <span class="ff-inline-desc">{{ med.drugName || '—' }}</span>
+                    <button type="button" class="ff-inline-dismiss" (click)="removeSelectedMedication(inst, mi)" title="Remove">&times;</button>
+                  </div>
+                </div>
+              </ng-container>
 
             </div>
           </ng-container>

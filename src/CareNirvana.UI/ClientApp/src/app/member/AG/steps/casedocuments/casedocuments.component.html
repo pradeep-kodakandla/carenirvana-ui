@@ -1,4 +1,5 @@
 <div class="docs-container"
+     [class.cw-readonly]="readOnly"
      [ngClass]="{
        'docs-container--embedded': singlePane,
        'docs-container--editor-only': editorOnlyLayout,
@@ -29,7 +30,7 @@
           </div>
         </div>
 
-        <button class="add-btn" (click)="openAdd()" [disabled]="saving || loading">➕ Add Document</button>
+        <button class="add-btn" (click)="openAdd()" [disabled]="saving || loading || readOnly">➕ Add Document</button>
       </div>
     </div>
 
@@ -54,8 +55,8 @@
           </div>
 
           <div class="resp-actions" (click)="$event.stopPropagation()">
-            <button class="icon-btn" type="button" title="Edit Document" (click)="openEdit(d)" [disabled]="saving">✏️</button>
-            <button class="icon-btn" type="button" title="Delete" (click)="onDelete(d)" [disabled]="saving">🗑️</button>
+            <button class="icon-btn" type="button" title="Edit Document" (click)="openEdit(d)" [disabled]="saving || readOnly">✏️</button>
+            <button class="icon-btn" type="button" title="Delete" (click)="onDelete(d)" [disabled]="saving || readOnly">🗑️</button>
           </div>
           <!--<div class="resp-actions" (click)="$event.stopPropagation()">
             <button type="button"
@@ -100,7 +101,7 @@
         <button type="button"
                 class="btn btn-sm btn-link"
                 (click)="emitViewAll()"
-                [disabled]="loading || saving">
+                [disabled]="loading || saving || readOnly">
           View all Documents ({{ documents?.length || 0 }})
         </button>
       </div>
@@ -216,10 +217,10 @@
         </div>
 
         <div class="d-flex gap-2">
-          <button type="button" class="btn btn-primary" (click)="onSave()" [disabled]="saving">
+          <button type="button" class="btn btn-primary" (click)="onSave()" [disabled]="saving || readOnly">
             {{ saving ? 'Saving...' : 'Save' }}
           </button>
-          <button type="button" class="btn btn-outline-secondary" (click)="clearSelection()" [disabled]="saving">
+          <button type="button" class="btn btn-outline-secondary" (click)="clearSelection()" [disabled]="saving || readOnly">
             Cancel
           </button>
         </div>

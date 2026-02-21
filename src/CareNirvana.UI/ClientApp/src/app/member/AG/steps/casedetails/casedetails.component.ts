@@ -218,6 +218,37 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
   @Input() wizardMode: WizardMode = 'new';
 
+  /** When true, the entire form is disabled (viewing a previous level). */
+  private _readOnly = false;
+
+  @Input()
+  set readOnly(v: boolean) {
+    this._readOnly = !!v;
+    this.applyReadOnly();
+  }
+  get readOnly(): boolean {
+    return this._readOnly;
+  }
+
+  /** Called by shell via instance method when level changes. */
+  setReadOnly(v: boolean): void {
+    this.readOnly = v;
+  }
+
+  /** Disable or re-enable the entire form + caseTypeCtrl. */
+  private applyReadOnly(): void {
+    if (!this.form) return;
+    if (this._readOnly) {
+      this.form.disable({ emitEvent: false });
+      this.caseTypeCtrl?.disable({ emitEvent: false });
+    } else {
+      this.form.enable({ emitEvent: false });
+      this.caseTypeCtrl?.enable({ emitEvent: false });
+      // Re-apply field-level disabled states after re-enabling
+      this.syncFormControlVisibility?.();
+    }
+  }
+
   private _stepId: string = 'details';
 
   /** Step id is injected by shell/wrappers. Use setter to rebuild when it changes. */
@@ -484,6 +515,9 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     }
 
     this.syncFormControlVisibility();
+
+    // ✅ Re-apply read-only state after form rebuild
+    this.applyReadOnly();
   }
 
   private tryLoadSelectedLevel(force: boolean): void {
@@ -612,6 +646,9 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
   // ---------------- SAVE ----------------
   async save(): Promise<void> {
     if (!this.form) return;
+
+    // ✅ Block save in read-only mode (non-latest level)
+    if (this._readOnly) return;
 
     // Validate ONLY what is currently visible
     this.syncFormControlVisibility();
@@ -1669,6 +1706,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     if (k.includes('claim')) return 'claims';
     if (k.includes('medication')) return 'medication';
     if (k.includes('staff') || k.includes('user')) return 'staff';
+    if (k.includes('authorization') || k.includes('authorizations')) return 'authorization';
     return k;
   }
 
@@ -1739,6 +1777,22 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
         case 'claim':
           obs = (svc.searchClaims ? svc.searchClaims(q, limit) : of([]));
           break;
+        case 'authorization':
+        case 'authorizations': {
+          console.log('[lookup] authorizations search called', { q, limit });
+
+          obs = (svc.searchAuthorizations ? svc.searchAuthorizations(q, limit) : of([])).pipe(
+            tap((rows) => {
+              console.log('[lookup] authorizations results', rows);
+            }),
+            catchError((err) => {
+              console.error('[lookup] authorizations error', err);
+              return of([]);
+            })
+          );
+
+          break;
+        }
         default: {
           const method = methodFromCfg;
           const callable = method && typeof (svc as any)[method] === 'function' ? (svc as any)[method] : null;
@@ -1884,6 +1938,19 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
         return [code].filter(Boolean).join(' - ') + datePart;
       }
 
+      // ✅ Authorization display (fallback if no displayTemplate is set)
+      if (entity === 'authorization' || entity === 'authorizations') {
+        const authNo = item.authnumber ?? item.authNumber ?? item.authno ?? item.authNo ?? '';
+        const authType = item.authtype ?? item.authType ?? '';
+        const svc = item.servicecode ?? item.serviceCode ?? '';
+        const status = item.decisionstatus ?? item.decisionStatus ?? item.overallstatus ?? item.overallStatus ?? '';
+
+        const left = [authNo, authType].filter(Boolean).join(' - ');
+        const right = [svc, status].filter(Boolean).join(' | ');
+
+        return right ? `${left} (${right})` : left;
+      }
+
       return (item.display ?? item.label ?? item.name ?? item.code ?? '').toString();
     };
 
@@ -1924,45 +1991,59 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
   private lookupSelectedByControl: Record<string, any> = {};
 
   /**
-   * Multi-select claims: stores arrays of selected claim objects
+   * Unified multi-select map — stores arrays of selected lookup objects
    * keyed by the search field's controlName.
+   * Works for claims, authorizations, providers, members, staff, icd, procedures, medications.
    */
-  selectedClaimsMap: Record<string, any[]> = {};
+  selectedLookupMap: Record<string, any[]> = {};
+
+  /** Backwards-compat alias so existing Claims HTML keeps working */
+  get selectedClaimsMap(): Record<string, any[]> { return this.selectedLookupMap; }
+  set selectedClaimsMap(v: Record<string, any[]>) { this.selectedLookupMap = v; }
+
+  /** Entities that accumulate in multi-select cards (not single-select) */
+  private readonly MULTI_SELECT_ENTITIES = new Set([
+    'claims', 'claim',
+    'authorization', 'authorizations',
+    'providers', 'provider',
+    'members', 'member',
+    'staff',
+    'icd',
+    'medicalcodes', 'procedure', 'procedures',
+    'medication', 'medications',
+  ]);
 
 
   onLookupSelected(f: any, item: any, ctx?: RepeatContext): void {
     if (!f || !item) return;
 
     const entity = this.getLookupEntity(f);
-    const isClaim = entity === 'claims' || entity === 'claim';
+    const isMulti = entity ? this.MULTI_SELECT_ENTITIES.has(entity) : false;
 
-    // ── Multi-select: claims accumulate in an array ──
-    if (isClaim) {
+    // ── Multi-select: accumulate in selectedLookupMap ──
+    if (isMulti) {
       const key = f.controlName;
-      if (!this.selectedClaimsMap[key]) this.selectedClaimsMap[key] = [];
+      if (!this.selectedLookupMap[key]) this.selectedLookupMap[key] = [];
 
-      // Deduplicate by memberClaimHeaderId or claimNumber
-      const id = item.memberClaimHeaderId ?? item.claimNumber;
-      const alreadyExists = this.selectedClaimsMap[key].some(
-        c => (c.memberClaimHeaderId ?? c.claimNumber) === id
+      // Deduplicate by best available unique id
+      const id = this.getLookupItemId(entity!, item);
+      const alreadyExists = this.selectedLookupMap[key].some(
+        existing => this.getLookupItemId(entity!, existing) === id
       );
       if (!alreadyExists) {
-        this.selectedClaimsMap[key] = [...this.selectedClaimsMap[key], item];
+        this.selectedLookupMap[key] = [...this.selectedLookupMap[key], item];
       }
 
-      // Clear the search input so user can pick another claim
+      // Clear the search input so user can pick another
       const ctrl = this.form.get(f.controlName);
       if (ctrl) {
-        // Use setTimeout to clear AFTER the lookup component finishes its cycle
-        setTimeout(() => {
-          ctrl.setValue(null, { emitEvent: false });
-        });
+        setTimeout(() => { ctrl.setValue(null, { emitEvent: false }); });
       }
       delete this.lookupSelectedByControl[f.controlName];
       return;
     }
 
-    // ── Original single-select logic for non-claim lookups ──
+    // ── Original single-select logic for non-multi lookups ──
     const cfg = this.getLookupCfg(f);
     const valueField = cfg?.valueField ? String(cfg.valueField) : null;
 
@@ -2097,6 +2178,26 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
     if (this.openSections.has(closedKey)) this.openSections.delete(closedKey);
     else this.openSections.add(closedKey);
+  }
+
+  // ---------------- Section Icons ----------------
+  getSectionIcon(title: string): string {
+    if (!title) return 'article';
+    const t = title.toLowerCase();
+    if (t.includes('enrollment')) return 'badge';
+    if (t.includes('requestor')) return 'person';
+    if (t.includes('participant')) return 'groups';
+    if (t.includes('reviewer')) return 'rate_review';
+    if (t.includes('qoc')) return 'verified';
+    if (t.includes('additional info')) return 'playlist_add';
+    if (t.includes('status detail')) return 'toggle_on';
+    if (t.includes('disposition')) return 'task_alt';
+    if (t.includes('note')) return 'note_alt';
+    if (t.includes('document')) return 'folder';
+    if (t.includes('activity')) return 'timeline';
+    if (t.includes('overview')) return 'summarize';
+    if (t.includes('information')) return 'info';
+    return 'article';
   }
 
   /************* Selected and changed field functionality and styles *********/
@@ -2620,37 +2721,206 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
   //  MULTI-SELECT CLAIM CARDS
   // ═══════════════════════════════════════════════════════
 
-  /**
-   * Find the claim search field controlName inside a subsection,
-   * then return the array of selected claims from selectedClaimsMap.
-   */
-  getSelectedClaims(sub: any): any[] {
-    const key = this.findClaimControlName(sub);
-    return key ? (this.selectedClaimsMap[key] ?? []) : [];
+  // ═══════════════════════════════════════════════════════════
+  //  GENERIC MULTI-SELECT HELPERS
+  // ═══════════════════════════════════════════════════════════
+
+  /** Get unique id for a lookup item by entity type */
+  private getLookupItemId(entity: string, item: any): string | number {
+    switch (entity) {
+      case 'claims': case 'claim':
+        return item?.memberClaimHeaderId ?? item?.memberclaimheaderid ?? item?.claimNumber ?? item?.claimnumber ?? JSON.stringify(item);
+      case 'authorization': case 'authorizations':
+        return item?.authnumber ?? item?.authNumber ?? item?.id ?? JSON.stringify(item);
+      case 'providers': case 'provider':
+        return item?.providerId ?? item?.providerid ?? item?.npi ?? JSON.stringify(item);
+      case 'members': case 'member':
+        return item?.memberdetailsid ?? item?.memberid ?? item?.memberId ?? JSON.stringify(item);
+      case 'staff':
+        return item?.userdetailid ?? item?.username ?? item?.id ?? JSON.stringify(item);
+      case 'icd':
+        return item?.id ?? item?.code ?? JSON.stringify(item);
+      case 'medicalcodes': case 'procedure': case 'procedures':
+        return item?.id ?? item?.code ?? JSON.stringify(item);
+      case 'medication': case 'medications':
+        return item?.ndc ?? item?.drugName ?? JSON.stringify(item);
+      default:
+        return JSON.stringify(item);
+    }
   }
 
-  /** Remove a single claim from the multi-select array by its index. */
-  removeSelectedClaim(sub: any, idx: number): void {
-    const key = this.findClaimControlName(sub);
-    if (!key || !this.selectedClaimsMap[key]) return;
-    this.selectedClaimsMap[key] = this.selectedClaimsMap[key].filter((_, i) => i !== idx);
-  }
-
-  /** Clear ALL selected claims in a subsection. */
-  clearAllSelectedClaims(sub: any): void {
-    const key = this.findClaimControlName(sub);
-    if (key) this.selectedClaimsMap[key] = [];
-  }
-
-  /** Scan subsection fields and return the controlName of the claim search field. */
-  private findClaimControlName(sub: any): string | null {
-    if (!sub?.fields?.length) return null;
-    for (const f of sub.fields) {
+  /** Find the controlName of the FIRST search field matching any of the given entity aliases */
+  private findControlByEntity(sub: any, ...aliases: string[]): string | null {
+    const fields = sub?.fields ?? sub?.instances?.[0]?.fields ?? [];
+    for (const f of fields) {
       const entity = this.getLookupEntity(f);
-      if (entity === 'claims' || entity === 'claim') return f.controlName;
+      if (entity && aliases.includes(entity)) return f.controlName;
     }
     return null;
   }
+
+  /** Get selected items for a specific entity in a subsection */
+  getSelectedItems(sub: any, ...aliases: string[]): any[] {
+    const key = this.findControlByEntity(sub, ...aliases);
+    return key ? (this.selectedLookupMap[key] ?? []) : [];
+  }
+
+  /** Remove one selected item by index */
+  removeSelectedItem(sub: any, idx: number, ...aliases: string[]): void {
+    const key = this.findControlByEntity(sub, ...aliases);
+    if (!key || !this.selectedLookupMap[key]) return;
+    this.selectedLookupMap[key] = this.selectedLookupMap[key].filter((_: any, i: number) => i !== idx);
+  }
+
+  /** Clear all selected items for an entity */
+  clearAllItems(sub: any, ...aliases: string[]): void {
+    const key = this.findControlByEntity(sub, ...aliases);
+    if (key) this.selectedLookupMap[key] = [];
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  ENTITY-SPECIFIC GETTERS (used in HTML template)
+  // ═══════════════════════════════════════════════════════════
+
+  // ── Claims ──
+  getSelectedClaims(sub: any): any[] {
+    return this.getSelectedItems(sub, 'claims', 'claim');
+  }
+  removeSelectedClaim(sub: any, idx: number): void {
+    this.removeSelectedItem(sub, idx, 'claims', 'claim');
+  }
+  clearAllSelectedClaims(sub: any): void {
+    this.clearAllItems(sub, 'claims', 'claim');
+  }
+  trackByClaimId = (_: number, c: any) =>
+    c?.memberClaimHeaderId ?? c?.memberclaimheaderid ?? c?.claimNumber ?? c?.claimnumber ?? _;
+
+  // ── Authorization ──
+  getSelectedAuths(sub: any): any[] {
+    return this.getSelectedItems(sub, 'authorization', 'authorizations');
+  }
+  removeSelectedAuth(sub: any, idx: number): void {
+    this.removeSelectedItem(sub, idx, 'authorization', 'authorizations');
+  }
+  clearAllSelectedAuths(sub: any): void {
+    this.clearAllItems(sub, 'authorization', 'authorizations');
+  }
+  trackByAuthId = (_: number, a: any) =>
+    a?.authnumber ?? a?.authNumber ?? _;
+
+  getAuthStatusClass(status: string | null | undefined): string {
+    if (!status) return 'ff-lk-badge--auth';
+    const s = status.toLowerCase();
+    if (s.includes('approved') || s.includes('approve')) return 'ff-lk-badge--approved';
+    if (s.includes('denied') || s.includes('deny')) return 'ff-lk-badge--denied';
+    if (s.includes('pending') || s.includes('pend')) return 'ff-lk-badge--pending';
+    if (s.includes('progress') || s.includes('review')) return 'ff-lk-badge--in-progress';
+    return 'ff-lk-badge--auth';
+  }
+
+  // ── Provider ──
+  getSelectedProviders(sub: any): any[] {
+    return this.getSelectedItems(sub, 'providers', 'provider');
+  }
+  removeSelectedProvider(sub: any, idx: number): void {
+    this.removeSelectedItem(sub, idx, 'providers', 'provider');
+  }
+  clearAllSelectedProviders(sub: any): void {
+    this.clearAllItems(sub, 'providers', 'provider');
+  }
+  trackByProviderId = (_: number, p: any) =>
+    p?.providerId ?? p?.providerid ?? p?.npi ?? _;
+
+  getProviderDisplayName(p: any): string {
+    if (p?.providerName) return p.providerName;
+    const parts = [p?.firstName, p?.middleName, p?.lastName].filter(Boolean);
+    return parts.length > 0 ? parts.join(' ') : '—';
+  }
+
+  getProviderAddress(p: any): string {
+    const parts = [p?.addressline1, p?.city, p?.state, p?.zipcode].filter(Boolean);
+    return parts.join(', ') || '';
+  }
+
+  // ── Member ──
+  getSelectedMembers(sub: any): any[] {
+    return this.getSelectedItems(sub, 'members', 'member');
+  }
+  removeSelectedMember(sub: any, idx: number): void {
+    this.removeSelectedItem(sub, idx, 'members', 'member');
+  }
+  clearAllSelectedMembers(sub: any): void {
+    this.clearAllItems(sub, 'members', 'member');
+  }
+  trackByMemberId = (_: number, m: any) =>
+    m?.memberdetailsid ?? m?.memberid ?? _;
+
+  getMemberDisplayName(m: any): string {
+    const parts = [m?.firstname, m?.lastname].filter(Boolean);
+    return parts.length > 0 ? parts.join(' ') : '—';
+  }
+
+  // ── Staff ──
+  getSelectedStaff(sub: any): any[] {
+    return this.getSelectedItems(sub, 'staff');
+  }
+  removeSelectedStaffItem(sub: any, idx: number): void {
+    this.removeSelectedItem(sub, idx, 'staff');
+  }
+  clearAllSelectedStaff(sub: any): void {
+    this.clearAllItems(sub, 'staff');
+  }
+  trackByStaffId = (_: number, s: any) =>
+    s?.userdetailid ?? s?.username ?? _;
+
+  getStaffDisplayName(s: any): string {
+    if (s?.fullName) return s.fullName;
+    const parts = [s?.firstname, s?.lastname].filter(Boolean);
+    return parts.length > 0 ? parts.join(' ') : (s?.username ?? '—');
+  }
+
+  // ── ICD ──
+  getSelectedIcds(sub: any): any[] {
+    return this.getSelectedItems(sub, 'icd');
+  }
+  removeSelectedIcd(sub: any, idx: number): void {
+    this.removeSelectedItem(sub, idx, 'icd');
+  }
+  clearAllSelectedIcds(sub: any): void {
+    this.clearAllItems(sub, 'icd');
+  }
+  trackByIcdId = (_: number, c: any) =>
+    c?.id ?? c?.code ?? _;
+
+  // ── Procedure / Medical Codes ──
+  getSelectedProcedures(sub: any): any[] {
+    return this.getSelectedItems(sub, 'medicalcodes', 'procedure', 'procedures');
+  }
+  removeSelectedProcedure(sub: any, idx: number): void {
+    this.removeSelectedItem(sub, idx, 'medicalcodes', 'procedure', 'procedures');
+  }
+  clearAllSelectedProcedures(sub: any): void {
+    this.clearAllItems(sub, 'medicalcodes', 'procedure', 'procedures');
+  }
+  trackByProcedureId = (_: number, c: any) =>
+    c?.id ?? c?.code ?? _;
+
+  // ── Medication ──
+  getSelectedMedications(sub: any): any[] {
+    return this.getSelectedItems(sub, 'medication', 'medications');
+  }
+  removeSelectedMedication(sub: any, idx: number): void {
+    this.removeSelectedItem(sub, idx, 'medication', 'medications');
+  }
+  clearAllSelectedMedications(sub: any): void {
+    this.clearAllItems(sub, 'medication', 'medications');
+  }
+  trackByMedicationId = (_: number, m: any) =>
+    m?.ndc ?? m?.drugName ?? _;
+
+  // ═══════════════════════════════════════════════════════════
+  //  FORMATTING HELPERS
+  // ═══════════════════════════════════════════════════════════
 
   /** Format number as $X,XXX.XX */
   formatCurrency(val: any): string {
@@ -2670,10 +2940,6 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
       return `${mm}/${dd}/${d.getFullYear()}`;
     } catch { return String(val); }
   }
-
-  /** TrackBy for claim cards */
-  trackByClaimId = (_: number, c: any) =>
-    c?.memberClaimHeaderId ?? c?.claimNumber ?? _;
 
 
 }

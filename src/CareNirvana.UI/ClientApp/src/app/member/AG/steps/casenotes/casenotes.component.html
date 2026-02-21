@@ -1,16 +1,17 @@
 <div class="notes-container"
      [class.notes-container--add-only]="isAddOnly"
-     [class.notes-container--single-pane]="singlePane && !isAddOnly">
+     [class.notes-container--single-pane]="singlePane && !isAddOnly"
+     [class.cw-readonly]="readOnly">
 
   <!-- Left Side - Notes Timeline/List (AuthNotes style) -->
   <div class="notes-left" *ngIf="!isAddOnly && !(singlePane && (showEditor || selectedNoteId))">
 
-    <div class="notes-titlebar">
+    <!--<div class="notes-titlebar">
       <div>
         <div class="notes-title">Case Notes</div>
         <small class="text-muted" *ngIf="resolved">Level: {{ resolved.levelId }}</small>
       </div>
-    </div>
+    </div>-->
 
     <!-- Top Search + Action Bar -->
     <div class="left-controls">
@@ -33,7 +34,7 @@
           </div>
         </div>
 
-        <button class="add-btn" (click)="onAddClick()" [disabled]="loading || saving">➕ Add Note</button>
+        <button class="add-btn" (click)="onAddClick()" [disabled]="loading || saving || readOnly">➕ Add Note</button>
       </div>
     </div>
 
@@ -64,8 +65,8 @@
             </div>
 
             <div class="timeline-actions" (click)="$event.stopPropagation()">
-              <button class="icon-btn" type="button" title="Edit" (click)="editNote(n)" [disabled]="saving">✏️</button>
-              <button class="icon-btn" type="button" title="Delete" (click)="deleteNote(n)" [disabled]="saving">🗑️</button>
+              <button class="icon-btn" type="button" title="Edit" (click)="editNote(n)" [disabled]="saving || readOnly">✏️</button>
+              <button class="icon-btn" type="button" title="Delete" (click)="deleteNote(n)" [disabled]="saving || readOnly">🗑️</button>
             </div>
           </div>
 
@@ -253,7 +254,7 @@
 
         <div class="case-savebar">
           <button class="btn btn-outline-secondary me-2" type="button" (click)="clearSelection()">Back</button>
-          <button class="btn btn-primary" type="button" (click)="editNote(sn)" [disabled]="saving">Edit</button>
+          <button class="btn btn-primary" type="button" (click)="editNote(sn)" [disabled]="saving || readOnly" *ngIf="!readOnly">Edit</button>
         </div>
 
       </div>

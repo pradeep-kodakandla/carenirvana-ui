@@ -463,3 +463,100 @@ label .text-danger {
     padding-left: 0 !important;
     border-right: 0 !important;
   }
+
+
+
+/* ── Container overlay ── */
+.cw-readonly {
+  position: relative;
+  pointer-events: none;
+  opacity: 0.72;
+}
+
+  /* ── Keep interactive: search, accordion headers, scroll ── */
+  .cw-readonly .section-header,
+  .cw-readonly .left-controls,
+  .cw-readonly .search-input,
+  .cw-readonly .sort-wrapper,
+  .cw-readonly .sort-icon,
+  .cw-readonly .sort-menu,
+  .cw-readonly .timeline-list,
+  .cw-readonly .resp-list,
+  .cw-readonly .timeline-item,
+  .cw-readonly .resp-card,
+  .cw-readonly .notes-left,
+  .cw-readonly .activity-left,
+  .cw-readonly .docs-left,
+  .cw-readonly .btn-outline-secondary,
+  .cw-readonly .embed-actions,
+  .cw-readonly .btn-link {
+    pointer-events: auto;
+  }
+
+  /* ── Dim form fields ── */
+  .cw-readonly .ff-outline,
+  .cw-readonly .form-outline {
+    background: #f9fafb !important;
+    border-color: #e5e7eb !important;
+    box-shadow: none !important;
+  }
+
+  .cw-readonly .ff-input,
+  .cw-readonly .ff-textarea,
+  .cw-readonly .form-control,
+  .cw-readonly textarea {
+    background: #f9fafb !important;
+    color: #6b7280 !important;
+    cursor: default !important;
+  }
+
+  /* ── Hide validation & editing UI ── */
+  .cw-readonly .req-star,
+  .cw-readonly .edited-badge,
+  .cw-readonly .ff-error,
+  .cw-readonly .ff-hint,
+  .cw-readonly .invalid-feedback {
+    display: none !important;
+  }
+
+  /* ── Disable action buttons (visual reinforcement) ── */
+  .cw-readonly .add-btn,
+  .cw-readonly .icon-btn,
+  .cw-readonly .btn-primary,
+  .cw-readonly .btn-outline-success,
+  .cw-readonly .btn-outline-danger,
+  .cw-readonly .case-savebar .btn-primary,
+  .cw-readonly .button-group button {
+    opacity: 0.45;
+    cursor: not-allowed !important;
+    pointer-events: none;
+  }
+
+  /* ── Enrollment cards: viewable but not selectable ── */
+  .cw-readonly .rounded-box,
+  .cw-readonly .selection-container .rounded-box {
+    cursor: default;
+    border-color: #e5e7eb !important;
+    box-shadow: none !important;
+  }
+
+  /* ── Hide repeat/add/remove buttons in form ── */
+  .cw-readonly .ff-repeat-btn,
+  .cw-readonly .chip-x {
+    display: none !important;
+  }
+
+  /* ── File input: disabled visual ── */
+  .cw-readonly input[type="file"] {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  /* ── Keep "Back" / "Cancel" / navigation buttons clickable ── */
+  .cw-readonly .btn-outline-secondary,
+  .cw-readonly .case-savebar .btn-outline-secondary,
+  .cw-readonly .button-group button:last-child {
+    opacity: 1;
+    cursor: pointer !important;
+    pointer-events: auto;
+  }

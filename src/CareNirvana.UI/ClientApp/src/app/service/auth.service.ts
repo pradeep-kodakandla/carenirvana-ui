@@ -62,6 +62,28 @@ export interface ProviderLookupRow {
   organizationname?: string | null;
 }
 
+export interface AuthorizationLookupRow {
+  authnumber: string;
+  authtype: string;
+
+  enrollmenthierarchy?: string;
+  overallstatus?: string;
+
+  icdcode?: string;
+  icddescription?: string;
+
+  servicecode?: string;
+  servicedescription?: string;
+  reviewtype?: string;
+
+  fromdate?: string;  // ISO string
+  todate?: string;    // ISO string
+
+  decisionstatus?: string;
+  denialtype?: string;
+  denialreason?: string;
+}
+
 export interface ClaimLookupRow {
   memberclaimheaderid: number;         // if you return bigint and it can exceed JS safe int, change this to string
   claimnumber?: string | null;
@@ -80,6 +102,8 @@ export interface ClaimLookupRow {
   copayamount?: number | null;
   paid?: number | null;
 }
+
+
 
 @Injectable({
   providedIn: 'root'
@@ -242,5 +266,9 @@ export class AuthService {
     return this.http.get<ClaimLookupRow[]>(`${this.apiUrlCodeSets}/search/claims`, { params });
   }
 
+  searchAuthorizations(q: string, limit = 25): Observable<AuthorizationLookupRow[]> {
+    const params = new HttpParams().set('q', q).set('limit', String(limit));
+    return this.http.get<AuthorizationLookupRow[]>(`${this.apiUrlCodeSets}/search/authorizations`, { params });
+  }
 
 }

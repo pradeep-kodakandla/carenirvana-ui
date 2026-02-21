@@ -49,6 +49,31 @@ export class CasedocumentsComponent implements OnInit, OnDestroy, OnChanges {
   /** Preferred input */
   @Input() inputMode: 'add' | 'full' = 'full';
 
+  /** Read-only flag — set by shell for non-latest levels. */
+  private _readOnly = false;
+
+  @Input()
+  set readOnly(v: boolean) {
+    this._readOnly = !!v;
+    this.applyReadOnly();
+  }
+  get readOnly(): boolean {
+    return this._readOnly;
+  }
+
+  setReadOnly(v: boolean): void {
+    this.readOnly = v;
+  }
+
+  private applyReadOnly(): void {
+    if (!this.form) return;
+    if (this._readOnly) {
+      this.form.disable({ emitEvent: false });
+    } else {
+      this.form.enable({ emitEvent: false });
+    }
+  }
+
   /** Parent can switch to view-all/list mode */
   @Output() requestViewAll = new EventEmitter<void>();
 
@@ -480,6 +505,7 @@ export class CasedocumentsComponent implements OnInit, OnDestroy, OnChanges {
 
   // ---------------------- UI ACTIONS ----------------------
   openAdd(): void {
+    if (this._readOnly) return;
     // In embedded list-only mode, switch to editor-only first.
     if (this.singlePane && !this.isAddOnly) {
       this.pendingAddFromList = true;
@@ -502,6 +528,10 @@ export class CasedocumentsComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   openEdit(doc: CaseDocumentDto): void {
+    if (this._readOnly) {
+      this.selectedDocId = '' + this.getDocumentId(doc);
+      return;
+    }
     // In embedded list-only mode, switch to editor-only first.
     if (this.singlePane && !this.isAddOnly) {
       this.pendingEditDoc = doc;
@@ -558,6 +588,7 @@ export class CasedocumentsComponent implements OnInit, OnDestroy, OnChanges {
 
   // ---------------------- SAVE / DELETE ----------------------
   onSave(): void {
+    if (this._readOnly) return;
     if (this.caseHeaderId == null || this.levelId == null) return;
 
     this.form.markAllAsTouched();
@@ -607,6 +638,7 @@ export class CasedocumentsComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   onDelete(doc: CaseDocumentDto): void {
+    if (this._readOnly) return;
     if (this.caseHeaderId == null || this.levelId == null) return;
     if (!confirm('Delete this document?')) return;
 

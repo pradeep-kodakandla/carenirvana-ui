@@ -1,6 +1,8 @@
 <!-- src/app/member/AG/steps/caseactivities/caseactivities.component.html -->
 
-<div class="activity-container"      [ngClass]="{
+<div class="activity-container"
+     [class.cw-readonly]="readOnly"
+     [ngClass]="{
        'activity-container--single-pane': singlePaneOnEdit && mode === 'embed',
        'activity-container--editor-only': singlePaneOnEdit && mode === 'embed' && showEditor
      }">
@@ -10,13 +12,13 @@
 
     <!-- Header bar (matches AuthActivity left header vibe) -->
     <div class="left-controls">
-      <div class="left-title">
+      <!--<div class="left-title">
         <div class="h6 mb-0">Case Activities</div>
         <small class="text-muted" *ngIf="resolved">Level: {{ resolved.caseLevelId }}</small>
-      </div>
+      </div>-->
 
       <div class="right-actions">
-        <button class="add-btn" (click)="onAddClick()" [disabled]="loading || saving">
+        <button class="add-btn" (click)="onAddClick()" [disabled]="loading || saving || readOnly">
           ➕ Add Activity
         </button>
       </div>
@@ -60,7 +62,7 @@
                       type="button"
                       *ngIf="canActOn(a)"
                       (click)="accept(a)"
-                      [disabled]="saving">
+                      [disabled]="saving || readOnly">
                 Accept
               </button>
 
@@ -68,12 +70,12 @@
                       type="button"
                       *ngIf="canActOn(a)"
                       (click)="reject(a)"
-                      [disabled]="saving">
+                      [disabled]="saving || readOnly">
                 Reject
               </button>
 
-              <button class="icon-btn" type="button" title="Edit" (click)="onEdit(a)" [disabled]="saving">✏️</button>
-              <button class="icon-btn" type="button" title="Delete" (click)="onDelete(a)" [disabled]="saving">🗑️</button>
+              <button class="icon-btn" type="button" title="Edit" (click)="onEdit(a)" [disabled]="saving || readOnly">✏️</button>
+              <button class="icon-btn" type="button" title="Delete" (click)="onDelete(a)" [disabled]="saving || readOnly">🗑️</button>
             </span>
           </div>
 
@@ -195,7 +197,7 @@
         </div>
 
         <div class="button-group">
-          <button type="button" (click)="onSave()" [disabled]="saving">Save</button>
+          <button type="button" (click)="onSave()" [disabled]="saving || readOnly">Save</button>
           <button type="button" (click)="closeEditor()">Cancel</button>
         </div>
       </form>
@@ -221,7 +223,7 @@
 
       <ng-container *ngIf="mode === 'embed'; else fullModeText">
         <p class="text-muted mb-3">Create a new case activity from the dashboard.</p>
-        <button class="add-btn" (click)="onAddClick()" [disabled]="loading || saving">
+        <button class="add-btn" (click)="onAddClick()" [disabled]="loading || saving || readOnly">
           ➕ Add Activity
         </button>
       </ng-container>

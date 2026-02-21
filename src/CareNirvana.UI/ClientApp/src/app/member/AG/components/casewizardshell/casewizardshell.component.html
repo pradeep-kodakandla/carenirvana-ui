@@ -10,7 +10,7 @@
 
         <!-- Case identity block -->
         <div class="cw-header-identity">
-          <div class="cw-case-icon">AG</div>
+          <!--<div class="cw-case-icon">AG</div>-->
           <div class="cw-header-field">
             <span class="cw-field-label">Case Number</span>
             <span class="cw-field-value cw-case-number">{{ getCaseNumber(aggregate$ | async) || '—' }}</span>
@@ -93,7 +93,7 @@
           <button type="button"
                   class="cw-btn cw-btn-escalate"
                   (click)="toggleEscalateConfirm()"
-                  [disabled]="!getCaseNumber(aggregate$ | async)"
+                  [disabled]="!getCaseNumber(aggregate$ | async) || isReadOnly"
                   title="Escalate case">
             ⚡ Escalate
           </button>
@@ -101,8 +101,8 @@
           <button type="button"
                   class="btn btn-primary"
                   (click)="saveFromTop()"
-                  [disabled]="!headerForm.get('caseType')?.value || savingTop">
-            {{ savingTop ? 'Saving...' : 'Save' }}
+                  [disabled]="!headerForm.get('caseType')?.value || savingTop || isReadOnly">
+            {{ savingTop ? 'Saving...' : isReadOnly ? '🔒 View Only' : 'Save' }}
           </button>
 
           <!-- AI Panel toggle -->
@@ -139,17 +139,40 @@
       <button type="button" class="btn-close" aria-label="Close" (click)="clearSaveBanner()"></button>
     </div>
 
-    <!-- Level Tabs -->
-    <ul class="nav nav-tabs mb-2" *ngIf="(tabs$ | async) as tabs">
-      <li class="nav-item" *ngFor="let t of tabs">
-        <button class="nav-link"
-                type="button"
-                [class.active]="(activeLevelId$ | async) === t.levelId"
-                (click)="selectLevel(t.levelId)">
-          {{ t.title }}
-        </button>
-      </li>
-    </ul>
+    <!-- Level Tabs — Escalation History Cards -->
+    <div class="cw-level-section" *ngIf="(tabs$ | async) as tabs">
+      <div class="cw-level-section-label">ESCALATION HISTORY</div>
+      <div class="cw-level-cards">
+        <div class="cw-level-card"
+             *ngFor="let t of tabs"
+             [class.cw-level-card--active]="(activeLevelId$ | async) === t.levelId"
+             [class.cw-level-card--readonly]="!isLatestLevel(t.levelId)"
+             (click)="selectLevel(t.levelId)">
+          <div class="cw-level-card-body">
+            <div class="cw-level-card-title">{{ t.title }}</div>
+            <div class="cw-level-card-date">{{ getLevelDate(t.levelId) }}</div>
+            <div class="cw-level-card-reviewer" *ngIf="getLevelReviewer(t.levelId)">
+              By: {{ getLevelReviewer(t.levelId) }}
+            </div>
+          </div>
+          <div class="cw-level-card-right">
+            <span class="cw-level-card-badge"
+                  [ngClass]="'cw-level-badge--' + getLevelStatusSlug(t.levelId)">
+              {{ getLevelStatus(t.levelId) || '—' }}
+            </span>
+            <span class="cw-level-card-lock" *ngIf="!isLatestLevel(t.levelId)" title="View only">🔒</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Read-only banner -->
+    <div class="cw-readonly-banner" *ngIf="isReadOnly">
+      <span class="cw-readonly-icon">🔒</span>
+      <span class="cw-readonly-text">
+        You are viewing a previous level (read-only). Switch to <strong>Level {{ latestLevelId }}</strong> to edit.
+      </span>
+    </div>
 
     <!-- Chevron Stepper -->
     <caseChevronStepper [steps]="steps"

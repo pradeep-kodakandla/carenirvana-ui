@@ -172,7 +172,7 @@
                 'mad-detail-value--warning': getDueDateInfo(row).level === 'warning',
                 'mad-detail-value--safe':    getDueDateInfo(row).level === 'safe'
               }">
-          {{ row.authDueDate ? (row.authDueDate | date:'MM/dd/yyyy') : '—' }}
+          {{ row.authDueDate ? (row.authDueDate | date:'MM/dd/yyyy HH:mm:ss a') : '—' }}
         </span>
         <!-- Countdown tag -->
         <span *ngIf="row.authDueDate && getDueDateInfo(row).level !== 'none'"
@@ -194,7 +194,7 @@
         <mat-icon class="mad-detail-icon mad-detail-icon--review">event</mat-icon>
         <span class="mad-detail-label">Next Review</span>
         <span class="mad-detail-value">
-          {{ row.nextReviewDate ? (row.nextReviewDate | date:'MM/dd/yyyy') : '—' }}
+          {{ row.nextReviewDate ? (row.nextReviewDate | date:'MM/dd/yyyy HH:mm:ss a') : '—' }}
         </span>
       </div>
 
@@ -213,7 +213,7 @@
         <span class="mad-detail-label">Created</span>
         <span class="mad-detail-value">
           {{ row.createdByUserName || '—' }}
-          <span class="mad-detail-muted">· {{ row.createdOn ? (row.createdOn | date:'MM/dd/yyyy HH:mm') : '' }}</span>
+          <span class="mad-detail-muted">· {{ row.createdOn ? (row.createdOn | date:'MM/dd/yyyy HH:mm:ss a') : '' }}</span>
         </span>
       </div>
 

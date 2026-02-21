@@ -21,12 +21,29 @@ export class CasedispositionComponent {
     return this._wizardMode;
   }
 
+  /** Read-only flag — forwarded from shell for non-latest levels. */
+  private _readOnly = false;
+
+  @Input()
+  set readOnly(v: boolean) {
+    this._readOnly = !!v;
+    if (this.detailsComp) this.detailsComp.readOnly = this._readOnly;
+  }
+  get readOnly(): boolean {
+    return this._readOnly;
+  }
+
+  setReadOnly(v: boolean): void {
+    this.readOnly = v;
+  }
+
   /** Called by shell. Forwards to underlying template-driven renderer. */
   setTemplateId(id: number | string | null | undefined) {
     this.detailsComp?.setTemplateId(id as any);
   }
 
   async save(): Promise<void> {
+    if (this._readOnly) return;
     await this.detailsComp?.save();
   }
 

@@ -1,9 +1,21 @@
-<nav class="caseChevronStepper">
+<nav class="caseChevronStepper" role="tablist">
   <a *ngFor="let s of steps"
-     class="step"
+     class="stepTab"
      [class.active]="s.id === activeStepId"
      [class.disabled]="s.disabled"
-     (click)="clickStep(s)">
-    <span class="label">{{ s.label }}</span>
+     (click)="clickStep(s)"
+     [attr.aria-current]="s.id === activeStepId ? 'step' : null">
+
+    <span class="stepIcon material-icons-outlined" aria-hidden="true">
+      {{ iconFor(s) }}
+    </span>
+
+    <span class="stepLabel">{{ s.label }}</span>
+
+    <!-- Optional badge: set s.badge in parent if you want counts -->
+    <span class="stepBadge" *ngIf="$any(s).badge !== undefined && $any(s).badge !== null">
+      {{ $any(s).badge }}
+    </span>
+
   </a>
 </nav>

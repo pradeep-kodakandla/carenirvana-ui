@@ -67,6 +67,31 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
   // optional if caller only has caseNumber (keep if you want)
   @Input() caseNumber?: string;
 
+  /** Read-only flag — set by shell for non-latest levels. */
+  private _readOnly = false;
+
+  @Input()
+  set readOnly(v: boolean) {
+    this._readOnly = !!v;
+    this.applyReadOnly();
+  }
+  get readOnly(): boolean {
+    return this._readOnly;
+  }
+
+  setReadOnly(v: boolean): void {
+    this.readOnly = v;
+  }
+
+  private applyReadOnly(): void {
+    if (!this.form) return;
+    if (this._readOnly) {
+      this.form.disable({ emitEvent: false });
+    } else {
+      this.form.enable({ emitEvent: false });
+    }
+  }
+
   loading = false;
   saving = false;
   errorMsg = '';
@@ -138,6 +163,7 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
     return this.caseHasUnsavedChanges();
   }
   save(): void {
+    if (this._readOnly) return;
     this.onSave();
   }
 
@@ -171,6 +197,7 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
   // UI actions
   // --------------------------
   onAddClick(): void {
+    if (this._readOnly) return;
     if (!this.resolved) {
       this.errorMsg = 'Missing case context (caseHeaderId/memberDetailsId/caseTemplateId).';
       return;
@@ -219,6 +246,10 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
 
 
   onEdit(a: CaseActivityRowDto): void {
+    if (this._readOnly) {
+      this.selectedActivityId = a.caseActivityId ?? null;
+      return;
+    }
     this.editing = a;
     this.selectedActivityId = a.caseActivityId ?? null;
     this.showEditor = true;
@@ -274,6 +305,7 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
   }
 
   onDelete(a: CaseActivityRowDto): void {
+    if (this._readOnly) return;
     const id = a.caseActivityId;
     const deletedBy = this.getUserId();
     if (!id || !deletedBy) return;
@@ -339,6 +371,7 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
   }
 
   onSave(): void {
+    if (this._readOnly) return;
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
