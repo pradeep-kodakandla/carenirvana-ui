@@ -158,7 +158,8 @@ export class DashBoardComponent {
         this.loadComponent(AssignedauthsComponent);
         break;
       case 'requests':
-        this.loadComponent(RequestsComponent);
+        //this.loadComponent(RequestsComponent);
+        this.loadComponent(NewDashBoardComponent);
         break;
       case 'myActivities':
         this.loadComponent(MyactivitiesComponent);

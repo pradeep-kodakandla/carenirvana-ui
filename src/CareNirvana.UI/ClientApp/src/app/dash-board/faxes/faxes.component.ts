@@ -132,6 +132,15 @@ export class FaxesComponent implements OnInit {
   selectedWorkBasket: string | null = null;
   totalFaxCount = 0;
 
+  // ── Linked Auth metadata (parsed from metaJson when auth already exists) ──
+  linkedAuthMeta: {
+    linkedAuthNumber: string;
+    linkedAuthId: number;
+    linkedAt: string;
+    parentFaxId?: number;
+    [key: string]: any;
+  } | null = null;
+
   // ── Auth Form (fax-to-auth) ─────────────────────────────────────────
   showAuthForm = false;
   currentFaxPrefill: FaxAuthPrefill | null = null;
@@ -362,6 +371,9 @@ export class FaxesComponent implements OnInit {
   openPreview(row: any): void {
     this.selectedFax = row;
 
+    // Parse linked auth metadata — if auth already linked, skip Smart Auth Check
+    this.linkedAuthMeta = this.parseLinkedAuthMeta(row.metaJson ?? row.MetaJson ?? null);
+
     // 🔹 Start details loader & clear stale data
     this.isLoadingDetails = true;
     this.priorAuth = null;
@@ -425,10 +437,11 @@ export class FaxesComponent implements OnInit {
   closePreview(): void {
     this.showPreview = false;
     this.selectedFax = undefined;
-    this.previewUrl = null;          // if you created an ObjectURL, you can also revoke it here
+    this.previewUrl = null;
     this.currentFaxBytes = null;
     this.currentFaxOriginalName = null;
-    this.priorAuth = null;           // clear OCR details if you prefer
+    this.priorAuth = null;
+    this.linkedAuthMeta = null;
     this.progress = 0;
     this.error = '';
     this.currentIndex = -1;
@@ -802,7 +815,13 @@ export class FaxesComponent implements OnInit {
 
       this.priorAuth = pa;
       this.isLoadingDetails = false;
-      this.runSmartAuthCheckFromExtracted(pa);
+
+      // Only run Smart Auth Check if no auth is already linked
+      if (!this.linkedAuthMeta) {
+        this.runSmartAuthCheckFromExtracted(pa);
+      } else {
+        this.resetSmartAuthCheckState();
+      }
 
     } catch (e: any) {
       this.error = e?.message || 'Failed to parse PDF';
@@ -1522,8 +1541,16 @@ export class FaxesComponent implements OnInit {
     this.showAuthForm = false;
     this.currentFaxPrefill = null;
 
+    // Immediately reflect linked state in the preview
+    const nowIso = new Date().toISOString();
+    this.linkedAuthMeta = {
+      linkedAuthNumber: event.authNumber,
+      linkedAuthId: event.authId,
+      linkedAt: nowIso
+    };
+    this.resetSmartAuthCheckState();
+
     if (this.selectedFax?.faxId) {
-      const nowIso = new Date().toISOString();
       let existingMeta: any = {};
       if (this.selectedFax.metaJson) {
         try { existingMeta = JSON.parse(this.selectedFax.metaJson); } catch { /* ignore */ }
@@ -1538,7 +1565,7 @@ export class FaxesComponent implements OnInit {
 
       const toSave: any = {
         faxId: this.selectedFax.faxId,
-        workBasket: this.selectedFax.workBasket || '2',
+        workBasket: '2',
         fileName: this.selectedFax.fileName,
         priority: this.selectedFax.priority,
         status: 'Processed',
@@ -1571,6 +1598,60 @@ export class FaxesComponent implements OnInit {
       return meta?.linkedAuthNumber || null;
     } catch {
       return null;
+    }
+  }
+
+  /** Parse linked auth metadata from a fax's metaJson string. */
+  private parseLinkedAuthMeta(metaJson: string | null | undefined): typeof this.linkedAuthMeta {
+    if (!metaJson) return null;
+    try {
+      const meta = JSON.parse(metaJson);
+      if (meta?.linkedAuthNumber) {
+        return {
+          linkedAuthNumber: meta.linkedAuthNumber,
+          linkedAuthId: meta.linkedAuthId ?? null,
+          linkedAt: meta.linkedAt ?? null,
+          parentFaxId: meta.parentFaxId ?? null,
+          ...meta
+        };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Navigate to auth detail page when user clicks the auth number link. */
+  onAuthClick(authNumber: string, authId: number): void {
+    if (!authId) return;
+
+    const memberId = this.selectedFax?.memberId;
+    const memberDetailsId = this.selectedFax?.memberDetailsId;
+
+    if (memberId && memberDetailsId) {
+      const tabLabel = `Auth: ${authNumber}`;
+      const tabRoute = `/member-info/${memberId}`;
+
+      const existingTab = this.headerService.getTabs().find(tab => tab.route === tabRoute);
+
+      sessionStorage.setItem('selectedAuthId', String(authId));
+      sessionStorage.setItem('selectedAuthNumber', authNumber);
+      sessionStorage.setItem('selectedMemberDetailsId', String(memberDetailsId));
+
+      if (existingTab) {
+        this.headerService.selectTab(tabRoute);
+        this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+          this.router.navigate([tabRoute]);
+        });
+      } else {
+        this.headerService.addTab(tabLabel, tabRoute, String(memberId), String(memberDetailsId));
+        this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+          this.router.navigate([tabRoute]);
+        });
+      }
+    } else {
+      console.log('Auth clicked:', authNumber, authId, '— no member context');
+      this.toast(`Authorization ${authNumber} (ID: ${authId})`, false);
     }
   }
 

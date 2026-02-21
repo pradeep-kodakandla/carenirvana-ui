@@ -1,110 +1,112 @@
-<!-- Header: search + Add -->
-<div class="top-bar" style="display:flex;align-items:center;gap:10px; padding:5px;">
-  <div class="search-section" style="display:flex;align-items:center;gap:8px;flex:1;">
+<!-- ═══════════════════════════════════════════════════════════════════
+     TOP BAR — Search + Work-Basket Chips + Add + Navigation
+     ═══════════════════════════════════════════════════════════════════ -->
+<div class="top-bar">
+  <!-- Search -->
+  <div class="search-section">
     <input type="text"
-           placeholder="🔍 Search faxes…"
+           placeholder="Search faxes by name, member, status…"
            (input)="onQuickSearch($event)"
            class="search-input"
-           style="flex:1; padding:10px 12px; border:1px solid #e1e5ea; border-radius:10px; outline:none;" />
+           aria-label="Search faxes" />
   </div>
 
+  <!-- Work-basket filter chips + Add button + Nav -->
   <div class="filters-col">
-
     <div class="chip-list">
       <div class="flex items-center gap-2">
 
+        <!-- "All" chip -->
         <button type="button"
                 class="wb-chip"
                 [class.wb-chip-active]="!selectedWorkBasket"
-                (click)="selectWorkBasket(null)">
+                (click)="selectWorkBasket(null)"
+                matTooltip="Show all faxes">
           All ({{ totalFaxCount }})
         </button>
 
+        <!-- Dynamic work-basket chips -->
         <button type="button"
                 class="wb-chip"
                 *ngFor="let wb of faxWorkBaskets"
                 [class.wb-chip-active]="selectedWorkBasket === wb.name"
-                (click)="selectWorkBasket(wb.name)">
+                (click)="selectWorkBasket(wb.name)"
+                [matTooltip]="'Filter to ' + wb.name + ' basket'">
           {{ wb.name }} ({{ wb.count || 0 }})
         </button>
 
-
-        <!--<button mat-stroked-button color="primary" (click)="reload()">Search</button>-->
         <!-- Add / Upload -->
-        <button mat-flat-button color="primary" (click)="fileInput.click()">
-          <mat-icon>add</mat-icon>
-          Add
+        <button mat-flat-button
+                color="primary"
+                (click)="fileInput.click()"
+                matTooltip="Upload a new fax PDF">
+          <mat-icon>cloud_upload</mat-icon>
+          Add Fax
         </button>
-        <!-- faxes.component.html -->
-        <input #fileInput type="file" accept="application/pdf" hidden (change)="saveFileData($event)" />
+        <input #fileInput
+               type="file"
+               accept="application/pdf"
+               hidden
+               (change)="saveFileData($event)" />
 
-        <!-- 👇 Record navigation beside Add when preview is open -->
+        <!-- Record navigation (visible when preview is open) -->
         <div class="nav-controls top-nav" *ngIf="showPreview">
           <span class="nav-info">
             {{ (currentIndex + 1) > 0 ? (currentIndex + 1) : 0 }}
-            /
+            of
             {{ dataSource.data.length || 0 }}
           </span>
 
           <button mat-icon-button
-                  matTooltip="Previous"
+                  matTooltip="Previous fax"
                   (click)="showPrevious()"
                   [disabled]="currentIndex <= 0">
             <mat-icon>chevron_left</mat-icon>
           </button>
 
           <button mat-icon-button
-                  matTooltip="Next"
+                  matTooltip="Next fax"
                   (click)="showNext()"
                   [disabled]="currentIndex < 0 || currentIndex >= (dataSource.data.length || 0) - 1">
             <mat-icon>chevron_right</mat-icon>
           </button>
         </div>
+
       </div>
     </div>
   </div>
 </div>
 
-<!-- Inline success/error message (replaces toast) -->
-<div *ngIf="inlineMessageText"
-     style="padding:0 5px 8px 5px;">
-  <div [ngStyle]="{
-        'padding': '10px 12px',
-        'border-radius': '10px',
-        'border': inlineMessageType === 'error' ? '1px solid #f5c2c7' : '1px solid #badbcc',
-        'background': inlineMessageType === 'error' ? '#f8d7da' : '#d1e7dd',
-        'color': inlineMessageType === 'error' ? '#842029' : '#0f5132'
-      }">
-    {{ inlineMessageText }}
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     INLINE ALERT (success / error — replaces toast)
+     ═══════════════════════════════════════════════════════════════════ -->
+<div *ngIf="inlineMessageText" class="inline-alert-wrapper">
+  <div class="inline-alert"
+       [class.alert-success]="inlineMessageType === 'success'"
+       [class.alert-error]="inlineMessageType === 'error'"
+       role="alert">
+    <mat-icon class="alert-icon">
+      {{ inlineMessageType === 'error' ? 'error_outline' : 'check_circle_outline' }}
+    </mat-icon>
+    <span>{{ inlineMessageText }}</span>
+    <button class="alert-dismiss"
+            (click)="inlineMessageText = null"
+            aria-label="Dismiss"
+            matTooltip="Dismiss">×</button>
   </div>
 </div>
 
-<!-- Table -->
-<div class="table-wrapper" *ngIf="!showPreview" style="padding:5px;">
-  <table mat-table [dataSource]="dataSource" class="mat-elevation-z1 full-width-table pro-table mng-table">
 
-    <!-- Fax File Name -->
-    <!--<ng-container matColumnDef="fileName">
-  <th mat-header-cell *matHeaderCellDef>Fax File Name</th>
-  <td mat-cell *matCellDef="let r">
-    <div class="font-medium">{{ r.fileName }}</div>-->
-    <!--<div class="sub-id">#{{ r.faxId }}</div>-->
-    <!--</td>
-  </ng-container>-->
-    <!--<ng-container matColumnDef="fileName">
-    <th mat-header-cell *matHeaderCellDef>Fax File Name</th>
-    <td mat-cell *matCellDef="let r">
-      <div class="fax-name" [ngClass]="{ 'is-child': r.isChild }">
-        <span *ngIf="r.isChild" class="child-badge">↳</span>
-        <span class="font-medium">{{ r.fileName }}</span>
+<!-- ═══════════════════════════════════════════════════════════════════
+     TABLE VIEW (when preview is closed)
+     ═══════════════════════════════════════════════════════════════════ -->
+<div class="table-wrapper" *ngIf="!showPreview">
+  <table mat-table
+         [dataSource]="dataSource"
+         class="mat-elevation-z1 full-width-table pro-table mng-table">
 
-        <span *ngIf="r.hasChildren"
-              class="child-count-badge">
-          ({{ r.children?.length }} split page{{ (r.children?.length || 0) > 1 ? 's' : '' }})
-        </span>
-      </div>
-    </td>
-  </ng-container>-->
+    <!-- ── Fax File Name ─────────────────────────────────────────── -->
     <ng-container matColumnDef="fileName">
       <th mat-header-cell *matHeaderCellDef>Fax File Name</th>
       <td mat-cell *matCellDef="let r">
@@ -113,20 +115,24 @@
         <div class="fax-name"
              *ngIf="editingFileNameFaxId !== r.faxId"
              [ngClass]="{ 'is-child': r.isChild }">
-          <span *ngIf="r.isChild" class="child-badge">↳</span>
 
-          <!-- Click file name to open preview (keep existing rules: disable when parent has children) -->
+          <span *ngIf="r.isChild" class="child-badge" matTooltip="Split child page">↳</span>
+
           <a *ngIf="!r.hasChildren"
              href="#"
-             class="font-medium" matTooltip="Click to preview"
-             style="text-decoration: underline; cursor: pointer;"
+             class="font-medium"
+             matTooltip="Click to preview fax"
              (click)="$event.preventDefault(); openPreview(r)">
             {{ r.fileName }}
           </a>
-          <span *ngIf="r.hasChildren" class="font-medium">{{ r.fileName }}</span>
+
+          <span *ngIf="r.hasChildren" class="font-medium" style="color: inherit; cursor: default;">
+            {{ r.fileName }}
+          </span>
 
           <span *ngIf="r.hasChildren"
-                class="child-count-badge">
+                class="child-count-badge"
+                [matTooltip]="r.children?.length + ' split pages'">
             ({{ r.children?.length }} split page{{ (r.children?.length || 0) > 1 ? 's' : '' }})
           </span>
         </div>
@@ -136,17 +142,21 @@
              *ngIf="editingFileNameFaxId === r.faxId">
           <input [(ngModel)]="tempFileName"
                  class="inline-input"
-                 placeholder="Enter file name" />
+                 placeholder="Enter file name"
+                 aria-label="File name"
+                 (keydown.enter)="saveRename(r)"
+                 (keydown.escape)="cancelRename()" />
 
           <button mat-icon-button
-                  matTooltip="Save"
+                  matTooltip="Save file name"
+                  color="primary"
                   (click)="saveRename(r)"
                   [disabled]="saving || !tempFileName.trim()">
             <mat-icon>check</mat-icon>
           </button>
 
           <button mat-icon-button
-                  matTooltip="Cancel"
+                  matTooltip="Cancel rename"
                   (click)="cancelRename()">
             <mat-icon>close</mat-icon>
           </button>
@@ -155,18 +165,15 @@
       </td>
     </ng-container>
 
-    <!-- Received Datetime -->
+    <!-- ── Received Datetime ─────────────────────────────────────── -->
     <ng-container matColumnDef="receivedAt">
-      <th mat-header-cell *matHeaderCellDef>Received Datetime</th>
-      <td mat-cell *matCellDef="let r">{{ r.receivedAt | date:'MM/dd/yyyy hh:mm:ss a' }}</td>
+      <th mat-header-cell *matHeaderCellDef>Received</th>
+      <td mat-cell *matCellDef="let r">
+        {{ r.receivedAt | date:'MM/dd/yyyy hh:mm a' }}
+      </td>
     </ng-container>
 
-    <!-- Member -->
-    <!--<ng-container matColumnDef="member">
-    <th mat-header-cell *matHeaderCellDef>Member</th>
-    <td mat-cell *matCellDef="let r">{{ r.memberId || '—' }}</td>
-  </ng-container>-->
-
+    <!-- ── Member ────────────────────────────────────────────────── -->
     <ng-container matColumnDef="member">
       <th mat-header-cell *matHeaderCellDef>Member</th>
       <td mat-cell *matCellDef="let r">
@@ -174,6 +181,7 @@
           <div class="name-cell">
             <div class="sub-name">
               <a href="#"
+                 matTooltip="Open member profile"
                  (click)="onMemberClick(r.memberId, r.memberName, r.memberDetailsId); $event.preventDefault()">
                 {{ r.memberName || '—' }}
               </a>
@@ -183,16 +191,12 @@
         </ng-container>
 
         <ng-template #noMemberIdentified>
-          <div class="text-sm muted">No member identified</div>
+          <span class="text-sm muted">No member identified</span>
         </ng-template>
       </td>
     </ng-container>
 
-    <!-- Work Basket -->
-    <!--<ng-container matColumnDef="workBasket">
-    <th mat-header-cell *matHeaderCellDef>Work Basket</th>
-    <td mat-cell *matCellDef="let r">{{ r.workBasket || '—' }}</td>
-  </ng-container>-->
+    <!-- ── Work Basket ───────────────────────────────────────────── -->
     <ng-container matColumnDef="workBasket">
       <th mat-header-cell *matHeaderCellDef>Work Basket</th>
       <td mat-cell *matCellDef="let r">
@@ -202,11 +206,12 @@
           {{ r.workBasket || '—' }}
         </ng-container>
 
-        <!-- Inline work basket editor -->
+        <!-- Inline work-basket editor -->
         <ng-template #wbEdit>
           <div class="inline-edit">
             <select [(ngModel)]="tempWorkBasket"
-                    class="inline-select">
+                    class="inline-select"
+                    aria-label="Work basket">
               <option *ngFor="let wb of workBasketOptions"
                       [value]="wb.value">
                 {{ wb.label }}
@@ -214,7 +219,8 @@
             </select>
 
             <button mat-icon-button
-                    matTooltip="Save"
+                    matTooltip="Save work basket"
+                    color="primary"
                     (click)="saveWorkBasket(r)"
                     [disabled]="saving || !tempWorkBasket">
               <mat-icon>check</mat-icon>
@@ -227,128 +233,94 @@
             </button>
           </div>
         </ng-template>
-
       </td>
     </ng-container>
 
-
-    <!-- Priority -->
+    <!-- ── Priority ──────────────────────────────────────────────── -->
     <ng-container matColumnDef="priority">
       <th mat-header-cell *matHeaderCellDef>Priority</th>
       <td mat-cell *matCellDef="let r">
-        <span class="chip" [ngClass]="priorityClass(r.priority)">{{ priorityLabel(r.priority) }}</span>
+        <span class="chip"
+              [ngClass]="priorityClass(r.priority)"
+              [matTooltip]="'Priority: ' + priorityLabel(r.priority)">
+          {{ priorityLabel(r.priority) }}
+        </span>
       </td>
     </ng-container>
 
-    <!-- Status -->
+    <!-- ── Status ────────────────────────────────────────────────── -->
     <ng-container matColumnDef="status">
       <th mat-header-cell *matHeaderCellDef>Status</th>
       <td mat-cell *matCellDef="let r">
         <span class="chip chip-soft">{{ r.status }}</span>
-        <span *ngIf="getLinkedAuth(r)" class="chip chip-linked-auth">
+        <span *ngIf="getLinkedAuth(r)"
+              class="chip chip-linked-auth"
+              matTooltip="Linked authorization number">
           Auth: {{ getLinkedAuth(r) }}
         </span>
       </td>
     </ng-container>
 
-    <!-- Actions -->
-    <!--<ng-container matColumnDef="actions">
-    <th mat-header-cell *matHeaderCellDef class="is-center">Actions</th>
-    <td mat-cell *matCellDef="let r" class="is-center">
-      <button mat-icon-button matTooltip="Preview" (click)="openPreview(r)">
-        <mat-icon>preview</mat-icon>
-      </button>
-      <a *ngIf="r.url" mat-icon-button [href]="r.url" target="_blank" matTooltip="Open file">
-        <mat-icon>picture_as_pdf</mat-icon>
-      </a>
-    </td>
-  </ng-container>-->
-    <!--<ng-container matColumnDef="actions">
-  <th mat-header-cell *matHeaderCellDef class="is-center">Actions</th>
-  <td mat-cell *matCellDef="let r" class="is-center">
-    <button mat-icon-button
-            matTooltip="Preview"
-            (click)="openPreview(r)"
-            *ngIf="!r.hasChildren">
-      <mat-icon>preview</mat-icon>
-    </button>-->
-    <!-- Still allow direct link if you want, or likewise disable -->
-    <!--<a *ngIf="r.url"
-         mat-icon-button
-         [href]="r.url"
-         target="_blank"
-         matTooltip="Open file">
-        <mat-icon>picture_as_pdf</mat-icon>
-      </a>
-    </td>
-  </ng-container>-->
+    <!-- ── Actions ───────────────────────────────────────────────── -->
     <ng-container matColumnDef="actions">
       <th mat-header-cell *matHeaderCellDef class="is-center">Actions</th>
       <td mat-cell *matCellDef="let r" class="is-center">
 
-        <!-- Trigger button -->
+        <!-- Action menu trigger -->
         <button mat-icon-button
                 matTooltip="Actions"
-                aria-label="Fax actions"
+                aria-label="Fax actions menu"
                 [matMenuTriggerFor]="rowMenu"
                 *ngIf="!r.hasChildren">
           <mat-icon>more_vert</mat-icon>
         </button>
 
         <!-- Row menu -->
-
         <mat-menu #rowMenu="matMenu">
-          <!-- Preview -->
-          <button mat-menu-item
-                  (click)="openPreview(r)">
-            <mat-icon>preview</mat-icon>
+          <button mat-menu-item (click)="openPreview(r)">
+            <mat-icon>visibility</mat-icon>
             <span>Preview</span>
           </button>
 
-          <!-- Split -->
           <button mat-menu-item
                   (click)="openSplitDialog(r)"
                   [disabled]="!r.pageCount || r.pageCount <= 1">
             <mat-icon>call_split</mat-icon>
-            <span>Split</span>
+            <span>Split Pages</span>
           </button>
 
-          <!-- Update Work Basket (inline dropdown) -->
           <button mat-menu-item
                   (click)="openUpdateWorkBasketInline(r)">
-            <mat-icon>work</mat-icon>
+            <mat-icon>inbox</mat-icon>
             <span>Update Work Basket</span>
           </button>
 
-          <!-- Update Priority (toggle 1 ↔ 2) -->
           <button mat-menu-item
                   (click)="updatePriority(r)">
-            <mat-icon>priority_high</mat-icon>
-            <span>
-              {{ r.priority === 1 ? 'Mark as Normal Priority' : 'Mark as High Priority' }}
-            </span>
+            <mat-icon>{{ r.priority === 1 ? 'low_priority' : 'priority_high' }}</mat-icon>
+            <span>{{ r.priority === 1 ? 'Mark Normal Priority' : 'Mark High Priority' }}</span>
           </button>
 
-          <!-- Rename file (inline input) -->
           <button mat-menu-item
                   (click)="renameFaxInline(r)">
             <mat-icon>drive_file_rename_outline</mat-icon>
-            <span>Rename File</span>
+            <span>Rename</span>
           </button>
 
-          <!-- Delete (inline confirm) -->
+          <mat-divider></mat-divider>
+
           <button mat-menu-item
-                  (click)="openDeleteInline(r)">
-            <mat-icon>delete</mat-icon>
+                  (click)="openDeleteInline(r)"
+                  style="color: #dc2626;">
+            <mat-icon style="color: #dc2626;">delete_outline</mat-icon>
             <span>Delete</span>
           </button>
         </mat-menu>
+
         <!-- Inline delete confirmation -->
-        <div class="inline-delete"
-             *ngIf="deletingFaxId === r.faxId">
-          <span class="inline-delete-message">
-            {{ deleteMessage }}
-          </span>
+        <div class="inline-delete" *ngIf="deletingFaxId === r.faxId">
+          <mat-icon style="font-size: 18px; flex-shrink: 0;">warning_amber</mat-icon>
+          <span class="inline-delete-message">{{ deleteMessage }}</span>
 
           <button mat-button
                   color="warn"
@@ -367,20 +339,24 @@
       </td>
     </ng-container>
 
-
-
     <tr mat-header-row *matHeaderRowDef="columns"></tr>
     <tr mat-row class="data-row" *matRowDef="let row; columns: columns;"></tr>
   </table>
 </div>
 
-<!-- Split preview panel (shows when selectedFax is set) -->
-<div *ngIf="showPreview" class="split3" [class.auth-form-active]="showAuthForm" style="padding:5px;">
-  <!-- Left: cards list -->
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     SPLIT PREVIEW LAYOUT (2-column: details + PDF)
+     ═══════════════════════════════════════════════════════════════════ -->
+<div *ngIf="showPreview"
+     class="split3"
+     [class.auth-form-active]="showAuthForm">
+
+  <!-- ── Left pane: fax card list (currently hidden) ───────────── -->
   <div class="pane pane-left" *ngIf="false">
     <div class="pane-header">
       <span>Faxes (Page {{ page }})</span>
-      <button mat-flat-button color="primary" (click)="closePreview()">Close Preview</button>
+      <button mat-flat-button color="primary" (click)="closePreview()">Close</button>
     </div>
 
     <div class="cards">
@@ -390,22 +366,23 @@
            (click)="openPreview(r)">
         <div class="title">{{ r.fileName }}</div>
         <div class="meta">
-          <span>{{ (r.receivedAt ?? r.receivedAt) | date:'MM/dd/yyyy, hh:mm:ss a' }}</span> •
+          <span>{{ (r.receivedAt ?? r.receivedAt) | date:'MM/dd/yyyy, hh:mm a' }}</span> ·
           <span>{{ r.pageCount ?? r.pageCount }} pg</span>
         </div>
-
       </div>
     </div>
   </div>
 
-  <!-- Middle pane: Auth Form OR OCR Details -->
+  <!-- ════════════════════════════════════════════════════════════════
+       MIDDLE PANE: Auth Form OR OCR Extracted Details
+       ════════════════════════════════════════════════════════════════ -->
   <div class="pane pane-middle">
 
-    <!-- ═══ AUTH FORM MODE ═══════════════════════════════════════════════ -->
+    <!-- Auth Form Mode -->
     <ng-container *ngIf="showAuthForm && currentFaxPrefill; else ocrDetailView">
       <div class="pane-header">
         <span>Create Authorization</span>
-        <button class="close-btn" (click)="cancelAuthForm()">
+        <button class="close-btn" (click)="cancelAuthForm()" matTooltip="Return to extracted details">
           ← Back to Details
         </button>
       </div>
@@ -419,203 +396,464 @@
       </div>
     </ng-container>
 
-    <!-- ═══ OCR DETAIL VIEW (existing, with Create Auth button added) ═══ -->
+    <!-- OCR Detail View -->
     <ng-template #ocrDetailView>
-      <!-- Loading -->
+
+      <!-- Loading state -->
       <div *ngIf="isLoadingDetails" class="loader-container">
         <div class="spinner"></div>
-        <div class="loader-text">Extracting details, please wait...</div>
+        <div class="loader-text">Extracting details, please wait…</div>
       </div>
 
-      <!-- Not loading: show details if priorAuth exists, else noOcr -->
+      <!-- Details content -->
       <ng-container *ngIf="!isLoadingDetails && priorAuth as pa; else noOcr">
-        <div class="space-y-3">
-          <div class="pane-header">
-            <div class="doc-name">
-              {{ selectedFax?.fileName || 'No fax selected' }}
+
+        <!-- Pane header with document name -->
+        <div class="pane-header">
+          <div class="doc-name" [matTooltip]="selectedFax?.fileName || ''">
+            {{ selectedFax?.fileName || 'No fax selected' }}
+          </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════════════
+             SPLIT PANEL — only when multi-page AND not already linked
+             ══════════════════════════════════════════════════════════════ -->
+        <div class="split-panel-v2"
+             *ngIf="!linkedAuthMeta && (selectedFax?.pageCount ?? 0) > 1">
+          <div class="split-panel-icon">
+            <mat-icon>call_split</mat-icon>
+          </div>
+          <div class="split-panel-body">
+            <div class="split-panel-title">Split Document</div>
+            <div class="split-panel-meta">
+              <span class="split-page-badge">{{ selectedFax?.pageCount }} pages</span>
             </div>
           </div>
-
-          <!-- Split panel -->
-          <div class="split-panel"
-               *ngIf="(selectedFax?.pageCount ?? 0) > 1">
-            <div class="split-info">
-              Total pages: <strong>{{ selectedFax?.pageCount }}</strong>
-            </div>
-            <div class="split-controls">
-              <label>
-                Pages in first document:
-                <input type="number"
-                       min="1"
-                       [max]="(selectedFax?.pageCount ?? 0) - 1"
-                       [(ngModel)]="splitFirstPageCount">
-              </label>
-              <button mat-stroked-button
-                      color="primary"
-                      (click)="splitCurrentFaxOnClient()"
-                      [disabled]="!selectedFax || (selectedFax.pageCount ?? 0) <= 1">
-                <mat-icon>call_split</mat-icon>
-                <span>Split &amp; Save</span>
-              </button>
-            </div>
+          <div class="split-panel-controls">
+            <label class="split-label">
+              First doc pages
+              <input type="number"
+                     class="split-input"
+                     min="1"
+                     [max]="(selectedFax?.pageCount ?? 0) - 1"
+                     [(ngModel)]="splitFirstPageCount"
+                     aria-label="Pages in first split document" />
+            </label>
+            <button class="split-btn"
+                    matTooltip="Split this fax into two documents"
+                    (click)="splitCurrentFaxOnClient()"
+                    [disabled]="isSplitting || !selectedFax || (selectedFax.pageCount ?? 0) <= 1">
+              <mat-icon>content_cut</mat-icon>
+              {{ isSplitting ? 'Splitting…' : 'Split & Save' }}
+            </button>
           </div>
+        </div>
 
-          <!-- Smart Auth Check info highlight -->
-          <div class="card">
-            <div *ngIf="pa.patient?.memberId; else noMember" class="info-highlight">
-              Member identified (Member ID: {{ pa.patient?.memberId }}) and ready for linkage.
 
-              <ng-container *ngIf="smartAuthCheckInProgress">
-                <strong class="smart-check">Running Smart Auth Check...</strong>
-              </ng-container>
-
-              <ng-container *ngIf="!smartAuthCheckInProgress && smartAuthCheckCompleted">
-                <strong class="smart-check">Smart Auth Check completed.</strong>
-                <ng-container *ngIf="smartAuthCheckAuthRequired === true">
-                  Authorization is required for this request based on the extracted
-                  <strong>Service Codes</strong> and verified <strong>Start–End dates</strong>.
-                </ng-container>
-                <ng-container *ngIf="smartAuthCheckAuthRequired === false">
-                  Authorization is <strong>not</strong> required for this request based on the extracted
-                  <strong>Service Codes</strong> and verified <strong>Start–End dates</strong>.
-                </ng-container>
-                <ng-container *ngIf="smartAuthCheckAuthRequired === null">
-                  No matching Smart Auth Check rule was found for the extracted inputs.
-                </ng-container>
-              </ng-container>
-
-              <ng-container *ngIf="!smartAuthCheckInProgress && !smartAuthCheckCompleted && smartAuthCheckError">
-                <strong class="smart-check">Smart Auth Check unavailable.</strong> {{ smartAuthCheckError }}
-              </ng-container>
-            </div>
-
-            <ng-template #noMember>
-              <div class="info-highlight no-match">
-                No matching member record found. Please verify patient details before linking or adding an authorization.
+        <!-- ══════════════════════════════════════════════════════════════
+             LINKED AUTH EXISTS — consolidated summary card
+             ══════════════════════════════════════════════════════════════ -->
+        <ng-container *ngIf="linkedAuthMeta; else noLinkedAuth">
+          <div class="la-card">
+            <div class="la-card-header">
+              <div class="la-card-header-left">
+                <mat-icon class="la-verified-icon">verified</mat-icon>
+                <span>Authorization Linked</span>
               </div>
-            </ng-template>
+              <span class="la-date" *ngIf="linkedAuthMeta.linkedAt">
+                {{ linkedAuthMeta.linkedAt | date:'MM/dd/yyyy hh:mm a' }}
+              </span>
+            </div>
+
+            <!-- Auth Number — clickable -->
+            <div class="la-auth-row">
+              <span class="la-auth-label">Auth Number</span>
+              <a class="la-auth-link"
+                 href="#"
+                 matTooltip="Open authorization details"
+                 (click)="$event.preventDefault(); onAuthClick(linkedAuthMeta.linkedAuthNumber, linkedAuthMeta.linkedAuthId)">
+                {{ linkedAuthMeta.linkedAuthNumber }}
+                <mat-icon class="la-link-icon">open_in_new</mat-icon>
+              </a>
+              <span class="la-auth-id" *ngIf="linkedAuthMeta.linkedAuthId">ID: {{ linkedAuthMeta.linkedAuthId }}</span>
+            </div>
+
+            <div class="la-sections">
+              <!-- Member -->
+              <div class="la-sec">
+                <div class="la-sec-title"><mat-icon>person</mat-icon> Member</div>
+                <div class="la-grid">
+                  <div class="la-field"><span class="la-lbl">Name</span><span class="la-val">{{ pa.patient?.name || '—' }}</span></div>
+                  <div class="la-field"><span class="la-lbl">Member ID</span><span class="la-val">{{ pa.patient?.memberId || '—' }}</span></div>
+                  <div class="la-field" *ngIf="pa.patient?.dob"><span class="la-lbl">DOB</span><span class="la-val">{{ pa.patient?.dob }}</span></div>
+                  <div class="la-field" *ngIf="pa.patient?.phone"><span class="la-lbl">Phone</span><span class="la-val">{{ pa.patient?.phone }}</span></div>
+                </div>
+              </div>
+
+              <!-- Services & Diagnosis -->
+              <div class="la-sec" *ngIf="pa.services?.length">
+                <div class="la-sec-title"><mat-icon>medical_services</mat-icon> Services &amp; Diagnosis</div>
+                <div *ngFor="let s of pa.services; let last = last"
+                     class="la-svc-row" [class.la-svc-border]="!last">
+                  <div class="la-grid">
+                    <div class="la-field"><span class="la-lbl">Service Code</span><span class="la-val la-mono">{{ s.code || '—' }}</span></div>
+                    <div class="la-field"><span class="la-lbl">Description</span><span class="la-val">{{ s.description || '—' }}</span></div>
+                    <div class="la-field"><span class="la-lbl">Start Date</span><span class="la-val">{{ s.startDate || '—' }}</span></div>
+                    <div class="la-field"><span class="la-lbl">End Date</span><span class="la-val">{{ s.endDate || '—' }}</span></div>
+                    <div class="la-field"><span class="la-lbl">Diagnosis</span><span class="la-val la-mono">{{ s.diagnosisCode || s.diagnosisDescription || (pa.dx?.codes?.join(', ') || '—') }}</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Providers -->
+              <div class="la-sec">
+                <div class="la-sec-title"><mat-icon>local_hospital</mat-icon> Providers</div>
+                <div class="la-grid">
+                  <div class="la-field">
+                    <span class="la-lbl">Requesting</span>
+                    <span class="la-val">{{ pa.providerRequesting?.name || '—' }} <span *ngIf="pa.providerRequesting?.npi" class="la-npi">(NPI {{ pa.providerRequesting?.npi }})</span></span>
+                  </div>
+                  <div class="la-field">
+                    <span class="la-lbl">Servicing / Facility</span>
+                    <span class="la-val">{{ pa.providerServicing?.name || pa.providerServicing?.facility || '—' }}</span>
+                  </div>
+                  <div class="la-field" *ngIf="pa.providerRequesting?.phone"><span class="la-lbl">Req. Phone</span><span class="la-val">{{ pa.providerRequesting?.phone }}</span></div>
+                  <div class="la-field" *ngIf="pa.providerServicing?.phone"><span class="la-lbl">Serv. Phone</span><span class="la-val">{{ pa.providerServicing?.phone }}</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="la-card-footer">
+              This fax has been processed. Click the auth number above to view full authorization details.
+            </div>
+          </div>
+        </ng-container>
+
+
+        <!-- ══════════════════════════════════════════════════════════════
+             NO LINKED AUTH — Smart Check + Create Auth + Detail Cards
+             ══════════════════════════════════════════════════════════════ -->
+        <ng-template #noLinkedAuth>
+
+          <!-- Smart Auth Check status banner -->
+          <div *ngIf="pa.patient?.memberId; else noMember" class="status-banner status-info">
+            <div class="status-banner-icon">
+              <mat-icon>person_search</mat-icon>
+            </div>
+            <div class="status-banner-body">
+              <div class="status-banner-title">Member Identified</div>
+              <div class="status-banner-text">
+                Member ID: <strong>{{ pa.patient?.memberId }}</strong> — ready for authorization linkage.
+              </div>
+
+              <!-- Smart Auth Check sub-status -->
+              <div class="smart-status" *ngIf="smartAuthCheckInProgress">
+                <div class="smart-status-spinner"></div>
+                <span>Running Smart Auth Check…</span>
+              </div>
+
+              <div class="smart-status smart-result" *ngIf="!smartAuthCheckInProgress && smartAuthCheckCompleted">
+                <mat-icon class="smart-result-icon"
+                  [class.smart-yes]="smartAuthCheckAuthRequired === true"
+                  [class.smart-no]="smartAuthCheckAuthRequired === false"
+                  [class.smart-unknown]="smartAuthCheckAuthRequired === null">
+                  {{ smartAuthCheckAuthRequired === true ? 'gpp_good' : smartAuthCheckAuthRequired === false ? 'verified_user' : 'help_outline' }}
+                </mat-icon>
+                <span *ngIf="smartAuthCheckAuthRequired === true">
+                  Authorization <strong>is required</strong> for this request.
+                </span>
+                <span *ngIf="smartAuthCheckAuthRequired === false">
+                  Authorization is <strong>not required</strong> for this request.
+                </span>
+                <span *ngIf="smartAuthCheckAuthRequired === null">
+                  No matching rule found for the extracted inputs.
+                </span>
+              </div>
+
+              <div class="smart-status smart-error" *ngIf="!smartAuthCheckInProgress && !smartAuthCheckCompleted && smartAuthCheckError">
+                <mat-icon>warning_amber</mat-icon>
+                <span>{{ smartAuthCheckError }}</span>
+              </div>
+            </div>
           </div>
 
-          <!-- ═══ Create Authorization Button ═══════════════════════════ -->
-          <div class="card create-auth-card"
+          <ng-template #noMember>
+            <div class="status-banner status-danger">
+              <div class="status-banner-icon">
+                <mat-icon>person_off</mat-icon>
+              </div>
+              <div class="status-banner-body">
+                <div class="status-banner-title">No Member Found</div>
+                <div class="status-banner-text">
+                  Please verify patient details before linking or creating an authorization.
+                </div>
+              </div>
+            </div>
+          </ng-template>
+
+          <!-- Create Authorization CTA -->
+          <div class="cta-card"
                *ngIf="pa.patient?.memberId && selectedFax?.memberDetailsId">
-            <button mat-flat-button
-                    color="primary"
-                    class="create-auth-btn"
+            <div class="cta-card-left">
+              <mat-icon class="cta-icon">note_add</mat-icon>
+              <div>
+                <div class="cta-title">Create Authorization</div>
+                <div class="cta-hint">Pre-populate with extracted diagnosis, services &amp; provider info</div>
+              </div>
+            </div>
+            <button class="cta-btn"
+                    matTooltip="Create a new authorization pre-populated with extracted fax data"
                     (click)="openAuthForm()"
                     [disabled]="!pa.patient?.memberId || !selectedFax?.memberDetailsId">
-              <mat-icon>add_circle</mat-icon>
-              Create Authorization from Fax
+              <mat-icon>add_circle_outline</mat-icon>
+              Create Auth
             </button>
-            <div class="create-auth-hint">
-              Pre-populates Auth Details with extracted diagnosis, services, and provider info
-            </div>
           </div>
-          <!-- ═══════════════════════════════════════════════════════════ -->
+
+
+          <!-- ── Detail Cards ────────────────────────────────────────── -->
 
           <!-- Patient -->
-          <div class="card">
-            <div class="pane-header">
-              <span>Patient</span>
-              <div class="text-sm muted">
-                <a [class.disabled-link]="!pa.patient?.memberId" href="#" [attr.tabindex]="pa.patient?.memberId ? 0 : -1">
-                  Link to member
-                </a>
-                <a style="padding-left:10px;"
-                   [class.disabled-link]="!pa.patient?.memberId"
+          <div class="detail-card">
+            <div class="detail-card-header">
+              <div class="detail-card-title">
+                <mat-icon>person</mat-icon>
+                <span>Patient</span>
+              </div>
+              <div class="detail-card-actions">
+                <a [class.disabled-link]="!pa.patient?.memberId"
                    href="#"
-                   [attr.tabindex]="pa.patient?.memberId ? 0 : -1">
-                  Add Auth
+                   matTooltip="Link this fax to the identified member"
+                   [attr.tabindex]="pa.patient?.memberId ? 0 : -1"
+                   (click)="$event.preventDefault()">
+                  <mat-icon>link</mat-icon> Link
+                </a>
+                <a [class.disabled-link]="!pa.patient?.memberId"
+                   href="#"
+                   matTooltip="Add authorization for this member"
+                   [attr.tabindex]="pa.patient?.memberId ? 0 : -1"
+                   (click)="$event.preventDefault()">
+                  <mat-icon>post_add</mat-icon> Add Auth
                 </a>
               </div>
             </div>
-            <div class="grid-2">
-              <div><strong>Name</strong>: {{ pa.patient?.name || '—' }}</div>
-              <div><strong>Member ID</strong>: {{ pa.patient?.memberId || '—' }}</div>
-              <div><strong>DOB</strong>: {{ pa.patient?.dob || '—' }}</div>
-              <div><strong>Phone</strong>: {{ pa.patient?.phone || '—' }}</div>
+            <div class="detail-grid">
+              <div class="detail-field">
+                <span class="detail-label">Name</span>
+                <span class="detail-value">{{ pa.patient?.name || '—' }}</span>
+              </div>
+              <div class="detail-field">
+                <span class="detail-label">Member ID</span>
+                <span class="detail-value detail-mono">{{ pa.patient?.memberId || '—' }}</span>
+              </div>
+              <div class="detail-field">
+                <span class="detail-label">Date of Birth</span>
+                <span class="detail-value">{{ pa.patient?.dob || '—' }}</span>
+              </div>
+              <div class="detail-field">
+                <span class="detail-label">Phone</span>
+                <span class="detail-value">{{ pa.patient?.phone || '—' }}</span>
+              </div>
             </div>
           </div>
 
           <!-- Review / Setting -->
-          <div class="card">
-            <div class="pane-header">Review / Setting</div>
-            <div class="grid-2">
-              <div><strong>Type</strong>: {{ pa.review?.type || '—' }}</div>
-              <div><strong>Inpatient</strong>: {{ pa.setting?.inpatient ? 'Yes' : 'No' }}</div>
-              <div><strong>Outpatient</strong>: {{ pa.setting?.outpatient ? 'Yes' : 'No' }}</div>
+          <div class="detail-card">
+            <div class="detail-card-header">
+              <div class="detail-card-title">
+                <mat-icon>fact_check</mat-icon>
+                <span>Review / Setting</span>
+              </div>
+            </div>
+            <div class="detail-grid">
+              <div class="detail-field">
+                <span class="detail-label">Type</span>
+                <span class="detail-value">{{ pa.review?.type || '—' }}</span>
+              </div>
+              <div class="detail-field">
+                <span class="detail-label">Inpatient</span>
+                <span class="detail-value">
+                  <span class="detail-badge" [class.badge-yes]="pa.setting?.inpatient" [class.badge-no]="!pa.setting?.inpatient">
+                    {{ pa.setting?.inpatient ? 'Yes' : 'No' }}
+                  </span>
+                </span>
+              </div>
+              <div class="detail-field">
+                <span class="detail-label">Outpatient</span>
+                <span class="detail-value">
+                  <span class="detail-badge" [class.badge-yes]="pa.setting?.outpatient" [class.badge-no]="!pa.setting?.outpatient">
+                    {{ pa.setting?.outpatient ? 'Yes' : 'No' }}
+                  </span>
+                </span>
+              </div>
             </div>
           </div>
 
           <!-- Services -->
-          <div class="card" *ngIf="pa.services?.length">
-            <div class="pane-header">Services</div>
-            <div *ngFor="let s of pa.services" class="svc">
-              <div><strong>Code</strong>: {{ s.code || '—' }}</div>
-              <div class="md:col-span-2"><strong>Description</strong>: {{ s.description || '—' }}</div>
-              <div><strong>Start</strong>: {{ s.startDate || '—' }}</div>
-              <div><strong>End</strong>: {{ s.endDate || '—' }}</div>
-              <div><strong>DX</strong>: {{ s.diagnosisCode || s.diagnosisDescription || (pa.dx?.codes?.join(', ') || '—') }}</div>
+          <div class="detail-card" *ngIf="pa.services?.length">
+            <div class="detail-card-header">
+              <div class="detail-card-title">
+                <mat-icon>medical_services</mat-icon>
+                <span>Services</span>
+              </div>
+              <span class="detail-count">{{ pa.services?.length }}</span>
+            </div>
+            <div *ngFor="let s of pa.services; let i = index; let last = last"
+                 class="svc-row" [class.svc-row-border]="!last">
+              <div class="svc-num">{{ i + 1 }}</div>
+              <div class="svc-body">
+                <div class="svc-grid">
+                  <div class="detail-field">
+                    <span class="detail-label">Code</span>
+                    <span class="detail-value detail-mono">{{ s.code || '—' }}</span>
+                  </div>
+                  <div class="detail-field">
+                    <span class="detail-label">Description</span>
+                    <span class="detail-value">{{ s.description || '—' }}</span>
+                  </div>
+                  <div class="detail-field">
+                    <span class="detail-label">Start Date</span>
+                    <span class="detail-value">{{ s.startDate || '—' }}</span>
+                  </div>
+                  <div class="detail-field">
+                    <span class="detail-label">End Date</span>
+                    <span class="detail-value">{{ s.endDate || '—' }}</span>
+                  </div>
+                  <div class="detail-field svc-dx">
+                    <span class="detail-label">Diagnosis</span>
+                    <span class="detail-value detail-mono">{{ s.diagnosisCode || s.diagnosisDescription || (pa.dx?.codes?.join(', ') || '—') }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
           <!-- Providers -->
-          <div class="card">
-            <div class="pane-header">Providers</div>
-            <div class="grid-2">
-              <div>
-                <strong>Requesting</strong>: {{ pa.providerRequesting?.name || '—' }}
-                <span *ngIf="pa.providerRequesting?.npi"> (NPI {{ pa.providerRequesting?.npi }})</span>
+          <div class="detail-card">
+            <div class="detail-card-header">
+              <div class="detail-card-title">
+                <mat-icon>local_hospital</mat-icon>
+                <span>Providers</span>
               </div>
-              <div><strong>Servicing/Facility</strong>: {{ pa.providerServicing?.name || pa.providerServicing?.facility || '—' }}</div>
-              <div><strong>Req. Phone</strong>: {{ pa.providerRequesting?.phone || '—' }}</div>
-              <div><strong>Serv. Phone</strong>: {{ pa.providerServicing?.phone || '—' }}</div>
+            </div>
+            <div class="provider-cols">
+              <!-- Requesting -->
+              <div class="provider-col">
+                <div class="provider-col-title">Requesting Provider</div>
+                <div class="detail-field">
+                  <span class="detail-label">Name</span>
+                  <span class="detail-value">{{ pa.providerRequesting?.name || '—' }}</span>
+                </div>
+                <div class="detail-field" *ngIf="pa.providerRequesting?.npi">
+                  <span class="detail-label">NPI</span>
+                  <span class="detail-value detail-mono">{{ pa.providerRequesting?.npi }}</span>
+                </div>
+                <div class="detail-field" *ngIf="pa.providerRequesting?.phone">
+                  <span class="detail-label">Phone</span>
+                  <span class="detail-value">{{ pa.providerRequesting?.phone }}</span>
+                </div>
+                <div class="detail-field" *ngIf="pa.providerRequesting?.fax">
+                  <span class="detail-label">Fax</span>
+                  <span class="detail-value">{{ pa.providerRequesting?.fax }}</span>
+                </div>
+              </div>
+              <!-- Servicing -->
+              <div class="provider-col">
+                <div class="provider-col-title">Servicing / Facility</div>
+                <div class="detail-field">
+                  <span class="detail-label">Name</span>
+                  <span class="detail-value">{{ pa.providerServicing?.name || pa.providerServicing?.facility || '—' }}</span>
+                </div>
+                <div class="detail-field" *ngIf="pa.providerServicing?.npi">
+                  <span class="detail-label">NPI</span>
+                  <span class="detail-value detail-mono">{{ pa.providerServicing?.npi }}</span>
+                </div>
+                <div class="detail-field" *ngIf="pa.providerServicing?.phone">
+                  <span class="detail-label">Phone</span>
+                  <span class="detail-value">{{ pa.providerServicing?.phone }}</span>
+                </div>
+                <div class="detail-field" *ngIf="pa.providerServicing?.fax">
+                  <span class="detail-label">Fax</span>
+                  <span class="detail-value">{{ pa.providerServicing?.fax }}</span>
+                </div>
+              </div>
             </div>
           </div>
 
           <!-- Submission / Notes -->
-          <div class="card" *ngIf="pa.notes || pa.submission?.issuerName">
-            <div class="pane-header">Submission / Notes</div>
-            <div class="grid-2">
-              <div><strong>Issuer</strong>: {{ pa.submission?.issuerName || '—' }}</div>
-              <div><strong>Date</strong>: {{ pa.submission?.date || '—' }}</div>
+          <div class="detail-card" *ngIf="pa.notes || pa.submission?.issuerName">
+            <div class="detail-card-header">
+              <div class="detail-card-title">
+                <mat-icon>description</mat-icon>
+                <span>Submission / Notes</span>
+              </div>
             </div>
-            <div class="mt-2"><strong>Notes</strong>: {{ pa.notes || '—' }}</div>
+            <div class="detail-grid">
+              <div class="detail-field">
+                <span class="detail-label">Issuer</span>
+                <span class="detail-value">{{ pa.submission?.issuerName || '—' }}</span>
+              </div>
+              <div class="detail-field">
+                <span class="detail-label">Date</span>
+                <span class="detail-value">{{ pa.submission?.date || '—' }}</span>
+              </div>
+            </div>
+            <div class="detail-notes" *ngIf="pa.notes">
+              <span class="detail-label">Notes</span>
+              <p class="detail-notes-text">{{ pa.notes }}</p>
+            </div>
           </div>
-        </div>
+
+          <!-- Bottom spacer -->
+          <div style="height: 16px;"></div>
+
+        </ng-template>
+
       </ng-container>
+
+      <!-- Empty state when no OCR data -->
       <ng-template #noOcr>
-        <!-- empty -->
+        <div class="empty-preview" *ngIf="!isLoadingDetails">
+          <mat-icon class="empty-icon">description</mat-icon>
+          <div class="empty-text">No extracted details available for this fax.</div>
+        </div>
       </ng-template>
+
     </ng-template>
   </div>
 
-  <!-- Right: PDF preview + status -->
+
+  <!-- ════════════════════════════════════════════════════════════════
+       RIGHT PANE: PDF Preview
+       ════════════════════════════════════════════════════════════════ -->
   <div class="pane pane-right">
 
     <div class="pane-header">
-      <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
-        <span>Preview</span>
-        <button mat-stroked-button
-                color="primary"
-                (click)="closePreview()">
-          Cancel
-        </button>
-      </div>
+      <span>Preview</span>
+      <button mat-stroked-button
+              color="primary"
+              (click)="closePreview()"
+              matTooltip="Close preview and return to table">
+        <mat-icon style="font-size: 18px; margin-right: 4px;">close</mat-icon>
+        Close
+      </button>
     </div>
 
-    <!-- PDF IFRAME -->
+    <!-- PDF iframe -->
     <div class="preview-frame" *ngIf="previewUrl; else noPreview">
       <iframe [src]="previewUrl"
-              title="Fax Preview"
-              style="width:100%; height:65vh; border:0; border-radius:8px;">
+              title="Fax PDF Preview"
+              style="width:100%; height:calc(100vh - 180px); border:0; border-radius:8px;">
       </iframe>
     </div>
+
+    <!-- Empty preview state -->
     <ng-template #noPreview>
-      <div class="muted" style="padding:12px 0;">
-        Select a fax to preview. -
-      </div> to -
+      <div class="empty-preview">
+        <mat-icon class="empty-icon">picture_as_pdf</mat-icon>
+        <div class="empty-text">Select a fax to preview the document.</div>
+      </div>
     </ng-template>
+
   </div>
 </div>
-
