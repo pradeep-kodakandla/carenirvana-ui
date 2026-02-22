@@ -4,7 +4,7 @@
   <header class="page-header">
     <div class="title-wrap">
       <h2 class="page-title">Smart Authorization</h2>
-      <p class="page-subtitle">Select an LOB & fill service details to continue.</p>
+      <p class="page-subtitle">Select an LOB &amp; fill service details to continue.</p>
     </div>
 
     <div class="stepper-mini" aria-label="Progress">
@@ -18,7 +18,9 @@
 
   <mat-divider></mat-divider>
 
-  <!-- Coverage Context -->
+  <!-- ══════════════════════════════════════════════
+       Coverage Context  (matches AuthDetails enrollment cards)
+       ══════════════════════════════════════════════ -->
   <section class="section">
     <div class="section-head">
       <h3 class="section-title">Choose Coverage Context</h3>
@@ -26,7 +28,7 @@
     </div>
 
     <div class="selection-container">
-      <div class="rounded-box tooltip-wrapper"
+      <div class="rounded-box"
            *ngFor="let enr of memberEnrollments; let i = index"
            (click)="selectEnrollment(i)"
            [ngClass]="{ 'selected': selectedDiv === i + 1 }">
@@ -44,7 +46,9 @@
 
   <mat-divider></mat-divider>
 
-  <!-- Form -->
+  <!-- ══════════════════════════════════════════════
+       Service Details Form  (matches AuthDetails field structure)
+       ══════════════════════════════════════════════ -->
   <section class="section">
     <div class="section-head">
       <h3 class="section-title">Service Details</h3>
@@ -56,152 +60,190 @@
       <!-- Row 1: Auth Case + Auth Type -->
       <div class="row-2">
 
-        <div class="form-field">
-          <label class="floating-label">Auth Case <span class="req">*</span></label>
-
-          <!-- IMPORTANT: adjust inputs/outputs to match your UiSmartDropdown API -->
-          <ui-smart-dropdown name="authClass"
-                             [options]="authClassOptions"
-                             [(ngModel)]="selectedAuthClassId"
-                             [ngModelOptions]="{ standalone: true }"
-                             (valueChange)="onAuthClassChanged($event)"
-                             label="Auth Case"
-                             placeholder="Choose..."
-                             [clearable]="true">
-          </ui-smart-dropdown>
-
-
-
-          <div *ngIf="smartAuthCheckForm.get('authClassId')?.touched && smartAuthCheckForm.get('authClassId')?.invalid"
-               class="field-error">
+        <!-- Auth Case -->
+        <div class="ff-field">
+          <div class="ff-outline"
+               [class.ff-invalid]="smartAuthCheckForm.get('authClassId')?.touched && smartAuthCheckForm.get('authClassId')?.invalid">
+            <div class="ff-float-label">Auth Case <span class="req-star">*</span></div>
+            <div class="ff-body">
+              <ui-smart-dropdown class="ff-ui"
+                                 name="authClass"
+                                 label=""
+                                 placeholder="Select..."
+                                 [options]="authClassOptions"
+                                 [(ngModel)]="selectedAuthClassId"
+                                 [ngModelOptions]="{ standalone: true }"
+                                 (valueChange)="onAuthClassChanged($event)"
+                                 [clearable]="true">
+              </ui-smart-dropdown>
+            </div>
+          </div>
+          <div class="ff-error"
+               *ngIf="smartAuthCheckForm.get('authClassId')?.touched && smartAuthCheckForm.get('authClassId')?.invalid">
             Auth Case is required.
           </div>
         </div>
 
-        <div class="form-field">
-          <label class="floating-label">Auth Type <span class="req">*</span></label>
-
-          <ui-smart-dropdown name="authType"
-                             [options]="authTypeOptions"
-                             [(ngModel)]="selectedAuthTypeId"
-                             [ngModelOptions]="{ standalone: true }"
-                             (valueChange)="onAuthTypeChanged($event)"
-                             label="Auth Type"
-                             placeholder="Choose..."
-                             [clearable]="true"
-                             [disabled]="!selectedAuthClassId || selectedAuthClassId === 0">
-          </ui-smart-dropdown>
-
-          <div *ngIf="smartAuthCheckForm.get('authTypeId')?.touched && smartAuthCheckForm.get('authTypeId')?.invalid"
-               class="field-error">
+        <!-- Auth Type -->
+        <div class="ff-field">
+          <div class="ff-outline"
+               [class.ff-disabled]="!selectedAuthClassId || selectedAuthClassId === 0"
+               [class.ff-invalid]="smartAuthCheckForm.get('authTypeId')?.touched && smartAuthCheckForm.get('authTypeId')?.invalid">
+            <div class="ff-float-label">Auth Type <span class="req-star">*</span></div>
+            <div class="ff-body">
+              <ui-smart-dropdown class="ff-ui"
+                                 name="authType"
+                                 label=""
+                                 placeholder="Select..."
+                                 [options]="authTypeOptions"
+                                 [(ngModel)]="selectedAuthTypeId"
+                                 [ngModelOptions]="{ standalone: true }"
+                                 (valueChange)="onAuthTypeChanged($event)"
+                                 [clearable]="true"
+                                 [disabled]="!selectedAuthClassId || selectedAuthClassId === 0">
+              </ui-smart-dropdown>
+            </div>
+          </div>
+          <div class="ff-error"
+               *ngIf="smartAuthCheckForm.get('authTypeId')?.touched && smartAuthCheckForm.get('authTypeId')?.invalid">
             Auth Type is required.
           </div>
         </div>
 
       </div>
 
-      <!-- Row 2: From + To -->
+      <!-- Row 2: From Date + To Date -->
       <div class="row-2">
-        <!-- From -->
-        <!-- From -->
-        <div class="form-field">
-          <label class="floating-label">From Date <span class="req">*</span></label>
 
-          <ui-datetime-picker formControlName="scheduledDateTime"
-                              [dateOnly]="true"
-                              placeholderDateTime="Enter D, D+1, D-1 or select"
-                              tabindex="-1">
-          </ui-datetime-picker>
-
-          <div *ngIf="smartAuthCheckForm.get('scheduledDateTime')?.touched && smartAuthCheckForm.get('scheduledDateTime')?.invalid"
-               class="field-error">
+        <!-- From Date -->
+        <div class="ff-field">
+          <div class="ff-outline"
+               [class.ff-invalid]="smartAuthCheckForm.get('scheduledDateTime')?.touched && smartAuthCheckForm.get('scheduledDateTime')?.invalid">
+            <div class="ff-float-label">From Date <span class="req-star">*</span></div>
+            <div class="ff-body">
+              <ui-datetime-picker class="ff-ui"
+                                  formControlName="scheduledDateTime"
+                                  [dateOnly]="true"
+                                  placeholderDateTime="Enter D, D+1, D-1 or select"
+                                  tabindex="-1">
+              </ui-datetime-picker>
+            </div>
+          </div>
+          <div class="ff-error"
+               *ngIf="smartAuthCheckForm.get('scheduledDateTime')?.touched && smartAuthCheckForm.get('scheduledDateTime')?.invalid">
             From date is required.
           </div>
         </div>
 
-        <!-- To -->
-        <div class="form-field">
-          <label class="floating-label">To Date <span class="req">*</span></label>
-
-          <ui-datetime-picker formControlName="dueDateTime"
-                              [dateOnly]="true"
-                              placeholderDateTime="Enter D, D+1, D-1 or select"
-                              tabindex="-1">
-          </ui-datetime-picker>
-
-          <div *ngIf="smartAuthCheckForm.get('dueDateTime')?.touched && smartAuthCheckForm.get('dueDateTime')?.invalid"
-               class="field-error">
+        <!-- To Date -->
+        <div class="ff-field">
+          <div class="ff-outline"
+               [class.ff-invalid]="smartAuthCheckForm.get('dueDateTime')?.touched && smartAuthCheckForm.get('dueDateTime')?.invalid">
+            <div class="ff-float-label">To Date <span class="req-star">*</span></div>
+            <div class="ff-body">
+              <ui-datetime-picker class="ff-ui"
+                                  formControlName="dueDateTime"
+                                  [dateOnly]="true"
+                                  placeholderDateTime="Enter D, D+1, D-1 or select"
+                                  tabindex="-1">
+              </ui-datetime-picker>
+            </div>
+          </div>
+          <div class="ff-error"
+               *ngIf="smartAuthCheckForm.get('dueDateTime')?.touched && smartAuthCheckForm.get('dueDateTime')?.invalid">
             To date is required.
           </div>
         </div>
 
       </div>
 
-      <!-- ICD rows -->
+      <!-- ── ICD rows ── -->
       <div formArrayName="icds" class="stacked-rows">
         <div class="row-2" *ngFor="let g of icds.controls; let i = index" [formGroupName]="i">
-          <div class="form-field">
-            <label class="floating-label">ICD-10</label>
 
-            <ui-smart-lookup class="ff-ui ff-lookup"
-                             [placeholder]="getLookupPlaceholder(icdLookupField)"
-                             [minChars]="getLookupMinChars(icdLookupField)"
-                             [debounceMs]="getLookupDebounceMs(icdLookupField)"
-                             [limit]="getLookupLimit(icdLookupField)"
-                             [searchFn]="getLookupSearchFn(icdLookupField)"
-                             [displayWith]="getLookupDisplayWith(icdLookupField)"
-                             [trackBy]="getLookupTrackBy(icdLookupField)"
-                             [formControlName]="icdLookupField.controlName"
-                             (selected)="onIcdLookupSelected(i, $event)"
-                             (textChange)="onIcdLookupTextChange(i, $event)"
-                             (cleared)="onIcdLookupCleared(i)">
-            </ui-smart-lookup>
-          </div>
-
-          <div class="form-field with-actions">
-            <label class="floating-label">ICD-10 Description</label>
-            <div class="inline-field">
-              <input class="form-control" formControlName="icd10Desc" placeholder="ICD-10 Description" />
-              <div class="row-actions">
-                <button type="button" class="icon-btn" (click)="addIcdRow()" title="Add another ICD">＋</button>
-                <button type="button" class="icon-btn danger" (click)="removeIcdRow(i)" [disabled]="icds.length === 1" title="Remove">−</button>
+          <!-- ICD-10 Lookup -->
+          <div class="ff-field">
+            <div class="ff-outline">
+              <div class="ff-float-label">ICD-10</div>
+              <div class="ff-body">
+                <ui-smart-lookup class="ff-ui ff-lookup"
+                                 [placeholder]="getLookupPlaceholder(icdLookupField)"
+                                 [minChars]="getLookupMinChars(icdLookupField)"
+                                 [debounceMs]="getLookupDebounceMs(icdLookupField)"
+                                 [limit]="getLookupLimit(icdLookupField)"
+                                 [searchFn]="getLookupSearchFn(icdLookupField)"
+                                 [displayWith]="getLookupDisplayWith(icdLookupField)"
+                                 [trackBy]="getLookupTrackBy(icdLookupField)"
+                                 [formControlName]="icdLookupField.controlName"
+                                 (selected)="onIcdLookupSelected(i, $event)"
+                                 (textChange)="onIcdLookupTextChange(i, $event)"
+                                 (cleared)="onIcdLookupCleared(i)">
+                </ui-smart-lookup>
               </div>
             </div>
           </div>
+
+          <!-- ICD-10 Description + Add/Remove -->
+          <div class="ff-field with-actions">
+            <div class="ff-outline">
+              <div class="ff-float-label">ICD-10 Description</div>
+              <div class="ff-body">
+                <div class="inline-field" style="width:100%">
+                  <input class="ff-input" formControlName="icd10Desc" placeholder="ICD-10 Description" />
+                  <div class="row-actions">
+                    <button type="button" class="icon-btn" (click)="addIcdRow()" title="Add another ICD">＋</button>
+                    <button type="button" class="icon-btn danger" (click)="removeIcdRow(i)" [disabled]="icds.length === 1" title="Remove">−</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
-      <!-- Service rows -->
+      <!-- ── Service rows ── -->
       <div formArrayName="services" class="stacked-rows">
         <div class="row-2" *ngFor="let g of services.controls; let i = index" [formGroupName]="i">
-          <div class="form-field">
-            <label class="floating-label">Service Code</label>
 
-            <ui-smart-lookup class="ff-ui ff-lookup"
-                             [placeholder]="getLookupPlaceholder(serviceLookupField)"
-                             [minChars]="getLookupMinChars(serviceLookupField)"
-                             [debounceMs]="getLookupDebounceMs(serviceLookupField)"
-                             [limit]="getLookupLimit(serviceLookupField)"
-                             [searchFn]="getLookupSearchFn(serviceLookupField)"
-                             [displayWith]="getLookupDisplayWith(serviceLookupField)"
-                             [trackBy]="getLookupTrackBy(serviceLookupField)"
-                             [formControlName]="serviceLookupField.controlName"
-                             (selected)="onServiceLookupSelected(i, $event)"
-                             (textChange)="onServiceLookupTextChange(i, $event)"
-                             (cleared)="onServiceLookupCleared(i)">
-            </ui-smart-lookup>
-          </div>
-
-          <div class="form-field with-actions">
-            <label class="floating-label">Service Description</label>
-            <div class="inline-field">
-              <input class="form-control" formControlName="serviceDesc" placeholder="Service Description" />
-              <div class="row-actions">
-                <button type="button" class="icon-btn" (click)="addServiceRow()" title="Add another Service">＋</button>
-                <button type="button" class="icon-btn danger" (click)="removeServiceRow(i)" [disabled]="services.length === 1" title="Remove">−</button>
+          <!-- Service Code Lookup -->
+          <div class="ff-field">
+            <div class="ff-outline">
+              <div class="ff-float-label">Service Code</div>
+              <div class="ff-body">
+                <ui-smart-lookup class="ff-ui ff-lookup"
+                                 [placeholder]="getLookupPlaceholder(serviceLookupField)"
+                                 [minChars]="getLookupMinChars(serviceLookupField)"
+                                 [debounceMs]="getLookupDebounceMs(serviceLookupField)"
+                                 [limit]="getLookupLimit(serviceLookupField)"
+                                 [searchFn]="getLookupSearchFn(serviceLookupField)"
+                                 [displayWith]="getLookupDisplayWith(serviceLookupField)"
+                                 [trackBy]="getLookupTrackBy(serviceLookupField)"
+                                 [formControlName]="serviceLookupField.controlName"
+                                 (selected)="onServiceLookupSelected(i, $event)"
+                                 (textChange)="onServiceLookupTextChange(i, $event)"
+                                 (cleared)="onServiceLookupCleared(i)">
+                </ui-smart-lookup>
               </div>
             </div>
           </div>
+
+          <!-- Service Description + Add/Remove -->
+          <div class="ff-field with-actions">
+            <div class="ff-outline">
+              <div class="ff-float-label">Service Description</div>
+              <div class="ff-body">
+                <div class="inline-field" style="width:100%">
+                  <input class="ff-input" formControlName="serviceDesc" placeholder="Service Description" />
+                  <div class="row-actions">
+                    <button type="button" class="icon-btn" (click)="addServiceRow()" title="Add another Service">＋</button>
+                    <button type="button" class="icon-btn danger" (click)="removeServiceRow(i)" [disabled]="services.length === 1" title="Remove">−</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 

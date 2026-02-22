@@ -34,6 +34,16 @@
                 [disabled]="shellSaving">
           {{ shellSaving ? 'Saving...' : 'Save' }}
         </button>
+
+        <!-- AI Panel toggle -->
+        <button type="button"
+                class="aw-btn-ai-toggle"
+                [class.active]="rightPanelMode === 'ai'"
+                (click)="openRightPanel('ai')"
+                title="Toggle AI Assistant">
+          🤖
+          <span class="aw-ai-online-dot"></span>
+        </button>
       </div>
     </div>
 
@@ -51,8 +61,160 @@
 
   </div>
 
-  <div class="wizardBody">
-    <router-outlet></router-outlet>
-  </div>
+  <!-- ═══════ BODY: content + right panel ═══════ -->
+  <div class="aw-body">
 
+    <!-- Scrollable step content -->
+    <div class="wizardBody"
+         [class.wizardBody--panel-open]="rightPanelOpen"
+         [class.wizardBody--panel-expanded]="rightPanelExpanded">
+      <router-outlet></router-outlet>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════
+         UNIFIED RIGHT PANEL — Modes: 'ai' | 'provider'
+         ═══════════════════════════════════════════════════ -->
+    <div class="aw-right-panel"
+         [class.aw-right-panel--open]="rightPanelOpen"
+         [class.aw-right-panel--expanded]="rightPanelExpanded">
+
+      <!-- ══════ AI MODE ══════ -->
+      <ng-container *ngIf="rightPanelMode === 'ai'">
+
+        <div class="aw-rpanel-header aw-rpanel-header--ai">
+          <div class="aw-rpanel-title-block">
+            <span class="aw-rpanel-icon aw-rpanel-icon--ai">🤖</span>
+            <div>
+              <div class="aw-rpanel-title">AI Assistant</div>
+              <div class="aw-rpanel-subtitle">Auth Intelligence</div>
+            </div>
+          </div>
+          <div class="aw-rpanel-actions">
+            <button class="aw-rpanel-btn" (click)="togglePanelExpand()"
+                    [title]="rightPanelExpanded ? 'Collapse' : 'Expand'">
+              <span class="material-icons-outlined">{{ rightPanelExpanded ? 'chevron_right' : 'chevron_left' }}</span>
+            </button>
+            <button class="aw-rpanel-btn" (click)="closeRightPanel()">
+              <span class="material-icons-outlined">close</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="aw-rpanel-body">
+
+          <!-- Auth SLA Tracker -->
+          <div class="aw-ai-section">
+            <div class="aw-ai-section-header">
+              <span class="aw-ai-section-label">⏱ Authorization SLA</span>
+              <span class="aw-ai-badge aw-ai-badge--warning" *ngIf="slaAtRiskCount > 0">
+                {{ slaAtRiskCount }} at risk
+              </span>
+            </div>
+            <div class="aw-sla-list">
+              <div class="aw-sla-item" *ngFor="let sla of slaItems" [ngClass]="'aw-sla--' + sla.status">
+                <div class="aw-sla-info">
+                  <div class="aw-sla-label">{{ sla.label }}</div>
+                  <div class="aw-sla-deadline">Due: {{ sla.deadline }}</div>
+                </div>
+                <div class="aw-sla-remaining">{{ sla.remaining }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="aw-ai-section">
+            <div class="aw-ai-section-header">
+              <span class="aw-ai-section-label">⚡ Quick Actions</span>
+            </div>
+            <div class="aw-quick-actions-grid">
+              <button class="aw-quick-action" *ngFor="let action of quickActions"
+                      (click)="onQuickAction(action)">
+                <span class="aw-qa-icon">{{ action.icon }}</span>
+                <span class="aw-qa-label">{{ action.label }}</span>
+                <span class="aw-qa-desc">{{ action.description }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- AI Insights -->
+          <div class="aw-ai-section">
+            <div class="aw-ai-section-header">
+              <span class="aw-ai-section-label">🧠 AI Insights</span>
+              <span class="aw-ai-badge aw-ai-badge--info">{{ aiSuggestions.length }} suggestions</span>
+            </div>
+            <div class="aw-ai-suggestions-list">
+              <div class="aw-ai-card" *ngFor="let suggestion of aiSuggestions"
+                   [ngClass]="'aw-ai-card--' + suggestion.type">
+                <div class="aw-ai-card-header">
+                  <div class="aw-ai-card-title-row">
+                    <span class="aw-ai-card-icon">{{ suggestion.icon }}</span>
+                    <span class="aw-ai-card-title">{{ suggestion.title }}</span>
+                  </div>
+                  <span class="aw-ai-confidence" [ngClass]="'aw-ai-confidence--' + suggestion.type">
+                    {{ suggestion.confidence }}% conf.
+                  </span>
+                </div>
+                <p class="aw-ai-card-body">{{ suggestion.body }}</p>
+                <div class="aw-ai-card-actions" *ngIf="suggestion.actionLabel">
+                  <button class="aw-btn-ai-action" (click)="onAiAction(suggestion)">
+                    {{ suggestion.actionLabel }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- AI footer -->
+        <div class="aw-rpanel-footer">
+          <div class="aw-ai-input-wrap">
+            <span class="aw-ai-input-icon">💬</span>
+            <input type="text"
+                   class="aw-ai-input"
+                   placeholder="Ask AI about this auth..."
+                   [(ngModel)]="aiQuery"
+                   (keydown.enter)="askAi()" />
+            <button class="aw-ai-send" (click)="askAi()" [disabled]="!aiQuery?.trim()">→</button>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- ══════ PROVIDER MODE ══════ -->
+      <ng-container *ngIf="rightPanelMode === 'provider'">
+
+        <div class="aw-rpanel-header aw-rpanel-header--provider">
+          <div class="aw-rpanel-title-block">
+            <span class="aw-rpanel-icon aw-rpanel-icon--provider">
+              <span class="material-icons-outlined" style="font-size:14px">person</span>
+            </span>
+            <div>
+              <div class="aw-rpanel-title">Provider</div>
+              <div class="aw-rpanel-subtitle">{{ selectedProviderName || selectedProviderId }}</div>
+            </div>
+          </div>
+          <div class="aw-rpanel-actions">
+            <button class="aw-rpanel-btn" (click)="togglePanelExpand()"
+                    [title]="rightPanelExpanded ? 'Collapse' : 'Expand'">
+              <span class="material-icons-outlined">{{ rightPanelExpanded ? 'chevron_right' : 'chevron_left' }}</span>
+            </button>
+            <button class="aw-rpanel-btn" (click)="closeRightPanel()">
+              <span class="material-icons-outlined">close</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="aw-rpanel-body aw-rpanel-body--flush">
+          <app-provider-details
+            [providerId]="selectedProviderId"
+            [providerData]="selectedProviderData"
+            [embedded]="true"
+            (closed)="closeRightPanel()">
+          </app-provider-details>
+        </div>
+      </ng-container>
+
+    </div><!-- /aw-right-panel -->
+
+  </div>
 </div>

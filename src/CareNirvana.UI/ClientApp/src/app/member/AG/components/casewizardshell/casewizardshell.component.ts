@@ -40,6 +40,7 @@ export interface CaseStep {
   // Optional (doesn't break existing usage):
   icon?: string;             // material icon name (e.g., 'assignment')
   badge?: number | string;   // count badge (e.g., 2)
+  hasError?: boolean;        // true when step has validation errors (shows red in stepper)
 }
 
 // ── AI panel interfaces ──
@@ -100,6 +101,9 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
   private currentStepRef?: ComponentRef<any>;
   private destroy$ = new Subject<void>();
 
+  /** Tracks which step IDs have validation errors — drives red stepper indicators */
+  stepErrors: Record<string, boolean> = {};
+
   private stepMap: Record<string, Type<any>> = {
     details: CasedetailsComponent,
     disposition: CasedispositionComponent,
@@ -116,10 +120,24 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
   showEscalateConfirm = false;
 
   // ════════════════════════════════════
-  //  NEW: AI Panel state
+  //  RIGHT PANEL — unified (AI / Auth / Claim)
   // ════════════════════════════════════
-  aiPanelOpen = false;
+  /** Which panel mode is active: 'ai' | 'auth' | 'claim' | null */
+  rightPanelMode: 'ai' | 'auth' | 'claim' | null = null;
+  /** Whether the right panel is open */
+  rightPanelOpen = false;
+  /** Whether the right panel is in expanded (wide) mode */
+  rightPanelExpanded = false;
+  /** Backward compat — old code can still reference aiPanelOpen */
+  get aiPanelOpen(): boolean { return this.rightPanelOpen && this.rightPanelMode === 'ai'; }
+  set aiPanelOpen(val: boolean) {
+    if (val) { this.openRightPanel('ai'); } else if (this.rightPanelMode === 'ai') { this.closeRightPanel(); }
+  }
   aiQuery = '';
+
+  /** Selected auth/claim number for the detail panels */
+  selectedAuthNumber = '';
+  selectedClaimNumber = '';
 
   // ════════════════════════════════════
   //  Header field lookups (from jsonData)
@@ -147,6 +165,22 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
   // Read-only for non-latest levels
   isReadOnly = false;
   latestLevelId: number | null = null;
+
+  // Escalation stepper — hover tooltip
+  hoveredLevelId: number | null = null;
+
+  /** Fixed max levels to always display in stepper (matches screenshot: 5 nodes) */
+  readonly maxLevels = 5;
+
+  /** Generates an array [1, 2, 3, 4, 5] for the stepper template */
+  get allLevelSlots(): number[] {
+    return Array.from({ length: this.maxLevels }, (_, i) => i + 1);
+  }
+
+  /** True if a level actually exists in the data (has a detail record) */
+  levelExists(levelId: number): boolean {
+    return !!this.getLevelDetail(levelId);
+  }
 
   // SLA data (populated from API or derived from aggregate)
   slaItems: SlaItem[] = [];
@@ -405,6 +439,16 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     return raw.toLowerCase().replace(/\s+/g, '-');
   }
 
+  /** Total number of levels (always 5 for the fixed stepper display) */
+  getTotalLevels(): number {
+    return this.maxLevels;
+  }
+
+  /** True if the level has been escalated (i.e., there's a higher level after it) */
+  isCompletedLevel(levelId: number): boolean {
+    return !!this.latestLevelId && levelId < this.latestLevelId;
+  }
+
   // ═══════════════════════════════════
   //  ESCALATE
   // ═══════════════════════════════════
@@ -416,11 +460,152 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
   confirmEscalate(): void {
     this.showEscalateConfirm = false;
 
-    // TODO: Call your escalation API
-    // this.caseApi.escalateCase(caseHeaderId).subscribe(...)
+    // ✅ Step 1: Validate current step first
+    const hasErrors = this.validateCurrentStep();
+    if (hasErrors) {
+      this.setStepError(this.activeStepId, true);
+      this.scrollToFirstValidationError();
+      this.showSaveBanner('Please fix validation errors before escalating.', 3000);
+      return;
+    }
 
-    this.showSaveBanner('Case escalated successfully.', 3000);
-    // Optionally refresh aggregate to reflect new status
+    // ✅ Step 2: Clear error for current step
+    this.setStepError(this.activeStepId, false);
+
+    // ✅ Step 3: Save the current step before escalating
+    const inst: any = this.currentStepRef?.instance;
+    if (inst && typeof inst.save === 'function') {
+      const result = inst.save();
+
+      const doEscalate = () => {
+        this.performEscalation();
+      };
+
+      if (result && typeof result.then === 'function') {
+        result.then(() => doEscalate()).catch((err: any) => {
+          console.error('Save before escalate failed:', err);
+          this.showSaveBanner('Save failed. Cannot escalate.', 3000);
+        });
+      } else {
+        doEscalate();
+      }
+    } else {
+      this.performEscalation();
+    }
+  }
+
+  /** Performs the actual escalation — creates next level and moves to it */
+  private performEscalation(): void {
+    const currentLevel = this.latestLevelId ?? 1;
+    const nextLevel = currentLevel + 1;
+    const caseHeaderId = this.state.getHeaderId?.() ?? null;
+    const userId = Number(sessionStorage.getItem('loggedInUserid')) || 0;
+
+    if (!caseHeaderId) {
+      this.showSaveBanner('Please save the case first before escalating.', 3000);
+      return;
+    }
+
+    const agg: any = (this.state as any).getAggregate?.() ?? null;
+    const caseNumber = this.getCaseNumber(agg);
+
+    // ═══════════════════════════════════════════════════════════════
+    //  ✅ COPY CURRENT LEVEL'S FULL DATA INTO THE NEW LEVEL
+    //  Same merge pattern as casedetails save():
+    //    1. Get persisted jsonData from current level (all steps)
+    //    2. Merge in any current form values from the active step
+    //    3. Pass merged data as the new level's jsonData
+    // ═══════════════════════════════════════════════════════════════
+
+    // 1) Get the current level's persisted jsonData (already saved by confirmEscalate → save())
+    const currentDetail = this.state.getDetailForLevel(currentLevel);
+    let currentJsonObj: any = {};
+    if (currentDetail?.jsonData) {
+      try {
+        currentJsonObj = typeof currentDetail.jsonData === 'string'
+          ? JSON.parse(currentDetail.jsonData)
+          : currentDetail.jsonData;
+      } catch { currentJsonObj = {}; }
+    }
+
+    // 2) Also merge in any live form values from the active step component
+    //    (safety net: in case save didn't capture everything, e.g. other steps' data)
+    const inst: any = this.currentStepRef?.instance;
+    let liveFormValues: any = {};
+    if (inst) {
+      // Direct form (casedetails)
+      const form = inst?.form ?? inst?.detailsComp?.form;
+      if (form && typeof form.getRawValue === 'function') {
+        liveFormValues = form.getRawValue() ?? {};
+      }
+    }
+
+    // 3) Merge: persisted base ← live form overlay (same as casedetails save merge pattern)
+    const mergedData = { ...(currentJsonObj ?? {}), ...(liveFormValues ?? {}) };
+    const jsonData = JSON.stringify(mergedData);
+
+    console.log('Escalating with copied data:', {
+      currentLevel,
+      nextLevel,
+      keysFromPersisted: Object.keys(currentJsonObj).length,
+      keysFromForm: Object.keys(liveFormValues).length,
+      totalMergedKeys: Object.keys(mergedData).length
+    });
+
+    // ═══════════════════════════════════════════════════════════════
+
+    this.caseApi.addCaseLevel(
+      {
+        caseHeaderId,
+        caseNumber,
+        levelId: nextLevel,
+        jsonData,
+      },
+      userId
+    ).pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          // ✅ Reload aggregate to reflect new level
+          this.caseApi.getByHeaderId(caseHeaderId, false)
+            .pipe(takeUntil(this.destroy$))
+            .subscribe({
+              next: (updatedAgg: any) => {
+                this.state.setAggregate(updatedAgg);
+                this.latestLevelId = this.deriveLatestLevelId(updatedAgg);
+
+                // ✅ Auto-move to the new (next) level
+                this.state.setActiveLevel(nextLevel);
+                this.isReadOnly = false;
+
+                // Push new level into current step
+                if (this.currentStepRef) {
+                  const stepInst: any = this.currentStepRef.instance;
+                  if ('readOnly' in stepInst) this.currentStepRef.setInput('readOnly', false);
+                  if (typeof stepInst?.setReadOnly === 'function') stepInst.setReadOnly(false);
+                  if ('levelId' in stepInst) this.currentStepRef.setInput('levelId', nextLevel);
+                  if (typeof stepInst?.onLevelChanged === 'function') stepInst.onLevelChanged(nextLevel);
+                  if (typeof stepInst?.reload === 'function') stepInst.reload();
+                }
+
+                // Refresh AI panel
+                if (updatedAgg) this.loadAiPanelData(updatedAgg, nextLevel);
+
+                this.showSaveBanner(`Case escalated to Level ${nextLevel} successfully.`, 3000);
+                // Clear all step errors since we're now on a fresh level
+                this.stepErrors = {};
+                this.steps = this.steps.map(s => ({ ...s, hasError: false }));
+              },
+              error: (e: any) => {
+                console.error('Failed to reload aggregate after escalation:', e);
+                this.showSaveBanner('Escalated but failed to refresh. Please reload.', 4000);
+              }
+            });
+        },
+        error: (e: any) => {
+          console.error('Escalation failed:', e);
+          this.showSaveBanner(e?.message ? `Escalation failed: ${e.message}` : 'Escalation failed.', 4000);
+        }
+      });
   }
 
   cancelEscalate(): void {
@@ -428,15 +613,66 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   // ═══════════════════════════════════
-  //  AI PANEL
+  //  RIGHT PANEL (unified: AI / Auth / Claim)
   // ═══════════════════════════════════
 
+  /**
+   * Opens the right panel in the specified mode.
+   * If same mode is already open, toggles it closed.
+   * If a different mode is open, switches to the new mode.
+   */
+  openRightPanel(mode: 'ai' | 'auth' | 'claim', identifier?: string): void {
+    // Toggle off if same mode
+    if (this.rightPanelOpen && this.rightPanelMode === mode) {
+      this.closeRightPanel();
+      return;
+    }
+
+    this.rightPanelMode = mode;
+    this.rightPanelOpen = true;
+    // Reset expanded when switching modes
+    this.rightPanelExpanded = false;
+
+    // Set identifier for auth/claim
+    if (mode === 'auth' && identifier) {
+      this.selectedAuthNumber = identifier;
+    } else if (mode === 'claim' && identifier) {
+      this.selectedClaimNumber = identifier;
+    }
+  }
+
+  /** Opens auth detail panel for the given auth number */
+  openAuthPanel(authNumber: string): void {
+    this.openRightPanel('auth', authNumber);
+  }
+
+  /** Opens claim detail panel for the given claim number */
+  openClaimPanel(claimNumber: string): void {
+    this.openRightPanel('claim', claimNumber);
+  }
+
+  /** Close the right panel entirely */
+  closeRightPanel(): void {
+    this.rightPanelOpen = false;
+    this.rightPanelExpanded = false;
+    // Keep mode so animation completes before content disappears
+    setTimeout(() => {
+      if (!this.rightPanelOpen) this.rightPanelMode = null;
+    }, 350);
+  }
+
+  /** Toggle expanded (wide) mode for the right panel */
+  togglePanelExpand(): void {
+    this.rightPanelExpanded = !this.rightPanelExpanded;
+  }
+
+  /** Backward compat wrappers */
   toggleAiPanel(): void {
-    this.aiPanelOpen = !this.aiPanelOpen;
+    this.openRightPanel('ai');
   }
 
   closeAiPanel(): void {
-    this.aiPanelOpen = false;
+    if (this.rightPanelMode === 'ai') this.closeRightPanel();
   }
 
   /** Load AI panel content after case is saved and has a case number */
@@ -614,6 +850,10 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
 
     if (!this.canNavigateAway()) return;
 
+    // ✅ Check if current step has errors and update tracking
+    const currentHasErrors = this.validateCurrentStep();
+    this.setStepError(this.activeStepId, currentHasErrors);
+
     this.activeStepId = stepId;
     this.loadStep(stepId);
   }
@@ -631,12 +871,126 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
       return;
     }
 
+    // ✅ Validate current step first and track errors
+    const hasErrors = this.validateCurrentStep();
+    if (hasErrors) {
+      // Mark current step as having errors
+      this.setStepError(this.activeStepId, true);
+      // Scroll to first validation error on current page
+      this.scrollToFirstValidationError();
+      return;
+    }
+
+    // ✅ Current step is valid — clear its error state
+    this.setStepError(this.activeStepId, false);
+
     try {
       this.savingTop = true;
-      inst.save();
-    } finally {
+      const result = inst.save();
+
+      // Handle async save (Promise)
+      if (result && typeof result.then === 'function') {
+        result.then(() => {
+          this.savingTop = false;
+          this.afterSaveValidation();
+        }).catch(() => {
+          this.savingTop = false;
+        });
+      } else {
+        this.savingTop = false;
+        this.afterSaveValidation();
+      }
+    } catch {
       this.savingTop = false;
     }
+  }
+
+  /** After save completes, check if there are error steps to navigate to */
+  private afterSaveValidation(): void {
+    // Check if current step still has errors (e.g. save succeeded but another step has errors)
+    const nextErrorStep = this.findNextStepWithError(this.activeStepId);
+    if (nextErrorStep) {
+      // Navigate to the next step that has validation errors
+      this.onStepSelected(nextErrorStep);
+      setTimeout(() => this.scrollToFirstValidationError(), 300);
+    }
+  }
+
+  /** Validate the current step — returns true if there are errors */
+  private validateCurrentStep(): boolean {
+    const inst: any = this.currentStepRef?.instance;
+    if (!inst) return false;
+
+    // Call the component's own validation logic
+    if (typeof inst.syncFormControlVisibility === 'function') {
+      inst.syncFormControlVisibility();
+    }
+    if (typeof inst.markVisibleControlsTouched === 'function') {
+      inst.markVisibleControlsTouched();
+    }
+
+    // Check the details component within wrapper components (like disposition)
+    const detailsComp = inst?.detailsComp;
+    if (detailsComp) {
+      if (typeof detailsComp.syncFormControlVisibility === 'function') {
+        detailsComp.syncFormControlVisibility();
+      }
+      if (typeof detailsComp.markVisibleControlsTouched === 'function') {
+        detailsComp.markVisibleControlsTouched();
+      }
+      return detailsComp.form?.invalid ?? false;
+    }
+
+    return inst.form?.invalid ?? false;
+  }
+
+  /** Scroll to the first visible validation error on the current page */
+  private scrollToFirstValidationError(): void {
+    setTimeout(() => {
+      const contentEl = document.querySelector('.cw-content');
+      if (!contentEl) return;
+
+      const errorEl = contentEl.querySelector('.ff-error:not([hidden])');
+      if (!errorEl) {
+        // Also look for ff-invalid outline
+        const invalidEl = contentEl.querySelector('.ff-invalid');
+        if (invalidEl) {
+          invalidEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        return;
+      }
+      errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  }
+
+  /** Mark a step as having or not having errors — updates the steps array */
+  setStepError(stepId: string, hasError: boolean): void {
+    this.stepErrors[stepId] = hasError;
+    this.steps = this.steps.map(s => ({
+      ...s,
+      hasError: this.stepErrors[s.id] ?? false
+    }));
+  }
+
+  /** Clear error for a step (called when validation passes) */
+  clearStepError(stepId: string): void {
+    this.setStepError(stepId, false);
+  }
+
+  /** Find the next step (after the given one) that has errors */
+  private findNextStepWithError(afterStepId: string): string | null {
+    const idx = this.steps.findIndex(s => s.id === afterStepId);
+    if (idx < 0) return null;
+
+    // Look forward from current step
+    for (let i = idx + 1; i < this.steps.length; i++) {
+      if (this.stepErrors[this.steps[i].id]) return this.steps[i].id;
+    }
+    // Wrap around — look from beginning
+    for (let i = 0; i < idx; i++) {
+      if (this.stepErrors[this.steps[i].id]) return this.steps[i].id;
+    }
+    return null;
   }
 
   // ═══════════════════════════════════
@@ -654,6 +1008,19 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
 
     const inst: any = this.currentStepRef.instance;
     inst.showSavedMessage = (msg: string) => this.showSaveBanner(msg);
+
+    // ✅ Inject validation reporter so child can update stepper error state
+    inst._shellReportValidation = (hasErrors: boolean) => {
+      this.setStepError(stepId, hasErrors);
+    };
+
+    // ✅ Inject auth/claim panel openers so cards can open the right panel
+    inst._shellOpenAuthPanel = (authNumber: string) => {
+      this.openAuthPanel(authNumber);
+    };
+    inst._shellOpenClaimPanel = (claimNumber: string) => {
+      this.openClaimPanel(claimNumber);
+    };
 
     if (inst && 'stepId' in inst) {
       inst.stepId = stepId;

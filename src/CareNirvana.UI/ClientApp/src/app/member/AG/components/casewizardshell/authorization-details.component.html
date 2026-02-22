@@ -1,0 +1,404 @@
+<!-- ═══════════════════════════════════════════════════
+     AUTHORIZATION DETAILS — Displays data from getAuthDetailsJson API
+     ═══════════════════════════════════════════════════ -->
+<div class="auth-card" *ngIf="detail">
+
+  <!-- ══════ HEADER (purple gradient) ══════ -->
+  <div class="auth-header">
+    <div class="auth-header-left">
+      <span class="auth-header-icon material-icons-outlined">verified_user</span>
+      <span class="auth-header-title">Authorization Details</span>
+    </div>
+    <div class="auth-header-actions" *ngIf="!embedded">
+      <button class="auth-action-btn" (click)="onEdit()" title="Edit">
+        <span class="material-icons-outlined">edit</span>
+      </button>
+      <button class="auth-action-btn" (click)="onPrint()" title="Print">
+        <span class="material-icons-outlined">print</span>
+      </button>
+      <button class="auth-action-btn" (click)="onClose()" title="Close">
+        <span class="material-icons-outlined">close</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════ IDENTITY BLOCK ══════ -->
+  <div class="auth-identity">
+    <div class="auth-number">{{ detail.authNumber }}</div>
+    <div class="auth-badges">
+      <span class="auth-badge" [ngClass]="statusClass">{{ detail.status }}</span>
+      <span class="auth-badge auth-badge--type">{{ detail.authClass }}</span>
+      <span class="auth-badge auth-badge--urgency">{{ detail.urgency }}</span>
+      <span class="auth-badge auth-badge--extension" *ngIf="detail.extension">Extension</span>
+    </div>
+  </div>
+
+  <!-- ══════ SCROLLABLE BODY ══════ -->
+  <div class="auth-body">
+
+    <!-- ── Authorization Information ── -->
+    <div class="auth-section">
+      <div class="auth-section-header" (click)="toggleSection('authInfo')">
+        <span class="auth-section-title">AUTHORIZATION INFORMATION</span>
+        <span class="material-icons-outlined auth-chevron"
+              [class.auth-chevron--collapsed]="!sections['authInfo']">
+          expand_more
+        </span>
+      </div>
+      <div class="auth-section-body" *ngIf="sections['authInfo']">
+        <div class="auth-fields-inner">
+          <div class="auth-field-row">
+            <span class="auth-field-label">AUTH TYPE</span>
+            <span class="auth-field-value">{{ detail.authType }}</span>
+          </div>
+          <div class="auth-field-row">
+            <span class="auth-field-label">STATUS REASON</span>
+            <span class="auth-field-value">{{ detail.statusReason }}</span>
+          </div>
+          <div class="auth-field-row">
+            <span class="auth-field-label">REQUEST DATE</span>
+            <span class="auth-field-value">{{ formatDateTime(detail.requestDatetime) }}</span>
+          </div>
+          <div class="auth-field-row" *ngIf="detail.actualAdmissionDatetime">
+            <span class="auth-field-label">ADMISSION DATE</span>
+            <span class="auth-field-value">{{ formatDateTime(detail.actualAdmissionDatetime) }}</span>
+          </div>
+          <div class="auth-field-row" *ngIf="detail.expectedDischargeDatetime">
+            <span class="auth-field-label">EXPECTED D/C</span>
+            <span class="auth-field-value">{{ formatDateTime(detail.expectedDischargeDatetime) }}</span>
+          </div>
+          <div class="auth-field-row">
+            <span class="auth-field-label">ADMISSION TYPE</span>
+            <span class="auth-field-value">{{ detail.admissionType }}</span>
+          </div>
+          <div class="auth-field-row" *ngIf="detail.admitReason">
+            <span class="auth-field-label">ADMIT REASON</span>
+            <span class="auth-field-value">{{ detail.admitReason }}</span>
+          </div>
+          <div class="auth-field-row">
+            <span class="auth-field-label">TREATMENT</span>
+            <span class="auth-field-value">{{ detail.treatmentType }}</span>
+          </div>
+          <div class="auth-field-row">
+            <span class="auth-field-label">PLACE OF SVC</span>
+            <span class="auth-field-value">{{ detail.placeOfService }}</span>
+          </div>
+          <div class="auth-field-row" *ngIf="detail.losRequested">
+            <span class="auth-field-label">LOS REQUESTED</span>
+            <span class="auth-field-value">{{ detail.losRequested }} day(s)</span>
+          </div>
+          <div class="auth-field-row">
+            <span class="auth-field-label">NOTIFICATION</span>
+            <span class="auth-field-value">{{ detail.notificationType }}</span>
+          </div>
+          <div class="auth-field-row">
+            <span class="auth-field-label">REQUESTED BY</span>
+            <span class="auth-field-value">{{ detail.whoMadeTheRequest }}</span>
+          </div>
+          <div class="auth-field-row">
+            <span class="auth-field-label">REQUEST SENT</span>
+            <span class="auth-field-value">{{ detail.requestSent }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Providers ── -->
+    <div class="auth-section" *ngIf="detail.providers?.length">
+      <div class="auth-section-header" (click)="toggleSection('providers')">
+        <span class="auth-section-title">PROVIDERS ({{ detail.providers.length }})</span>
+        <span class="material-icons-outlined auth-chevron"
+              [class.auth-chevron--collapsed]="!sections['providers']">
+          expand_more
+        </span>
+      </div>
+      <div class="auth-section-body" *ngIf="sections['providers']">
+        <div class="auth-provider-card" *ngFor="let prov of detail.providers">
+          <div class="auth-provider-header">
+            <span class="auth-provider-name">{{ prov.name }}</span>
+            <span class="auth-badge auth-badge--role">{{ prov.role }}</span>
+          </div>
+          <div class="auth-fields-inner">
+            <div class="auth-field-row">
+              <span class="auth-field-label">NPI</span>
+              <span class="auth-field-value">{{ prov.npi }}</span>
+            </div>
+            <div class="auth-field-row">
+              <span class="auth-field-label">TAX ID</span>
+              <span class="auth-field-value">{{ prov.taxId }}</span>
+            </div>
+            <div class="auth-field-row" *ngIf="prov.specialty">
+              <span class="auth-field-label">SPECIALTY</span>
+              <span class="auth-field-value">{{ prov.specialty }}</span>
+            </div>
+            <div class="auth-field-row" *ngIf="prov.phone">
+              <span class="auth-field-label">PHONE</span>
+              <span class="auth-field-value">{{ prov.phone }}</span>
+            </div>
+            <div class="auth-field-row">
+              <span class="auth-field-label">ADDRESS</span>
+              <span class="auth-field-value">
+                {{ prov.address }}<br *ngIf="prov.address">
+                {{ prov.city }}, {{ prov.state }} {{ prov.zipCode }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Timeline ── -->
+    <div class="auth-section">
+      <div class="auth-section-header" (click)="toggleSection('timeline')">
+        <span class="auth-section-title">AUTHORIZATION TIMELINE</span>
+        <span class="material-icons-outlined auth-chevron"
+              [class.auth-chevron--collapsed]="!sections['timeline']">
+          expand_more
+        </span>
+      </div>
+      <div class="auth-section-body" *ngIf="sections['timeline']">
+        <div class="auth-timeline">
+          <div class="auth-timeline-track">
+            <div class="auth-timeline-fill" [style.width.%]="timelineProgress"></div>
+          </div>
+          <div class="auth-timeline-steps">
+            <div class="auth-timeline-step" *ngFor="let step of detail.timeline">
+              <div class="auth-timeline-dot" [class.auth-timeline-dot--active]="step.completed"></div>
+              <div class="auth-timeline-label">{{ step.label }}</div>
+              <div class="auth-timeline-date">{{ step.date }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Procedures ── -->
+    <div class="auth-section" *ngIf="detail.procedures?.length">
+      <div class="auth-section-header" (click)="toggleSection('procedures')">
+        <span class="auth-section-title">PROCEDURES ({{ detail.procedures.length }})</span>
+        <span class="material-icons-outlined auth-chevron"
+              [class.auth-chevron--collapsed]="!sections['procedures']">
+          expand_more
+        </span>
+      </div>
+      <div class="auth-section-body" *ngIf="sections['procedures']">
+        <div class="auth-procedure-card" *ngFor="let proc of detail.procedures">
+          <div class="auth-procedure-header">
+            <span class="auth-code-chip">{{ proc.code }}</span>
+            <span class="auth-procedure-review">{{ proc.reviewType }}</span>
+          </div>
+          <div class="auth-procedure-desc">{{ proc.description }}</div>
+
+          <div class="auth-fields-inner">
+            <div class="auth-field-row">
+              <span class="auth-field-label">FROM — TO</span>
+              <span class="auth-field-value">
+                {{ formatDateShort(proc.fromDate) }} — {{ formatDateShort(proc.toDate) }}
+              </span>
+            </div>
+            <div class="auth-field-row" *ngIf="proc.modifier">
+              <span class="auth-field-label">MODIFIER</span>
+              <span class="auth-field-value">{{ proc.modifier }}</span>
+            </div>
+            <div class="auth-field-row">
+              <span class="auth-field-label">UNIT TYPE</span>
+              <span class="auth-field-value">{{ proc.unitType }}</span>
+            </div>
+          </div>
+
+          <!-- Units metrics -->
+          <div class="auth-metric-row auth-metric-row--procedure">
+            <div class="auth-metric">
+              <div class="auth-metric-label">REQUESTED</div>
+              <div class="auth-metric-value">{{ proc.requested }}</div>
+            </div>
+            <div class="auth-metric" [ngClass]="proc.approved ? 'auth-metric--success' : 'auth-metric--default'">
+              <div class="auth-metric-label">APPROVED</div>
+              <div class="auth-metric-value">{{ proc.approved ?? '—' }}</div>
+            </div>
+            <div class="auth-metric" [ngClass]="proc.denied ? 'auth-metric--danger' : 'auth-metric--default'">
+              <div class="auth-metric-label">DENIED</div>
+              <div class="auth-metric-value">{{ proc.denied ?? '—' }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Decision Details ── -->
+    <div class="auth-section" *ngIf="detail.decisions?.length">
+      <div class="auth-section-header" (click)="toggleSection('decisions')">
+        <span class="auth-section-title">DECISION DETAILS ({{ detail.decisions.length }})</span>
+        <span class="material-icons-outlined auth-chevron"
+              [class.auth-chevron--collapsed]="!sections['decisions']">
+          expand_more
+        </span>
+      </div>
+      <div class="auth-section-body" *ngIf="sections['decisions']">
+        <div class="auth-decision-card" *ngFor="let dec of detail.decisions">
+          <div class="auth-decision-header">
+            <span class="auth-code-chip">{{ dec.procedureCode }}</span>
+            <span class="auth-badge" [ngClass]="getDecisionStatusClass(dec.decisionStatus)">
+              {{ dec.decisionStatus }}
+            </span>
+          </div>
+          <div class="auth-decision-desc">{{ dec.procedureDescription }}</div>
+
+          <div class="auth-fields-inner">
+            <div class="auth-field-row">
+              <span class="auth-field-label">REVIEW TYPE</span>
+              <span class="auth-field-value">{{ dec.reviewType }}</span>
+            </div>
+            <div class="auth-field-row">
+              <span class="auth-field-label">PRIORITY</span>
+              <span class="auth-field-value">{{ dec.requestPriority }}</span>
+            </div>
+            <div class="auth-field-row">
+              <span class="auth-field-label">RECEIVED VIA</span>
+              <span class="auth-field-value">{{ dec.receivedVia }}</span>
+            </div>
+            <div class="auth-field-row">
+              <span class="auth-field-label">TREATMENT</span>
+              <span class="auth-field-value">{{ dec.treatmentType }}</span>
+            </div>
+            <div class="auth-field-row">
+              <span class="auth-field-label">FROM — TO</span>
+              <span class="auth-field-value">
+                {{ formatDateShort(dec.fromDate) }} — {{ formatDateShort(dec.toDate) }}
+              </span>
+            </div>
+            <div class="auth-field-row" *ngIf="dec.modifier">
+              <span class="auth-field-label">MODIFIER</span>
+              <span class="auth-field-value">{{ dec.modifier }}</span>
+            </div>
+            <div class="auth-field-row">
+              <span class="auth-field-label">DECISION DATE</span>
+              <span class="auth-field-value">{{ formatDateTime(dec.decisionDateTime) }}</span>
+            </div>
+            <div class="auth-field-row" *ngIf="dec.decisionStatusCode">
+              <span class="auth-field-label">STATUS CODE</span>
+              <span class="auth-field-value">{{ dec.decisionStatusCodeLabel || dec.decisionStatusCode }}</span>
+            </div>
+            <div class="auth-field-row" *ngIf="dec.admissionType">
+              <span class="auth-field-label">ADMISSION TYPE</span>
+              <span class="auth-field-value">{{ dec.admissionType }}</span>
+            </div>
+            <div class="auth-field-row" *ngIf="dec.denialCategory">
+              <span class="auth-field-label">DENIAL CATEGORY</span>
+              <span class="auth-field-value">{{ dec.denialCategory }}</span>
+            </div>
+            <div class="auth-field-row" *ngIf="dec.denialCategoryLabel">
+              <span class="auth-field-label">DENIAL REASON</span>
+              <span class="auth-field-value">{{ dec.denialCategoryLabel }}</span>
+            </div>
+          </div>
+
+          <!-- Decision units -->
+          <div class="auth-metric-row auth-metric-row--decision">
+            <div class="auth-metric">
+              <div class="auth-metric-label">REQUESTED</div>
+              <div class="auth-metric-value">{{ dec.requested }}</div>
+            </div>
+            <div class="auth-metric" [ngClass]="dec.approved > 0 ? 'auth-metric--success' : 'auth-metric--default'">
+              <div class="auth-metric-label">APPROVED</div>
+              <div class="auth-metric-value">{{ dec.approved }}</div>
+            </div>
+            <div class="auth-metric" [ngClass]="dec.denied > 0 ? 'auth-metric--danger' : 'auth-metric--default'">
+              <div class="auth-metric-label">DENIED</div>
+              <div class="auth-metric-value">{{ dec.denied }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Diagnosis Codes ── -->
+    <div class="auth-section" *ngIf="detail.icdCodes?.length">
+      <div class="auth-section-header" (click)="toggleSection('codes')">
+        <span class="auth-section-title">DIAGNOSIS CODES</span>
+        <span class="material-icons-outlined auth-chevron"
+              [class.auth-chevron--collapsed]="!sections['codes']">
+          expand_more
+        </span>
+      </div>
+      <div class="auth-section-body" *ngIf="sections['codes']">
+        <div class="auth-icd-card" *ngFor="let icd of detail.icdCodes">
+          <div class="auth-icd-header">
+            <span class="auth-code-chip">{{ icd.code }}</span>
+            <span class="auth-badge auth-badge--icd-type">{{ icd.type }}</span>
+          </div>
+          <div class="auth-icd-desc">{{ icd.description }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Decision Notes ── -->
+    <div class="auth-section" *ngIf="detail.decisionNotes?.length">
+      <div class="auth-section-header" (click)="toggleSection('notes')">
+        <span class="auth-section-title">DECISION NOTES ({{ detail.decisionNotes.length }})</span>
+        <span class="material-icons-outlined auth-chevron"
+              [class.auth-chevron--collapsed]="!sections['notes']">
+          expand_more
+        </span>
+      </div>
+      <div class="auth-section-body" *ngIf="sections['notes']">
+        <div class="auth-note-card" *ngFor="let note of detail.decisionNotes">
+          <div class="auth-note-header">
+            <span class="auth-code-chip">{{ note.procedureCode }}</span>
+            <span class="auth-badge auth-badge--alert" *ngIf="note.isAlert">Alert</span>
+            <span class="auth-note-date">{{ formatDateShort(note.createdOn) }}</span>
+          </div>
+          <div class="auth-note-desc">{{ note.procedureDescription }}</div>
+          <div class="auth-notes-card" *ngIf="note.notes">
+            <p class="auth-notes-text">{{ note.notes }}</p>
+          </div>
+          <div class="auth-note-empty" *ngIf="!note.notes">No notes recorded.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Denial Information ── -->
+    <div class="auth-section" *ngIf="detail.denial">
+      <div class="auth-section-header" (click)="toggleSection('denial')">
+        <span class="auth-section-title">DENIAL INFORMATION</span>
+        <span class="material-icons-outlined auth-chevron"
+              [class.auth-chevron--collapsed]="!sections['denial']">
+          expand_more
+        </span>
+      </div>
+      <div class="auth-section-body" *ngIf="sections['denial']">
+        <div class="auth-denial-card">
+          <div class="auth-denial-row">
+            <span class="auth-denial-label">REASON</span>
+            <span class="auth-denial-value auth-denial-value--bold">{{ detail.denial.reason }}</span>
+          </div>
+          <div class="auth-denial-row" *ngIf="detail.denial.denialCode">
+            <span class="auth-denial-label">DENIAL CODE</span>
+            <span class="auth-denial-value">{{ detail.denial.denialCode }}</span>
+          </div>
+          <div class="auth-denial-row" *ngIf="detail.denial.denialCategory">
+            <span class="auth-denial-label">DENIAL CATEGORY</span>
+            <span class="auth-denial-value">{{ detail.denial.denialCategory }}</span>
+          </div>
+          <div class="auth-denial-row" *ngIf="detail.denial.denialCategoryLabel">
+            <span class="auth-denial-label">DETAIL</span>
+            <span class="auth-denial-value">{{ detail.denial.denialCategoryLabel }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Loading state -->
+<div class="auth-loading" *ngIf="loading && !detail">
+  <div class="auth-loading-spinner"></div>
+  <span>Loading authorization details...</span>
+</div>
+
+<!-- Error state -->
+<div class="auth-loading" *ngIf="errorMessage && !detail && !loading">
+  <span class="material-icons-outlined" style="color:#EF4444;font-size:28px;">error_outline</span>
+  <span>{{ errorMessage }}</span>
+</div>

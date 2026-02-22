@@ -64,7 +64,7 @@
              *ngIf="section?.fields?.length && isSectionVisible(st, section)"
              [class.collapsed]="section._collapsed"
              [attr.id]="'section-' + si"
-             style="height:auto;max-height:none;overflow:visible;">
+             style="height:auto;max-height:none;">
 
           <div class="section-header" (click)="section._collapsed = !section._collapsed">
             <!-- Section icon -->
@@ -103,7 +103,7 @@
 
           <div class="section-body">
             <div class="grid"
-                 style="grid-template-rows:unset;grid-auto-rows:minmax(min-content,max-content);overflow:visible;">
+                 style="grid-template-rows:unset;grid-auto-rows:minmax(min-content,max-content);">
 
               <ng-container *ngFor="let field of section.fields; let i = index">
                 <ng-container *ngIf="isVisible(st, field)">

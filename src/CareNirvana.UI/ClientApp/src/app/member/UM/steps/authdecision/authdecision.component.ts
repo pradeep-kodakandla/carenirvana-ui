@@ -442,10 +442,23 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
     const n = String(statusCodeOrText ?? '').trim().toLowerCase();
     if (!n) return 'status-pended';
 
-    if (n.startsWith('pend') || n === 'pended' || n === 'pen') return 'status-pended';
-    if (n.startsWith('approv') || n === 'app' || n === 'approved') return 'status-approved';
-    if (n.startsWith('deny') || n === 'den' || n === 'denied') return 'status-denied';
-    if (n.startsWith('partial') || n === 'par' || n === 'partial') return 'status-partial';
+    // Try resolving from cache if it looks like an id
+    if (/^\d+$/.test(n)) {
+      const looked = this.lookupDecisionStatusLabel(n);
+      const label = (looked?.label ?? '').toLowerCase();
+      if (label.startsWith('pend')) return 'status-pended';
+      if (label.startsWith('approv')) return 'status-approved';
+      if (label.startsWith('deny') || label.startsWith('deni')) return 'status-denied';
+      if (label.startsWith('partial')) return 'status-partial';
+      if (label.startsWith('void')) return 'status-other';
+      if (label) return 'status-other';
+    }
+
+    // Text pattern matching on resolved labels
+    if (n.startsWith('pend') || n === 'pended') return 'status-pended';
+    if (n.startsWith('approv') || n === 'approved') return 'status-approved';
+    if (n.startsWith('deny') || n.startsWith('deni') || n === 'denied') return 'status-denied';
+    if (n.startsWith('partial')) return 'status-partial';
 
     return 'status-other';
   }
@@ -465,8 +478,8 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
     const label = looked?.label ? looked.label.toLowerCase() : '';
     if (label.startsWith('pend')) return true;
 
-    // Fallback: common encodings
-    return s === '0' || s.startsWith('pend') || s === 'pended' || s === 'pen';
+    // Fallback: text pattern matching (works for resolved labels)
+    return s.startsWith('pend') || s === 'pended';
   }
 
   /** Existing Decision Details data for a procedure (items win; fallback to authData.decisionDetails). */
@@ -621,7 +634,8 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
         // If label is empty or purely numeric, dig into the raw object for descriptive text
         if (!label || /^\d+$/.test(label)) {
           const rawLabel = String(
-            raw?.decisionStatusName ?? raw?.decisionStatusCodeName ??
+            raw?.decisionStatusName ?? raw?.decisionStatus ??
+            raw?.decisionStatusCode ?? raw?.decisionStatusCodeName ??
             raw?.decisionStatusReasonName ?? raw?.statusCodeName ??
             raw?.reasonDescription ?? raw?.description ??
             raw?.displayName ?? raw?.name ?? raw?.label ?? raw?.text ??
@@ -676,20 +690,18 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
 
       if (raw && typeof raw === 'object') {
         const obj: any = raw;
-        statusText = obj?.decisionStatusName ?? obj?.statusName ?? obj?.name ?? obj?.label ?? obj?.text ?? statusText;
+        statusText = obj?.decisionStatusName ?? obj?.decisionStatus ?? obj?.statusName ?? obj?.name ?? obj?.label ?? obj?.text ?? statusText;
         statusCode = this.asDisplayString(obj?.code ?? obj?.value ?? obj?.id) || statusCode;
       } else {
         const prim = this.asDisplayString(raw);
         if (prim) {
-          // Try cache/options lookup first
+          // Try cache/options lookup
           const looked = this.lookupDecisionStatusLabel(prim);
           if (looked) {
             statusText = looked.label;
             statusCode = looked.code;
           } else {
-            // Hardcoded fallback for common numeric IDs
-            const hard = this.decisionStatusLabelFromValue(prim);
-            statusText = hard ?? prim;
+            statusText = prim;
             statusCode = prim;
           }
         }
@@ -714,7 +726,8 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
 
       if (reasonRaw && typeof reasonRaw === 'object') {
         const obj: any = reasonRaw;
-        reasonText = obj?.decisionStatusCodeName ?? obj?.reasonDescription ?? obj?.description ??
+        reasonText = obj?.decisionStatusCodeName ?? obj?.decisionStatusName ?? obj?.decisionStatusCode ??
+                     obj?.reasonDescription ?? obj?.description ??
                      obj?.name ?? obj?.label ?? obj?.text ?? '';
       } else {
         const reasonPrim = this.asDisplayString(reasonRaw);
@@ -723,9 +736,7 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
           if (looked) {
             reasonText = looked.label;
           } else {
-            // Hardcoded fallback
-            const hard = this.decisionStatusCodeLabelFromValue(reasonPrim);
-            reasonText = hard ?? reasonPrim;
+            reasonText = reasonPrim;
           }
         }
       }
@@ -1609,10 +1620,12 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
         if (lbl && /^\d+$/.test(lbl)) {
           const raw: any = (o as any)?.raw;
           const val = String((o as any)?.value ?? '').trim();
-          // Try raw object fields first, then hardcoded fallback
+          // Try raw object fields first, then cache-based lookup
           const betterLabel =
             (raw ? (
-              raw?.decisionStatusReasonName ?? raw?.decisionStatusCodeName ??
+              raw?.decisionStatusCodeName ?? raw?.decisionStatusName ??
+              raw?.decisionStatusCode ??
+              raw?.decisionStatusReasonName ??
               raw?.reasonDescription ?? raw?.description ?? raw?.displayName ??
               raw?.reason ?? raw?.name ?? raw?.label ?? raw?.text ?? raw?.title ??
               this.pickDisplayField(raw)
@@ -1679,9 +1692,15 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
 
     const opts = this.optionsByControlName[field.controlName] ?? [];
 
-    // 1) direct match
-    const direct = opts.find(o => String((o as any)?.value) === v);
-    if (direct) return;
+    // 1) direct match (type-tolerant: compare as trimmed strings)
+    const direct = opts.find(o => String((o as any)?.value ?? '').trim() === v);
+    if (direct) {
+      // Ensure the control holds the exact option value so ui-smart-dropdown can match it
+      if (ctrl.value !== (direct as any).value) {
+        ctrl.setValue((direct as any).value, { emitEvent: false });
+      }
+      return;
+    }
 
     // 2) match against common raw keys (fix: backend stored id but UI expects code, etc.)
     const alt = opts.find(o => {
@@ -1799,22 +1818,15 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
   }
 
 
-  /** Map raw datasource values (often 1/2/3 codes) to friendly Decision Status labels. */
+  /** Resolve a Decision Status value (id) to its display label using the dropdown cache.
+   *  No hardcoded mappings — labels come from the datasource. */
   private decisionStatusLabelFromValue(v: any): string | null {
-    const s = String(v ?? '').trim().toLowerCase();
+    const s = String(v ?? '').trim();
     if (!s) return null;
 
-    const n = Number(s);
-    if (!Number.isNaN(n)) {
-      if (n === 0 || n === 1) return 'Pended';
-      if (n === 2) return 'Approved';
-      if (n === 3) return 'Denied';
-      return null;
-    }
-
-    if (s === 'p' || s.startsWith('pend')) return 'Pended';
-    if (s === 'a' || s.startsWith('appr')) return 'Approved';
-    if (s === 'd' || s.startsWith('den')) return 'Denied';
+    // Search the dropdown cache for the Decision Status datasource
+    const looked = this.lookupDecisionStatusLabel(s);
+    if (looked?.label && !/^\d+$/.test(looked.label.trim())) return looked.label;
 
     return null;
   }
@@ -1837,14 +1849,14 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
     const k = this.normDs(ds);
     if (!row) return null;
 
-    // Decision Status Code => use code when available (often string)
+    // Decision Status Code => use id as value (decisionStatusCode field is descriptive text, NOT an id)
     if (k.includes('decisionstatuscode')) {
-      return row?.decisionStatusCode ?? row?.decisionStatusCodeId ?? row?.statusCode ?? row?.code ?? row?.value ?? row?.id ?? null;
+      return row?.id ?? row?.decisionStatusCodeId ?? row?.value ?? row?.code ?? null;
     }
 
     // Decision Status => prefer id when available
     if (this.isDecisionStatusDatasource(ds)) {
-      return row?.decisionStatusId ?? row?.statusId ?? row?.id ?? row?.value ?? row?.code ?? null;
+      return row?.id ?? row?.decisionStatusId ?? row?.statusId ?? row?.value ?? row?.code ?? null;
     }
 
     // Decision Type often uses code as value
@@ -1862,6 +1874,7 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
     if (this.isDecisionStatusDatasource(ds)) {
       const candidate =
         row.decisionStatusName ??
+        row.decisionStatus ??
         row.statusName ??
         row.name ??
         row.label ??
@@ -1878,8 +1891,10 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
 
     if (this.isDecisionStatusCodeDatasource(ds)) {
       const candidate =
-        row.decisionStatusReasonName ??
         row.decisionStatusCodeName ??
+        row.decisionStatusName ??
+        row.decisionStatusCode ??
+        row.decisionStatusReasonName ??
         row.decisionStatusCodeDescription ??
         row.statusCodeName ??
         row.statusCodeDescription ??
@@ -1965,18 +1980,18 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
       label = this.pickDisplayField(r);
     }
 
-    // If label is still missing/numeric, try hardcoded maps
+    // If label is still missing/numeric, try cache-based lookups
     if (!label || /^\d+$/.test(label.trim())) {
       if (this.isDecisionStatusDatasource(ds)) {
-        const hard =
+        const resolved =
           this.decisionStatusLabelFromValue(value) ??
           this.decisionStatusLabelFromValue(r?.decisionStatusId ?? r?.statusId ?? r?.id ?? r?.code ?? r?.value);
-        if (hard) label = hard;
+        if (resolved) label = resolved;
       } else if (this.isDecisionStatusCodeDatasource(ds)) {
-        const hard =
+        const resolved =
           this.decisionStatusCodeLabelFromValue(value) ??
           this.decisionStatusCodeLabelFromValue(r?.decisionStatusCode ?? r?.statusCode ?? r?.code ?? r?.id ?? r?.value);
-        if (hard) label = hard;
+        if (resolved) label = resolved;
       }
     }
 
@@ -2020,23 +2035,15 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
   }
 
 
+  /** Resolve a Decision Status Code value (id) to its display label using the dropdown cache.
+   *  No hardcoded mappings — labels come from the datasource. */
   private decisionStatusCodeLabelFromValue(v: any): string | null {
-    const s = String(v ?? '').trim().toLowerCase();
+    const s = String(v ?? '').trim();
     if (!s) return null;
 
-    const n = Number(s);
-    if (!Number.isNaN(n)) {
-      if (n === 1) return 'Clinical criteria not met';
-      if (n === 2) return 'Benefit exclusion';
-      if (n === 3) return 'Administrative denial';
-      // extend with your real codes ↖
-      return null;
-    }
-
-    // optional alpha codes (if you have them)
-    if (s === 'c1') return 'Clinical criteria not met';
-    if (s === 'b1') return 'Benefit exclusion';
-    if (s === 'a1') return 'Administrative denial';
+    // Search the dropdown cache for the Decision Status Code datasource
+    const looked = this.lookupDecisionStatusCodeLabel(s);
+    if (looked?.label && !/^\d+$/.test(looked.label.trim())) return looked.label;
 
     return null;
   }

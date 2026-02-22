@@ -10,7 +10,6 @@
 
         <!-- Case identity block -->
         <div class="cw-header-identity">
-          <!--<div class="cw-case-icon">AG</div>-->
           <div class="cw-header-field">
             <span class="cw-field-label">Case Number</span>
             <span class="cw-field-value cw-case-number">{{ getCaseNumber(aggregate$ | async) || '—' }}</span>
@@ -64,9 +63,9 @@
           <div class="cw-header-field">
             <span class="cw-field-label">Assignee</span>
             <span class="cw-field-value cw-assignee">
-              <span class="cw-avatar" *ngIf="getAssignee(aggregate$ | async)">
+              <!--<span class="cw-avatar" *ngIf="getAssignee(aggregate$ | async)">
                 {{ getAssigneeInitials(aggregate$ | async) }}
-              </span>
+              </span>-->
               {{ getAssignee(aggregate$ | async) || '—' }}
             </span>
           </div>
@@ -83,6 +82,73 @@
             <span class="cw-field-value">
               {{ getCreatedOn(aggregate$ | async) ? (getCreatedOn(aggregate$ | async) | date:'MM/dd/yyyy hh:mm a') : '—' }}
             </span>
+          </div>
+
+          <!-- Level Stepper — Escalation History (horizontal, fixed 5 levels) -->
+          <div class="cw-level-section" *ngIf="(tabs$ | async) as tabs">
+            <div class="cw-level-stepper">
+
+              <span class="cw-level-stepper-label">LEVEL</span>
+
+              <div class="cw-level-stepper-track">
+                <ng-container *ngFor="let lvl of allLevelSlots; let i = index; let last = last">
+
+                  <!-- Step node — clickable only if level exists in data -->
+                  <div class="cw-lstep"
+                       [class.cw-lstep--completed]="isCompletedLevel(lvl)"
+                       [class.cw-lstep--active]="(activeLevelId$ | async) === lvl"
+                       [class.cw-lstep--future]="!levelExists(lvl) && (activeLevelId$ | async) !== lvl"
+                       (click)="levelExists(lvl) ? selectLevel(lvl) : null"
+                       (mouseenter)="hoveredLevelId = lvl"
+                       (mouseleave)="hoveredLevelId = null">
+
+                    <!-- Circle -->
+                    <div class="cw-lstep-circle">
+                      <!-- Completed: checkmark -->
+                      <svg *ngIf="isCompletedLevel(lvl)" class="cw-lstep-check" viewBox="0 0 16 16" fill="none">
+                        <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                      <!-- Not completed: level number -->
+                      <span *ngIf="!isCompletedLevel(lvl)" class="cw-lstep-number">{{ lvl }}</span>
+                    </div>
+
+                    <!-- Hover tooltip (only for levels that exist in data) -->
+                    <div class="cw-lstep-tooltip" *ngIf="hoveredLevelId === lvl && levelExists(lvl)">
+                      <div class="cw-lstep-tooltip-title">Level {{ lvl }}</div>
+                      <div class="cw-lstep-tooltip-row" *ngIf="getLevelDate(lvl)">
+                        <span class="cw-lstep-tooltip-label">Date:</span>
+                        <span>{{ getLevelDate(lvl) }}</span>
+                      </div>
+                      <div class="cw-lstep-tooltip-row">
+                        <span class="cw-lstep-tooltip-label">Status:</span>
+                        <span class="cw-lstep-tooltip-status"
+                              [ngClass]="'cw-lstep-ts--' + getLevelStatusSlug(lvl)">
+                          {{ getLevelStatus(lvl) || '—' }}
+                        </span>
+                      </div>
+                      <div class="cw-lstep-tooltip-row" *ngIf="getLevelReviewer(lvl)">
+                        <span class="cw-lstep-tooltip-label">Reviewer:</span>
+                        <span>{{ getLevelReviewer(lvl) }}</span>
+                      </div>
+                      <div class="cw-lstep-tooltip-hint" *ngIf="!isLatestLevel(lvl)">🔒 View only</div>
+                    </div>
+                  </div>
+
+                  <!-- Connector line (between nodes, not after last) -->
+                  <div class="cw-lstep-connector"
+                       *ngIf="!last"
+                       [class.cw-lstep-connector--done]="isCompletedLevel(lvl)">
+                  </div>
+
+                </ng-container>
+              </div>
+
+              <!-- "X of N" badge -->
+              <span class="cw-level-stepper-counter">
+                {{ (activeLevelId$ | async) || 1 }} of {{ getTotalLevels() }}
+              </span>
+
+            </div>
           </div>
         </div>
 
@@ -108,8 +174,8 @@
           <!-- AI Panel toggle -->
           <button type="button"
                   class="cw-btn-ai-toggle"
-                  [class.active]="aiPanelOpen"
-                  (click)="toggleAiPanel()"
+                  [class.active]="rightPanelMode === 'ai'"
+                  (click)="openRightPanel('ai')"
                   [disabled]="!getCaseNumber(aggregate$ | async)"
                   title="Toggle AI Assistant">
             🤖
@@ -139,32 +205,7 @@
       <button type="button" class="btn-close" aria-label="Close" (click)="clearSaveBanner()"></button>
     </div>
 
-    <!-- Level Tabs — Escalation History Cards -->
-    <div class="cw-level-section" *ngIf="(tabs$ | async) as tabs">
-      <div class="cw-level-section-label">ESCALATION HISTORY</div>
-      <div class="cw-level-cards">
-        <div class="cw-level-card"
-             *ngFor="let t of tabs"
-             [class.cw-level-card--active]="(activeLevelId$ | async) === t.levelId"
-             [class.cw-level-card--readonly]="!isLatestLevel(t.levelId)"
-             (click)="selectLevel(t.levelId)">
-          <div class="cw-level-card-body">
-            <div class="cw-level-card-title">{{ t.title }}</div>
-            <div class="cw-level-card-date">{{ getLevelDate(t.levelId) }}</div>
-            <div class="cw-level-card-reviewer" *ngIf="getLevelReviewer(t.levelId)">
-              By: {{ getLevelReviewer(t.levelId) }}
-            </div>
-          </div>
-          <div class="cw-level-card-right">
-            <span class="cw-level-card-badge"
-                  [ngClass]="'cw-level-badge--' + getLevelStatusSlug(t.levelId)">
-              {{ getLevelStatus(t.levelId) || '—' }}
-            </span>
-            <span class="cw-level-card-lock" *ngIf="!isLatestLevel(t.levelId)" title="View only">🔒</span>
-          </div>
-        </div>
-      </div>
-    </div>
+
 
     <!-- Read-only banner -->
     <div class="cw-readonly-banner" *ngIf="isReadOnly">
@@ -181,110 +222,195 @@
     </caseChevronStepper>
   </div>
 
-  <!-- ═══════ BODY: content + AI panel ═══════ -->
+  <!-- ═══════ BODY: content + right panel ═══════ -->
   <div class="cw-body">
 
     <!-- Scrollable step content -->
-    <div class="cw-content caseWizardBody" [class.cw-content--ai-open]="aiPanelOpen">
+    <div class="cw-content caseWizardBody"
+         [class.cw-content--panel-open]="rightPanelOpen"
+         [class.cw-content--panel-expanded]="rightPanelExpanded">
       <ng-template #stepContainer></ng-template>
     </div>
 
-    <!-- AI Suggestions Side Panel -->
-    <div class="cw-ai-panel" [class.cw-ai-panel--open]="aiPanelOpen">
+    <!-- ═══════════════════════════════════════════════════════
+         UNIFIED RIGHT PANEL
+         Modes: 'ai' | 'auth' | 'claim'
+         ═══════════════════════════════════════════════════════ -->
+    <div class="cw-right-panel"
+         [class.cw-right-panel--open]="rightPanelOpen"
+         [class.cw-right-panel--expanded]="rightPanelExpanded">
 
-      <!-- Panel header -->
-      <div class="cw-ai-panel-header">
-        <div class="cw-ai-panel-title-block">
-          <span class="cw-ai-panel-icon">🤖</span>
-          <div>
-            <div class="cw-ai-panel-title">AI Assistant</div>
-            <div class="cw-ai-panel-subtitle">Case Intelligence</div>
-          </div>
-        </div>
-        <button class="cw-ai-close" (click)="toggleAiPanel()">✕</button>
-      </div>
+      <!-- ══════ AI MODE ══════ -->
+      <ng-container *ngIf="rightPanelMode === 'ai'">
 
-      <!-- Panel scrollable body -->
-      <div class="cw-ai-panel-body">
-
-        <!-- SLA Tracker -->
-        <div class="cw-ai-section">
-          <div class="cw-ai-section-header">
-            <span class="cw-ai-section-label">⏱ SLA Tracker</span>
-            <span class="cw-ai-badge cw-ai-badge--warning" *ngIf="slaAtRiskCount > 0">
-              {{ slaAtRiskCount }} at risk
-            </span>
-          </div>
-          <div class="cw-sla-list">
-            <div class="cw-sla-item" *ngFor="let sla of slaItems"
-                 [ngClass]="'cw-sla--' + sla.status">
-              <div class="cw-sla-info">
-                <div class="cw-sla-label">{{ sla.label }}</div>
-                <div class="cw-sla-deadline">Due: {{ sla.deadline }}</div>
-              </div>
-              <div class="cw-sla-remaining">{{ sla.remaining }}</div>
+        <!-- Panel header -->
+        <div class="cw-rpanel-header cw-rpanel-header--ai">
+          <div class="cw-rpanel-title-block">
+            <span class="cw-rpanel-icon cw-rpanel-icon--ai">🤖</span>
+            <div>
+              <div class="cw-rpanel-title">AI Assistant</div>
+              <div class="cw-rpanel-subtitle">Case Intelligence</div>
             </div>
           </div>
-        </div>
-
-        <!-- Quick Actions -->
-        <div class="cw-ai-section">
-          <div class="cw-ai-section-header">
-            <span class="cw-ai-section-label">⚡ Quick Actions</span>
-          </div>
-          <div class="cw-quick-actions-grid">
-            <button class="cw-quick-action" *ngFor="let action of quickActions"
-                    (click)="onQuickAction(action)">
-              <span class="cw-qa-icon">{{ action.icon }}</span>
-              <span class="cw-qa-label">{{ action.label }}</span>
-              <span class="cw-qa-desc">{{ action.description }}</span>
+          <div class="cw-rpanel-actions">
+            <button class="cw-rpanel-btn" (click)="togglePanelExpand()"
+                    [title]="rightPanelExpanded ? 'Collapse' : 'Expand'">
+              <span class="material-icons-outlined">{{ rightPanelExpanded ? 'chevron_right' : 'chevron_left' }}</span>
+            </button>
+            <button class="cw-rpanel-btn" (click)="closeRightPanel()">
+              <span class="material-icons-outlined">close</span>
             </button>
           </div>
         </div>
 
-        <!-- AI Suggestions -->
-        <div class="cw-ai-section">
-          <div class="cw-ai-section-header">
-            <span class="cw-ai-section-label">🧠 AI Insights</span>
-            <span class="cw-ai-badge cw-ai-badge--info">
-              {{ aiSuggestions.length }} suggestions
-            </span>
-          </div>
-          <div class="cw-ai-suggestions-list">
-            <div class="cw-ai-card" *ngFor="let suggestion of aiSuggestions"
-                 [ngClass]="'cw-ai-card--' + suggestion.type">
-              <div class="cw-ai-card-header">
-                <div class="cw-ai-card-title-row">
-                  <span class="cw-ai-card-icon">{{ suggestion.icon }}</span>
-                  <span class="cw-ai-card-title">{{ suggestion.title }}</span>
+        <!-- AI Panel scrollable body -->
+        <div class="cw-rpanel-body">
+
+          <!-- SLA Tracker -->
+          <div class="cw-ai-section">
+            <div class="cw-ai-section-header">
+              <span class="cw-ai-section-label">⏱ SLA Tracker</span>
+              <span class="cw-ai-badge cw-ai-badge--warning" *ngIf="slaAtRiskCount > 0">
+                {{ slaAtRiskCount }} at risk
+              </span>
+            </div>
+            <div class="cw-sla-list">
+              <div class="cw-sla-item" *ngFor="let sla of slaItems"
+                   [ngClass]="'cw-sla--' + sla.status">
+                <div class="cw-sla-info">
+                  <div class="cw-sla-label">{{ sla.label }}</div>
+                  <div class="cw-sla-deadline">Due: {{ sla.deadline }}</div>
                 </div>
-                <span class="cw-ai-confidence" [ngClass]="'cw-ai-confidence--' + suggestion.type">
-                  {{ suggestion.confidence }}% conf.
-                </span>
+                <div class="cw-sla-remaining">{{ sla.remaining }}</div>
               </div>
-              <p class="cw-ai-card-body">{{ suggestion.body }}</p>
-              <div class="cw-ai-card-actions" *ngIf="suggestion.actionLabel">
-                <button class="cw-btn cw-btn-ai-action" (click)="onAiAction(suggestion)">
-                  {{ suggestion.actionLabel }}
-                </button>
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="cw-ai-section">
+            <div class="cw-ai-section-header">
+              <span class="cw-ai-section-label">⚡ Quick Actions</span>
+            </div>
+            <div class="cw-quick-actions-grid">
+              <button class="cw-quick-action" *ngFor="let action of quickActions"
+                      (click)="onQuickAction(action)">
+                <span class="cw-qa-icon">{{ action.icon }}</span>
+                <span class="cw-qa-label">{{ action.label }}</span>
+                <span class="cw-qa-desc">{{ action.description }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- AI Suggestions -->
+          <div class="cw-ai-section">
+            <div class="cw-ai-section-header">
+              <span class="cw-ai-section-label">🧠 AI Insights</span>
+              <span class="cw-ai-badge cw-ai-badge--info">
+                {{ aiSuggestions.length }} suggestions
+              </span>
+            </div>
+            <div class="cw-ai-suggestions-list">
+              <div class="cw-ai-card" *ngFor="let suggestion of aiSuggestions"
+                   [ngClass]="'cw-ai-card--' + suggestion.type">
+                <div class="cw-ai-card-header">
+                  <div class="cw-ai-card-title-row">
+                    <span class="cw-ai-card-icon">{{ suggestion.icon }}</span>
+                    <span class="cw-ai-card-title">{{ suggestion.title }}</span>
+                  </div>
+                  <span class="cw-ai-confidence" [ngClass]="'cw-ai-confidence--' + suggestion.type">
+                    {{ suggestion.confidence }}% conf.
+                  </span>
+                </div>
+                <p class="cw-ai-card-body">{{ suggestion.body }}</p>
+                <div class="cw-ai-card-actions" *ngIf="suggestion.actionLabel">
+                  <button class="cw-btn cw-btn-ai-action" (click)="onAiAction(suggestion)">
+                    {{ suggestion.actionLabel }}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Panel footer: Ask AI -->
-      <div class="cw-ai-panel-footer">
-        <div class="cw-ai-input-wrap">
-          <span class="cw-ai-input-icon">💬</span>
-          <input type="text"
-                 class="cw-ai-input"
-                 placeholder="Ask AI about this case..."
-                 [(ngModel)]="aiQuery"
-                 (keydown.enter)="askAi()" />
-          <button class="cw-ai-send" (click)="askAi()" [disabled]="!aiQuery?.trim()">→</button>
+        <!-- AI Panel footer: Ask AI -->
+        <div class="cw-rpanel-footer">
+          <div class="cw-ai-input-wrap">
+            <span class="cw-ai-input-icon">💬</span>
+            <input type="text"
+                   class="cw-ai-input"
+                   placeholder="Ask AI about this case..."
+                   [(ngModel)]="aiQuery"
+                   (keydown.enter)="askAi()" />
+            <button class="cw-ai-send" (click)="askAi()" [disabled]="!aiQuery?.trim()">→</button>
+          </div>
         </div>
-      </div>
-    </div>
+      </ng-container>
+
+      <!-- ══════ AUTHORIZATION MODE ══════ -->
+      <ng-container *ngIf="rightPanelMode === 'auth'">
+
+        <div class="cw-rpanel-header cw-rpanel-header--auth">
+          <div class="cw-rpanel-title-block">
+            <span class="cw-rpanel-icon cw-rpanel-icon--auth">
+              <span class="material-icons-outlined" style="font-size:14px">verified_user</span>
+            </span>
+            <div>
+              <div class="cw-rpanel-title">Authorization</div>
+              <div class="cw-rpanel-subtitle">{{ selectedAuthNumber }}</div>
+            </div>
+          </div>
+          <div class="cw-rpanel-actions">
+            <button class="cw-rpanel-btn" (click)="togglePanelExpand()"
+                    [title]="rightPanelExpanded ? 'Collapse' : 'Expand'">
+              <span class="material-icons-outlined">{{ rightPanelExpanded ? 'chevron_right' : 'chevron_left' }}</span>
+            </button>
+            <button class="cw-rpanel-btn" (click)="closeRightPanel()">
+              <span class="material-icons-outlined">close</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="cw-rpanel-body cw-rpanel-body--flush">
+          <app-authorization-details [authNumber]="selectedAuthNumber"
+                                     [embedded]="true"
+                                     (closed)="closeRightPanel()">
+          </app-authorization-details>
+        </div>
+      </ng-container>
+
+      <!-- ══════ CLAIM MODE ══════ -->
+      <ng-container *ngIf="rightPanelMode === 'claim'">
+
+        <div class="cw-rpanel-header cw-rpanel-header--claim">
+          <div class="cw-rpanel-title-block">
+            <span class="cw-rpanel-icon cw-rpanel-icon--claim">
+              <span class="material-icons-outlined" style="font-size:14px">receipt_long</span>
+            </span>
+            <div>
+              <div class="cw-rpanel-title">Claim</div>
+              <div class="cw-rpanel-subtitle">{{ selectedClaimNumber }}</div>
+            </div>
+          </div>
+          <div class="cw-rpanel-actions">
+            <button class="cw-rpanel-btn" (click)="togglePanelExpand()"
+                    [title]="rightPanelExpanded ? 'Collapse' : 'Expand'">
+              <span class="material-icons-outlined">{{ rightPanelExpanded ? 'chevron_right' : 'chevron_left' }}</span>
+            </button>
+            <button class="cw-rpanel-btn" (click)="closeRightPanel()">
+              <span class="material-icons-outlined">close</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="cw-rpanel-body cw-rpanel-body--flush">
+          <app-claim-details [claimNumber]="selectedClaimNumber"
+                             [embedded]="true"
+                             (closed)="closeRightPanel()">
+          </app-claim-details>
+        </div>
+      </ng-container>
+
+    </div><!-- /cw-right-panel -->
+
   </div>
 </div>

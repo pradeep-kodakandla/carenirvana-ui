@@ -12,12 +12,14 @@
       {{ saving ? 'Saving...' : 'Save' }}
     </button>
   </div>
-  <div class="error" *ngIf="error">{{ error }}</div>
-  <div class="success" *ngIf="successMsg">{{ successMsg }}</div>
 </div>
 
+<!-- Status messages outside topbar for proper layout -->
+<div class="error" *ngIf="error">{{ error }}</div>
+<div class="success" *ngIf="successMsg">{{ successMsg }}</div>
 
-<!-- IMPORTANT: cdkDropListGroup connects ALL drop lists so drops won’t snap back -->
+
+<!-- IMPORTANT: cdkDropListGroup connects ALL drop lists so drops won't snap back -->
 <div class="designer"
      cdkDropListGroup
      [class.jsonCollapsed]="jsonPanelCollapsed"
@@ -49,19 +51,12 @@
              [cdkDragData]="dragField(f)"
              cdkDragPreviewClass="drag-preview">
           {{ f.label }}
-          <!--<div class="pillsub">{{ f.key }}</div>-->
         </div>
       </div>
     </div>
 
     <!-- Functions -->
     <div class="section">
-      <!--<div class="sectionhead">
-        <div class="sectiontitle">Functions</div>
-        <button class="link" (click)="showAllFunctions = !showAllFunctions">
-          {{ showAllFunctions ? 'Top 5' : 'Show all' }}
-        </button>
-      </div>-->
       <div class="sectionhead">
         <div class="sectiontitle">Functions</div>
         <div style="display:flex; gap:10px; align-items:center;">
@@ -120,8 +115,6 @@
         </div>
       </div>
     </div>
-
-
 
     <!-- Decision Outputs (Decision Table rule only) -->
     <div class="section" *ngIf="designerMode === 'DECISION_TABLE' && decisionOutputFields.length">
@@ -185,6 +178,7 @@
        [style.flexBasis]="'0'"
        [style.width]="'auto'"
        [style.minWidth]="'0'">
+
     <!-- RUN FIRST: Decision Table (drag here) -->
     <div class="block runfirst">
       <div class="blockhead">
@@ -213,21 +207,7 @@
         </div>
 
         <div class="dtCard" *ngIf="loadedDecisionTable?.id">
-          <div class="dtCardHead">
-            <!--<div>-->
-              <!--<div class="dtCardTitle">Decision Table Rule</div>-->
-              <!--<div class="dtCardSub">
-                Decision table runs first.
-              </div>
-            </div>-->
-
-            <!--<button class="btn small"
-                    type="button"
-                    (click)="openDecisionTableInBuilder()"
-                    [disabled]="!loadedDecisionTable?.id">
-              Open in Decision Table Builder
-            </button>-->
-          </div>
+          <div class="dtCardHead"></div>
 
           <div class="dtModeRow">
             <div class="dtModeLabel">Mode</div>
@@ -254,7 +234,6 @@
           </div>
 
           <div class="dtBannerMeta">
-            <!--<span class="dtPill">ID: {{ loadedDecisionTable?.id }}</span>-->
             <span class="dtPill" *ngIf="loadedDecisionTable?.name">Name: {{ loadedDecisionTable?.name }}</span>
             <span class="dtPill" *ngIf="loadedDecisionTable?.tableVersion != null">Version: {{ loadedDecisionTable?.tableVersion }}</span>
           </div>
@@ -272,25 +251,6 @@
               </span>
             </div>
           </div>
-
-          <!--<div class="dtOutputEditor">
-            <input class="text mini"
-                   [(ngModel)]="dtNewOutputKey"
-                   placeholder="Output key (e.g. result1)" />
-
-            <select class="op"
-                    [(ngModel)]="dtNewOutputType">
-              <option *ngFor="let t of dataTypeOptions" [ngValue]="t">{{ t }}</option>
-            </select>
-
-            <input class="text mini"
-                   [(ngModel)]="dtNewOutputLabel"
-                   placeholder="Label (optional)" />
-
-            <button class="btn small" type="button" (click)="addDecisionOutput()">
-              Add
-            </button>
-          </div>-->
         </div>
       </div>
     </div>
@@ -314,7 +274,6 @@
     <div class="block" *ngIf="!isDtDirectResponse && activeBranch.type !== 'ELSE'">
       <div class="blockhead">
         <div class="blocktitle">WHEN</div>
-
       </div>
 
       <!-- IMPORTANT: ONE stable drop-list for canvas (no *ngIf on this element) -->
@@ -364,7 +323,7 @@
         <div class="actionCard" *ngFor="let ai of activeBranch.then">
           <div class="actionTop">
             <div class="actionTitle">{{ ai.label }}</div>
-            <button class="iconbtn" (click)="removeAction(ai.id)">✕</button>
+            <button class="iconbtn" (click)="removeAction(ai.id)" aria-label="Remove action">✕</button>
           </div>
 
           <ng-container *ngIf="actionDef(ai.actionKey) as def">
@@ -530,7 +489,7 @@
                   </div>
                 </div>
 
-                <button class="iconbtn" (click)="removeWhenNode(g.id, n.id)">🗑</button>
+                <button class="iconbtn" (click)="removeWhenNode(g.id, n.id)" aria-label="Remove condition">✕</button>
               </div>
 
               <!-- Nested Group -->
@@ -548,8 +507,6 @@
     </ng-template>
   </div>
 
-  <!-- RIGHT JSON -->
-  <!-- RIGHT JSON -->
   <!-- RIGHT PANEL -->
   <div class="panel card rightpanel"
        [class.jsonCollapsed]="jsonPanelCollapsed"
@@ -572,8 +529,6 @@
                 (click)="rightPanelTab = 'json'">
           JSON
         </button>
-
-
       </div>
 
       <div class="spacer" *ngIf="!jsonPanelCollapsed"></div>
@@ -584,7 +539,7 @@
         <button class="btn small" (click)="discardJsonEdits()">Discard</button>
       </div>
 
-      <!-- Collapse/Expand stays the same -->
+      <!-- Collapse/Expand -->
       <button class="btn small"
               type="button"
               (click)="toggleJsonPanel()"
@@ -609,7 +564,6 @@
 
         <!-- SETTINGS TAB -->
         <ng-template #settingsTab>
-          <!-- Reuse headercard field styles, but force vertical layout -->
           <div class="settingsform headercard">
             <div class="formgrid">
 
@@ -655,13 +609,11 @@
       </div>
     </ng-container>
 
-    <!-- Collapsed rail stays as-is -->
+    <!-- Collapsed rail label -->
     <div *ngIf="jsonPanelCollapsed"
-         style="display: flex; align-items: center; justify-content: center; user-select: none; writing-mode: vertical-rl; transform: rotate(180deg); font-weight: 600; opacity: 0.8;">
+         style="display: flex; align-items: center; justify-content: center; user-select: none; writing-mode: vertical-rl; transform: rotate(180deg); font-weight: 600; opacity: 0.7; color: #475569; font-size: 13px; padding: 12px 0;">
       Settings
     </div>
   </div>
-
-
 
 </div>

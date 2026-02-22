@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 
 export interface CodeSearchResult {
   id?: number | null;
@@ -269,6 +269,33 @@ export class AuthService {
   searchAuthorizations(q: string, limit = 25): Observable<AuthorizationLookupRow[]> {
     const params = new HttpParams().set('q', q).set('limit', String(limit));
     return this.http.get<AuthorizationLookupRow[]>(`${this.apiUrlCodeSets}/search/authorizations`, { params });
+  }
+
+  /** Claim JSON */
+  getClaimJson(claimNumber: string): Observable<any> {
+    return this.http
+      .get(`${this.apiUrlCodeSets}/claimjson/${encodeURIComponent(claimNumber)}`, {
+        responseType: 'text'
+      })
+      .pipe(map(txt => JSON.parse(txt)));
+  }
+
+  /** Provider profile JSON */
+  getProviderProfileJson(providerId: string): Observable<any> {
+    return this.http
+      .get(`${this.apiUrlCodeSets}/providerprofilejson/${providerId}`, {
+        responseType: 'text'
+      })
+      .pipe(map(txt => JSON.parse(txt)));
+  }
+
+  /** Auth details JSON */
+  getAuthDetailsJson(authNumber: string): Observable<any> {
+    return this.http
+      .get(`${this.apiUrlCodeSets}/authdetailsjson/${encodeURIComponent(authNumber)}`, {
+        responseType: 'text'
+      })
+      .pipe(map(txt => JSON.parse(txt)));
   }
 
 }

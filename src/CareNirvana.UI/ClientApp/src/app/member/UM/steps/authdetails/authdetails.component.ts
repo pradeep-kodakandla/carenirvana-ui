@@ -2,7 +2,7 @@ import { Component, OnDestroy, OnInit, OnChanges, Optional, Input, Output, Event
 import { FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { Observable, Subject, firstValueFrom, of } from 'rxjs';
-import { distinctUntilChanged, filter, map, startWith, switchMap, takeUntil, tap, catchError } from 'rxjs/operators';
+import { distinctUntilChanged, debounceTime, filter, map, startWith, switchMap, takeUntil, tap, catchError } from 'rxjs/operators';
 import { AuthNumberService } from 'src/app/service/auth-number-gen.service';
 import { AuthService } from 'src/app/service/auth.service';
 import { CrudService, DatasourceLookupService } from 'src/app/service/crud.service';
@@ -49,7 +49,9 @@ interface SmartCheckPrefill {
   authTypeId?: number;
   enrollmentId?: number;
   icdCodes?: string[];
+  icdDescriptions?: string[];
   serviceCodes?: string[];
+  serviceDescriptions?: string[];
   fromDateIso?: any;
   toDateIso?: any;
   procedureFromDateIso?: any;
@@ -237,6 +239,14 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   // When we change only the authNumber segment (0 -> generated) after the first SAVE,
   // we don't want to wipe the already-built template UI and briefly show the "initial" screen.
   private skipNextResetOnNav = false;
+
+  // ── Snapshot-based dirty tracking ──
+  // Angular's form.dirty flag is unreliable because programmatic setValue/markAsDirty
+  // during template loading, auto-calc, and prefill causes false positives.
+  // Instead we snapshot the form values after load completes and compare on check.
+  private _formCleanSnapshot: string | null = null;
+  private _initialLoadInProgress = false;
+  private _snapshotTimer: any = null;
 
   form!: FormGroup;
 
@@ -537,6 +547,10 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    if (this._snapshotTimer) {
+      clearTimeout(this._snapshotTimer);
+      this._snapshotTimer = null;
+    }
   }
 
   // ============================================================
@@ -806,6 +820,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   // Template load + build + dropdown/lookup pipeline
   // ============================================================
   private loadTemplateJson(templateId: number): void {
+    this._initialLoadInProgress = true;
     this.authService.getTemplate('UM', templateId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
@@ -855,8 +870,14 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
           this.setupVisibilityWatcher();
           this.setupServiceReqAutoCalc();
+
+          // ✅ After all init operations, capture the clean form state.
+          this._captureCleanSnapshot();
         },
-        error: (e) => console.error('Template json load failed', e)
+        error: (e) => {
+          console.error('Template json load failed', e);
+          this._initialLoadInProgress = false;
+        }
       });
   }
 
@@ -1053,7 +1074,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     if (!pre) return;
 
     const icds = Array.isArray(pre.icdCodes) ? pre.icdCodes.filter(Boolean) : [];
+    const icdDescs = Array.isArray(pre.icdDescriptions) ? pre.icdDescriptions : [];
     const svcs = Array.isArray(pre.serviceCodes) ? pre.serviceCodes.filter(Boolean) : [];
+    const svcDescs = Array.isArray(pre.serviceDescriptions) ? pre.serviceDescriptions : [];
 
     // Ensure repeat instances exist (if template uses repeats)
     if (icds.length > 1) this.ensureRepeatCountForKind('icd', icds.length);
@@ -1082,25 +1105,98 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       });
     }
 
-    // Fill ICD codes
+    // ── 1. DIAGNOSIS / ICD CODES ─────────────────────────────────────────
     for (let i = 0; i < icds.length; i++) {
       const f = icdFields[i];
       if (!f) break;
-      // For some templates the code field is not the first 'search' in the ICD repeat; still, filling in order is safest.
       await this.prefillLookupFieldByCode(f, icds[i]);
     }
 
-    // Fill Procedure/Service codes
+    // Populate diagnosisDataByInstance so the card view renders (same as fax flow)
+    for (let i = 0; i < icds.length; i++) {
+      if (!icdFields[i]) break;
+      const cn = icdFields[i].controlName;
+      const cached = this.lookupSelectedByControl?.[cn];
+      if (cached) {
+        this.diagnosisDataByInstance[cn] = cached;
+        if (!this.primaryDiagnosisKey) this.primaryDiagnosisKey = cn;
+      } else {
+        // Lookup miss — build a partial object so the card still shows code + desc
+        const code = icds[i];
+        const desc = icdDescs[i] || '';
+        this.diagnosisDataByInstance[cn] = { code, codeDesc: desc };
+        // Put into edit mode so user can correct if needed
+        this.diagnosisEditMode.add(cn);
+        if (!this.primaryDiagnosisKey) this.primaryDiagnosisKey = cn;
+      }
+    }
+
+    // ── 2. SERVICE / PROCEDURE CODES ─────────────────────────────────────
     for (let i = 0; i < svcs.length; i++) {
       const f = svcFields[i];
       if (!f) break;
       await this.prefillLookupFieldByCode(f, svcs[i]);
     }
 
-    // Prefill Procedure From/To dates (Smart Check → Auth Details)
+    // Fill procedure description fields from Smart Check descriptions
+    const allFields = this.collectAllRenderFields(this.renderSections);
+    const descFields = allFields.filter(f => {
+      const raw = String((f as any)?._rawId ?? '').toLowerCase();
+      return raw === 'proceduredescription' || (raw.includes('procedure') && raw.includes('description'));
+    });
+    for (let i = 0; i < svcs.length; i++) {
+      if (svcDescs[i] && descFields[i]) {
+        this.setControlIfEmpty(descFields[i].controlName, svcDescs[i]);
+      }
+    }
+
+    // Populate serviceDataByInstance so the card view renders (same as fax flow)
+    for (let i = 0; i < svcs.length; i++) {
+      if (!svcFields[i]) break;
+      const cn = svcFields[i].controlName;
+      const cached = this.lookupSelectedByControl?.[cn];
+      if (cached) {
+        this.serviceDataByInstance[cn] = cached;
+      } else {
+        const code = svcs[i];
+        const descField = descFields?.[i];
+        const desc = descField
+          ? (this.form.get(descField.controlName)?.value ?? svcDescs[i] ?? '')
+          : (svcDescs[i] ?? '');
+        this.serviceDataByInstance[cn] = { code, codeDesc: desc };
+        this.serviceEditMode.add(cn);
+      }
+    }
+
+    // ── 3. PREFILL PROCEDURE FROM/TO DATES ───────────────────────────────
     const fromDt = (pre as any)?.procedureFromDateIso ?? (pre as any)?.fromDateIso ?? null;
     const toDt = (pre as any)?.procedureToDateIso ?? (pre as any)?.toDateIso ?? null;
     this.prefillProcedureFromToDates(fromDt, toDt, Math.max(1, svcs.length));
+
+    // ── 4. AUTO-EXPAND SECTIONS THAT RECEIVED DATA ───────────────────────
+    if (icds.length || svcs.length) {
+      for (const sec of (this.renderSections || [])) {
+        const t = String(sec.title ?? '').toLowerCase();
+        if (t.includes('diagnosis') || t.includes('service') || t.includes('procedure')) {
+          sec.expanded = true;
+        }
+      }
+    }
+
+    // ── 5. REHYDRATE CARD DISPLAY DATA ───────────────────────────────────
+    this.rehydrateDiagnosisData();
+    this.rehydrateServiceData();
+
+    // ── 6. FORCE RE-PATCH so pickers / card views get the values ─────────
+    setTimeout(() => {
+      const snapshot = this.form.getRawValue();
+      this.form.patchValue(snapshot, { emitEvent: false });
+    }, 150);
+
+    setTimeout(() => {
+      const snapshot = this.form.getRawValue();
+      this.form.patchValue(snapshot, { emitEvent: false });
+    }, 400);
 
     this.smartCheckPrefillApplied = true;
     this.clearSmartCheckPrefill();
@@ -2664,6 +2760,15 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     const authStatus = pick<any>('authStatus', 'authstatus') ?? 'Draft';
     const wgwbIds = this.getSelectedWorkgroupWorkbasketIds();
     console.log('Saving auth with workgroup/workbasket IDs:', wgwbIds);
+
+    const authStatusReason = pick<any>('authStatusReason', 'authstatusreason');
+    const authClosedDt = pick<any>('authClosedDatetime', 'authcloseddatetime');
+    const authUpdatedBy = pick<any>('authUpdatedBy', 'authupdatedby');
+
+    // Rebuild jsonData
+    const jsonDataFinal = JSON.stringify(merged ?? {});
+    const safeJsonDataFinal = jsonDataFinal && jsonDataFinal.trim() ? jsonDataFinal : '{}';
+
     // Build base payload used for both CREATE and UPDATE
     const payload: any = {
       authClassId,
@@ -2676,8 +2781,11 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       treatementType,
       authAssignedTo,
       authStatus,
+      authStatusReason,
+      authClosedDatetime: authClosedDt,
+      authUpdatedBy,
 
-      jsonData: safeJsonData,
+      jsonData: safeJsonDataFinal,
       requestType: 'AUTH',
       workgroupWorkbasketId: wgwbIds.length ? wgwbIds[0] : null,
       workgroupWorkbasketIds: wgwbIds
@@ -2692,6 +2800,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
         await firstValueFrom(this.authApi.update(authDetailId, payload, userId));
         this.form.markAsPristine();
+        this._resetCleanSnapshot();
 
         // Seed Decision Details rows (idempotent) after save
         await this.seedDecisionAfterSave(authDetailId, merged, userId, authTypeId);
@@ -2749,6 +2858,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         if (this.isFaxMode) {
           const faxAuthId = Number((this.pendingAuth as any)?.authDetailId ?? (this.pendingAuth as any)?.id ?? 0);
           this.form.markAsPristine();
+          this._resetCleanSnapshot();
           this.authSaved.emit({ authNumber: String(this.authNumber), authId: faxAuthId });
           return;
         }
@@ -2775,6 +2885,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         this.headerService.selectTab(newRoute);
 
         this.form.markAsPristine();
+        this._resetCleanSnapshot();
 
 
       }
@@ -3135,6 +3246,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     };
 
     this.pendingAuth = normalized;
+    this._initialLoadInProgress = true;
 
     // If API returns memberDetailsId, keep local state + session storage hydrated so enrollment loads on re-entry.
     const apiMemberDetailsId = Number((normalized as any)?.memberDetailsId ?? (normalized as any)?.MemberDetailsId ?? 0);
@@ -3191,6 +3303,12 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
   private resetAuthScreenState(): void {
     this.pendingAuth = null;
+    this._formCleanSnapshot = null;
+    this._initialLoadInProgress = false;
+    if (this._snapshotTimer) {
+      clearTimeout(this._snapshotTimer);
+      this._snapshotTimer = null;
+    }
 
     // Clear template
     this.templateId = null;
@@ -3457,6 +3575,25 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   hasProviderData(inst: RenderRepeatInstance): boolean {
     const key = this.getProvInstanceKey(inst);
     return !!this.providerDataByInstance[key];
+  }
+
+  // ═══════════════════════════════════════════════════
+  //  PROVIDER CARD → SHELL RIGHT PANEL
+  //  Calls this.shell.openProviderPanel() directly.
+  //  Same this.shell ref used at lines 2724/2736/2744.
+  // ═══════════════════════════════════════════════════
+
+  onProviderCardClick(inst: RenderRepeatInstance, event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    if (target?.closest('.dc-top-btn') || target?.closest('.dc-cancel-btn')) return;
+
+    const providerData = this.getProviderData(inst);
+    if (!providerData) return;
+
+    const providerId = providerData.npi || providerData.providerId || providerData.id || '';
+
+    // Direct call — shell.openProviderPanel exists at shell line 454
+    (this.shell as any)?.openProviderPanel(providerId, providerData);
   }
 
   /** Called when a provider is selected from lookup — also exits edit mode */
@@ -4209,9 +4346,17 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     // initial sync
     this.syncVisibility();
 
-    // re-sync when any value changes
+    // Re-sync when any value changes — DEBOUNCED.
+    // Without the debounce, every intermediate valueChange (e.g., when a dropdown
+    // emits a selection) triggers synchronous enable/disable + updateValueAndValidity,
+    // which forces Angular change detection mid-click and can destroy the dropdown
+    // panel before the mouse event completes.
     this.form.valueChanges
-      .pipe(takeUntil(this.templateDestroy$), takeUntil(this.destroy$))
+      .pipe(
+        debounceTime(80),
+        takeUntil(this.templateDestroy$),
+        takeUntil(this.destroy$)
+      )
       .subscribe(() => this.syncVisibility());
   }
 
@@ -4617,7 +4762,14 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   }
 
   authHasUnsavedChanges(): boolean {
-    return this.form?.dirty ?? false;
+    // If initial load is still in progress, there are no real user changes yet
+    if (this._initialLoadInProgress) return false;
+
+    // If no snapshot was taken yet (e.g., new auth with no template loaded), fall back to dirty flag
+    if (this._formCleanSnapshot === null) return this.form?.dirty ?? false;
+
+    // Compare current form state against the clean snapshot taken after load
+    return this._serializeFormState() !== this._formCleanSnapshot;
   }
 
   // Alias for CanDeactivate guards that expect a different method name
@@ -4628,6 +4780,46 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   // Alias for older naming
   hasUnsavedChanges(): boolean {
     return this.authHasUnsavedChanges();
+  }
+
+  /**
+   * Serialize current form values into a stable JSON string for comparison.
+   * Uses getRawValue() to include disabled controls (visibility-hidden fields).
+   */
+  private _serializeFormState(): string {
+    try {
+      return JSON.stringify(this.form?.getRawValue() ?? {});
+    } catch {
+      return '{}';
+    }
+  }
+
+  /**
+   * Capture the "clean" state of the form after data has fully loaded.
+   * Called after template load + patch + all async prefills settle.
+   */
+  private _captureCleanSnapshot(): void {
+    if (this._snapshotTimer) {
+      clearTimeout(this._snapshotTimer);
+      this._snapshotTimer = null;
+    }
+
+    // Use a delay to let async dropdown loads, visibility sync,
+    // and auto-calc settle before capturing the snapshot.
+    this._snapshotTimer = setTimeout(() => {
+      this._formCleanSnapshot = this._serializeFormState();
+      this._initialLoadInProgress = false;
+      this.form?.markAsPristine();
+      this._snapshotTimer = null;
+    }, 600);
+  }
+
+  /**
+   * Reset the snapshot after a successful save so the new state becomes "clean".
+   */
+  private _resetCleanSnapshot(): void {
+    this._formCleanSnapshot = this._serializeFormState();
+    this.form?.markAsPristine();
   }
 
   /** Route-level indicator: true when editing an existing case (caseNumber present and not '0'). */

@@ -22,12 +22,16 @@ import { DragDropModule } from '@angular/cdk/drag-drop';
 import { CaseactivitiesComponent } from 'src/app/member/AG/steps/caseactivities/caseactivities.component';
 import { CasenotesComponent } from 'src/app/member/AG/steps/casenotes/casenotes.component';
 import { CasedocumentsComponent } from 'src/app/member/AG/steps/casedocuments/casedocuments.component';
+import { ClaimDetailsComponent } from 'src/app/member/AG/components/casewizardshell/claim-details.component';
+import { AuthorizationDetailsComponent } from 'src/app/member/AG/components/casewizardshell/authorization-details.component';
 
 @NgModule({
   declarations: [
     CaseactivitiesComponent,
     CasenotesComponent,
-    CasedocumentsComponent
+    CasedocumentsComponent,
+    ClaimDetailsComponent,
+    AuthorizationDetailsComponent
   ],
   imports: [
     CommonModule,
@@ -51,7 +55,9 @@ import { CasedocumentsComponent } from 'src/app/member/AG/steps/casedocuments/ca
   exports: [
     CaseactivitiesComponent,
     CasenotesComponent,
-    CasedocumentsComponent
+    CasedocumentsComponent,
+    ClaimDetailsComponent,
+    AuthorizationDetailsComponent
   ]
 })
 export class CasesharedwidgetsModule { }

@@ -6,16 +6,23 @@
      (click)="clickStep(s)"
      [attr.aria-current]="s.id === activeStepId ? 'step' : null">
 
-    <span class="stepIcon material-icons-outlined" aria-hidden="true">
-      {{ iconFor(s) }}
-    </span>
+    <!-- Icon: shows error icon when step has validation errors [attr.aria-invalid]="isStepError(s) ? 'true' : null" [class.step-error]="isStepError(s)"-->
+    <!--<span class="stepIcon material-icons-outlined"
+        [class.stepIcon--error]="isStepError(s)"
+        aria-hidden="true">
+    {{ iconForResolved(s) }}
+  </span>-->
 
     <span class="stepLabel">{{ s.label }}</span>
 
+    <!-- Error pulsing dot — visible only when step has validation errors -->
+    <!--<span class="stepErrorDot" *ngIf="isStepError(s)" title="Has validation errors"></span>-->
     <!-- Optional badge: set s.badge in parent if you want counts -->
-    <span class="stepBadge" *ngIf="$any(s).badge !== undefined && $any(s).badge !== null">
-      {{ $any(s).badge }}
-    </span>
+    <!--<span class="stepBadge"
+        [class.stepBadge--error]="isStepError(s)"
+        *ngIf="$any(s).badge !== undefined && $any(s).badge !== null">
+    {{ $any(s).badge }}
+  </span>-->
 
   </a>
 </nav>

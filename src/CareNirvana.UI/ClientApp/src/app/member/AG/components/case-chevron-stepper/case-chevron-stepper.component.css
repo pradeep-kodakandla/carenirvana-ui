@@ -1,4 +1,9 @@
-/* Tab-style stepper (underline + icon + optional count) */
+/* ═══════════════════════════════════════════════════════════
+   TAB-STYLE STEPPER (underline + icon + optional count)
+   ───────────────────────────────────────────────────────
+   States: default | active | disabled | step-error
+   ═══════════════════════════════════════════════════════════ */
+
 .caseChevronStepper {
   display: flex;
   align-items: center;
@@ -10,6 +15,14 @@
   -webkit-overflow-scrolling: touch;
 }
 
+/* Hide scrollbar */
+.caseChevronStepper::-webkit-scrollbar { height: 0; }
+.caseChevronStepper { scrollbar-width: none; }
+
+
+/* ═══════════════════════════════════════════
+   DEFAULT STEP TAB
+   ═══════════════════════════════════════════ */
 .stepTab {
   display: inline-flex;
   align-items: center;
@@ -23,16 +36,23 @@
   font-size: 13px;
   border-bottom: 2px solid transparent;
   white-space: nowrap;
+  transition: color 0.25s ease, border-bottom-color 0.25s ease, background 0.2s ease;
+}
+
+.stepTab:hover:not(.disabled):not(.step-error) {
+  color: #374151;
 }
 
 .stepIcon {
   font-size: 18px;
   line-height: 18px;
   opacity: 0.9;
+  transition: color 0.25s ease, opacity 0.25s ease;
 }
 
 .stepLabel {
   line-height: 18px;
+  transition: color 0.25s ease;
 }
 
 .stepBadge {
@@ -47,20 +67,109 @@
   font-weight: 800;
   background: #eef2f7;
   color: #374151;
+  transition: background 0.25s ease, color 0.25s ease;
 }
 
+
+/* ═══════════════════════════════════════════
+   ACTIVE STATE
+   ═══════════════════════════════════════════ */
 .stepTab.active {
   color: #1f6fb7;
   border-bottom-color: #1f6fb7;
 }
 
-  .stepTab.active .stepBadge {
-    background: rgba(31, 111, 183, 0.12);
-    color: #1f6fb7;
-  }
+.stepTab.active .stepIcon {
+  opacity: 1;
+}
 
+.stepTab.active .stepBadge {
+  background: rgba(31, 111, 183, 0.12);
+  color: #1f6fb7;
+}
+
+
+/* ═══════════════════════════════════════════
+   DISABLED STATE
+   ═══════════════════════════════════════════ */
 .stepTab.disabled {
   opacity: 0.55;
   cursor: not-allowed;
   pointer-events: none;
+}
+
+
+/* ═══════════════════════════════════════════
+   ERROR STATE — Red indicator
+   ═══════════════════════════════════════════
+   Applied when step.hasError or stepErrors[id]
+   is true. Reverts automatically when cleared.
+   ═══════════════════════════════════════════ */
+.stepTab.step-error {
+  color: #DC2626;
+  border-bottom-color: #EF4444;
+}
+
+/* Error icon override */
+.stepTab.step-error .stepIcon,
+.stepTab.step-error .stepIcon--error {
+  color: #EF4444;
+  opacity: 1;
+}
+
+/* Error label */
+.stepTab.step-error .stepLabel {
+  color: #DC2626;
+}
+
+/* Error badge */
+.stepTab.step-error .stepBadge,
+.stepBadge--error {
+  background: rgba(239, 68, 68, 0.12);
+  color: #DC2626;
+}
+
+/* Error + Active (both states simultaneously) */
+.stepTab.step-error.active {
+  color: #DC2626;
+  border-bottom-color: #EF4444;
+}
+
+.stepTab.step-error.active .stepIcon {
+  color: #EF4444;
+}
+
+/* Hover on error tab */
+.stepTab.step-error:hover:not(.disabled) {
+  color: #B91C1C;
+}
+
+.stepTab.step-error:hover:not(.disabled) .stepIcon {
+  color: #B91C1C;
+}
+
+
+/* ═══════════════════════════════════════════
+   ERROR PULSING DOT
+   ═══════════════════════════════════════════ */
+.stepErrorDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #EF4444;
+  margin-left: 2px;
+  flex-shrink: 0;
+  animation: stepErrorPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes stepErrorPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
 }

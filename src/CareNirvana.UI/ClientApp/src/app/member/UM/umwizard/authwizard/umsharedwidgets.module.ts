@@ -25,6 +25,7 @@ import { AuthnotesComponent } from 'src/app/member/UM/steps/authnotes/authnotes.
 import { AuthdocumentsComponent } from 'src/app/member/UM/steps/authdocuments/authdocuments.component';
 import { AuthactivityComponent } from 'src/app/member/UM/steps/authactivity/authactivity.component';
 import { AuthmdreviewComponent } from 'src/app/member/UM/steps/authmdreview/authmdreview.component';
+import { ProviderDetailsComponent } from 'src/app/member/UM/components/authwizardshell/provider-details.component';
 
 @NgModule({
   declarations: [
@@ -32,7 +33,8 @@ import { AuthmdreviewComponent } from 'src/app/member/UM/steps/authmdreview/auth
     AuthnotesComponent,
     AuthdocumentsComponent,
     AuthactivityComponent,
-    AuthmdreviewComponent
+    AuthmdreviewComponent,
+    ProviderDetailsComponent
   ],
   imports: [
     CommonModule,
@@ -59,7 +61,8 @@ import { AuthmdreviewComponent } from 'src/app/member/UM/steps/authmdreview/auth
     AuthnotesComponent,
     AuthdocumentsComponent,
     AuthactivityComponent,
-    AuthmdreviewComponent
+    AuthmdreviewComponent,
+    ProviderDetailsComponent
   ]
 })
 export class UmsharedwidgetsModule { }

@@ -4,6 +4,8 @@ import { onMainContentChange } from 'src/app/animations/animations.service'
 import { TabService } from 'src/app/service/tab.service';
 import { MemberService } from 'src/app/service/shared-member.service';
 import { DashboardServiceService } from 'src/app/service/dashboard.service.service';
+import { HeaderService } from 'src/app/service/header.service';
+import { AuthenticateService, RecentlyAccessed } from 'src/app/service/authentication.service';
 
 interface Page {
   link: string;
@@ -23,6 +25,8 @@ export class MemberDetailsComponent implements OnInit {
   memberId!: number;
   loggedInUser: string = sessionStorage.getItem('loggedInUsername') || '';
   isCollapse: boolean = false;
+  isCollapseReady: boolean = false;  // true only AFTER collapse width transition finishes
+  private collapseTimer: any = null;
   member: any;
 
   // Contact info (from GetMemberDetailsAsync)
@@ -30,10 +34,37 @@ export class MemberDetailsComponent implements OnInit {
   memberPhoneNumbers: any[] = [];
   memberEmails: any[] = [];
   memberAddresses: any[] = [];
-  constructor(private route: ActivatedRoute, private router: Router, private tabService: TabService, private memberService: MemberService, private dashboard: DashboardServiceService) { }
+  constructor(
+    private route: ActivatedRoute,
+    private router: Router,
+    private tabService: TabService,
+    private memberService: MemberService,
+    private dashboard: DashboardServiceService,
+    private headerService: HeaderService,
+    private authService: AuthenticateService
+  ) { }
 
   toggleSidebar() {
-    this.isCollapse = !this.isCollapse;
+    // Clear any pending timer from a rapid toggle
+    if (this.collapseTimer) {
+      clearTimeout(this.collapseTimer);
+      this.collapseTimer = null;
+    }
+
+    if (!this.isCollapse) {
+      // COLLAPSING: shrink width first, then apply color + show text after transition
+      this.isCollapseReady = false;
+      this.isCollapse = true;
+      this.collapseTimer = setTimeout(() => {
+        this.isCollapseReady = true;
+      }, 320); // slightly longer than the 0.3s CSS width transition
+    } else {
+      // EXPANDING: immediately hide text + revert color, then expand width
+      this.isCollapseReady = false;
+      this.collapseTimer = setTimeout(() => {
+        this.isCollapse = false;
+      }, 50); // small delay so the text/color disappear first
+    }
   }
 
   tabs: { title: string, memberId: string }[] = [];
@@ -65,7 +96,26 @@ export class MemberDetailsComponent implements OnInit {
     this.tabs1 = this.tabService.getTabs();
 
     this.memberService.isCollapse$.subscribe(value => {
-      this.isCollapse = value;
+      if (value !== this.isCollapse) {
+        // Use same sequencing as toggleSidebar
+        if (this.collapseTimer) {
+          clearTimeout(this.collapseTimer);
+          this.collapseTimer = null;
+        }
+
+        if (value) {
+          this.isCollapseReady = false;
+          this.isCollapse = true;
+          this.collapseTimer = setTimeout(() => {
+            this.isCollapseReady = true;
+          }, 320);
+        } else {
+          this.isCollapseReady = false;
+          this.collapseTimer = setTimeout(() => {
+            this.isCollapse = false;
+          }, 50);
+        }
+      }
     });
 
     this.dashboard.getpatientsummary(sessionStorage.getItem('selectedMemberDetailsId')).subscribe((data) => {
@@ -177,6 +227,58 @@ export class MemberDetailsComponent implements OnInit {
     // avoid re-open loops; open only if not already open
     if (!trigger.menuOpen) {
       trigger.openMenu();
+    }
+  }
+
+  /**
+   * Handles clicking the member name in the sidebar.
+   * Replicates the same behavior as onMemberClick in mycaseload:
+   * - Records recently accessed
+   * - Creates/selects a header tab
+   * - Navigates to the member-info route
+   */
+  onMemberNameClick(event: Event): void {
+    event.preventDefault();
+
+    if (!this.member) return;
+
+    const memberId = String(this.member.memberId);
+    const memberName = `${this.member.firstName || ''} ${this.member.lastName || ''}`.trim();
+    const memberDetailsId = String(this.member.memberDetailsId ?? sessionStorage.getItem('selectedMemberDetailsId') ?? '');
+
+    const tabLabel = `Member: ${memberName}`;
+    const tabRoute = `/member-info/${memberId}`;
+
+    // Record recently accessed
+    const record: RecentlyAccessed = {
+      userId: Number(sessionStorage.getItem('loggedInUserid')),
+      featureId: null,
+      featureGroupId: 2,
+      action: 'VIEW',
+      memberDetailsId: Number(memberDetailsId)
+    };
+
+    this.authService.addRecentlyAccessed(record.userId, record)
+      .subscribe({
+        next: id => console.log('Inserted record ID:', id),
+        error: err => console.error('Insert failed:', err)
+      });
+
+    const existingTab = this.headerService.getTabs().find((tab: any) => tab.route === tabRoute);
+
+    if (existingTab) {
+      this.headerService.selectTab(tabRoute);
+      const mdId = existingTab.memberDetailsId ?? null;
+      if (mdId) sessionStorage.setItem('selectedMemberDetailsId', mdId);
+      this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+        this.router.navigate([tabRoute]);
+      });
+    } else {
+      this.headerService.addTab(tabLabel, tabRoute, memberId, memberDetailsId);
+      sessionStorage.setItem('selectedMemberDetailsId', memberDetailsId);
+      this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+        this.router.navigate([tabRoute]);
+      });
     }
   }
 

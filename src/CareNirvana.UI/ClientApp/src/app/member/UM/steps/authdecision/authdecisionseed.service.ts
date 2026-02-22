@@ -12,6 +12,8 @@ export interface EnsureDecisionSeedArgs {
   /** merged jsonData object from AuthDetails (NOT stringified) */
   authData: any;
   userId: number;
+  /** When 'Yes', auto-sets Decision Status=Approved, Decision Status Code=Medical Necessity Met, Appr=Req, Denied=0 */
+  authApprove?: string;
 }
 
 /**
@@ -35,6 +37,7 @@ export class AuthDecisionSeedService {
     const authTemplateId = Number(args?.authTemplateId ?? 0);
     const authData = args?.authData ?? {};
     const userId = Number(args?.userId ?? 0);
+    const authApprove = String(args?.authApprove ?? '').trim();
 
     if (!authDetailId || !authTemplateId || !userId) return;
 
@@ -52,7 +55,21 @@ export class AuthDecisionSeedService {
       if (Number.isFinite(p) && p > 0) existingProcNos.add(p);
     }
 
-    const pendedValue = await this.resolvePendedDecisionStatusValue(authTemplateId);
+    // Determine if auto-approve is active
+    const isAutoApproved = this.isYesValue(authApprove);
+
+    // Resolve decision status: Approved (if auto-approve) or Pended (default)
+    let resolvedStatusValue: any = null;
+    let resolvedStatusCodeValue: any = null;
+
+    if (isAutoApproved) {
+      const { approvedValue, medNecessityMetValue } = await this.resolveApprovedDecisionValues(authTemplateId);
+      resolvedStatusValue = approvedValue;
+      resolvedStatusCodeValue = medNecessityMetValue;
+      console.log('[DecisionSeed] Auto-Approve: Status=Approved, StatusCode=Medical Necessity Met');
+    } else {
+      resolvedStatusValue = await this.resolvePendedDecisionStatusValue(authTemplateId);
+    }
 
     const nowIso = new Date().toISOString();
     const createCalls: Promise<any>[] = [];
@@ -60,7 +77,7 @@ export class AuthDecisionSeedService {
     for (const procNo of procedureNos) {
       if (existingProcNos.has(procNo)) continue;
 
-      const payload = this.buildDecisionDetailsSeedPayload(authData, procNo, pendedValue, nowIso);
+      const payload = this.buildDecisionDetailsSeedPayload(authData, procNo, resolvedStatusValue, nowIso, isAutoApproved, resolvedStatusCodeValue);
 
       // Create only Decision Details row; other decision sections can be created on first save in AuthDecision
       createCalls.push(
@@ -138,20 +155,29 @@ export class AuthDecisionSeedService {
     return String(cand ?? '').trim();
   }
 
-  private buildDecisionDetailsSeedPayload(authData: any, procedureNo: number, pendedValue: any, nowIso: string): any {
+  private buildDecisionDetailsSeedPayload(authData: any, procedureNo: number, statusValue: any, nowIso: string, isAutoApproved: boolean = false, statusCodeValue: any = null): any {
     const get = (suffix: string) => authData?.[`procedure${procedureNo}_${suffix}`];
+
+    // Resolve requested units for auto-approve (Approved = Requested, Denied = 0)
+    const requestedUnits =
+      get('serviceReq') ??
+      get('recommendedUnits') ??
+      get('requested') ??
+      get('hours') ??
+      get('days') ??
+      get('weeks');
 
     // Keep alignment with legacy getServicePrefillValue mapping in AuthDecision
     const payload: any = {
       procedureNo,
       decisionNumber: String(procedureNo),
 
-      decisionStatus: (pendedValue !== undefined ? pendedValue : null),
-      decisionStatusCode: null,
+      decisionStatus: (statusValue !== undefined ? statusValue : null),
+      decisionStatusCode: isAutoApproved ? statusCodeValue : null,
 
       createdDateTime: get('createdDateTime') ?? nowIso,
       updatedDateTime: nowIso,
-      decisionDateTime: null,
+      decisionDateTime: isAutoApproved ? nowIso : null,
 
       serviceCode: this.extractServiceCodeString(get('procedureCode') ?? get('serviceCode')),
       serviceDescription: get('procedureDescription') ?? get('serviceDescription'),
@@ -159,16 +185,10 @@ export class AuthDecisionSeedService {
       fromDate: get('fromDate') ?? get('effectiveDate'),
       toDate: get('toDate'),
 
-      requested:
-        get('serviceReq') ??
-        get('recommendedUnits') ??
-        get('requested') ??
-        get('hours') ??
-        get('days') ??
-        get('weeks'),
+      requested: requestedUnits,
 
-      approved: get('serviceAppr') ?? get('approvedPsp'),
-      denied: get('serviceDenied'),
+      approved: isAutoApproved ? (requestedUnits ?? 0) : (get('serviceAppr') ?? get('approvedPsp')),
+      denied: isAutoApproved ? 0 : get('serviceDenied'),
       used: get('used'),
 
       reviewType: get('reviewType'),
@@ -180,7 +200,11 @@ export class AuthDecisionSeedService {
       treatmentType: authData?.treatementType ?? authData?.treatmentType ?? get('treatmentType'),
       requestType: authData?.requestSent ?? authData?.requestType ?? authData?.requestReceivedVia ?? get('requestSent'),
       requestReceivedVia: authData?.requestReceivedVia ?? authData?.requestSent ?? get('requestSent'),
-      requestPriority: authData?.requestPriority ?? get('requestPriority')
+      requestPriority: authData?.requestPriority ?? get('requestPriority'),
+
+      // Auto-approve metadata
+      decisionUpdatedBy: isAutoApproved ? 'RulesEngine' : null,
+      decisionUpdatedDatetime: nowIso
     };
 
     // Convert empty strings to null for cleaner backend payloads
@@ -224,5 +248,83 @@ export class AuthDecisionSeedService {
 
     const pended = (opts ?? []).find(o => String((o as any)?.label ?? '').trim().toLowerCase().startsWith('pend'));
     return pended ? (pended as any).value : null;
+  }
+
+  /**
+   * Resolves the dropdown option values for "Approved" status and "Medical Necessity Met" status code
+   * from the decision template datasources.
+   */
+  private async resolveApprovedDecisionValues(authTemplateId: number): Promise<{ approvedValue: any; medNecessityMetValue: any }> {
+    const tmpl = await firstValueFrom(
+      this.api.getDecisionTemplate(authTemplateId).pipe(catchError(() => of(null)))
+    );
+
+    const rawSections: any[] = (tmpl as any)?.sections ?? (tmpl as any)?.Sections ?? [];
+    const sections = Array.isArray(rawSections) ? rawSections : [];
+
+    let statusDs: string | null = null;
+    let statusCodeDs: string | null = null;
+
+    for (const sec of sections) {
+      const fields: any[] = (sec as any)?.fields ?? (sec as any)?.Fields ?? [];
+      for (const f of (fields ?? [])) {
+        const fid = String(f?.id ?? f?.fieldId ?? '').trim().toLowerCase();
+        if (fid === 'decisionstatus' && !statusDs) {
+          statusDs = String(f?.datasource ?? f?.Datasource ?? '').trim() || null;
+        }
+        if (fid === 'decisionstatuscode' && !statusCodeDs) {
+          statusCodeDs = String(f?.datasource ?? f?.Datasource ?? '').trim() || null;
+        }
+      }
+    }
+
+    let approvedValue: any = null;
+    let medNecessityMetValue: any = null;
+
+    // Resolve "Approved" from Decision Status datasource
+    if (statusDs) {
+      const opts = await firstValueFrom(
+        this.dsLookup.getOptionsWithFallback(
+          statusDs,
+          (r: any) => {
+            const value = r?.value ?? r?.code ?? r?.id;
+            const label = r?.label ?? r?.text ?? r?.name ?? r?.description ?? String(value ?? '');
+            return { value, label, text: label, raw: r } as UiSmartOption;
+          },
+          ['UM', 'Admin', 'Provider']
+        ).pipe(catchError(() => of([] as UiSmartOption[])))
+      );
+
+      const approved = (opts ?? []).find(o => String((o as any)?.label ?? '').trim().toLowerCase().startsWith('approv'));
+      if (approved) approvedValue = (approved as any).value;
+    }
+
+    // Resolve "Medical Necessity Met" from Decision Status Code datasource
+    if (statusCodeDs) {
+      const codeOpts = await firstValueFrom(
+        this.dsLookup.getOptionsWithFallback(
+          statusCodeDs,
+          (r: any) => {
+            const value = r?.value ?? r?.code ?? r?.id;
+            const label = r?.label ?? r?.text ?? r?.name ?? r?.description ?? String(value ?? '');
+            return { value, label, text: label, raw: r } as UiSmartOption;
+          },
+          ['UM', 'Admin', 'Provider']
+        ).pipe(catchError(() => of([] as UiSmartOption[])))
+      );
+
+      const medNec = (codeOpts ?? []).find(o => {
+        const lbl = String((o as any)?.label ?? '').trim().toLowerCase();
+        return lbl.includes('medical necessity met') || lbl.includes('medical necessity');
+      });
+      if (medNec) medNecessityMetValue = (medNec as any).value;
+    }
+
+    return { approvedValue, medNecessityMetValue };
+  }
+
+  private isYesValue(v: any): boolean {
+    const s = String(v ?? '').trim().toLowerCase();
+    return s === 'y' || s === 'yes' || s === 'true' || s === '1';
   }
 }

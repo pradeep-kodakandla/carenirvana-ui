@@ -104,11 +104,12 @@
 <div class="table-wrapper" *ngIf="!showPreview">
   <table mat-table
          [dataSource]="dataSource"
+         matSort
          class="mat-elevation-z1 full-width-table pro-table mng-table">
 
     <!-- ── Fax File Name ─────────────────────────────────────────── -->
     <ng-container matColumnDef="fileName">
-      <th mat-header-cell *matHeaderCellDef>Fax File Name</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Fax File Name</th>
       <td mat-cell *matCellDef="let r">
 
         <!-- Normal view -->
@@ -167,7 +168,7 @@
 
     <!-- ── Received Datetime ─────────────────────────────────────── -->
     <ng-container matColumnDef="receivedAt">
-      <th mat-header-cell *matHeaderCellDef>Received</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Received</th>
       <td mat-cell *matCellDef="let r">
         {{ r.receivedAt | date:'MM/dd/yyyy hh:mm a' }}
       </td>
@@ -175,7 +176,7 @@
 
     <!-- ── Member ────────────────────────────────────────────────── -->
     <ng-container matColumnDef="member">
-      <th mat-header-cell *matHeaderCellDef>Member</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Member</th>
       <td mat-cell *matCellDef="let r">
         <ng-container *ngIf="r.memberId !== null && r.memberId !== undefined; else noMemberIdentified">
           <div class="name-cell">
@@ -198,7 +199,7 @@
 
     <!-- ── Work Basket ───────────────────────────────────────────── -->
     <ng-container matColumnDef="workBasket">
-      <th mat-header-cell *matHeaderCellDef>Work Basket</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Work Basket</th>
       <td mat-cell *matCellDef="let r">
 
         <!-- Normal view -->
@@ -238,7 +239,7 @@
 
     <!-- ── Priority ──────────────────────────────────────────────── -->
     <ng-container matColumnDef="priority">
-      <th mat-header-cell *matHeaderCellDef>Priority</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Priority</th>
       <td mat-cell *matCellDef="let r">
         <span class="chip"
               [ngClass]="priorityClass(r.priority)"
@@ -250,7 +251,7 @@
 
     <!-- ── Status ────────────────────────────────────────────────── -->
     <ng-container matColumnDef="status">
-      <th mat-header-cell *matHeaderCellDef>Status</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
       <td mat-cell *matCellDef="let r">
         <span class="chip chip-soft">{{ r.status }}</span>
         <span *ngIf="getLinkedAuth(r)"
@@ -342,6 +343,13 @@
     <tr mat-header-row *matHeaderRowDef="columns"></tr>
     <tr mat-row class="data-row" *matRowDef="let row; columns: columns;"></tr>
   </table>
+
+  <mat-paginator
+    [pageSizeOptions]="[5, 10, 25, 50]"
+    [pageSize]="pageSize"
+    showFirstLastButtons
+    aria-label="Select page of faxes">
+  </mat-paginator>
 </div>
 
 
@@ -843,7 +851,7 @@
     <div class="preview-frame" *ngIf="previewUrl; else noPreview">
       <iframe [src]="previewUrl"
               title="Fax PDF Preview"
-              style="width:100%; height:calc(100vh - 180px); border:0; border-radius:8px;">
+              style="border:0;">
       </iframe>
     </div>
 

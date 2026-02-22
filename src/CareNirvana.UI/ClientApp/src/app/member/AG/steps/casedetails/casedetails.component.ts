@@ -1,7 +1,7 @@
-import { Component, OnDestroy, OnInit, Input } from '@angular/core';
+import { Component, OnDestroy, OnInit, Input, AfterViewInit, ElementRef, Renderer2 } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
-import { Subject, takeUntil, Observable, of } from 'rxjs';
-import { distinctUntilChanged } from 'rxjs/operators';
+import { Subject, takeUntil, Observable, of, Subscription } from 'rxjs';
+import { distinctUntilChanged, debounceTime } from 'rxjs/operators';
 import { AuthService } from 'src/app/service/auth.service';
 import { CaseUnsavedChangesAwareService } from 'src/app/member/AG/guards/services/caseunsavedchangesaware.service';
 import { CasedetailService, CaseAggregateDto } from 'src/app/service/casedetail.service';
@@ -214,7 +214,7 @@ export interface UiOption {
   templateUrl: './casedetails.component.html',
   styleUrl: './casedetails.component.css'
 })
-export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnInit, OnDestroy {
+export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnInit, AfterViewInit, OnDestroy {
 
   @Input() wizardMode: WizardMode = 'new';
 
@@ -305,6 +305,10 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
   private destroy$ = new Subject<void>();
 
+  /** Subscription for form.valueChanges → syncFormControlVisibility.
+   *  Re-created each time the form is rebuilt.  */
+  private visibilitySyncSub: Subscription | null = null;
+
   // ---------- Enrollment (display only, like Auth Details) ----------
   memberEnrollments: MemberEnrollment[] = [];
   selectedDiv = 0;               // 1-based
@@ -333,7 +337,9 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     private router: Router,
     private memberEnrollment: MemberenrollmentService,
     private wbService: WorkbasketService,
-    private notify: CaseWizardNotifyService
+    private notify: CaseWizardNotifyService,
+    private elRef: ElementRef,
+    private renderer: Renderer2
   ) { }
 
   caseHasUnsavedChanges(): boolean {
@@ -508,6 +514,9 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
     if (preserve && snapshot && typeof snapshot === 'object') {
       this.form.patchValue(snapshot, { emitEvent: false });
+      // ✅ Restore lookup map from snapshot if present
+      this.restoreLookupMapFromJson(snapshot);
+      this.migrateSearchFieldObjectsToLookupMap(snapshot);
       if (opts.keepDirty) this.form.markAsDirty();
     } else {
       // load saved json for the current level (edit mode)
@@ -518,6 +527,13 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
     // ✅ Re-apply read-only state after form rebuild
     this.applyReadOnly();
+
+    // ✅ Auto-select Level dropdown to match current case level
+    this.autoSelectLevelDropdown();
+
+    // ✅ Wire up form.valueChanges → syncFormControlVisibility
+    // so conditional fields get enabled when their parent dropdown changes
+    this.setupVisibilitySync();
   }
 
   private tryLoadSelectedLevel(force: boolean): void {
@@ -560,7 +576,44 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     };
   }
 
+  // ═══════════════════════════════════════════════════════════
+  //  FIX: Prevent mousedown on lookup dropdown items from
+  //  causing input blur (which closes dropdown before click fires)
+  // ═══════════════════════════════════════════════════════════
+  private lookupMousedownListener: (() => void) | null = null;
+
+  ngAfterViewInit(): void {
+    this.lookupMousedownListener = this.renderer.listen(
+      this.elRef.nativeElement,
+      'mousedown',
+      (event: MouseEvent) => {
+        const target = event.target as HTMLElement;
+        if (!target) return;
+
+        // Match common dropdown result selectors used by ui-smart-lookup
+        const isDropdownItem = target.closest(
+          '.dropdown-menu, .dropdown-item, .ng-dropdown-panel, .ng-option, ' +
+          '.autocomplete-results, .autocomplete-item, .result-item, .results-list, ' +
+          '.ui-smart-lookup-results, .lookup-results, .lookup-item, ' +
+          'ui-smart-lookup ul li, ui-smart-lookup .list-group-item'
+        );
+
+        if (isDropdownItem) {
+          event.preventDefault();
+        }
+      }
+    );
+  }
+
   ngOnDestroy(): void {
+    if (this.lookupMousedownListener) {
+      this.lookupMousedownListener();
+      this.lookupMousedownListener = null;
+    }
+    if (this.visibilitySyncSub) {
+      this.visibilitySyncSub.unsubscribe();
+      this.visibilitySyncSub = null;
+    }
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -653,7 +706,17 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     // Validate ONLY what is currently visible
     this.syncFormControlVisibility();
     this.markVisibleControlsTouched();
-    if (this.form.invalid) return;
+
+    if (this.form.invalid) {
+      // ✅ Report validation error to shell (for stepper red indicator)
+      this.reportValidationToShell(true);
+      // ✅ Scroll to first validation error
+      this.scrollToFirstError();
+      return;
+    }
+
+    // ✅ Form is valid — report success to shell
+    this.reportValidationToShell(false);
 
     const levelId = this.getSelectedLevelId() ?? 1;
 
@@ -677,7 +740,41 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
     // ✅ MERGE (step values overwrite same keys, but keep other keys)
     const merged = { ...(existingObj ?? {}), ...(stepObj ?? {}) };
+
+    // ✅ Persist multi-select lookup card data (auths, claims, providers, etc.)
+    // This stores the full selected objects so cards can be restored on reopen.
+    const lookupMapToSave: Record<string, any[]> = {};
+    for (const [key, arr] of Object.entries(this.selectedLookupMap)) {
+      if (Array.isArray(arr) && arr.length > 0) {
+        lookupMapToSave[key] = arr;
+      }
+    }
+    if (Object.keys(lookupMapToSave).length > 0) {
+      merged['__selectedLookupMap'] = lookupMapToSave;
+    } else {
+      delete merged['__selectedLookupMap'];
+    }
+
+    // ✅ Clean up: for multi-select search fields, clear any leftover objects
+    // from the form values — the real data is in __selectedLookupMap now.
+    // This prevents legacy double-storage (object in form field + in map).
+    try {
+      const allFields = this.collectAllRenderFields(this.renderSections);
+      for (const f of allFields) {
+        if (String(f?.type ?? '').toLowerCase() !== 'search') continue;
+        const entity = this.getLookupEntity(f);
+        const isMulti = entity ? this.MULTI_SELECT_ENTITIES.has(entity) : false;
+        if (!isMulti) continue;
+        const cn = f.controlName;
+        if (cn && merged[cn] && typeof merged[cn] === 'object' && merged[cn] !== null) {
+          merged[cn] = null; // The data lives in __selectedLookupMap
+        }
+      }
+    } catch (e) { /* best-effort cleanup */ }
+
     const jsonData = JSON.stringify(merged);
+    console.log('[save] selectedLookupMap keys:', Object.keys(this.selectedLookupMap));
+    console.log('[save] __selectedLookupMap in payload:', !!merged['__selectedLookupMap']);
     // Workgroup / Workbasket selection (optional)
     const wgwbIds: number[] = this.getSelectedWorkgroupWorkbasketIds?.() ?? [];
 
@@ -788,6 +885,79 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     }
   }
 
+  /** Report validation state up to the shell (for stepper red indicator) */
+  private reportValidationToShell(hasErrors: boolean): void {
+    const reporter = (this as any)._shellReportValidation;
+    if (typeof reporter === 'function') {
+      reporter(hasErrors);
+    }
+  }
+
+  /** Scroll to the first visible validation error element on the page */
+  scrollToFirstError(): void {
+    setTimeout(() => {
+      // Find the first visible error message
+      const errorEl = document.querySelector('.case-details .ff-error:not([hidden])');
+      if (errorEl) {
+        errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      // Fallback: find the first invalid outline
+      const invalidEl = document.querySelector('.case-details .ff-invalid');
+      if (invalidEl) {
+        invalidEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+  }
+
+  /** Returns true if form has validation errors on visible (enabled) controls */
+  hasValidationErrors(): boolean {
+    if (!this.form) return false;
+    this.syncFormControlVisibility();
+    return this.form.invalid;
+  }
+
+  // ═══════════════════════════════════════════════════
+  //  AUTH / CLAIM CARD → SHELL RIGHT PANEL
+  //  Shell injects these callbacks in loadStep():
+  //    inst._shellOpenAuthPanel = (authNumber) => { ... }
+  //    inst._shellOpenClaimPanel = (claimNumber) => { ... }
+  // ═══════════════════════════════════════════════════
+
+  /**
+   * Called when user clicks an Authorization card.
+   * Delegates to shell to open the Auth detail panel.
+   */
+  onAuthCardClick(auth: any, event: MouseEvent): void {
+    // Don't open panel if user clicked the dismiss (×) button
+    if ((event.target as HTMLElement)?.closest('.ff-lk-card__dismiss')) return;
+
+    const authNumber = auth?.authnumber || auth?.authNumber || '';
+    if (!authNumber) return;
+
+    const opener = (this as any)._shellOpenAuthPanel;
+    if (typeof opener === 'function') {
+      opener(authNumber);
+    }
+  }
+
+  /**
+   * Called when user clicks a Claim card.
+   * Delegates to shell to open the Claim detail panel.
+   */
+  onClaimCardClick(claim: any, event: MouseEvent): void {
+    // Don't open panel if user clicked the dismiss (×) button
+    if ((event.target as HTMLElement)?.closest('.ff-claim-card__dismiss')) return;
+
+    const claimNumber = claim?.claimNumber || claim?.claimnumber || '';
+    if (!claimNumber) return;
+
+    const opener = (this as any)._shellOpenClaimPanel;
+    if (typeof opener === 'function') {
+      opener(claimNumber);
+    }
+  }
+
   private normalizeCaseNumber(v: any): string | null {
     const s = String(v ?? '').trim();
     if (!s) return null;
@@ -820,7 +990,15 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
     if (!parsed || typeof parsed !== 'object') return;
 
+    // ✅ Restore multi-select lookup card data
+    this.restoreLookupMapFromJson(parsed);
+
     this.form.patchValue(parsed, { emitEvent: false });
+
+    // ✅ After patching, migrate any legacy search-field values (full objects)
+    // into selectedLookupMap so they display as cards.
+    this.migrateSearchFieldObjectsToLookupMap(parsed);
+
     // apply enable/disable + validate child values using the loaded parent values
     Object.keys(this.dependentDropdowns).forEach(cn => this.updateDependentChild(cn));
 
@@ -829,6 +1007,85 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
     this.form.markAsPristine();
     this.syncFormControlVisibility();
+
+    // ✅ Auto-select the Level dropdown to match the current case level
+    this.autoSelectLevelDropdown();
+  }
+
+  /**
+   * Restores selectedLookupMap from the __selectedLookupMap key in saved JSON.
+   * This handles data saved with the new save format.
+   */
+  private restoreLookupMapFromJson(parsed: any): void {
+    if (parsed?.['__selectedLookupMap'] && typeof parsed['__selectedLookupMap'] === 'object') {
+      // Deep copy to avoid reference issues
+      const saved = parsed['__selectedLookupMap'];
+      this.selectedLookupMap = {};
+      for (const [key, arr] of Object.entries(saved)) {
+        if (Array.isArray(arr) && arr.length > 0) {
+          this.selectedLookupMap[key] = [...arr];
+        }
+      }
+      console.log('[lookup-restore] Restored from __selectedLookupMap:', Object.keys(this.selectedLookupMap));
+    } else {
+      this.selectedLookupMap = {};
+      console.log('[lookup-restore] No __selectedLookupMap found, checking for legacy data...');
+    }
+  }
+
+  /**
+   * Scans all search-type render fields. If the saved JSON contains a full object
+   * (not null, not a string, not a number) for that field's controlName, treat it
+   * as a selected lookup item and migrate it into selectedLookupMap so the card renders.
+   *
+   * This handles LEGACY saved data where the object was stored directly in the
+   * form control (before multi-select card persistence was implemented).
+   */
+  private migrateSearchFieldObjectsToLookupMap(parsed: any): void {
+    if (!this.renderSections?.length) return;
+
+    const allFields = this.collectAllRenderFields(this.renderSections);
+
+    for (const f of allFields) {
+      if (String(f?.type ?? '').toLowerCase() !== 'search') continue;
+
+      const controlName = f.controlName;
+      if (!controlName) continue;
+
+      // Skip if selectedLookupMap already has items for this control (from __selectedLookupMap)
+      if (this.selectedLookupMap[controlName]?.length) continue;
+
+      const entity = this.getLookupEntity(f);
+      const isMulti = entity ? this.MULTI_SELECT_ENTITIES.has(entity) : false;
+      if (!isMulti) continue;
+
+      // Check if the saved JSON has a full object for this search field
+      const savedVal = parsed?.[controlName];
+      if (savedVal && typeof savedVal === 'object' && !Array.isArray(savedVal)) {
+        // It's a legacy single object — migrate it into the multi-select map
+        if (!this.selectedLookupMap[controlName]) {
+          this.selectedLookupMap[controlName] = [];
+        }
+
+        // Deduplicate
+        const itemId = this.getLookupItemId(entity!, savedVal);
+        const exists = this.selectedLookupMap[controlName].some(
+          (existing: any) => this.getLookupItemId(entity!, existing) === itemId
+        );
+        if (!exists) {
+          this.selectedLookupMap[controlName].push(savedVal);
+          console.log('[lookup-migrate] Legacy migration:', controlName, '→', entity, savedVal);
+        }
+
+        // Clear the form control value (multi-select cards don't need it in the control)
+        const ctrl = this.form.get(controlName);
+        if (ctrl) {
+          ctrl.setValue(null, { emitEvent: false });
+        }
+      }
+    }
+
+    console.log('[lookup-migrate] Final selectedLookupMap:', { ...this.selectedLookupMap });
   }
 
   // ---------------- Helpers to get field values ----------------
@@ -836,6 +1093,52 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     const v = this.getValueByFieldId('level');
     const n = v == null ? NaN : Number(v);
     return Number.isFinite(n) ? n : null;
+  }
+
+  /**
+   * Auto-selects the Level dropdown (if present) to match currentLevelId.
+   * Handles both string and number value formats by checking available options.
+   *
+   * Called after:
+   *  - loadLevelIntoForm() (edit mode reload)
+   *  - rebuildForStepInternal() (template rebuild / level switch)
+   */
+  private autoSelectLevelDropdown(): void {
+    if (!this.form || !this.templateLoaded) return;
+
+    const levelId = this.currentLevelId ?? 1;
+
+    // Find the level field controlName (raw id = 'level')
+    const controlName = this.findControlNameByRawId('level');
+    if (!controlName) return;
+
+    const ctrl = this.form.get(controlName);
+    if (!ctrl) return;
+
+    // Check dropdown options to match value format (string vs number)
+    const options = this.optionsByControlName[controlName] ?? [];
+    let matchValue: any = levelId;
+
+    if (options.length > 0) {
+      // Try exact numeric match first
+      const numMatch = options.find(o => o.value === levelId);
+      if (numMatch) {
+        matchValue = numMatch.value;
+      } else {
+        // Try string match (dropdown values are often strings like "1", "2", etc.)
+        const strMatch = options.find(o => String(o.value) === String(levelId));
+        if (strMatch) {
+          matchValue = strMatch.value;
+        }
+      }
+    }
+
+    // Only set if value is different to avoid unnecessary dirty marking
+    if (ctrl.value !== matchValue && String(ctrl.value) !== String(matchValue)) {
+      ctrl.setValue(matchValue, { emitEvent: false });
+      ctrl.markAsPristine();
+      console.log('[level-auto] Set level dropdown to', matchValue, '(currentLevelId:', levelId, ')');
+    }
   }
 
   private getValueByFieldId(fieldId: string): any {
@@ -1206,6 +1509,10 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
             this.optionsByControlName[f.controlName] = opts ?? [];
           }
+
+          // ✅ Re-apply level auto-select after options load
+          // (ensures the value format matches loaded options)
+          this.autoSelectLevelDropdown();
         });
     }
   }
@@ -1322,7 +1629,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     }
   }
 
-  private syncFormControlVisibility(): void {
+  syncFormControlVisibility(): void {
     if (!this.form) return;
     if (this.visibilitySyncInProgress) return;
 
@@ -1401,7 +1708,38 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     }
   }
 
-  private markVisibleControlsTouched(): void {
+  /**
+   * Subscribes to form.valueChanges so that when the user changes a dropdown
+   * that controls conditional field visibility, the affected fields get properly
+   * enabled/disabled.
+   *
+   * Uses debounceTime to batch rapid changes and a guard flag to avoid recursion
+   * (enable/disable with emitEvent:false should not emit, but this is a safety net).
+   *
+   * MUST be called after every form rebuild (since this.form is a new FormGroup).
+   */
+  private setupVisibilitySync(): void {
+    // Tear down previous subscription (old form object)
+    if (this.visibilitySyncSub) {
+      this.visibilitySyncSub.unsubscribe();
+      this.visibilitySyncSub = null;
+    }
+
+    if (!this.form) return;
+
+    this.visibilitySyncSub = this.form.valueChanges
+      .pipe(debounceTime(60))
+      .subscribe(() => {
+        // Skip if a sync is already running (guard against recursion)
+        if (this.visibilitySyncInProgress) return;
+        // Skip when read-only (all controls disabled anyway)
+        if (this._readOnly) return;
+
+        this.syncFormControlVisibility();
+      });
+  }
+
+  markVisibleControlsTouched(): void {
     if (!this.form) return;
     Object.keys(this.form.controls ?? {}).forEach(key => {
       const c = this.form.get(key);

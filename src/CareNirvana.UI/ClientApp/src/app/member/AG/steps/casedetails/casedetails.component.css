@@ -21,8 +21,19 @@
   border: none;
   padding: 5px;
   margin-bottom: 6px;
-  overflow: hidden;
+  overflow: visible;
 }
+
+/* Ensure dropdowns render above all other content */
+:host ::ng-deep .section-card ui-smart-dropdown .dropdown-menu,
+:host ::ng-deep .section-card .cdk-overlay-container,
+:host ::ng-deep .section-card .ng-dropdown-panel {
+  z-index: 1050 !important;
+  position: absolute !important;
+}
+
+/* Sub-card also needs overflow visible for nested dropdowns */
+.sub-card { overflow: visible; }
 
 /* ── Section Header (auth-style: transparent + blue underline + icon) ── */
 .section-header {
@@ -225,6 +236,7 @@
   align-self: start;
   height: fit-content;
   width: 100%;
+  overflow: visible;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 .ff-outline:hover { border-color: #80bfff; background: #f5f9ff; box-shadow: 0 2px 8px rgba(0, 123, 255, 0.06); }
@@ -267,6 +279,63 @@
 }
 .form-outline .ff-ui, .field-box .ff-ui { border: 0 !important; }
 
+/* ── ui-smart-lookup: ensure dropdown results render above and are clickable ── */
+:host ::ng-deep .ff-outline ui-smart-lookup,
+:host ::ng-deep .ff-outline .ff-lookup { width: 100%; display: block; position: relative; }
+:host ::ng-deep .ff-outline ui-smart-lookup input {
+  border: 0 !important; outline: none !important; box-shadow: none !important;
+  font-size: 12px !important; background: transparent !important;
+  height: 34px !important; line-height: 22px !important; padding-left: 10px !important; color: #1F2937 !important;
+}
+
+/* Dropdown panel must sit above all other elements so mouse clicks reach it */
+:host ::ng-deep ui-smart-lookup .dropdown-menu,
+:host ::ng-deep ui-smart-lookup .dropdown-panel,
+:host ::ng-deep ui-smart-lookup .ng-dropdown-panel,
+:host ::ng-deep ui-smart-lookup .autocomplete-results,
+:host ::ng-deep ui-smart-lookup .results-list,
+:host ::ng-deep ui-smart-lookup .ui-smart-lookup-results,
+:host ::ng-deep ui-smart-lookup .lookup-results,
+:host ::ng-deep ui-smart-lookup ul.list-group,
+:host ::ng-deep ui-smart-lookup ul[role="listbox"] {
+  z-index: 1060 !important;
+  position: absolute !important;
+  background: #fff;
+  border: 1px solid #D1D5DB;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+  max-height: 250px;
+  overflow-y: auto;
+  width: 100%;
+  left: 0;
+}
+
+/* Dropdown items: ensure they are visible, clickable targets */
+:host ::ng-deep ui-smart-lookup .dropdown-item,
+:host ::ng-deep ui-smart-lookup .dropdown-menu li,
+:host ::ng-deep ui-smart-lookup .ng-option,
+:host ::ng-deep ui-smart-lookup .autocomplete-item,
+:host ::ng-deep ui-smart-lookup .result-item,
+:host ::ng-deep ui-smart-lookup .lookup-item,
+:host ::ng-deep ui-smart-lookup .list-group-item,
+:host ::ng-deep ui-smart-lookup ul li {
+  cursor: pointer !important;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #1F2937;
+  transition: background 0.1s ease;
+}
+
+:host ::ng-deep ui-smart-lookup .dropdown-item:hover,
+:host ::ng-deep ui-smart-lookup .dropdown-menu li:hover,
+:host ::ng-deep ui-smart-lookup .ng-option:hover,
+:host ::ng-deep ui-smart-lookup .ng-option-marked,
+:host ::ng-deep ui-smart-lookup .list-group-item:hover,
+:host ::ng-deep ui-smart-lookup ul li:hover {
+  background: #EFF6FF !important;
+  color: #1E40AF;
+}
+
 /* Checkbox row */
 .ff-checkbox {
   display: flex; align-items: center; gap: 10px;
@@ -305,6 +374,23 @@
   color: #EF4444;
   font-size: 12px;
   margin-top: 6px;
+  scroll-margin-top: 100px; /* Ensure error is not hidden behind fixed header when scrolled to */
+}
+
+/* Highlight animation when scrolled into view */
+.ff-error:target,
+.ff-invalid:target {
+  animation: ff-error-highlight 1.5s ease;
+}
+
+@keyframes ff-error-highlight {
+  0%, 30% { background: rgba(239, 68, 68, 0.15); }
+  100% { background: transparent; }
+}
+
+/* Make invalid outlines more prominent when touched */
+.ff-outline.ff-invalid {
+  scroll-margin-top: 100px;
 }
 
 
@@ -617,6 +703,8 @@
   gap: 7px;
   animation: ffCardSlideIn 0.2s ease-out;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  min-width: 0;
+  overflow: hidden;
 }
 .ff-lk-card:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
@@ -632,6 +720,82 @@
 .ff-lk-card--provider  { border-left-color: #0EA5E9; }
 .ff-lk-card--member    { border-left-color: #8B5CF6; }
 .ff-lk-card--staff     { border-left-color: #F59E0B; }
+
+
+/* ═══════════════════════════════════════════════════════════
+   CLICKABLE CARD STATE — Opens detail panel on the right
+   Applied via ff-claim-card--clickable / ff-lk-card--clickable
+   ═══════════════════════════════════════════════════════════ */
+
+/* Claim cards — clickable */
+.ff-claim-card--clickable {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.ff-claim-card--clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.12);
+  border-color: #93C5FD;
+}
+
+.ff-claim-card--clickable:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(37, 99, 235, 0.1);
+}
+
+/* View details hint on hover */
+.ff-claim-card--clickable::after {
+  content: "View Details →";
+  position: absolute;
+  bottom: 6px;
+  right: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #3B82F6;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.ff-claim-card--clickable:hover::after {
+  opacity: 1;
+}
+
+/* Auth cards — clickable */
+.ff-lk-card--clickable {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.ff-lk-card--clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.12);
+  border-color: #6EE7B7;
+}
+
+.ff-lk-card--clickable:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(16, 185, 129, 0.1);
+}
+
+/* View details hint on hover */
+.ff-lk-card--clickable::after {
+  content: "View Details →";
+  position: absolute;
+  bottom: 6px;
+  right: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #10B981;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.ff-lk-card--clickable:hover::after {
+  opacity: 1;
+}
 
 
 /* ── Card: Dismiss × ──────────────────────────────────────── */
@@ -751,6 +915,8 @@
   flex-wrap: wrap;
   padding-top: 5px;
   border-top: 1px solid rgba(224, 231, 255, 0.7);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .ff-lk-pill {
@@ -773,7 +939,7 @@
 .ff-lk-pill--green { background: #DCFCE7; color: #166534; }
 .ff-lk-pill--amber { background: #FEF3C7; color: #92400E; }
 .ff-lk-pill--blue  { background: #DBEAFE; color: #1E40AF; }
-.ff-lk-pill--red   { background: #FEE2E2; color: #991B1B; }
+.ff-lk-pill--red   { background: #FEE2E2; color: #991B1B; white-space: normal; word-break: break-word; align-items: flex-start; }
 .ff-lk-pill--slate { background: #F1F5F9; color: #334155; }
 
 

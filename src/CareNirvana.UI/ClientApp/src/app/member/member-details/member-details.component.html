@@ -54,7 +54,7 @@
   </div>
 </mat-menu>
 <div style="display:flex;">
-  <div class="sidebar" [class.collapsed]="isCollapse">
+  <div class="sidebar" [class.collapsed]="isCollapse" [class.collapsed-ready]="isCollapseReady">
     <!-- Expand/Collapse Button -->
     <div class="sidebar-toolbar" [class.collapsed]="isCollapse">
       <!-- Menu (always visible) -->
@@ -92,8 +92,8 @@
       </button>
     </div>
 
-    <!-- Collapsed member name (vertical) -->
-    <div class="sidebar-collapsed-summary" *ngIf="isCollapse">
+    <!-- Collapsed member name (vertical) — shown only after collapse finishes -->
+    <div class="sidebar-collapsed-summary" *ngIf="isCollapseReady">
       <div class="collapsed-member-name"
            [attr.title]="(member?.firstName || '') + ' ' + (member?.lastName || '')">
         {{ member?.firstName }} {{ member?.lastName }} - ID: {{ member?.memberId }} · DOB: {{ member?.dob }} ({{ getAge(member?.dob) }} Yrs), {{ member?.gender }}
@@ -108,7 +108,12 @@
           {{ member?.firstName?.charAt(0) }}{{ member?.lastName?.charAt(0) }}
         </div>
         <div>
-          <div class="member-name">{{ member?.firstName }} {{ member?.lastName }}</div>
+          <a class="member-name-link"
+             href="#"
+             (click)="onMemberNameClick($event)"
+             matTooltip="Open member details">
+            {{ member?.firstName }} {{ member?.lastName }}
+          </a>
           <div class="member-sub">
             ID: {{ member?.memberId }} · DOB: {{ member?.dob }} ({{ getAge(member?.dob) }} Yrs), {{ member?.gender }}
           </div>

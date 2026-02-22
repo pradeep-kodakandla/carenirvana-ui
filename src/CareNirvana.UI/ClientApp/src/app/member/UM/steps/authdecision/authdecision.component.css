@@ -155,9 +155,9 @@
 
 
 /* ===== Sections ===== */
-.section-card { border:none;border-radius:0;padding:0;background:#fff;margin-bottom:0;border-bottom:1px solid #F1F5F9 }
+.section-card { border:none;border-radius:0;padding:0;background:#fff;margin-bottom:0;border-bottom:1px solid #F1F5F9;overflow:visible }
 .section-card:last-child { border-bottom:none }
-.section-header { display:flex;align-items:center;gap:10px;padding:14px 20px 12px;cursor:pointer;user-select:none;background:transparent;border-bottom:2px solid #007bff;transition:background .12s }
+.section-header { display:flex;align-items:center;gap:10px;padding:14px 20px 12px;cursor:pointer;user-select:none;background:transparent;border-bottom:2px thin gray;transition:background .12s }
 .section-header:hover { background:rgba(0,123,255,.03) }
 .section-icon { width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#EBF5FB;color:#007bff }
 .section-icon svg,.section-icon img,.section-icon i { width:16px;height:16px }
@@ -166,7 +166,7 @@
 .section-chevron svg { width:16px;height:16px }
 .section-card.collapsed .section-chevron { transform:rotate(-90deg) }
 .section-card.collapsed .section-header  { border-bottom-color:transparent }
-.section-body { padding:16px 20px 20px;overflow:hidden }
+.section-body { padding:16px 20px 20px;overflow:visible }
 .section-card.collapsed .section-body { display:none }
 
 
@@ -178,7 +178,7 @@
 
 /* ===== Fields ===== */
 .ff-field { display:flex;flex-direction:column;width:100%;min-width:0 }
-.ff-outline { position:relative;border:1.5px solid #CAC4D0;border-radius:12px;background:#fff;padding:1px;width:100%;transition:box-shadow .15s,border-color .15s }
+.ff-outline { position:relative;border:1.5px solid #CAC4D0;border-radius:12px;background:#fff;padding:1px;width:100%;overflow:visible;transition:box-shadow .15s,border-color .15s }
 .ff-outline:hover { border-color:#1C1B1F }
 .ff-outline:focus-within { border-color:#007bff;border-width:2px;padding:0;box-shadow:0 0 0 1px rgba(0,123,255,.1) }
 .ff-outline:focus-within .ff-float-label { color:#007bff }
@@ -210,3 +210,7 @@
   .tab-content { border:var(--bw) solid var(--line);border-radius:var(--r);border-left:var(--bw) solid var(--clr) }
   .tab-content::before,.tab-content::after { display:none }
 }
+
+
+/* --- Dropdown overflow: handled by section-body overflow:visible + ff-outline overflow:visible --- */
+/* No blanket !important overrides needed — matches authdetails pattern */

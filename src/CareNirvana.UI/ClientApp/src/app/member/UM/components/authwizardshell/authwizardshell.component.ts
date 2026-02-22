@@ -72,6 +72,42 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
 
   private toastTimer: any = null;
 
+  // ════════════════════════════════════
+  //  RIGHT PANEL — unified (AI / Provider)
+  // ════════════════════════════════════
+  rightPanelMode: 'ai' | 'provider' | null = null;
+  rightPanelOpen = false;
+  rightPanelExpanded = false;
+  aiQuery = '';
+
+  /** Selected provider for the detail panel */
+  selectedProviderId = '';
+  selectedProviderName = '';
+  selectedProviderData: any = null;
+
+  // ── AI Panel data ──
+  slaItems: { label: string; deadline: string; remaining: string; status: string }[] = [];
+  slaAtRiskCount = 0;
+
+  quickActions: { icon: string; label: string; description: string; actionId: string }[] = [];
+
+  aiSuggestions: {
+    icon: string; title: string; body: string; confidence: number;
+    type: string; actionLabel?: string; actionId?: string;
+  }[] = [];
+
+  // ── Dynamic badge counts (keyed by step id) ──
+  badgeCounts: Record<string, number> = {
+    decision: 0,
+    mdReview: 0,
+    activities: 0,
+    notes: 0,
+    documents: 0
+  };
+
+  /** Cached parsed dataJson so child steps can trigger recount */
+  private cachedDataObj: any = null;
+
 
   /** Single source of truth for all steps */
   private ctx: AuthWizardContext = {
@@ -401,6 +437,102 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     this.toast.visible = false;
   }
 
+  // ═══════════════════════════════════
+  //  RIGHT PANEL (unified: AI / Provider)
+  // ═══════════════════════════════════
+
+  openRightPanel(mode: 'ai' | 'provider', identifier?: string, data?: any): void {
+    if (this.rightPanelOpen && this.rightPanelMode === mode) {
+      this.closeRightPanel();
+      return;
+    }
+
+    this.rightPanelMode = mode;
+    this.rightPanelOpen = true;
+    this.rightPanelExpanded = false;
+
+    if (mode === 'provider') {
+      this.selectedProviderId = identifier || '';
+      this.selectedProviderName = data?.fullName || data?.name || identifier || '';
+      this.selectedProviderData = data || null;
+    }
+
+    // Load AI data when opening AI panel
+    if (mode === 'ai' && !this.slaItems.length) {
+      this.loadAiPanelData();
+    }
+  }
+
+  openProviderPanel(providerId: string, providerData?: any): void {
+    this.openRightPanel('provider', providerId, providerData);
+  }
+
+  closeRightPanel(): void {
+    this.rightPanelOpen = false;
+    this.rightPanelExpanded = false;
+    setTimeout(() => {
+      if (!this.rightPanelOpen) this.rightPanelMode = null;
+    }, 350);
+  }
+
+  togglePanelExpand(): void {
+    this.rightPanelExpanded = !this.rightPanelExpanded;
+  }
+
+  // ═══════════════════════════════════
+  //  AI PANEL DATA — Auth-specific
+  // ═══════════════════════════════════
+
+  private loadAiPanelData(): void {
+    // TODO: Replace with actual API calls
+
+    this.slaItems = [
+      { label: 'Clinical Review', deadline: '02/23/2026 EOD', remaining: '2d 4h', status: 'warning' },
+      { label: 'Decision Due', deadline: '02/28/2026 EOD', remaining: '7d 0h', status: 'ok' },
+      { label: 'Member Notification', deadline: '03/02/2026 EOD', remaining: '9d 0h', status: 'ok' }
+    ];
+    this.slaAtRiskCount = this.slaItems.filter(s => s.status !== 'ok').length;
+
+    this.quickActions = [
+      { icon: '📋', label: 'Request Records', description: 'Request medical records from provider', actionId: 'requestRecords' },
+      { icon: '👨‍⚕️', label: 'Assign Reviewer', description: 'Route to MD reviewer', actionId: 'assignMd' },
+      { icon: '📄', label: 'Generate Letter', description: 'Create determination letter', actionId: 'generateLetter' },
+      { icon: '🔄', label: 'Check Eligibility', description: 'Verify member coverage', actionId: 'checkEligibility' }
+    ];
+
+    this.aiSuggestions = [
+      {
+        icon: '🔍', title: 'Similar Auth Detected', body: 'A prior auth for the same procedure was denied 3 months ago. Review denial reason before proceeding.',
+        confidence: 89, type: 'warning', actionLabel: 'View Prior Auth', actionId: 'viewPriorAuth'
+      },
+      {
+        icon: '📊', title: 'Clinical Criteria Match', body: 'Submitted documentation meets InterQual criteria for requested service based on diagnosis codes.',
+        confidence: 94, type: 'success', actionLabel: 'View Criteria', actionId: 'viewCriteria'
+      },
+      {
+        icon: '⚠️', title: 'Missing Documentation', body: 'Operative report and recent imaging results not found in submitted documents.',
+        confidence: 76, type: 'danger', actionLabel: 'Request Docs', actionId: 'requestDocs'
+      }
+    ];
+  }
+
+  onQuickAction(action: any): void {
+    // TODO: implement quick action handlers
+    console.log('Quick action:', action.actionId);
+  }
+
+  onAiAction(suggestion: any): void {
+    // TODO: implement AI suggestion action handlers
+    console.log('AI action:', suggestion.actionId);
+  }
+
+  askAi(): void {
+    if (!this.aiQuery?.trim()) return;
+    // TODO: implement AI query
+    console.log('AI query:', this.aiQuery);
+    this.aiQuery = '';
+  }
+
   ngOnDestroy(): void {
     this.dismissToast();
     this.sub.unsubscribe();
@@ -470,12 +602,20 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
         // Populate header by default when opening an existing auth
         this.refreshHeaderFromAuthRow(row, dataObj);
 
+        // ✅ Compute dynamic badge counts from the auth data
+        this.cachedDataObj = dataObj;
+        this.computeBadgeCounts(row, dataObj);
+
         // If this auth already has an MD Review, make the MD Review step visible.
         this.enableMdReviewStepIfNeeded(this.detectExistingMdReview(row, dataObj));
 
         // Also: if MD Review activities already exist, show the stepper by default.
         const authDetailId = this.toNum(row?.authDetailId);
         this.checkMdReviewActivitiesAndEnableStep(authDetailId);
+
+        // ✅ Fetch activity + document counts from their respective APIs
+        this.fetchActivityCount(authDetailId);
+        this.fetchDocumentCount(authDetailId);
 
         // authTemplateId is not in AuthDetailRow interface today.
         // Try server-provided authTemplateId first; otherwise derive from authClassId (common mapping).
@@ -519,6 +659,132 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
   }
 
 
+  // ---------------------------
+  // ✅ Dynamic badge count computation
+  // ---------------------------
+
+  /**
+   * Computes badge counts from the auth detail row and parsed dataJson.
+   * Counts non-deleted items in each repeating array.
+   * Called after initial load and can be re-triggered by child steps via refreshBadgeCounts().
+   */
+  private computeBadgeCounts(row?: any, dataObj?: any): void {
+    const data = dataObj ?? this.cachedDataObj ?? {};
+
+    // Decisions: count non-deleted entries in decisionDetails
+    this.badgeCounts.decision = this.countActiveItems(data.decisionDetails);
+
+    // Notes: count non-deleted entries in decisionNotes
+    this.badgeCounts.notes = this.countActiveItems(data.decisionNotes);
+
+    // MD Review: count from mdReviewDetails or similar array if present
+    this.badgeCounts.mdReview = this.countActiveItems(
+      data.mdReviewDetails ?? data.md_review_details ?? data.mdReviewActivities
+    );
+
+    // Member/Provider Decision Info (used as a fallback reference)
+    // Activities & Documents: these typically come from separate API endpoints.
+    // We attempt to read from the row-level counts if the API provides them,
+    // otherwise we leave them at 0 until the child step reports its count.
+    this.badgeCounts.activities = this.toNum(row?.activityCount) ?? this.countActiveItems(data.activities) ?? 0;
+    this.badgeCounts.documents  = this.toNum(row?.documentCount) ?? this.countActiveItems(data.documents) ?? 0;
+
+    // Rebuild steps so the stepper picks up the new badge values
+    this.buildSteps();
+  }
+
+  /**
+   * Counts non-deleted items in an array (items without a deletedOn timestamp).
+   */
+  private countActiveItems(arr: any): number {
+    if (!Array.isArray(arr)) return 0;
+    return arr.filter((item: any) => !item?.deletedOn && !item?.deletedBy).length;
+  }
+
+  /**
+   * Public method for child steps to call after they add/remove items.
+   * Accepts an optional partial map of step id → count.
+   *
+   * Usage from a child step (e.g., Decision):
+   *   this.shell.refreshBadgeCounts({ decision: this.decisionRows.length });
+   *
+   * Or without args to re-derive from the cached dataJson:
+   *   this.shell.refreshBadgeCounts();
+   */
+  public refreshBadgeCounts(patch?: Partial<Record<string, number>>): void {
+    if (patch) {
+      Object.entries(patch).forEach(([key, val]) => {
+        if (key in this.badgeCounts && typeof val === 'number') {
+          this.badgeCounts[key] = val;
+        }
+      });
+      this.buildSteps();
+    } else {
+      // Re-derive from cached auth data
+      this.computeBadgeCounts(null, this.cachedDataObj);
+    }
+  }
+
+  /**
+   * Public method for child steps to update a single step's badge count.
+   * Usage: this.shell.updateBadgeCount('notes', 5);
+   */
+  public updateBadgeCount(stepId: string, count: number): void {
+    if (stepId in this.badgeCounts) {
+      this.badgeCounts[stepId] = count;
+      this.buildSteps();
+    }
+  }
+
+  /**
+   * Fetch activity count from the activity service API.
+   * Falls back gracefully if the API method isn't available.
+   */
+  private fetchActivityCount(authDetailId: number | null): void {
+    if (!authDetailId) return;
+
+    const getActivitiesFn = (this.activityService as any)?.getActivitiesByAuthDetailId
+      ?? (this.activityService as any)?.getActivities;
+
+    if (typeof getActivitiesFn !== 'function') return;
+
+    const obs = getActivitiesFn.call(this.activityService, authDetailId);
+    if (!obs?.pipe) return;
+
+    obs.pipe(take(1)).subscribe({
+      next: (rows: any[]) => {
+        this.badgeCounts.activities = Array.isArray(rows) ? rows.filter((r: any) => !r?.deletedOn).length : 0;
+        this.buildSteps();
+      },
+      error: () => { /* non-blocking */ }
+    });
+  }
+
+  /**
+   * Fetch document count from the document/attachment service API.
+   * Falls back gracefully if the API method isn't available.
+   */
+  private fetchDocumentCount(authDetailId: number | null): void {
+    if (!authDetailId) return;
+
+    const getDocsFn = (this.activityService as any)?.getDocumentsByAuthDetailId
+      ?? (this.activityService as any)?.getDocuments
+      ?? (this.activityService as any)?.getAttachmentsByAuthDetailId;
+
+    if (typeof getDocsFn !== 'function') return;
+
+    const obs = getDocsFn.call(this.activityService, authDetailId);
+    if (!obs?.pipe) return;
+
+    obs.pipe(take(1)).subscribe({
+      next: (rows: any[]) => {
+        this.badgeCounts.documents = Array.isArray(rows) ? rows.filter((r: any) => !r?.deletedOn).length : 0;
+        this.buildSteps();
+      },
+      error: () => { /* non-blocking */ }
+    });
+  }
+
   private shouldShowMdReviewFromRoute(): boolean {
     const childPath = this.route.firstChild?.snapshot?.url?.[0]?.path;
     if (childPath === 'mdReview') return true;
@@ -561,13 +827,15 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
   // Steps list / routing helpers
   // ---------------------------
   private buildSteps(): void {
+    const bc = this.badgeCounts;
+
     const base: AuthWizardStep[] = [
-      { id: 'details', label: 'Auth Details', route: 'details'},
-      { id: 'decision', label: 'Decisions', route: 'decision', badge: 1 },
-      ...(this.showMdReview ? [{ id: 'mdReview', label: 'MD Review', route: 'mdReview', badge: 2 } as AuthWizardStep] : []),
-      { id: 'activities', label: 'Activities', route: 'activities', badge: 3 },
-      { id: 'notes', label: 'Notes', route: 'notes', badge: 4 },
-      { id: 'documents', label: 'Documents', route: 'documents', badge: 1 }
+      { id: 'details', label: 'Auth Details', route: 'details' },
+      { id: 'decision', label: 'Decisions', route: 'decision', badge: bc.decision || undefined },
+      ...(this.showMdReview ? [{ id: 'mdReview', label: 'MD Review', route: 'mdReview', badge: bc.mdReview || undefined } as AuthWizardStep] : []),
+      { id: 'activities', label: 'Activities', route: 'activities', badge: bc.activities || undefined },
+      { id: 'notes', label: 'Notes', route: 'notes', badge: bc.notes || undefined },
+      { id: 'documents', label: 'Documents', route: 'documents', badge: bc.documents || undefined }
     ];
 
     // show Smart Check only for NEW auth (authNumber = 0)
@@ -630,6 +898,19 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     if (typeof inst?.setContext === 'function') {
       inst.setContext(ctx);
     }
+
+    // ✅ Inject provider panel opener so provider cards can open the right panel
+    inst._shellOpenProviderPanel = (providerId: string, providerData?: any) => {
+      this.openProviderPanel(providerId, providerData);
+    };
+
+    // ✅ Inject badge count updater so child steps can update their badge after add/remove
+    inst._shellRefreshBadgeCounts = (patch?: Partial<Record<string, number>>) => {
+      this.refreshBadgeCounts(patch);
+    };
+    inst._shellUpdateBadgeCount = (stepId: string, count: number) => {
+      this.updateBadgeCount(stepId, count);
+    };
 
     // Optional reload hook
     if (typeof inst?.reload === 'function' && inst.reload.length === 0) {

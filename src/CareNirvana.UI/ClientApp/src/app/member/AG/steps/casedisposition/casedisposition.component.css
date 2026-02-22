@@ -1,0 +1,12 @@
+/* Ensure dropdown panels are not clipped by any parent */
+:host {
+  overflow: visible;
+}
+:host ::ng-deep .section-card {
+  overflow: visible;
+}
+:host ::ng-deep ui-smart-dropdown .dropdown-menu,
+:host ::ng-deep .ng-dropdown-panel {
+  z-index: 1050 !important;
+  position: absolute !important;
+}

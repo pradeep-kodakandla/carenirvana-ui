@@ -14,6 +14,7 @@
   border-radius: 10px;
   padding: 5px;
   background: #fff;
+  overflow: visible;  /* ← allow dropdown panels to overflow outside the card */
 /*  margin-bottom: 14px;
 */}
 
@@ -68,6 +69,7 @@
   padding: 1px 1px 1px;
   align-self: start;
   height: fit-content;
+  overflow: visible;  /* ← critical: allow dropdown panels to overflow */
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
@@ -372,6 +374,7 @@
     border-radius: 50%;
     background: #007bff;
     opacity: .85;
+    pointer-events: none;  /* ← prevent intercepting dropdown clicks */
   }
 
 /* SELECTED: active emphasis */
@@ -390,6 +393,7 @@
     width: 3px;
     border-radius: 3px;
     background: #007bff;
+    pointer-events: none;  /* ← prevent intercepting dropdown clicks */
   }
 
   .ff-selected.ff-changed {
@@ -784,6 +788,16 @@
   z-index: 1;
 }
 
+/* ── Dropdown click fix ──
+   When a dropdown opens, its parent field must sit above sibling grid
+   cells so the option list isn't covered by adjacent fields.
+   We ONLY elevate the wrapper (.ff-field) — never force position/z-index
+   on the dropdown's own internal panel elements. */
+.ff-field:focus-within {
+  position: relative;
+  z-index: 50;
+}
+
 
 
 
@@ -848,6 +862,7 @@
   flex-direction: column;
   gap: 12px;
   transition: border-color .2s, box-shadow .2s;
+  overflow: visible;  /* ← allow dropdown panels to overflow outside the card */
 }
 .pc-card:hover {
   border-color: #cbd5e1;
@@ -1077,6 +1092,58 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  position: relative;
+}
+
+/* ── Clickable provider card — opens detail panel ── */
+.pc-info--clickable {
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 10px;
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  border: 1px solid transparent;
+}
+
+.pc-info--clickable:hover {
+  background: #F0FDFA;
+  border-color: #99F6E4;
+  box-shadow: 0 4px 16px rgba(13, 148, 136, 0.1);
+  transform: translateY(-1px);
+}
+
+.pc-info--clickable:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(13, 148, 136, 0.08);
+}
+
+.pc-view-details {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0D9488;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed #E5E7EB;
+}
+
+.pc-info--clickable:hover .pc-view-details {
+  color: #0F766E;
+}
+
+.pc-view-details-icon {
+  font-size: 15px;
+}
+
+.pc-view-details-arrow {
+  margin-left: auto;
+  font-size: 14px;
+  transition: transform 0.15s ease;
+}
+
+.pc-info--clickable:hover .pc-view-details-arrow {
+  transform: translateX(3px);
 }
 
 .pc-info--editing {

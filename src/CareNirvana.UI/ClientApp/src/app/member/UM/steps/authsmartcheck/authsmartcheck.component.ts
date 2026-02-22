@@ -950,23 +950,33 @@ Would you like to continue to Authorization Details?`,
       const authClassId = Number(this.smartAuthCheckForm.get('authClassId')?.value || this.selectedAuthClassId || 0);
       const authTypeId = Number(this.smartAuthCheckForm.get('authTypeId')?.value || this.selectedAuthTypeId || 0);
 
-      const icdCodes: string[] = (this.icds?.controls || [])
-        .map((g: any) => {
-          const v = (g as FormGroup)?.get('icd10')?.value;
-          if (!v) return '';
-          if (typeof v === 'string') return v.trim();
-          return String(v.code ?? v.Code ?? v.icdcode ?? '').trim();
-        })
-        .filter((x: string) => !!x);
+      // Collect ICD codes + descriptions as aligned pairs (filter empties together)
+      const icdPairs = (this.icds?.controls || []).map((g: any) => {
+        const v = (g as FormGroup)?.get('icd10')?.value;
+        let code = '';
+        if (v) {
+          code = typeof v === 'string' ? v.trim() : String(v.code ?? v.Code ?? v.icdcode ?? '').trim();
+        }
+        const desc = (g as FormGroup)?.get('icd10Desc')?.value;
+        return { code, desc: desc ? String(desc).trim() : '' };
+      }).filter(p => !!p.code);
 
-      const serviceCodes: string[] = (this.services?.controls || [])
-        .map((g: any) => {
-          const v = (g as FormGroup)?.get('serviceCode')?.value;
-          if (!v) return '';
-          if (typeof v === 'string') return v.trim();
-          return String(v.code ?? v.Code ?? v.cptcode ?? v.cptCode ?? '').trim();
-        })
-        .filter((x: string) => !!x);
+      const icdCodes: string[] = icdPairs.map(p => p.code);
+      const icdDescriptions: string[] = icdPairs.map(p => p.desc);
+
+      // Collect Service codes + descriptions as aligned pairs (filter empties together)
+      const svcPairs = (this.services?.controls || []).map((g: any) => {
+        const v = (g as FormGroup)?.get('serviceCode')?.value;
+        let code = '';
+        if (v) {
+          code = typeof v === 'string' ? v.trim() : String(v.code ?? v.Code ?? v.cptcode ?? v.cptCode ?? '').trim();
+        }
+        const desc = (g as FormGroup)?.get('serviceDesc')?.value;
+        return { code, desc: desc ? String(desc).trim() : '' };
+      }).filter(p => !!p.code);
+
+      const serviceCodes: string[] = svcPairs.map(p => p.code);
+      const serviceDescriptions: string[] = svcPairs.map(p => p.desc);
 
       const enrollmentId = 1;// Number(this.selectedEnrollment?.memberEnrollmentId || 0);
 
@@ -976,18 +986,33 @@ Would you like to continue to Authorization Details?`,
         sessionStorage.setItem('selectedMemberDetailsId', String(memberDetailsId));
       }
 
+      // Read Smart Auth Check outputs (Auth Approve flag) from session storage
+      let authApproveFlag: string | null = null;
+      try {
+        const smartOutputsRaw = sessionStorage.getItem('SMART_AUTH_CHECK_OUTPUTS');
+        if (smartOutputsRaw) {
+          const smartOutputs = JSON.parse(smartOutputsRaw);
+          authApproveFlag =
+            String(smartOutputs?.['dt.result.AuthApprove'] ?? smartOutputs?.['result2'] ?? '').trim() || null;
+        }
+      } catch { /* ignore */ }
+
       const payload = {
         authClassId,
         authTypeId,
         enrollmentId,
         icdCodes,
+        icdDescriptions,
         serviceCodes,
+        serviceDescriptions,
         // From/To dates from Smart Check (used to prefill Procedure section in Auth Details)
         fromDateIso: this.smartAuthCheckForm.get('scheduledDateTime')?.value ?? null,
         toDateIso: this.smartAuthCheckForm.get('dueDateTime')?.value ?? null,
         // Alias keys for clarity/forward-compat
         procedureFromDateIso: this.smartAuthCheckForm.get('scheduledDateTime')?.value ?? null,
-        procedureToDateIso: this.smartAuthCheckForm.get('dueDateTime')?.value ?? null
+        procedureToDateIso: this.smartAuthCheckForm.get('dueDateTime')?.value ?? null,
+        // Auth Approve result from Smart Auth Check rules engine
+        authApprove: authApproveFlag
       };
 
       sessionStorage.setItem('SMART_AUTH_CHECK_PREFILL', JSON.stringify(payload));

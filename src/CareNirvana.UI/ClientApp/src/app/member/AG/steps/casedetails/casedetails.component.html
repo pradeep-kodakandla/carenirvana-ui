@@ -390,8 +390,9 @@
             </button>
           </div>
           <div class="ff-claims-grid">
-            <div class="ff-claim-card"
-                 *ngFor="let claim of getSelectedClaims(sub); let ci = index; trackBy: trackByClaimId">
+            <div class="ff-claim-card ff-claim-card--clickable"
+                 *ngFor="let claim of getSelectedClaims(sub); let ci = index; trackBy: trackByClaimId"
+                 (click)="onClaimCardClick(claim, $event)">
 
               <button type="button"
                       class="ff-claim-card__dismiss"
@@ -460,8 +461,9 @@
                     *ngIf="getSelectedAuths(sub).length > 1">Clear all</button>
           </div>
           <div class="ff-lookup-grid">
-            <div class="ff-lk-card ff-lk-card--auth"
-                 *ngFor="let auth of getSelectedAuths(sub); let ai = index; trackBy: trackByAuthId">
+            <div class="ff-lk-card ff-lk-card--auth ff-lk-card--clickable"
+                 *ngFor="let auth of getSelectedAuths(sub); let ai = index; trackBy: trackByAuthId"
+                 (click)="onAuthCardClick(auth, $event)">
               <button type="button" class="ff-lk-card__dismiss"
                       (click)="removeSelectedAuth(sub, ai)" title="Remove">&times;</button>
               <div class="ff-lk-card__top">
@@ -818,7 +820,8 @@
                   <button type="button" class="ff-claims-clear" (click)="clearAllSelectedClaims(inst)" *ngIf="getSelectedClaims(inst).length > 1">Clear all</button>
                 </div>
                 <div class="ff-claims-grid">
-                  <div class="ff-claim-card" *ngFor="let claim of getSelectedClaims(inst); let ci = index; trackBy: trackByClaimId">
+                  <div class="ff-claim-card ff-claim-card--clickable" *ngFor="let claim of getSelectedClaims(inst); let ci = index; trackBy: trackByClaimId"
+                       (click)="onClaimCardClick(claim, $event)">
                     <button type="button" class="ff-claim-card__dismiss" (click)="removeSelectedClaim(inst, ci)" title="Remove">&times;</button>
                     <div class="ff-claim-card__top">
                       <span class="ff-claim-card__num">{{ claim.claimNumber || claim.claimnumber || '—' }}</span>
@@ -862,7 +865,8 @@
                   <button type="button" class="ff-lookup-clear-all" (click)="clearAllSelectedAuths(inst)" *ngIf="getSelectedAuths(inst).length > 1">Clear all</button>
                 </div>
                 <div class="ff-lookup-grid">
-                  <div class="ff-lk-card ff-lk-card--auth" *ngFor="let auth of getSelectedAuths(inst); let ai = index; trackBy: trackByAuthId">
+                  <div class="ff-lk-card ff-lk-card--auth ff-lk-card--clickable" *ngFor="let auth of getSelectedAuths(inst); let ai = index; trackBy: trackByAuthId"
+                       (click)="onAuthCardClick(auth, $event)">
                     <button type="button" class="ff-lk-card__dismiss" (click)="removeSelectedAuth(inst, ai)" title="Remove">&times;</button>
                     <div class="ff-lk-card__top">
                       <span class="ff-lk-card__id">{{ auth.authnumber || '—' }}</span>

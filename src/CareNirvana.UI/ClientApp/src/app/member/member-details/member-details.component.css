@@ -177,6 +177,14 @@ mat-tab-group {
 
   .sidebar.collapsed {
     width: 50px;
+    padding-left: 0;
+    margin-left:5px;
+  }
+
+  /* Applied AFTER collapse animation finishes — changes color */
+  .sidebar.collapsed-ready {
+    background: linear-gradient(90deg, #0062cc, #007bff);
+    border-right: none;
   }
 
 /* Toggle Button */
@@ -346,6 +354,22 @@ mat-tab-group {
   font-size: 15px;
   line-height: 1.2;
   color: #111827; /* gray-900 */
+}
+
+/* Clickable member name link style */
+.member-name-link {
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.2;
+  color: #007BFF;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.2s ease, text-decoration 0.2s ease;
+}
+
+.member-name-link:hover {
+  color: #0056b3;
+  text-decoration: underline;
 }
 
 .member-sub {
@@ -557,7 +581,7 @@ mat-tab-group {
   overflow: auto;
 }
 
-/* Collapsed: member name vertical */
+/* Collapsed: same blue gradient as toolbar, shown only after collapse completes */
 .sidebar-collapsed-summary {
   flex: 1;
   min-height: 0;
@@ -565,7 +589,7 @@ mat-tab-group {
   align-items: center;
   justify-content: center;
   padding: 10px 0;
-  background: linear-gradient(90deg, #0062cc, #007bff);
+  background: transparent;
 }
 
 .collapsed-member-name {
@@ -575,7 +599,7 @@ mat-tab-group {
   font-weight: 700;
   font-size: 12px;
   line-height: 1.1;
-  color: white;
+  color: #ffffff;
   
   letter-spacing: 0.02em;
   text-align: center;

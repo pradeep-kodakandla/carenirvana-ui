@@ -1,0 +1,407 @@
+<!-- ═══════════════════════════════════════════════════
+     PROVIDER DETAILS — Displays data from getProviderProfileJson API
+     ═══════════════════════════════════════════════════ -->
+<div class="prov-card" *ngIf="prov">
+
+  <!-- ══════ HEADER (teal gradient) ══════ -->
+  <div class="prov-header">
+    <div class="prov-header-left">
+      <span class="prov-header-icon material-icons-outlined">person</span>
+      <span class="prov-header-title">Provider Details</span>
+    </div>
+    <div class="prov-header-actions" *ngIf="!embedded">
+      <button class="prov-action-btn" (click)="onEdit()" title="Edit">
+        <span class="material-icons-outlined">edit</span>
+      </button>
+      <button class="prov-action-btn" (click)="onPrint()" title="Print">
+        <span class="material-icons-outlined">print</span>
+      </button>
+      <button class="prov-action-btn" (click)="onClose()" title="Close">
+        <span class="material-icons-outlined">close</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════ IDENTITY BLOCK ══════ -->
+  <div class="prov-identity">
+    <div class="prov-name">{{ fullName }}</div>
+    <div class="prov-badges">
+      <span class="prov-badge" [ngClass]="networkClass">
+        <span class="prov-badge-dot"></span>
+        {{ networkStatusText }}
+      </span>
+      <span class="prov-badge prov-badge--specialty" *ngIf="providerTypeLabel">
+        {{ providerTypeLabel }}
+      </span>
+      <span class="prov-badge prov-badge--gender" *ngIf="prov.gender">
+        {{ prov.gender }}
+      </span>
+      <span class="prov-badge prov-badge--contract" *ngIf="prov.acceptingnewpatients">
+        Accepting Patients
+      </span>
+    </div>
+    <div class="prov-npi-row">
+      <span class="prov-npi-label">NPI</span>
+      <span class="prov-npi-value">{{ prov.npi }}</span>
+      <span class="prov-npi-sep" *ngIf="prov.taxid">|</span>
+      <span class="prov-npi-label" *ngIf="prov.taxid">TAX ID</span>
+      <span class="prov-npi-value" *ngIf="prov.taxid">{{ prov.taxid }}</span>
+      <span class="prov-npi-sep" *ngIf="prov.providerid">|</span>
+      <span class="prov-npi-label" *ngIf="prov.providerid">ID</span>
+      <span class="prov-npi-value" *ngIf="prov.providerid">{{ prov.providerid }}</span>
+    </div>
+  </div>
+
+  <!-- ══════ SCROLLABLE BODY ══════ -->
+  <div class="prov-body">
+
+    <!-- ── Contact & Location ── -->
+    <div class="prov-section">
+      <div class="prov-section-header" (click)="toggleSection('contact')">
+        <span class="prov-section-title">CONTACT & LOCATION</span>
+        <span class="material-icons-outlined prov-chevron"
+              [class.prov-chevron--collapsed]="!sections['contact']">
+          expand_more
+        </span>
+      </div>
+      <div class="prov-section-body" *ngIf="sections['contact']">
+        <div class="prov-fields">
+          <div class="prov-field-row" *ngIf="prov.organizationname">
+            <span class="prov-field-icon material-icons-outlined">business</span>
+            <div class="prov-field-content">
+              <span class="prov-field-label">ORGANIZATION</span>
+              <span class="prov-field-value">{{ prov.organizationname }}</span>
+            </div>
+          </div>
+          <div class="prov-field-row" *ngIf="prov.legalbusinessname">
+            <span class="prov-field-icon material-icons-outlined">account_balance</span>
+            <div class="prov-field-content">
+              <span class="prov-field-label">LEGAL BUSINESS NAME</span>
+              <span class="prov-field-value">{{ prov.legalbusinessname }}</span>
+            </div>
+          </div>
+          <div class="prov-field-row" *ngIf="fullAddress">
+            <span class="prov-field-icon material-icons-outlined">location_on</span>
+            <div class="prov-field-content">
+              <span class="prov-field-label">PRIMARY ADDRESS</span>
+              <span class="prov-field-value">{{ fullAddress }}</span>
+            </div>
+          </div>
+
+          <!-- Telecom entries -->
+          <div class="prov-field-row" *ngFor="let tel of telecomList">
+            <span class="prov-field-icon material-icons-outlined">
+              {{ tel.contactuse === 'Fax' ? 'fax' : 'phone' }}
+            </span>
+            <div class="prov-field-content">
+              <span class="prov-field-label">
+                {{ tel.contactuse | uppercase }}{{ tel.isprimary ? ' (Primary)' : '' }}
+              </span>
+              <span class="prov-field-value">{{ formatPhone(tel.contactvalue) }}</span>
+            </div>
+          </div>
+
+          <div class="prov-field-row" *ngIf="prov.email">
+            <span class="prov-field-icon material-icons-outlined">email</span>
+            <div class="prov-field-content">
+              <span class="prov-field-label">EMAIL</span>
+              <span class="prov-field-value">{{ prov.email }}</span>
+            </div>
+          </div>
+          <div class="prov-field-row" *ngIf="prov.website">
+            <span class="prov-field-icon material-icons-outlined">language</span>
+            <div class="prov-field-content">
+              <span class="prov-field-label">WEBSITE</span>
+              <span class="prov-field-value">{{ prov.website }}</span>
+            </div>
+          </div>
+          <div class="prov-field-row" *ngIf="prov.birthdate">
+            <span class="prov-field-icon material-icons-outlined">cake</span>
+            <div class="prov-field-content">
+              <span class="prov-field-label">DATE OF BIRTH</span>
+              <span class="prov-field-value">{{ formatDateShort(prov.birthdate) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Additional Addresses ── -->
+    <div class="prov-section" *ngIf="addressList.length">
+      <div class="prov-section-header" (click)="toggleSection('addresses')">
+        <span class="prov-section-title">ADDITIONAL ADDRESSES ({{ addressList.length }})</span>
+        <span class="material-icons-outlined prov-chevron"
+              [class.prov-chevron--collapsed]="!sections['addresses']">
+          expand_more
+        </span>
+      </div>
+      <div class="prov-section-body" *ngIf="sections['addresses']">
+        <div class="prov-cred-list">
+          <div class="prov-cred-item" *ngFor="let addr of addressList">
+            <div class="prov-cred-top">
+              <span class="prov-cred-type">{{ addr.addresstype || 'Address' }}</span>
+              <span class="prov-cred-status prov-cred--active" *ngIf="addr.isprimary">Primary</span>
+            </div>
+            <div class="prov-cred-value">
+              {{ addr.addressline1 }}{{ addr.addressline2 ? ', ' + addr.addressline2 : '' }}
+            </div>
+            <div class="prov-cred-meta">
+              <span>{{ addr.city }}{{ getStateName(addr.stateid) ? ', ' + getStateName(addr.stateid) : '' }} {{ addr.zipcode }}</span>
+              <span>{{ addr.country }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Credentials & Licenses ── -->
+    <div class="prov-section" *ngIf="credentials.length">
+      <div class="prov-section-header" (click)="toggleSection('credentials')">
+        <span class="prov-section-title">CREDENTIALS & LICENSES ({{ credentials.length }})</span>
+        <span class="material-icons-outlined prov-chevron"
+              [class.prov-chevron--collapsed]="!sections['credentials']">
+          expand_more
+        </span>
+      </div>
+      <div class="prov-section-body" *ngIf="sections['credentials']">
+        <div class="prov-cred-list">
+          <div class="prov-cred-item" *ngFor="let cred of credentials">
+            <div class="prov-cred-top">
+              <span class="prov-cred-type">{{ cred.type }}</span>
+              <span class="prov-cred-status" [ngClass]="credentialStatusClass(cred.status)">
+                {{ cred.status || 'N/A' }}
+              </span>
+            </div>
+            <div class="prov-cred-value">{{ cred.value }}</div>
+            <div class="prov-cred-meta">
+              <span *ngIf="cred.issuingAuthority">Issued by: {{ cred.issuingAuthority }}</span>
+              <span *ngIf="cred.state">{{ cred.state }}</span>
+              <span *ngIf="cred.issueDate">From: {{ formatDateShort(cred.issueDate) }}</span>
+              <span *ngIf="cred.expirationDate">Expires: {{ formatDateShort(cred.expirationDate) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Board Certifications ── -->
+    <div class="prov-section" *ngIf="boardCertList.length">
+      <div class="prov-section-header" (click)="toggleSection('boardCerts')">
+        <span class="prov-section-title">BOARD CERTIFICATIONS ({{ boardCertList.length }})</span>
+        <span class="material-icons-outlined prov-chevron"
+              [class.prov-chevron--collapsed]="!sections['boardCerts']">
+          expand_more
+        </span>
+      </div>
+      <div class="prov-section-body" *ngIf="sections['boardCerts']">
+        <div class="prov-cred-list">
+          <div class="prov-cred-item prov-cred-item--cert" *ngFor="let cert of boardCertList">
+            <div class="prov-cred-top">
+              <span class="prov-cred-type">{{ cert.boardname }}</span>
+              <span class="prov-cred-status" [ngClass]="credentialStatusClass(cert.status)">
+                {{ cert.status }}
+              </span>
+            </div>
+            <div class="prov-cred-value">{{ cert.certificationnumber }}</div>
+            <div class="prov-cred-meta">
+              <span>Initial: {{ formatDateShort(cert.initialcertificationdate) }}</span>
+              <span>Current: {{ formatDateShort(cert.currentcertificationdate) }}</span>
+              <span>Expires: {{ formatDateShort(cert.expirationdate) }}</span>
+            </div>
+            <div class="prov-cred-meta" *ngIf="cert.recertificationrequired">
+              <span class="prov-recert-flag">Recertification Required</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Networks ── -->
+    <div class="prov-section" *ngIf="networkList.length">
+      <div class="prov-section-header" (click)="toggleSection('networks')">
+        <span class="prov-section-title">NETWORKS ({{ networkList.length }})</span>
+        <span class="material-icons-outlined prov-chevron"
+              [class.prov-chevron--collapsed]="!sections['networks']">
+          expand_more
+        </span>
+      </div>
+      <div class="prov-section-body" *ngIf="sections['networks']">
+        <div class="prov-cred-list">
+          <div class="prov-cred-item" *ngFor="let net of networkList">
+            <div class="prov-cred-top">
+              <span class="prov-cred-type">{{ net.networkname }}</span>
+              <span class="prov-cred-status" [ngClass]="credentialStatusClass(net.status)">
+                {{ net.status }}
+              </span>
+            </div>
+            <div class="prov-cred-meta">
+              <span>Payer: {{ net.payername }} ({{ net.payerid }})</span>
+              <span>Type: {{ net.participationtype }}</span>
+            </div>
+            <div class="prov-cred-meta">
+              <span>Effective: {{ formatDateShort(net.effectivedate) }}</span>
+              <span *ngIf="net.terminationdate">Terminates: {{ formatDateShort(net.terminationdate) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Education ── -->
+    <div class="prov-section" *ngIf="educationList.length">
+      <div class="prov-section-header" (click)="toggleSection('education')">
+        <span class="prov-section-title">EDUCATION ({{ educationList.length }})</span>
+        <span class="material-icons-outlined prov-chevron"
+              [class.prov-chevron--collapsed]="!sections['education']">
+          expand_more
+        </span>
+      </div>
+      <div class="prov-section-body" *ngIf="sections['education']">
+        <div class="prov-cred-list">
+          <div class="prov-cred-item prov-cred-item--edu" *ngFor="let edu of educationList">
+            <div class="prov-cred-top">
+              <span class="prov-cred-type">{{ edu.degreetype }} — {{ edu.fieldofstudy }}</span>
+              <span class="prov-cred-status prov-cred--active">{{ edu.graduationyear }}</span>
+            </div>
+            <div class="prov-cred-value">{{ edu.institutionname }}</div>
+            <div class="prov-cred-meta">
+              <span>{{ formatDateShort(edu.startdate) }} — {{ formatDateShort(edu.completiondate) }}</span>
+              <span>{{ edu.country }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Liability Insurance ── -->
+    <div class="prov-section" *ngIf="insuranceList.length">
+      <div class="prov-section-header" (click)="toggleSection('insurance')">
+        <span class="prov-section-title">LIABILITY INSURANCE ({{ insuranceList.length }})</span>
+        <span class="material-icons-outlined prov-chevron"
+              [class.prov-chevron--collapsed]="!sections['insurance']">
+          expand_more
+        </span>
+      </div>
+      <div class="prov-section-body" *ngIf="sections['insurance']">
+        <div class="prov-cred-list">
+          <div class="prov-cred-item" *ngFor="let ins of insuranceList">
+            <div class="prov-cred-top">
+              <span class="prov-cred-type">{{ ins.coveragetype }}</span>
+              <span class="prov-cred-status" [ngClass]="credentialStatusClass(ins.status)">
+                {{ ins.status }}
+              </span>
+            </div>
+            <div class="prov-cred-value">{{ ins.insurancecarrier }} — {{ ins.policynumber }}</div>
+            <div class="prov-cred-meta">
+              <span>Coverage: {{ formatCurrency(ins.coverageamount) }}</span>
+              <span>{{ formatDateShort(ins.effectivedate) }} — {{ formatDateShort(ins.expirationdate) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Attestations ── -->
+    <div class="prov-section" *ngIf="attestationList.length">
+      <div class="prov-section-header" (click)="toggleSection('attestations')">
+        <span class="prov-section-title">ATTESTATIONS ({{ attestationList.length }})</span>
+        <span class="material-icons-outlined prov-chevron"
+              [class.prov-chevron--collapsed]="!sections['attestations']">
+          expand_more
+        </span>
+      </div>
+      <div class="prov-section-body" *ngIf="sections['attestations']">
+        <div class="prov-cred-list">
+          <div class="prov-cred-item" *ngFor="let att of attestationList">
+            <div class="prov-cred-top">
+              <span class="prov-cred-type">{{ att.attestedby }}</span>
+              <span class="prov-cred-status" [ngClass]="credentialStatusClass(att.attestationstatus)">
+                {{ att.attestationstatus }}
+              </span>
+            </div>
+            <div class="prov-cred-value">{{ att.attestationdetails }}</div>
+            <div class="prov-cred-meta">
+              <span>Attested: {{ formatDateShort(att.attestationdate) }}</span>
+              <span>Valid: {{ formatDateShort(att.validfromdate) }} — {{ formatDateShort(att.validtodate) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Characteristics ── -->
+    <div class="prov-section" *ngIf="characteristicList.length">
+      <div class="prov-section-header" (click)="toggleSection('characteristics')">
+        <span class="prov-section-title">CHARACTERISTICS ({{ characteristicList.length }})</span>
+        <span class="material-icons-outlined prov-chevron"
+              [class.prov-chevron--collapsed]="!sections['characteristics']">
+          expand_more
+        </span>
+      </div>
+      <div class="prov-section-body" *ngIf="sections['characteristics']">
+        <div class="prov-cred-list">
+          <div class="prov-cred-item" *ngFor="let ch of characteristicList">
+            <div class="prov-cred-top">
+              <span class="prov-cred-type">{{ ch.characteristictype }}</span>
+            </div>
+            <div class="prov-cred-value">{{ ch.characteristicvalue }}</div>
+            <div class="prov-cred-meta">
+              <span>Effective: {{ formatDateShort(ch.effectivedate) }}</span>
+              <span *ngIf="ch.expirationdate">Expires: {{ formatDateShort(ch.expirationdate) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Additional Info ── -->
+    <div class="prov-section">
+      <div class="prov-section-header" (click)="toggleSection('additional')">
+        <span class="prov-section-title">ADDITIONAL INFORMATION</span>
+        <span class="material-icons-outlined prov-chevron"
+              [class.prov-chevron--collapsed]="!sections['additional']">
+          expand_more
+        </span>
+      </div>
+      <div class="prov-section-body" *ngIf="sections['additional']">
+        <div class="prov-info-grid">
+          <div class="prov-info-item">
+            <div class="prov-info-label">ACCEPTING PATIENTS</div>
+            <div class="prov-info-value">
+              <span class="prov-accepting"
+                    [class.prov-accepting--yes]="prov.acceptingnewpatients"
+                    [class.prov-accepting--no]="!prov.acceptingnewpatients">
+                {{ prov.acceptingnewpatients ? 'Yes' : 'No' }}
+              </span>
+            </div>
+          </div>
+          <div class="prov-info-item" *ngIf="languageNames.length">
+            <div class="prov-info-label">LANGUAGES</div>
+            <div class="prov-info-value">{{ languageNames.join(', ') }}</div>
+          </div>
+          <div class="prov-info-item" *ngIf="prov.gender">
+            <div class="prov-info-label">GENDER</div>
+            <div class="prov-info-value">{{ prov.gender }}</div>
+          </div>
+          <div class="prov-info-item" *ngIf="providerTypeLabel">
+            <div class="prov-info-label">PROVIDER TYPE</div>
+            <div class="prov-info-value">{{ providerTypeLabel }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Loading state -->
+<div class="prov-loading" *ngIf="loading && !prov">
+  <div class="prov-loading-spinner"></div>
+  <span>Loading provider details...</span>
+</div>
+
+<!-- Error state -->
+<div class="prov-loading" *ngIf="errorMessage && !prov">
+  <span class="material-icons-outlined" style="color:#EF4444;font-size:28px;">error_outline</span>
+  <span>{{ errorMessage }}</span>
+</div>

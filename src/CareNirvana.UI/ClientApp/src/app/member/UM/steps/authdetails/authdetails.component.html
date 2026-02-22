@@ -335,7 +335,7 @@
 
                       <!-- Provider Info Card: visible when provider IS selected and NOT in edit mode -->
                       <ng-container *ngIf="hasProviderSelected(inst)">
-                        <div class="pc-info">
+                        <div class="pc-info pc-info--clickable" (click)="onProviderCardClick(inst, $event)">
                           <div class="pc-info-header">
                             <div class="pc-info-name-row">
                               <span class="pc-info-name">{{ getProviderFullName(inst) }}</span>
@@ -368,6 +368,12 @@
                           <div class="pc-oon-warning" *ngIf="getProviderNetworkStatus(inst) === 'Out-of-Network'">
                             <mat-icon class="pc-oon-icon">info</mat-icon>
                             <span>Out-of-Network provider — additional member cost share may apply</span>
+                          </div>
+                          <!-- View Details link -->
+                          <div class="pc-view-details">
+                            <span class="material-icons-outlined pc-view-details-icon">open_in_new</span>
+                            <span>View Details</span>
+                            <span class="pc-view-details-arrow">→</span>
                           </div>
                         </div>
                       </ng-container>
@@ -856,7 +862,7 @@
 
                   <!-- Provider Info Card: visible when provider IS selected and NOT in edit mode -->
                   <ng-container *ngIf="hasProviderSelected(inst)">
-                    <div class="pc-info">
+                    <div class="pc-info pc-info--clickable" (click)="onProviderCardClick(inst, $event)">
                       <div class="pc-info-header">
                         <div class="pc-info-name-row">
                           <span class="pc-info-name">{{ getProviderFullName(inst) }}</span>
@@ -889,6 +895,12 @@
                       <div class="pc-oon-warning" *ngIf="getProviderNetworkStatus(inst) === 'Out-of-Network'">
                         <mat-icon class="pc-oon-icon">info</mat-icon>
                         <span>Out-of-Network provider — additional member cost share may apply</span>
+                      </div>
+                      <!-- View Details link -->
+                      <div class="pc-view-details">
+                        <span class="material-icons-outlined pc-view-details-icon">open_in_new</span>
+                        <span>View Details</span>
+                        <span class="pc-view-details-arrow">→</span>
                       </div>
                     </div>
                   </ng-container>

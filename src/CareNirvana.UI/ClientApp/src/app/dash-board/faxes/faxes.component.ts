@@ -1,5 +1,7 @@
-import { Component, OnInit, ViewChild, ElementRef, DestroyRef } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef, DestroyRef, AfterViewInit } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
+import { MatSort } from '@angular/material/sort';
+import { MatPaginator } from '@angular/material/paginator';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { finalize, firstValueFrom } from 'rxjs';
 import { DashboardServiceService, FaxFile as ApiFaxFile } from 'src/app/service/dashboard.service.service';
@@ -77,7 +79,7 @@ export interface FaxFileListResponse {
   styleUrl: './faxes.component.css'
 })
 
-export class FaxesComponent implements OnInit {
+export class FaxesComponent implements OnInit, AfterViewInit {
 
   // Table
   columns = ['fileName', 'receivedAt', 'member', 'workBasket', 'priority', 'status', 'actions'];
@@ -100,6 +102,8 @@ export class FaxesComponent implements OnInit {
   details: any; // bind your OCR later
 
   @ViewChild('fileInput') fileInput?: ElementRef<HTMLInputElement>;
+  @ViewChild(MatSort) sort!: MatSort;
+  @ViewChild(MatPaginator) paginator!: MatPaginator;
   result: OcrResult | null = null;
   student?: { name?: string; studentNumber?: string; address?: string };
   isProcessing = false;
@@ -231,6 +235,25 @@ export class FaxesComponent implements OnInit {
   }
 
   // -------- List / paging --------
+
+  ngAfterViewInit(): void {
+    this.dataSource.sort = this.sort;
+    this.dataSource.paginator = this.paginator;
+
+    // Custom sorting data accessor for columns that don't map 1:1 to property names
+    this.dataSource.sortingDataAccessor = (item: FaxFile, sortHeaderId: string): string | number => {
+      switch (sortHeaderId) {
+        case 'fileName':    return (item.fileName || '').toLowerCase();
+        case 'receivedAt':  return item.receivedAt ? new Date(item.receivedAt).getTime() : 0;
+        case 'member':      return (item.memberName || '').toLowerCase();
+        case 'workBasket':  return (item.workBasket || '').toLowerCase();
+        case 'priority':    return item.priority ?? 2;
+        case 'status':      return (item.status || '').toLowerCase();
+        default:            return '';
+      }
+    };
+  }
+
   reload(): void {
     this.loading = true;
 

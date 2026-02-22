@@ -1,0 +1,380 @@
+<!-- ═══════════════════════════════════════════════════
+     CLAIM DETAILS — Displays data from getClaimJson API
+     ═══════════════════════════════════════════════════ -->
+<div class="claim-card" *ngIf="detail">
+
+  <!-- ══════ HEADER (blue gradient) ══════ -->
+  <div class="claim-header">
+    <div class="claim-header-left">
+      <span class="claim-header-icon material-icons-outlined">receipt_long</span>
+      <span class="claim-header-title">Claim Details</span>
+    </div>
+    <div class="claim-header-actions" *ngIf="!embedded">
+      <button class="claim-action-btn" (click)="onEdit()" title="Edit">
+        <span class="material-icons-outlined">edit</span>
+      </button>
+      <button class="claim-action-btn" (click)="onPrint()" title="Print">
+        <span class="material-icons-outlined">print</span>
+      </button>
+      <button class="claim-action-btn" (click)="onDownload()" title="Download">
+        <span class="material-icons-outlined">download</span>
+      </button>
+      <button class="claim-action-btn" (click)="onClose()" title="Close">
+        <span class="material-icons-outlined">close</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════ IDENTITY BLOCK ══════ -->
+  <div class="claim-identity">
+    <div class="claim-number">{{ detail.claimNumber }}</div>
+    <div class="claim-badges">
+      <span class="claim-badge" [ngClass]="statusClass">{{ detail.status }}</span>
+      <span class="claim-badge claim-badge--type">{{ detail.claimType }}</span>
+      <span class="claim-badge claim-badge--program" *ngIf="detail.programType">{{ detail.programType }}</span>
+    </div>
+  </div>
+
+  <!-- ══════ SCROLLABLE BODY ══════ -->
+  <div class="claim-body">
+
+    <!-- ── Claim Information ── -->
+    <div class="claim-section">
+      <div class="claim-section-header" (click)="toggleSection('claimInfo')">
+        <span class="claim-section-title">CLAIM INFORMATION</span>
+        <span class="material-icons-outlined claim-chevron"
+              [class.claim-chevron--collapsed]="!sections['claimInfo']">
+          expand_more
+        </span>
+      </div>
+      <div class="claim-section-body" *ngIf="sections['claimInfo']">
+        <div class="claim-fields">
+          <div class="claim-field-row">
+            <span class="claim-field-label">MEMBER ID</span>
+            <span class="claim-field-value">{{ detail.memberId }}</span>
+          </div>
+          <div class="claim-field-row">
+            <span class="claim-field-label">PROVIDER ID</span>
+            <span class="claim-field-value">{{ detail.providerId }}</span>
+          </div>
+          <div class="claim-field-row">
+            <span class="claim-field-label">DATE OF SERVICE</span>
+            <span class="claim-field-value">
+              {{ formatDateShort(detail.dateOfService) }}
+              <span *ngIf="detail.dateOfService !== detail.dateOfServiceTo">
+                — {{ formatDateShort(detail.dateOfServiceTo) }}
+              </span>
+            </span>
+          </div>
+          <div class="claim-field-row">
+            <span class="claim-field-label">RECEIVED DATE</span>
+            <span class="claim-field-value">{{ formatDateShort(detail.receivedDate) }}</span>
+          </div>
+          <div class="claim-field-row" *ngIf="detail.paidDate">
+            <span class="claim-field-label">PAID DATE</span>
+            <span class="claim-field-value">{{ formatDateShort(detail.paidDate) }}</span>
+          </div>
+          <div class="claim-field-row" *ngIf="detail.reasonForVisit">
+            <span class="claim-field-label">REASON FOR VISIT</span>
+            <span class="claim-field-value">{{ detail.reasonForVisit }}</span>
+          </div>
+          <div class="claim-field-row" *ngIf="detail.billType">
+            <span class="claim-field-label">BILL TYPE</span>
+            <span class="claim-field-value">{{ detail.billType }}</span>
+          </div>
+          <div class="claim-field-row" *ngIf="detail.los">
+            <span class="claim-field-label">LOS</span>
+            <span class="claim-field-value">{{ detail.los }} day(s)</span>
+          </div>
+          <div class="claim-field-row" *ngIf="detail.authNumber">
+            <span class="claim-field-label">AUTH NUMBER</span>
+            <span class="claim-field-value">{{ detail.authNumber }}</span>
+          </div>
+          <div class="claim-field-row" *ngIf="detail.patientControlNumber">
+            <span class="claim-field-label">PATIENT CTRL #</span>
+            <span class="claim-field-value">{{ detail.patientControlNumber }}</span>
+          </div>
+          <div class="claim-field-row" *ngIf="detail.medicalRecordNumber">
+            <span class="claim-field-label">MEDICAL REC #</span>
+            <span class="claim-field-value">{{ detail.medicalRecordNumber }}</span>
+          </div>
+          <div class="claim-field-row" *ngIf="detail.companyCode">
+            <span class="claim-field-label">COMPANY CODE</span>
+            <span class="claim-field-value">{{ detail.companyCode }}</span>
+          </div>
+          <div class="claim-field-row" *ngIf="detail.notes">
+            <span class="claim-field-label">NOTES</span>
+            <span class="claim-field-value">{{ detail.notes }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Diagnoses ── -->
+    <div class="claim-section" *ngIf="detail.diagnoses?.length">
+      <div class="claim-section-header" (click)="toggleSection('diagnoses')">
+        <span class="claim-section-title">DIAGNOSES</span>
+        <span class="material-icons-outlined claim-chevron"
+              [class.claim-chevron--collapsed]="!sections['diagnoses']">
+          expand_more
+        </span>
+      </div>
+      <div class="claim-section-body" *ngIf="sections['diagnoses']">
+        <div class="claim-fields">
+          <div class="claim-field-row" *ngFor="let dx of detail.diagnoses">
+            <span class="claim-field-label">
+              <span class="claim-dx-badge" *ngIf="dx.isprimary">PRIMARY</span>
+              <span *ngIf="!dx.isprimary">SEQ {{ dx.diagnosissequence }}</span>
+            </span>
+            <span class="claim-field-value">
+              ICD Code ID: {{ dx.icdcodeid }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Financial Summary ── -->
+    <div class="claim-section" *ngIf="detail.financial">
+      <div class="claim-section-header" (click)="toggleSection('financial')">
+        <span class="claim-section-title">FINANCIAL SUMMARY</span>
+        <span class="material-icons-outlined claim-chevron"
+              [class.claim-chevron--collapsed]="!sections['financial']">
+          expand_more
+        </span>
+      </div>
+      <div class="claim-section-body" *ngIf="sections['financial']">
+
+        <!-- Primary financial metrics (2x2 grid) -->
+        <div class="claim-fin-grid">
+          <div class="claim-fin-card claim-fin-card--default">
+            <div class="claim-fin-label">BILLED</div>
+            <div class="claim-fin-value">{{ formatCurrency(detail.financial.billed) }}</div>
+          </div>
+          <div class="claim-fin-card claim-fin-card--default">
+            <div class="claim-fin-label">ALLOWED</div>
+            <div class="claim-fin-value">{{ formatCurrency(detail.financial.allowed) }}</div>
+          </div>
+          <div class="claim-fin-card claim-fin-card--highlight"
+               [class.claim-fin-card--danger]="detail.financial.paid === 0"
+               [class.claim-fin-card--success]="detail.financial.paid > 0">
+            <div class="claim-fin-label">PAID</div>
+            <div class="claim-fin-value">{{ formatCurrency(detail.financial.paid) }}</div>
+          </div>
+          <div class="claim-fin-card claim-fin-card--default">
+            <div class="claim-fin-label">MEMBER RESP.</div>
+            <div class="claim-fin-value">{{ formatCurrency(detail.financial.memberResp) }}</div>
+          </div>
+        </div>
+
+        <!-- Sub-breakdown (3 compact chips) -->
+        <div class="claim-fin-breakdown">
+          <div class="claim-fin-chip">
+            <div class="claim-fin-chip-label">Deductible</div>
+            <div class="claim-fin-chip-value">{{ formatCurrency(detail.financial.deductible) }}</div>
+          </div>
+          <div class="claim-fin-chip">
+            <div class="claim-fin-chip-label">Coinsurance</div>
+            <div class="claim-fin-chip-value">{{ formatCurrency(detail.financial.coinsurance) }}</div>
+          </div>
+          <div class="claim-fin-chip">
+            <div class="claim-fin-chip-label">Copay</div>
+            <div class="claim-fin-chip-value">{{ formatCurrency(detail.financial.copay) }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Claim Lines ── -->
+    <div class="claim-section" *ngIf="detail.lines?.length">
+      <div class="claim-section-header" (click)="toggleSection('lines')">
+        <span class="claim-section-title">CLAIM LINES ({{ detail.lines.length }})</span>
+        <span class="material-icons-outlined claim-chevron"
+              [class.claim-chevron--collapsed]="!sections['lines']">
+          expand_more
+        </span>
+      </div>
+      <div class="claim-section-body" *ngIf="sections['lines']">
+        <div class="claim-line-card" *ngFor="let line of detail.lines">
+          <div class="claim-line-header">
+            <span class="claim-line-number">Line {{ line.lineNumber }}</span>
+            <span class="claim-badge claim-badge--line-status"
+                  [ngClass]="getLineStatusClass(line.statusId)">
+              {{ getLineStatus(line.statusId) }}
+            </span>
+            <span class="claim-badge claim-badge--noncovered" *ngIf="line.noncovered">
+              Non-Covered
+            </span>
+          </div>
+
+          <div class="claim-fields">
+            <div class="claim-field-row">
+              <span class="claim-field-label">DOS</span>
+              <span class="claim-field-value">
+                {{ formatDateShort(line.dosFrom) }}
+                <span *ngIf="line.dosFrom !== line.dosTo"> — {{ formatDateShort(line.dosTo) }}</span>
+              </span>
+            </div>
+            <div class="claim-field-row">
+              <span class="claim-field-label">UNITS</span>
+              <span class="claim-field-value">{{ line.units }}</span>
+            </div>
+            <div class="claim-field-row">
+              <span class="claim-field-label">SERVICE CODE</span>
+              <span class="claim-field-value">{{ line.serviceCodeId }}</span>
+            </div>
+            <div class="claim-field-row">
+              <span class="claim-field-label">REVENUE CODE</span>
+              <span class="claim-field-value">{{ line.revenueCodeId }}</span>
+            </div>
+          </div>
+
+          <!-- Line-level financials -->
+          <div class="claim-line-financials">
+            <div class="claim-line-fin-item">
+              <span class="claim-line-fin-label">Billed</span>
+              <span class="claim-line-fin-value">{{ formatCurrency(line.billedAmount) }}</span>
+            </div>
+            <div class="claim-line-fin-item">
+              <span class="claim-line-fin-label">Allowed</span>
+              <span class="claim-line-fin-value">{{ formatCurrency(line.allowedAmount) }}</span>
+            </div>
+            <div class="claim-line-fin-item">
+              <span class="claim-line-fin-label">Net</span>
+              <span class="claim-line-fin-value claim-line-fin-value--net">{{ formatCurrency(line.netAmount) }}</span>
+            </div>
+            <div class="claim-line-fin-item">
+              <span class="claim-line-fin-label">Copay</span>
+              <span class="claim-line-fin-value">{{ formatCurrency(line.copay) }}</span>
+            </div>
+            <div class="claim-line-fin-item">
+              <span class="claim-line-fin-label">Deductible</span>
+              <span class="claim-line-fin-value">{{ formatCurrency(line.deductible) }}</span>
+            </div>
+            <div class="claim-line-fin-item">
+              <span class="claim-line-fin-label">Coins.</span>
+              <span class="claim-line-fin-value">{{ formatCurrency(line.coinsurance) }}</span>
+            </div>
+          </div>
+
+          <div class="claim-line-notes" *ngIf="line.notes">
+            <span class="claim-field-label">NOTES</span>
+            <span class="claim-field-value">{{ line.notes }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Pharmacy Information ── -->
+    <div class="claim-section" *ngIf="hasPharmacyData">
+      <div class="claim-section-header" (click)="toggleSection('pharmacy')">
+        <span class="claim-section-title">PHARMACY</span>
+        <span class="material-icons-outlined claim-chevron"
+              [class.claim-chevron--collapsed]="!sections['pharmacy']">
+          expand_more
+        </span>
+      </div>
+      <div class="claim-section-body" *ngIf="sections['pharmacy']">
+        <div class="claim-pharmacy-card" *ngFor="let entry of allPharmacyEntries">
+          <div class="claim-pharmacy-header">
+            <span class="claim-pharmacy-drug-name">{{ entry.pharmacy.drugname }}</span>
+            <span class="claim-badge claim-badge--type">
+              {{ entry.pharmacy.isbrandmedication ? 'Brand' : 'Generic' }}
+            </span>
+          </div>
+          <div class="claim-fields">
+            <div class="claim-field-row">
+              <span class="claim-field-label">STRENGTH</span>
+              <span class="claim-field-value">{{ entry.pharmacy.drugstrength }} — {{ entry.pharmacy.drugform }}</span>
+            </div>
+            <div class="claim-field-row">
+              <span class="claim-field-label">NDC</span>
+              <span class="claim-field-value">{{ entry.pharmacy.nationaldrugcode }}</span>
+            </div>
+            <div class="claim-field-row">
+              <span class="claim-field-label">QUANTITY</span>
+              <span class="claim-field-value">{{ entry.pharmacy.quantity }} {{ entry.pharmacy.quantityuom }} (Dispensed: {{ entry.pharmacy.dispensedquantity }})</span>
+            </div>
+            <div class="claim-field-row">
+              <span class="claim-field-label">DAY SUPPLY</span>
+              <span class="claim-field-value">{{ entry.pharmacy.daysupply }} days</span>
+            </div>
+            <div class="claim-field-row">
+              <span class="claim-field-label">REFILL #</span>
+              <span class="claim-field-value">{{ entry.pharmacy.refillnumber }}</span>
+            </div>
+            <div class="claim-field-row" *ngIf="entry.pharmacy.medicationnotes">
+              <span class="claim-field-label">RX NOTES</span>
+              <span class="claim-field-value">{{ entry.pharmacy.medicationnotes }}</span>
+            </div>
+            <div class="claim-field-row">
+              <span class="claim-field-label">CLAIM LINE</span>
+              <span class="claim-field-value">Line {{ entry.lineNumber }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Dental / Tooth Details ── -->
+    <div class="claim-section" *ngIf="hasDentalData">
+      <div class="claim-section-header" (click)="toggleSection('dental')">
+        <span class="claim-section-title">DENTAL DETAILS</span>
+        <span class="material-icons-outlined claim-chevron"
+              [class.claim-chevron--collapsed]="!sections['dental']">
+          expand_more
+        </span>
+      </div>
+      <div class="claim-section-body" *ngIf="sections['dental']">
+        <div class="claim-dental-card" *ngFor="let entry of allToothEntries">
+          <div class="claim-fields">
+            <div class="claim-field-row">
+              <span class="claim-field-label">TOOTH #</span>
+              <span class="claim-field-value">{{ entry.tooth.toothnumber }}</span>
+            </div>
+            <div class="claim-field-row">
+              <span class="claim-field-label">SURFACE</span>
+              <span class="claim-field-value">{{ entry.tooth.toothsurfacecode }}</span>
+            </div>
+            <div class="claim-field-row">
+              <span class="claim-field-label">CLAIM LINE</span>
+              <span class="claim-field-value">Line {{ entry.lineNumber }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Processing Timeline ── -->
+    <div class="claim-section" *ngIf="detail.timeline?.length">
+      <div class="claim-section-header" (click)="toggleSection('timeline')">
+        <span class="claim-section-title">PROCESSING TIMELINE</span>
+        <span class="material-icons-outlined claim-chevron"
+              [class.claim-chevron--collapsed]="!sections['timeline']">
+          expand_more
+        </span>
+      </div>
+      <div class="claim-section-body" *ngIf="sections['timeline']">
+        <div class="claim-timeline">
+          <div class="claim-timeline-track">
+            <div class="claim-timeline-fill" [style.width.%]="timelineProgress"></div>
+          </div>
+          <div class="claim-timeline-steps">
+            <div class="claim-timeline-step" *ngFor="let step of detail.timeline">
+              <div class="claim-timeline-dot" [class.claim-timeline-dot--active]="step.completed"></div>
+              <div class="claim-timeline-label">{{ step.label }}</div>
+              <div class="claim-timeline-date">{{ step.date }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Loading state -->
+<div class="claim-loading" *ngIf="loading && !detail">
+  <div class="claim-loading-spinner"></div>
+  <span>Loading claim details...</span>
+</div>
