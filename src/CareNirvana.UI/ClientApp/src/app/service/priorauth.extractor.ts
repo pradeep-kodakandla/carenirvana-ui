@@ -918,24 +918,37 @@ export function extractArizonaFromText(pageText: string): Partial<PriorAuth> {
   const refName = getNext(/REFERRING PHYSICIAN.S NAME/i);
 
   // ── NPI: extract digits from same line AND next line (OCR may place it either way) ──
+  // OCR often inserts spaces within digit sequences ("10000000 2" instead of "100000002")
   const npiIdx1 = findLineIdx(lines, /\bNPI NO\./i);
   let npiTop: string | undefined;
   if (npiIdx1 >= 0) {
     // Try inline first: "REFERRING PHYSICIAN'S SIGNATURE NPI NO. 100000002"
-    const inlineDigits = lines[npiIdx1].match(/NPI\s+NO\.?\s*(\d{7,10})/i);
+    const inlineDigits = lines[npiIdx1].match(/NPI\s+NO\.?\s*([\d\s]{7,})/i);
     if (inlineDigits) {
-      npiTop = inlineDigits[1];
+      npiTop = inlineDigits[1].replace(/\s/g, '');  // strip OCR spaces
     } else {
-      // Try next non-empty lines
+      // Try next non-empty lines — grab ALL digits (even space-separated)
       for (let k = 1; k <= 3 && npiIdx1 + k < lines.length; k++) {
         const v = cleanLine(lines[npiIdx1 + k]);
         if (v) {
-          const dm = v.match(/(\d{7,10})/);
-          npiTop = dm ? dm[1] : undefined;
+          // Collect all digit characters, stripping internal spaces
+          const digitsOnly = v.replace(/\s/g, '').match(/(\d{7,10})/);
+          // Also try: the line might be "100000002" or "10000000 2" or "1 0 0 0 0 0 0 0 2"
+          if (digitsOnly) {
+            npiTop = digitsOnly[1];
+          } else {
+            // Try collecting all digits from the line
+            const allDigits = v.replace(/[^\d]/g, '');
+            if (allDigits.length >= 7 && allDigits.length <= 10) {
+              npiTop = allDigits;
+            }
+          }
           break;
         }
       }
     }
+    // Validate: NPI must be 9 or 10 digits in practice
+    if (npiTop && (npiTop.length < 7 || npiTop.length > 10)) npiTop = undefined;
   }
 
   // Phone/Fax for referring physician — use start offsets to avoid matching servicing section
@@ -946,9 +959,56 @@ export function extractArizonaFromText(pageText: string): Partial<PriorAuth> {
   out.providerRequesting = { name: refName, phone: refPhone, fax: refFax, npi: npiTop };
 
   // ── Service dates: use positional start to avoid "TO END" matching wrong text ──
+  // Also try inline extraction since OCR may place date on same line as label
   const dateBeginIdx = findLineIdx(lines, /DATE SERVICE TO BEGIN/i);
-  const svcStart = firstMatch(dateRe, getNext(/DATE SERVICE TO BEGIN/i) || '') || undefined;
-  const svcEnd = firstMatch(dateRe, getNext(/\bTO END\b/i, dateBeginIdx >= 0 ? dateBeginIdx : 0) || '') || undefined;
+  let svcStart: string | undefined;
+  let svcEnd: string | undefined;
+
+  if (dateBeginIdx >= 0) {
+    // Try inline first: "DATE SERVICE TO BEGIN 3/1/26"
+    const beginLine = lines[dateBeginIdx];
+    const inlineStart = firstMatch(dateRe, beginLine.replace(/DATE SERVICE TO BEGIN/i, ''));
+    if (inlineStart) {
+      svcStart = inlineStart;
+    } else {
+      // Try next line
+      const nextVal = getNext(/DATE SERVICE TO BEGIN/i);
+      svcStart = firstMatch(dateRe, nextVal || '') || undefined;
+    }
+
+    // TO END — search from dateBeginIdx to avoid matching wrong "TO" text
+    const toEndIdx = findLineIdx(lines, /\bTO END\b/i, dateBeginIdx);
+    if (toEndIdx >= 0) {
+      // Try inline: "TO END 3/5/26"
+      const endLine = lines[toEndIdx];
+      const inlineEnd = firstMatch(dateRe, endLine.replace(/TO END/i, ''));
+      if (inlineEnd) {
+        svcEnd = inlineEnd;
+      } else {
+        // Try next line
+        for (let k = 1; k <= 3 && toEndIdx + k < lines.length; k++) {
+          const v = cleanLine(lines[toEndIdx + k]);
+          if (v) {
+            svcEnd = firstMatch(dateRe, v);
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // Fallback: scan entire text for date pairs near "BEGIN" and "END"
+  if (!svcStart || !svcEnd) {
+    const fullText = lines.join(' ');
+    if (!svcStart) {
+      const sm = fullText.match(/DATE\s+SERVICE\s+TO\s+BEGIN\s*[:\s]*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+      if (sm) svcStart = sm[1];
+    }
+    if (!svcEnd) {
+      const em = fullText.match(/TO\s+END\s*[:\s]*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+      if (em) svcEnd = em[1];
+    }
+  }
 
   // Diagnosis & CPT/HCPCS
   const dxLine = getNext(/\bDIAGNOSIS\b/i) || '';
@@ -992,19 +1052,22 @@ export function extractArizonaFromText(pageText: string): Partial<PriorAuth> {
   let npiBottom: string | undefined;
   const npiIdx2 = findLineIdx(lines, /\bNPI NO\./i, npiIdx1 >= 0 ? npiIdx1 + 1 : searchFrom);
   if (npiIdx2 >= 0) {
-    const inlineDigits = lines[npiIdx2].match(/NPI\s+NO\.?\s*(\d{7,10})/i);
+    const inlineDigits = lines[npiIdx2].match(/NPI\s+NO\.?\s*([\d\s]{7,})/i);
     if (inlineDigits) {
-      npiBottom = inlineDigits[1];
+      npiBottom = inlineDigits[1].replace(/\s/g, '');
     } else {
       for (let k = 1; k <= 3 && npiIdx2 + k < lines.length; k++) {
         const v = cleanLine(lines[npiIdx2 + k]);
         if (v) {
-          const dm = v.match(/(\d{7,10})/);
-          npiBottom = dm ? dm[1] : undefined;
+          const allDigits = v.replace(/[^\d]/g, '');
+          if (allDigits.length >= 7 && allDigits.length <= 10) {
+            npiBottom = allDigits;
+          }
           break;
         }
       }
     }
+    if (npiBottom && (npiBottom.length < 7 || npiBottom.length > 10)) npiBottom = undefined;
   }
 
   out.providerServicing = { name: provName, facility, phone: provPhone, fax: provFax, npi: npiBottom };
