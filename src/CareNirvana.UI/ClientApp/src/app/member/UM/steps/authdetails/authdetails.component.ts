@@ -2858,7 +2858,11 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     const safeJsonData = jsonData && jsonData.trim() ? jsonData : '{}';
 
     // ── AUTO-APPROVE: when SmartAuthCheck returned AuthApprove=Yes ─────────
-    const autoApproveFlag = String(this.smartCheckPrefill?.authApprove ?? '').trim().toLowerCase();
+    // In fax mode read from the fax prefill input; in wizard mode from session-based smartCheckPrefill.
+    const autoApproveRaw = this.isFaxMode
+      ? String((this.pendingFaxPrefill as any)?.authApprove ?? (this.faxPrefill as any)?.authApprove ?? '').trim()
+      : String(this.smartCheckPrefill?.authApprove ?? '').trim();
+    const autoApproveFlag = autoApproveRaw.toLowerCase();
     const isAutoApprove = autoApproveFlag === 'y' || autoApproveFlag === 'yes' || autoApproveFlag === 'true' || autoApproveFlag === '1';
 
     if (isAutoApprove) {
@@ -2949,6 +2953,12 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     try {
       this.isSaving = true;
 
+      // Compute effective authApprove once — used by both UPDATE and CREATE paths.
+      // In fax mode read from the fax prefill input; in wizard mode from session-based smartCheckPrefill.
+      const effectiveAuthApprove = this.isFaxMode
+        ? ((this.pendingFaxPrefill as any)?.authApprove ?? (this.faxPrefill as any)?.authApprove ?? this.smartCheckPrefill?.authApprove)
+        : this.smartCheckPrefill?.authApprove;
+
       if (authDetailId > 0) {
         // UPDATE: do NOT regenerate authNumber
         payload.authNumber = this.authNumber === '0' ? null : this.authNumber;
@@ -2958,7 +2968,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         this._resetCleanSnapshot();
 
         // Seed Decision Details rows (idempotent) after save
-        await this.seedDecisionAfterSave(authDetailId, merged, userId, authTypeId, this.smartCheckPrefill?.authApprove);
+        await this.seedDecisionAfterSave(authDetailId, merged, userId, authTypeId, effectiveAuthApprove);
 
         // Fax mode — emit instead of navigating
         if (this.isFaxMode) {
@@ -2999,7 +3009,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
           // force re-hydrate header immediately (so Auth # updates without waiting on navigation)
           this.shell?.refreshHeader();
 
-          await this.seedDecisionAfterSave(createdAuthDetailId, merged, userId, authTypeId, this.smartCheckPrefill?.authApprove);
+          await this.seedDecisionAfterSave(createdAuthDetailId, merged, userId, authTypeId, effectiveAuthApprove);
 
           const newAuthNumber = (fresh as any)?.authNumber;
           if (newAuthNumber) this.authNumber = String(newAuthNumber);

@@ -961,6 +961,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   smartAuthCheckCompleted = false;
   smartAuthCheckMatched: boolean | null = null;
   smartAuthCheckAuthRequired: boolean | null = null; // true/false when matched; null when NO_MATCH/unmatched
+  smartAuthCheckAuthApprove: string | null = null; // raw AuthApprove value from rules engine (e.g. 'Yes', 'No')
   smartAuthCheckError = '';
 
   private resetSmartAuthCheckState(): void {
@@ -968,6 +969,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     this.smartAuthCheckCompleted = false;
     this.smartAuthCheckMatched = null;
     this.smartAuthCheckAuthRequired = null;
+    this.smartAuthCheckAuthApprove = null;
     this.smartAuthCheckError = '';
   }
 
@@ -1002,12 +1004,17 @@ export class FaxesComponent implements OnInit, AfterViewInit {
             this.getOutput(outputs, 'dt.result.AuthRequired') ||
             this.getOutput(outputs, 'result1'); // fallback
 
+          const authApproveRaw =
+            this.getOutput(outputs, 'dt.result.AuthApprove') ||
+            this.getOutput(outputs, 'result2'); // fallback
+
           const matched =
             !!(res as any)?.matched &&
             String((res as any)?.status ?? '').toUpperCase() !== 'NO_MATCH';
 
           this.smartAuthCheckMatched = matched;
           this.smartAuthCheckAuthRequired = matched ? this.isYes(authRequiredRaw) : null;
+          this.smartAuthCheckAuthApprove = matched ? (authApproveRaw || null) : null;
           this.smartAuthCheckCompleted = true;
         },
         error: (e: any) => {
@@ -1109,20 +1116,33 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     }
 
     // ── Fix NPI: find ALL 7-10 digit numbers near "NPI NO." in the text ──
-    // The generic extractor often truncates these. We ALWAYS override because
-    // existing values are known to be wrong (truncated) for AZ forms.
-    const npiPattern = /NPI\s+NO\.?\s*[:\s]*(\d{7,10})/gi;
+    // OCR often inserts spaces within digit sequences ("10000000 2" → "100000002").
+    // We ALWAYS override because existing values are known to be truncated for AZ forms.
     const npiHits: string[] = [];
     let m: RegExpExecArray | null;
-    while ((m = npiPattern.exec(t)) !== null) {
-      npiHits.push(m[1]);
+
+    // Strategy 1: NPI NO. followed by digits (possibly with spaces) on same line
+    const npiPattern1 = /NPI\s+NO\.?\s*[:\s]*([\d][\d\s]{6,12})/gi;
+    while ((m = npiPattern1.exec(t)) !== null) {
+      const digits = m[1].replace(/\s/g, '');
+      if (digits.length >= 7 && digits.length <= 10) npiHits.push(digits);
     }
 
-    // Also try: NPI number on its own line or after other text
+    // Strategy 2: NPI NO. on one line, digits (possibly space-separated) on next line
     if (npiHits.length === 0) {
-      const altNpi = /NPI\s+NO\.?[\s\S]{0,30}?(\d{7,10})/gi;
-      while ((m = altNpi.exec(t)) !== null) {
-        npiHits.push(m[1]);
+      const npiPattern2 = /NPI\s+NO\.?\s*[\n\r]+([\d][\d\s]{6,12})/gi;
+      while ((m = npiPattern2.exec(t)) !== null) {
+        const digits = m[1].replace(/\s/g, '');
+        if (digits.length >= 7 && digits.length <= 10) npiHits.push(digits);
+      }
+    }
+
+    // Strategy 3: broadest — NPI NO. within 50 chars of a digit sequence
+    if (npiHits.length === 0) {
+      const npiPattern3 = /NPI\s+NO\.?[\s\S]{0,50}?([\d][\d\s]{6,12})/gi;
+      while ((m = npiPattern3.exec(t)) !== null) {
+        const digits = m[1].replace(/\s/g, '');
+        if (digits.length >= 7 && digits.length <= 10) npiHits.push(digits);
       }
     }
 
@@ -1177,14 +1197,27 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     );
 
     // ── Fix service dates: find date patterns near form date labels ──
-    const startMatch = t.match(/DATE\s+SERVICE\s+TO\s+BEGIN[\s\S]{0,50}?(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
-    const endMatch = t.match(/TO\s+END[\s\S]{0,50}?(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+    // OCR may insert spaces around slashes: "3/ 1/26" or "3 /1/ 26"
+    // Use a loose pattern that allows optional spaces around /
+    const dateLoose = /(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{2,4})/;
+    const extractDate = (text: string): string | undefined => {
+      const dm = text.match(dateLoose);
+      return dm ? `${dm[1]}/${dm[2]}/${dm[3]}` : undefined;  // normalize spaces away
+    };
 
-    // Broader fallback: search near "BEGIN" and "END" keywords
-    const startMatch2 = !startMatch ? t.match(/\bBEGIN\b[\s\S]{0,30}?(\d{1,2}\/\d{1,2}\/\d{2,4})/i) : null;
-    const endMatch2 = !endMatch ? t.match(/\bTO\s+END\b[\s\S]{0,80}?(\d{1,2}\/\d{1,2}\/\d{2,4})/i) : null;
-    const finalStart = startMatch?.[1] || startMatch2?.[1];
-    const finalEnd = endMatch?.[1] || endMatch2?.[1];
+    // Search for dates near BEGIN/END labels with generous window
+    const beginChunk = t.match(/DATE\s+SERVICE\s+TO\s+BEGIN([\s\S]{0,80})/i);
+    const endChunk = t.match(/\bTO\s+END\b([\s\S]{0,80})/i);
+
+    const finalStart = beginChunk ? extractDate(beginChunk[1]) : undefined;
+    const finalEnd = endChunk ? extractDate(endChunk[1]) : undefined;
+
+    // Broadest fallback: join all text and try
+    const finalStart2 = !finalStart ? extractDate((t.match(/BEGIN[\s\S]{0,50}/i) || [''])[0]) : undefined;
+    const finalEnd2 = !finalEnd ? extractDate((t.match(/TO\s+END[\s\S]{0,100}/i) || [''])[0]) : undefined;
+
+    const startDate = finalStart || finalStart2;
+    const endDate = finalEnd || finalEnd2;
 
     // ── Fix servicing provider: find name after "PROVIDER'S NAME" ──
     // Use a very loose apostrophe pattern: any single character between R and S
@@ -1215,24 +1248,24 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       }
       // Fix dates — ALWAYS override if we found dates near the form labels
       // Existing values are often undefined or wrong for AZ forms
-      if (finalStart) {
-        svc.startDate = finalStart;
+      if (startDate) {
+        svc.startDate = startDate;
       }
-      if (finalEnd) {
-        svc.endDate = finalEnd;
+      if (endDate) {
+        svc.endDate = endDate;
       }
       // Fix diagnosisCode from dx if missing
       if (!svc.diagnosisCode && pa.dx?.codes?.[0]) {
         svc.diagnosisCode = pa.dx.codes[0];
       }
-    } else if (hcpcsHits.length > 0 || finalStart || finalEnd) {
+    } else if (hcpcsHits.length > 0 || startDate || endDate) {
       // No services from extractors — build one from scratch
       if (!pa.services) pa.services = [];
       pa.services.push({
         code: hcpcsHits[0] ?? '',
         description: hcpcsLineMatch?.[2]?.trim() ?? '',
-        startDate: finalStart ?? '',
-        endDate: finalEnd ?? '',
+        startDate: startDate ?? '',
+        endDate: endDate ?? '',
         diagnosisCode: pa.dx?.codes?.[0] ?? '',
         diagnosisDescription: pa.dx?.description ?? ''
       });
@@ -1269,6 +1302,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       pa.dx.codes = [pa.dx.description.split(/[\s,]+/)[0]];
     }
 
+    console.log('AZ CMDP post-process: npiHits=', npiHits, 'startDate=', startDate, 'endDate=', endDate, 'hcpcs=', hcpcsHits);
     console.log('AZ CMDP post-processed pa:', pa);
   }
 
@@ -1806,9 +1840,14 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       authClassName,
       authTypeName,
 
-      diagnosisCodes: (pa as any).dx?.codes ?? ((pa as any).services || [])
-        .map((s: any) => s.diagnosisCode)
-        .filter(Boolean),
+      // Pass through the Smart Auth Check authApprove flag so AuthDetails
+      // can auto-approve when the rules engine says 'Yes'.
+      authApprove: this.smartAuthCheckAuthApprove ?? undefined,
+
+      diagnosisCodes: ((pa as any).dx?.codes?.length ? (pa as any).dx.codes : null)
+        ?? ((pa as any).services || [])
+          .map((s: any) => s.diagnosisCode)
+          .filter(Boolean),
 
       services: ((pa as any).services ?? []).map((s: any) => ({
         code: s.code,

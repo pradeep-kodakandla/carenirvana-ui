@@ -28,6 +28,10 @@ export interface FaxAuthPrefill {
   authClassId?: number;
   authTypeId?: number;
 
+  // ── Smart Auth Check result ─────────────────────────────────────────────
+  /** Raw AuthApprove value from rules engine (e.g. 'Yes','No') — enables auto-approve in AuthDetails */
+  authApprove?: string;
+
   // ── Diagnosis ───────────────────────────────────────────────────────────
   diagnosisCodes?: string[];           // ["A00.1"]
 

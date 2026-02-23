@@ -134,7 +134,8 @@ export class DashBoardComponent {
       requests: 'assignment_add',
       myActivities: 'event',
       assignedComplaints: 'assignment',
-      faxes: 'fax'
+      faxes: 'fax',
+      insights: 'insights'
     };
     return iconMap[key] || 'dashboard';
   }
@@ -158,8 +159,8 @@ export class DashBoardComponent {
         this.loadComponent(AssignedauthsComponent);
         break;
       case 'requests':
-        //this.loadComponent(RequestsComponent);
-        this.loadComponent(NewDashBoardComponent);
+        this.loadComponent(RequestsComponent);
+        //this.loadComponent(NewDashBoardComponent);
         break;
       case 'myActivities':
         this.loadComponent(MyactivitiesComponent);
@@ -173,6 +174,9 @@ export class DashBoardComponent {
         break;
       case 'mdreview':
         this.loadComponent(MdreviewdashboardComponent);
+        break;
+      case 'insights':
+        this.loadComponent(NewDashBoardComponent);
         break;
 
     }
