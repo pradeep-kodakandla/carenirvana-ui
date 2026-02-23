@@ -458,6 +458,7 @@ table {
 .split3 {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  grid-template-rows: minmax(0, 1fr);
   gap: 16px;
   padding: 16px !important;
   height: calc(100vh - 80px);
@@ -466,11 +467,20 @@ table {
 
 .split3.auth-form-active {
   grid-template-columns: 1fr 1fr;
+  grid-template-rows: minmax(0, 1fr);
 }
 
 @media (max-width: 1100px) {
   .split3 {
     grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .split3 .pane {
+    max-height: calc(100vh - 120px);
   }
 }
 
@@ -484,7 +494,7 @@ table {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   min-height: 0;
-  max-height: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -536,9 +546,12 @@ table {
    MIDDLE PANE — OCR details cards
    ══════════════════════════════════════════════════════════════════════ */
 .pane-middle {
+  overflow-x: hidden;
   overflow-y: auto;
-  flex: 1;
+  flex: 1 1 0;
   min-height: 0;
+  min-width: 0;
+  padding-bottom: 12px;
 }
 
 /* Detail cards */
@@ -611,6 +624,7 @@ table {
   border: 1px solid #e0e7ff;
   border-radius: var(--radius-md);
   background: linear-gradient(135deg, #f5f7ff 0%, #eef2ff 100%);
+  flex-shrink: 0;
 }
 
 .split-panel-icon {
@@ -731,6 +745,7 @@ table {
   border-radius: var(--radius-lg);
   background: #fafffe;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .la-card-header {
@@ -851,7 +866,7 @@ table {
 
 .la-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 6px 20px;
 }
 
@@ -859,6 +874,7 @@ table {
   display: flex;
   flex-direction: column;
   gap: 1px;
+  min-width: 0;
 }
 
 .la-lbl {
@@ -874,6 +890,9 @@ table {
   color: #1f2937;
   font-weight: 500;
   line-height: 1.4;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
 }
 
 .la-npi {
@@ -917,6 +936,7 @@ table {
   padding: 14px 16px;
   border-radius: var(--radius-md);
   border: 1px solid transparent;
+  flex-shrink: 0;
 }
 
 .status-banner-icon {
@@ -1044,6 +1064,7 @@ table {
   border: 1px solid #c7d2fe;
   border-radius: var(--radius-md);
   background: linear-gradient(135deg, #fafbff 0%, #f0f4ff 100%);
+  flex-shrink: 0;
 }
 
 .cta-card-left {
@@ -1117,6 +1138,8 @@ table {
   border-radius: var(--radius-md);
   overflow: hidden;
   background: var(--clr-surface);
+  min-width: 0;
+  flex-shrink: 0;
 }
 
 .detail-card-header {
@@ -1186,7 +1209,7 @@ table {
 /* Detail grid — 2-col */
 .detail-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px 20px;
   padding: 12px 14px;
 }
@@ -1195,6 +1218,7 @@ table {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 
 .detail-label {
@@ -1210,6 +1234,9 @@ table {
   color: var(--clr-text);
   font-weight: 500;
   line-height: 1.45;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
 }
 
 .detail-mono {
@@ -1272,7 +1299,7 @@ table {
 
 .svc-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px 20px;
 }
 
@@ -1283,7 +1310,7 @@ table {
 /* Provider 2-column layout */
 .provider-cols {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0;
 }
 
@@ -1292,6 +1319,7 @@ table {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
 }
 
 .provider-col + .provider-col {

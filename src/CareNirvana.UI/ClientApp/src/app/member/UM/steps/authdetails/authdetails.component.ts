@@ -56,6 +56,8 @@ interface SmartCheckPrefill {
   toDateIso?: any;
   procedureFromDateIso?: any;
   procedureToDateIso?: any;
+  /** 'Yes' when SmartAuthCheck rules engine says auto-approve */
+  authApprove?: string;
 }
 
 /** ---- Template shapes ---- */
@@ -2497,7 +2499,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     });
   }
 
-  private async seedDecisionAfterSave(authDetailId: number, mergedAuthData: any, userId: number, authTypeIdFallback?: number): Promise<void> {
+  private async seedDecisionAfterSave(authDetailId: number, mergedAuthData: any, userId: number, authTypeIdFallback?: number, authApprove?: string): Promise<void> {
     const authTemplateId = Number(this.templateId ?? authTypeIdFallback ?? 0);
     if (!authDetailId || !authTemplateId) return;
 
@@ -2506,10 +2508,141 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         authDetailId,
         authTemplateId,
         authData: mergedAuthData ?? {},
-        userId
+        userId,
+        authApprove
       });
     } catch (e) {
       console.error('Decision seeding failed', e);
+    }
+  }
+
+
+  // ============================================================
+  // Auto-Approve helpers (SmartAuthCheck → AuthApprove = Yes)
+  // ============================================================
+
+  /**
+   * Resolves the dropdown option values for "Closed" auth status and "Decisioned" auth status reason
+   * from the current auth template datasources (same pattern as DecisionSeedService).
+   * Falls back to string values if datasources are unavailable.
+   */
+  private async resolveAutoApproveAuthStatusValues(): Promise<{ closedValue: any; decisionedValue: any }> {
+    let closedValue: any = null;
+    let decisionedValue: any = null;
+
+    try {
+      // Walk the template sections/fields to find datasources for authStatus and authStatusReason
+      const allFields = this.collectAllRenderFields(this.renderSections || []);
+
+      let statusDs: string | null = null;
+      let statusReasonDs: string | null = null;
+
+      for (const f of allFields) {
+        const rawId = String((f as any)?._rawId ?? (f as any)?.id ?? '').trim().toLowerCase();
+        if (rawId === 'authstatus' && !statusDs) {
+          statusDs = String((f as any)?.datasource ?? '').trim() || null;
+        }
+        if ((rawId === 'authstatusreason' || rawId === 'authstatusreasoncode') && !statusReasonDs) {
+          statusReasonDs = String((f as any)?.datasource ?? '').trim() || null;
+        }
+      }
+
+      // Resolve "Closed" from Auth Status datasource
+      if (statusDs) {
+        const opts = await firstValueFrom(
+          this.dsLookup.getOptionsWithFallback(
+            statusDs,
+            (r: any) => {
+              const value = r?.value ?? r?.code ?? r?.id;
+              const label = r?.label ?? r?.text ?? r?.name ?? r?.description ?? String(value ?? '');
+              return { value, label, text: label, raw: r } as UiSmartOption;
+            },
+            ['UM', 'Admin', 'Provider']
+          ).pipe(catchError(() => of([] as UiSmartOption[])))
+        );
+
+        const closed = (opts ?? []).find((o: any) => {
+          const lbl = String(o?.label ?? '').trim().toLowerCase();
+          return lbl === 'closed' || lbl === 'close' || lbl.startsWith('close');
+        });
+        if (closed) closedValue = (closed as any).value;
+      }
+
+      // Resolve "Decisioned" from Auth Status Reason datasource
+      if (statusReasonDs) {
+        const opts = await firstValueFrom(
+          this.dsLookup.getOptionsWithFallback(
+            statusReasonDs,
+            (r: any) => {
+              const value = r?.value ?? r?.code ?? r?.id;
+              const label = r?.label ?? r?.text ?? r?.name ?? r?.description ?? String(value ?? '');
+              return { value, label, text: label, raw: r } as UiSmartOption;
+            },
+            ['UM', 'Admin', 'Provider']
+          ).pipe(catchError(() => of([] as UiSmartOption[])))
+        );
+
+        const decisioned = (opts ?? []).find((o: any) => {
+          const lbl = String(o?.label ?? '').trim().toLowerCase();
+          return lbl.includes('decisioned') || lbl.includes('decision');
+        });
+        if (decisioned) decisionedValue = (decisioned as any).value;
+      }
+    } catch (e) {
+      console.error('[AuthDetails] Failed to resolve auto-approve auth status values', e);
+    }
+
+    console.log('[AuthDetails] Resolved auto-approve values:', { closedValue, decisionedValue });
+    return { closedValue, decisionedValue };
+  }
+
+  /**
+   * For each procedure/service in the merged jsonData, sets:
+   *   - approved (serviceAppr) = requested (serviceReq)
+   *   - denied (serviceDenied) = 0
+   * Handles both indexed keys (procedure1_serviceReq) and flat keys.
+   */
+  private applyAutoApproveToServiceSections(merged: any): void {
+    if (!merged || typeof merged !== 'object') return;
+
+    const keys = Object.keys(merged);
+
+    // Collect procedure numbers from keys like procedure1_xxx, procedure2_xxx
+    const procNos = new Set<number>();
+    for (const k of keys) {
+      const m = /^procedure(\d+)_/i.exec(k);
+      if (m) procNos.add(Number(m[1]));
+    }
+
+    for (const procNo of procNos) {
+      const prefix = `procedure${procNo}_`;
+
+      // Resolve requested units from available keys
+      const requested =
+        merged[`${prefix}serviceReq`] ??
+        merged[`${prefix}recommendedUnits`] ??
+        merged[`${prefix}requested`] ??
+        merged[`${prefix}hours`] ??
+        merged[`${prefix}days`] ??
+        merged[`${prefix}weeks`] ??
+        0;
+
+      // Set approved = requested, denied = 0
+      merged[`${prefix}serviceAppr`] = requested;
+      merged[`${prefix}approvedPsp`] = requested;
+      merged[`${prefix}serviceDenied`] = 0;
+
+      console.log(`[AuthDetails] Auto-Approve procedure${procNo}: approved=${requested}, denied=0`);
+    }
+
+    // Also handle flat (non-indexed) keys if only one procedure
+    if (!procNos.size) {
+      const requested = merged.serviceReq ?? merged.recommendedUnits ?? merged.requested ?? 0;
+      if (requested !== undefined) {
+        merged.serviceAppr = requested;
+        merged.approvedPsp = requested;
+        merged.serviceDenied = 0;
+      }
     }
   }
 
@@ -2724,6 +2857,28 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     const jsonData = JSON.stringify(merged ?? {});
     const safeJsonData = jsonData && jsonData.trim() ? jsonData : '{}';
 
+    // ── AUTO-APPROVE: when SmartAuthCheck returned AuthApprove=Yes ─────────
+    const autoApproveFlag = String(this.smartCheckPrefill?.authApprove ?? '').trim().toLowerCase();
+    const isAutoApprove = autoApproveFlag === 'y' || autoApproveFlag === 'yes' || autoApproveFlag === 'true' || autoApproveFlag === '1';
+
+    if (isAutoApprove) {
+      const nowIso = new Date().toISOString();
+      console.log('[AuthDetails] Auto-Approve active — setting auth-level closure fields');
+
+      // Resolve "Closed" and "Decisioned" dropdown values from template datasources
+      const { closedValue, decisionedValue } = await this.resolveAutoApproveAuthStatusValues();
+
+      // Auth-level fields
+      merged.authStatus = closedValue ?? 'Closed';
+      merged.authStatusReason = decisionedValue ?? 'Decisioned';
+      merged.authUpdatedBy = 'RulesEngine';
+      merged.authUpdatedDatetime = nowIso;
+      merged.authClosedDatetime = nowIso;
+
+      // Service section: set Approved = Requested, Denied = 0 for each procedure
+      this.applyAutoApproveToServiceSections(merged);
+    }
+
     // Helpers
     const pick = <T = any>(...keys: string[]): T | null => {
       // prefer merged (current form), then pendingAuth fallback
@@ -2757,7 +2912,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     const nextReviewDate = toIsoOrNull(pick('nextReviewDate', 'nextreviewdate'));
     const treatementType = pick<string>('treatementType', 'treatmentType'); // supports both spellings
     const authAssignedTo = pick<number>('authAssignedTo', 'authassignedto');
-    const authStatus = pick<any>('authStatus', 'authstatus') ?? 'Draft';
+    const authStatus = pick<any>('authStatus', 'authstatus') ?? (isAutoApprove ? 'Closed' : 'Draft');
     const wgwbIds = this.getSelectedWorkgroupWorkbasketIds();
     console.log('Saving auth with workgroup/workbasket IDs:', wgwbIds);
 
@@ -2803,7 +2958,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         this._resetCleanSnapshot();
 
         // Seed Decision Details rows (idempotent) after save
-        await this.seedDecisionAfterSave(authDetailId, merged, userId, authTypeId);
+        await this.seedDecisionAfterSave(authDetailId, merged, userId, authTypeId, this.smartCheckPrefill?.authApprove);
 
         // Fax mode — emit instead of navigating
         if (this.isFaxMode) {
@@ -2844,7 +2999,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
           // force re-hydrate header immediately (so Auth # updates without waiting on navigation)
           this.shell?.refreshHeader();
 
-          await this.seedDecisionAfterSave(createdAuthDetailId, merged, userId, authTypeId);
+          await this.seedDecisionAfterSave(createdAuthDetailId, merged, userId, authTypeId, this.smartCheckPrefill?.authApprove);
 
           const newAuthNumber = (fresh as any)?.authNumber;
           if (newAuthNumber) this.authNumber = String(newAuthNumber);

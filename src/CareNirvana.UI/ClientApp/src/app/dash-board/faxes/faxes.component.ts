@@ -6,7 +6,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { finalize, firstValueFrom } from 'rxjs';
 import { DashboardServiceService, FaxFile as ApiFaxFile } from 'src/app/service/dashboard.service.service';
 import { PdfOcrService, OcrResult } from 'src/app/service/pdfocr.service';
-import { extractPriorAuth, extractTexasFromText, extractGeorgiaFromText, extractArizonaFromText } from 'src/app/service/priorauth.extractor';
+import { extractPriorAuth, extractTexasFromText, extractArizonaFromText } from 'src/app/service/priorauth.extractor';
 import { PriorAuth } from 'src/app/service/priorauth.schema';
 import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -119,6 +119,15 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   isLoadingDetails: boolean = false;
   currentIndex: number = -1;
 
+  /** Monotonic counter — incremented every time a new extraction starts.
+   *  Each async onFileChosen captures its own snapshot; if a newer extraction
+   *  has started by the time it finishes, the stale result is discarded. */
+  private _extractionGen = 0;
+
+  /** Subscription for the current getFaxFileById call so we can cancel the
+   *  previous one when navigating to a new fax. */
+  private _faxFetchSub: { unsubscribe(): void } | null = null;
+
   splitFirstPageCount: number | null = 1;
   isSplitting = false;
 
@@ -208,6 +217,24 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     return (scored[0]?.score ?? 0) > 0 ? scored[0].page : (byPage[byPage.length - 1]?.page || 1);
   }
 
+  // helper: pick the most likely Arizona CMDP page
+  private pickArizonaPage(byPage: { page: number; text: string }[]): number {
+    const signals = [
+      /CSO-1179A/i,
+      /CMDP/i,
+      /COMPREHENSIVE MEDICAL AND DENTAL/i,
+      /REFERRING PHYSICIAN/i,
+      /PRIOR AUTHORIZATION FOR MEDICAL/i,
+      /HCPCS\/CPT/i
+    ];
+    const scored = byPage.map(p => ({
+      page: p.page,
+      score: signals.reduce((a, re) => a + (re.test(p.text) ? 1 : 0), 0)
+    })).sort((a, b) => b.score - a.score);
+
+    return (scored[0]?.score ?? 0) > 0 ? scored[0].page : (byPage[0]?.page || 1);
+  }
+
   ngOnInit(): void {
     this.reload();
 
@@ -243,13 +270,13 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     // Custom sorting data accessor for columns that don't map 1:1 to property names
     this.dataSource.sortingDataAccessor = (item: FaxFile, sortHeaderId: string): string | number => {
       switch (sortHeaderId) {
-        case 'fileName':    return (item.fileName || '').toLowerCase();
-        case 'receivedAt':  return item.receivedAt ? new Date(item.receivedAt).getTime() : 0;
-        case 'member':      return (item.memberName || '').toLowerCase();
-        case 'workBasket':  return (item.workBasket || '').toLowerCase();
-        case 'priority':    return item.priority ?? 2;
-        case 'status':      return (item.status || '').toLowerCase();
-        default:            return '';
+        case 'fileName': return (item.fileName || '').toLowerCase();
+        case 'receivedAt': return item.receivedAt ? new Date(item.receivedAt).getTime() : 0;
+        case 'member': return (item.memberName || '').toLowerCase();
+        case 'workBasket': return (item.workBasket || '').toLowerCase();
+        case 'priority': return item.priority ?? 2;
+        case 'status': return (item.status || '').toLowerCase();
+        default: return '';
       }
     };
   }
@@ -397,6 +424,11 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     // Parse linked auth metadata — if auth already linked, skip Smart Auth Check
     this.linkedAuthMeta = this.parseLinkedAuthMeta(row.metaJson ?? row.MetaJson ?? null);
 
+    // 🔹 Cancel any in-flight fetch / extraction from the previous fax
+    this._faxFetchSub?.unsubscribe();
+    this._faxFetchSub = null;
+    this._extractionGen++;            // invalidate any running onFileChosen
+
     // 🔹 Start details loader & clear stale data
     this.isLoadingDetails = true;
     this.priorAuth = null;
@@ -410,7 +442,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     // if we find the fax in the list, use that index, otherwise default to 0
     this.currentIndex = idx >= 0 ? idx : 0;
 
-    this.api.getFaxFileById(row.faxId).subscribe({
+    this._faxFetchSub = this.api.getFaxFileById(row.faxId).subscribe({
       next: (res: any) => {
         const fileBytes = res.fileBytes ?? res.FileBytes ?? null;
         const contentType = res.contentType ?? res.ContentType ?? 'application/pdf';
@@ -421,7 +453,13 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         if (base64) {
           // NOTE: if onFileChosen triggers OCR/extraction, keep the loader on.
           // Be sure to set `this.isLoadingDetails = false` when you set `this.priorAuth`.
-          this.onFileChosen(undefined, base64, row.OriginalName ?? 'preview.pdf');
+          const uniqueName =
+            row.fileName ||
+            row.originalName ||
+            `fax-${row.faxId}.pdf`;
+
+          this.onFileChosen(undefined, base64, uniqueName);
+          //this.onFileChosen(undefined, base64, row.OriginalName ?? 'preview.pdf');
         }
 
         if (fileBytes) {
@@ -458,6 +496,11 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   }
 
   closePreview(): void {
+    // Cancel any in-flight fetch / extraction
+    this._faxFetchSub?.unsubscribe();
+    this._faxFetchSub = null;
+    this._extractionGen++;
+
     this.showPreview = false;
     this.selectedFax = undefined;
     this.previewUrl = null;
@@ -519,6 +562,22 @@ export class FaxesComponent implements OnInit, AfterViewInit {
           const tx = extractTexasFromText(pageText);
           const txMember = tx?.patient?.memberId ?? null;
           if (txMember) return txMember;
+        }
+      }
+
+      // Arizona CMDP forms
+      const isArizona = /CSO-1179A|CMDP|COMPREHENSIVE MEDICAL AND DENTAL PROGRAM/i.test(allText);
+      if (isArizona && byPage.length) {
+        const formPage = this.pickArizonaPage(byPage);
+        const pageText = byPage.find(p => p.page === formPage)?.text ?? '';
+        if (pageText) {
+          const az = extractArizonaFromText(pageText);
+          const azMember = az?.patient?.memberId ?? null;
+          if (azMember) return azMember;
+
+          // Fallback: extract CMDP ID directly from text
+          const cmdpMatch = pageText.match(/CMDP\s+ID\s+NO\.?\s*[\s\n\r]+(\S+)/i);
+          if (cmdpMatch?.[1]) return cmdpMatch[1].trim();
         }
       }
 
@@ -755,6 +814,10 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
   async onFileChosen(evt?: Event, fileBytesBase64?: string, fileName = 'preview.pdf') {
 
+    // Capture the current extraction generation — if a newer extraction starts
+    // while this one is running, we'll detect it and discard stale results.
+    const myGen = ++this._extractionGen;
+
     let file: File | null = null;
 
     if (fileBytesBase64) {
@@ -778,63 +841,101 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     this.isProcessing = true; this.error = ''; this.progress = 0;
 
     try {
-      function getTexasPageTextFast(res: { byPage: Array<{ text?: string }> }, formPage: number): string {
-        // Safely read the text already produced by the first extract() call
-        const pg = res.byPage?.[formPage];
-        const t = (pg?.text ?? '').trim();
-        return t;
-      }
       const res = await this.pdfOcr.extract(file, p => this.progress = Math.round(p.progress * 100));
+
+      // ── Stale guard: if user navigated away, discard this result ──
+      if (myGen !== this._extractionGen) return;
+
       let pa = extractPriorAuth(res.text);
 
-      const isTexas = /TEXAS STANDARD PRIOR AUTHORIZATION|NOFR001/i.test(res.text);
+      const allText: string = res.text ?? '';
+      const byPage: Array<{ page: number; text: string }> =
+        (res.byPage ?? []).map((p: any, i: number) => ({
+          page: Number(p?.page ?? (i + 1)),
+          text: String(p?.text ?? '')
+        }));
+
+      const isTexas = /TEXAS STANDARD PRIOR AUTHORIZATION|NOFR001/i.test(allText);
+      const isArizona = /CSO-1179A|CMDP|COMPREHENSIVE MEDICAL AND DENTAL PROGRAM/i.test(allText);
+
       const missingCore =
         !(pa.patient?.name) || !(pa.patient?.memberId) || !(pa.services?.[0]?.code) || !(pa.review?.type);
 
+      // ── Texas-specific extraction ──
       if (isTexas && missingCore) {
-        const formPage = this.pickTexasPage(res.byPage);
+        const formPage = this.pickTexasPage(byPage);
 
-
-        //  Parse Texas fields from that page and merge
-        let pageText = getTexasPageTextFast(res, formPage);
+        let pageText = byPage.find(p => p.page === formPage)?.text?.trim() ?? '';
 
         if (!pageText) {
-          // Keep progress monotonic without expensive recomputation
-          const bump = (p: { progress: number }) =>
-            (this.progress = Math.max(this.progress, Math.round(p.progress * 100)));
           pageText = await this.pdfOcr.ocrPageText(file, 2);
+          if (myGen !== this._extractionGen) return;
         }
 
         const tx = extractTexasFromText(pageText);
         pa = {
           ...pa,
           source: { template: 'Texas TDI NOFR001', confidence: 0.95 },
-          submission: { ...(pa.submission ?? {}), ...(tx.submission ?? {}) },
-          patient: { ...(pa.patient ?? {}), ...(tx.patient ?? {}) },
-          providerRequesting: { ...(pa.providerRequesting ?? {}), ...(tx.providerRequesting ?? {}) },
-          providerServicing: { ...(pa.providerServicing ?? {}), ...(tx.providerServicing ?? {}) },
-          review: { ...(pa.review ?? {}), ...(tx.review ?? {}) },
+          submission: { ...(pa.submission ?? {}), ...this.stripEmpty(tx.submission) },
+          patient: { ...(pa.patient ?? {}), ...this.stripEmpty(tx.patient) },
+          providerRequesting: { ...(pa.providerRequesting ?? {}), ...this.stripEmpty(tx.providerRequesting) },
+          providerServicing: { ...(pa.providerServicing ?? {}), ...this.stripEmpty(tx.providerServicing) },
+          review: { ...(pa.review ?? {}), ...this.stripEmpty(tx.review) },
           services: (tx.services?.length ? tx.services : pa.services) ?? []
         };
       }
 
-      if (pa.patient?.name && pa.patient.name.toLowerCase().includes('john doe')) {
-        pa.patient.name = 'John Doe';
-      }
+      // ── Arizona CMDP-specific extraction ──
+      if (isArizona && (!isTexas || missingCore)) {
+        const formPage = this.pickArizonaPage(byPage);
 
-      if (pa.providerRequesting?.name && pa.providerRequesting.name.toLowerCase().includes('priya')) {
-        pa.providerRequesting.name = 'Priya Gowda';
-      }
+        let pageText = byPage.find(p => p.page === formPage)?.text?.trim() ?? '';
 
-      if (Array.isArray(pa.services) && pa.services.length > 0) {
-        const firstService = pa.services[0];
-        if (!firstService?.code && firstService?.description?.toLowerCase().includes('documentation')) {
-          firstService.description = 'Office Visit';
+        if (!pageText) {
+          pageText = await this.pdfOcr.ocrPageText(file, 1);
+          if (myGen !== this._extractionGen) return;
         }
+
+        // ★ Log the actual OCR text so we can debug extraction issues
+        console.log('AZ CMDP OCR pageText:', pageText);
+
+        // Try the dedicated extractor, strip undefined values
+        const az = extractArizonaFromText(pageText);
+        const azClean = {
+          patient: this.stripEmpty(az?.patient),
+          providerRequesting: this.stripEmpty(az?.providerRequesting),
+          providerServicing: this.stripEmpty(az?.providerServicing),
+          review: this.stripEmpty(az?.review),
+          services: az?.services?.filter((s: any) => s?.code || s?.description) ?? [],
+          dx: this.stripEmpty(az?.dx),
+          setting: this.stripEmpty(az?.setting),
+          submission: this.stripEmpty(az?.submission)
+        };
+
+        // Merge: generic pa (lowest) → azClean overlays
+        pa = {
+          ...pa,
+          source: { template: 'AZ CMDP CSO-1179A', confidence: 0.95 },
+          patient: { ...this.stripEmpty(pa.patient), ...azClean.patient },
+          providerRequesting: { ...this.stripEmpty(pa.providerRequesting), ...azClean.providerRequesting },
+          providerServicing: { ...this.stripEmpty(pa.providerServicing), ...azClean.providerServicing },
+          review: { ...this.stripEmpty(pa.review), ...azClean.review },
+          services: (azClean.services.length ? azClean.services : pa.services) ?? [],
+          dx: { ...this.stripEmpty(pa.dx), ...azClean.dx },
+          setting: { ...this.stripEmpty(pa.setting), ...azClean.setting },
+          submission: { ...this.stripEmpty(pa.submission), ...azClean.submission }
+        };
+
+        // ★ Post-process: fix known-bad values by scanning the FULL OCR text directly.
+        //   This doesn't depend on line structure or extractor accuracy.
+        //   It uses the combined text from ALL pages as the source of truth.
+        this.postProcessArizonaCmdp(pa, allText);
       }
 
-      const p1Text = res.byPage.find(p => p.page === 1)?.text
-        ?? await this.pdfOcr.ocrPageText(file, 1);
+      console.log('Extracted Prior Auth:', pa);
+
+      // ── Final stale guard: don't overwrite if user navigated away ──
+      if (myGen !== this._extractionGen) return;
 
       this.priorAuth = pa;
       this.isLoadingDetails = false;
@@ -847,10 +948,13 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       }
 
     } catch (e: any) {
+      if (myGen !== this._extractionGen) return;  // stale — don't touch state
       this.error = e?.message || 'Failed to parse PDF';
       this.priorAuth = null;
     } finally {
-      this.isProcessing = false;
+      if (myGen === this._extractionGen) {
+        this.isProcessing = false;
+      }
     }
   }
   smartAuthCheckInProgress = false;
@@ -954,6 +1058,218 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   private isYes(v: any): boolean {
     const s = String(v ?? '').trim().toLowerCase();
     return s === 'y' || s === 'yes' || s === 'true' || s === '1';
+  }
+
+  /**
+   * Strips undefined, null, and empty-string values from a shallow object.
+   * Prevents spread-merge from overwriting good values with empty ones
+   * when a form-specific extractor returns explicit undefined keys.
+   */
+  private stripEmpty<T extends Record<string, any>>(obj: T | undefined | null): Partial<T> {
+    if (!obj) return {} as Partial<T>;
+    const out: any = {};
+    for (const [k, v] of Object.entries(obj)) {
+      if (v !== undefined && v !== null && v !== '') {
+        out[k] = v;
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Post-process an already-extracted PriorAuth for AZ CMDP CSO-1179A forms.
+   * Instead of building a full extraction from scratch (which fails when OCR
+   * text structure varies), this method FIXES specific known-bad values
+   * by scanning the raw OCR text with loose patterns.
+   *
+   * Mutates `pa` in place.
+   */
+  private postProcessArizonaCmdp(pa: PriorAuth, ocrText: string): void {
+    const t = ocrText;
+
+    // ── Helper: collapse OCR stutter-spaces ("Mat t hew" → "Matthew") ──
+    const cleanName = (raw: string): string => {
+      let prev = '', curr = raw;
+      while (curr !== prev) {
+        prev = curr;
+        curr = curr.replace(/([A-Za-z])\s([a-z])/g, '$1$2');
+      }
+      return curr.replace(/\s{2,}/g, ' ').trim();
+    };
+
+    // ── Fix provider names: collapse OCR stutter-spaces ──
+    if (pa.providerRequesting?.name) {
+      pa.providerRequesting.name = cleanName(pa.providerRequesting.name);
+    }
+    if (pa.providerServicing?.name) {
+      pa.providerServicing.name = cleanName(pa.providerServicing.name);
+    }
+    if (pa.patient?.name) {
+      pa.patient.name = cleanName(pa.patient.name);
+    }
+
+    // ── Fix NPI: find ALL 7-10 digit numbers near "NPI NO." in the text ──
+    // The generic extractor often truncates these. We ALWAYS override because
+    // existing values are known to be wrong (truncated) for AZ forms.
+    const npiPattern = /NPI\s+NO\.?\s*[:\s]*(\d{7,10})/gi;
+    const npiHits: string[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = npiPattern.exec(t)) !== null) {
+      npiHits.push(m[1]);
+    }
+
+    // Also try: NPI number on its own line or after other text
+    if (npiHits.length === 0) {
+      const altNpi = /NPI\s+NO\.?[\s\S]{0,30}?(\d{7,10})/gi;
+      while ((m = altNpi.exec(t)) !== null) {
+        npiHits.push(m[1]);
+      }
+    }
+
+    if (npiHits.length > 0) {
+      // ALWAYS override — the extractor often truncates NPI values.
+      // First NPI in text = referring physician; second = servicing provider.
+      if (!pa.providerRequesting) pa.providerRequesting = {};
+      pa.providerRequesting.npi = npiHits[0];
+
+      if (npiHits.length > 1) {
+        if (!pa.providerServicing) pa.providerServicing = {};
+        pa.providerServicing.npi = npiHits[1];
+      }
+    }
+
+    // ── Fix address: strip form label boilerplate ──
+    if (pa.providerRequesting?.address) {
+      pa.providerRequesting.address = pa.providerRequesting.address
+        .replace(/\(?\s*No\.?,?\s*Street,?\s*City,?\s*State,?\s*ZIP\s*\)?\s*/gi, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+    }
+    if (pa.providerServicing?.address) {
+      pa.providerServicing.address = pa.providerServicing.address
+        .replace(/\(?\s*No\.?,?\s*Street,?\s*City,?\s*State,?\s*ZIP\s*\)?\s*/gi, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+    }
+
+    // ── Fix service code: find HCPCS pattern (letter + 4 digits, e.g. A9604) ──
+    // The generic extractor often grabs the P.O. Box number (29202) by mistake
+    const hcpcsPattern = /\b([A-Z]\d{4})\b/g;
+    const hcpcsHits: string[] = [];
+    while ((m = hcpcsPattern.exec(t)) !== null) {
+      const val = m[1];
+      if (/^[A-Z]\d{4}$/.test(val)) hcpcsHits.push(val);
+    }
+
+    // Looser fallback: OCR may insert a space in the code ("A 9604" or "A96 04")
+    if (hcpcsHits.length === 0) {
+      const looseHcpcs = /\b([A-Z])\s?(\d)\s?(\d)\s?(\d)\s?(\d)\b/g;
+      while ((m = looseHcpcs.exec(t)) !== null) {
+        const code = m[1] + m[2] + m[3] + m[4] + m[5];
+        // Skip false positives that look like form IDs or zip codes
+        if (!/^[A-Z]0{4}$/.test(code)) hcpcsHits.push(code);
+      }
+    }
+
+    // Also grab the description from the HCPCS line if possible
+    const hcpcsLineMatch = t.match(
+      /\b([A-Z]\d{4})\s+([A-Z][A-Z\s\-\/]+?)(?:\s+\$[\d,.]+|$)/im
+    );
+
+    // ── Fix service dates: find date patterns near form date labels ──
+    const startMatch = t.match(/DATE\s+SERVICE\s+TO\s+BEGIN[\s\S]{0,50}?(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+    const endMatch = t.match(/TO\s+END[\s\S]{0,50}?(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+
+    // Broader fallback: search near "BEGIN" and "END" keywords
+    const startMatch2 = !startMatch ? t.match(/\bBEGIN\b[\s\S]{0,30}?(\d{1,2}\/\d{1,2}\/\d{2,4})/i) : null;
+    const endMatch2 = !endMatch ? t.match(/\bTO\s+END\b[\s\S]{0,80}?(\d{1,2}\/\d{1,2}\/\d{2,4})/i) : null;
+    const finalStart = startMatch?.[1] || startMatch2?.[1];
+    const finalEnd = endMatch?.[1] || endMatch2?.[1];
+
+    // ── Fix servicing provider: find name after "PROVIDER'S NAME" ──
+    // Use a very loose apostrophe pattern: any single character between R and S
+    const servicingMatch = t.match(
+      /PROVIDER.?S\s+NAME\s*\([^)]*\)\s*[\n\r]+\s*([A-Z][a-z]+(?:,\s*[A-Z][a-z]+)?)/i
+    );
+
+    // Also try: the name might be on the same line or with different formatting
+    const servicingMatch2 = t.match(
+      /AHCCCS\s+REGISTERED[\s\S]*?PROVIDER.?S\s+NAME[^)]*\)\s*[\s\n\r]*([A-Z][a-zA-Z]+,?\s*[A-Z]?[a-zA-Z]*)/i
+    );
+
+    // ── Fix servicing provider address ──
+    const servicingAddrMatch = t.match(
+      /PROVIDER.?S\s+ADDRESS\s*\([^)]*\)\s*[\n\r]+\s*(.+?)(?:\s*[\n\r]|$)/i
+    );
+
+    // ── Apply fixes to services ──
+    const svc = pa.services?.[0];
+    if (svc) {
+      // Fix service code — ALWAYS override if current code doesn't look like HCPCS (letter+4digits)
+      if (hcpcsHits.length > 0 && (!svc.code || !/^[A-Z]\d{4}$/.test(svc.code))) {
+        svc.code = hcpcsHits[0];
+      }
+      // Fix description — fill if missing
+      if (hcpcsLineMatch?.[2] && !svc.description) {
+        svc.description = hcpcsLineMatch[2].trim();
+      }
+      // Fix dates — ALWAYS override if we found dates near the form labels
+      // Existing values are often undefined or wrong for AZ forms
+      if (finalStart) {
+        svc.startDate = finalStart;
+      }
+      if (finalEnd) {
+        svc.endDate = finalEnd;
+      }
+      // Fix diagnosisCode from dx if missing
+      if (!svc.diagnosisCode && pa.dx?.codes?.[0]) {
+        svc.diagnosisCode = pa.dx.codes[0];
+      }
+    } else if (hcpcsHits.length > 0 || finalStart || finalEnd) {
+      // No services from extractors — build one from scratch
+      if (!pa.services) pa.services = [];
+      pa.services.push({
+        code: hcpcsHits[0] ?? '',
+        description: hcpcsLineMatch?.[2]?.trim() ?? '',
+        startDate: finalStart ?? '',
+        endDate: finalEnd ?? '',
+        diagnosisCode: pa.dx?.codes?.[0] ?? '',
+        diagnosisDescription: pa.dx?.description ?? ''
+      });
+    }
+
+    // ── Apply servicing provider fix ──
+    const svcProvName = (servicingMatch?.[1] ?? servicingMatch2?.[1] ?? '').trim();
+    if (svcProvName && svcProvName.length > 1) {
+      if (!pa.providerServicing) pa.providerServicing = {};
+      if (!pa.providerServicing.name) {
+        pa.providerServicing.name = cleanName(svcProvName);
+      }
+    }
+
+    // ── Apply servicing address fix ──
+    if (servicingAddrMatch?.[1]) {
+      const addr = servicingAddrMatch[1]
+        .replace(/\(?\s*No\.?,?\s*Street,?\s*City,?\s*State,?\s*ZIP\s*\)?\s*/gi, '')
+        .trim();
+      if (addr && (!pa.providerServicing?.address || pa.providerServicing.address.length < 3)) {
+        if (!pa.providerServicing) pa.providerServicing = {};
+        pa.providerServicing.address = addr;
+      }
+    }
+
+    // ── Fix review type ──
+    if (/EMERGENCY\s+URGENT/i.test(t)) {
+      if (!pa.review) pa.review = {};
+      pa.review.type = 'Urgent';
+    }
+
+    // ── Fix dx codes array ──
+    if (pa.dx?.description && (!pa.dx.codes || pa.dx.codes.length === 0)) {
+      pa.dx.codes = [pa.dx.description.split(/[\s,]+/)[0]];
+    }
+
+    console.log('AZ CMDP post-processed pa:', pa);
   }
 
   private async computeSha256Hex(file: File): Promise<string> {
@@ -1308,23 +1624,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
   // --- Delete (inline confirmation) ---
 
-  //deleteFaxInline(row: FaxFile): void {
-  //  this.openPreview(row);
-  //  this.editMode = 'deleteConfirm';
-  //}
-
-  //confirmDelete(): void {
-  //  if (!this.selectedFax) return;
-
-  //  this.selectedFax = {
-  //    ...this.selectedFax,
-  //    deletedOn: new Date().toISOString(),
-  //    deletedBy: this.currentUserId ?? this.selectedFax.deletedBy ?? 1,
-  //    status: 'Deleted' // if your backend expects a status change
-  //  };
-
-  //  this.saveUpdate();
-  //}
   deletingFaxId: number | null = null;
   deleteMessage: string = '';
   openDeleteInline(row: FaxFile): void {

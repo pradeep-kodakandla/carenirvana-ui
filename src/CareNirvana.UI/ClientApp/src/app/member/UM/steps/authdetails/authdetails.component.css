@@ -857,10 +857,10 @@
   border: 1px solid #E2E5EA;
   border-radius: 10px;
   background: #fff;
-  padding: 16px;
+  padding: 6px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
   transition: border-color .2s, box-shadow .2s;
   overflow: visible;  /* ← allow dropdown panels to overflow outside the card */
 }

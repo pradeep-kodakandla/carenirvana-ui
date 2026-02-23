@@ -675,3 +675,12 @@ tr.row-target td.mat-mdc-cell {
 .priority-text {
   line-height: 1; /* helps keep it visually centered */
 }
+
+.expedited-text {
+  color: #dc2626;
+}
+
+.expedited-text .priority-text {
+  color: #dc2626;
+  font-weight: 600;
+}

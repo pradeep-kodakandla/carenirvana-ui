@@ -17,8 +17,8 @@
   min-height: 36px;
   padding: 6px 30px 6px 10px;
   border-radius: 4px;
-  border: 1px solid #c4c4c4;
-  background: #ffffff;
+/*  border: 1px solid #c4c4c4;
+*/  background: #ffffff;
   display: flex;
   align-items: center;
   cursor: pointer;

@@ -112,7 +112,6 @@ button {
   cursor: pointer;
 }
 
-/* ❌ Close button in red */
 .close-btn {
   color: red !important;
   font-size: 16px !important;
@@ -127,7 +126,6 @@ button {
     color: darkred !important;
   }
 
-/* ➕ Add Tab button in white */
 .add-tab-btn {
   background: none !important;
   border: none !important;
@@ -156,7 +154,6 @@ button {
   gap: 5px;
 }
 
-/* Individual Tab */
 .tab {
   display: flex;
   align-items: center;
@@ -175,7 +172,6 @@ button {
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
   }
 
-/* Tab Close Button */
 .tab-close {
   font-size: 16px;
   color: red !important;
@@ -189,7 +185,6 @@ button {
     color: darkred !important;
   }
 
-/* Tab Title */
 .tab-title {
   position: absolute;
   top: -10px;
@@ -228,7 +223,6 @@ button {
     visibility: hidden;
   }
 
-/* Sidebar List */
 .sidebar ul {
   list-style-type: none;
   padding: 0;
@@ -245,7 +239,6 @@ button {
       display: block;
     }
 
-/* Sidebar Toggle Button */
 .toggle-button {
   position: absolute;
   right: -5px;
@@ -343,150 +336,42 @@ mat-tab-group {
 .home-icon {
   width: 24px;
   height: 24px;
-  object-fit: contain; /* Ensures the image scales properly */
+  object-fit: contain;
 }
 
 
-/* Popover panel */
-.history-popover .mat-mdc-menu-content {
-  padding: 12px 14px;
-  min-width: 320px;
-}
+/* ============================================================
+   SHARED POPOVER PANEL  (History, Member Search, Messages, Alerts)
+   ============================================================ */
 
-/* Content layout */
-.counts-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.counts-title {
-  font-weight: 600;
-  font-size: 14px;
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-}
-
-  .counts-title .subtle {
-    font-weight: 400;
-    opacity: 0.7;
-  }
-
-/* Chips row */
-.chip-row {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-/* Chips */
-.count-chip {
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  line-height: 1;
-  border: 1px solid rgba(0,0,0,0.12);
-  background: #f7f7f9;
-  white-space: nowrap;
-}
-
-  .count-chip.members {
-    border-color: #1976d2;
-    background: rgba(25,118,210,.08);
-  }
-
-  .count-chip.auths {
-    border-color: #2e7d32;
-    background: rgba(46,125,50,.08);
-  }
-
-  .count-chip.complaints {
-    border-color: #c62828;
-    background: rgba(198,40,40,.08);
-  }
-
-
-
-/* Popover sizing/padding */
-.history-popover .mat-mdc-menu-content {
-  padding: 12px 14px;
-  min-width: 680px; /* wide enough for the table */
-  max-width: 860px;
-}
-
-/* Title + chips */
-.counts-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.counts-title {
-  font-weight: 600;
-  font-size: 14px;
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-}
-
-  .counts-title .subtle {
-    font-weight: 400;
-    opacity: 0.7;
-  }
-
-.chip-row {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.count-chip {
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  line-height: 1;
-  border: 1px solid rgba(0,0,0,0.12);
-  background: #f7f7f9;
-  white-space: nowrap;
-}
-
-  .count-chip.members {
-    border-color: #1976d2;
-    background: rgba(25,118,210,.08);
-  }
-
-  .count-chip.auths {
-    border-color: #2e7d32;
-    background: rgba(46,125,50,.08);
-  }
-
-  .count-chip.complaints {
-    border-color: #c62828;
-    background: rgba(198,40,40,.08);
-  }
-
-.divider {
-  height: 8px;
-}
-
-/* Make the MAT MENU PANEL itself wider (default max-width is ~280px) */
+/* Outer mat-menu panel — consistent border, radius, shadow */
 .history-popover.mat-mdc-menu-panel {
   max-width: none !important;
-  width: 1100px; /* tweak as you like: 960, 1100, 1280… */
+  width: 1100px;
   border-radius: 12px;
+  border: 1px solid #d0d7e2;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14),
+              0 2px 8px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  background: #ffffff;
 }
 
-/* Inner content spacing */
+/* Inner content padding */
 .history-popover .mat-mdc-menu-content {
-  padding: 12px 14px;
+  padding: 18px 20px;
 }
 
-/* Chips section (unchanged) */
+
+/* ============================================================
+   COUNTS / CHIPS  (Recently Accessed header area)
+   ============================================================ */
 .counts-wrap {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 14px;
 }
 
 .counts-title {
@@ -495,11 +380,13 @@ mat-tab-group {
   display: flex;
   align-items: baseline;
   gap: 6px;
+  color: #1e293b;
 }
 
   .counts-title .subtle {
     font-weight: 400;
-    opacity: 0.7;
+    font-size: 13px;
+    opacity: 0.65;
   }
 
 .chip-row {
@@ -509,28 +396,32 @@ mat-tab-group {
 }
 
 .count-chip {
-  padding: 6px 10px;
+  padding: 6px 12px;
   border-radius: 999px;
   font-size: 12px;
+  font-weight: 500;
   line-height: 1;
-  border: 1px solid rgba(0,0,0,0.12);
+  border: 1px solid rgba(0, 0, 0, 0.12);
   background: #f7f7f9;
   white-space: nowrap;
 }
 
   .count-chip.members {
     border-color: #1976d2;
-    background: rgba(25,118,210,.08);
+    background: rgba(25, 118, 210, 0.08);
+    color: #1565c0;
   }
 
   .count-chip.auths {
     border-color: #2e7d32;
-    background: rgba(46,125,50,.08);
+    background: rgba(46, 125, 50, 0.08);
+    color: #2e7d32;
   }
 
   .count-chip.complaints {
     border-color: #c62828;
-    background: rgba(198,40,40,.08);
+    background: rgba(198, 40, 40, 0.08);
+    color: #c62828;
   }
 
 .divider {
@@ -538,170 +429,59 @@ mat-tab-group {
 }
 
 
-
-/* Chips section (unchanged) */
-.counts-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.counts-title {
-  font-weight: 600;
-  font-size: 14px;
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-}
-
-  .counts-title .subtle {
-    font-weight: 400;
-    opacity: 0.7;
-  }
-
-.chip-row {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.count-chip {
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  line-height: 1;
-  border: 1px solid rgba(0,0,0,0.12);
-  background: #f7f7f9;
-  white-space: nowrap;
-}
-
-  .count-chip.members {
-    border-color: #1976d2;
-    background: rgba(25,118,210,.08);
-  }
-
-  .count-chip.auths {
-    border-color: #2e7d32;
-    background: rgba(46,125,50,.08);
-  }
-
-  .count-chip.complaints {
-    border-color: #c62828;
-    background: rgba(198,40,40,.08);
-  }
-
-.divider {
-  height: 8px;
-}
-
-
-
-
-/* Make the MAT MENU PANEL itself wider (default max-width is ~280px) */
-.history-popover.mat-mdc-menu-panel {
-  max-width: none !important;
-  width: 1100px; /* tweak as you like: 960, 1100, 1280… */
-  border-radius: 12px;
-}
-
-/* Inner content spacing */
-.history-popover .mat-mdc-menu-content {
-  padding: 12px 14px;
-}
-
-/* Chips section (unchanged) */
-.counts-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.counts-title {
-  font-weight: 600;
-  font-size: 14px;
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-}
-
-  .counts-title .subtle {
-    font-weight: 400;
-    opacity: 0.7;
-  }
-
-.chip-row {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.count-chip {
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  line-height: 1;
-  border: 1px solid rgba(0,0,0,0.12);
-  background: #f7f7f9;
-  white-space: nowrap;
-}
-
-  .count-chip.members {
-    border-color: #1976d2;
-    background: rgba(25,118,210,.08);
-  }
-
-  .count-chip.auths {
-    border-color: #2e7d32;
-    background: rgba(46,125,50,.08);
-  }
-
-  .count-chip.complaints {
-    border-color: #c62828;
-    background: rgba(198,40,40,.08);
-  }
-
-.divider {
-  height: 8px;
-}
-
-/* Scroll area */
+/* ============================================================
+   RECENTLY ACCESSED TABLE
+   ============================================================ */
 .table-scroll {
-  max-height: 360px; /* increase if you want more rows visible */
-  overflow: auto; /* both axes enabled; will show H scroll if needed */
+  max-height: 360px;
+  overflow: auto;
   border-radius: 8px;
-  border: 1px solid rgba(0,0,0,0.08);
+  border: 1px solid #d6dce5;
   background: #fff;
 }
 
-/* Table layout */
 .recent-table {
   width: 100%;
-  min-width: 1050px; /* ensure all columns fit; matches colgroup widths */
+  min-width: 1050px;
   border-collapse: collapse;
-  font-size: 12px;
-  table-layout: fixed; /* respect colgroup widths */
+  font-size: 13px;
+  table-layout: fixed;
 }
 
+  /* Sticky header with gradient band */
   .recent-table thead th {
     position: sticky;
     top: 0;
-    background: #fafafa;
-    border-bottom: 1px solid rgba(0,0,0,0.08);
+    z-index: 1;
+    background: linear-gradient(180deg, #eef5ff 0%, #e3edff 100%);
+    border-bottom: 2px solid #c9d5e3;
     text-align: left;
-    padding: 8px 10px;
+    padding: 10px 12px;
     font-weight: 600;
+    font-size: 12px;
+    color: #334155;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
   }
 
   .recent-table tbody td {
-    padding: 8px 10px;
-    border-bottom: 1px solid rgba(0,0,0,0.06);
-    white-space: nowrap; /* keep dates & IDs on one line */
+    padding: 9px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis; /* just in case a value is too long */
+    text-overflow: ellipsis;
+    color: #475569;
+    vertical-align: middle;
+  }
+
+  /* Zebra striping */
+  .recent-table tbody tr:nth-child(even) {
+    background: #fafbfd;
   }
 
   .recent-table tbody tr:hover {
-    background: #f7faff;
+    background: #eef3ff;
   }
 
 .link-member,
@@ -719,14 +499,34 @@ mat-tab-group {
   }
 
 
+/* ============================================================
+   MEMBER SEARCH POPOVER
+   ============================================================ */
 .member-search-popover .mat-mdc-menu-content {
-  padding: 0; /* remove default padding */
+  padding: 0;
 }
 
 .member-search-wrap {
   min-width: 1050px;
   max-height: 520px;
-  padding: 8px;
+  padding: 18px;
   box-sizing: border-box;
+  border-radius: 10px;
+  background: #fff;
+  overflow-y: auto;
 }
 
+
+/* ============================================================
+   MESSAGES / ALERTS POPOVER WRAP
+   ============================================================ */
+.messages-wrap {
+  min-width: 680px;
+  max-width: 1100px;
+  max-height: 560px;
+  padding: 18px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: #ffffff;
+  overflow-y: auto;
+}

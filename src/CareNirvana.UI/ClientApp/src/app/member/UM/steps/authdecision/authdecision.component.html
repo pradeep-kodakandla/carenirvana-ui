@@ -1,199 +1,188 @@
-<div class="d-flex align-items-center justify-content-between mb-2">
-  <div></div>
+<!-- ============================================================
+     AuthDecision — Updated HTML Template
+     Changes:
+     1. Buttons moved from case-savebar into content-header bar
+     2. Content-header shows "Decision #N — CODE" + status badge + buttons
+     3. Tab layout updated: line1 + badge, code line, date line, reason line
+     4. Border gap between tab and content panel is preserved
+     ============================================================ -->
 
-  <div class="case-savebar">
-    <button class="btn btn-sm btn-primary me-2" (click)="saveCurrentTab()" [disabled]="loading || saving">
-      Save
-    </button>
-    <button class="btn btn-sm btn-outline-secondary me-2" (click)="openMdReview()" [disabled]="loading || saving">
-      MD Review
-    </button>
-    <button class="btn btn-sm btn-outline-danger" (click)="deleteCurrentTab()" [disabled]="loading || saving">
-      Delete
-    </button>
-  </div>
-</div>
+<!-- OLD save bar removed (buttons now live in the content header) -->
+<!-- <div class="case-savebar">...</div>  ← DELETE THIS -->
 
-<div class="alert alert-danger py-2" *ngIf="errorMsg">
-  {{ errorMsg }}
-</div>
+<div class="decision-details-layout" *ngIf="!loading && tabs.length">
 
-<div *ngIf="loading" class="py-3">
-  Loading...
-</div>
-
-<div *ngIf="!loading && activeState as st" class="decision-details-layout"
-     [ngClass]="activeState?.tab?.statusClass">
-
-  <!-- ===== Left tabs ===== -->
+  <!-- ===== LEFT: Tab Rail ===== -->
   <div class="tabs-container">
     <div class="tabs">
-      <div *ngFor="let tab of tabs; let ti = index"
-           class="tab"
-           [class.active]="selectedTabId === tab.id"
-           [class.before-active]="isTabBeforeActive(ti)"
-           (click)="selectTab(tab.id)"
-           [ngClass]="[
-             tab.statusClass,
-             isTabBeforeActive(ti) ? 'before-status-' + getActiveStatusKey() : ''
-           ]">
+      <div
+        *ngFor="let tab of tabs; let i = index"
+        class="tab"
+        [class.active]="tab.id === selectedTabId"
+        [class.before-active]="isTabBeforeActive(i)"
+        [ngClass]="[
+          tab.statusClass,
+          isTabBeforeActive(i) ? 'before-status-' + getActiveStatusKey() : ''
+        ]"
+        (click)="selectTab(tab.id)">
 
-        <!-- Row 1: Decision # + Code   |   Status badge -->
+        <!-- Row 1: Title + Status Badge -->
         <div class="tab-header-row">
           <span class="tab-line1">{{ tab.line1 }}</span>
-          <span class="tab-status-badge" [ngClass]="tab.statusClass + '-badge'">{{ tab.line3 }}</span>
+          <span class="tab-status-badge"
+                [ngClass]="tab.statusClass.replace('status-','status-') + '-badge'">
+            {{ tab.line3 }}
+          </span>
         </div>
 
-        <!-- Row 2: Dates -->
+        <!-- Row 2: Procedure Code -->
+        <div class="tab-code-line" *ngIf="tab.procedureCode">
+          Code: {{ tab.procedureCode }}
+        </div>
+
+        <!-- Row 3: Date Range (MM/DD → MM/DD/YYYY) -->
         <div class="tab-line2" *ngIf="tab.line2">{{ tab.line2 }}</div>
 
-        <!-- Row 3: Status reason -->
+        <!-- Row 4: Status Reason (italic) -->
         <div class="tab-line4" *ngIf="tab.line4">{{ tab.line4 }}</div>
       </div>
     </div>
   </div>
 
-  <!-- ===== Right content ===== -->
-  <div class="tab-content" [ngClass]="activeState?.tab?.statusClass + '-panel'">
+  <!-- ===== RIGHT: Content Panel ===== -->
+  <div class="tab-content"
+       *ngIf="activeState"
+       [ngClass]="'status-' + getActiveStatusKey() + '-panel'">
 
-    <form class="auth-details" [formGroup]="form">
+    <!-- ★ NEW: Content Header Bar (replaces old case-savebar) -->
+    <div class="content-header" [ngClass]="contentHeaderClass">
+      <div class="content-header-left">
+        <span class="content-header-title">{{ contentHeaderTitle }}</span>
+        <span class="content-header-badge" [ngClass]="contentHeaderBadgeClass">
+          {{ contentHeaderStatusText }}
+        </span>
+      </div>
+      <div class="content-header-actions">
 
-      <ng-container *ngFor="let section of st.sections; let si = index">
+        <button class="btn btn-outline-secondary btn-sm" (click)="saveCurrentTab()" [disabled]="saving">
+          Bulk Save
+        </button>
+        <button class="btn btn-outline-secondary btn-sm" (click)="saveCurrentTab()" [disabled]="saving">
+          Save
+        </button>
+        <button class="btn btn-outline-secondary btn-sm" (click)="openMdReview()">
+          MD Review
+        </button>
+        <button class="btn btn-outline-danger btn-sm" (click)="deleteCurrentTab()" [disabled]="saving">
+          Delete
+        </button>
+      </div>
+    </div>
 
-        <div class="section-card"
-             *ngIf="section?.fields?.length && isSectionVisible(st, section)"
-             [class.collapsed]="section._collapsed"
-             [attr.id]="'section-' + si"
-             style="height:auto;max-height:none;">
+    <!-- Sections (Decision Details, Request & Treatment, etc.) -->
+    <ng-container *ngFor="let section of activeState.sections">
+      <div class="section-card"
+           *ngIf="isSectionVisible(activeState, section)"
+           [class.collapsed]="section._collapsed">
 
-          <div class="section-header" (click)="section._collapsed = !section._collapsed">
-            <!-- Section icon -->
-            <div class="section-icon">
-              <ng-container [ngSwitch]="si % 4">
-                <!-- Decision Details icon -->
-                <svg *ngSwitchCase="0" viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
-                  <path d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"/>
-                </svg>
-                <!-- Request & Treatment icon -->
-                <svg *ngSwitchCase="1" viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
-                  <path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2h-2.22l-2.07 2.07a1 1 0 01-1.42 0L7.22 15H5a2 2 0 01-2-2V5zm5 2a1 1 0 000 2h4a1 1 0 100-2H8zm0 3a1 1 0 100 2h2a1 1 0 100-2H8z" clip-rule="evenodd"/>
-                </svg>
-                <!-- Member/Provider icon -->
-                <svg *ngSwitchCase="2" viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
-                  <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
-                </svg>
-                <!-- Notes icon (default) -->
-                <svg *ngSwitchDefault viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
-                  <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
-                </svg>
-              </ng-container>
-            </div>
-
-            <div class="section-title">{{ section.sectionName }}</div>
-
-            <!-- Chevron -->
-            <div class="section-chevron">
-              <svg viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd"
-                      d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                      clip-rule="evenodd"/>
-              </svg>
-            </div>
+        <div class="section-header" (click)="section._collapsed = !section._collapsed">
+          <div class="section-icon">
+            <!-- icon per section -->
           </div>
+          <span class="section-title">{{ section.sectionName }}</span>
+          <span class="section-chevron">
+            <svg viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/>
+            </svg>
+          </span>
+        </div>
 
-          <div class="section-body">
-            <div class="grid"
-                 style="grid-template-rows:unset;grid-auto-rows:minmax(min-content,max-content);">
+        <div class="section-body">
+          <div class="grid">
+            <ng-container *ngFor="let field of section.fields">
+              <div class="ff-field"
+                   *ngIf="isVisible(activeState, field)"
+                   [class.ff-span-all]="field.type === 'textarea'">
 
-              <ng-container *ngFor="let field of section.fields; let i = index">
-                <ng-container *ngIf="isVisible(st, field)">
+                <!-- Text / Number / DateTime inputs -->
+                <div class="ff-outline"
+                     *ngIf="field.type !== 'select' && field.type !== 'checkbox' && field.type !== 'textarea'"
+                     [class.ff-disabled]="!field.isEnabled"
+                     [class.ff-invalid]="isInvalidField(field)">
+                  <label class="ff-float-label">
+                    {{ field.displayName }}
+                    <span class="req-star" *ngIf="field.required || field.isRequired">*</span>
+                  </label>
+                  <div class="ff-body">
+                    <input class="ff-input"
+                           [type]="field.type"
+                           [formControl]="getCtrl(field.controlName)"
+                           [attr.placeholder]="field.type === 'datetime-local' ? 'mm/dd/yyyy' : '—'" />
+                  </div>
+                </div>
 
-                  <!-- CHECKBOX -->
-                  <ng-container *ngIf="field.type === 'checkbox'; else outlinedTpl">
-                    <div class="ff-field">
-                      <div class="ff-checkbox" [class.ff-disabled]="!field.isEnabled">
-                        <input type="checkbox"
-                               class="form-check-input"
-                               [id]="field.id + '_' + i"
-                               [formControlName]="field.controlName" />
+                <!-- Textarea -->
+                <div class="ff-outline"
+                     *ngIf="field.type === 'textarea'"
+                     [class.ff-disabled]="!field.isEnabled"
+                     [class.ff-invalid]="isInvalidField(field)">
+                  <label class="ff-float-label">
+                    {{ field.displayName }}
+                    <span class="req-star" *ngIf="field.required || field.isRequired">*</span>
+                  </label>
+                  <div class="ff-body">
+                    <textarea class="ff-input ff-textarea"
+                              [formControl]="getCtrl(field.controlName)"></textarea>
+                  </div>
+                </div>
 
-                        <label class="form-check-label" [for]="field.id + '_' + i">
-                          {{ field.displayName }}
-                          <span class="req-star" *ngIf="field.required || field.isRequired">*</span>
-                        </label>
-                      </div>
+                <!-- Select (dropdown) -->
+                <div class="ff-outline"
+                     *ngIf="field.type === 'select'"
+                     [class.ff-disabled]="!field.isEnabled"
+                     [class.ff-invalid]="isInvalidField(field)">
+                  <label class="ff-float-label">
+                    {{ field.displayName }}
+                    <span class="req-star" *ngIf="field.required || field.isRequired">*</span>
+                  </label>
+                  <div class="ff-ui">
+                    <ui-smart-dropdown
+                      [formControl]="getCtrl(field.controlName)"
+                      [options]="getDropdownOptions(field.controlName)"
+                      placeholder="Select...">
+                    </ui-smart-dropdown>
+                  </div>
+                </div>
 
-                      <div class="ff-error" *ngIf="isInvalidField(field)">
-                        {{ field.requiredMsg || (field.displayName + ' is required') }}
-                      </div>
-                    </div>
-                  </ng-container>
+                <!-- Checkbox -->
+                <div class="ff-checkbox" *ngIf="field.type === 'checkbox'">
+                  <input type="checkbox" class="form-check-input"
+                         [formControl]="getCtrl(field.controlName)"
+                         [id]="field.controlName" />
+                  <label class="form-check-label" [for]="field.controlName">
+                    {{ field.displayName }}
+                  </label>
+                </div>
 
-                  <!-- OUTLINED -->
-                  <ng-template #outlinedTpl>
-                    <div class="ff-field" [class.ff-span-all]="field.type === 'textarea'">
-                      <div class="ff-outline"
-                           [class.ff-disabled]="!field.isEnabled"
-                           [class.ff-invalid]="isInvalidField(field)">
+                <!-- Validation error -->
+                <div class="ff-error" *ngIf="isInvalidField(field)">
+                  {{ field.requiredMsg || (field.displayName + ' is required') }}
+                </div>
 
-                        <div class="ff-float-label">
-                          {{ field.displayName }}
-                          <span class="req-star" *ngIf="field.required || field.isRequired">*</span>
-                        </div>
-
-                        <div class="ff-body">
-                          <ng-container [ngSwitch]="field.type">
-
-                            <!-- Select -->
-                            <ng-container *ngSwitchCase="'select'">
-                              <ui-smart-dropdown class="ff-ui"
-                                                 label=""
-                                                 placeholder="Select."
-                                                 [options]="getDropdownOptions(field.controlName)"
-                                                 [formControlName]="field.controlName">
-                              </ui-smart-dropdown>
-                            </ng-container>
-
-                            <!-- Datetime -->
-                            <ng-container *ngSwitchCase="'datetime-local'">
-                              <ui-datetime-picker class="ff-ui"
-                                                  placeholderDate="mm/dd/yyyy"
-                                                  placeholderDateTime="mm/dd/yyyy --:--"
-                                                  [formControlName]="field.controlName">
-                              </ui-datetime-picker>
-                            </ng-container>
-
-                            <!-- Textarea -->
-                            <ng-container *ngSwitchCase="'textarea'">
-                              <textarea class="ff-input ff-textarea"
-                                        rows="3"
-                                        [formControlName]="field.controlName"></textarea>
-                            </ng-container>
-
-                            <!-- Default text -->
-                            <ng-container *ngSwitchDefault>
-                              <input class="ff-input" type="text"
-                                     [formControlName]="field.controlName" />
-                            </ng-container>
-
-                          </ng-container>
-                        </div>
-                      </div>
-
-                      <div class="ff-error" *ngIf="isInvalidField(field)">
-                        {{ field.requiredMsg || (field.displayName + ' is required') }}
-                      </div>
-                    </div>
-                  </ng-template>
-
-                </ng-container>
-              </ng-container>
-
-            </div>
+              </div>
+            </ng-container>
           </div>
         </div>
-      </ng-container>
+      </div>
+    </ng-container>
 
-    </form>
   </div>
+</div>
+
+<!-- Loading / Error states -->
+<div *ngIf="loading" style="padding:40px;text-align:center;color:#94A3B8">
+  Loading decisions…
+</div>
+<div *ngIf="!loading && errorMsg" style="padding:20px;color:#dc3545">
+  {{ errorMsg }}
 </div>

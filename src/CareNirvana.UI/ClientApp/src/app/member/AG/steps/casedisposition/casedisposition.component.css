@@ -1,12 +1,77 @@
-/* Ensure dropdown panels are not clipped by any parent */
-:host {
-  overflow: visible;
+/* ═══════════════════════════════════════════
+   CASE DISPOSITION — Dropdown Overflow Fix
+   ─────────────────────────────────────────
+   Ensures Enrollment, Case Type, and all
+   dropdown panels are NOT clipped by any
+   parent container with overflow:hidden.
+   ═══════════════════════════════════════════ */
+
+/* Host must not clip children */
+:host,
+app-casedisposition {
+  overflow: visible !important;
+  display: block;
 }
-:host ::ng-deep .section-card {
-  overflow: visible;
+
+/* ── Section cards / form wrappers ── */
+.section-card,
+.card,
+.mat-card,
+.mat-expansion-panel,
+.form-section,
+.step-content,
+.wizard-step-body,
+.disposition-form {
+  overflow: visible !important;
 }
-:host ::ng-deep ui-smart-dropdown .dropdown-menu,
-:host ::ng-deep .ng-dropdown-panel {
+
+/* ── Mat Tab body (common clip culprit inside wizard) ── */
+.mat-tab-body-wrapper,
+.mat-tab-body-content,
+.mat-tab-body.mat-tab-body-active {
+  overflow: visible !important;
+}
+
+/* ── Wizard step containers ── */
+.mat-horizontal-stepper-content,
+.mat-vertical-stepper-content,
+.mat-step-body {
+  overflow: visible !important;
+}
+
+/* ── CDK overlay / dropdown panels — high z-index ── */
+.cdk-overlay-container,
+.cdk-overlay-pane {
+  z-index: 1100 !important;
+}
+
+/* ── ui-smart-dropdown panels ── */
+ui-smart-dropdown .dropdown-menu,
+.smart-dropdown-panel {
   z-index: 1050 !important;
   position: absolute !important;
+}
+
+/* ── ng-select dropdown panel ── */
+.ng-dropdown-panel {
+  z-index: 1050 !important;
+  position: absolute !important;
+}
+
+/* ── Mat-Select panel ── */
+.mat-select-panel,
+.mat-mdc-select-panel {
+  z-index: 1050 !important;
+}
+
+/* ── Mat-Autocomplete panel ── */
+.mat-autocomplete-panel,
+.mat-mdc-autocomplete-panel {
+  z-index: 1050 !important;
+}
+
+/* ── Mat-Menu panel (context menus) ── */
+.mat-menu-panel,
+.mat-mdc-menu-panel {
+  z-index: 1060 !important;
 }

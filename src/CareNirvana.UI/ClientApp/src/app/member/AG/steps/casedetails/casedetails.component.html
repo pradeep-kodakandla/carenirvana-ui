@@ -1,7 +1,7 @@
 <form class="case-details" [formGroup]="form" [class.cw-readonly]="readOnly">
 
-  <!-- ═══════ Enrollment Details ═══════ -->
-  <div class="section-card">
+  <!-- ═══════ Enrollment Details (only on details step) ═══════ -->
+  <div class="section-card" *ngIf="stepId === 'details'">
     <div class="section-header">
       <span class="section-icon"><mat-icon>badge</mat-icon></span>
       <span class="section-acc-icon open">▸</span>
@@ -27,8 +27,8 @@
     </div>
   </div>
 
-  <!-- ═══════ Case Type ═══════ -->
-  <div class="section-card">
+  <!-- ═══════ Case Type (only on details step) ═══════ -->
+  <div class="section-card" *ngIf="stepId === 'details'">
     <div class="grid">
       <div class="ff-field case-type-field">
         <div class="ff-outline"

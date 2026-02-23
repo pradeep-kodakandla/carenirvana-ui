@@ -388,6 +388,27 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
     return d.toISOString().slice(0, 10);
   }
 
+  /** Short MM/DD format for tab line2 (e.g. "01/29") */
+  private formatDateCompact(value: any): string {
+    if (!value) return '';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '';
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${mm}/${dd}`;
+  }
+
+  /** Full MM/DD/YYYY for the last date in tab line2 */
+  private formatDateCompactFull(value: any): string {
+    if (!value) return '';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '';
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${mm}/${dd}/${yyyy}`;
+  }
+
   private toDateTimeLocalString(value: any): string | null {
     if (!value) return null;
     const d = new Date(value);
@@ -550,10 +571,14 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
     const v = String(codeOrId ?? '').trim();
     if (!v) return null;
 
-    // Helper: check if any candidate matches (normalised string comparison)
+    // Helper: check if any candidate matches (normalised string comparison + numeric coercion)
     const matches = (x: any) => {
       if (x === null || x === undefined) return false;
-      return String(x).trim() === v;
+      const xs = String(x).trim();
+      if (xs === v) return true;
+      // Also try numeric equality for "1" vs 1 mismatches
+      if (/^\d+$/.test(v) && /^\d+$/.test(xs) && Number(xs) === Number(v)) return true;
+      return false;
     };
 
     // 1) Search dropdownCache (keyed by datasource) — Decision Status only (not StatusCode/reason)
@@ -585,7 +610,10 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
 
     const matches = (x: any) => {
       if (x === null || x === undefined) return false;
-      return String(x).trim() === v;
+      const xs = String(x).trim();
+      if (xs === v) return true;
+      if (/^\d+$/.test(v) && /^\d+$/.test(xs) && Number(xs) === Number(v)) return true;
+      return false;
     };
 
     // 1) Search dropdownCache for DecisionStatusCode datasources
@@ -625,7 +653,16 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
         raw?.statusId
       ];
 
-      if (cands.some(matches)) {
+      // Also add numeric coercions for candidates to handle "1" vs 1 mismatches
+      const allCands = [...cands];
+      for (const c of cands) {
+        if (c !== null && c !== undefined) {
+          if (typeof c === 'number') allCands.push(String(c));
+          if (typeof c === 'string' && /^\d+$/.test(c.trim())) allCands.push(Number(c.trim()));
+        }
+      }
+
+      if (allCands.some(matches)) {
         // Build label — try option-level first, then raw fields, then pickDisplayField
         let label = String(
           (o as any)?.label ?? (o as any)?.text ?? ''
@@ -789,15 +826,18 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
       const code = this.asDisplayString(dd?.serviceCode ?? dd?.procedureCode ?? this.authData?.[`procedure${procNo}_procedureCode`]).trim();
       const decisionNo = this.asDisplayString(dd?.decisionNumber).trim() || String(procNo);
 
-      const fromDate = this.formatDateShort(dd?.fromDate ?? this.authData?.[`procedure${procNo}_fromDate`]);
-      const toDate = this.formatDateShort(dd?.toDate ?? this.authData?.[`procedure${procNo}_toDate`]);
-      const line2 = (fromDate !== 'N/A' || toDate !== 'N/A')
-        ? `From: ${fromDate !== 'N/A' ? fromDate : '-'}  To: ${toDate !== 'N/A' ? toDate : '-'}`
+      const fromRaw = dd?.fromDate ?? this.authData?.[`procedure${procNo}_fromDate`];
+      const toRaw   = dd?.toDate   ?? this.authData?.[`procedure${procNo}_toDate`];
+      const fromComp = this.formatDateCompact(fromRaw);
+      const toComp   = this.formatDateCompactFull(toRaw);
+      const line2 = (fromComp || toComp)
+        ? `${fromComp || '—'} → ${toComp || '—'}`
         : '';
 
       const status = this.computeTabStatus(procNo);
 
-      const line1 = `Decision #${decisionNo}${code ? ` | Code: ${code}` : ''}`;
+      // line1 = "Decision #N"  (code shown separately as procedureCode)
+      const line1 = `Decision #${decisionNo}`;
       const line3 = status.label;
       const line4 = status.reasonText || '';
 
@@ -862,14 +902,16 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
       const code = this.asDisplayString(dd?.serviceCode ?? dd?.procedureCode ?? this.authData?.[`procedure${n}_procedureCode`]).trim();
       const decisionNo = this.asDisplayString(dd?.decisionNumber).trim() || String(n);
 
-      const fromDate = this.formatDateShort(dd?.fromDate ?? this.authData?.[`procedure${n}_fromDate`]);
-      const toDate = this.formatDateShort(dd?.toDate ?? this.authData?.[`procedure${n}_toDate`]);
-      const line2 = (fromDate !== 'N/A' || toDate !== 'N/A')
-        ? `From: ${fromDate !== 'N/A' ? fromDate : '-'}  To: ${toDate !== 'N/A' ? toDate : '-'}`
+      const fromRaw = dd?.fromDate ?? this.authData?.[`procedure${n}_fromDate`];
+      const toRaw   = dd?.toDate   ?? this.authData?.[`procedure${n}_toDate`];
+      const fromComp = this.formatDateCompact(fromRaw);
+      const toComp   = this.formatDateCompactFull(toRaw);
+      const line2 = (fromComp || toComp)
+        ? `${fromComp || '—'} → ${toComp || '—'}`
         : '';
 
       const status = this.computeTabStatus(n);
-      const line1 = `Decision #${decisionNo}${code ? ` | Code: ${code}` : ''}`;
+      const line1 = `Decision #${decisionNo}`;
 
       return {
         id: idx + 1,
@@ -1702,12 +1744,24 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
       return;
     }
 
-    // 2) match against common raw keys (fix: backend stored id but UI expects code, etc.)
+    // 2) loose numeric match: "1" should match 1 and vice-versa
+    if (/^\d+$/.test(v)) {
+      const numMatch = opts.find(o => {
+        const ov = (o as any)?.value;
+        return String(ov ?? '').trim() === v || Number(ov) === Number(v);
+      });
+      if (numMatch) {
+        ctrl.setValue((numMatch as any).value, { emitEvent: false });
+        return;
+      }
+    }
+
+    // 3) match against common raw keys (fix: backend stored id but UI expects code, etc.)
     const alt = opts.find(o => {
       const r: any = (o as any)?.raw;
       if (!r) return false;
       const cands = [r?.id, r?.value, r?.code, r?.key, r?.decisionStatusCode, r?.decisionTypeCode];
-      return cands.some(x => String(x ?? '').trim() === v);
+      return cands.some(x => String(x ?? '').trim() === v || (typeof x === 'number' && String(x) === v));
     });
 
     if (alt) {
@@ -1715,7 +1769,14 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
       return;
     }
 
-    // 3) invalid / stale value
+    // 4) For Decision Status fields, do NOT clear value to null if options just haven't loaded yet.
+    //    Only clear if options are loaded and genuinely don't contain the value.
+    if (this.isDecisionStatusField(field) && opts.length === 0) {
+      // Options haven't loaded yet — keep the current value, it will be reconciled when options arrive
+      return;
+    }
+
+    // 5) invalid / stale value
     ctrl.setValue(null, { emitEvent: false });
   }
 
@@ -2022,6 +2083,33 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
     const active = this.tabs.find(t => t.id === this.selectedTabId);
     // statusClass is like 'status-approved' → extract the key after 'status-'
     return (active?.statusClass ?? '').replace('status-', '');
+  }
+
+  /** Content header title: "Decision #N — CODE" */
+  get contentHeaderTitle(): string {
+    const tab = this.tabs.find(t => t.id === this.selectedTabId);
+    if (!tab) return '';
+    const code = tab.procedureCode ? ` — ${tab.procedureCode}` : '';
+    return `${tab.line1}${code}`;
+  }
+
+  /** Content header status badge text */
+  get contentHeaderStatusText(): string {
+    const tab = this.tabs.find(t => t.id === this.selectedTabId);
+    return tab?.statusText ?? 'Pended';
+  }
+
+  /** CSS class for content header badge (e.g. 'status-approved-badge') */
+  get contentHeaderBadgeClass(): string {
+    const tab = this.tabs.find(t => t.id === this.selectedTabId);
+    const key = (tab?.statusClass ?? 'status-pended').replace('status-', '');
+    return `status-${key}-badge`;
+  }
+
+  /** CSS class for content header bar background */
+  get contentHeaderClass(): string {
+    const key = this.getActiveStatusKey() || 'pended';
+    return `status-${key}-header`;
   }
 
   // Alias for CanDeactivate guards that expect a different method name

@@ -1,11 +1,13 @@
-import { Component, Input, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, Input, ViewChild, AfterViewInit, ViewEncapsulation } from '@angular/core';
 import { CasedetailsComponent } from '../casedetails/casedetails.component';
 
 export type WizardMode = 'new' | 'edit';
 
 @Component({
   selector: 'app-casedisposition',
-  templateUrl: './casedisposition.component.html'
+  templateUrl: './casedisposition.component.html',
+  styleUrls: ['./casedisposition.component.css'],
+  encapsulation: ViewEncapsulation.None,
 })
 export class CasedispositionComponent implements AfterViewInit {
   @ViewChild(CasedetailsComponent) private detailsComp?: CasedetailsComponent;

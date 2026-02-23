@@ -137,6 +137,20 @@ export class MembercasedetailsComponent implements OnInit {
   }
 
   // ═══════════════════════════════════
+  //  LEVEL TOOLTIP HELPERS
+  // ═══════════════════════════════════
+
+  /** Human-readable label for a level step's status */
+  getLevelStepStatusLabel(step: LevelStep): string {
+    switch (step.status) {
+      case 'completed': return 'Escalated';
+      case 'current':   return 'Current Level';
+      case 'future':    return 'Upcoming';
+      default:          return '—';
+    }
+  }
+
+  // ═══════════════════════════════════
   //  STATUS / PRIORITY / TYPE SLUGS
   //
   //  Status values:

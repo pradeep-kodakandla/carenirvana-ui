@@ -191,6 +191,8 @@ function onlyDates(s: string | undefined): string | undefined {
   return m ? m[0] : undefined; // drop garbage like single "1"
 }
 
+
+
 function unique<T>(arr: T[]): T[] { return Array.from(new Set(arr)); }
 
 type Extractor = (text: string) => Partial<PriorAuth>;
@@ -408,10 +410,47 @@ const arizonaAdapter: Extractor = (raw) => {
   const svcCodeFromSvcRec = first(cptHcpcsGlobal, svcRec);
 
 
-  // Bottom table usually looks like: "HCPCS/CPT DESCRIPTION CHARGES A9600 STRONTIUM ... $108.00"
+  // Bottom table: "HCPCS/CPT DESCRIPTION CHARGES A9604 STRONTIUM ... $108.00"
+  // Strategy 1: strict regex — header words immediately followed by code
   const hcpcsRow = text.match(/HCPCS\/CPT\s+DESCRIPTION\s+CHARGES\s+(\b(?:\d{5}|[A-Z]\d{4})\b)\s+(.+?)(?=\s+\$?\d)/i);
-  const hcpcsCode = hcpcsRow?.[1];
-  const hcpcsDesc = hcpcsRow?.[2]?.trim();
+  let hcpcsCode = hcpcsRow?.[1];
+  let hcpcsDesc = hcpcsRow?.[2]?.trim();
+
+  // Strategy 2: find "HCPCS" or "CPT" label, then scan nearby text for a code
+  if (!hcpcsCode) {
+    const hcpcsIdx = text.search(/HCPCS\/?CPT/i);
+    if (hcpcsIdx >= 0) {
+      // Scan up to 500 chars after the label for an HCPCS code (letter+4 digits)
+      const window = text.slice(hcpcsIdx, hcpcsIdx + 500);
+      const codeMatch = window.match(/\b([A-Z]\d{4})\b/);
+      if (codeMatch) {
+        hcpcsCode = codeMatch[1];
+        // Try to grab the description after the code
+        const afterCode = window.slice(window.indexOf(hcpcsCode) + hcpcsCode.length);
+        const descMatch = afterCode.match(/^\s+(.+?)(?=\s+\$[\d,]+|\s{3,}|$)/);
+        if (descMatch && !hcpcsDesc) hcpcsDesc = descMatch[1].trim();
+      }
+      // Also check for 5-digit CPT code if no alpha code found
+      if (!hcpcsCode) {
+        const cptMatch = window.match(/\b(\d{5})\b/);
+        if (cptMatch) hcpcsCode = cptMatch[1];
+      }
+    }
+  }
+
+  // Strategy 3: global scan for HCPCS alpha codes (A-Z + 4 digits) anywhere in text
+  // Exclude form identifiers like CSO-1179A by checking surrounding context
+  if (!hcpcsCode) {
+    const allCodes = Array.from(text.matchAll(/\b([A-Z]\d{4})\b/g), m => m[1]);
+    // Filter out form numbers and ICD codes (ICD-10 codes start with specific letters and have dots)
+    const filtered = allCodes.filter(c => {
+      const idx = text.indexOf(c);
+      const before = text.slice(Math.max(0, idx - 10), idx).toUpperCase();
+      // Skip if preceded by CSO-, CMD-, form-like prefixes
+      return !/(?:CSO|CMD|FORM|REF|NO\.)[-\s]*$/i.test(before);
+    });
+    if (filtered.length) hcpcsCode = filtered[0];
+  }
 
   const svcCode = svcCodeFromSvcRec || hcpcsCode || undefined;
 
@@ -458,8 +497,19 @@ const arizonaAdapter: Extractor = (raw) => {
       facility: facility || undefined
       // If you want: include facilityFax/facilityAddr in address/notes
     },
-    services: [{ code: svcCode, description: svcDesc, startDate: svcStart, endDate: svcEnd }]
   };
+
+  // Only include services if we actually extracted useful data; otherwise let generic extractor's result stand
+  const hasServiceData = svcCode || svcDesc || svcStart || svcEnd;
+  if (hasServiceData) {
+    out.services = [{
+      code: svcCode,
+      description: svcDesc,
+      startDate: svcStart,
+      endDate: svcEnd,
+      diagnosisCode: dxCodes[0]
+    }];
+  }
 
   if (dxCodes.length) out.dx = { codes: dxCodes, description: dxBlk || undefined };
   return out;
@@ -860,33 +910,102 @@ export function extractArizonaFromText(pageText: string): Partial<PriorAuth> {
 
   // Patient block
   const pname = getNext(/PATIENT.S NAME/i);
-  const pid = getNext(/CMDP ID NO\./i);
+  const pid = getNext(/CMDP ID NO\.?/i);
   const dob = firstMatch(dateRe, getNext(/DATE OF BIRTH/i) || '') || undefined;
   out.patient = { name: pname, memberId: pid, dob };
 
   // Referring physician block (top half)
   const refName = getNext(/REFERRING PHYSICIAN.S NAME/i);
-  const refPhone = firstMatch(phoneRe, getNext(/PHONE NO\./i) || '') || undefined;
-  const refFax = firstMatch(phoneRe, getNext(/FAX NO\./i) || '') || undefined;
-  const npiTop = getNext(/\bNPI NO\./i) || undefined;
+
+  // ── NPI: extract digits from same line AND next line (OCR may place it either way) ──
+  const npiIdx1 = findLineIdx(lines, /\bNPI NO\./i);
+  let npiTop: string | undefined;
+  if (npiIdx1 >= 0) {
+    // Try inline first: "REFERRING PHYSICIAN'S SIGNATURE NPI NO. 100000002"
+    const inlineDigits = lines[npiIdx1].match(/NPI\s+NO\.?\s*(\d{7,10})/i);
+    if (inlineDigits) {
+      npiTop = inlineDigits[1];
+    } else {
+      // Try next non-empty lines
+      for (let k = 1; k <= 3 && npiIdx1 + k < lines.length; k++) {
+        const v = cleanLine(lines[npiIdx1 + k]);
+        if (v) {
+          const dm = v.match(/(\d{7,10})/);
+          npiTop = dm ? dm[1] : undefined;
+          break;
+        }
+      }
+    }
+  }
+
+  // Phone/Fax for referring physician — use start offsets to avoid matching servicing section
+  const refNameIdx = findLineIdx(lines, /REFERRING PHYSICIAN.S NAME/i);
+  const refPhone = firstMatch(phoneRe, getNext(/PHONE NO\./i, refNameIdx > 0 ? refNameIdx : 0) || '') || undefined;
+  const refFax = firstMatch(phoneRe, getNext(/FAX NO\./i, refNameIdx > 0 ? refNameIdx : 0) || '') || undefined;
+
   out.providerRequesting = { name: refName, phone: refPhone, fax: refFax, npi: npiTop };
 
-  // Service dates
+  // ── Service dates: use positional start to avoid "TO END" matching wrong text ──
+  const dateBeginIdx = findLineIdx(lines, /DATE SERVICE TO BEGIN/i);
   const svcStart = firstMatch(dateRe, getNext(/DATE SERVICE TO BEGIN/i) || '') || undefined;
-  const svcEnd = firstMatch(dateRe, getNext(/\bTO END\b/i) || '') || undefined;
+  const svcEnd = firstMatch(dateRe, getNext(/\bTO END\b/i, dateBeginIdx >= 0 ? dateBeginIdx : 0) || '') || undefined;
 
   // Diagnosis & CPT/HCPCS
   const dxLine = getNext(/\bDIAGNOSIS\b/i) || '';
   const dxCodes = Array.from(dxLine.matchAll(icd10Global), m => m[1]);
-  const svcCode = (getNext(/SERVICE RECOMMENDED/i) || '').match(cptHcpcsGlobal)?.[0];
+  let svcCode = (getNext(/SERVICE RECOMMENDED/i) || '').match(cptHcpcsGlobal)?.[0];
   const svcDesc = getNext(/SERVICE RATIONALE/i) || undefined;
 
-  // Provider (bottom half)
-  const provName = getNext(/PROVIDER.S NAME/i);
-  const facility = getNext(/\bFACILITY NAME\b/i) || undefined;
-  const provPhone = firstMatch(phoneRe, getNext(/PROVIDER.S.*PHONE NO\./i) || '') || undefined;
-  const provFax = firstMatch(phoneRe, getNext(/PROVIDER.S.*FAX NO\./i) || '') || undefined;
-  const npiBottom = getNext(/NPI NO\./i) || undefined;
+  // Fallback: look in HCPCS/CPT table section for service codes
+  if (!svcCode) {
+    const hcpcsIdx = findLineIdx(lines, /HCPCS\/?.*CPT/i);
+    if (hcpcsIdx >= 0) {
+      // Scan the header line and next few lines for HCPCS code (letter + 4 digits ONLY)
+      // Do NOT match pure 5-digit patterns — too many false positives (P.O. Box, ZIP codes)
+      for (let k = 0; k <= 5 && hcpcsIdx + k < lines.length; k++) {
+        const line = lines[hcpcsIdx + k];
+        const m = line.match(/\b([A-Z]\d{4})\b/);
+        if (m) { svcCode = m[1]; break; }
+      }
+    }
+  }
+
+  // Fallback 2: scan entire page for HCPCS-pattern codes (letter + 4 digits ONLY)
+  if (!svcCode) {
+    for (const line of lines) {
+      const m = line.match(/\b([A-Z]\d{4})\b/);
+      if (m) { svcCode = m[1]; break; }
+    }
+  }
+
+  // Provider (bottom half) — start search AFTER the referring physician section
+  // to avoid matching the wrong "PROVIDER'S NAME" or "NPI NO."
+  const providerSectionStart = findLineIdx(lines, /PROVIDER MUST BE AHCCCS/i);
+  const searchFrom = providerSectionStart >= 0 ? providerSectionStart : Math.floor(lines.length / 2);
+
+  const provName = getNext(/PROVIDER.S NAME/i, searchFrom);
+  const facility = getNext(/\bFACILITY NAME\b/i, searchFrom) || undefined;
+  const provPhone = firstMatch(phoneRe, getNext(/PHONE NO\./i, searchFrom) || '') || undefined;
+  const provFax = firstMatch(phoneRe, getNext(/FAX NO\./i, searchFrom) || '') || undefined;
+
+  // Second NPI = servicing provider
+  let npiBottom: string | undefined;
+  const npiIdx2 = findLineIdx(lines, /\bNPI NO\./i, npiIdx1 >= 0 ? npiIdx1 + 1 : searchFrom);
+  if (npiIdx2 >= 0) {
+    const inlineDigits = lines[npiIdx2].match(/NPI\s+NO\.?\s*(\d{7,10})/i);
+    if (inlineDigits) {
+      npiBottom = inlineDigits[1];
+    } else {
+      for (let k = 1; k <= 3 && npiIdx2 + k < lines.length; k++) {
+        const v = cleanLine(lines[npiIdx2 + k]);
+        if (v) {
+          const dm = v.match(/(\d{7,10})/);
+          npiBottom = dm ? dm[1] : undefined;
+          break;
+        }
+      }
+    }
+  }
 
   out.providerServicing = { name: provName, facility, phone: provPhone, fax: provFax, npi: npiBottom };
 
@@ -894,7 +1013,8 @@ export function extractArizonaFromText(pageText: string): Partial<PriorAuth> {
     code: svcCode,
     description: svcDesc,
     startDate: svcStart,
-    endDate: svcEnd
+    endDate: svcEnd,
+    diagnosisCode: dxCodes[0]
   }];
 
   if (dxCodes.length) out.dx = { codes: Array.from(new Set(dxCodes)) };

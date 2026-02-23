@@ -187,6 +187,7 @@
   grid-template-columns: repeat(auto-fill, minmax(370px, 1fr));
   gap: 14px;
   padding: 0 12px;
+  overflow: visible;
 }
 
 @media (max-width: 480px) {
@@ -206,6 +207,7 @@
   gap: 12px;
   transition: all 0.2s ease;
   cursor: default;
+  overflow: visible;
 }
 
 .mcd-case-card:hover {
@@ -458,6 +460,8 @@
   border-radius: 10px;
   background: #F8FAFC;
   border: 1px solid #F1F5F9;
+  overflow: visible;
+  position: relative;
 }
 
 .mcd-level-label {
@@ -480,10 +484,28 @@
   display: flex;
   align-items: center;
   gap: 3px;
+  overflow: visible;
 }
 
 .mcd-level-stepper--sm {
   gap: 2px;
+}
+
+/* ── Step wrapper (position anchor for tooltip) ── */
+.mcd-level-step-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: default;
+  /* Expand hover hit-area with padding so mouse doesn't "fall off" */
+  padding: 4px;
+  margin: -4px;
+  z-index: 1;
+}
+
+/* Raise the hovered wrapper above siblings so its tooltip isn't clipped */
+.mcd-level-step-wrapper:hover {
+  z-index: 10;
 }
 
 .mcd-level-step {
@@ -552,6 +574,132 @@
 
 .mcd-connector--done {
   background: #22C55E;
+}
+
+
+/* ═══════════════════════════════════════════
+   LEVEL STEP — CUSTOM HOVER TOOLTIP
+   ─────────────────────────────────────────
+   • Always in DOM (no *ngIf flicker)
+   • Hidden by default, shown via CSS :hover
+   • pointer-events:none prevents hover loops
+   ═══════════════════════════════════════════ */
+.mcd-lstep-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  z-index: 1200;
+  min-width: 180px;
+  max-width: 240px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #1E293B;
+  color: #F1F5F9;
+  font-size: 11px;
+  line-height: 1.55;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  white-space: normal;
+
+  /* ── Hidden by default ── */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+
+  /* ── Smooth transition ── */
+  transition: opacity 0.15s ease, visibility 0.15s ease, transform 0.15s ease;
+}
+
+/* ── Show on wrapper hover ── */
+.mcd-level-step-wrapper:hover > .mcd-lstep-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Arrow pointing down */
+.mcd-lstep-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #1E293B;
+}
+
+.mcd-lstep-tooltip-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 6px;
+  letter-spacing: -0.2px;
+}
+
+.mcd-lstep-tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+
+.mcd-lstep-tooltip-label {
+  font-weight: 700;
+  color: #94A3B8;
+  flex-shrink: 0;
+  min-width: 68px;
+}
+
+/* Tooltip status color chips */
+.mcd-lstep-tooltip-status {
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 6px;
+  font-size: 10px;
+}
+
+.mcd-lstep-ts--completed {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ADE80;
+}
+
+.mcd-lstep-ts--current {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93C5FD;
+}
+
+.mcd-lstep-ts--future {
+  background: rgba(148, 163, 184, 0.2);
+  color: #94A3B8;
+}
+
+/* Extra status slugs for case status shown in tooltip */
+.mcd-lstep-ts--in-progress {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93C5FD;
+}
+
+.mcd-lstep-ts--on-hold {
+  background: rgba(249, 115, 22, 0.2);
+  color: #FDBA74;
+}
+
+.mcd-lstep-ts--pending {
+  background: rgba(139, 92, 246, 0.2);
+  color: #C4B5FD;
+}
+
+.mcd-lstep-ts--escalated {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ADE80;
+}
+
+.mcd-lstep-tooltip-hint {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 10px;
+  color: #94A3B8;
 }
 
 
