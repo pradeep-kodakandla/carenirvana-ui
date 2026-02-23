@@ -137,6 +137,38 @@
   border: 1.5px solid #fff;
 }
 
+/* ── AI Text Icon — Professional badge with background ── */
+.aw-ai-text-icon {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #A855F7 100%);
+  color: #fff;
+  line-height: 1;
+  padding: 10px 10px;
+  border-radius: 6px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.aw-btn-ai-toggle.active .aw-ai-text-icon {
+  background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #9333EA 100%);
+}
+
+.aw-btn-ai-toggle:hover:not(:disabled) .aw-ai-text-icon {
+  background: linear-gradient(135deg, #4338CA 0%, #6D28D9 50%, #7E22CE 100%);
+}
+
+/* Small variant for panel header icon */
+.aw-ai-text-icon--sm {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.3px;
+  padding: 3px 5px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+}
+
 
 /* ═══════════════════════════════════════════
    STEPPER ROW

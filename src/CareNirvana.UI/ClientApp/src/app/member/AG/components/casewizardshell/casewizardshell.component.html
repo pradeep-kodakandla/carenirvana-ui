@@ -178,7 +178,7 @@
                   (click)="openRightPanel('ai')"
                   [disabled]="!getCaseNumber(aggregate$ | async)"
                   title="Toggle AI Assistant">
-            🤖
+            <span class="cw-ai-text-icon">AI</span>
             <span class="cw-ai-online-dot" *ngIf="getCaseNumber(aggregate$ | async)"></span>
           </button>
         </div>
@@ -246,7 +246,7 @@
         <!-- Panel header -->
         <div class="cw-rpanel-header cw-rpanel-header--ai">
           <div class="cw-rpanel-title-block">
-            <span class="cw-rpanel-icon cw-rpanel-icon--ai">🤖</span>
+            <span class="cw-rpanel-icon cw-rpanel-icon--ai"><span class="cw-ai-text-icon cw-ai-text-icon--sm">AI</span></span>
             <div>
               <div class="cw-rpanel-title">AI Assistant</div>
               <div class="cw-rpanel-subtitle">Case Intelligence</div>
