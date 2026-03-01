@@ -90,11 +90,20 @@ export class AuthDetailApiService {
     });
   }
 
-  getFaxSummary(paData: string): Observable<string> {
-    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-    // C# [FromBody] string expects the body to be a JSON-encoded string
-    return this.http.post(`${this.baseUrl}/faxsummary`, JSON.stringify(paData), {
-      headers,
+  //getFaxSummary(paData: string): Observable<string> {
+  //  const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+  //  // C# [FromBody] string expects the body to be a JSON-encoded string
+  //  return this.http.post(`${this.baseUrl}/faxsummary`, JSON.stringify(paData), {
+  //    headers,
+  //    responseType: 'text'
+  //  });
+  //}
+
+  getFaxSummary(paData: string, value: string): Observable<string> {
+    return this.http.post(`${this.baseUrl}/faxsummary`, {
+      paData,
+      value
+    }, {
       responseType: 'text'
     });
   }

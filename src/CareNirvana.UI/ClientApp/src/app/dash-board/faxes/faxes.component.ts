@@ -175,10 +175,10 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
   /** Category → rgb color for highlight rectangles */
   private readonly HL_COLORS: Record<string, { r: number; g: number; b: number }> = {
-    patient:    { r: 0.15, g: 0.39, b: 0.92 },
-    review:     { r: 0.49, g: 0.23, b: 0.93 },
-    service:    { r: 0.85, g: 0.47, b: 0.02 },
-    provider:   { r: 0.02, g: 0.59, b: 0.41 },
+    patient: { r: 0.15, g: 0.39, b: 0.92 },
+    review: { r: 0.49, g: 0.23, b: 0.93 },
+    service: { r: 0.85, g: 0.47, b: 0.02 },
+    provider: { r: 0.02, g: 0.59, b: 0.41 },
     submission: { r: 0.39, g: 0.40, b: 0.95 },
   };
 
@@ -1759,12 +1759,12 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         const w = item.width || (item.str.length * fontSize * 0.6);
 
         this._pdfTextItems.push({
-          str:       item.str,
+          str: item.str,
           pageIndex: pageNum - 1,
-          x:         x,
-          y:         y,
-          w:         w,
-          h:         fontSize,
+          x: x,
+          y: y,
+          w: w,
+          h: fontSize,
         });
       }
 
@@ -1882,24 +1882,24 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
       // Semi-transparent highlight fill
       page.drawRectangle({
-        x:             pos.x - pad,
-        y:             pos.y - pad,
-        width:         pos.w + pad * 2,
-        height:        pos.h + pad * 2,
-        color:         rgb(color.r, color.g, color.b),
-        opacity:       0.25,
-        borderColor:   rgb(color.r, color.g, color.b),
-        borderWidth:   1.5,
+        x: pos.x - pad,
+        y: pos.y - pad,
+        width: pos.w + pad * 2,
+        height: pos.h + pad * 2,
+        color: rgb(color.r, color.g, color.b),
+        opacity: 0.25,
+        borderColor: rgb(color.r, color.g, color.b),
+        borderWidth: 1.5,
         borderOpacity: 0.8,
       });
 
       // Bold underline for extra visibility
       page.drawRectangle({
-        x:       pos.x - pad,
-        y:       pos.y - pad - 2,
-        width:   pos.w + pad * 2,
-        height:  3,
-        color:   rgb(color.r, color.g, color.b),
+        x: pos.x - pad,
+        y: pos.y - pad - 2,
+        width: pos.w + pad * 2,
+        height: 3,
+        color: rgb(color.r, color.g, color.b),
         opacity: 0.65,
       });
     }
@@ -1966,11 +1966,12 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     try {
       const inputData = this.buildPaDataText(paData);
       console.log('[AISummary] Sending to faxsummary:', inputData);
+      const value = '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';
 
       // Call backend — must send as JSON with correct Content-Type.
       // C# [FromBody] string expects the body to be a JSON-encoded string: "value"
       const summary: string = await firstValueFrom(
-        this.authDetailApi.getFaxSummary(inputData)
+        this.authDetailApi.getFaxSummary(inputData, value)
       ) as string;
 
       if (!summary) {
