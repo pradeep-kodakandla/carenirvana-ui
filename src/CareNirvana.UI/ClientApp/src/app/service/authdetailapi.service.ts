@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 import {
@@ -84,6 +84,20 @@ export class AuthDetailApiService {
     return this.http.put<void>(`${this.baseUrl}/${authDetailId}`, this.normalizeWorkgroupPayload(req), { params });
   }
 
+  getAuthSummary(authNumber: string): Observable<string> {
+    return this.http.get(`${this.baseUrl}/summary/${encodeURIComponent(authNumber)}`, {
+      responseType: 'text'
+    });
+  }
+
+  getFaxSummary(paData: string): Observable<string> {
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+    // C# [FromBody] string expects the body to be a JSON-encoded string
+    return this.http.post(`${this.baseUrl}/faxsummary`, JSON.stringify(paData), {
+      headers,
+      responseType: 'text'
+    });
+  }
   /**
    * POST /api/auth/workgroup/{authWorkgroupId}/action?actionType=ACCEPT|REJECT&userId=123&completedStatusId=1&comment=...
    *

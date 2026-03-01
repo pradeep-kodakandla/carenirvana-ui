@@ -423,39 +423,7 @@
           </div>
         </div>
 
-        <!-- ══════════════════════════════════════════════════════════════
-             SPLIT PANEL — only when multi-page AND not already linked
-             ══════════════════════════════════════════════════════════════ -->
-        <div class="split-panel-v2"
-             *ngIf="!linkedAuthMeta && (selectedFax?.pageCount ?? 0) > 1">
-          <div class="split-panel-icon">
-            <mat-icon>call_split</mat-icon>
-          </div>
-          <div class="split-panel-body">
-            <div class="split-panel-title">Split Document</div>
-            <div class="split-panel-meta">
-              <span class="split-page-badge">{{ selectedFax?.pageCount }} pages</span>
-            </div>
-          </div>
-          <div class="split-panel-controls">
-            <label class="split-label">
-              First doc pages
-              <input type="number"
-                     class="split-input"
-                     min="1"
-                     [max]="(selectedFax?.pageCount ?? 0) - 1"
-                     [(ngModel)]="splitFirstPageCount"
-                     aria-label="Pages in first split document" />
-            </label>
-            <button class="split-btn"
-                    matTooltip="Split this fax into two documents"
-                    (click)="splitCurrentFaxOnClient()"
-                    [disabled]="isSplitting || !selectedFax || (selectedFax.pageCount ?? 0) <= 1">
-              <mat-icon>content_cut</mat-icon>
-              {{ isSplitting ? 'Splitting…' : 'Split & Save' }}
-            </button>
-          </div>
-        </div>
+        <!-- Split is now in the right pane header -->
 
 
         <!-- ══════════════════════════════════════════════════════════════
@@ -576,6 +544,16 @@
                 <span *ngIf="smartAuthCheckAuthRequired === null">
                   No matching rule found for the extracted inputs.
                 </span>
+
+                <!-- Create Auth button — inline when auth IS required -->
+                <button class="banner-create-auth-btn"
+                        *ngIf="smartAuthCheckAuthRequired === true && selectedFax?.memberDetailsId"
+                        matTooltip="Create a new authorization pre-populated with extracted fax data"
+                        (click)="openAuthForm()"
+                        [disabled]="!pa.patient?.memberId || !selectedFax?.memberDetailsId">
+                  <mat-icon>add_circle_outline</mat-icon>
+                  Create Auth
+                </button>
               </div>
 
               <div class="smart-status smart-error" *ngIf="!smartAuthCheckInProgress && !smartAuthCheckCompleted && smartAuthCheckError">
@@ -599,34 +577,129 @@
             </div>
           </ng-template>
 
-          <!-- Create Authorization CTA -->
-          <div class="cta-card"
-               *ngIf="pa.patient?.memberId && selectedFax?.memberDetailsId">
-            <div class="cta-card-left">
-              <mat-icon class="cta-icon">note_add</mat-icon>
-              <div>
-                <div class="cta-title">Create Authorization</div>
-                <div class="cta-hint">Pre-populate with extracted diagnosis, services &amp; provider info</div>
+          <!-- ══════════════════════════════════════════════════════════════
+               AI Analysis (Clinical Criteria Match + AI Recommendation)
+               ══════════════════════════════════════════════════════════════ -->
+          <div class="ai-summary-card">
+            <div class="ai-summary-header">
+              <div class="ai-summary-title">
+                <div class="ai-icon-wrapper">
+                  <svg class="ai-sparkle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L13.09 8.26L18 6L14.74 10.91L21 12L14.74 13.09L18 18L13.09 15.74L12 22L10.91 15.74L6 18L9.26 13.09L3 12L9.26 10.91L6 6L10.91 8.26L12 2Z"
+                          fill="currentColor" />
+                  </svg>
+                </div>
+                <span>AI Analysis</span>
+                <span class="ai-beta-badge">Beta</span>
               </div>
+              <!--*ngIf="(aiClinicalMatch || aiRecommendation || aiSummaryError) && !aiSummaryLoading"-->
+              <button class="ai-generate-btn"
+                      (click)="generateAiSummary()"
+                      [disabled]="!priorAuth"
+                      matTooltip="Regenerate AI analysis">
+                <mat-icon>refresh</mat-icon>
+                Regenerate
+              </button>
             </div>
-            <button class="cta-btn"
-                    matTooltip="Create a new authorization pre-populated with extracted fax data"
-                    (click)="openAuthForm()"
-                    [disabled]="!pa.patient?.memberId || !selectedFax?.memberDetailsId">
-              <mat-icon>add_circle_outline</mat-icon>
-              Create Auth
-            </button>
+
+            <div class="ai-summary-body">
+
+              <!-- Loading state -->
+              <div class="ai-summary-loading" *ngIf="aiSummaryLoading">
+                <div class="ai-loading-dots">
+                  <span></span><span></span><span></span>
+                </div>
+                <div class="ai-loading-text">Analyzing clinical criteria &amp; generating recommendation…</div>
+              </div>
+
+              <!-- Error state -->
+              <div class="ai-summary-error" *ngIf="aiSummaryError && !aiSummaryLoading">
+                <mat-icon>error_outline</mat-icon>
+                <span>{{ aiSummaryError }}</span>
+              </div>
+
+              <!-- Results: two cards -->
+              <div class="ai-sections" *ngIf="(aiClinicalMatch || aiRecommendation) && !aiSummaryLoading && !aiSummaryError">
+
+                <!-- Clinical Criteria Match -->
+                <div class="ai-section-card ai-section-criteria" *ngIf="aiClinicalMatch">
+                  <div class="ai-section-icon-row">
+                    <div class="ai-section-icon criteria-icon">
+                      <mat-icon>biotech</mat-icon>
+                    </div>
+                    <div class="ai-section-label">Clinical Criteria Match</div>
+                  </div>
+                  <p class="ai-section-text">{{ aiClinicalMatch }}</p>
+                </div>
+
+                <!-- AI Recommendation -->
+                <div class="ai-section-card"
+                     [ngClass]="{
+                       'ai-section-deny':    aiRecommendationType === 'deny',
+                       'ai-section-approve': aiRecommendationType === 'approve',
+                       'ai-section-pend':    aiRecommendationType === 'pend',
+                       'ai-section-info':    aiRecommendationType === 'info'
+                     }"
+                     *ngIf="aiRecommendation">
+                  <div class="ai-section-icon-row">
+                    <div class="ai-section-icon rec-icon">
+                      <mat-icon>
+                        {{ aiRecommendationType === 'deny' ? 'gpp_bad' :
+                           aiRecommendationType === 'approve' ? 'verified' :
+                           aiRecommendationType === 'pend' ? 'pending_actions' : 'smart_toy' }}
+                      </mat-icon>
+                    </div>
+                    <div class="ai-section-label">AI Recommendation</div>
+                    <span class="ai-rec-badge"
+                          [ngClass]="{
+                            'badge-deny':    aiRecommendationType === 'deny',
+                            'badge-approve': aiRecommendationType === 'approve',
+                            'badge-pend':    aiRecommendationType === 'pend'
+                          }">
+                      {{ aiRecommendationType === 'deny' ? 'Likely Deny' :
+                         aiRecommendationType === 'approve' ? 'Likely Approve' :
+                         aiRecommendationType === 'pend' ? 'Needs Review' : 'Review' }}
+                    </span>
+                  </div>
+                  <p class="ai-section-text">{{ aiRecommendation }}</p>
+                </div>
+
+                <!-- Disclaimer -->
+                <div class="ai-summary-footer">
+                  <mat-icon>info_outline</mat-icon>
+                  <span>AI-generated analysis for reviewer support only — not a coverage determination</span>
+                </div>
+              </div>
+
+              <!-- Empty / waiting state -->
+              <div class="ai-summary-empty" *ngIf="!aiClinicalMatch && !aiRecommendation && !aiSummaryLoading && !aiSummaryError">
+                <div class="ai-empty-illustration">
+                  <svg class="ai-brain-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.3"/>
+                    <path d="M24 14C20 14 17 17 17 20.5C17 22.5 18 24 19 25C18 26 17 28 17 30C17 33 20 36 24 36C28 36 31 33 31 30C31 28 30 26 29 25C30 24 31 22.5 31 20.5C31 17 28 14 24 14Z"
+                          stroke="currentColor" stroke-width="1.5" fill="none" opacity="0.4"/>
+                    <circle cx="21" cy="21" r="1.5" fill="currentColor" opacity="0.3"/>
+                    <circle cx="27" cy="21" r="1.5" fill="currentColor" opacity="0.3"/>
+                    <path d="M21 28C21 28 22.5 30 24 30C25.5 30 27 28 27 28" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.3"/>
+                  </svg>
+                </div>
+                <div class="ai-empty-text">AI analysis will generate automatically</div>
+                <div class="ai-empty-sub">Clinical criteria evaluation and recommendation on preview</div>
+              </div>
+
+            </div>
           </div>
 
 
-          <!-- ── Detail Cards ────────────────────────────────────────── -->
+          <!-- ── Detail Cards (click any identified field to highlight in document) ── -->
 
           <!-- Patient -->
           <div class="detail-card">
             <div class="detail-card-header">
               <div class="detail-card-title">
                 <mat-icon>person</mat-icon>
-                <span>Patient</span>
+                <span>Member</span>
+                <span class="hl-cat-badge hl-cat-patient">{{ countIdentifiedPatientFields(pa) }}</span>
               </div>
               <div class="detail-card-actions">
                 <a [class.disabled-link]="!pa.patient?.memberId"
@@ -634,32 +707,60 @@
                    matTooltip="Link this fax to the identified member"
                    [attr.tabindex]="pa.patient?.memberId ? 0 : -1"
                    (click)="$event.preventDefault()">
-                  <mat-icon>link</mat-icon> Link
+                  <mat-icon>link</mat-icon> Change Member
                 </a>
-                <a [class.disabled-link]="!pa.patient?.memberId"
+                <!--<a [class.disabled-link]="!pa.patient?.memberId"
                    href="#"
                    matTooltip="Add authorization for this member"
                    [attr.tabindex]="pa.patient?.memberId ? 0 : -1"
                    (click)="$event.preventDefault()">
                   <mat-icon>post_add</mat-icon> Add Auth
-                </a>
+                </a>-->
               </div>
             </div>
             <div class="detail-grid">
-              <div class="detail-field">
-                <span class="detail-label">Name</span>
+              <div class="detail-field hl-field"
+                   [class.hl-active]="hlKey === 'patient.name'"
+                   [class.hl-has-value]="!!pa.patient?.name"
+                   (click)="highlightField('patient', 'Name', pa.patient?.name, 'patient.name')"
+                   matTooltip="Click to locate in document">
+                <span class="detail-label">
+                  <span class="hl-dot hl-dot-patient" *ngIf="pa.patient?.name"></span>
+                  Name
+                </span>
                 <span class="detail-value">{{ pa.patient?.name || '—' }}</span>
               </div>
-              <div class="detail-field">
-                <span class="detail-label">Member ID</span>
+              <div class="detail-field hl-field"
+                   [class.hl-active]="hlKey === 'patient.memberId'"
+                   [class.hl-has-value]="!!pa.patient?.memberId"
+                   (click)="highlightField('patient', 'Member ID', pa.patient?.memberId, 'patient.memberId')"
+                   matTooltip="Click to locate in document">
+                <span class="detail-label">
+                  <span class="hl-dot hl-dot-patient" *ngIf="pa.patient?.memberId"></span>
+                  Member ID
+                </span>
                 <span class="detail-value detail-mono">{{ pa.patient?.memberId || '—' }}</span>
               </div>
-              <div class="detail-field">
-                <span class="detail-label">Date of Birth</span>
+              <div class="detail-field hl-field"
+                   [class.hl-active]="hlKey === 'patient.dob'"
+                   [class.hl-has-value]="!!pa.patient?.dob"
+                   (click)="highlightField('patient', 'DOB', pa.patient?.dob, 'patient.dob')"
+                   matTooltip="Click to locate in document">
+                <span class="detail-label">
+                  <span class="hl-dot hl-dot-patient" *ngIf="pa.patient?.dob"></span>
+                  Date of Birth
+                </span>
                 <span class="detail-value">{{ pa.patient?.dob || '—' }}</span>
               </div>
-              <div class="detail-field">
-                <span class="detail-label">Phone</span>
+              <div class="detail-field hl-field"
+                   [class.hl-active]="hlKey === 'patient.phone'"
+                   [class.hl-has-value]="!!pa.patient?.phone"
+                   (click)="highlightField('patient', 'Phone', pa.patient?.phone, 'patient.phone')"
+                   matTooltip="Click to locate in document">
+                <span class="detail-label">
+                  <span class="hl-dot hl-dot-patient" *ngIf="pa.patient?.phone"></span>
+                  Phone
+                </span>
                 <span class="detail-value">{{ pa.patient?.phone || '—' }}</span>
               </div>
             </div>
@@ -671,23 +772,45 @@
               <div class="detail-card-title">
                 <mat-icon>fact_check</mat-icon>
                 <span>Review / Setting</span>
+                <span class="hl-cat-badge hl-cat-review">{{ countIdentifiedReviewFields(pa) }}</span>
               </div>
             </div>
             <div class="detail-grid">
-              <div class="detail-field">
-                <span class="detail-label">Type</span>
+              <div class="detail-field hl-field"
+                   [class.hl-active]="hlKey === 'review.type'"
+                   [class.hl-has-value]="!!pa.review?.type"
+                   (click)="highlightField('review', 'Review Type', pa.review?.type, 'review.type')"
+                   matTooltip="Click to locate in document">
+                <span class="detail-label">
+                  <span class="hl-dot hl-dot-review" *ngIf="pa.review?.type"></span>
+                  Type
+                </span>
                 <span class="detail-value">{{ pa.review?.type || '—' }}</span>
               </div>
-              <div class="detail-field">
-                <span class="detail-label">Inpatient</span>
+              <div class="detail-field hl-field"
+                   [class.hl-active]="hlKey === 'setting.inpatient'"
+                   [class.hl-has-value]="pa.setting?.inpatient"
+                   (click)="highlightField('review', 'Inpatient', pa.setting?.inpatient ? 'Inpatient' : null, 'setting.inpatient')"
+                   matTooltip="Click to locate in document">
+                <span class="detail-label">
+                  <span class="hl-dot hl-dot-review" *ngIf="pa.setting?.inpatient"></span>
+                  Inpatient
+                </span>
                 <span class="detail-value">
                   <span class="detail-badge" [class.badge-yes]="pa.setting?.inpatient" [class.badge-no]="!pa.setting?.inpatient">
                     {{ pa.setting?.inpatient ? 'Yes' : 'No' }}
                   </span>
                 </span>
               </div>
-              <div class="detail-field">
-                <span class="detail-label">Outpatient</span>
+              <div class="detail-field hl-field"
+                   [class.hl-active]="hlKey === 'setting.outpatient'"
+                   [class.hl-has-value]="pa.setting?.outpatient"
+                   (click)="highlightField('review', 'Outpatient', pa.setting?.outpatient ? 'Outpatient' : null, 'setting.outpatient')"
+                   matTooltip="Click to locate in document">
+                <span class="detail-label">
+                  <span class="hl-dot hl-dot-review" *ngIf="pa.setting?.outpatient"></span>
+                  Outpatient
+                </span>
                 <span class="detail-value">
                   <span class="detail-badge" [class.badge-yes]="pa.setting?.outpatient" [class.badge-no]="!pa.setting?.outpatient">
                     {{ pa.setting?.outpatient ? 'Yes' : 'No' }}
@@ -703,6 +826,7 @@
               <div class="detail-card-title">
                 <mat-icon>medical_services</mat-icon>
                 <span>Services</span>
+                <span class="hl-cat-badge hl-cat-service">{{ countIdentifiedServiceFields(pa) }}</span>
               </div>
               <span class="detail-count">{{ pa.services?.length }}</span>
             </div>
@@ -711,24 +835,54 @@
               <div class="svc-num">{{ i + 1 }}</div>
               <div class="svc-body">
                 <div class="svc-grid">
-                  <div class="detail-field">
-                    <span class="detail-label">Code</span>
+                  <div class="detail-field hl-field"
+                       [class.hl-active]="hlKey === 'svc.code.' + i"
+                       [class.hl-has-value]="!!s.code"
+                       (click)="highlightField('service', 'Service Code', s.code, 'svc.code.' + i)">
+                    <span class="detail-label">
+                      <span class="hl-dot hl-dot-service" *ngIf="s.code"></span>
+                      Code
+                    </span>
                     <span class="detail-value detail-mono">{{ s.code || '—' }}</span>
                   </div>
-                  <div class="detail-field">
-                    <span class="detail-label">Description</span>
+                  <div class="detail-field hl-field"
+                       [class.hl-active]="hlKey === 'svc.desc.' + i"
+                       [class.hl-has-value]="!!s.description"
+                       (click)="highlightField('service', 'Description', s.description, 'svc.desc.' + i)">
+                    <span class="detail-label">
+                      <span class="hl-dot hl-dot-service" *ngIf="s.description"></span>
+                      Description
+                    </span>
                     <span class="detail-value">{{ s.description || '—' }}</span>
                   </div>
-                  <div class="detail-field">
-                    <span class="detail-label">Start Date</span>
+                  <div class="detail-field hl-field"
+                       [class.hl-active]="hlKey === 'svc.start.' + i"
+                       [class.hl-has-value]="!!s.startDate"
+                       (click)="highlightField('service', 'Start Date', s.startDate, 'svc.start.' + i)">
+                    <span class="detail-label">
+                      <span class="hl-dot hl-dot-service" *ngIf="s.startDate"></span>
+                      Start Date
+                    </span>
                     <span class="detail-value">{{ s.startDate || '—' }}</span>
                   </div>
-                  <div class="detail-field">
-                    <span class="detail-label">End Date</span>
+                  <div class="detail-field hl-field"
+                       [class.hl-active]="hlKey === 'svc.end.' + i"
+                       [class.hl-has-value]="!!s.endDate"
+                       (click)="highlightField('service', 'End Date', s.endDate, 'svc.end.' + i)">
+                    <span class="detail-label">
+                      <span class="hl-dot hl-dot-service" *ngIf="s.endDate"></span>
+                      End Date
+                    </span>
                     <span class="detail-value">{{ s.endDate || '—' }}</span>
                   </div>
-                  <div class="detail-field svc-dx">
-                    <span class="detail-label">Diagnosis</span>
+                  <div class="detail-field svc-dx hl-field"
+                       [class.hl-active]="hlKey === 'svc.dx.' + i"
+                       [class.hl-has-value]="!!(s.diagnosisCode || s.diagnosisDescription || pa.dx?.codes?.length)"
+                       (click)="highlightField('service', 'Diagnosis', s.diagnosisCode || s.diagnosisDescription || pa.dx?.codes?.[0], 'svc.dx.' + i)">
+                    <span class="detail-label">
+                      <span class="hl-dot hl-dot-service" *ngIf="s.diagnosisCode || s.diagnosisDescription || pa.dx?.codes?.length"></span>
+                      Diagnosis
+                    </span>
                     <span class="detail-value detail-mono">{{ s.diagnosisCode || s.diagnosisDescription || (pa.dx?.codes?.join(', ') || '—') }}</span>
                   </div>
                 </div>
@@ -742,46 +896,95 @@
               <div class="detail-card-title">
                 <mat-icon>local_hospital</mat-icon>
                 <span>Providers</span>
+                <span class="hl-cat-badge hl-cat-provider">{{ countIdentifiedProviderFields(pa) }}</span>
               </div>
             </div>
             <div class="provider-cols">
               <!-- Requesting -->
               <div class="provider-col">
                 <div class="provider-col-title">Requesting Provider</div>
-                <div class="detail-field">
-                  <span class="detail-label">Name</span>
+                <div class="detail-field hl-field"
+                     [class.hl-active]="hlKey === 'req.name'"
+                     [class.hl-has-value]="!!pa.providerRequesting?.name"
+                     (click)="highlightField('provider', 'Req. Provider Name', pa.providerRequesting?.name, 'req.name')">
+                  <span class="detail-label">
+                    <span class="hl-dot hl-dot-provider" *ngIf="pa.providerRequesting?.name"></span>
+                    Name
+                  </span>
                   <span class="detail-value">{{ pa.providerRequesting?.name || '—' }}</span>
                 </div>
-                <div class="detail-field" *ngIf="pa.providerRequesting?.npi">
-                  <span class="detail-label">NPI</span>
+                <div class="detail-field hl-field" *ngIf="pa.providerRequesting?.npi"
+                     [class.hl-active]="hlKey === 'req.npi'"
+                     [class.hl-has-value]="true"
+                     (click)="highlightField('provider', 'Req. Provider NPI', pa.providerRequesting?.npi, 'req.npi')">
+                  <span class="detail-label">
+                    <span class="hl-dot hl-dot-provider"></span>
+                    NPI
+                  </span>
                   <span class="detail-value detail-mono">{{ pa.providerRequesting?.npi }}</span>
                 </div>
-                <div class="detail-field" *ngIf="pa.providerRequesting?.phone">
-                  <span class="detail-label">Phone</span>
+                <div class="detail-field hl-field" *ngIf="pa.providerRequesting?.phone"
+                     [class.hl-active]="hlKey === 'req.phone'"
+                     [class.hl-has-value]="true"
+                     (click)="highlightField('provider', 'Req. Provider Phone', pa.providerRequesting?.phone, 'req.phone')">
+                  <span class="detail-label">
+                    <span class="hl-dot hl-dot-provider"></span>
+                    Phone
+                  </span>
                   <span class="detail-value">{{ pa.providerRequesting?.phone }}</span>
                 </div>
-                <div class="detail-field" *ngIf="pa.providerRequesting?.fax">
-                  <span class="detail-label">Fax</span>
+                <div class="detail-field hl-field" *ngIf="pa.providerRequesting?.fax"
+                     [class.hl-active]="hlKey === 'req.fax'"
+                     [class.hl-has-value]="true"
+                     (click)="highlightField('provider', 'Req. Provider Fax', pa.providerRequesting?.fax, 'req.fax')">
+                  <span class="detail-label">
+                    <span class="hl-dot hl-dot-provider"></span>
+                    Fax
+                  </span>
                   <span class="detail-value">{{ pa.providerRequesting?.fax }}</span>
                 </div>
               </div>
               <!-- Servicing -->
               <div class="provider-col">
                 <div class="provider-col-title">Servicing / Facility</div>
-                <div class="detail-field">
-                  <span class="detail-label">Name</span>
+                <div class="detail-field hl-field"
+                     [class.hl-active]="hlKey === 'svc.name'"
+                     [class.hl-has-value]="!!(pa.providerServicing?.name || pa.providerServicing?.facility)"
+                     (click)="highlightField('provider', 'Svc. Provider', pa.providerServicing?.name || pa.providerServicing?.facility, 'svc.name')">
+                  <span class="detail-label">
+                    <span class="hl-dot hl-dot-provider" *ngIf="pa.providerServicing?.name || pa.providerServicing?.facility"></span>
+                    Name
+                  </span>
                   <span class="detail-value">{{ pa.providerServicing?.name || pa.providerServicing?.facility || '—' }}</span>
                 </div>
-                <div class="detail-field" *ngIf="pa.providerServicing?.npi">
-                  <span class="detail-label">NPI</span>
+                <div class="detail-field hl-field" *ngIf="pa.providerServicing?.npi"
+                     [class.hl-active]="hlKey === 'svc.npi'"
+                     [class.hl-has-value]="true"
+                     (click)="highlightField('provider', 'Svc. Provider NPI', pa.providerServicing?.npi, 'svc.npi')">
+                  <span class="detail-label">
+                    <span class="hl-dot hl-dot-provider"></span>
+                    NPI
+                  </span>
                   <span class="detail-value detail-mono">{{ pa.providerServicing?.npi }}</span>
                 </div>
-                <div class="detail-field" *ngIf="pa.providerServicing?.phone">
-                  <span class="detail-label">Phone</span>
+                <div class="detail-field hl-field" *ngIf="pa.providerServicing?.phone"
+                     [class.hl-active]="hlKey === 'svc.phone'"
+                     [class.hl-has-value]="true"
+                     (click)="highlightField('provider', 'Svc. Provider Phone', pa.providerServicing?.phone, 'svc.phone')">
+                  <span class="detail-label">
+                    <span class="hl-dot hl-dot-provider"></span>
+                    Phone
+                  </span>
                   <span class="detail-value">{{ pa.providerServicing?.phone }}</span>
                 </div>
-                <div class="detail-field" *ngIf="pa.providerServicing?.fax">
-                  <span class="detail-label">Fax</span>
+                <div class="detail-field hl-field" *ngIf="pa.providerServicing?.fax"
+                     [class.hl-active]="hlKey === 'svc.fax'"
+                     [class.hl-has-value]="true"
+                     (click)="highlightField('provider', 'Svc. Provider Fax', pa.providerServicing?.fax, 'svc.fax')">
+                  <span class="detail-label">
+                    <span class="hl-dot hl-dot-provider"></span>
+                    Fax
+                  </span>
                   <span class="detail-value">{{ pa.providerServicing?.fax }}</span>
                 </div>
               </div>
@@ -797,12 +1000,24 @@
               </div>
             </div>
             <div class="detail-grid">
-              <div class="detail-field">
-                <span class="detail-label">Issuer</span>
+              <div class="detail-field hl-field"
+                   [class.hl-active]="hlKey === 'sub.issuer'"
+                   [class.hl-has-value]="!!pa.submission?.issuerName"
+                   (click)="highlightField('submission', 'Issuer Name', pa.submission?.issuerName, 'sub.issuer')">
+                <span class="detail-label">
+                  <span class="hl-dot hl-dot-submission" *ngIf="pa.submission?.issuerName"></span>
+                  Issuer
+                </span>
                 <span class="detail-value">{{ pa.submission?.issuerName || '—' }}</span>
               </div>
-              <div class="detail-field">
-                <span class="detail-label">Date</span>
+              <div class="detail-field hl-field"
+                   [class.hl-active]="hlKey === 'sub.date'"
+                   [class.hl-has-value]="!!pa.submission?.date"
+                   (click)="highlightField('submission', 'Submission Date', pa.submission?.date, 'sub.date')">
+                <span class="detail-label">
+                  <span class="hl-dot hl-dot-submission" *ngIf="pa.submission?.date"></span>
+                  Date
+                </span>
                 <span class="detail-value">{{ pa.submission?.date || '—' }}</span>
               </div>
             </div>
@@ -838,21 +1053,112 @@
 
     <div class="pane-header">
       <span>Preview</span>
-      <button mat-stroked-button
-              color="primary"
-              (click)="closePreview()"
-              matTooltip="Close preview and return to table">
-        <mat-icon style="font-size: 18px; margin-right: 4px;">close</mat-icon>
-        Close
-      </button>
+      <div class="pane-header-actions">
+        <!-- Split controls -->
+        <div class="split-header-group"
+             *ngIf="!linkedAuthMeta && (selectedFax?.pageCount ?? 0) > 1">
+          <ng-container *ngIf="!splitMode; else splitInputMode">
+            <button class="split-header-btn"
+                    matTooltip="Split this document into two parts"
+                    (click)="toggleSplitMode()">
+              <mat-icon>call_split</mat-icon>
+              Split
+            </button>
+          </ng-container>
+          <ng-template #splitInputMode>
+            <div class="split-inline-controls">
+              <span class="split-pages-label">{{ selectedFax?.pageCount }} pages</span>
+              <div class="split-input-group">
+                <label class="split-inline-label">First doc pages</label>
+                <input type="number"
+                       class="split-header-input"
+                       min="1"
+                       [max]="(selectedFax?.pageCount ?? 0) - 1"
+                       [(ngModel)]="splitFirstPageCount"
+                       aria-label="Pages in first split document" />
+              </div>
+              <button class="split-save-btn"
+                      matTooltip="Split and save both parts"
+                      (click)="splitCurrentFaxOnClient()"
+                      [disabled]="isSplitting || !selectedFax || (selectedFax.pageCount ?? 0) <= 1">
+                <mat-icon>content_cut</mat-icon>
+                {{ isSplitting ? 'Splitting…' : (splitCompleted ? 'Split Again' : 'Split & Save') }}
+              </button>
+              <button class="split-cancel-btn"
+                      matTooltip="Cancel split"
+                      (click)="toggleSplitMode()">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          </ng-template>
+        </div>
+        <!-- Close button (X icon) -->
+        <button class="close-x-btn"
+                (click)="closePreview()"
+                matTooltip="Close preview and return to table">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
     </div>
 
-    <!-- PDF iframe -->
+    <!-- PDF iframe (double-buffered to prevent blink on highlight) -->
     <div class="preview-frame" *ngIf="previewUrl; else noPreview">
-      <iframe [src]="previewUrl"
-              title="Fax PDF Preview"
-              style="border:0;">
-      </iframe>
+
+      <!-- ── Field Locator Overlay ────────────────────────── -->
+      <div class="hl-locator" *ngIf="hlValue"
+           [ngClass]="'hl-locator-' + hlCategory"
+           @hlLocatorAnim>
+        <div class="hl-locator-beacon" *ngIf="!hlIsProcessing">
+          <span class="hl-locator-beacon-ring"></span>
+          <span class="hl-locator-beacon-dot"></span>
+        </div>
+        <mat-icon class="hl-locator-spinner" *ngIf="hlIsProcessing">sync</mat-icon>
+        <div class="hl-locator-body">
+          <span class="hl-locator-label">{{ hlLabel }}</span>
+          <span class="hl-locator-value">{{ hlValue }}</span>
+        </div>
+        <div class="hl-locator-actions">
+          <button class="hl-locator-copy" (click)="copyHighlightValue()" matTooltip="Copy value">
+            <mat-icon>content_copy</mat-icon>
+          </button>
+          <button class="hl-locator-dismiss" (click)="clearHighlight()" matTooltip="Dismiss">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Highlight status bar ─────────────────────────── -->
+      <div class="hl-search-hint hl-hint-searching" *ngIf="hlStatus === 'processing'">
+        <mat-icon class="hl-locator-spinner">sync</mat-icon>
+        <span>Scanning document for "<strong>{{ hlValue }}</strong>"…</span>
+      </div>
+      <div class="hl-search-hint hl-hint-found" *ngIf="hlStatus === 'found'">
+        <mat-icon>check_circle</mat-icon>
+        <span>{{ hlMatchCount }} match{{ hlMatchCount > 1 ? 'es' : '' }} highlighted in document</span>
+      </div>
+      <div class="hl-search-hint hl-hint-notfound" *ngIf="hlStatus === 'not-found'">
+        <mat-icon>info_outline</mat-icon>
+        <span>Text not found in PDF — value may have been extracted via OCR</span>
+      </div>
+
+      <!-- ── Double-buffered iframes (swap on load to prevent blink) ── -->
+      <div class="pdf-iframe-container">
+        <iframe #iframeA
+                class="pdf-iframe"
+                [class.pdf-frame-active]="pdfActiveFrame === 'A'"
+                [class.pdf-frame-standby]="pdfActiveFrame !== 'A'"
+                title="Fax PDF Preview"
+                (load)="onIframeLoaded('A')">
+        </iframe>
+        <iframe #iframeB
+                class="pdf-iframe"
+                [class.pdf-frame-active]="pdfActiveFrame === 'B'"
+                [class.pdf-frame-standby]="pdfActiveFrame !== 'B'"
+                title="Fax PDF Preview"
+                (load)="onIframeLoaded('B')">
+        </iframe>
+      </div>
+
     </div>
 
     <!-- Empty preview state -->

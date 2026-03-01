@@ -1,4 +1,5 @@
 import { Component, OnInit, ViewChild, ElementRef, DestroyRef, AfterViewInit } from '@angular/core';
+import { trigger, transition, style, animate } from '@angular/animations';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatSort } from '@angular/material/sort';
 import { MatPaginator } from '@angular/material/paginator';
@@ -10,11 +11,12 @@ import { extractPriorAuth, extractTexasFromText, extractArizonaFromText } from '
 import { PriorAuth } from 'src/app/service/priorauth.schema';
 import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, rgb } from 'pdf-lib';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SmartCheckResultDialogComponent, SmartCheckDialogAction, SmartCheckDialogData } from 'src/app/member/UM/steps/authsmartcheck/smartcheck-result-dialog.component';
 import { RulesengineService, ExecuteTriggerResponse } from 'src/app/service/rulesengine.service';
 import { HeaderService } from 'src/app/service/header.service';
+import { AuthDetailApiService } from 'src/app/service/authdetailapi.service';
 import { Router } from '@angular/router';
 import { FaxAuthPrefill } from './fax-auth-prefill.interface';
 import { AuthdetailsComponent } from 'src/app/member/UM/steps/authdetails/authdetails.component';
@@ -76,7 +78,18 @@ export interface FaxFileListResponse {
 @Component({
   selector: 'app-faxes',
   templateUrl: './faxes.component.html',
-  styleUrl: './faxes.component.css'
+  styleUrl: './faxes.component.css',
+  animations: [
+    trigger('hlLocatorAnim', [
+      transition(':enter', [
+        style({ opacity: 0, transform: 'translateY(-8px)' }),
+        animate('200ms ease-out', style({ opacity: 1, transform: 'translateY(0)' }))
+      ]),
+      transition(':leave', [
+        animate('150ms ease-in', style({ opacity: 0, transform: 'translateY(-8px)' }))
+      ])
+    ])
+  ]
 })
 
 export class FaxesComponent implements OnInit, AfterViewInit {
@@ -111,6 +124,13 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   progress = 0;
   //error = signal<string | null>(null);
   priorAuth: PriorAuth | null = null;
+
+  // ── AI Summary (auto-generated on preview) ────────────────────────
+  aiSummaryLoading = false;
+  aiSummaryError: string | null = null;
+  aiClinicalMatch: string | null = null;
+  aiRecommendation: string | null = null;
+  aiRecommendationType: 'approve' | 'deny' | 'pend' | 'info' = 'info';
   uploadPercent = 0;
   currentUserId?: number;
   previewUrl?: SafeResourceUrl | null = null;
@@ -130,6 +150,37 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
   splitFirstPageCount: number | null = 1;
   isSplitting = false;
+  splitMode = false;
+  splitCompleted = false;
+
+  // ── Field Highlight (pdf-lib draws on PDF, no external deps) ────────
+  hlKey: string | null = null;
+  hlLabel: string | null = null;
+  hlValue: string | null = null;
+  hlCategory: string = 'patient';
+  hlIsProcessing = false;
+  hlMatchCount = 0;
+  hlStatus: 'idle' | 'processing' | 'found' | 'not-found' = 'idle';
+  private _rawPreviewUrl: string | null = null;
+  private _highlightedBlobUrl: string | null = null;
+
+  /** Cached text items from pdf.js getTextContent — extracted once per PDF */
+  private _pdfTextItems: Array<{
+    str: string; pageIndex: number;
+    x: number; y: number; w: number; h: number;
+  }> = [];
+  private _pdfTextExtracted = false;
+  private _pdfjsLib: any = null; // dynamically loaded pdf.js
+  private _ocrByPage: Array<{ page: number; text: string }> = []; // cached from OCR extraction
+
+  /** Category → rgb color for highlight rectangles */
+  private readonly HL_COLORS: Record<string, { r: number; g: number; b: number }> = {
+    patient:    { r: 0.15, g: 0.39, b: 0.92 },
+    review:     { r: 0.49, g: 0.23, b: 0.93 },
+    service:    { r: 0.85, g: 0.47, b: 0.02 },
+    provider:   { r: 0.02, g: 0.59, b: 0.41 },
+    submission: { r: 0.39, g: 0.40, b: 0.95 },
+  };
 
   loadedMemberId: number | null = null;
 
@@ -158,11 +209,19 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   showAuthForm = false;
   currentFaxPrefill: FaxAuthPrefill | null = null;
   @ViewChild('authDetailsRef') authDetailsRef?: AuthdetailsComponent;
+  @ViewChild('iframeA') iframeA?: ElementRef<HTMLIFrameElement>;
+  @ViewChild('iframeB') iframeB?: ElementRef<HTMLIFrameElement>;
+
+  /** Which iframe is currently visible: 'A' or 'B' */
+  pdfActiveFrame: 'A' | 'B' = 'A';
+  /** Which iframe is waiting to finish loading (null = nothing pending) */
+  private _pendingFrame: 'A' | 'B' | null = null;
 
   constructor(private pdfOcr: PdfOcrService, private destroyRef: DestroyRef,
     private api: DashboardServiceService, private sanitizer: DomSanitizer,
     private rulesengineService: RulesengineService,
     private headerService: HeaderService,
+    private authDetailApi: AuthDetailApiService,
     private router: Router,
     private snackBar: MatSnackBar,
     private http: HttpClient) {
@@ -432,6 +491,21 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     // 🔹 Start details loader & clear stale data
     this.isLoadingDetails = true;
     this.priorAuth = null;
+    this.aiClinicalMatch = null; this.aiRecommendation = null; this.aiRecommendationType = 'info';
+    this.aiSummaryError = null;
+    this.aiSummaryLoading = false;
+    this.splitMode = false;
+    this.splitCompleted = false;
+    this.hlKey = null;
+    this.hlValue = null;
+    this.hlMatchCount = 0;
+    this.hlStatus = 'idle';
+    this._rawPreviewUrl = null;
+    this._pdfTextItems = [];
+    this._pdfTextExtracted = false;
+    this.pdfActiveFrame = 'A';
+    this._pendingFrame = null;
+    if (this._highlightedBlobUrl) { URL.revokeObjectURL(this._highlightedBlobUrl); this._highlightedBlobUrl = null; }
 
     // Show the split view immediately
     this.showPreview = true;
@@ -469,16 +543,22 @@ export class FaxesComponent implements OnInit, AfterViewInit {
           this.currentFaxContentType = contentType;
           this.currentFaxOriginalName = row.fileName ?? 'preview.pdf';
           const objUrl = this.makePdfBlobUrl(u8, contentType);
+          this._rawPreviewUrl = objUrl;
           this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(objUrl);
+          // Load into active iframe after Angular renders the container
+          setTimeout(() => this.loadIntoActiveFrame(objUrl), 0);
           return; // Keep loader running until priorAuth is set elsewhere.
         }
 
         // Fallback: stream from server
         if (fileUrl) {
+          this._rawPreviewUrl = fileUrl;
           this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fileUrl);
           this.currentFaxBytes = null;
           this.currentFaxContentType = contentType;
           this.currentFaxOriginalName = row.fileName ?? 'preview.pdf';
+          // Load into active iframe after Angular renders the container
+          setTimeout(() => this.loadIntoActiveFrame(fileUrl), 0);
           return; // Keep loader running until priorAuth is set elsewhere.
         }
 
@@ -507,10 +587,25 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     this.currentFaxBytes = null;
     this.currentFaxOriginalName = null;
     this.priorAuth = null;
+    this.aiClinicalMatch = null; this.aiRecommendation = null; this.aiRecommendationType = 'info';
+    this.aiSummaryError = null;
+    this.aiSummaryLoading = false;
     this.linkedAuthMeta = null;
     this.progress = 0;
     this.error = '';
     this.currentIndex = -1;
+    this.splitMode = false;
+    this.splitCompleted = false;
+    this.hlKey = null;
+    this.hlValue = null;
+    this.hlMatchCount = 0;
+    this.hlStatus = 'idle';
+    this._rawPreviewUrl = null;
+    this._pdfTextItems = [];
+    this._pdfTextExtracted = false;
+    this.pdfActiveFrame = 'A';
+    this._pendingFrame = null;
+    if (this._highlightedBlobUrl) { URL.revokeObjectURL(this._highlightedBlobUrl); this._highlightedBlobUrl = null; }
   }
 
   // -------- Upload + Insert --------
@@ -855,6 +950,9 @@ export class FaxesComponent implements OnInit, AfterViewInit {
           text: String(p?.text ?? '')
         }));
 
+      // Cache per-page text for field highlighting
+      this._ocrByPage = byPage;
+
       const isTexas = /TEXAS STANDARD PRIOR AUTHORIZATION|NOFR001/i.test(allText);
       const isArizona = /CSO-1179A|CMDP|COMPREHENSIVE MEDICAL AND DENTAL PROGRAM/i.test(allText);
 
@@ -939,6 +1037,9 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
       this.priorAuth = pa;
       this.isLoadingDetails = false;
+
+      // ── Auto-generate AI summary ──
+      //this.generateAiSummary(pa);
 
       // Only run Smart Auth Check if no auth is already linked
       if (!this.linkedAuthMeta) {
@@ -1434,6 +1535,589 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   }
 
 
+  toggleSplitMode(): void {
+    this.splitMode = !this.splitMode;
+    if (this.splitMode) {
+      this.splitCompleted = false;
+      const pc = this.selectedFax?.pageCount ?? 0;
+      this.splitFirstPageCount = pc > 1 ? 1 : null;
+    }
+  }
+
+  // ============================================================
+  // Field Highlight — draws directly on PDF via pdf-lib
+  // Uses pdf.js (loaded from CDN) for text position extraction
+  // ============================================================
+
+  /**
+   * Dynamically load pdf.js from CDN (avoids Angular import issues).
+   * Resolves to window.pdfjsLib — safe to call multiple times.
+   */
+  private loadPdfJs(): Promise<any> {
+    // Already loaded
+    if (this._pdfjsLib) return Promise.resolve(this._pdfjsLib);
+
+    // Check if globally available (e.g. from another part of the app)
+    if ((window as any).pdfjsLib) {
+      this._pdfjsLib = (window as any).pdfjsLib;
+      return Promise.resolve(this._pdfjsLib);
+    }
+
+    return new Promise((resolve, reject) => {
+      const PDFJS_VERSION = '3.11.174';
+      const script = document.createElement('script');
+      script.src = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.min.js`;
+      script.onload = () => {
+        const lib = (window as any).pdfjsLib;
+        if (!lib) { reject(new Error('pdfjsLib not found on window after script load')); return; }
+        lib.GlobalWorkerOptions.workerSrc =
+          `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
+        this._pdfjsLib = lib;
+        console.log('[FieldHighlight] pdf.js loaded from CDN, version:', PDFJS_VERSION);
+        resolve(lib);
+      };
+      script.onerror = () => reject(new Error('Failed to load pdf.js from CDN'));
+      document.head.appendChild(script);
+    });
+  }
+
+  /**
+   * Called when user clicks an extracted field on the left pane.
+   * 1. Loads pdf.js dynamically (one-time)
+   * 2. Extracts text positions from PDF (cached after first call)
+   * 3. Finds matching text items
+   * 4. Uses pdf-lib to draw colored highlight rectangles on the PDF
+   * 5. Reloads iframe with highlighted PDF
+   */
+  async highlightField(category: string, label: string, value: any, key: string): Promise<void> {
+    const str = value != null ? String(value).trim() : null;
+
+    // Toggle off if re-clicking same field
+    if (this.hlKey === key) { this.clearHighlight(); return; }
+
+    // Skip empty values
+    if (!str || str === '—' || str === '-') { this.clearHighlight(); return; }
+
+    // Set UI state immediately
+    this.hlKey = key;
+    this.hlLabel = label;
+    this.hlValue = str;
+    this.hlCategory = category;
+    this.hlIsProcessing = true;
+    this.hlStatus = 'processing';
+    this.hlMatchCount = 0;
+
+    console.log(`[FieldHighlight] Highlighting "${str}" (category: ${category})`);
+
+    // Must have PDF bytes to draw highlights
+    if (!this.currentFaxBytes) {
+      console.warn('[FieldHighlight] No currentFaxBytes available');
+      this.hlIsProcessing = false;
+      this.hlStatus = 'not-found';
+      return;
+    }
+
+    try {
+      // Step 1: Load pdf.js (from CDN, cached after first load)
+      const pdfjsLib = await this.loadPdfJs();
+
+      // Step 2: Extract text positions (cached after first call per PDF)
+      if (!this._pdfTextExtracted) {
+        console.log('[FieldHighlight] Extracting text positions from PDF...');
+        await this.extractPdfTextPositions(pdfjsLib, this.currentFaxBytes);
+        console.log(`[FieldHighlight] Extracted ${this._pdfTextItems.length} text items`);
+      }
+
+      // Step 3: Find matching text items for this field value
+      const matches = this.findMatchingTextItems(str);
+      console.log(`[FieldHighlight] Found ${matches.length} matches for "${str}"`);
+
+      if (matches.length === 0) {
+        this.hlIsProcessing = false;
+        this.hlStatus = 'not-found';
+        return;
+      }
+
+      // Step 4: Draw highlight rectangles on PDF using pdf-lib
+      const color = this.HL_COLORS[category] || this.HL_COLORS['patient'];
+      const highlightedBytes = await this.drawHighlightsOnPdf(this.currentFaxBytes, matches, color);
+
+      // Step 5: Create new blob URL → load into standby iframe (no blink)
+      if (this._highlightedBlobUrl) {
+        URL.revokeObjectURL(this._highlightedBlobUrl);
+      }
+      const blob = new Blob([highlightedBytes], { type: 'application/pdf' });
+      this._highlightedBlobUrl = URL.createObjectURL(blob);
+      this.swapToUrl(this._highlightedBlobUrl);
+
+      this.hlMatchCount = matches.length;
+      this.hlStatus = 'found';
+      console.log(`[FieldHighlight] ✅ Drew ${matches.length} highlight(s) on PDF`);
+
+    } catch (err) {
+      console.error('[FieldHighlight] Error:', err);
+      this.hlStatus = 'not-found';
+    } finally {
+      this.hlIsProcessing = false;
+    }
+  }
+
+  /** Clears highlight and restores original (unhighlighted) PDF */
+  clearHighlight(): void {
+    this.hlKey = null;
+    this.hlLabel = null;
+    this.hlValue = null;
+    this.hlCategory = 'patient';
+    this.hlIsProcessing = false;
+    this.hlMatchCount = 0;
+    this.hlStatus = 'idle';
+
+    // Revoke highlighted blob and swap back to original (no blink)
+    if (this._highlightedBlobUrl) {
+      // Defer revoke until after swap completes so standby frame isn't blanked
+      const oldUrl = this._highlightedBlobUrl;
+      this._highlightedBlobUrl = null;
+      setTimeout(() => URL.revokeObjectURL(oldUrl), 500);
+    }
+    if (this._rawPreviewUrl) {
+      this.swapToUrl(this._rawPreviewUrl);
+    }
+  }
+
+  /** Copy highlighted value to clipboard */
+  copyHighlightValue(): void {
+    if (this.hlValue) {
+      navigator.clipboard.writeText(this.hlValue).then(() => this.toast('Value copied to clipboard'));
+    }
+  }
+
+  // ── Double-buffered iframe helpers (prevent blink on PDF swap) ──────
+
+  /**
+   * Load a URL directly into the currently active iframe.
+   * Used for initial PDF load (no content to blink from).
+   */
+  private loadIntoActiveFrame(url: string): void {
+    const iframe = this.pdfActiveFrame === 'A' ? this.iframeA : this.iframeB;
+    if (iframe?.nativeElement) {
+      iframe.nativeElement.src = url;
+    }
+  }
+
+  /**
+   * Load a URL into the standby (hidden) iframe.
+   * When it finishes loading, onIframeLoaded() will swap it to foreground.
+   * The old content stays visible the entire time → zero blink.
+   */
+  private swapToUrl(url: string): void {
+    const standby: 'A' | 'B' = this.pdfActiveFrame === 'A' ? 'B' : 'A';
+    this._pendingFrame = standby;
+    const iframe = standby === 'A' ? this.iframeA : this.iframeB;
+    if (iframe?.nativeElement) {
+      iframe.nativeElement.src = url;
+    }
+  }
+
+  /**
+   * Called by (load) event on either iframe.
+   * If this is the pending frame, promote it to active (foreground).
+   */
+  onIframeLoaded(frame: 'A' | 'B'): void {
+    if (frame === this._pendingFrame) {
+      this.pdfActiveFrame = frame;
+      this._pendingFrame = null;
+    }
+  }
+
+  // ── PDF text position extraction (via pdf.js getTextContent) ────────
+
+  /**
+   * Uses pdf.js to extract every text item with bounding-box from every page.
+   * Results cached in _pdfTextItems so we only run this once per PDF.
+   */
+  private async extractPdfTextPositions(pdfjsLib: any, pdfBytes: Uint8Array): Promise<void> {
+    this._pdfTextItems = [];
+
+    const loadingTask = pdfjsLib.getDocument({ data: pdfBytes.slice() });
+    const pdf = await loadingTask.promise;
+
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const viewport = page.getViewport({ scale: 1.0 });
+      const textContent = await page.getTextContent();
+
+      for (const item of textContent.items) {
+        if (!item.str || !item.str.trim()) continue;
+
+        // item.transform = [scaleX, skewX, skewY, scaleY, translateX, translateY]
+        const tx = item.transform;
+        const fontSize = Math.abs(tx[3]) || 12;
+        const x = tx[4];
+        const y = tx[5];
+
+        // item.width from pdf.js is the text width in PDF units
+        const w = item.width || (item.str.length * fontSize * 0.6);
+
+        this._pdfTextItems.push({
+          str:       item.str,
+          pageIndex: pageNum - 1,
+          x:         x,
+          y:         y,
+          w:         w,
+          h:         fontSize,
+        });
+      }
+
+      page.cleanup();
+    }
+
+    pdf.destroy();
+    this._pdfTextExtracted = true;
+  }
+
+  // ── Text matching ──────────────────────────────────────────────────
+
+  /**
+   * Searches _pdfTextItems for items matching the given field value.
+   * Uses 3 strategies: exact → word → stripped-format matching.
+   */
+  private findMatchingTextItems(searchValue: string): Array<{
+    pageIndex: number; x: number; y: number; w: number; h: number;
+  }> {
+    if (!this._pdfTextItems.length || !searchValue) return [];
+
+    const needle = searchValue.toLowerCase().trim();
+    const results: Array<{ pageIndex: number; x: number; y: number; w: number; h: number }> = [];
+    const added = new Set<string>();
+
+    const addItem = (item: typeof this._pdfTextItems[0]) => {
+      const k = `${item.pageIndex}:${Math.round(item.x)}:${Math.round(item.y)}`;
+      if (added.has(k)) return;
+      added.add(k);
+      results.push({ pageIndex: item.pageIndex, x: item.x, y: item.y, w: item.w, h: item.h });
+    };
+
+    // Strategy 1: exact — text item contains the full search value
+    for (const item of this._pdfTextItems) {
+      if (item.str.toLowerCase().includes(needle)) {
+        addItem(item);
+      }
+    }
+
+    // Strategy 2: word match — split value into words, match any
+    if (results.length === 0) {
+      const words = needle.split(/[\s,]+/).filter(w => w.length >= 2);
+      for (const item of this._pdfTextItems) {
+        const lower = item.str.toLowerCase();
+        for (const word of words) {
+          if (lower.includes(word)) {
+            addItem(item);
+            break;
+          }
+        }
+      }
+    }
+
+    // Strategy 3: stripped — remove formatting chars, match codes/IDs/phones
+    if (results.length === 0) {
+      const stripped = needle.replace(/[\s\-().\/]/g, '');
+      if (stripped.length >= 3) {
+        for (const item of this._pdfTextItems) {
+          const itemStripped = item.str.replace(/[\s\-().\/]/g, '').toLowerCase();
+          if (itemStripped.includes(stripped) || stripped.includes(itemStripped)) {
+            addItem(item);
+          }
+        }
+      }
+    }
+
+    // Strategy 4: adjacent text items — value may span multiple items
+    if (results.length === 0) {
+      // Concatenate adjacent items on same line and search
+      const byPage = new Map<number, typeof this._pdfTextItems>();
+      for (const item of this._pdfTextItems) {
+        if (!byPage.has(item.pageIndex)) byPage.set(item.pageIndex, []);
+        byPage.get(item.pageIndex)!.push(item);
+      }
+
+      for (const [pageIdx, items] of byPage) {
+        // Sort by Y (descending) then X (ascending) to get reading order
+        const sorted = [...items].sort((a, b) => {
+          const dy = b.y - a.y;
+          return Math.abs(dy) < 3 ? a.x - b.x : dy;
+        });
+
+        for (let i = 0; i < sorted.length - 1; i++) {
+          const combined = (sorted[i].str + ' ' + sorted[i + 1].str).toLowerCase();
+          if (combined.includes(needle)) {
+            addItem(sorted[i]);
+            addItem(sorted[i + 1]);
+          }
+        }
+      }
+    }
+
+    return results;
+  }
+
+  // ── Draw highlights on PDF via pdf-lib ─────────────────────────────
+
+  /**
+   * Takes original PDF bytes, draws semi-transparent colored rectangles
+   * at each matched text position, returns modified PDF bytes.
+   */
+  private async drawHighlightsOnPdf(
+    originalBytes: Uint8Array,
+    positions: Array<{ pageIndex: number; x: number; y: number; w: number; h: number }>,
+    color: { r: number; g: number; b: number }
+  ): Promise<Uint8Array> {
+    const pdfDoc = await PDFDocument.load(originalBytes, { ignoreEncryption: true });
+    const pages = pdfDoc.getPages();
+
+    const pad = 2;
+
+    for (const pos of positions) {
+      const page = pages[pos.pageIndex];
+      if (!page) continue;
+
+      // Semi-transparent highlight fill
+      page.drawRectangle({
+        x:             pos.x - pad,
+        y:             pos.y - pad,
+        width:         pos.w + pad * 2,
+        height:        pos.h + pad * 2,
+        color:         rgb(color.r, color.g, color.b),
+        opacity:       0.25,
+        borderColor:   rgb(color.r, color.g, color.b),
+        borderWidth:   1.5,
+        borderOpacity: 0.8,
+      });
+
+      // Bold underline for extra visibility
+      page.drawRectangle({
+        x:       pos.x - pad,
+        y:       pos.y - pad - 2,
+        width:   pos.w + pad * 2,
+        height:  3,
+        color:   rgb(color.r, color.g, color.b),
+        opacity: 0.65,
+      });
+    }
+
+    return await pdfDoc.save();
+  }
+
+  // ── Count helpers for category badges ──
+
+  countIdentifiedPatientFields(pa: any): number {
+    if (!pa?.patient) return 0;
+    const p = pa.patient;
+    return [p.name, p.memberId, p.dob, p.phone].filter(v => !!v).length;
+  }
+
+  countIdentifiedReviewFields(pa: any): number {
+    let c = 0;
+    if (pa?.review?.type) c++;
+    if (pa?.setting?.inpatient) c++;
+    if (pa?.setting?.outpatient) c++;
+    return c;
+  }
+
+  countIdentifiedServiceFields(pa: any): number {
+    let c = 0;
+    for (const s of pa?.services ?? []) {
+      if (s.code) c++;
+      if (s.description) c++;
+      if (s.startDate) c++;
+      if (s.endDate) c++;
+      if (s.diagnosisCode || s.diagnosisDescription) c++;
+    }
+    if (pa?.dx?.codes?.length) c++;
+    return c;
+  }
+
+  countIdentifiedProviderFields(pa: any): number {
+    let c = 0;
+    const r = pa?.providerRequesting;
+    if (r) { if (r.name) c++; if (r.npi) c++; if (r.phone) c++; if (r.fax) c++; }
+    const s = pa?.providerServicing;
+    if (s) { if (s.name || s.facility) c++; if (s.npi) c++; if (s.phone) c++; if (s.fax) c++; }
+    return c;
+  }
+
+  // ============================================================
+  // AI Summary — calls authDetailApi.getFaxSummary()
+  // Auto-triggered when priorAuth is set after extraction
+  // ============================================================
+
+  /**
+   * Generates AI summary by calling the backend getFaxSummary endpoint.
+   * Called automatically when a fax preview is opened and data is extracted,
+   * or manually via the Regenerate button.
+   */
+  async generateAiSummary(pa?: PriorAuth): Promise<void> {
+    const paData = pa || this.priorAuth;
+    if (!paData || this.aiSummaryLoading) return;
+
+    this.aiSummaryLoading = true;
+    this.aiSummaryError = null;
+    this.aiClinicalMatch = null; this.aiRecommendation = null; this.aiRecommendationType = 'info';
+
+    try {
+      const inputData = this.buildPaDataText(paData);
+      console.log('[AISummary] Sending to faxsummary:', inputData);
+
+      // Call backend — must send as JSON with correct Content-Type.
+      // C# [FromBody] string expects the body to be a JSON-encoded string: "value"
+      const summary: string = await firstValueFrom(
+        this.authDetailApi.getFaxSummary(inputData)
+      ) as string;
+
+      if (!summary) {
+        throw new Error('Empty response from AI summary service');
+      }
+
+      this.parseAiSections(summary);
+      console.log('[AISummary] ✅ Summary received and parsed');
+
+    } catch (err: any) {
+      console.error('[AISummary] Error:', err);
+      this.aiSummaryError = err?.error?.title
+        || err?.error?.message
+        || err?.message
+        || 'Failed to generate summary. Please try again.';
+    } finally {
+      this.aiSummaryLoading = false;
+    }
+  }
+
+  /**
+   * Extracts only "Clinical Criteria Match" and "AI Recommendation"
+   * paragraphs from the full AI response. Derives recommendation type
+   * (approve / deny / pend / info) from the recommendation text.
+   */
+  private parseAiSections(fullText: string): void {
+    const text = fullText.replace(/\\n/g, '\n');
+
+    const extractSection = (label: string): string | null => {
+      const patterns = [
+        new RegExp(`\\*\\*${label}:\\*\\*\\s*`, 'i'),
+        new RegExp(`(?:^|\\n)${label}:\\s*`, 'i'),
+      ];
+      for (const re of patterns) {
+        const match = re.exec(text);
+        if (match) {
+          const start = match.index + match[0].length;
+          const nextSection = text.substring(start).search(/\*\*[A-Z][^*]+:\*\*/);
+          const end = nextSection >= 0 ? start + nextSection : text.length;
+          return text.substring(start, end).trim();
+        }
+      }
+      return null;
+    };
+
+    this.aiClinicalMatch = extractSection('Clinical Criteria Match');
+    this.aiRecommendation = extractSection('AI Recommendation');
+
+    // Derive recommendation type from text
+    if (this.aiRecommendation) {
+      const lower = this.aiRecommendation.toLowerCase();
+      if (lower.includes('should be denied') || lower.includes('denial') || lower.includes('suggesting denial')) {
+        this.aiRecommendationType = 'deny';
+      } else if (lower.includes('appropriate for approval') || lower.includes('recommend approval')) {
+        this.aiRecommendationType = 'approve';
+      } else if (lower.includes('pended') || lower.includes('additional documentation') || lower.includes('clinical review')) {
+        this.aiRecommendationType = 'pend';
+      } else {
+        this.aiRecommendationType = 'info';
+      }
+    }
+  }
+
+  /**
+   * Builds structured PA text from extracted PriorAuth data.
+   * Matches the format expected by the backend AI summarization endpoint.
+   */
+  private buildPaDataText(pa: PriorAuth): string {
+    const lines: string[] = [];
+
+    // Patient / Member
+    lines.push(`Member Name: ${pa.patient?.name || 'Not provided'}`);
+    lines.push(`DOB: ${pa.patient?.dob || 'Not provided'}`);
+    lines.push(`Member ID: ${pa.patient?.memberId || 'Not provided'}`);
+    if (pa.patient?.phone) lines.push(`Phone: ${pa.patient.phone}`);
+
+    // Authorization type
+    lines.push(`Authorization Type: ${pa.review?.type || 'Not provided'}`);
+
+    // Setting
+    const settings: string[] = [];
+    if (pa.setting?.inpatient) settings.push('Inpatient');
+    if (pa.setting?.outpatient) settings.push('Outpatient');
+    lines.push(`Setting: ${settings.length ? settings.join(', ') : 'Not provided'}`);
+
+    // Services
+    if (pa.services?.length) {
+      for (let i = 0; i < pa.services.length; i++) {
+        const s = pa.services[i];
+        const parts: string[] = [];
+        if (s.code) parts.push(s.code);
+        if (s.description) parts.push(s.description);
+        lines.push(`Requested Service ${i + 1}: ${parts.join(' - ') || 'Not provided'}`);
+        lines.push(`Service Dates: ${s.startDate || 'Not provided'} - ${s.endDate || 'Not provided'}`);
+        if (s.diagnosisCode || s.diagnosisDescription) {
+          lines.push(`Diagnosis Code: ${s.diagnosisCode || ''} ${s.diagnosisDescription ? '(' + s.diagnosisDescription + ')' : ''}`);
+        }
+      }
+    } else {
+      lines.push('Requested Services: None extracted');
+    }
+
+    // Diagnosis codes (aggregated)
+    const dxParts: string[] = [];
+    if (pa.services?.length) {
+      for (const s of pa.services) {
+        if (s.diagnosisCode) dxParts.push(s.diagnosisCode + (s.diagnosisDescription ? ` (${s.diagnosisDescription})` : ''));
+      }
+    }
+    if (pa.dx?.codes?.length) dxParts.push(...pa.dx.codes);
+    if (dxParts.length) {
+      lines.push(`All Diagnosis Codes: ${[...new Set(dxParts)].join(', ')}`);
+    }
+
+    // Requesting / Referring Provider
+    const rp = pa.providerRequesting;
+    lines.push(`Referring Physician: ${rp?.name || 'Not provided'}${rp?.npi ? ', NPI: ' + rp.npi : ''}`);
+    if (rp?.phone) lines.push(`Referring Phone: ${rp.phone}`);
+    if (rp?.fax) lines.push(`Referring Fax: ${rp.fax}`);
+
+    // Servicing Provider
+    const sp = pa.providerServicing;
+    const svcName = sp?.name || sp?.facility;
+    lines.push(`Servicing Provider: ${svcName || 'Not provided'}`);
+    lines.push(`Servicing Provider NPI: ${sp?.npi || 'Not provided'}`);
+    if (sp?.phone) lines.push(`Servicing Provider Phone: ${sp.phone}`);
+    if (sp?.fax) lines.push(`Servicing Provider Fax: ${sp.fax}`);
+
+    // Facility
+    if (sp?.facility && sp?.name) lines.push(`Facility: ${sp.facility}`);
+    if (!sp?.facility && !svcName) lines.push('Facility: Not provided');
+
+    // Submission
+    if (pa.submission?.issuerName) lines.push(`Issuer Name: ${pa.submission.issuerName}`);
+    if (pa.submission?.date) lines.push(`Submission Date: ${pa.submission.date}`);
+
+    // Supporting docs / notes
+    if (pa.notes) lines.push(`Supporting Docs: ${pa.notes}`);
+
+    // AHCCCS / Registration
+    if (!rp?.npi && !sp?.npi) {
+      lines.push('AHCCCS Registration: Not provided for either provider');
+    }
+
+    return lines.join('\n');
+  }
+
   async splitCurrentFaxOnClient(): Promise<void> {
     if (!this.selectedFax || !this.selectedFax.pageCount || this.selectedFax.pageCount < 2) {
       this.toast('Not enough pages to split.', true);
@@ -1520,6 +2204,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       });
 
       this.toast(`Split saved: "${file1Name}" and "${file2Name}".`, false);
+      this.splitCompleted = true;
       this.reload();
     } catch (e) {
       console.error('Split failed', e);
