@@ -104,6 +104,9 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   // Filters / search
   search = '';
   statusFilter?: string;
+  statusChipFilter: 'open' | 'processed' | 'all' = 'open';
+  openFaxCount = 0;
+  processedFaxCount = 0;
 
   // UI state
   loading = false;
@@ -129,6 +132,8 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   aiSummaryLoading = false;
   aiSummaryError: string | null = null;
   aiSummary: string | null = null;
+  aiParsedSummary: string | null = null;
+  aiParsedFlags: { title: string; body: string }[] = [];
   aiClinicalMatch: string | null = null;
   aiRecommendation: string | null = null;
   aiRecommendationType: 'approve' | 'deny' | 'pend' | 'info' = 'info';
@@ -493,6 +498,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     this.isLoadingDetails = true;
     this.priorAuth = null;
     this.aiSummary = null;
+    this.aiParsedSummary = null; this.aiParsedFlags = [];
     this.aiClinicalMatch = null; this.aiRecommendation = null; this.aiRecommendationType = 'info';
     this.aiSummaryError = null;
     this.aiSummaryLoading = false;
@@ -590,6 +596,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     this.currentFaxOriginalName = null;
     this.priorAuth = null;
     this.aiSummary = null;
+    this.aiParsedSummary = null; this.aiParsedFlags = [];
     this.aiClinicalMatch = null; this.aiRecommendation = null; this.aiRecommendationType = 'info';
     this.aiSummaryError = null;
     this.aiSummaryLoading = false;
@@ -898,11 +905,22 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   }
 
 
-  showFilters = false;
+  /* ── Status helper for table cell chip ── */
+  getStatusChipClass(status: string): string {
+    switch ((status || '').toLowerCase()) {
+      case 'new':        return 'chip-status-new';
+      case 'processing': return 'chip-status-processing';
+      case 'ready':      return 'chip-status-ready';
+      case 'processed':  return 'chip-status-processed';
+      case 'failed':     return 'chip-status-failed';
+      case 'deleted':    return 'chip-status-deleted';
+      default:           return 'chip-soft';
+    }
+  }
   // quick search
   quickSearchTerm = '';
 
-  toggleFilters(): void { this.showFilters = !this.showFilters; }
+
 
   onQuickSearch(ev: Event): void {
     const v = (ev.target as HTMLInputElement).value ?? '';
@@ -1042,7 +1060,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       this.isLoadingDetails = false;
 
       // ── Auto-generate AI summary ──
-      this.generateAiSummary(pa);
+      //this.generateAiSummary(pa);
 
       // Only run Smart Auth Check if no auth is already linked
       if (!this.linkedAuthMeta) {
@@ -1965,6 +1983,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     this.aiSummaryLoading = true;
     this.aiSummaryError = null;
     this.aiSummary = null;
+    this.aiParsedSummary = null; this.aiParsedFlags = [];
     this.aiClinicalMatch = null; this.aiRecommendation = null; this.aiRecommendationType = 'info';
 
     try {
@@ -2040,11 +2059,66 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   //}
 
   private parseAiSections(fullText: string): void {
-    const text = fullText.replace(/\\n/g, '\n').trim();
+    // Normalize escaped newlines and carriage returns
+    const text = fullText
+      .replace(/\\r\\n/g, '\n')
+      .replace(/\\r/g, '\n')
+      .replace(/\\n/g, '\n')
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .trim();
+
     this.aiSummary = text || null;
 
-    // No longer parsing individual sections — prompt returns a single clinical summary paragraph.
-    // No coverage recommendations are generated, so recommendation type is always 'info'.
+    // ── Parse SECTION 1: Clinical Summary ──
+    // Look for content between SECTION 1 header and SECTION 2 header
+    const section1Regex = /(?:SECTION\s*1|PA Clinical Summary)[^\n]*\n([\s\S]*?)(?=(?:SECTION\s*2|Critical Flags Identified)|$)/i;
+    const s1Match = section1Regex.exec(text);
+    if (s1Match) {
+      this.aiParsedSummary = s1Match[1]
+        .replace(/^[-—=]+$/gm, '')  // remove separator lines
+        .replace(/##\s*/g, '')       // remove markdown headers
+        .replace(/\*\*/g, '')        // remove bold markers
+        .trim();
+    } else {
+      // Fallback: if no section headers, use everything before "Critical Flags"
+      const flagsStart = text.search(/Critical Flags Identified/i);
+      this.aiParsedSummary = flagsStart > 0
+        ? text.substring(0, flagsStart).replace(/##\s*/g, '').replace(/\*\*/g, '').trim()
+        : text;
+    }
+
+    //// ── Parse SECTION 2: Critical Flags ──
+    //this.aiParsedFlags = [];
+    //const section2Regex = /(?:SECTION\s*2|Critical Flags Identified)[^\n]*\n([\s\S]*?)(?=\*?This summary is for|$)/i;
+    //const s2Match = section2Regex.exec(text);
+    //if (s2Match) {
+    //  const flagsBlock = s2Match[1].trim();
+
+    //  // Split by numbered items: "1." or "**1." patterns
+    //  const flagItems = flagsBlock.split(/(?=(?:\*\*)?(?:\d+)\.\s)/);
+
+    //  for (const item of flagItems) {
+    //    const trimmed = item.trim();
+    //    if (!trimmed || !/^\*?\*?\d+\./.test(trimmed)) continue;
+
+    //    // Extract title and body
+    //    // Patterns: "1. **Title:** body" or "**1. Title:** body" or "1. Title: body"
+    //    const itemMatch = trimmed.match(
+    //      /^\*?\*?\d+\.\s*\*?\*?\s*([^:*\n]+?)\s*:?\s*\*?\*?\s*\n?([\s\S]*)/
+    //    );
+
+    //    if (itemMatch) {
+    //      const title = itemMatch[1].replace(/\*\*/g, '').trim();
+    //      const body = itemMatch[2]
+    //        .replace(/\*\*/g, '')
+    //        .replace(/^\s*[-–—]\s*/gm, '• ')
+    //        .trim();
+    //      this.aiParsedFlags.push({ title, body });
+    //    }
+    //  }
+    //}
+
     this.aiClinicalMatch = null;
     this.aiRecommendation = null;
     this.aiRecommendationType = 'info';
@@ -2449,25 +2523,51 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     const data = this.allFaxes || [];
     this.totalFaxCount = data.length;
 
+    this.openFaxCount = data.filter(f =>
+      (f.status || '').toLowerCase() !== 'processed' &&
+      (f.status || '').toLowerCase() !== 'deleted'
+    ).length;
+    this.processedFaxCount = data.filter(f =>
+      (f.status || '').toLowerCase() === 'processed'
+    ).length;
+
     this.faxWorkBaskets.forEach(wb => {
       wb.count = data.filter(f => (f.workBasket || '') === wb.name).length;
     });
   }
   private applyWorkBasketFilter(): void {
-    const source = this.allFaxes || [];
+    let source = this.allFaxes || [];
 
-    if (!this.selectedWorkBasket) {
-      this.dataSource.data = source;
-      return;
+    // Apply status chip filter
+    if (this.statusChipFilter === 'open') {
+      source = source.filter(f =>
+        (f.status || '').toLowerCase() !== 'processed' &&
+        (f.status || '').toLowerCase() !== 'deleted'
+      );
+    } else if (this.statusChipFilter === 'processed') {
+      source = source.filter(f =>
+        (f.status || '').toLowerCase() === 'processed'
+      );
+    }
+    // 'all' → no status filtering (but exclude deleted)
+
+    // Apply work-basket filter
+    if (this.selectedWorkBasket) {
+      source = source.filter(
+        f => (f.workBasket || '') === this.selectedWorkBasket
+      );
     }
 
-    this.dataSource.data = source.filter(
-      f => (f.workBasket || '') === this.selectedWorkBasket
-    );
+    this.dataSource.data = source;
   }
 
   selectWorkBasket(name: string | null): void {
     this.selectedWorkBasket = name;
+    this.applyWorkBasketFilter();
+  }
+
+  selectStatusChip(status: 'open' | 'processed' | 'all'): void {
+    this.statusChipFilter = status;
     this.applyWorkBasketFilter();
   }
 
