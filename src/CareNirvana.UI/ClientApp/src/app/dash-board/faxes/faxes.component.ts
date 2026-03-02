@@ -128,6 +128,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   // ── AI Summary (auto-generated on preview) ────────────────────────
   aiSummaryLoading = false;
   aiSummaryError: string | null = null;
+  aiSummary: string | null = null;
   aiClinicalMatch: string | null = null;
   aiRecommendation: string | null = null;
   aiRecommendationType: 'approve' | 'deny' | 'pend' | 'info' = 'info';
@@ -491,6 +492,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     // 🔹 Start details loader & clear stale data
     this.isLoadingDetails = true;
     this.priorAuth = null;
+    this.aiSummary = null;
     this.aiClinicalMatch = null; this.aiRecommendation = null; this.aiRecommendationType = 'info';
     this.aiSummaryError = null;
     this.aiSummaryLoading = false;
@@ -587,6 +589,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     this.currentFaxBytes = null;
     this.currentFaxOriginalName = null;
     this.priorAuth = null;
+    this.aiSummary = null;
     this.aiClinicalMatch = null; this.aiRecommendation = null; this.aiRecommendationType = 'info';
     this.aiSummaryError = null;
     this.aiSummaryLoading = false;
@@ -1039,7 +1042,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       this.isLoadingDetails = false;
 
       // ── Auto-generate AI summary ──
-      //this.generateAiSummary(pa);
+      this.generateAiSummary(pa);
 
       // Only run Smart Auth Check if no auth is already linked
       if (!this.linkedAuthMeta) {
@@ -1961,12 +1964,13 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
     this.aiSummaryLoading = true;
     this.aiSummaryError = null;
+    this.aiSummary = null;
     this.aiClinicalMatch = null; this.aiRecommendation = null; this.aiRecommendationType = 'info';
 
     try {
       const inputData = this.buildPaDataText(paData);
       console.log('[AISummary] Sending to faxsummary:', inputData);
-      const value = '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';
+      const value = 'test';
 
       // Call backend — must send as JSON with correct Content-Type.
       // C# [FromBody] string expects the body to be a JSON-encoded string: "value"
@@ -1997,42 +2001,53 @@ export class FaxesComponent implements OnInit, AfterViewInit {
    * paragraphs from the full AI response. Derives recommendation type
    * (approve / deny / pend / info) from the recommendation text.
    */
+  //private parseAiSections(fullText: string): void {
+  //  const text = fullText.replace(/\\n/g, '\n');
+
+  //  const extractSection = (label: string): string | null => {
+  //    const patterns = [
+  //      new RegExp(`\\*\\*${label}:\\*\\*\\s*`, 'i'),
+  //      new RegExp(`(?:^|\\n)${label}:\\s*`, 'i'),
+  //    ];
+  //    for (const re of patterns) {
+  //      const match = re.exec(text);
+  //      if (match) {
+  //        const start = match.index + match[0].length;
+  //        const nextSection = text.substring(start).search(/\*\*[A-Z][^*]+:\*\*/);
+  //        const end = nextSection >= 0 ? start + nextSection : text.length;
+  //        return text.substring(start, end).trim();
+  //      }
+  //    }
+  //    return null;
+  //  };
+
+  //  this.aiClinicalMatch = extractSection('Clinical Criteria Match');
+  //  this.aiRecommendation = extractSection('AI Recommendation');
+
+  //  // Derive recommendation type from text
+  //  if (this.aiRecommendation) {
+  //    const lower = this.aiRecommendation.toLowerCase();
+  //    if (lower.includes('should be denied') || lower.includes('denial') || lower.includes('suggesting denial')) {
+  //      this.aiRecommendationType = 'deny';
+  //    } else if (lower.includes('appropriate for approval') || lower.includes('recommend approval')) {
+  //      this.aiRecommendationType = 'approve';
+  //    } else if (lower.includes('pended') || lower.includes('additional documentation') || lower.includes('clinical review')) {
+  //      this.aiRecommendationType = 'pend';
+  //    } else {
+  //      this.aiRecommendationType = 'info';
+  //    }
+  //  }
+  //}
+
   private parseAiSections(fullText: string): void {
-    const text = fullText.replace(/\\n/g, '\n');
+    const text = fullText.replace(/\\n/g, '\n').trim();
+    this.aiSummary = text || null;
 
-    const extractSection = (label: string): string | null => {
-      const patterns = [
-        new RegExp(`\\*\\*${label}:\\*\\*\\s*`, 'i'),
-        new RegExp(`(?:^|\\n)${label}:\\s*`, 'i'),
-      ];
-      for (const re of patterns) {
-        const match = re.exec(text);
-        if (match) {
-          const start = match.index + match[0].length;
-          const nextSection = text.substring(start).search(/\*\*[A-Z][^*]+:\*\*/);
-          const end = nextSection >= 0 ? start + nextSection : text.length;
-          return text.substring(start, end).trim();
-        }
-      }
-      return null;
-    };
-
-    this.aiClinicalMatch = extractSection('Clinical Criteria Match');
-    this.aiRecommendation = extractSection('AI Recommendation');
-
-    // Derive recommendation type from text
-    if (this.aiRecommendation) {
-      const lower = this.aiRecommendation.toLowerCase();
-      if (lower.includes('should be denied') || lower.includes('denial') || lower.includes('suggesting denial')) {
-        this.aiRecommendationType = 'deny';
-      } else if (lower.includes('appropriate for approval') || lower.includes('recommend approval')) {
-        this.aiRecommendationType = 'approve';
-      } else if (lower.includes('pended') || lower.includes('additional documentation') || lower.includes('clinical review')) {
-        this.aiRecommendationType = 'pend';
-      } else {
-        this.aiRecommendationType = 'info';
-      }
-    }
+    // No longer parsing individual sections — prompt returns a single clinical summary paragraph.
+    // No coverage recommendations are generated, so recommendation type is always 'info'.
+    this.aiClinicalMatch = null;
+    this.aiRecommendation = null;
+    this.aiRecommendationType = 'info';
   }
 
   /**

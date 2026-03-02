@@ -578,7 +578,7 @@
           </ng-template>
 
           <!-- ══════════════════════════════════════════════════════════════
-               AI Analysis (Clinical Criteria Match + AI Recommendation)
+               AI Analysis (Clinical Summary)
                ══════════════════════════════════════════════════════════════ -->
           <div class="ai-summary-card">
             <div class="ai-summary-header">
@@ -589,14 +589,13 @@
                           fill="currentColor" />
                   </svg>
                 </div>
-                <span>AI Analysis</span>
+                <span>AI Clinical Summary</span>
                 <span class="ai-beta-badge">Beta</span>
               </div>
-              <!--*ngIf="(aiClinicalMatch || aiRecommendation || aiSummaryError) && !aiSummaryLoading"-->
               <button class="ai-generate-btn"
                       (click)="generateAiSummary()"
                       [disabled]="!priorAuth"
-                      matTooltip="Regenerate AI analysis">
+                      matTooltip="Regenerate AI summary">
                 <mat-icon>refresh</mat-icon>
                 Regenerate
               </button>
@@ -609,7 +608,7 @@
                 <div class="ai-loading-dots">
                   <span></span><span></span><span></span>
                 </div>
-                <div class="ai-loading-text">Analyzing clinical criteria &amp; generating recommendation…</div>
+                <div class="ai-loading-text">Generating clinical summary…</div>
               </div>
 
               <!-- Error state -->
@@ -618,61 +617,28 @@
                 <span>{{ aiSummaryError }}</span>
               </div>
 
-              <!-- Results: two cards -->
-              <div class="ai-sections" *ngIf="(aiClinicalMatch || aiRecommendation) && !aiSummaryLoading && !aiSummaryError">
+              <!-- Result: single clinical summary paragraph -->
+              <div class="ai-sections" *ngIf="aiSummary && !aiSummaryLoading && !aiSummaryError">
 
-                <!-- Clinical Criteria Match -->
-                <div class="ai-section-card ai-section-criteria" *ngIf="aiClinicalMatch">
+                <div class="ai-section-card ai-section-info">
                   <div class="ai-section-icon-row">
                     <div class="ai-section-icon criteria-icon">
-                      <mat-icon>biotech</mat-icon>
+                      <mat-icon>smart_toy</mat-icon>
                     </div>
-                    <div class="ai-section-label">Clinical Criteria Match</div>
+                    <div class="ai-section-label">Clinical Summary</div>
                   </div>
-                  <p class="ai-section-text">{{ aiClinicalMatch }}</p>
-                </div>
-
-                <!-- AI Recommendation -->
-                <div class="ai-section-card"
-                     [ngClass]="{
-                       'ai-section-deny':    aiRecommendationType === 'deny',
-                       'ai-section-approve': aiRecommendationType === 'approve',
-                       'ai-section-pend':    aiRecommendationType === 'pend',
-                       'ai-section-info':    aiRecommendationType === 'info'
-                     }"
-                     *ngIf="aiRecommendation">
-                  <div class="ai-section-icon-row">
-                    <div class="ai-section-icon rec-icon">
-                      <mat-icon>
-                        {{ aiRecommendationType === 'deny' ? 'gpp_bad' :
-                           aiRecommendationType === 'approve' ? 'verified' :
-                           aiRecommendationType === 'pend' ? 'pending_actions' : 'smart_toy' }}
-                      </mat-icon>
-                    </div>
-                    <div class="ai-section-label">AI Recommendation</div>
-                    <span class="ai-rec-badge"
-                          [ngClass]="{
-                            'badge-deny':    aiRecommendationType === 'deny',
-                            'badge-approve': aiRecommendationType === 'approve',
-                            'badge-pend':    aiRecommendationType === 'pend'
-                          }">
-                      {{ aiRecommendationType === 'deny' ? 'Likely Deny' :
-                         aiRecommendationType === 'approve' ? 'Likely Approve' :
-                         aiRecommendationType === 'pend' ? 'Needs Review' : 'Review' }}
-                    </span>
-                  </div>
-                  <p class="ai-section-text">{{ aiRecommendation }}</p>
+                  <p class="ai-section-text">{{ aiSummary }}</p>
                 </div>
 
                 <!-- Disclaimer -->
                 <div class="ai-summary-footer">
                   <mat-icon>info_outline</mat-icon>
-                  <span>AI-generated analysis for reviewer support only — not a coverage determination</span>
+                  <span>AI-generated summary for reviewer support only — not a coverage determination</span>
                 </div>
               </div>
 
               <!-- Empty / waiting state -->
-              <div class="ai-summary-empty" *ngIf="!aiClinicalMatch && !aiRecommendation && !aiSummaryLoading && !aiSummaryError">
+              <div class="ai-summary-empty" *ngIf="!aiSummary && !aiSummaryLoading && !aiSummaryError">
                 <div class="ai-empty-illustration">
                   <svg class="ai-brain-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.3"/>
@@ -683,8 +649,8 @@
                     <path d="M21 28C21 28 22.5 30 24 30C25.5 30 27 28 27 28" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.3"/>
                   </svg>
                 </div>
-                <div class="ai-empty-text">AI analysis will generate automatically</div>
-                <div class="ai-empty-sub">Clinical criteria evaluation and recommendation on preview</div>
+                <div class="ai-empty-text">AI summary will generate automatically</div>
+                <div class="ai-empty-sub">Clinical summary on preview</div>
               </div>
 
             </div>
