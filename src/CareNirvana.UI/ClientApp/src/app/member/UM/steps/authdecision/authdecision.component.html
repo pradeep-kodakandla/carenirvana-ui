@@ -1,30 +1,26 @@
 <!-- ============================================================
-     AuthDecision — Updated HTML Template
-     Changes:
-     1. Buttons moved from case-savebar into content-header bar
-     2. Content-header shows "Decision #N — CODE" + status badge + buttons
-     3. Tab layout updated: line1 + badge, code line, date line, reason line
-     4. Border gap between tab and content panel is preserved
+     AuthDecision — Updated HTML Template with Inline Bulk Edit
+     When bulkEditMode is ON, the content panel switches to a
+     full inline bulk-edit view with table + shared sections.
      ============================================================ -->
 
-<!-- OLD save bar removed (buttons now live in the content header) -->
-<!-- <div class="case-savebar">...</div>  ← DELETE THIS -->
-
-<div class="decision-details-layout" *ngIf="!loading && tabs.length">
+<div class="decision-details-layout"
+     *ngIf="!loading && tabs.length"
+     [class.bulk-mode-active]="bulkEditMode">
 
   <!-- ===== LEFT: Tab Rail ===== -->
-  <div class="tabs-container">
+  <div class="tabs-container" [class.tabs-dimmed]="bulkEditMode">
     <div class="tabs">
       <div
         *ngFor="let tab of tabs; let i = index"
         class="tab"
-        [class.active]="tab.id === selectedTabId"
-        [class.before-active]="isTabBeforeActive(i)"
+        [class.active]="!bulkEditMode && tab.id === selectedTabId"
+        [class.before-active]="!bulkEditMode && isTabBeforeActive(i)"
         [ngClass]="[
           tab.statusClass,
-          isTabBeforeActive(i) ? 'before-status-' + getActiveStatusKey() : ''
+          !bulkEditMode && isTabBeforeActive(i) ? 'before-status-' + getActiveStatusKey() : ''
         ]"
-        (click)="selectTab(tab.id)">
+        (click)="bulkEditMode ? null : selectTab(tab.id)">
 
         <!-- Row 1: Title + Status Badge -->
         <div class="tab-header-row">
@@ -40,21 +36,23 @@
           Code: {{ tab.procedureCode }}
         </div>
 
-        <!-- Row 3: Date Range (MM/DD → MM/DD/YYYY) -->
+        <!-- Row 3: Date Range -->
         <div class="tab-line2" *ngIf="tab.line2">{{ tab.line2 }}</div>
 
-        <!-- Row 4: Status Reason (italic) -->
+        <!-- Row 4: Status Reason -->
         <div class="tab-line4" *ngIf="tab.line4">{{ tab.line4 }}</div>
       </div>
     </div>
   </div>
 
-  <!-- ===== RIGHT: Content Panel ===== -->
+  <!-- ═══════════════════════════════════════════════
+       RIGHT: Content Panel — SINGLE TAB MODE
+       ═══════════════════════════════════════════════ -->
   <div class="tab-content"
-       *ngIf="activeState"
+       *ngIf="!bulkEditMode && activeState"
        [ngClass]="'status-' + getActiveStatusKey() + '-panel'">
 
-    <!-- ★ NEW: Content Header Bar (replaces old case-savebar) -->
+    <!-- Content Header Bar -->
     <div class="content-header" [ngClass]="contentHeaderClass">
       <div class="content-header-left">
         <span class="content-header-title">{{ contentHeaderTitle }}</span>
@@ -63,8 +61,7 @@
         </span>
       </div>
       <div class="content-header-actions">
-
-        <button class="btn btn-outline-secondary btn-sm" (click)="saveCurrentTab()" [disabled]="saving">
+        <button class="btn btn-outline-secondary btn-sm" (click)="openBulkEdit()" [disabled]="saving">
           Bulk Save
         </button>
         <button class="btn btn-outline-secondary btn-sm" (click)="saveCurrentTab()" [disabled]="saving">
@@ -79,15 +76,31 @@
       </div>
     </div>
 
-    <!-- Sections (Decision Details, Request & Treatment, etc.) -->
+    <!-- Sections (Decision Details, etc.) -->
     <ng-container *ngFor="let section of activeState.sections">
       <div class="section-card"
            *ngIf="isSectionVisible(activeState, section)"
            [class.collapsed]="section._collapsed">
 
         <div class="section-header" (click)="section._collapsed = !section._collapsed">
-          <div class="section-icon">
-            <!-- icon per section -->
+          <div class="section-icon" [ngSwitch]="section.sectionName"
+               [ngClass]="'section-icon--' + (section.sectionName === 'Decision Details' ? 'decision' : section.sectionName === 'Member Provider Decision Info' ? 'provider' : section.sectionName === 'Decision Notes' ? 'notes' : 'default')">
+            <!-- Decision Details -->
+            <svg *ngSwitchCase="'Decision Details'" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M10 1L3 5v6c0 4.25 3 7.4 7 8 4-.6 7-3.75 7-8V5l-7-4zm-1 12.17L5.83 10l1.42-1.41L9 10.34l3.75-3.75 1.42 1.41L9 13.17z"/>
+            </svg>
+            <!-- Member Provider Decision Info -->
+            <svg *ngSwitchCase="'Member Provider Decision Info'" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/>
+            </svg>
+            <!-- Decision Notes -->
+            <svg *ngSwitchCase="'Decision Notes'" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M4 2a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V8l-6-6H4zm7 1.5L16.5 9H12a1 1 0 01-1-1V3.5zM5 11h10v1H5v-1zm0 3h7v1H5v-1z"/>
+            </svg>
+            <!-- Default fallback -->
+            <svg *ngSwitchDefault viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 5a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1V9zm10 0a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1V9z" clip-rule="evenodd"/>
+            </svg>
           </div>
           <span class="section-title">{{ section.sectionName }}</span>
           <span class="section-chevron">
@@ -97,7 +110,7 @@
           </span>
         </div>
 
-        <div class="section-body">
+        <div class="section-body" *ngIf="section.sectionName !== 'Member Provider Decision Info'">
           <div class="grid">
             <ng-container *ngFor="let field of section.fields">
               <div class="ff-field"
@@ -117,6 +130,7 @@
                     <input class="ff-input"
                            [type]="field.type"
                            [formControl]="getCtrl(field.controlName)"
+                           [attr.step]="field.type === 'datetime-local' ? '1' : null"
                            [attr.placeholder]="field.type === 'datetime-local' ? 'mm/dd/yyyy' : '—'" />
                   </div>
                 </div>
@@ -173,10 +187,399 @@
             </ng-container>
           </div>
         </div>
+
+        <!-- ═══ Member Provider Decision Info — Inline Editable Table ═══ -->
+        <div class="section-body mp-table-section" *ngIf="section.sectionName === 'Member Provider Decision Info'">
+          <div class="bulk-mp-table-wrap">
+            <table class="bulk-mp-table">
+              <thead>
+                <tr>
+                  <th class="mpcol-num">#</th>
+                  <th class="mpcol-type">Type</th>
+                  <th class="mpcol-notif">Notification Type</th>
+                  <th class="mpcol-date">Notification Date</th>
+                  <th class="mpcol-attempt">Attempt</th>
+                  <th class="mpcol-action"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let mpRow of singleMpRows; let ri = index" class="mp-row">
+                  <td class="mpcol-num">{{ ri + 1 }}</td>
+                  <td class="mpcol-type">
+                    <div class="mp-cell-select">
+                      <select class="mp-inline-select"
+                              [(ngModel)]="mpRow.type">
+                        <option [ngValue]="null" disabled>Select…</option>
+                        <option *ngFor="let o of singleMpTypeOptions" [ngValue]="o.value">{{ o.label }}</option>
+                      </select>
+                    </div>
+                  </td>
+                  <td class="mpcol-notif">
+                    <div class="mp-cell-select">
+                      <select class="mp-inline-select"
+                              [(ngModel)]="mpRow.notificationType">
+                        <option [ngValue]="null" disabled>Select…</option>
+                        <option *ngFor="let o of singleMpNotifTypeOptions" [ngValue]="o.value">{{ o.label }}</option>
+                      </select>
+                    </div>
+                  </td>
+                  <td class="mpcol-date">
+                    <input type="datetime-local"
+                           class="mp-inline-datetime"
+                           [(ngModel)]="mpRow.notificationDate"
+                           step="1" />
+                  </td>
+                  <td class="mpcol-attempt">
+                    <input type="number" class="mp-inline-number"
+                           [(ngModel)]="mpRow.notificationAttempt"
+                           min="0" placeholder="0" />
+                  </td>
+                  <td class="mpcol-action">
+                    <button class="mp-remove-btn"
+                            *ngIf="singleMpRows.length > 1"
+                            (click)="removeSingleMpRow(ri)"
+                            title="Remove row">
+                      <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                      </svg>
+                    </button>
+                  </td>
+                </tr>
+                <!-- Empty state -->
+                <tr *ngIf="!singleMpRows.length">
+                  <td colspan="6" style="text-align:center;color:#94A3B8;padding:20px;font-size:13px">
+                    No notification records. Click below to add one.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="bulk-mp-add-bar">
+            <button class="mp-add-btn" (click)="addSingleMpRow()">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+              </svg>
+              Add Notification Row
+            </button>
+          </div>
+        </div>
       </div>
     </ng-container>
-
   </div>
+
+  <!-- ═══════════════════════════════════════════════
+       RIGHT: Content Panel — BULK EDIT MODE
+       ═══════════════════════════════════════════════ -->
+  <div class="tab-content bulk-edit-panel" *ngIf="bulkEditMode">
+
+    <!-- ── Bulk Edit Header ── -->
+    <div class="bulk-header">
+      <div class="bulk-header-left">
+        <span class="bulk-header-icon">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <rect x="2" y="3" width="16" height="14" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/>
+            <path d="M2 7h16M7 7v10" stroke="currentColor" stroke-width="1.2"/>
+          </svg>
+        </span>
+        <div>
+          <span class="bulk-header-title">Bulk Edit Mode</span>
+          <span class="bulk-header-sub">Update multiple decisions at once</span>
+        </div>
+      </div>
+      <div class="bulk-header-actions">
+        <button class="btn btn-outline-secondary btn-sm" (click)="closeBulkEdit()">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" style="margin-right:4px;vertical-align:-2px">
+            <path d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"/>
+          </svg>
+          Back to Single Edit
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Decision Status Controls ── -->
+    <div class="bulk-section-card">
+      <div class="bulk-section-hdr">
+        <div class="bulk-sec-icon bulk-sec-icon--status">
+          <svg viewBox="0 0 20 20" fill="currentColor">
+            <path d="M10 1L3 5v6c0 4.25 3 7.4 7 8 4-.6 7-3.75 7-8V5l-7-4zm-1 12.17L5.83 10l1.42-1.41L9 10.34l3.75-3.75 1.42 1.41L9 13.17z"/>
+          </svg>
+        </div>
+        <div class="bulk-sec-title-block">
+          <span class="bulk-sec-title">Decision Status</span>
+          <span class="bulk-sec-desc">Apply status to all selected decision lines</span>
+        </div>
+      </div>
+      <div class="bulk-status-controls">
+        <!-- Decision Status — floating label -->
+        <div class="ff-outline bulk-ff">
+          <label class="ff-float-label">Decision Status <span class="req-star">*</span></label>
+          <div class="ff-ui">
+            <ui-smart-dropdown
+              [formControl]="bulkDecisionStatusCtrl"
+              [options]="bulkDecisionStatusOptions"
+              placeholder="Select...">
+            </ui-smart-dropdown>
+          </div>
+        </div>
+        <!-- Decision Status Code — floating label (conditionally shown) -->
+        <div class="ff-outline bulk-ff" *ngIf="bulkDecisionStatusCodeOptions.length > 0">
+          <label class="ff-float-label">Decision Status Code <span class="req-star">*</span></label>
+          <div class="ff-ui">
+            <ui-smart-dropdown
+              [formControl]="bulkDecisionStatusCodeCtrl"
+              [options]="bulkDecisionStatusCodeOptions"
+              placeholder="Select...">
+            </ui-smart-dropdown>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Decision Lines Table ── -->
+    <div class="bulk-section-card">
+      <div class="bulk-section-hdr">
+        <div class="bulk-sec-icon bulk-sec-icon--lines">
+          <svg viewBox="0 0 20 20" fill="currentColor">
+            <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 5a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V9zm1 4a1 1 0 00-1 1v2a1 1 0 001 1h12a1 1 0 001-1v-2a1 1 0 00-1-1H4z"/>
+          </svg>
+        </div>
+        <div class="bulk-sec-title-block">
+          <span class="bulk-sec-title">Decision Lines</span>
+          <span class="bulk-sec-desc">Select lines and set approved / denied units</span>
+        </div>
+        <span class="bulk-selected-pill">{{ bulkSelectedCount }}/{{ bulkRows.length }} selected</span>
+      </div>
+      <div class="bulk-table-wrap">
+        <table class="bulk-table">
+          <thead>
+            <tr>
+              <th class="bcol-chk">
+                <input type="checkbox" class="form-check-input"
+                       [checked]="allBulkChecked"
+                       [indeterminate]="someBulkChecked && !allBulkChecked"
+                       (change)="toggleAllBulk($event)" />
+              </th>
+              <th class="bcol-num">#</th>
+              <th class="bcol-code">Service Code</th>
+              <th class="bcol-desc">Description</th>
+              <th class="bcol-status">Current Status</th>
+              <th class="bcol-unit">Req.</th>
+              <th class="bcol-unit bcol-editable-hdr">Appr.</th>
+              <th class="bcol-unit bcol-editable-hdr">Denied</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of bulkRows; let i = index"
+                [class.bulk-row-off]="!row.checked"
+                [class.bulk-row-on]="row.checked">
+              <td class="bcol-chk">
+                <input type="checkbox" class="form-check-input"
+                       [(ngModel)]="row.checked" />
+              </td>
+              <td class="bcol-num">{{ row.procedureNo }}</td>
+              <td class="bcol-code">
+                <span class="bulk-code-chip">{{ row.serviceCode || '—' }}</span>
+              </td>
+              <td class="bcol-desc">{{ row.serviceDescription || '—' }}</td>
+              <td class="bcol-status">
+                <span class="tab-status-badge" [ngClass]="row.currentStatusClass + '-badge'">
+                  {{ row.currentStatusText }}
+                </span>
+              </td>
+              <td class="bcol-unit">{{ row.requested }}</td>
+              <td class="bcol-unit">
+                <input type="number" class="bulk-unit-input"
+                       [(ngModel)]="row.approved"
+                       [disabled]="!row.checked"
+                       min="0" placeholder="0" />
+              </td>
+              <td class="bcol-unit">
+                <input type="number" class="bulk-unit-input"
+                       [(ngModel)]="row.denied"
+                       [disabled]="!row.checked"
+                       min="0" placeholder="0" />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Member Provider Decision Info — Editable Table ── -->
+    <div class="bulk-section-card" *ngIf="bulkMemberProviderSection">
+      <div class="bulk-section-hdr">
+        <div class="bulk-sec-icon bulk-sec-icon--provider">
+          <svg viewBox="0 0 20 20" fill="currentColor">
+            <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/>
+          </svg>
+        </div>
+        <div class="bulk-sec-title-block">
+          <span class="bulk-sec-title">Member / Provider Decision Info</span>
+          <span class="bulk-sec-desc">Notification details — applied to all selected decision lines</span>
+        </div>
+        <span class="bulk-shared-tag">Applied to all selected</span>
+      </div>
+
+      <div class="bulk-mp-table-wrap">
+        <table class="bulk-mp-table">
+          <thead>
+            <tr>
+              <th class="mpcol-num">#</th>
+              <th class="mpcol-type">Type</th>
+              <th class="mpcol-notif">Notification Type</th>
+              <th class="mpcol-date">Notification Date</th>
+              <th class="mpcol-attempt">Attempt</th>
+              <th class="mpcol-action"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let mpRow of bulkMpRows; let ri = index" class="mp-row">
+              <td class="mpcol-num">{{ ri + 1 }}</td>
+              <td class="mpcol-type">
+                <div class="mp-cell-select">
+                  <select class="mp-inline-select"
+                          [(ngModel)]="mpRow.type">
+                    <option [ngValue]="null" disabled>Select…</option>
+                    <option *ngFor="let o of bulkMpTypeOptions" [ngValue]="o.value">{{ o.label }}</option>
+                  </select>
+                </div>
+              </td>
+              <td class="mpcol-notif">
+                <div class="mp-cell-select">
+                  <select class="mp-inline-select"
+                          [(ngModel)]="mpRow.notificationType">
+                    <option [ngValue]="null" disabled>Select…</option>
+                    <option *ngFor="let o of bulkMpNotifTypeOptions" [ngValue]="o.value">{{ o.label }}</option>
+                  </select>
+                </div>
+              </td>
+              <td class="mpcol-date">
+                <input type="datetime-local"
+                       class="mp-inline-datetime"
+                       [(ngModel)]="mpRow.notificationDate"
+                       step="1"
+                       placeholder="mm/dd/yyyy hh:mm:ss" />
+              </td>
+              <td class="mpcol-attempt">
+                <input type="number" class="mp-inline-number"
+                       [(ngModel)]="mpRow.notificationAttempt"
+                       min="0" placeholder="0" />
+              </td>
+              <td class="mpcol-action">
+                <button class="mp-remove-btn"
+                        *ngIf="bulkMpRows.length > 1"
+                        (click)="removeBulkMpRow(ri)"
+                        title="Remove row">
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                  </svg>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Add Row -->
+      <div class="bulk-mp-add-bar">
+        <button class="mp-add-btn" (click)="addBulkMpRow()">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+          </svg>
+          Add Notification Row
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Decision Notes (shared) ── -->
+    <div class="bulk-section-card" *ngIf="bulkNotesSection">
+      <div class="bulk-section-hdr">
+        <div class="bulk-sec-icon bulk-sec-icon--notes">
+          <svg viewBox="0 0 20 20" fill="currentColor">
+            <path d="M4 2a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V8l-6-6H4zm7 1.5L16.5 9H12a1 1 0 01-1-1V3.5zM5 11h10v1H5v-1zm0 3h7v1H5v-1z"/>
+          </svg>
+        </div>
+        <div class="bulk-sec-title-block">
+          <span class="bulk-sec-title">Decision Notes</span>
+          <span class="bulk-sec-desc">Add notes to all selected decision lines</span>
+        </div>
+        <span class="bulk-shared-tag">Applied to all selected</span>
+      </div>
+      <div class="bulk-section-body">
+        <div class="grid">
+          <ng-container *ngFor="let field of bulkNotesSection.fields">
+            <div class="ff-field" [class.ff-span-all]="field.type === 'textarea'">
+
+              <div class="ff-outline"
+                   *ngIf="field.type !== 'select' && field.type !== 'checkbox' && field.type !== 'textarea'"
+                   [class.ff-disabled]="!field.isEnabled">
+                <label class="ff-float-label">{{ field.displayName }}</label>
+                <div class="ff-body">
+                  <input class="ff-input" [type]="field.type"
+                         [formControl]="getBulkCtrl(field.controlName)"
+                         [attr.step]="field.type === 'datetime-local' ? '1' : null"
+                         [attr.placeholder]="field.type === 'datetime-local' ? 'mm/dd/yyyy' : '—'" />
+                </div>
+              </div>
+
+              <div class="ff-outline"
+                   *ngIf="field.type === 'textarea'"
+                   [class.ff-disabled]="!field.isEnabled">
+                <label class="ff-float-label">{{ field.displayName }}</label>
+                <div class="ff-body">
+                  <textarea class="ff-input ff-textarea"
+                            [formControl]="getBulkCtrl(field.controlName)"></textarea>
+                </div>
+              </div>
+
+              <div class="ff-outline"
+                   *ngIf="field.type === 'select'"
+                   [class.ff-disabled]="!field.isEnabled">
+                <label class="ff-float-label">{{ field.displayName }}</label>
+                <div class="ff-ui">
+                  <ui-smart-dropdown
+                    [formControl]="getBulkCtrl(field.controlName)"
+                    [options]="getBulkDropdownOptions(field.controlName)"
+                    placeholder="Select...">
+                  </ui-smart-dropdown>
+                </div>
+              </div>
+
+              <div class="ff-checkbox" *ngIf="field.type === 'checkbox'">
+                <input type="checkbox" class="form-check-input"
+                       [formControl]="getBulkCtrl(field.controlName)"
+                       [id]="'bulk_' + field.controlName" />
+                <label class="form-check-label" [for]="'bulk_' + field.controlName">
+                  {{ field.displayName }}
+                </label>
+              </div>
+            </div>
+          </ng-container>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Validation / Success Messages ── -->
+    <div class="bulk-msg bulk-msg-error" *ngIf="bulkValidationMsg">{{ bulkValidationMsg }}</div>
+    <div class="bulk-msg bulk-msg-success" *ngIf="bulkSuccessMsg">{{ bulkSuccessMsg }}</div>
+
+    <!-- ── Footer Actions ── -->
+    <div class="bulk-footer">
+      <span class="bulk-footer-info">
+        {{ bulkSelectedCount }} of {{ bulkRows.length }} decisions selected
+      </span>
+      <div class="bulk-footer-actions">
+        <button class="btn btn-outline-secondary btn-sm" (click)="closeBulkEdit()">Cancel</button>
+        <button class="btn btn-primary btn-sm"
+                (click)="executeBulkSave()"
+                [disabled]="bulkSaving || bulkSelectedCount === 0">
+          {{ bulkSaving ? 'Saving…' : 'Save All Selected' }}
+        </button>
+      </div>
+    </div>
+
+  </div><!-- /bulk-edit-panel -->
+
 </div>
 
 <!-- Loading / Error states -->

@@ -10,6 +10,45 @@ import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown
 import { WizardToastService } from 'src/app/member/UM/components/authwizardshell/wizard-toast.service';
 import { AuthunsavedchangesawareService } from 'src/app/member/UM/services/authunsavedchangesaware.service';
 
+/** Row in the inline bulk-edit table */
+interface BulkSaveRow {
+  checked: boolean;
+  procedureNo: number;
+  serviceCode: string;
+  serviceDescription: string;
+  currentStatusText: string;
+  currentStatusClass: string;
+  requested: number | string;
+  approved: number | string;
+  denied: number | string;
+  /** Existing item IDs per section (for update vs create) */
+  itemIds: Partial<Record<DecisionSectionName, string>>;
+  /** Full existing Decision Details payload (for merging) */
+  existingDecisionData: any;
+  /** Full existing Member Provider Info payload */
+  existingMemberProviderData: any;
+  /** Full existing Decision Notes payload */
+  existingNotesData: any;
+}
+
+/** Row in the editable Member/Provider notification table (bulk mode) */
+interface BulkMpRow {
+  type: any;                    // select value (Member/Provider)
+  notificationType: any;        // select value
+  notificationDate: string;     // datetime-local string
+  notificationAttempt: number | string;
+}
+
+/** Row in the single-tab Member/Provider notification table (tracks saved items) */
+interface SingleMpRow {
+  type: any;
+  notificationType: any;
+  notificationDate: string;
+  notificationAttempt: number | string;
+  /** Existing backend itemId (null = new row to create) */
+  itemId: string | null;
+}
+
 type DecisionTab = {
   id: number;              // UI tab id
   procedureNo: number;     // 1..N
@@ -116,6 +155,45 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
   private authCreatedOn: string | null = null;
   private itemsBySection: Partial<Record<DecisionSectionName, any[]>> = {};
   private dropdownCache = new Map<string, SmartOpt[]>();
+
+  // ═══════════════════════════════════════════════
+  //  INLINE BULK EDIT STATE
+  // ═══════════════════════════════════════════════
+  bulkEditMode = false;
+  bulkSaving = false;
+  bulkValidationMsg = '';
+  bulkSuccessMsg = '';
+  bulkRows: BulkSaveRow[] = [];
+
+  /** Decision Status / Code controls for bulk mode */
+  bulkDecisionStatusCtrl = new FormControl(null);
+  bulkDecisionStatusCodeCtrl = new FormControl(null);
+  bulkDecisionStatusOptions: UiSmartOption[] = [];
+  bulkDecisionStatusCodeOptions: UiSmartOption[] = [];
+
+  /** Shared form for Member Provider Info + Notes in bulk mode */
+  bulkSharedForm: FormGroup = this.fb.group({});
+  bulkSharedOptions: Record<string, UiSmartOption[]> = {};
+
+  /** View-model sections for bulk shared form fields */
+  bulkMemberProviderSection: DecisionSectionVm | null = null;
+  bulkNotesSection: DecisionSectionVm | null = null;
+
+  /** Member Provider editable table rows + dropdown options */
+  bulkMpRows: BulkMpRow[] = [];
+  bulkMpTypeOptions: UiSmartOption[] = [];
+  bulkMpNotifTypeOptions: UiSmartOption[] = [];
+
+  /** Single-tab MP table rows + dropdown options (same table design as bulk) */
+  singleMpRows: SingleMpRow[] = [];
+  singleMpTypeOptions: UiSmartOption[] = [];
+  singleMpNotifTypeOptions: UiSmartOption[] = [];
+
+  private bulkStatusSub$ = new Subject<void>();
+
+  /** Shell callbacks (injected by AuthWizardShell via pushContextIntoCurrentStep) */
+  _shellRefreshBadgeCounts?: (patch?: Partial<Record<string, number>>) => void;
+  _shellRefreshHeader?: () => void;
 
   /**
    * Cached UI value for the "Pended" option in Decision Status dropdown.
@@ -284,6 +362,8 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
   ngOnDestroy(): void {
     this.tabDestroy$.next();
     this.tabDestroy$.complete();
+    this.bulkStatusSub$.next();
+    this.bulkStatusSub$.complete();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -961,6 +1041,9 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
     const calls: any[] = [];
 
     for (const sec of this.activeState.sections) {
+      // Member Provider is handled separately via the editable table rows
+      if (sec.sectionName === 'Member Provider Decision Info') continue;
+
       const payload = this.buildSectionPayload(procNo, sec);
 
       // Timestamp rules apply only to Decision Details
@@ -979,6 +1062,9 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
         );
       }
     }
+
+    // Add Member Provider Decision Info rows from the editable table
+    calls.push(...this.buildSingleMpSaveCalls(authDetailId, procNo, userId));
 
     this.saving = true;
     this.errorMsg = '';
@@ -1254,6 +1340,9 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
       itemIdsBySection
     };
 
+    // Load Member Provider rows into editable table
+    this.loadSingleMpRows(procedureNo, sections);
+
     // Decision Status -> Decision Status Code dependency
     this.wireDecisionStatusCodeDependency();
 
@@ -1467,6 +1556,33 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
     const data = this.safeParseJson(raw) ?? raw ?? {};
 
     return { itemId: itemId || null, data };
+  }
+
+  /** Return ALL items matching a section + procedureNo (for multi-row sections like Member Provider). */
+  private findAllItemsForSectionAndProcedure(sectionName: DecisionSectionName, procedureNo: number): Array<{ itemId: string | null; data: any }> {
+    const list = (this.itemsBySection?.[sectionName] ?? []) as any[];
+    if (!Array.isArray(list) || !list.length) return [];
+
+    const results: Array<{ itemId: string | null; data: any }> = [];
+
+    for (const x of list) {
+      const rawData: any = (x as any)?.data ?? (x as any)?.jsonData ?? (x as any)?.payload ?? (x as any)?.itemData ?? null;
+      const parsedData: any = this.safeParseJson(rawData) ?? rawData ?? null;
+
+      const p = Number(
+        (x as any)?.procedureNo ?? (x as any)?.procedureIndex ?? (x as any)?.serviceIndex ?? (x as any)?.serviceNo ??
+        parsedData?.procedureNo ?? parsedData?.procedureIndex ?? parsedData?.serviceIndex ?? parsedData?.serviceNo
+      );
+
+      if (p === procedureNo || (!Number.isFinite(p) && procedureNo === 1)) {
+        const itemId = String((x as any)?.itemId ?? (x as any)?.id ?? (x as any)?.decisionItemId ?? '');
+        const raw = (x as any)?.data ?? (x as any)?.jsonData ?? (x as any)?.payload ?? (x as any)?.itemData ?? {};
+        const data = this.safeParseJson(raw) ?? raw ?? {};
+        results.push({ itemId: itemId || null, data });
+      }
+    }
+
+    return results;
   }
 
   private prefetchDropdownOptions(sections: DecisionSectionVm[]): void {
@@ -2256,4 +2372,832 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
   }
 
 
+  // ═══════════════════════════════════════════════════════════
+  //  SINGLE-TAB — Member Provider Editable Table
+  //  Loads all saved MP items for the active procedure into
+  //  singleMpRows[], supports add/remove, and saves per-row.
+  // ═══════════════════════════════════════════════════════════
+
+  /** Load all saved Member Provider items for a procedure into editable rows */
+  private loadSingleMpRows(procedureNo: number, sections: DecisionSectionVm[]): void {
+    // Find the MP template section for field metadata
+    const mpSection = sections.find(s => s.sectionName === 'Member Provider Decision Info');
+    if (!mpSection) {
+      this.singleMpRows = [];
+      return;
+    }
+
+    // Load dropdown options (reuse the bulk loader logic)
+    this.loadSingleMpDropdownOptions(mpSection.fields);
+
+    // Find ALL saved MP items for this procedure
+    const allItems = this.findAllItemsForSectionAndProcedure('Member Provider Decision Info', procedureNo);
+
+    if (allItems.length > 0) {
+      this.singleMpRows = allItems.map(item => {
+        const d = item.data ?? {};
+        // Resolve field IDs dynamically from template
+        const typeFieldId = this.getMpFieldIdFromFields(mpSection.fields, 'type');
+        const notifFieldId = this.getMpFieldIdFromFields(mpSection.fields, 'notificationType');
+        const dateFieldId = this.getMpFieldIdFromFields(mpSection.fields, 'notificationDate');
+        const attemptFieldId = this.getMpFieldIdFromFields(mpSection.fields, 'notificationAttempt');
+
+        return {
+          type: this.extractPrimitive(d[typeFieldId]) ?? null,
+          notificationType: this.extractPrimitive(d[notifFieldId]) ?? null,
+          notificationDate: this.toDateTimeLocalString(d[dateFieldId]) ?? '',
+          notificationAttempt: d[attemptFieldId] ?? '',
+          itemId: item.itemId
+        } as SingleMpRow;
+      });
+    } else {
+      // Start with one empty row if nothing saved
+      this.singleMpRows = [this.createEmptySingleMpRow()];
+    }
+  }
+
+  /** Load dropdown options for the single-tab MP table */
+  private loadSingleMpDropdownOptions(fields: DecisionFieldVm[]): void {
+    const typeField = fields.find(f =>
+      /memberProviderType/i.test(f.id) || (/^type$/i.test(f.id) && !/notification/i.test(f.id))
+    );
+    const notifField = fields.find(f => /notificationType/i.test(f.id));
+
+    const loadDs = (field: DecisionFieldVm | undefined, target: 'type' | 'notif') => {
+      if (!field) return;
+      const ds = String((field as any).datasource ?? '').trim();
+
+      if (!ds) {
+        const staticOpts = this.mapStaticOptions(((field as any).options ?? []) as any[]);
+        const filtered = this.filterBySelectedOptions(field, staticOpts);
+        if (target === 'type') this.singleMpTypeOptions = filtered;
+        else this.singleMpNotifTypeOptions = filtered;
+        return;
+      }
+
+      const cached = this.dropdownCache.get(ds);
+      if (cached) {
+        const filtered = this.filterBySelectedOptions(field, cached);
+        if (target === 'type') this.singleMpTypeOptions = filtered;
+        else this.singleMpNotifTypeOptions = filtered;
+        return;
+      }
+
+      this.dsLookup.getOptionsWithFallback(
+        ds,
+        (r: any) => this.mapDatasourceRowToOption(ds, r) as any,
+        ['UM', 'Admin', 'Provider']
+      )
+        .pipe(catchError(() => of([])), takeUntil(this.destroy$))
+        .subscribe((opts) => {
+          const safe = (opts ?? []) as any[];
+          this.dropdownCache.set(ds, safe);
+          const filtered = this.filterBySelectedOptions(field!, safe);
+          if (target === 'type') this.singleMpTypeOptions = filtered;
+          else this.singleMpNotifTypeOptions = filtered;
+        });
+    };
+
+    loadDs(typeField, 'type');
+    loadDs(notifField, 'notif');
+  }
+
+  /** Resolve field ID from MP fields list by semantic key */
+  private getMpFieldIdFromFields(fields: DecisionFieldVm[], semanticKey: string): string {
+    const keyLower = semanticKey.toLowerCase();
+    const match = fields.find(f => {
+      const fid = String(f.id ?? '').toLowerCase();
+      switch (keyLower) {
+        case 'type':
+          return fid.includes('memberprovidertype') || (fid === 'type' && !fid.includes('notification'));
+        case 'notificationtype':
+          return fid.includes('notificationtype');
+        case 'notificationdate':
+          return fid.includes('notificationdate');
+        case 'notificationattempt':
+          return fid.includes('notificationattempt');
+        default:
+          return fid.includes(keyLower);
+      }
+    });
+    return match?.id ?? semanticKey;
+  }
+
+  private createEmptySingleMpRow(): SingleMpRow {
+    return { type: null, notificationType: null, notificationDate: '', notificationAttempt: '', itemId: null };
+  }
+
+  addSingleMpRow(): void {
+    this.singleMpRows = [...this.singleMpRows, this.createEmptySingleMpRow()];
+  }
+
+  removeSingleMpRow(index: number): void {
+    if (this.singleMpRows.length <= 1) return;
+    this.singleMpRows = this.singleMpRows.filter((_, i) => i !== index);
+  }
+
+  /** Build API calls for all single-tab MP rows (used by saveCurrentTab) */
+  private buildSingleMpSaveCalls(authDetailId: number, procedureNo: number, userId: number): any[] {
+    const calls: any[] = [];
+    if (!this.activeState) return calls;
+
+    const mpSection = this.activeState.sections.find(s => s.sectionName === 'Member Provider Decision Info');
+    if (!mpSection) return calls;
+
+    for (const mpRow of this.singleMpRows) {
+      const hasValue = mpRow.type || mpRow.notificationType || mpRow.notificationDate || mpRow.notificationAttempt;
+      if (!hasValue) continue;
+
+      const payload: any = { procedureNo };
+
+      // Resolve field IDs from template
+      const typeFieldId = this.getMpFieldIdFromFields(mpSection.fields, 'type');
+      const notifFieldId = this.getMpFieldIdFromFields(mpSection.fields, 'notificationType');
+      const dateFieldId = this.getMpFieldIdFromFields(mpSection.fields, 'notificationDate');
+      const attemptFieldId = this.getMpFieldIdFromFields(mpSection.fields, 'notificationAttempt');
+
+      if (mpRow.type != null) {
+        payload[typeFieldId] = mpRow.type;
+        payload[typeFieldId + 'Label'] = this.resolveOptionLabel(this.singleMpTypeOptions, mpRow.type);
+      }
+      if (mpRow.notificationType != null) {
+        payload[notifFieldId] = mpRow.notificationType;
+        payload[notifFieldId + 'Label'] = this.resolveOptionLabel(this.singleMpNotifTypeOptions, mpRow.notificationType);
+      }
+      if (mpRow.notificationDate) {
+        payload[dateFieldId] = mpRow.notificationDate;
+      }
+      if (mpRow.notificationAttempt !== '' && mpRow.notificationAttempt != null) {
+        payload[attemptFieldId] = this.coerceNumber(mpRow.notificationAttempt);
+      }
+
+      // Procedure metadata
+      payload.procedureCode = this.authData?.[`procedure${procedureNo}_procedureCode`] ?? null;
+      payload.procedureDescription = this.authData?.[`procedure${procedureNo}_procedureDescription`] ?? null;
+
+      if (mpRow.itemId) {
+        calls.push(this.api.updateItem(authDetailId, 'Member Provider Decision Info', mpRow.itemId, { data: payload } as any, userId));
+      } else {
+        calls.push(this.api.createItem(authDetailId, 'Member Provider Decision Info', { data: payload } as any, userId));
+      }
+    }
+
+    return calls;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  INLINE BULK EDIT — Open / Close / Execute
+  //  Industry pattern: "Batch Edit" view replaces the detail
+  //  panel so the user works in context without modals.
+  //  Saves Decision Details + Member Provider Info + Notes
+  //  for every selected decision line in one operation.
+  // ═══════════════════════════════════════════════════════════
+
+  // ── Computed helpers for template ──
+
+  get bulkSelectedCount(): number {
+    return (this.bulkRows ?? []).filter(r => r.checked).length;
+  }
+
+  get allBulkChecked(): boolean {
+    return this.bulkRows.length > 0 && this.bulkRows.every(r => r.checked);
+  }
+
+  get someBulkChecked(): boolean {
+    return this.bulkRows.some(r => r.checked);
+  }
+
+  toggleAllBulk(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    for (const row of this.bulkRows) row.checked = checked;
+  }
+
+  /** Form control accessor for bulk shared fields (Member Provider / Notes) */
+  getBulkCtrl(controlName: string): FormControl {
+    return (this.bulkSharedForm.get(controlName) as FormControl) ?? new FormControl(null);
+  }
+
+  /** Dropdown options accessor for bulk shared fields */
+  getBulkDropdownOptions(controlName: string): UiSmartOption[] {
+    return this.bulkSharedOptions[controlName] ?? [];
+  }
+
+  // ── Open Bulk Edit ──
+
+  openBulkEdit(): void {
+    if (!this.tabs.length) return;
+
+    this.bulkValidationMsg = '';
+    this.bulkSuccessMsg = '';
+    this.bulkSaving = false;
+
+    // 1) Build table rows from all decision tabs
+    this.bulkRows = this.tabs.map(tab => {
+      const procNo = tab.procedureNo;
+
+      // Collect existing item IDs and data for all 3 sections
+      const ddItem = this.findItemForSectionAndProcedure('Decision Details', procNo);
+      const mpItem = this.findItemForSectionAndProcedure('Member Provider Decision Info', procNo);
+      const dnItem = this.findItemForSectionAndProcedure('Decision Notes', procNo);
+
+      const dd = ddItem.data ?? {};
+      const serviceCode = this.extractServiceCodeString(
+        dd?.serviceCode ?? dd?.procedureCode ?? this.authData?.[`procedure${procNo}_procedureCode`]
+      );
+      const serviceDescription = String(
+        dd?.serviceDescription ?? dd?.procedureDescription ?? this.authData?.[`procedure${procNo}_procedureDescription`] ?? ''
+      ).trim();
+
+      const status = this.computeTabStatus(procNo);
+
+      return {
+        checked: true,
+        procedureNo: procNo,
+        serviceCode,
+        serviceDescription,
+        currentStatusText: status.label,
+        currentStatusClass: status.statusClass,
+        requested: dd?.requested ?? dd?.req ?? '',
+        approved: dd?.approved ?? dd?.appr ?? '',
+        denied: dd?.denied ?? '',
+        itemIds: {
+          'Decision Details': ddItem.itemId ?? undefined,
+          'Member Provider Decision Info': mpItem.itemId ?? undefined,
+          'Decision Notes': dnItem.itemId ?? undefined
+        } as any,
+        existingDecisionData: dd,
+        existingMemberProviderData: mpItem.data ?? {},
+        existingNotesData: dnItem.data ?? {}
+      } as BulkSaveRow;
+    });
+
+    // 2) Load Decision Status dropdown
+    this.loadBulkDecisionStatusOptions();
+
+    // 3) Reset decision status controls
+    this.bulkDecisionStatusCtrl.setValue(null, { emitEvent: false });
+    this.bulkDecisionStatusCodeCtrl.setValue(null, { emitEvent: false });
+    this.bulkDecisionStatusCodeOptions = [];
+
+    // 4) Wire Decision Status → Decision Status Code dependency
+    this.bulkStatusSub$.next();
+    this.bulkDecisionStatusCtrl.valueChanges
+      .pipe(takeUntil(this.bulkStatusSub$), takeUntil(this.destroy$))
+      .subscribe(val => this.onBulkDecisionStatusChange(val));
+
+    // 5) Build shared form for Member Provider Info + Decision Notes
+    this.buildBulkSharedSections();
+
+    // 6) Activate bulk mode (hides single-tab view)
+    this.bulkEditMode = true;
+  }
+
+  // ── Close Bulk Edit ──
+
+  closeBulkEdit(): void {
+    this.bulkEditMode = false;
+    this.bulkStatusSub$.next();
+    this.bulkRows = [];
+    this.bulkMpRows = [];
+    this.bulkValidationMsg = '';
+    this.bulkSuccessMsg = '';
+    this.bulkMemberProviderSection = null;
+    this.bulkNotesSection = null;
+  }
+
+  // ── Build shared form sections from template ──
+
+  private buildBulkSharedSections(): void {
+    const allSections = this.extractDecisionSectionsFromTemplate();
+    const group: Record<string, FormControl> = {};
+    this.bulkSharedOptions = {};
+
+    // --- Member Provider Decision Info (table-driven now) ---
+    const mpSec = allSections.find(s =>
+      String(s?.sectionName ?? '').trim() === 'Member Provider Decision Info'
+    );
+    if (mpSec) {
+      const fields = this.getSectionFields(mpSec).map((f: any) => this.toFieldVm(f));
+      this.bulkMemberProviderSection = { sectionName: 'Member Provider Decision Info', fields };
+
+      // Load dropdown options for the MP table columns
+      this.loadBulkMpDropdownOptions(fields);
+
+      // Initialize with one empty row
+      this.bulkMpRows = [this.createEmptyMpRow()];
+    } else {
+      this.bulkMemberProviderSection = null;
+      this.bulkMpRows = [];
+    }
+
+    // --- Decision Notes ---
+    const dnSec = allSections.find(s =>
+      String(s?.sectionName ?? '').trim() === 'Decision Notes'
+    );
+    if (dnSec) {
+      const fields = this.getSectionFields(dnSec).map((f: any) => this.toFieldVm(f));
+      for (const f of fields) {
+        f.controlName = `bulk_dn_${f.id}`;
+        const ctrl = new FormControl(this.defaultValueForType(f.type));
+        if (!f.isEnabled) ctrl.disable({ emitEvent: false });
+        group[f.controlName] = ctrl;
+      }
+      this.bulkNotesSection = { sectionName: 'Decision Notes', fields };
+    } else {
+      this.bulkNotesSection = null;
+    }
+
+    this.bulkSharedForm = this.fb.group(group);
+
+    // Prefetch dropdown options for Decision Notes select fields
+    this.prefetchBulkSharedDropdowns();
+  }
+
+  /** Load dropdown options for the Member Provider table columns */
+  private loadBulkMpDropdownOptions(fields: DecisionFieldVm[]): void {
+    // Find the Type and Notification Type fields by id pattern
+    const typeField = fields.find(f =>
+      /memberProviderType/i.test(f.id) || /^type$/i.test(f.id)
+    );
+    const notifField = fields.find(f =>
+      /notificationType/i.test(f.id)
+    );
+
+    const loadDs = (field: DecisionFieldVm | undefined, target: 'type' | 'notif') => {
+      if (!field) return;
+      const ds = String((field as any).datasource ?? '').trim();
+
+      if (!ds) {
+        const staticOpts = this.mapStaticOptions(((field as any).options ?? []) as any[]);
+        const filtered = this.filterBySelectedOptions(field, staticOpts);
+        if (target === 'type') this.bulkMpTypeOptions = filtered;
+        else this.bulkMpNotifTypeOptions = filtered;
+        return;
+      }
+
+      const cached = this.dropdownCache.get(ds);
+      if (cached) {
+        const filtered = this.filterBySelectedOptions(field, cached);
+        if (target === 'type') this.bulkMpTypeOptions = filtered;
+        else this.bulkMpNotifTypeOptions = filtered;
+        return;
+      }
+
+      this.dsLookup.getOptionsWithFallback(
+        ds,
+        (r: any) => this.mapDatasourceRowToOption(ds, r) as any,
+        ['UM', 'Admin', 'Provider']
+      )
+        .pipe(catchError(() => of([])), takeUntil(this.destroy$))
+        .subscribe((opts) => {
+          const safe = (opts ?? []) as any[];
+          this.dropdownCache.set(ds, safe);
+          const filtered = this.filterBySelectedOptions(field!, safe);
+          if (target === 'type') this.bulkMpTypeOptions = filtered;
+          else this.bulkMpNotifTypeOptions = filtered;
+        });
+    };
+
+    loadDs(typeField, 'type');
+    loadDs(notifField, 'notif');
+  }
+
+  /** Create a blank Member Provider table row */
+  private createEmptyMpRow(): BulkMpRow {
+    return {
+      type: null,
+      notificationType: null,
+      notificationDate: '',
+      notificationAttempt: ''
+    };
+  }
+
+  /** Add a new blank row to the MP notification table */
+  addBulkMpRow(): void {
+    this.bulkMpRows = [...this.bulkMpRows, this.createEmptyMpRow()];
+  }
+
+  /** Remove a row from the MP notification table */
+  removeBulkMpRow(index: number): void {
+    if (this.bulkMpRows.length <= 1) return;
+    this.bulkMpRows = this.bulkMpRows.filter((_, i) => i !== index);
+  }
+
+  /** Format a datetime value as "MM/DD/YYYY hh:mm:ss AM/PM" for display */
+  formatDateTimeAmPm(value: any): string {
+    if (!value) return '';
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return '';
+
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const yyyy = d.getFullYear();
+
+    let hrs = d.getHours();
+    const mins = String(d.getMinutes()).padStart(2, '0');
+    const secs = String(d.getSeconds()).padStart(2, '0');
+    const ampm = hrs >= 12 ? 'PM' : 'AM';
+    hrs = hrs % 12 || 12;
+
+    return `${mm}/${dd}/${yyyy} ${String(hrs).padStart(2, '0')}:${mins}:${secs} ${ampm}`;
+  }
+
+  /** Prefetch dropdown options for bulk shared form select fields (Decision Notes only; MP is table-driven) */
+  private prefetchBulkSharedDropdowns(): void {
+    const allFields: DecisionFieldVm[] = [
+      ...(this.bulkNotesSection?.fields ?? [])
+    ].filter(f => String(f.type).toLowerCase() === 'select');
+
+    for (const f of allFields) {
+      const ds = String((f as any).datasource ?? '').trim();
+
+      if (!ds) {
+        const staticOpts = this.mapStaticOptions(((f as any).options ?? []) as any[]);
+        this.bulkSharedOptions[f.controlName] = this.filterBySelectedOptions(f, staticOpts);
+        continue;
+      }
+
+      const cacheHit = this.dropdownCache.get(ds);
+      if (cacheHit) {
+        this.bulkSharedOptions[f.controlName] = this.filterBySelectedOptions(f, cacheHit);
+        continue;
+      }
+
+      this.dsLookup.getOptionsWithFallback(
+        ds,
+        (r: any) => this.mapDatasourceRowToOption(ds, r) as any,
+        ['UM', 'Admin', 'Provider']
+      )
+        .pipe(catchError(() => of([])), takeUntil(this.destroy$))
+        .subscribe((opts) => {
+          const safe = (opts ?? []) as any[];
+          this.dropdownCache.set(ds, safe);
+          this.bulkSharedOptions[f.controlName] = this.filterBySelectedOptions(f, safe);
+        });
+    }
+  }
+
+  // ── Decision Status dropdown loading (bulk) ──
+
+  private loadBulkDecisionStatusOptions(): void {
+    const statusDs = this.getDecisionStatusDatasourceFromTemplate();
+    if (!statusDs) { this.bulkDecisionStatusOptions = []; return; }
+
+    const cached = this.dropdownCache.get(statusDs);
+    if (cached) {
+      const tplField = this.findDecisionStatusTemplateField();
+      this.bulkDecisionStatusOptions = tplField
+        ? this.filterBySelectedOptions(tplField as any, cached) : cached;
+      return;
+    }
+
+    this.dsLookup.getOptionsWithFallback(
+      statusDs,
+      (r: any) => this.mapDatasourceRowToOption(statusDs, r) as any,
+      ['UM', 'Admin', 'Provider']
+    )
+      .pipe(catchError(() => of([])), takeUntil(this.destroy$))
+      .subscribe((opts) => {
+        const safe = (opts ?? []) as any[];
+        this.dropdownCache.set(statusDs, safe);
+        const tplField = this.findDecisionStatusTemplateField();
+        this.bulkDecisionStatusOptions = tplField
+          ? this.filterBySelectedOptions(tplField as any, safe) : safe;
+      });
+  }
+
+  /** Finds the Decision Status field definition from the template for selectedOptions filtering */
+  private findDecisionStatusTemplateField(): any {
+    const merged = this.extractDecisionSectionsFromTemplate();
+    for (const sec of (merged ?? [])) {
+      const fields: any[] = sec?.fields ?? [];
+      const hit = fields.find((f: any) =>
+        String(f?.id ?? '').trim().toLowerCase() === 'decisionstatus'
+      );
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  // ── Decision Status → Status Code dependency (bulk) ──
+
+  private onBulkDecisionStatusChange(statusVal: any): void {
+    this.bulkValidationMsg = '';
+
+    const rawStatus = this.extractPrimitive(this.unwrapValue(statusVal)) ?? this.unwrapValue(statusVal);
+    const statusKey = String(rawStatus ?? '').trim();
+
+    if (!statusKey || this.isPendedStatus(statusKey)) {
+      this.bulkDecisionStatusCodeOptions = [];
+      this.bulkDecisionStatusCodeCtrl.setValue(null, { emitEvent: false });
+      return;
+    }
+
+    const codeDs = this.getDecisionStatusCodeDatasourceFromTemplate();
+    if (!codeDs) { this.bulkDecisionStatusCodeOptions = []; return; }
+
+    const applyFilter = () => {
+      const full = (this.dropdownCache.get(codeDs) ?? []) as SmartOpt[];
+      const filtered = (full ?? []).filter((o: any) => {
+        const raw: any = o?.raw ?? o;
+        const cand = raw?.decisionStatus ?? raw?.decisionStatusId ?? raw?.statusId
+          ?? raw?.status ?? raw?.parentId ?? raw?.groupId ?? null;
+        if (cand === null || cand === undefined || String(cand).trim() === '') return true;
+        return String(cand).trim() === statusKey;
+      });
+      this.bulkDecisionStatusCodeOptions = filtered.length ? filtered : full;
+
+      // Reset code if no longer valid
+      const currentCode = this.extractPrimitive(this.unwrapValue(this.bulkDecisionStatusCodeCtrl.value));
+      const currentKey = String(currentCode ?? '').trim();
+      if (currentKey) {
+        const ok = this.bulkDecisionStatusCodeOptions.some(
+          (o: any) => String((o as any)?.value ?? '').trim() === currentKey
+        );
+        if (!ok) this.bulkDecisionStatusCodeCtrl.setValue(null, { emitEvent: false });
+      }
+    };
+
+    if (this.dropdownCache.has(codeDs)) {
+      applyFilter();
+    } else {
+      this.dsLookup.getOptionsWithFallback(
+        codeDs,
+        (r: any) => this.mapDatasourceRowToOption(codeDs, r) as any,
+        ['UM', 'Admin', 'Provider']
+      )
+        .pipe(catchError(() => of([])), takeUntil(this.destroy$))
+        .subscribe((opts) => {
+          this.dropdownCache.set(codeDs, (opts ?? []) as any[]);
+          applyFilter();
+        });
+    }
+  }
+
+  // ── Execute Bulk Save ──
+  // Saves 3 sections per selected row: Decision Details, Member Provider Info, Decision Notes
+
+  executeBulkSave(): void {
+    this.bulkValidationMsg = '';
+    this.bulkSuccessMsg = '';
+
+    // Validate: at least one row
+    const selectedRows = this.bulkRows.filter(r => r.checked);
+    if (!selectedRows.length) {
+      this.bulkValidationMsg = 'Please select at least one decision row.';
+      return;
+    }
+
+    // Validate: Decision Status required
+    const statusVal = this.extractPrimitive(this.unwrapValue(this.bulkDecisionStatusCtrl.value));
+    if (!statusVal || String(statusVal).trim() === '') {
+      this.bulkValidationMsg = 'Please select a Decision Status.';
+      return;
+    }
+
+    const statusKey = String(statusVal).trim();
+    const isPended = this.isPendedStatus(statusKey);
+    const codeVal = this.extractPrimitive(this.unwrapValue(this.bulkDecisionStatusCodeCtrl.value));
+
+    if (!isPended && this.bulkDecisionStatusCodeOptions.length > 0 && (!codeVal || String(codeVal).trim() === '')) {
+      this.bulkValidationMsg = 'Please select a Decision Status Code.';
+      return;
+    }
+
+    // Resolve labels
+    const statusLabel = this.resolveOptionLabel(this.bulkDecisionStatusOptions, statusVal);
+    const codeLabel = codeVal ? this.resolveOptionLabel(this.bulkDecisionStatusCodeOptions, codeVal) : '';
+
+    // Build shared payloads from Decision Notes form (MP is now row-based)
+    const sharedNotesPayload = this.buildBulkSharedPayload(this.bulkNotesSection);
+
+    // Build MP rows payload (resolve labels for select values)
+    const mpRowsPayload = this.buildBulkMpRowsPayload();
+
+    const userId = Number(sessionStorage.getItem('loggedInUserid') || 0);
+    const authDetailId = this.authDetailId;
+    if (!authDetailId) return;
+
+    const nowIso = new Date().toISOString();
+    const calls: any[] = [];
+
+    for (const row of selectedRows) {
+      const procNo = row.procedureNo;
+
+      // ── 1) Decision Details ──
+      const ddPayload = {
+        ...(row.existingDecisionData ?? {}),
+        procedureNo: procNo,
+        decisionStatus: statusVal,
+        decisionStatusLabel: statusLabel,
+        decisionStatusCode: isPended ? null : (codeVal ?? null),
+        decisionStatusCodeLabel: isPended ? '' : codeLabel,
+        approved: this.coerceNumber(row.approved),
+        denied: this.coerceNumber(row.denied),
+        updatedDateTime: nowIso,
+      };
+
+      // Timestamp logic
+      const oldStatus = row.existingDecisionData?.decisionStatus;
+      const oldIsPended = this.isPendedStatus(oldStatus);
+      if (isPended) {
+        ddPayload.decisionDateTime = null;
+      } else if (oldIsPended || (this.asDisplayString(oldStatus).trim() !== statusKey)) {
+        ddPayload.decisionDateTime = nowIso;
+      }
+      if (!ddPayload.createdDateTime) {
+        ddPayload.createdDateTime = row.existingDecisionData?.createdDateTime ?? this.authCreatedOn ?? nowIso;
+      }
+
+      ddPayload.procedureCode = ddPayload.procedureCode ?? this.authData?.[`procedure${procNo}_procedureCode`] ?? null;
+      ddPayload.procedureDescription = ddPayload.procedureDescription ?? this.authData?.[`procedure${procNo}_procedureDescription`] ?? null;
+
+      const ddItemId = row.itemIds['Decision Details'];
+      if (ddItemId) {
+        calls.push(this.api.updateItem(authDetailId, 'Decision Details', ddItemId, { data: ddPayload } as any, userId));
+      } else {
+        calls.push(this.api.createItem(authDetailId, 'Decision Details', { data: ddPayload } as any, userId));
+      }
+
+      // ── 2) Member Provider Decision Info (one API call per MP row) ──
+      const mpItemId = row.itemIds['Member Provider Decision Info'];
+      for (let mri = 0; mri < mpRowsPayload.length; mri++) {
+        const mpPayload = {
+          ...(mri === 0 ? (row.existingMemberProviderData ?? {}) : {}),
+          procedureNo: procNo,
+          procedureCode: row.existingDecisionData?.procedureCode ?? this.authData?.[`procedure${procNo}_procedureCode`] ?? null,
+          procedureDescription: row.existingDecisionData?.procedureDescription ?? this.authData?.[`procedure${procNo}_procedureDescription`] ?? null,
+          ...mpRowsPayload[mri]
+        };
+
+        // First MP row: update existing item if present, else create
+        // Subsequent rows: always create new items
+        if (mri === 0 && mpItemId) {
+          calls.push(this.api.updateItem(authDetailId, 'Member Provider Decision Info', mpItemId, { data: mpPayload } as any, userId));
+        } else {
+          calls.push(this.api.createItem(authDetailId, 'Member Provider Decision Info', { data: mpPayload } as any, userId));
+        }
+      }
+
+      // ── 3) Decision Notes ──
+      const notesPayload = {
+        ...(row.existingNotesData ?? {}),
+        procedureNo: procNo,
+        procedureCode: row.existingDecisionData?.procedureCode ?? this.authData?.[`procedure${procNo}_procedureCode`] ?? null,
+        procedureDescription: row.existingDecisionData?.procedureDescription ?? this.authData?.[`procedure${procNo}_procedureDescription`] ?? null,
+        ...sharedNotesPayload
+      };
+      const dnItemId = row.itemIds['Decision Notes'];
+      if (dnItemId) {
+        calls.push(this.api.updateItem(authDetailId, 'Decision Notes', dnItemId, { data: notesPayload } as any, userId));
+      } else {
+        calls.push(this.api.createItem(authDetailId, 'Decision Notes', { data: notesPayload } as any, userId));
+      }
+    }
+
+    this.bulkSaving = true;
+
+    forkJoin(calls)
+      .pipe(
+        finalize(() => (this.bulkSaving = false)),
+        catchError((e) => {
+          console.error('Bulk save failed:', e);
+          this.bulkValidationMsg = e?.error?.message ?? 'Bulk save failed. Please try again.';
+          return of(null);
+        }),
+        takeUntil(this.destroy$)
+      )
+      .subscribe({
+        next: (res: any) => {
+          if (res === null) return;
+
+          const count = selectedRows.length;
+          this.bulkSuccessMsg = `Successfully updated ${count} decision(s) with all sections.`;
+          this.toastSvc.success(`Bulk save: ${count} decision(s) updated successfully.`);
+
+          // Refresh data, exit bulk mode, update shell header
+          setTimeout(() => {
+            this.closeBulkEdit();
+            this.refreshItemsOnly();
+
+            // Refresh wizard shell header (status, decision summary, badges)
+            if (typeof this._shellRefreshBadgeCounts === 'function') {
+              this._shellRefreshBadgeCounts();
+            }
+            if (typeof this._shellRefreshHeader === 'function') {
+              this._shellRefreshHeader();
+            }
+          }, 900);
+        }
+      });
+  }
+
+  // ── Bulk shared payload builder ──
+  // Only includes fields that the user actually filled in (non-empty)
+  // so we don't overwrite existing data with blanks.
+
+  private buildBulkSharedPayload(section: DecisionSectionVm | null): any {
+    if (!section) return {};
+    const obj: any = {};
+    for (const f of section.fields) {
+      const ctrl = this.bulkSharedForm.get(f.controlName);
+      const rawVal = ctrl?.value;
+      const val = this.unwrapValue(rawVal);
+
+      if (val !== null && val !== undefined && String(val).trim() !== '' && val !== false) {
+        obj[f.id] = val;
+
+        // For selects, persist the label alongside the value
+        if (String(f.type ?? '').toLowerCase() === 'select' && val != null) {
+          const opts = this.bulkSharedOptions[f.controlName] ?? [];
+          const prim = String(this.extractPrimitive(val) ?? val ?? '').trim();
+          const matchedOpt = opts.find((o: any) => String((o as any)?.value ?? '').trim() === prim);
+          if (matchedOpt) {
+            obj[f.id + 'Label'] = String((matchedOpt as any)?.label ?? '').trim();
+          }
+        }
+      }
+    }
+    return obj;
+  }
+
+  /** Build payload array from the editable MP notification table rows.
+   *  Each row becomes one Member Provider Decision Info item per decision line. */
+  private buildBulkMpRowsPayload(): any[] {
+    if (!this.bulkMpRows?.length) return [{}]; // at least one empty payload
+
+    const results: any[] = [];
+
+    for (const mpRow of this.bulkMpRows) {
+      const hasAnyValue =
+        mpRow.type || mpRow.notificationType || mpRow.notificationDate || mpRow.notificationAttempt;
+      if (!hasAnyValue) continue; // skip completely empty rows
+
+      const obj: any = {};
+
+      // Type (Member/Provider)
+      const typeFieldId = this.getMpFieldId('type');
+      if (mpRow.type != null) {
+        obj[typeFieldId] = mpRow.type;
+        obj[typeFieldId + 'Label'] = this.resolveOptionLabel(this.bulkMpTypeOptions, mpRow.type);
+      }
+
+      // Notification Type
+      const notifFieldId = this.getMpFieldId('notificationType');
+      if (mpRow.notificationType != null) {
+        obj[notifFieldId] = mpRow.notificationType;
+        obj[notifFieldId + 'Label'] = this.resolveOptionLabel(this.bulkMpNotifTypeOptions, mpRow.notificationType);
+      }
+
+      // Notification Date
+      const dateFieldId = this.getMpFieldId('notificationDate');
+      if (mpRow.notificationDate) {
+        obj[dateFieldId] = mpRow.notificationDate;
+      }
+
+      // Notification Attempt
+      const attemptFieldId = this.getMpFieldId('notificationAttempt');
+      if (mpRow.notificationAttempt !== '' && mpRow.notificationAttempt != null) {
+        obj[attemptFieldId] = this.coerceNumber(mpRow.notificationAttempt);
+      }
+
+      results.push(obj);
+    }
+
+    return results.length ? results : [{}];
+  }
+
+  /** Resolve the actual field ID from the MP template for a given semantic key */
+  private getMpFieldId(semanticKey: string): string {
+    if (!this.bulkMemberProviderSection?.fields?.length) return semanticKey;
+
+    const fields = this.bulkMemberProviderSection.fields;
+    const keyLower = semanticKey.toLowerCase();
+
+    // Match field by ID pattern
+    const match = fields.find(f => {
+      const fid = String(f.id ?? '').toLowerCase();
+      switch (keyLower) {
+        case 'type':
+          return fid.includes('memberprovidertype') || (fid === 'type' && !fid.includes('notification'));
+        case 'notificationtype':
+          return fid.includes('notificationtype');
+        case 'notificationdate':
+          return fid.includes('notificationdate');
+        case 'notificationattempt':
+          return fid.includes('notificationattempt');
+        default:
+          return fid.includes(keyLower);
+      }
+    });
+
+    return match?.id ?? semanticKey;
+  }
+
+  /** Resolve an option's display label from an options list */
+  private resolveOptionLabel(options: UiSmartOption[], value: any): string {
+    const v = String(this.extractPrimitive(value) ?? value ?? '').trim();
+    const match = (options ?? []).find((o: any) => String((o as any)?.value ?? '').trim() === v);
+    return String((match as any)?.label ?? (match as any)?.text ?? v).trim();
+  }
 }

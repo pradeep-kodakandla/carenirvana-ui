@@ -3,29 +3,110 @@
   <!-- Sticky Top (Header + Stepper) -->
   <div class="authWizardTop">
 
-    <!-- Header (above stepper) -->
+    <!-- ═══ NEW RICH HEADER ═══ -->
     <div class="authWizardHeader">
+
       <div class="authWizardMeta">
-        <div class="metaItem">
-          <div class="metaLabel">Auth #</div>
-          <div class="metaValue">{{ header.authNumber ? (header.authNumber | uppercase) : '-' }}</div>
+
+        <!-- Auth Type -->
+        <div class="metaItem aw-meta-authtype">
+          <div class="metaLabel">Auth Type</div>
+          <div class="metaValue aw-authtype-value">{{ header.authTypeName || (header.authNumber ? ('Auth #' + (header.authNumber | uppercase)) : '-') }}</div>
+          <div class="aw-meta-subtitle" *ngIf="header.authClassName">{{ header.authClassName }}</div>
         </div>
 
+        <!-- Divider -->
+        <div class="aw-meta-divider"></div>
+
+        <!-- Priority -->
         <div class="metaItem">
-          <div class="metaLabel">Created By</div>
-          <div class="metaValue">{{ header.createdBy || '-' }}</div>
+          <div class="metaLabel">Priority</div>
+          <div class="metaValue">
+            <span *ngIf="header.priorityLabel"
+                  class="aw-status-pill"
+                  [ngClass]="'aw-priority--' + header.priorityCode">
+              {{ header.priorityLabel }}
+            </span>
+            <span *ngIf="!header.priorityLabel" class="aw-meta-empty">—</span>
+          </div>
         </div>
 
-        <div class="metaItem">
-          <div class="metaLabel">Created On</div>
-          <div class="metaValue">{{ header.createdOn || '-' }}</div>
-        </div>
+        <!-- Divider -->
+        <div class="aw-meta-divider"></div>
 
+        <!-- Due Date -->
         <div class="metaItem">
           <div class="metaLabel">Due Date</div>
-          <div class="metaValue">{{ header.dueDate || '-' }}</div>
+          <div class="metaValue" [ngClass]="header.daysLeft !== null ? 'aw-due--' + header.daysLeftStatus : ''">
+            {{ header.dueDate ? (header.dueDate | date:'MM/dd/yyyy HH:mm:ss a') : '—' }}
+
+          </div>
+          <div *ngIf="header.daysLeft !== null"
+               class="aw-days-left"
+               [ngClass]="'aw-due--' + header.daysLeftStatus">
+            <span *ngIf="header.daysLeft > 0">{{ header.daysLeft }} days left</span>
+            <span *ngIf="header.daysLeft === 0">Due today</span>
+            <span *ngIf="header.daysLeft < 0">{{ -header.daysLeft }} days overdue</span>
+          </div>
         </div>
-      </div>
+
+        <!-- Divider -->
+        <div class="aw-meta-divider"></div>
+
+        <!-- Auth Status -->
+        <div class="metaItem">
+          <div class="metaLabel">Auth Status</div>
+          <div class="metaValue">
+            <span *ngIf="header.authStatusLabel"
+                  class="aw-status-pill"
+                  [ngClass]="'aw-auth-status--' + header.authStatusCode">
+              {{ header.authStatusLabel }}
+            </span>
+            <span *ngIf="!header.authStatusLabel" class="aw-meta-empty">—</span>
+          </div>
+        </div>
+
+        <!-- Divider -->
+        <div class="aw-meta-divider"></div>
+
+        <!-- Overall Decision -->
+        <div class="metaItem">
+          <div class="metaLabel">Overall Decision</div>
+          <div class="metaValue">
+            <span class="aw-status-pill"
+                  [ngClass]="'aw-decision--' + header.overallDecisionCode">
+              {{ header.overallDecision || 'Pending' }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Divider -->
+        <div class="aw-meta-divider"></div>
+
+        <!-- Decision Summary -->
+        <div class="metaItem">
+          <div class="metaLabel">Decision Summary</div>
+          <div class="aw-decision-summary" *ngIf="header.decisionSummary.total > 0; else noDecisions">
+            <span class="aw-ds-total"># {{ header.decisionSummary.total }} Total</span>
+            <span *ngIf="header.decisionSummary.approved" class="aw-ds-dot aw-ds-dot--approved">
+              ● {{ header.decisionSummary.approved }}
+            </span>
+            <span *ngIf="header.decisionSummary.partial" class="aw-ds-dot aw-ds-dot--partial">
+              ● {{ header.decisionSummary.partial }}
+            </span>
+            <span *ngIf="header.decisionSummary.denied" class="aw-ds-dot aw-ds-dot--denied">
+              ● {{ header.decisionSummary.denied }}
+            </span>
+            <span *ngIf="header.decisionSummary.pending" class="aw-ds-dot aw-ds-dot--pending">
+              ● {{ header.decisionSummary.pending }}
+            </span>
+          </div>
+          <ng-template #noDecisions>
+            <span class="aw-meta-empty">—</span>
+          </ng-template>
+        </div>
+
+      </div><!-- /authWizardMeta -->
 
       <div class="authWizardActions">
         <button type="button"
@@ -45,7 +126,8 @@
           <span class="aw-ai-online-dot"></span>
         </button>
       </div>
-    </div>
+
+    </div><!-- /authWizardHeader -->
 
     <div class="stepperRow">
       <app-authchevronstepper class="stepper"
@@ -59,8 +141,7 @@
       </div>
     </div>
 
-  </div>
-
+  </div><!-- /authWizardTop -->
   <!-- ═══════ BODY: content + right panel ═══════ -->
   <div class="aw-body">
 
@@ -205,11 +286,10 @@
         </div>
 
         <div class="aw-rpanel-body aw-rpanel-body--flush">
-          <app-provider-details
-            [providerId]="selectedProviderId"
-            [providerData]="selectedProviderData"
-            [embedded]="true"
-            (closed)="closeRightPanel()">
+          <app-provider-details [providerId]="selectedProviderId"
+                                [providerData]="selectedProviderData"
+                                [embedded]="true"
+                                (closed)="closeRightPanel()">
           </app-provider-details>
         </div>
       </ng-container>

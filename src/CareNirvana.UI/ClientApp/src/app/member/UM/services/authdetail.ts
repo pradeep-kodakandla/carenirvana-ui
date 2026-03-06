@@ -20,6 +20,11 @@ export interface AuthDetailRow {
   authStatus?: number | null;
   authTypeText?: string | null;
   authStatusText?: string | null;
+
+  TotalDecisions?: number | null;
+  DecisionStatusesJson?: string | null;
+  OverallDecisionStatus?: string | null;
+  OverallDecisionStatusCode?: string | null;
 }
 
 export interface CreateAuthRequest {

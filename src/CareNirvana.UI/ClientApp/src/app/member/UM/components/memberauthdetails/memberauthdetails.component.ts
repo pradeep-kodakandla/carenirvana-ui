@@ -8,6 +8,23 @@ import { HeaderService } from 'src/app/service/header.service';
 import { MemberService } from 'src/app/service/shared-member.service';
 import { AuthDetailApiService } from 'src/app/service/authdetailapi.service';
 
+/** Shape of each decision inside decisionStatusesJson */
+export interface ParsedDecision {
+  itemId: string;
+  procedureNo: string;
+  serviceCode: string;
+  procedureDescription: string;
+  decisionStatus: string;          // "Approved", "Denied", "Pending", etc.
+  decisionStatusId: string;
+  decisionStatusCode: string;      // "Administrative Approval", etc.
+  decisionStatusCodeId: string;
+  requested: string | number;
+  approved: string | number;
+  denied: string | number;
+  decisionDateTime: string;
+  decisionRequestDatetime: string;
+}
+
 export interface MemberAuthGridRow {
   authNumber: string;
 
@@ -16,7 +33,7 @@ export interface MemberAuthGridRow {
   authStatus?: number | null;
   authClassId?: number | null;
 
-  // optional “text” fields if backend/UI maps them
+  // optional "text" fields if backend/UI maps them
   authTypeText?: string | null;
   authStatusText?: string | null;
 
@@ -26,6 +43,12 @@ export interface MemberAuthGridRow {
 
   createdOn?: string | Date | null;
   createdByUserName?: string | null;
+
+  // Decision fields from API
+  totalDecisions?: number | null;
+  decisionStatusesJson?: string | null;
+  overallDecisionStatus?: string | null;
+  overallDecisionStatusCode?: string | null;
 
   // anything else coming from API
   [key: string]: any;
@@ -59,6 +82,16 @@ export class MemberauthdetailsComponent implements OnInit {
   searchFilterValue = '';
   statusCountList: { status: string; count: number; slug: string }[] = [];
 
+  // ════════════════════════════════════════════════
+  //  RIGHT PANEL — Authorization Details (slide-in)
+  // ════════════════════════════════════════════════
+  detailPanelOpen = false;
+  detailPanelExpanded = false;
+  selectedAuthNumber = '';
+
+  /** Cache for parsed decision arrays (avoids re-parsing in template) */
+  private parsedDecisionsCache = new Map<string, ParsedDecision[]>();
+
   /** Color map for dynamic status dots */
   private statusColorMap: Record<string, string> = {
     approved:             '#22C55E',
@@ -91,11 +124,13 @@ export class MemberauthdetailsComponent implements OnInit {
     'authNumber',
     'authTypeText',
     'authStatusText',
+    'overallDecision',    // ← new column
     'authDueDate',
     'nextReviewDate',
     'treatmentType',
     'createdOn',
     'createdByUserName',
+    'viewDetails',
   ];
 
   dataSource = new MatTableDataSource<MemberAuthGridRow>([]);
@@ -164,14 +199,20 @@ export class MemberauthdetailsComponent implements OnInit {
   getAuthDetails(memberId: number): void {
     this.isLoading = true;
 
-    // ✅ expected service method:
-    // - if your service method name differs, change it here
     this.authDetailService.getByMember(memberId).subscribe({
       next: (data: MemberAuthGridRow[]) => {
         this.isLoading = false;
         console.log('Fetched auth details:', data);
         const rows = data ?? [];
         this.isEmpty = rows.length === 0;
+
+        // Pre-parse decisionStatusesJson for all rows
+        this.parsedDecisionsCache.clear();
+        for (const row of rows) {
+          if (row.decisionStatusesJson) {
+            this.parsedDecisionsCache.set(row.authNumber, this.parseDecisionJson(row.decisionStatusesJson));
+          }
+        }
 
         this.dataSource.data = rows;
         this.pageIndex = 0;
@@ -186,6 +227,7 @@ export class MemberauthdetailsComponent implements OnInit {
         this.isEmpty = true;
         this.dataSource.data = [];
         this.statusCountList = [];
+        this.parsedDecisionsCache.clear();
         this.applyFilters();
       },
     });
@@ -247,13 +289,103 @@ export class MemberauthdetailsComponent implements OnInit {
     this.pagedCardData = this.dataSource.filteredData.slice(start, end);
   }
 
+  // ════════════════════════════════════════════════
+  //  RIGHT PANEL — Open / Close / Toggle Expand
+  // ════════════════════════════════════════════════
+
+  openDetailPanel(authNumber: string): void {
+    if (this.detailPanelOpen && this.selectedAuthNumber === authNumber) {
+      this.closeDetailPanel();
+      return;
+    }
+
+    this.selectedAuthNumber = authNumber;
+    this.detailPanelOpen = true;
+    this.detailPanelExpanded = false;
+  }
+
+  closeDetailPanel(): void {
+    this.detailPanelOpen = false;
+    this.detailPanelExpanded = false;
+
+    setTimeout(() => {
+      if (!this.detailPanelOpen) {
+        this.selectedAuthNumber = '';
+      }
+    }, 350);
+  }
+
+  toggleDetailPanelExpand(): void {
+    this.detailPanelExpanded = !this.detailPanelExpanded;
+  }
+
+  // ════════════════════════════════════════════════
+  //  DECISION HELPERS — Parse + Display
+  // ════════════════════════════════════════════════
+
+  /**
+   * Safely parses the decisionStatusesJson string into an array of ParsedDecision objects.
+   * Handles both string and pre-parsed array inputs.
+   */
+  private parseDecisionJson(raw: string | any[] | null): ParsedDecision[] {
+    if (!raw) return [];
+    try {
+      const arr = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      return Array.isArray(arr) ? arr : [];
+    } catch {
+      return [];
+    }
+  }
+
+  /** Returns parsed decisions for a row (cached for performance) */
+  getDecisionStatuses(row: MemberAuthGridRow): ParsedDecision[] {
+    if (this.parsedDecisionsCache.has(row.authNumber)) {
+      return this.parsedDecisionsCache.get(row.authNumber)!;
+    }
+
+    const parsed = this.parseDecisionJson(row.decisionStatusesJson ?? null);
+    this.parsedDecisionsCache.set(row.authNumber, parsed);
+    return parsed;
+  }
+
+  /** Whether the row has any decision data to display */
+  hasDecisions(row: MemberAuthGridRow): boolean {
+    return (row.totalDecisions ?? 0) > 0 || this.getDecisionStatuses(row).length > 0;
+  }
+
+  /** Returns a CSS slug for a decision status label (e.g. "Approved" → "approved") */
+  getDecisionStatusSlug(status: string): string {
+    return (status || 'pending').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  }
+
+  /** Returns a CSS slug for the overall decision status */
+  getOverallDecisionSlug(row: MemberAuthGridRow): string {
+    const raw = (row.overallDecisionStatus || 'pending').toString().trim();
+    return raw.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  }
+
+  /** Aggregates decision counts: { approved, denied, pending, partial, total } */
+  getDecisionSummary(row: MemberAuthGridRow): { approved: number; denied: number; pending: number; partial: number; total: number } {
+    const decisions = this.getDecisionStatuses(row);
+    const summary = { approved: 0, denied: 0, pending: 0, partial: 0, total: decisions.length };
+
+    for (const d of decisions) {
+      const slug = this.getDecisionStatusSlug(d.decisionStatus);
+      if (slug === 'approved') summary.approved++;
+      else if (slug === 'denied') summary.denied++;
+      else if (slug === 'partially-approved' || slug === 'partial') summary.partial++;
+      else summary.pending++;
+    }
+
+    return summary;
+  }
+
   /******** Permissions (safe fallback) ********/
   loadPermissionsForAuthActions() {
     const permissionsJson = JSON.parse(
       sessionStorage.getItem('rolePermissionsJson') || '[]'
     );
 
-    // Try common module names (safe)
     const umModule =
       permissionsJson.find((m: any) => m.moduleName === 'UM') ||
       permissionsJson.find((m: any) => m.moduleName === 'Authorization') ||
@@ -335,12 +467,10 @@ export class MemberauthdetailsComponent implements OnInit {
         count,
         slug: status.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
       }))
-      .sort((a, b) => b.count - a.count); // sort by count descending
+      .sort((a, b) => b.count - a.count);
   }
 
-  /** Handles clicking a status chip to toggle filtering */
   onStatusFilterClick(status: string | null): void {
-    // Toggle: if same status clicked again, reset to "all"
     if (this.activeStatusFilter === status) {
       this.activeStatusFilter = null;
     } else {
@@ -350,7 +480,6 @@ export class MemberauthdetailsComponent implements OnInit {
     this.applyFilters();
   }
 
-  /** Returns the dot color for a given status slug */
   getStatusDotColor(slug: string): string {
     return this.statusColorMap[slug] || '#6B7280';
   }
@@ -359,11 +488,6 @@ export class MemberauthdetailsComponent implements OnInit {
     return row.authNumber;
   }
 
-  /**
-   * Calculates due-date countdown info for display.
-   * Returns { daysLeft, label, level, tooltip }
-   *   level: 'overdue' | 'warning' | 'safe' | 'none'
-   */
   getDueDateInfo(row: MemberAuthGridRow): { daysLeft: number; label: string; level: string; tooltip: string } {
     if (!row.authDueDate) {
       return { daysLeft: 0, label: '', level: 'none', tooltip: '' };
@@ -379,7 +503,6 @@ export class MemberauthdetailsComponent implements OnInit {
     const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
     if (daysLeft < 0) {
-      // Overdue
       const overdueDays = Math.abs(daysLeft);
       return {
         daysLeft,
@@ -395,7 +518,6 @@ export class MemberauthdetailsComponent implements OnInit {
         tooltip: 'Due today'
       };
     } else if (daysLeft <= 7) {
-      // Warning zone
       return {
         daysLeft,
         label: `${daysLeft}d left`,
@@ -403,7 +525,6 @@ export class MemberauthdetailsComponent implements OnInit {
         tooltip: `${daysLeft} day${daysLeft !== 1 ? 's' : ''} remaining`
       };
     } else {
-      // Safe
       return {
         daysLeft,
         label: `${daysLeft}d left`,
@@ -416,7 +537,7 @@ export class MemberauthdetailsComponent implements OnInit {
   private getMemberIdFromRoute(): number {
     let r: ActivatedRoute | null = this.route;
     while (r) {
-      const v = r.snapshot.paramMap.get('id'); // member-info/:id
+      const v = r.snapshot.paramMap.get('id');
       if (v) return Number(v);
       r = r.parent;
     }
@@ -449,10 +570,7 @@ export class MemberauthdetailsComponent implements OnInit {
       return;
     }
 
-    // ✅ normalize for new
     const authNo = isNew ? '0' : String(authNumber);
-
-    // ✅ choose correct step
     const stepRoute = isNew ? 'smartcheck' : 'details';
 
     const urlTree = this.router.createUrlTree([

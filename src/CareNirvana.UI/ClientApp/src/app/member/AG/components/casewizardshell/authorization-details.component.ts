@@ -8,6 +8,7 @@ import {
   SimpleChanges
 } from '@angular/core';
 import { AuthService } from 'src/app/service/auth.service';
+import { AuthDetailApiService } from 'src/app/service/authdetailapi.service';
 
 /* ──────────────────────────────────────────────
    Raw API Response Interfaces
@@ -485,7 +486,8 @@ export class AuthorizationDetailsComponent implements OnInit, OnChanges {
   /** Emits when user clicks the print button */
   @Output() print = new EventEmitter<string>();
 
-  constructor(public authService: AuthService) {}
+  constructor(public authService: AuthService,
+    public summaryService: AuthDetailApiService) { }
 
   /** Resolved detail to display */
   detail: AuthorizationDetail | null = null;
@@ -507,11 +509,13 @@ export class AuthorizationDetailsComponent implements OnInit, OnChanges {
 
   ngOnInit(): void {
     this.loadDetail();
+    this.loadSummary();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['authNumber'] || changes['authData']) {
       this.loadDetail();
+      this.loadSummary();
     }
   }
 
@@ -767,9 +771,9 @@ export class AuthorizationDetailsComponent implements OnInit, OnChanges {
     const isDecided = ['2', '3', '4', '6', '7', '8'].includes(statusId);
     const latestDecisionDate = decisions.length > 0
       ? decisions.reduce((latest, d) => {
-          const dt = d.decisionDateTime || '';
-          return dt > latest ? dt : latest;
-        }, '')
+        const dt = d.decisionDateTime || '';
+        return dt > latest ? dt : latest;
+      }, '')
       : '';
 
     steps.push({
@@ -864,5 +868,28 @@ export class AuthorizationDetailsComponent implements OnInit, OnChanges {
   getDecisionStatusClass(status: string): string {
     const s = (status || '').toLowerCase().replace(/\s+/g, '-');
     return `auth-decision-status--${s}`;
+  }
+
+  summary = '';
+  isLoading = false;
+
+  loadSummary(): void {
+    if (!this.authNumber?.trim()) return;
+
+    this.isLoading = true;
+    this.summary = '';
+
+    this.summaryService.getAuthSummary(this.authNumber).subscribe({
+      next: (res) => {
+        this.summary = res;
+        console.log('Fetched auth summary:', res);
+        this.isLoading = false;
+      },
+      error: (err) => {
+        console.error('Error fetching auth summary:', err);
+        this.summary = 'Failed to load summary.';
+        this.isLoading = false;
+      }
+    });
   }
 }

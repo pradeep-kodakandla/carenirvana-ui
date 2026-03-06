@@ -183,6 +183,19 @@
     line-height: 22px !important;
   }
 
+/* ── Prevent ancestor clipping of the open dropdown panel ──
+   Only set overflow:visible so no ancestor clips the panel as it extends
+   below the field bounds. Do NOT touch position/z-index on internal
+   component elements — the component manages its own layout.
+   Stacking is handled at .ff-field / .section-card level (see below). */
+:host ::ng-deep ui-smart-dropdown {
+  overflow: visible !important;
+}
+
+:host ::ng-deep .ff-body {
+  overflow: visible !important;
+}
+
 /* Checkbox row (keep clean) */
 .ff-checkbox {
   display: flex;
@@ -782,20 +795,29 @@
     line-height: 1.25;
   }
 
-/* Ensure grid never overlaps the messages */
+/* Ensure grid never overlaps the messages.
+   IMPORTANT: Do NOT add z-index here — combining position + integer z-index
+   creates an isolated stacking context that traps dropdown panels inside it,
+   preventing them from appearing above the next grid row or next section-card. */
 .auth-details .grid {
   position: relative;
-  z-index: 1;
+  /* z-index intentionally omitted — would create an isolated stacking context */
 }
 
-/* ── Dropdown click fix ──
-   When a dropdown opens, its parent field must sit above sibling grid
-   cells so the option list isn't covered by adjacent fields.
-   We ONLY elevate the wrapper (.ff-field) — never force position/z-index
-   on the dropdown's own internal panel elements. */
+/* ── Dropdown z-index fix ──
+   CRITICAL: Do NOT add position:relative to the base .ff-field rule.
+   All sibling fields would then participate in stacking — and fields later
+   in DOM order (the next grid row) paint ON TOP of the open dropdown panel,
+   blocking mouse clicks on all but the top 1-2 options.
+
+   Correct model:
+   - Non-focused fields: no position → non-positioned → always paint BELOW any
+     positioned element (CSS paint step 3 vs step 7).
+   - Focused field only: position:relative + z-index:100 → paint step 7
+     (positive z-index), above all non-positioned siblings regardless of DOM order. */
 .ff-field:focus-within {
   position: relative;
-  z-index: 50;
+  z-index: 100;
 }
 
 
@@ -1323,9 +1345,11 @@
     z-index: 2000;
   }
 
-/* Extra safety: some dropdown panels attach under their host; lift the outline too */
+/* Extra safety: some dropdown panels attach under their host; lift the outline too.
+   NOTE: Do NOT set an integer z-index here — that would create another isolated
+   stacking context and trap the dropdown panel inside the outline element. */
 .ff-outline:focus-within {
-  z-index: 2500;
+  /* z-index intentionally omitted */
   border-color: #007bff;
   box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.12);
   background: #f7fbff;
@@ -1918,4 +1942,64 @@
 .fax-cancel-btn:disabled {
   color: #94a3b8;
   cursor: not-allowed;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FAX PREFILL HIGHLIGHT — Orange glow for fields populated from fax OCR
+   Only applied when navigating from Fax → Create Auth
+   ═══════════════════════════════════════════════════════════ */
+
+/* Outlined form fields (inputs, dropdowns, date pickers, textareas, lookups) */
+.ff-outline.ff-fax-prefilled {
+  border-color: #F59E0B;
+  background: #FFFBEB;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.18);
+}
+
+.ff-outline.ff-fax-prefilled .ff-float-label {
+  color: #B45309;
+}
+
+.ff-outline.ff-fax-prefilled::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #F59E0B;
+  opacity: .85;
+  pointer-events: none;
+}
+
+/* Diagnosis inline row */
+.dc-row.ff-fax-prefilled {
+  background: #FFFBEB;
+  border: 1.5px solid #F59E0B;
+  border-radius: 8px;
+  padding: 6px 10px;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.12);
+}
+
+/* Diagnosis card */
+.dc-card.ff-fax-prefilled {
+  border-color: #F59E0B;
+  background: #FFFBEB;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.12);
+}
+
+/* Service / Procedure card */
+.sc-card.ff-fax-prefilled {
+  border-color: #F59E0B;
+  border-left-color: #F59E0B;
+  background: #FFFBEB;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.12);
+}
+
+/* Provider card */
+.pc-card.ff-fax-prefilled {
+  border-color: #F59E0B;
+  background: #FFFBEB;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.12);
 }

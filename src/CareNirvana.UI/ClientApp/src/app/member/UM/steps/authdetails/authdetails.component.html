@@ -38,7 +38,8 @@
     <div class="grid" >
       <div class="ff-field">
         <div class="ff-outline"
-             [class.ff-invalid]="form.get('authClassId')?.touched && form.get('authClassId')?.invalid">
+             [class.ff-invalid]="form.get('authClassId')?.touched && form.get('authClassId')?.invalid"
+             [class.ff-fax-prefilled]="isFaxPrefilled('authClassId')">
           <div class="ff-float-label">Auth Case <span class="req-star">*</span></div>
           <div class="ff-body">
             <ui-smart-dropdown class="ff-ui"
@@ -57,7 +58,8 @@
       <div class="ff-field">
         <div class="ff-outline"
              [class.ff-disabled]="!form.get('authClassId')?.value"
-             [class.ff-invalid]="form.get('authTypeId')?.touched && form.get('authTypeId')?.invalid">
+             [class.ff-invalid]="form.get('authTypeId')?.touched && form.get('authTypeId')?.invalid"
+             [class.ff-fax-prefilled]="isFaxPrefilled('authTypeId')">
           <div class="ff-float-label">Auth Type <span class="req-star">*</span></div>
           <div class="ff-body">
             <ui-smart-dropdown class="ff-ui"
@@ -164,7 +166,7 @@
                       <div class="ff-field"
                            [class.ff-span-all]="isFullRowField(f) && f.type !== 'search'"
                            [class.ff-span-2]="f.type === 'search'">
-                        <div class="ff-outline" [class.ff-disabled]="ctrl.disabled" [class.ff-invalid]="ctrl.touched && ctrl.invalid">
+                        <div class="ff-outline" [class.ff-disabled]="ctrl.disabled" [class.ff-invalid]="ctrl.touched && ctrl.invalid" [class.ff-fax-prefilled]="isFaxPrefilled(f.controlName)">
                           <div class="ff-float-label">
                             {{ f.displayName }}
                             <span class="req-star" *ngIf="f.required">*</span>
@@ -245,8 +247,8 @@
                 <ng-container *ngFor="let inst of sec.instances; trackBy: trackProvIdx">
                   <div class="pc">
                     <div class="pc-card" [class.pc-card--filled]="hasProviderData(inst)"
-                         [class.pc-card--oon]="getProviderNetworkStatus(inst) === 'Out-of-Network'">
-
+                         [class.pc-card--oon]="getProviderNetworkStatus(inst) === 'Out-of-Network'"
+                         [class.ff-fax-prefilled]="isInstanceFaxPrefilled(inst)">
                       <!-- Top row: role display/dropdown + edit + delete -->
                       <div class="pc-card-top">
                         <ng-container *ngIf="getProvRoleField(inst) as rf">
@@ -391,7 +393,7 @@
                   <ng-container *ngFor="let inst of sec.instances; trackBy: trackProvIdx">
 
                     <!-- ── SELECTED VIEW: single inline row ── -->
-                    <div class="dc-row" *ngIf="hasDiagnosisSelected(inst); else secDiagEditCard">
+                    <div class="dc-row" [class.ff-fax-prefilled]="isInstanceFaxPrefilled(inst)" *ngIf="hasDiagnosisSelected(inst); else secDiagEditCard">
                       <ng-container *ngIf="getDiagCodeTypeField(inst) as ctf">
                         <span class="dc-codetype-value">{{ getDiagnosisCodeType(inst) || ctf.displayName }}</span>
                       </ng-container>
@@ -417,7 +419,7 @@
 
                     <!-- ── EDIT / EMPTY: card layout ── -->
                     <ng-template #secDiagEditCard>
-                      <div class="dc-card">
+                      <div class="dc-card" [class.ff-fax-prefilled]="isInstanceFaxPrefilled(inst)">
                         <div class="dc-card-top">
                           <ng-container *ngIf="getDiagCodeTypeField(inst) as ctf">
                             <ng-container *ngIf="form.get(ctf.controlName) as ctc">
@@ -486,7 +488,7 @@
               <ng-container *ngIf="isServiceRepeatGroup(sec); else normalSecRepeat">
                 <div class="sc-list">
                   <ng-container *ngFor="let inst of sec.instances; trackBy: trackProvIdx">
-                    <div class="sc-card" [class.sc-card--filled]="hasServiceData(inst)">
+                    <div class="sc-card" [class.sc-card--filled]="hasServiceData(inst)" [class.ff-fax-prefilled]="isInstanceFaxPrefilled(inst)">
 
                       <!-- When NOT selected: show search + delete -->
                       <ng-container *ngIf="!hasServiceSelected(inst)">
@@ -520,7 +522,7 @@
                           <ng-container *ngIf="isVisible(f)">
                             <ng-container *ngIf="form.get(f.controlName) as ctrl">
                               <div class="sc-field" [ngClass]="{'sc-field--select': f.type === 'select', 'sc-field--date': f.type === 'datetime-local', 'sc-field--num': f.type === 'number'}">
-                                <div class="ff-outline" [class.ff-disabled]="ctrl.disabled" [class.ff-invalid]="ctrl.touched && ctrl.invalid">
+                                <div class="ff-outline" [class.ff-disabled]="ctrl.disabled" [class.ff-invalid]="ctrl.touched && ctrl.invalid" [class.ff-fax-prefilled]="isFaxPrefilled(f.controlName)">
                                   <div class="ff-float-label">{{ f.displayName }}<span class="req-star" *ngIf="f.required">*</span></div>
                                   <div class="ff-body">
                                     <ng-container [ngSwitch]="f.type">
@@ -574,7 +576,7 @@
                           </ng-container>
                           <ng-template #outlinedRep>
                             <div class="ff-field" [class.ff-span-all]="isFullRowField(f) && f.type !== 'search'" [class.ff-span-2]="f.type === 'search'">
-                              <div class="ff-outline" [class.ff-disabled]="ctrl.disabled" [class.ff-invalid]="ctrl.touched && ctrl.invalid">
+                              <div class="ff-outline" [class.ff-disabled]="ctrl.disabled" [class.ff-invalid]="ctrl.touched && ctrl.invalid" [class.ff-fax-prefilled]="isFaxPrefilled(f.controlName)">
                                 <div class="ff-float-label">{{ f.displayName }}<span class="req-star" *ngIf="f.required">*</span></div>
                                 <div class="ff-body">
                                   <ng-container [ngSwitch]="f.type">
@@ -685,7 +687,7 @@
                   <div class="ff-field"
                        [class.ff-span-all]="isFullRowField(f) && f.type !== 'search'"
                        [class.ff-span-2]="f.type === 'search'">
-                    <div class="ff-outline" [class.ff-disabled]="ctrl.disabled" [class.ff-invalid]="ctrl.touched && ctrl.invalid">
+                    <div class="ff-outline" [class.ff-disabled]="ctrl.disabled" [class.ff-invalid]="ctrl.touched && ctrl.invalid" [class.ff-fax-prefilled]="isFaxPrefilled(f.controlName)">
                       <div class="ff-float-label">
                         {{ f.displayName }}
                         <span class="req-star" *ngIf="f.required">*</span>
@@ -764,7 +766,8 @@
             <ng-container *ngFor="let inst of sub.instances; trackBy: trackProvIdx">
               <div class="pc">
                 <div class="pc-card" [class.pc-card--filled]="hasProviderData(inst)"
-                     [class.pc-card--oon]="getProviderNetworkStatus(inst) === 'Out-of-Network'">
+                     [class.pc-card--oon]="getProviderNetworkStatus(inst) === 'Out-of-Network'"
+                     [class.ff-fax-prefilled]="isInstanceFaxPrefilled(inst)">
 
                   <!-- Top row: role display/dropdown + edit + delete -->
                   <div class="pc-card-top">
@@ -918,7 +921,7 @@
               <ng-container *ngFor="let inst of sub.instances; trackBy: trackProvIdx">
 
                 <!-- ── SELECTED VIEW: single inline row ── -->
-                <div class="dc-row" *ngIf="hasDiagnosisSelected(inst); else subDiagEditCard">
+                <div class="dc-row" [class.ff-fax-prefilled]="isInstanceFaxPrefilled(inst)" *ngIf="hasDiagnosisSelected(inst); else subDiagEditCard">
                   <ng-container *ngIf="getDiagCodeTypeField(inst) as ctf">
                     <span class="dc-codetype-value">{{ getDiagnosisCodeType(inst) || ctf.displayName }}</span>
                   </ng-container>
@@ -944,7 +947,7 @@
 
                 <!-- ── EDIT / EMPTY: card layout ── -->
                 <ng-template #subDiagEditCard>
-                  <div class="dc-card">
+                  <div class="dc-card" [class.ff-fax-prefilled]="isInstanceFaxPrefilled(inst)">
                     <div class="dc-card-top">
                       <ng-container *ngIf="getDiagCodeTypeField(inst) as ctf">
                         <ng-container *ngIf="form.get(ctf.controlName) as ctc">
@@ -1013,7 +1016,7 @@
           <ng-container *ngIf="isServiceRepeatGroup(sub, parentSec); else normalSubRepeat">
             <div class="sc-list">
               <ng-container *ngFor="let inst of sub.instances; trackBy: trackProvIdx">
-                <div class="sc-card" [class.sc-card--filled]="hasServiceData(inst)">
+                <div class="sc-card" [class.sc-card--filled]="hasServiceData(inst)" [class.ff-fax-prefilled]="isInstanceFaxPrefilled(inst)">
 
                   <!-- When NOT selected: show search + delete -->
                   <ng-container *ngIf="!hasServiceSelected(inst)">
@@ -1095,7 +1098,8 @@
                                            'sc-field--search': f.type === 'search'}">
                             <div class="ff-outline"
                                  [class.ff-disabled]="ctrl.disabled"
-                                 [class.ff-invalid]="ctrl.touched && ctrl.invalid">
+                                 [class.ff-invalid]="ctrl.touched && ctrl.invalid"
+                                 [class.ff-fax-prefilled]="isFaxPrefilled(f.controlName)">
                               <div class="ff-float-label">
                                 {{ f.displayName }}
                                 <span class="req-star" *ngIf="f.required">*</span>
@@ -1179,7 +1183,7 @@
                       </ng-container>
                       <ng-template #outlinedSubRep>
                         <div class="ff-field" [class.ff-span-all]="isFullRowField(f) && f.type !== 'search'" [class.ff-span-2]="f.type === 'search'">
-                          <div class="ff-outline" [class.ff-disabled]="ctrl.disabled" [class.ff-invalid]="ctrl.touched && ctrl.invalid">
+                          <div class="ff-outline" [class.ff-disabled]="ctrl.disabled" [class.ff-invalid]="ctrl.touched && ctrl.invalid" [class.ff-fax-prefilled]="isFaxPrefilled(f.controlName)">
                             <div class="ff-float-label">{{ f.displayName }}<span class="req-star" *ngIf="f.required">*</span></div>
                             <div class="ff-body">
                               <ng-container [ngSwitch]="f.type">

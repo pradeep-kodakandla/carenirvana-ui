@@ -55,41 +55,264 @@
    ═══════════════════════════════════════════ */
 .authWizardHeader {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 6px 7px;
+  padding: 5px 10px;
   background: #ffffff;
   border: 1px solid #e6e8ec;
   border-radius: 10px;
   margin-bottom: 1px;
+  min-height: 52px;
 }
 
+/* ── Meta grid: 6 data columns with thin dividers between ── */
 .authWizardMeta {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
 }
 
-.metaItem { min-width: 0; }
+.metaItem {
+  min-width: 0;
+  flex: 1 1 0;
+  padding: 0 12px;
+}
+
+/* First metaItem: Auth Type — give it a bit more weight */
+.metaItem.aw-meta-authtype {
+  flex: 1.4 1 0;
+  padding-left: 4px;
+}
+
+.aw-meta-divider {
+  flex: 0 0 1px;
+  align-self: stretch;
+  background: #E5E7EB;
+  margin: 4px 0;
+}
 
 .metaLabel {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  color: #6b7280;
-  margin-bottom: 2px;
+  color: #9CA3AF;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 3px;
+  white-space: nowrap;
 }
 
 .metaValue {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
   color: #111827;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.2;
 }
 
+/* Auth Type value is slightly larger */
+.aw-authtype-value {
+  font-size: 13px;
+}
+
+/* Subtitle under Auth Type (e.g. "Inpatient") */
+.aw-meta-subtitle {
+  font-size: 10px;
+  color: #6B7280;
+  font-weight: 600;
+  margin-top: 1px;
+  text-transform: capitalize;
+}
+
+.aw-meta-empty {
+  font-size: 13px;
+  color: #D1D5DB;
+  font-weight: 600;
+}
+
+/* ── Days-left text below due date ── */
+.aw-days-left {
+  font-size: 10px;
+  font-weight: 700;
+  margin-top: 1px;
+  white-space: nowrap;
+}
+
+/* ── Due date / days-left colour states ── */
+.aw-due--ok    { color: #059669; }
+.aw-due--warning { color: #D97706; }
+.aw-due--danger  { color: #DC2626; }
+
+
+/* ═══════════════════════════════════════════
+   STATUS PILLS — shared base
+   ═══════════════════════════════════════════ */
+.aw-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  line-height: 1.5;
+}
+
+/* ── Priority pills ── */
+.aw-priority--urgent,
+.aw-priority--1 {
+  background: #FEE2E2;
+  color: #B91C1C;
+  border-color: #FECACA;
+}
+
+.aw-priority--expedited,
+.aw-priority--4 {
+  background: #FEF3C7;
+  color: #B45309;
+  border-color: #FDE68A;
+}
+
+.aw-priority--standard,
+.aw-priority--2 {
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border-color: #BFDBFE;
+}
+
+.aw-priority--routine,
+.aw-priority--3 {
+  background: #F3F4F6;
+  color: #374151;
+  border-color: #E5E7EB;
+}
+
+/* ── Auth Status pills ── */
+/* "In Review" / status 1 — purple/violet */
+.aw-auth-status--1,
+.aw-auth-status--inreview {
+  background: #F5F3FF;
+  color: #6D28D9;
+  border-color: #DDD6FE;
+}
+
+/* Approved / status 2 — green */
+.aw-auth-status--2,
+.aw-auth-status--approved {
+  background: #ECFDF5;
+  color: #065F46;
+  border-color: #A7F3D0;
+}
+
+/* Denied / status 3 — red */
+.aw-auth-status--3,
+.aw-auth-status--denied {
+  background: #FEF2F2;
+  color: #991B1B;
+  border-color: #FECACA;
+}
+
+/* Pending / status 4 — amber */
+.aw-auth-status--4,
+.aw-auth-status--pending {
+  background: #FFFBEB;
+  color: #92400E;
+  border-color: #FDE68A;
+}
+
+/* Cancelled / status 5 — gray */
+.aw-auth-status--5,
+.aw-auth-status--cancelled {
+  background: #F9FAFB;
+  color: #6B7280;
+  border-color: #E5E7EB;
+}
+
+/* Deferred / Pended / status 6,7 — blue-gray */
+.aw-auth-status--6,
+.aw-auth-status--7,
+.aw-auth-status--deferred,
+.aw-auth-status--pended {
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border-color: #BFDBFE;
+}
+
+/* Partial / status 8 */
+.aw-auth-status--8,
+.aw-auth-status--partial {
+  background: #FFF7ED;
+  color: #C2410C;
+  border-color: #FED7AA;
+}
+
+/* ── Overall Decision pills ── */
+.aw-decision--approved {
+  background: #ECFDF5;
+  color: #065F46;
+  border-color: #A7F3D0;
+}
+
+.aw-decision--partial {
+  background: #FFF7ED;
+  color: #C2410C;
+  border-color: #FED7AA;
+}
+
+.aw-decision--denied {
+  background: #FEF2F2;
+  color: #991B1B;
+  border-color: #FECACA;
+}
+
+.aw-decision--pending,
+.aw-decision-- {
+  background: #FFFBEB;
+  color: #92400E;
+  border-color: #FDE68A;
+}
+
+
+/* ═══════════════════════════════════════════
+   DECISION SUMMARY DOTS
+   ═══════════════════════════════════════════ */
+.aw-decision-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  margin-top: 1px;
+}
+
+.aw-ds-total {
+  font-size: 11px;
+  font-weight: 700;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.aw-ds-dot {
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.aw-ds-dot--approved { color: #059669; }
+.aw-ds-dot--partial  { color: #D97706; }
+.aw-ds-dot--denied   { color: #DC2626; }
+.aw-ds-dot--pending  { color: #9CA3AF; }
+
+
+/* ═══════════════════════════════════════════
+   ACTIONS
+   ═══════════════════════════════════════════ */
 .authWizardActions {
   display: flex;
   justify-content: flex-end;
@@ -582,11 +805,26 @@
 /* ═══════════════════════════════════════════
    RESPONSIVE
    ═══════════════════════════════════════════ */
+@media (max-width: 1400px) {
+  .authWizardMeta { gap: 0; }
+  .metaItem { padding: 0 8px; }
+  .metaItem.aw-meta-authtype { padding-left: 4px; }
+}
+
 @media (max-width: 1200px) {
   .aw-right-panel { width: 340px; }
   .aw-right-panel--expanded { width: 480px; }
   .wizardBody--panel-open { margin-right: 340px; }
   .wizardBody--panel-expanded { margin-right: 480px; }
+  /* Hide dividers + compress on medium screens */
+  .aw-meta-divider { display: none; }
+  .authWizardMeta {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .metaItem { padding: 0; }
+  .metaItem.aw-meta-authtype { padding: 0; }
 }
 
 @media (max-width: 900px) {

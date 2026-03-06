@@ -486,53 +486,14 @@
               <span class="la-auth-id" *ngIf="linkedAuthMeta.linkedAuthId">ID: {{ linkedAuthMeta.linkedAuthId }}</span>
             </div>
 
-            <div class="la-sections">
-              <!-- Member -->
-              <div class="la-sec">
-                <div class="la-sec-title"><mat-icon>person</mat-icon> Member</div>
-                <div class="la-grid">
-                  <div class="la-field"><span class="la-lbl">Name</span><span class="la-val">{{ pa.patient?.name || '—' }}</span></div>
-                  <div class="la-field"><span class="la-lbl">Member ID</span><span class="la-val">{{ pa.patient?.memberId || '—' }}</span></div>
-                  <div class="la-field" *ngIf="pa.patient?.dob"><span class="la-lbl">DOB</span><span class="la-val">{{ pa.patient?.dob }}</span></div>
-                  <div class="la-field" *ngIf="pa.patient?.phone"><span class="la-lbl">Phone</span><span class="la-val">{{ pa.patient?.phone }}</span></div>
-                </div>
-              </div>
-
-              <!-- Services & Diagnosis -->
-              <div class="la-sec" *ngIf="pa.services?.length">
-                <div class="la-sec-title"><mat-icon>medical_services</mat-icon> Services &amp; Diagnosis</div>
-                <div *ngFor="let s of pa.services; let last = last"
-                     class="la-svc-row" [class.la-svc-border]="!last">
-                  <div class="la-grid">
-                    <div class="la-field"><span class="la-lbl">Service Code</span><span class="la-val la-mono">{{ s.code || '—' }}</span></div>
-                    <div class="la-field"><span class="la-lbl">Description</span><span class="la-val">{{ s.description || '—' }}</span></div>
-                    <div class="la-field"><span class="la-lbl">Start Date</span><span class="la-val">{{ s.startDate || '—' }}</span></div>
-                    <div class="la-field"><span class="la-lbl">End Date</span><span class="la-val">{{ s.endDate || '—' }}</span></div>
-                    <div class="la-field"><span class="la-lbl">Diagnosis</span><span class="la-val la-mono">{{ s.diagnosisCode || s.diagnosisDescription || (pa.dx?.codes?.join(', ') || '—') }}</span></div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Providers -->
-              <div class="la-sec">
-                <div class="la-sec-title"><mat-icon>local_hospital</mat-icon> Providers</div>
-                <div class="la-grid">
-                  <div class="la-field">
-                    <span class="la-lbl">Requesting</span>
-                    <span class="la-val">{{ pa.providerRequesting?.name || '—' }} <span *ngIf="pa.providerRequesting?.npi" class="la-npi">(NPI {{ pa.providerRequesting?.npi }})</span></span>
-                  </div>
-                  <div class="la-field">
-                    <span class="la-lbl">Servicing / Facility</span>
-                    <span class="la-val">{{ pa.providerServicing?.name || pa.providerServicing?.facility || '—' }}</span>
-                  </div>
-                  <div class="la-field" *ngIf="pa.providerRequesting?.phone"><span class="la-lbl">Req. Phone</span><span class="la-val">{{ pa.providerRequesting?.phone }}</span></div>
-                  <div class="la-field" *ngIf="pa.providerServicing?.phone"><span class="la-lbl">Serv. Phone</span><span class="la-val">{{ pa.providerServicing?.phone }}</span></div>
-                </div>
-              </div>
-            </div>
-
-            <div class="la-card-footer">
-              This fax has been processed. Click the auth number above to view full authorization details.
+            <!-- ═══ Authorization Details Component (embedded) ═══ -->
+            <div class="la-auth-details-wrap">
+              <app-authorization-details
+                [authNumber]="linkedAuthMeta.linkedAuthNumber"
+                [embedded]="true"
+                (closed)="onAuthClick(linkedAuthMeta.linkedAuthNumber, linkedAuthMeta.linkedAuthId)"
+                (edit)="onAuthClick(linkedAuthMeta.linkedAuthNumber, linkedAuthMeta.linkedAuthId)">
+              </app-authorization-details>
             </div>
           </div>
         </ng-container>

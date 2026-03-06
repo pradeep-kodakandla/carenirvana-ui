@@ -203,12 +203,19 @@
 .section-header:hover { background:rgba(0,123,255,.03) }
 .section-icon { width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#EBF5FB;color:#007bff }
 .section-icon svg,.section-icon img,.section-icon i { width:16px;height:16px }
+
+/* Per-section icon themes */
+.section-icon--decision { background:#EFF6FF;color:#2563EB }
+.section-icon--provider { background:#FFF7ED;color:#EA580C }
+.section-icon--notes    { background:#FAF5FF;color:#9333EA }
+.section-icon--default  { background:#F1F5F9;color:#64748B }
 .section-title { font-weight:700;font-size:14px;color:#1E293B;letter-spacing:.02em;flex:1 }
 .section-chevron { width:20px;height:20px;display:flex;align-items:center;justify-content:center;color:#94A3B8;transition:transform .2s cubic-bezier(.2,0,0,1);flex-shrink:0 }
 .section-chevron svg { width:16px;height:16px }
 .section-card.collapsed .section-chevron { transform:rotate(-90deg) }
 .section-card.collapsed .section-header  { border-bottom-color:transparent }
 .section-body { padding:16px 20px 20px;overflow:visible }
+.section-body.mp-table-section { padding:0 0 0 }
 .section-card.collapsed .section-body { display:none }
 
 
@@ -262,6 +269,11 @@
 /* Ensure disabled dropdown label stays readable */
 .ff-outline.ff-disabled .ff-float-label { background:#F7F7F9 }
 .ff-error { color:#dc3545;font-size:12px;margin-top:6px }
+.ff-datetime-ampm {
+  display:block;padding:0 12px 6px;
+  font-size:11px;font-weight:600;color:#2563EB;
+  letter-spacing:.02em;line-height:14px;
+}
 .ff-span-all { grid-column:1/-1 }
 .ff-checkbox { display:flex;align-items:center;gap:12px;padding:8px 4px }
 .ff-checkbox .form-check-input { margin:0;margin-top:1px;border-radius:4px }
@@ -285,3 +297,286 @@
 
 /* --- Dropdown overflow: handled by section-body overflow:visible + ff-outline overflow:visible --- */
 /* No blanket !important overrides needed — matches authdetails pattern */
+
+
+/* ═══════════════════════════════════════════════════════
+   INLINE BULK EDIT MODE
+   Replaces the content panel when bulk editing is active.
+   Tab rail dims, content shows table + shared sections.
+   ═══════════════════════════════════════════════════════ */
+
+/* Dim tab rail */
+.tabs-dimmed { opacity:.55;pointer-events:none;filter:grayscale(.3) }
+.tabs-dimmed .tab { cursor:default }
+
+/* Bulk edit panel — fills the same content area */
+.bulk-edit-panel {
+  flex:1;min-width:0;background:#fff;
+  border:2px solid #3B82F6;
+  border-radius:0 var(--r) var(--r) 0;
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+.bulk-edit-panel::before,.bulk-edit-panel::after { display:none }
+
+/* ── Bulk Header ── */
+.bulk-header {
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 24px 14px;
+  background:linear-gradient(135deg,#EFF6FF 0%,#DBEAFE 100%);
+  border-bottom:1px solid #BFDBFE;
+  flex-shrink:0;
+}
+.bulk-header-left { display:flex;align-items:center;gap:12px }
+.bulk-header-icon { color:#2563EB;display:flex;align-items:center }
+.bulk-header-title { font-weight:800;font-size:15px;color:#1E3A8A;line-height:20px }
+.bulk-header-sub { display:block;font-size:11.5px;color:#3B82F6;font-weight:500;margin-top:1px }
+.bulk-header-actions .btn { border-radius:999px;font-weight:600;font-size:12.5px }
+
+/* ── Bulk Section Cards ── */
+.bulk-section-card {
+  border-bottom:1px solid #F1F5F9;
+  background:#fff;
+}
+.bulk-section-card:last-of-type { border-bottom:none }
+
+/* ── Bulk Section Header (icon-based) ── */
+.bulk-section-hdr {
+  display:flex;align-items:center;gap:14px;
+  padding:16px 24px 12px;
+}
+
+/* Section icon container */
+.bulk-sec-icon {
+  width:36px;height:36px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+  transition:transform .15s;
+}
+.bulk-sec-icon svg { width:18px;height:18px }
+
+/* Per-section icon themes */
+.bulk-sec-icon--status  { background:#EFF6FF;color:#2563EB }
+.bulk-sec-icon--lines   { background:#F0FDF4;color:#16A34A }
+.bulk-sec-icon--provider { background:#FFF7ED;color:#EA580C }
+.bulk-sec-icon--notes   { background:#FAF5FF;color:#9333EA }
+
+/* Title block */
+.bulk-sec-title-block { flex:1;min-width:0 }
+.bulk-sec-title {
+  display:block;font-weight:700;font-size:14px;color:#1E293B;
+  line-height:20px;letter-spacing:.01em;
+}
+.bulk-sec-desc {
+  display:block;font-size:11.5px;color:#94A3B8;font-weight:500;
+  line-height:16px;margin-top:1px;
+}
+
+/* Pills (right-aligned) */
+.bulk-selected-pill {
+  margin-left:auto;font-size:11.5px;font-weight:600;
+  color:#3B82F6;background:#EFF6FF;padding:3px 12px;border-radius:999px;
+  flex-shrink:0;white-space:nowrap;
+}
+.bulk-shared-tag {
+  margin-left:auto;font-size:10.5px;font-weight:600;
+  color:#64748B;background:#F1F5F9;padding:3px 10px;border-radius:999px;
+  text-transform:uppercase;letter-spacing:.04em;flex-shrink:0;white-space:nowrap;
+}
+
+/* ── Bulk Status Controls (floating-label dropdowns) ── */
+.bulk-status-controls {
+  display:flex;gap:20px;padding:0 24px 16px;
+}
+.bulk-status-controls .ff-outline.bulk-ff {
+  flex:1;min-width:0;
+}
+
+/* ── Member Provider — Editable Table ── */
+.bulk-mp-table-wrap {
+  overflow-x:auto;padding:0;
+}
+.bulk-mp-table { width:100%;border-collapse:collapse;font-size:13px }
+.bulk-mp-table thead th {
+  background:#FFF7ED;color:#9A3412;font-weight:700;font-size:10.5px;
+  text-transform:uppercase;letter-spacing:.05em;
+  padding:10px 12px;border-bottom:2px solid #FDBA74;
+  white-space:nowrap;text-align:left;
+}
+.bulk-mp-table tbody td {
+  padding:8px 10px;border-bottom:1px solid #F1F5F9;
+  color:#1E293B;vertical-align:middle;
+}
+.bulk-mp-table tbody tr:hover { background:#FFFBEB }
+.bulk-mp-table tbody tr:last-child td { border-bottom:none }
+
+.mpcol-num    { width:40px;text-align:center;font-weight:700;color:#9A3412;font-size:12px }
+.mpcol-type   { width:160px }
+.mpcol-notif  { min-width:170px }
+.mpcol-date   { min-width:200px;position:relative }
+.mpcol-attempt { width:80px;text-align:center }
+.mpcol-action { width:44px;text-align:center }
+
+/* Inline select */
+.mp-cell-select { position:relative }
+.mp-inline-select {
+  width:100%;height:34px;
+  border:1.5px solid #E2E8F0;border-radius:8px;
+  background:#fff;color:#1E293B;
+  font-size:12.5px;font-weight:500;
+  padding:0 28px 0 10px;
+  cursor:pointer;
+  appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 20 20' fill='%2364748B' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 8px center;
+  transition:border-color .12s,box-shadow .12s;
+}
+.mp-inline-select:focus { outline:none;border-color:#EA580C;box-shadow:0 0 0 2px rgba(234,88,12,.12) }
+.mp-inline-select:hover { border-color:#CBD5E1 }
+
+/* Inline datetime */
+.mp-inline-datetime {
+  width:100%;height:34px;
+  border:1.5px solid #E2E8F0;border-radius:8px;
+  background:#fff;color:#1E293B;
+  font-size:12.5px;font-weight:500;
+  padding:0 10px;
+  transition:border-color .12s,box-shadow .12s;
+}
+.mp-inline-datetime:focus { outline:none;border-color:#EA580C;box-shadow:0 0 0 2px rgba(234,88,12,.12) }
+
+/* AM/PM display below datetime input */
+.mp-date-display {
+  display:block;margin-top:3px;
+  font-size:11px;color:#EA580C;font-weight:600;
+  letter-spacing:.02em;line-height:14px;
+}
+
+/* Inline number */
+.mp-inline-number {
+  width:60px;height:34px;
+  border:1.5px solid #E2E8F0;border-radius:8px;
+  text-align:center;font-size:13px;font-weight:600;
+  color:#1E293B;background:#fff;
+  transition:border-color .12s,box-shadow .12s;
+  -moz-appearance:textfield;
+}
+.mp-inline-number::-webkit-inner-spin-button,
+.mp-inline-number::-webkit-outer-spin-button { -webkit-appearance:none;margin:0 }
+.mp-inline-number:focus { outline:none;border-color:#EA580C;box-shadow:0 0 0 2px rgba(234,88,12,.12) }
+
+/* Remove row button */
+.mp-remove-btn {
+  background:none;border:none;cursor:pointer;
+  color:#CBD5E1;padding:4px;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  transition:color .12s,background .12s;
+}
+.mp-remove-btn:hover { color:#DC2626;background:#FEF2F2 }
+
+/* Add Row bar */
+.bulk-mp-add-bar {
+  padding:10px 24px 16px;
+}
+.mp-add-btn {
+  display:inline-flex;align-items:center;gap:6px;
+  background:none;border:1.5px dashed #FDBA74;border-radius:10px;
+  color:#EA580C;font-size:12.5px;font-weight:700;
+  padding:8px 18px;cursor:pointer;
+  transition:background .12s,border-color .12s;
+}
+.mp-add-btn:hover { background:#FFF7ED;border-color:#EA580C }
+.mp-add-btn svg { flex-shrink:0 }
+
+/* ── Bulk Table ── */
+.bulk-table-wrap {
+  overflow-x:auto;padding:0;
+}
+.bulk-table { width:100%;border-collapse:collapse;font-size:13px }
+.bulk-table thead { position:sticky;top:0;z-index:2 }
+.bulk-table th {
+  background:#F8FAFC;color:#64748B;font-weight:700;font-size:10.5px;
+  text-transform:uppercase;letter-spacing:.05em;
+  padding:10px 12px;border-bottom:2px solid #E2E8F0;
+  white-space:nowrap;text-align:left;
+}
+.bulk-table td {
+  padding:10px 12px;border-bottom:1px solid #F1F5F9;
+  color:#1E293B;vertical-align:middle;
+}
+.bulk-table tbody tr { transition:background .1s,opacity .12s }
+.bulk-table tbody tr:hover { background:#F8FAFC }
+
+.bulk-row-off { opacity:.4 }
+.bulk-row-off td { color:#94A3B8 }
+.bulk-row-off .bulk-unit-input { opacity:.35 }
+.bulk-row-on { opacity:1 }
+
+.bcol-chk { width:40px;text-align:center }
+.bcol-num { width:40px;text-align:center;font-weight:600;color:#64748B }
+.bcol-code { width:110px }
+.bcol-desc { min-width:140px }
+.bcol-status { width:120px }
+.bcol-unit { width:72px;text-align:center;font-variant-numeric:tabular-nums }
+.bcol-editable-hdr { color:#2563EB }
+
+.bulk-code-chip {
+  display:inline-block;padding:2px 10px;border-radius:6px;
+  background:#EFF6FF;color:#1D4ED8;font-weight:600;font-size:11.5px;
+  font-family:'SF Mono','Cascadia Code',Consolas,monospace;
+}
+
+.bulk-table .form-check-input { margin:0;cursor:pointer;width:16px;height:16px;border-radius:4px }
+
+/* Editable unit inputs inside the table */
+.bulk-unit-input {
+  width:58px;height:32px;
+  border:1.5px solid #CBD5E1;border-radius:8px;
+  text-align:center;font-size:13px;font-weight:600;
+  color:#1E293B;background:#fff;
+  transition:border-color .12s,box-shadow .12s;
+  -moz-appearance:textfield;
+}
+.bulk-unit-input::-webkit-inner-spin-button,
+.bulk-unit-input::-webkit-outer-spin-button { -webkit-appearance:none;margin:0 }
+.bulk-unit-input:focus { outline:none;border-color:#3B82F6;box-shadow:0 0 0 2px rgba(59,130,246,.15) }
+.bulk-unit-input:disabled { background:#F8FAFC;color:#94A3B8;cursor:not-allowed;border-color:#E2E8F0 }
+
+/* ── Bulk Section Body (shared form fields) ── */
+.bulk-section-body {
+  padding:4px 24px 20px;
+}
+
+/* ── Bulk Messages ── */
+.bulk-msg {
+  padding:10px 24px;font-size:12.5px;font-weight:600;flex-shrink:0;
+}
+.bulk-msg-error { color:#DC2626;background:#FEF2F2;border-top:1px solid #FECACA }
+.bulk-msg-success { color:#16A34A;background:#F0FDF4;border-top:1px solid #BBF7D0 }
+
+/* ── Bulk Footer ── */
+.bulk-footer {
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 24px;border-top:2px solid #E2E8F0;
+  background:#FAFBFC;flex-shrink:0;
+}
+.bulk-footer-info { font-size:12.5px;font-weight:600;color:#64748B }
+.bulk-footer-actions { display:flex;gap:10px }
+.bulk-footer-actions .btn { border-radius:999px;font-weight:600;font-size:13px;padding:8px 24px }
+.bulk-footer-actions .btn-primary { background:#3B82F6;border-color:#3B82F6;color:#fff }
+.bulk-footer-actions .btn-primary:hover { background:#2563EB }
+.bulk-footer-actions .btn-primary:disabled { opacity:.55;cursor:not-allowed }
+
+/* ── Responsive ── */
+@media (max-width:1000px) {
+  .bulk-edit-panel { border-radius:var(--r);border-left:2px solid #3B82F6 }
+  .bulk-status-controls { flex-direction:column;gap:12px }
+  .bulk-table { font-size:12px }
+  .bulk-table th,.bulk-table td { padding:8px 8px }
+  .bulk-unit-input { width:48px;height:28px;font-size:12px }
+  .bulk-mp-table { font-size:12px }
+  .bulk-mp-table th,.bulk-mp-table td { padding:6px 6px }
+  .mp-inline-select,.mp-inline-datetime,.mp-inline-number { height:30px;font-size:11.5px }
+  .mp-inline-number { width:50px }
+}

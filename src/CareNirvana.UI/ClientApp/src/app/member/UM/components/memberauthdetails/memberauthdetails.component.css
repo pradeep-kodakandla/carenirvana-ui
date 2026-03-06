@@ -4,6 +4,33 @@
    ═══════════════════════════════════════════ */
 
 
+/* ═══════════════════════════════════════════
+   BODY LAYOUT — flex row for content + panel
+   ═══════════════════════════════════════════ */
+.mad-body {
+  flex: 1 1 auto;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+  position: relative;
+}
+
+.mad-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mad-content--panel-open {
+  margin-right: 400px;
+}
+
+.mad-content--panel-expanded {
+  margin-right: 580px;
+}
+
+
 /* ── Toolbar ── */
 .mad-toolbar {
   display: flex;
@@ -236,8 +263,7 @@
   box-shadow: 0 2px 8px rgba(16, 24, 40, 0.05);
   display: flex;
   flex-direction: column;
-/*  gap: 12px;
-*/  transition: all 0.2s ease;
+  transition: all 0.2s ease;
   cursor: default;
 }
 
@@ -245,6 +271,13 @@
   border-color: #99c9ff;
   box-shadow: 0 8px 24px rgba(16, 24, 40, 0.1);
   transform: translateY(-2px);
+}
+
+/* Selected card (when its detail panel is open) */
+.mad-auth-card--selected {
+  border-color: #6366F1 !important;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.15) !important;
+  background: #FAFAFF;
 }
 
 .mad-auth-card--compact {
@@ -308,13 +341,64 @@
 
 
 /* ═══════════════════════════════════════════
+   CARD FOOTER — View Details link
+   ═══════════════════════════════════════════ */
+.mad-card-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding-top: 8px;
+  margin-top: auto;
+  border-top: 1px solid #F3F4F6;
+}
+
+.mad-view-details-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6366F1;
+  cursor: pointer;
+  text-decoration: none;
+  padding: 4px 10px;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.mad-view-details-link:hover {
+  background: #EEF2FF;
+  color: #4F46E5;
+  text-decoration: none;
+}
+
+.mad-view-details-link--active {
+  background: #EEF2FF;
+  color: #4338CA;
+  font-weight: 800;
+}
+
+.mad-view-details-icon {
+  font-size: 15px !important;
+  width: 15px !important;
+  height: 15px !important;
+}
+
+/* Table variant */
+.mad-view-details-link--table {
+  font-size: 11px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+
+/* ═══════════════════════════════════════════
    AUTH TYPE — Styled prominent label
    ═══════════════════════════════════════════ */
 .mad-type-badge {
   display: inline-flex;
   align-items: center;
-/*  gap: 6px;
-  padding: 5px 14px;*/
   border-radius: 10px;
   font-size: 13px;
   font-weight: 700;
@@ -328,7 +412,6 @@
   border-radius: 8px;
 }
 
-/* Prior Authorization — Indigo */
 .mad-type--prior-authorization,
 .mad-type--priorauthorization {
   background: linear-gradient(135deg, #e6f2ff, #cce5ff);
@@ -336,7 +419,6 @@
   color: #004085;
 }
 
-/* Concurrent Review — Teal */
 .mad-type--concurrent-review,
 .mad-type--concurrentreview {
   background: linear-gradient(135deg, #F0FDFA, #CCFBF1);
@@ -344,7 +426,6 @@
   color: #115E59;
 }
 
-/* Retrospective Review — Purple */
 .mad-type--retrospective-review,
 .mad-type--retrospectivereview {
   background: linear-gradient(135deg, #FDF4FF, #FAE8FF);
@@ -352,7 +433,6 @@
   color: #6B21A8;
 }
 
-/* Appeal Template — Rose */
 .mad-type--appeal-template,
 .mad-type--appealtemplate {
   background: linear-gradient(135deg, #FFF1F2, #FFE4E6);
@@ -360,21 +440,18 @@
   color: #9F1239;
 }
 
-/* Notification — Sky */
 .mad-type--notification {
   background: linear-gradient(135deg, #F0F9FF, #E0F2FE);
   border: 1px solid #7DD3FC;
   color: #0C4A6E;
 }
 
-/* Referral — Amber */
 .mad-type--referral {
   background: linear-gradient(135deg, #FFFBEB, #FEF3C7);
   border: 1px solid #FCD34D;
   color: #92400E;
 }
 
-/* Default fallback */
 .mad-type--default {
   background: linear-gradient(135deg, #F9FAFB, #F3F4F6);
   border: 1px solid #D1D5DB;
@@ -384,22 +461,6 @@
 
 /* ═══════════════════════════════════════════
    STATUS BADGES  (Comprehensive Auth Statuses)
-   ─────────────────────────────────────────
-   Approved            → Green
-   Partially Approved  → Emerald
-   Pending / Pended    → Purple
-   In Progress         → Blue
-   Open                → Sky
-   Submitted           → Cyan
-   Under Review        → Indigo
-   Denied              → Red
-   Cancelled           → Slate
-   Withdrawn           → Stone
-   Closed / Close      → Grey
-   Voided / Void       → Dark Slate
-   Modified            → Amber
-   Expired             → Rose
-   On Hold             → Orange
    ═══════════════════════════════════════════ */
 .mad-status-badge {
   display: inline-flex;
@@ -424,148 +485,68 @@
   flex-shrink: 0;
 }
 
-/* Approved — Green */
-.mad-status--approved {
-  background: #F0FDF4;
-  border: 1px solid #86EFAC;
-  color: #166534;
-}
+.mad-status--approved { background: #F0FDF4; border: 1px solid #86EFAC; color: #166534; }
 .mad-status--approved .mad-status-dot { background: #22C55E; }
 
-/* Partially Approved — Emerald */
 .mad-status--partially-approved,
-.mad-status--partial {
-  background: #ECFDF5;
-  border: 1px solid #6EE7B7;
-  color: #065F46;
-}
+.mad-status--partial { background: #ECFDF5; border: 1px solid #6EE7B7; color: #065F46; }
 .mad-status--partially-approved .mad-status-dot,
 .mad-status--partial .mad-status-dot { background: #10B981; }
 
-/* Pending / Pended — Purple */
 .mad-status--pending,
-.mad-status--pended {
-  background: #f0f7ff;
-  border: 1px solid #C4B5FD;
-  color: #6D28D9;
-}
+.mad-status--pended { background: #f0f7ff; border: 1px solid #C4B5FD; color: #6D28D9; }
 .mad-status--pending .mad-status-dot,
 .mad-status--pended .mad-status-dot { background: #8B5CF6; }
 
-/* In Progress — Blue */
 .mad-status--in-progress,
-.mad-status--inprogress {
-  background: #EFF6FF;
-  border: 1px solid #93C5FD;
-  color: #1D4ED8;
-}
+.mad-status--inprogress { background: #EFF6FF; border: 1px solid #93C5FD; color: #1D4ED8; }
 .mad-status--in-progress .mad-status-dot,
 .mad-status--inprogress .mad-status-dot { background: #3B82F6; }
 
-/* Open — Sky */
-.mad-status--open {
-  background: #F0F9FF;
-  border: 1px solid #7DD3FC;
-  color: #0369A1;
-}
+.mad-status--open { background: #F0F9FF; border: 1px solid #7DD3FC; color: #0369A1; }
 .mad-status--open .mad-status-dot { background: #0EA5E9; }
 
-/* Submitted — Cyan */
-.mad-status--submitted {
-  background: #ECFEFF;
-  border: 1px solid #67E8F9;
-  color: #0E7490;
-}
+.mad-status--submitted { background: #ECFEFF; border: 1px solid #67E8F9; color: #0E7490; }
 .mad-status--submitted .mad-status-dot { background: #06B6D4; }
 
-/* Under Review — Indigo */
 .mad-status--under-review,
-.mad-status--underreview {
-  background: #e6f2ff;
-  border: 1px solid #80bfff;
-  color: #0056b3;
-}
+.mad-status--underreview { background: #e6f2ff; border: 1px solid #80bfff; color: #0056b3; }
 .mad-status--under-review .mad-status-dot,
 .mad-status--underreview .mad-status-dot { background: #007bff; }
 
-/* Denied — Red */
-.mad-status--denied {
-  background: #FEF2F2;
-  border: 1px solid #FCA5A5;
-  color: #B91C1C;
-}
+.mad-status--denied { background: #FEF2F2; border: 1px solid #FCA5A5; color: #B91C1C; }
 .mad-status--denied .mad-status-dot { background: #EF4444; }
 
-/* Cancelled — Slate */
 .mad-status--cancelled,
-.mad-status--canceled {
-  background: #F8FAFC;
-  border: 1px solid #CBD5E1;
-  color: #475569;
-}
+.mad-status--canceled { background: #F8FAFC; border: 1px solid #CBD5E1; color: #475569; }
 .mad-status--cancelled .mad-status-dot,
 .mad-status--canceled .mad-status-dot { background: #64748B; }
 
-/* Withdrawn — Stone */
-.mad-status--withdrawn {
-  background: #FAFAF9;
-  border: 1px solid #D6D3D1;
-  color: #57534E;
-}
+.mad-status--withdrawn { background: #FAFAF9; border: 1px solid #D6D3D1; color: #57534E; }
 .mad-status--withdrawn .mad-status-dot { background: #78716C; }
 
-/* Closed / Close — Grey */
 .mad-status--closed,
-.mad-status--close {
-  background: #F3F4F6;
-  border: 1px solid #D1D5DB;
-  color: #374151;
-}
+.mad-status--close { background: #F3F4F6; border: 1px solid #D1D5DB; color: #374151; }
 .mad-status--closed .mad-status-dot,
 .mad-status--close .mad-status-dot { background: #6B7280; }
 
-/* Voided / Void — Dark Slate */
 .mad-status--voided,
-.mad-status--void {
-  background: #F1F5F9;
-  border: 1px solid #94A3B8;
-  color: #334155;
-}
+.mad-status--void { background: #F1F5F9; border: 1px solid #94A3B8; color: #334155; }
 .mad-status--voided .mad-status-dot,
 .mad-status--void .mad-status-dot { background: #475569; }
 
-/* Modified — Amber */
-.mad-status--modified {
-  background: #FFFBEB;
-  border: 1px solid #FCD34D;
-  color: #92400E;
-}
+.mad-status--modified { background: #FFFBEB; border: 1px solid #FCD34D; color: #92400E; }
 .mad-status--modified .mad-status-dot { background: #F59E0B; }
 
-/* Expired — Rose */
-.mad-status--expired {
-  background: #FFF1F2;
-  border: 1px solid #FDA4AF;
-  color: #9F1239;
-}
+.mad-status--expired { background: #FFF1F2; border: 1px solid #FDA4AF; color: #9F1239; }
 .mad-status--expired .mad-status-dot { background: #F43F5E; }
 
-/* On Hold — Orange */
 .mad-status--on-hold,
-.mad-status--onhold {
-  background: #FFF7ED;
-  border: 1px solid #FDBA74;
-  color: #C2410C;
-}
+.mad-status--onhold { background: #FFF7ED; border: 1px solid #FDBA74; color: #C2410C; }
 .mad-status--on-hold .mad-status-dot,
 .mad-status--onhold .mad-status-dot { background: #F97316; }
 
-/* Default fallback */
-.mad-status--default {
-  background: #F3F4F6;
-  border: 1px solid #D1D5DB;
-  color: #374151;
-}
+.mad-status--default { background: #F3F4F6; border: 1px solid #D1D5DB; color: #374151; }
 .mad-status--default .mad-status-dot { background: #6B7280; }
 
 
@@ -583,31 +564,11 @@
   white-space: nowrap;
 }
 
-.mad-priority-badge--sm {
-  padding: 2px 8px;
-  font-size: 11px;
-}
+.mad-priority-badge--sm { padding: 2px 8px; font-size: 11px; }
 
-/* Standard — calm slate */
-.mad-priority--standard {
-  background: #F1F5F9;
-  border: 1px solid #CBD5E1;
-  color: #334155;
-}
-
-/* Expedited — urgent red */
-.mad-priority--expedited {
-  background: #FEF2F2;
-  border: 1px solid #FCA5A5;
-  color: #B91C1C;
-}
-
-/* Urgent — dark red */
-.mad-priority--urgent {
-  background: #FEE2E2;
-  border: 1px solid #F87171;
-  color: #991B1B;
-}
+.mad-priority--standard { background: #F1F5F9; border: 1px solid #CBD5E1; color: #334155; }
+.mad-priority--expedited { background: #FEF2F2; border: 1px solid #FCA5A5; color: #B91C1C; }
+.mad-priority--urgent { background: #FEE2E2; border: 1px solid #F87171; color: #991B1B; }
 
 
 /* ═══════════════════════════════════════════
@@ -632,64 +593,19 @@
   height: 13px !important;
 }
 
-/* Overdue (past due) — Red */
-.mad-due--overdue {
-  background: #FEE2E2;
-  border: 1px solid #FCA5A5;
-  color: #B91C1C;
-}
+.mad-due--overdue { background: #FEE2E2; border: 1px solid #FCA5A5; color: #B91C1C; }
+.mad-due--overdue .mad-detail-icon { color: #DC2626 !important; }
+.mad-due--warning { background: #FEF3C7; border: 1px solid #FCD34D; color: #92400E; }
+.mad-due--warning .mad-detail-icon { color: #D97706 !important; }
+.mad-due--safe { background: #DCFCE7; border: 1px solid #86EFAC; color: #166534; }
 
-.mad-due--overdue .mad-detail-icon {
-  color: #DC2626 !important;
-}
+.mad-detail-value--overdue { color: #DC2626 !important; font-weight: 700 !important; }
+.mad-detail-value--warning { color: #D97706 !important; font-weight: 700 !important; }
+.mad-detail-value--safe { color: #15803D !important; }
 
-/* Warning (0–7 days left) — Amber */
-.mad-due--warning {
-  background: #FEF3C7;
-  border: 1px solid #FCD34D;
-  color: #92400E;
-}
-
-.mad-due--warning .mad-detail-icon {
-  color: #D97706 !important;
-}
-
-/* Safe (>7 days left) — Green */
-.mad-due--safe {
-  background: #DCFCE7;
-  border: 1px solid #86EFAC;
-  color: #166534;
-}
-
-/* Due date value color overrides for the detail row */
-.mad-detail-value--overdue {
-  color: #DC2626 !important;
-  font-weight: 700 !important;
-}
-
-.mad-detail-value--warning {
-  color: #D97706 !important;
-  font-weight: 700 !important;
-}
-
-.mad-detail-value--safe {
-  color: #15803D !important;
-}
-
-/* Table cell due date color overrides */
-.mad-td-due--overdue {
-  color: #DC2626 !important;
-  font-weight: 700 !important;
-}
-
-.mad-td-due--warning {
-  color: #D97706 !important;
-  font-weight: 700 !important;
-}
-
-.mad-td-due--safe {
-  color: #15803D !important;
-}
+.mad-td-due--overdue { color: #DC2626 !important; font-weight: 700 !important; }
+.mad-td-due--warning { color: #D97706 !important; font-weight: 700 !important; }
+.mad-td-due--safe { color: #15803D !important; }
 
 .mad-td-due-wrap {
   display: inline-flex;
@@ -716,7 +632,6 @@
   line-height: 1.5;
 }
 
-/* Base icon style */
 .mad-detail-icon {
   font-size: 17px !important;
   width: 17px !important;
@@ -725,25 +640,10 @@
   color: #9CA3AF;
 }
 
-/* Due Date → red/rose */
-.mad-detail-icon--due {
-  color: #F43F5E !important;
-}
-
-/* Next Review → amber */
-.mad-detail-icon--review {
-  color: #F59E0B !important;
-}
-
-/* Treatment → teal */
-.mad-detail-icon--treatment {
-  color: #14B8A6 !important;
-}
-
-/* Created → indigo */
-.mad-detail-icon--created {
-  color: #007bff !important;
-}
+.mad-detail-icon--due { color: #F43F5E !important; }
+.mad-detail-icon--review { color: #F59E0B !important; }
+.mad-detail-icon--treatment { color: #14B8A6 !important; }
+.mad-detail-icon--created { color: #007bff !important; }
 
 .mad-detail-label {
   font-weight: 700;
@@ -760,6 +660,372 @@
 .mad-detail-muted {
   color: #94A3B8;
   font-weight: 400;
+}
+
+
+/* ═══════════════════════════════════════════
+   DECISION SUMMARY — Card Strip
+   ═══════════════════════════════════════════ */
+.mad-decision-strip {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+}
+
+/* ── Strip header ── */
+.mad-ds-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.mad-ds-header-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mad-ds-icon {
+  font-size: 16px !important;
+  width: 16px !important;
+  height: 16px !important;
+  color: #6366F1;
+}
+
+.mad-ds-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.mad-ds-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #E0E7FF;
+  color: #4338CA;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+
+/* ── Overall Decision Pill (shared between card, table, compact) ── */
+.mad-ds-overall {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.mad-ds-overall--sm {
+  padding: 2px 8px;
+  font-size: 10px;
+}
+
+.mad-ds-overall--compact {
+  padding: 2px 8px;
+  font-size: 10px;
+  margin-left: auto;
+}
+
+.mad-ds-overall-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Approved — Green */
+.mad-ds-overall--approved {
+  background: #F0FDF4;
+  border-color: #86EFAC;
+  color: #166534;
+}
+.mad-ds-overall--approved .mad-ds-overall-dot { background: #22C55E; }
+
+/* Denied — Red */
+.mad-ds-overall--denied {
+  background: #FEF2F2;
+  border-color: #FCA5A5;
+  color: #B91C1C;
+}
+.mad-ds-overall--denied .mad-ds-overall-dot { background: #EF4444; }
+
+/* Partially Approved / Partial — Amber/Orange */
+.mad-ds-overall--partially-approved,
+.mad-ds-overall--partial {
+  background: #FFF7ED;
+  border-color: #FDBA74;
+  color: #C2410C;
+}
+.mad-ds-overall--partially-approved .mad-ds-overall-dot,
+.mad-ds-overall--partial .mad-ds-overall-dot { background: #F97316; }
+
+/* Pending — Purple */
+.mad-ds-overall--pending {
+  background: #F5F3FF;
+  border-color: #C4B5FD;
+  color: #6D28D9;
+}
+.mad-ds-overall--pending .mad-ds-overall-dot { background: #8B5CF6; }
+
+/* Default fallback */
+.mad-ds-overall--default {
+  background: #F3F4F6;
+  border-color: #D1D5DB;
+  color: #374151;
+}
+.mad-ds-overall--default .mad-ds-overall-dot { background: #6B7280; }
+
+
+/* ── Decision Lines (individual procedures) ── */
+.mad-ds-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mad-ds-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #E5E7EB;
+  transition: border-color 0.15s ease;
+}
+
+.mad-ds-line:hover {
+  border-color: #C7D2FE;
+}
+
+/* Procedure code chip */
+.mad-ds-code {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  color: #1E40AF;
+  font-size: 11px;
+  font-weight: 800;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Decision status pill (per-line) ── */
+.mad-ds-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  flex-shrink: 0;
+}
+
+.mad-ds-status-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Approved */
+.mad-ds-status--approved {
+  background: #F0FDF4;
+  border-color: #86EFAC;
+  color: #166534;
+}
+.mad-ds-status--approved .mad-ds-status-dot { background: #22C55E; }
+
+/* Denied */
+.mad-ds-status--denied {
+  background: #FEF2F2;
+  border-color: #FCA5A5;
+  color: #B91C1C;
+}
+.mad-ds-status--denied .mad-ds-status-dot { background: #EF4444; }
+
+/* Partially Approved */
+.mad-ds-status--partially-approved,
+.mad-ds-status--partial {
+  background: #FFF7ED;
+  border-color: #FDBA74;
+  color: #C2410C;
+}
+.mad-ds-status--partially-approved .mad-ds-status-dot,
+.mad-ds-status--partial .mad-ds-status-dot { background: #F97316; }
+
+/* Pending */
+.mad-ds-status--pending {
+  background: #F5F3FF;
+  border-color: #C4B5FD;
+  color: #6D28D9;
+}
+.mad-ds-status--pending .mad-ds-status-dot { background: #8B5CF6; }
+
+/* Default */
+.mad-ds-status--default {
+  background: #F3F4F6;
+  border-color: #D1D5DB;
+  color: #374151;
+}
+.mad-ds-status--default .mad-ds-status-dot { background: #6B7280; }
+
+
+/* ── Compact metrics (Req / Appr / Denied) ── */
+.mad-ds-metrics {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.mad-ds-metric {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.mad-ds-metric-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: #94A3B8;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+}
+
+.mad-ds-metric-value {
+  font-size: 12px;
+  font-weight: 800;
+  color: #374151;
+}
+
+.mad-ds-metric--approved .mad-ds-metric-value {
+  color: #059669;
+}
+
+.mad-ds-metric--denied .mad-ds-metric-value {
+  color: #DC2626;
+}
+
+
+/* ═══════════════════════════════════════════
+   DECISION — Compact Mode (single row)
+   ═══════════════════════════════════════════ */
+.mad-decision-compact {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+}
+
+.mad-ds-icon--compact {
+  font-size: 14px !important;
+  width: 14px !important;
+  height: 14px !important;
+  color: #6366F1;
+}
+
+.mad-ds-count--compact {
+  font-size: 11px;
+  font-weight: 800;
+  color: #475569;
+}
+
+/* Tally dots for compact mode */
+.mad-ds-tally {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mad-ds-tally-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+  cursor: default;
+}
+
+.mad-ds-tally-dot--approved {
+  background: #DCFCE7;
+  color: #166534;
+}
+
+.mad-ds-tally-dot--denied {
+  background: #FEE2E2;
+  color: #991B1B;
+}
+
+.mad-ds-tally-dot--partial {
+  background: #FFF7ED;
+  color: #C2410C;
+}
+
+.mad-ds-tally-dot--pending {
+  background: #F3E8FF;
+  color: #7C3AED;
+}
+
+
+/* ═══════════════════════════════════════════
+   TABLE — Decision Cell
+   ═══════════════════════════════════════════ */
+.mad-table-decision-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mad-table-dec-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #F1F5F9;
+  color: #475569;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.mad-td-empty {
+  color: #D1D5DB;
+  font-weight: 500;
 }
 
 
@@ -791,9 +1057,8 @@
   white-space: nowrap;
 }
 
-.mad-th--actions {
-  width: 48px;
-}
+.mad-th--actions { width: 48px; }
+.mad-th--view-details { width: 90px; }
 
 .mad-td {
   padding: 10px 14px !important;
@@ -808,9 +1073,8 @@
   font-variant-numeric: tabular-nums;
 }
 
-.mad-td--actions {
-  width: 48px;
-}
+.mad-td--actions { width: 48px; }
+.mad-td--view-details { width: 90px; }
 
 .mad-table-row:hover {
   background: #FAFBFE !important;
@@ -818,6 +1082,12 @@
 
 .mad-table-row:nth-child(even) {
   background: #FAFBFC;
+}
+
+/* Selected table row */
+.mad-table-row--selected {
+  background: #F5F3FF !important;
+  border-left: 3px solid #6366F1;
 }
 
 .mad-table-menu {
@@ -831,12 +1101,116 @@
   color: #9CA3AF;
 }
 
-/* Status + Priority inline in table */
 .mad-table-status-cell {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+}
+
+
+/* ═══════════════════════════════════════════
+   RIGHT PANEL — Authorization Details
+   ═══════════════════════════════════════════ */
+.mad-right-panel {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 400px;
+  background: #fff;
+  border-left: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  z-index: 20;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: none;
+}
+
+.mad-right-panel--open {
+  transform: translateX(0);
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.06);
+}
+
+.mad-right-panel--expanded {
+  width: 580px;
+}
+
+.mad-rpanel-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #F5F3FF, #EEF2FF);
+}
+
+.mad-rpanel-title-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mad-rpanel-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  background: linear-gradient(135deg, #7C3AED, #6D28D9);
+  color: #fff;
+}
+
+.mad-rpanel-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #1a2332;
+}
+
+.mad-rpanel-subtitle {
+  font-size: 10px;
+  color: #6B7280;
+  font-weight: 600;
+}
+
+.mad-rpanel-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mad-rpanel-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid #D1D5DB;
+  background: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #6B7280;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.mad-rpanel-btn:hover {
+  background: #F3F4F6;
+  border-color: #9CA3AF;
+}
+
+.mad-rpanel-btn .material-icons-outlined { font-size: 16px; }
+
+.mad-rpanel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
 }
 
 
@@ -886,28 +1260,36 @@
 /* ═══════════════════════════════════════════
    RESPONSIVE
    ═══════════════════════════════════════════ */
+@media (max-width: 1200px) {
+  .mad-right-panel { width: 360px; }
+  .mad-right-panel--expanded { width: 500px; }
+  .mad-content--panel-open { margin-right: 360px; }
+  .mad-content--panel-expanded { margin-right: 500px; }
+}
+
 @media (max-width: 900px) {
-  .mad-stats {
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .mad-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .mad-search {
-    width: 100%;
-    max-width: 100%;
-  }
-
+  .mad-stats { flex-wrap: wrap; gap: 6px; }
+  .mad-toolbar { flex-direction: column; align-items: stretch; }
+  .mad-search { width: 100%; max-width: 100%; }
   .mad-actions { justify-content: flex-end; }
+
+  .mad-right-panel {
+    width: 100%;
+    position: fixed;
+    top: 0; bottom: 0; right: 0;
+    z-index: 1000;
+  }
+  .mad-right-panel--expanded { width: 100%; }
+  .mad-content--panel-open { margin-right: 0; }
+  .mad-content--panel-expanded { margin-right: 0; }
+
+  /* Simplify decision metrics on smaller screens */
+  .mad-ds-metrics { gap: 4px; }
+  .mad-ds-metric-label { display: none; }
 }
 
 @media (max-width: 600px) {
-  .mad-card-grid {
-    grid-template-columns: 1fr;
-    padding: 0 8px;
-  }
+  .mad-card-grid { grid-template-columns: 1fr; padding: 0 8px; }
+  .mad-ds-line { flex-wrap: wrap; gap: 6px; }
+  .mad-ds-metrics { margin-left: 0; }
 }

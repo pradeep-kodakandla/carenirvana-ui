@@ -403,8 +403,26 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   /** Pending fax prefill data, consumed once the template form is built. */
   private pendingFaxPrefill: FaxAuthPrefill | null = null;
 
+  /** Control names that were populated from the fax OCR data (used for orange highlight). */
+  faxPrefilledControls: Set<string> = new Set();
+
+  /** Whether fax prefill is currently being applied (used to track setControlIfEmpty calls). */
+  private _faxPrefillInProgress = false;
+
   get isFaxMode(): boolean {
     return this.faxPrefill?.mode === 'fax';
+  }
+
+  /** Returns true if the given control was populated from fax OCR data. */
+  isFaxPrefilled(controlName: string): boolean {
+    return this.faxPrefilledControls.has(controlName);
+  }
+
+  /** Returns true if any field in a repeat instance was populated from fax OCR data. */
+  isInstanceFaxPrefilled(inst: any): boolean {
+    if (!this.faxPrefilledControls.size) return false;
+    const fields: any[] = inst?.fields || [];
+    return fields.some((f: any) => this.faxPrefilledControls.has(f?.controlName));
   }
 
 
@@ -445,6 +463,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     if (changes['faxPrefill'] && this.faxPrefill?.mode === 'fax') {
       this.faxPrefillApplied = false;
       this.pendingFaxPrefill = null;
+      this.faxPrefilledControls.clear();
       this.pendingAuth = null;
       if (this.form) {
         this.initFromFaxPrefill(this.faxPrefill);
@@ -954,6 +973,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     if (!searchFn) {
       ctrl.setValue(code, { emitEvent: true });
       ctrl.markAsDirty();
+      if (this._faxPrefillInProgress) this.faxPrefilledControls.add(f.controlName);
       return;
     }
 
@@ -969,13 +989,16 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
       if (match) {
         this.onLookupSelected(f, match);
+        if (this._faxPrefillInProgress) this.faxPrefilledControls.add(f.controlName);
       } else {
         ctrl.setValue(code, { emitEvent: true });
         ctrl.markAsDirty();
+        if (this._faxPrefillInProgress) this.faxPrefilledControls.add(f.controlName);
       }
     } catch {
       ctrl.setValue(code, { emitEvent: true });
       ctrl.markAsDirty();
+      if (this._faxPrefillInProgress) this.faxPrefilledControls.add(f.controlName);
     }
   }
 
@@ -1027,6 +1050,10 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     if (cur !== undefined && cur !== null && String(cur).trim() !== '') return;
     ctrl.setValue(value, { emitEvent: true });
     ctrl.markAsDirty();
+    // Track this control as fax-prefilled when applying fax data
+    if (this._faxPrefillInProgress) {
+      this.faxPrefilledControls.add(controlName);
+    }
   }
 
   private getProcedureCandidateSections(): RenderSection[] {
@@ -4516,9 +4543,11 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     // emits a selection) triggers synchronous enable/disable + updateValueAndValidity,
     // which forces Angular change detection mid-click and can destroy the dropdown
     // panel before the mouse event completes.
+    // 300ms: safely longer than a mousedown→mouseup click (~100-200ms), ensuring
+    // the dropdown has fully committed its selection before we trigger re-renders.
     this.form.valueChanges
       .pipe(
-        debounceTime(80),
+        debounceTime(300),
         takeUntil(this.templateDestroy$),
         takeUntil(this.destroy$)
       )
@@ -5051,6 +5080,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
           if (matchValue) {
             this.form.get('authClassId')?.setValue(matchValue, { emitEvent: true });
+            this.faxPrefilledControls.add('authClassId');
           }
         },
         error: (e) => console.error('Fax mode: Error fetching auth class', e)
@@ -5134,6 +5164,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
           if (matchValue) {
             this.form.get('authTypeId')?.setValue(matchValue, { emitEvent: true });
+            this.faxPrefilledControls.add('authTypeId');
           }
         },
         error: (e) => console.error('Fax mode: Error fetching auth templates', e)
@@ -5151,6 +5182,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
     const pf = this.pendingFaxPrefill;
     if (!pf) return;
+
+    // Enable tracking of fax-prefilled controls for orange highlight
+    this._faxPrefillInProgress = true;
 
     // ── 1. DIAGNOSIS CODES ──────────────────────────────────────────────
     const diagCodes = (pf.diagnosisCodes || []).filter(Boolean);
@@ -5311,6 +5345,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       this.form.patchValue(snapshot, { emitEvent: false });
     }, 400);
 
+    this._faxPrefillInProgress = false;
     this.faxPrefillApplied = true;
     this.pendingFaxPrefill = null;
   }

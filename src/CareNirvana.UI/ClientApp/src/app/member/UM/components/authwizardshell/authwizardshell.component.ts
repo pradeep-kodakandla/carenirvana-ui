@@ -58,7 +58,62 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     authNumber: '',
     createdBy: '',
     createdOn: '',
-    dueDate: ''
+    dueDate: '',
+    // ── New rich-header fields ──
+    authTypeName: '',
+    authClassName: '',
+    priorityLabel: '',
+    priorityCode: '',
+    authStatusLabel: '',
+    authStatusCode: '',
+    daysLeft: null as number | null,
+    daysLeftStatus: 'ok' as 'ok' | 'warning' | 'danger',
+    overallDecision: 'Pending',
+    overallDecisionCode: 'pending',
+    decisionSummary: { total: 0, approved: 0, partial: 0, denied: 0, pending: 0 }
+  };
+
+  // ── Lookup maps for coded fields ──
+  private readonly AUTH_TYPE_MAP: Record<string, string> = {
+    '1': 'Elective Surgery',       '2': 'Emergency',
+    '3': 'Outpatient Surgery',     '4': 'Skilled Nursing',
+    '5': 'Home Health',            '6': 'DME',
+    '7': 'Rehabilitation',         '8': 'Acute Hospitalization',
+    '9': 'Physical Therapy',       '10': 'Behavioral Health',
+    '11': 'Specialty Pharmacy',    '12': 'Dialysis',
+    '13': 'Transplant',            '14': 'Home Infusion'
+  };
+
+  private readonly AUTH_CLASS_MAP: Record<string, string> = {
+    '1': 'Inpatient',  '2': 'Outpatient',
+    '3': 'Concurrent', '4': 'Observation',
+    '5': 'Emergency'
+  };
+
+  private readonly PRIORITY_MAP: Record<string, { label: string; code: string }> = {
+    '1': { label: 'Urgent',     code: 'urgent' },
+    '2': { label: 'Standard',   code: 'standard' },
+    '3': { label: 'Routine',    code: 'routine' },
+    '4': { label: 'Expedited',  code: 'expedited' }
+  };
+
+  private readonly AUTH_STATUS_MAP: Record<string, { label: string; code: string }> = {
+    '1': { label: 'In Review',    code: '1' },
+    '2': { label: 'Approved',     code: '2' },
+    '3': { label: 'Denied',       code: '3' },
+    '4': { label: 'Pending',      code: '4' },
+    '5': { label: 'Cancelled',    code: '5' },
+    '6': { label: 'Deferred',     code: '6' },
+    '7': { label: 'Pended',       code: '7' },
+    '8': { label: 'Partial',      code: '8' }
+  };
+
+  /** Decision status codes → bucket keys */
+  private readonly DECISION_STATUS_BUCKET: Record<string, 'approved' | 'partial' | 'denied' | 'pending'> = {
+    '1': 'approved', 'approved': 'approved',
+    '2': 'partial',  'partial': 'partial',
+    '3': 'denied',   'denied': 'denied',
+    '4': 'pending',  'pending': 'pending'
   };
 
   // ---------------------------
@@ -353,31 +408,117 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
   private refreshHeaderFromStep(inst: any): void {
     if (!inst) return;
 
-    // Auth # always comes from route/context
     this.header.authNumber = String(this.ctx?.authNumber ?? this.authNumber ?? this.header.authNumber ?? '');
 
-    // Try common places where steps keep the loaded auth
     const p = inst?.pendingAuth ?? inst?.auth ?? inst?.authDetails ?? inst?.model ?? null;
     if (!p) return;
 
-    const createdBy = sessionStorage.getItem('loggedInUsername') || ''; //p?.createdBy ?? p?.createdby ?? p?.created_user ?? p?.createdUser ?? null;
+    const createdBy = sessionStorage.getItem('loggedInUsername') || '';
     const createdOn = p?.createdOn ?? p?.createdon ?? p?.createdDate ?? p?.created_date ?? null;
     const due = p?.authDueDate ?? p?.authduedate ?? p?.dueDate ?? p?.duedate ?? null;
 
     if (createdBy != null) this.header.createdBy = String(createdBy);
     if (createdOn != null) this.header.createdOn = this.formatDate(createdOn);
-    if (due != null) this.header.dueDate = this.formatDate(due);
+    if (due != null) {
+      this.header.dueDate = this.formatDate(due);
+      this.computeDaysLeft(due);
+    }
+
+    this.hydrateRichHeader(p, p);
   }
 
   private refreshHeaderFromAuthRow(row: any, dataObj: any): void {
-    // Prefer explicit row fields; fallback to parsed json
-    const createdBy = sessionStorage.getItem('loggedInUsername') || ''; //row?.createdBy ?? row?.createdby ?? dataObj?.createdBy ?? dataObj?.createdby ?? null;
+    const createdBy = sessionStorage.getItem('loggedInUsername') || '';
     const createdOn = row?.createdOn ?? row?.createdon ?? dataObj?.createdOn ?? dataObj?.createdon ?? null;
     const due = row?.authDueDate ?? row?.authduedate ?? dataObj?.authDueDate ?? dataObj?.authduedate ?? dataObj?.dueDate ?? null;
 
     if (createdBy != null) this.header.createdBy = String(createdBy);
     if (createdOn != null) this.header.createdOn = this.formatDate(createdOn);
-    if (due != null) this.header.dueDate = this.formatDate(due);
+    if (due != null) {
+      this.header.dueDate = this.formatDate(due);
+      this.computeDaysLeft(due);
+    }
+
+    this.hydrateRichHeader(row, dataObj);
+  }
+
+  /**
+   * Populates the rich header fields (authType, priority, status, decisionSummary)
+   * from either a row-level object or parsed dataJson.
+   */
+  private hydrateRichHeader(row: any, dataObj: any): void {
+    // Auth Type
+    const authTypeId = String(row?.authTypeId ?? dataObj?.authTypeId ?? '');
+    this.header.authTypeName = this.AUTH_TYPE_MAP[authTypeId] || '';
+
+    // Auth Class
+    const authClassId = String(row?.authClassId ?? dataObj?.authClassId ?? '');
+    this.header.authClassName = this.AUTH_CLASS_MAP[authClassId] || '';
+
+    // Priority
+    const priorityKey = String(dataObj?.requestPriority ?? row?.requestPriority ?? '');
+    const priorityEntry = this.PRIORITY_MAP[priorityKey];
+    this.header.priorityLabel = priorityEntry?.label ?? '';
+    this.header.priorityCode  = priorityEntry?.code ?? priorityKey.toLowerCase();
+
+    // Auth Status
+    const statusKey = String(dataObj?.authStatus ?? row?.authStatus ?? '');
+    const statusEntry = this.AUTH_STATUS_MAP[statusKey];
+    this.header.authStatusLabel = statusEntry?.label ?? '';
+    this.header.authStatusCode  = statusEntry?.code ?? statusKey;
+
+    // Decision Summary
+    this.computeDecisionSummary(dataObj?.decisionDetails ?? row?.decisionDetails);
+  }
+
+  /** Compute daysLeft and status colour from a due date value. */
+  private computeDaysLeft(dueRaw: any): void {
+    if (!dueRaw) { this.header.daysLeft = null; return; }
+    const due = dueRaw instanceof Date ? dueRaw : new Date(dueRaw);
+    if (isNaN(due.getTime())) { this.header.daysLeft = null; return; }
+
+    const now = new Date();
+    const diffMs = due.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+    this.header.daysLeft = diffDays;
+    this.header.daysLeftStatus = diffDays <= 0 ? 'danger' : diffDays <= 3 ? 'warning' : 'ok';
+  }
+
+  /** Tally active decisionDetails by decisionStatus into the summary buckets. */
+  private computeDecisionSummary(decisions: any[]): void {
+    const summary = { total: 0, approved: 0, partial: 0, denied: 0, pending: 0 };
+
+    if (Array.isArray(decisions)) {
+      const active = decisions.filter(d => !d?.deletedOn && !d?.deletedBy);
+      summary.total = active.length;
+
+      for (const d of active) {
+        const statusRaw = String(d?.data?.decisionStatus ?? d?.decisionStatus ?? '').toLowerCase();
+        const bucket = this.DECISION_STATUS_BUCKET[statusRaw] ?? 'pending';
+        summary[bucket]++;
+      }
+    }
+
+    this.header.decisionSummary = summary;
+
+    // Derive overallDecision from buckets
+    if (summary.total === 0) {
+      this.header.overallDecision     = 'Pending';
+      this.header.overallDecisionCode = 'pending';
+    } else if (summary.denied === summary.total) {
+      this.header.overallDecision     = 'Denied';
+      this.header.overallDecisionCode = 'denied';
+    } else if (summary.approved === summary.total) {
+      this.header.overallDecision     = 'Approved';
+      this.header.overallDecisionCode = 'approved';
+    } else if (summary.denied > 0 || summary.partial > 0) {
+      this.header.overallDecision     = 'Partial';
+      this.header.overallDecisionCode = 'partial';
+    } else {
+      this.header.overallDecision     = 'Pending';
+      this.header.overallDecisionCode = 'pending';
+    }
   }
 
   private checkMdReviewActivitiesAndEnableStep(authDetailId: number | null): void {
@@ -910,6 +1051,13 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     };
     inst._shellUpdateBadgeCount = (stepId: string, count: number) => {
       this.updateBadgeCount(stepId, count);
+    };
+
+    // ✅ Inject header refresh so child steps (e.g., Decision bulk save) can re-hydrate the shell header
+    inst._shellRefreshHeader = () => {
+      if (!this.isNewAuth && this.authNumber && this.authNumber !== '0') {
+        this.resolveContextFromAuthNumber(this.authNumber);
+      }
     };
 
     // Optional reload hook
