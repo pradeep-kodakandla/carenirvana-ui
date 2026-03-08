@@ -4,7 +4,7 @@
 <div class="auth-card" *ngIf="detail">
 
   <!-- ══════ HEADER (purple gradient) ══════ -->
-  <div class="auth-header">
+  <!--<div class="auth-header">
     <div class="auth-header-left">
       <span class="auth-header-icon material-icons-outlined">verified_user</span>
       <span class="auth-header-title">Authorization Details</span>
@@ -20,8 +20,7 @@
         <span class="material-icons-outlined">close</span>
       </button>
     </div>
-  </div>
-
+  </div>-->
   <!-- ══════ IDENTITY BLOCK ══════ -->
   <div class="auth-identity">
     <div class="auth-number">{{ detail.authNumber }}</div>
@@ -76,7 +75,7 @@
             <span class="auth-field-value">{{ detail.admitReason }}</span>
           </div>
           <div class="auth-field-row">
-            <span class="auth-field-label">TREATMENT</span>
+            <span class="auth-field-label">TREATMENT TYPE</span>
             <span class="auth-field-value">{{ detail.treatmentType }}</span>
           </div>
           <div class="auth-field-row">
@@ -173,7 +172,7 @@
     </div>
 
     <!-- ── Procedures ── -->
-    <div class="auth-section" *ngIf="detail.procedures?.length">
+    <!--<div class="auth-section" *ngIf="detail.procedures?.length">
       <div class="auth-section-header" (click)="toggleSection('procedures')">
         <span class="auth-section-title">PROCEDURES ({{ detail.procedures.length }})</span>
         <span class="material-icons-outlined auth-chevron"
@@ -204,10 +203,9 @@
               <span class="auth-field-label">UNIT TYPE</span>
               <span class="auth-field-value">{{ proc.unitType }}</span>
             </div>
-          </div>
-
-          <!-- Units metrics -->
-          <div class="auth-metric-row auth-metric-row--procedure">
+          </div>-->
+    <!-- Units metrics -->
+    <!--<div class="auth-metric-row auth-metric-row--procedure">
             <div class="auth-metric">
               <div class="auth-metric-label">REQUESTED</div>
               <div class="auth-metric-value">{{ proc.requested }}</div>
@@ -223,8 +221,7 @@
           </div>
         </div>
       </div>
-    </div>
-
+    </div>-->
     <!-- ── Decision Details ── -->
     <div class="auth-section" *ngIf="detail.decisions?.length">
       <div class="auth-section-header" (click)="toggleSection('decisions')">
@@ -335,7 +332,7 @@
     <!-- ── Decision Notes ── -->
     <div class="auth-section" *ngIf="detail.decisionNotes?.length">
       <div class="auth-section-header" (click)="toggleSection('notes')">
-        <span class="auth-section-title">DECISION NOTES ({{ detail.decisionNotes.length }})</span>
+        <span class="auth-section-title">NOTES ({{ detail.decisionNotes.length }})</span>
         <span class="material-icons-outlined auth-chevron"
               [class.auth-chevron--collapsed]="!sections['notes']">
           expand_more
@@ -358,7 +355,7 @@
     </div>
 
     <!-- ── Denial Information ── -->
-    <div class="auth-section" *ngIf="detail.denial">
+    <!--<div class="auth-section" *ngIf="detail.denial">
       <div class="auth-section-header" (click)="toggleSection('denial')">
         <span class="auth-section-title">DENIAL INFORMATION</span>
         <span class="material-icons-outlined auth-chevron"
@@ -386,7 +383,7 @@
           </div>
         </div>
       </div>
-    </div>
+    </div>-->
 
   </div>
 </div>

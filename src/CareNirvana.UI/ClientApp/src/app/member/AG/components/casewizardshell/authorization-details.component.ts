@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import { AuthService } from 'src/app/service/auth.service';
 import { AuthDetailApiService } from 'src/app/service/authdetailapi.service';
+import { CrudService, DatasourceLookupService } from 'src/app/service/crud.service';
 
 /* ──────────────────────────────────────────────
    Raw API Response Interfaces
@@ -341,125 +342,11 @@ export interface AuthorizationDetail {
 }
 
 /* ──────────────────────────────────────────────
-   Lookup Maps
+   UM Master Data interface (keyed by section)
    ────────────────────────────────────────────── */
-const AUTH_STATUS_MAP: Record<string, string> = {
-  '1': 'Open',
-  '2': 'Approved',
-  '3': 'Denied',
-  '4': 'Partially Approved',
-  '5': 'Pending',
-  '6': 'Cancelled',
-  '7': 'Closed',
-  '8': 'Voided'
-};
-
-const AUTH_STATUS_REASON_MAP: Record<string, string> = {
-  '1': 'Initial Review',
-  '2': 'Medical Necessity',
-  '3': 'Insufficient Documentation',
-  '4': 'Out of Network',
-  '5': 'Benefit Exclusion'
-};
-
-const AUTH_TYPE_MAP: Record<number, string> = {
-  1: 'Inpatient',
-  2: 'Outpatient',
-  3: 'Observation',
-  4: 'Residential',
-  5: 'Partial Hospitalization',
-  6: 'Home Health',
-  7: 'DME',
-  8: 'Other'
-};
-
-const AUTH_CLASS_MAP: Record<number, string> = {
-  1: 'Prior Authorization',
-  2: 'Concurrent Review',
-  3: 'Retrospective Review',
-  4: 'Pre-Certification'
-};
-
-const PRIORITY_MAP: Record<string, string> = {
-  '1': 'Standard',
-  '2': 'Urgent',
-  '3': 'Expedited'
-};
-
-const ADMISSION_TYPE_MAP: Record<string, string> = {
-  '1': 'Emergency',
-  '2': 'Urgent',
-  '3': 'Elective',
-  '4': 'Newborn',
-  '5': 'Trauma'
-};
-
-const TREATMENT_TYPE_MAP: Record<string, string> = {
-  '1': 'Acute Psychiatric Inpatient',
-  '2': 'Substance Abuse Inpatient',
-  '3': 'Medical/Surgical',
-  '4': 'Rehabilitation'
-};
-
-const PLACE_OF_SERVICE_MAP: Record<string, string> = {
-  '1': 'Office',
-  '2': 'Home',
-  '3': 'Inpatient Hospital',
-  '4': 'Outpatient Hospital',
-  '5': 'Emergency Room',
-  '6': 'Ambulatory Surgical Center',
-  '7': 'Skilled Nursing Facility',
-  '8': 'Other'
-};
-
-const NOTIFICATION_TYPE_MAP: Record<string, string> = {
-  '1': 'Phone',
-  '2': 'Fax',
-  '3': 'Mail',
-  '4': 'Email',
-  '5': 'Portal',
-  '6': 'Electronic'
-};
-
-const WHO_MADE_REQUEST_MAP: Record<string, string> = {
-  '1': 'Member',
-  '2': 'Provider',
-  '3': 'Facility',
-  '4': 'Plan'
-};
-
-const REQUEST_SENT_MAP: Record<string, string> = {
-  '1': 'Phone',
-  '2': 'Fax',
-  '3': 'Mail',
-  '4': 'Portal',
-  '5': 'Electronic'
-};
-
-const PROVIDER_ROLE_MAP: Record<string, string> = {
-  '1': 'Requesting Provider',
-  '2': 'Servicing Provider',
-  '3': 'Referring Provider',
-  '4': 'Attending Provider'
-};
-
-const REVIEW_TYPE_MAP: Record<string, string> = {
-  '1': 'Initial',
-  '2': 'Extension',
-  '3': 'Reconsideration'
-};
-
-const UNIT_TYPE_MAP: Record<string, string> = {
-  '1': 'Days',
-  '2': 'Visits',
-  '3': 'Units',
-  '4': 'Hours'
-};
-
-const MEMBER_PROVIDER_TYPE_MAP: Record<string, string> = {
-  '1': 'In-Network',
-  '2': 'Out-of-Network'
-};
+interface UmMasterData {
+  [section: string]: any[];
+}
 
 @Component({
   selector: 'app-authorization-details',
@@ -486,11 +373,19 @@ export class AuthorizationDetailsComponent implements OnInit, OnChanges {
   /** Emits when user clicks the print button */
   @Output() print = new EventEmitter<string>();
 
-  constructor(public authService: AuthService,
-    public summaryService: AuthDetailApiService) { }
+  constructor(
+    public authService: AuthService,
+    public summaryService: AuthDetailApiService,
+    private crudService: CrudService,
+    private dsLookup: DatasourceLookupService
+  ) { }
 
   /** Resolved detail to display */
   detail: AuthorizationDetail | null = null;
+
+  /** UM master data loaded from the API */
+  private umMaster: UmMasterData = {};
+  private umMasterLoaded = false;
 
   /** Collapsible sections */
   sections: Record<string, boolean> = {
@@ -508,17 +403,83 @@ export class AuthorizationDetailsComponent implements OnInit, OnChanges {
   errorMessage = '';
 
   ngOnInit(): void {
-    this.loadDetail();
-    this.loadSummary();
+    this.fetchUmMasterThenLoad();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['authNumber'] || changes['authData']) {
-      this.loadDetail();
-      this.loadSummary();
+      if (this.umMasterLoaded) {
+        this.loadDetail();
+      } else {
+        this.fetchUmMasterThenLoad();
+      }
     }
   }
 
+  /* ──────────────────────────────────────────────
+     Fetch UM master data, then load auth detail
+     ────────────────────────────────────────────── */
+  private fetchUmMasterThenLoad(): void {
+    if (this.umMasterLoaded) {
+      this.loadDetail();
+      return;
+    }
+
+    this.loading = true;
+    this.crudService.getModuleData('UM', null).subscribe({
+      next: (masterData: any) => {
+        if (masterData && typeof masterData === 'object' && !Array.isArray(masterData)) {
+          this.umMaster = masterData;
+          console.log('[AuthDetails] UM master data keys:', Object.keys(masterData));
+        } else {
+          console.warn('[AuthDetails] UM master data returned unexpected format:', masterData);
+          this.umMaster = {};
+        }
+        this.umMasterLoaded = true;
+        this.loadDetail();
+      },
+      error: (err) => {
+        console.error('[AuthDetails] Failed to load UM master data:', err);
+        this.umMaster = {};
+        this.umMasterLoaded = true;
+        // Still attempt to load detail — labels will fall back to raw IDs
+        this.loadDetail();
+      }
+    });
+  }
+
+  /* ──────────────────────────────────────────────
+     Generic lookup helper: finds a record by id
+     in a UM master section and returns a label field
+     ────────────────────────────────────────────── */
+  private lookupLabel(section: string, id: string | number | null | undefined, labelField: string): string {
+    if (id == null || id === '') return '';
+    const idStr = String(id).trim();
+    if (!idStr) return '';
+
+    // Try multiple key casing variants for the section
+    const keysToTry = [
+      section,
+      section.toLowerCase(),
+      section.charAt(0).toLowerCase() + section.slice(1)
+    ];
+
+    for (const key of keysToTry) {
+      const arr = this.umMaster[key];
+      if (Array.isArray(arr)) {
+        const match = arr.find((item: any) => String(item.id) === idStr);
+        if (match && match[labelField] != null) {
+          return String(match[labelField]);
+        }
+      }
+    }
+
+    return '';
+  }
+
+  /* ──────────────────────────────────────────────
+     Load authorization detail from API or @Input
+     ────────────────────────────────────────────── */
   private loadDetail(): void {
     if (this.authData) {
       this.detail = this.authData;
@@ -536,7 +497,6 @@ export class AuthorizationDetailsComponent implements OnInit, OnChanges {
     this.authService.getAuthDetailsJson(this.authNumber).subscribe({
       next: (response: any) => {
         try {
-          // ★ FIX: API may return JSON string instead of parsed object
           let data = response;
           if (typeof data === 'string') {
             console.log('Auth response is a string — parsing JSON');
@@ -544,8 +504,6 @@ export class AuthorizationDetailsComponent implements OnInit, OnChanges {
           }
 
           console.log('Auth parsed data keys:', Object.keys(data || {}));
-          console.log('Auth authStatus:', data?.authStatus, 'authTypeId:', data?.authTypeId, 'authClassId:', data?.authClassId);
-
           this.detail = this.mapApiResponseToDetail(data);
           console.log('Mapped authorization detail:', this.detail);
           this.loading = false;
@@ -565,6 +523,7 @@ export class AuthorizationDetailsComponent implements OnInit, OnChanges {
 
   /* ──────────────────────────────────────────────
      Map raw API response → AuthorizationDetail
+     (uses UM master data for all label lookups)
      ────────────────────────────────────────────── */
   private mapApiResponseToDetail(data: any): AuthorizationDetail {
 
@@ -603,37 +562,47 @@ export class AuthorizationDetailsComponent implements OnInit, OnChanges {
     // Denial info (from denied decisions)
     const denial = this.extractDenialInfo(decisions);
 
-    // Determine overall display status
-    const status = AUTH_STATUS_MAP[String(data.authStatus)] || `Status ${data.authStatus}`;
+    // Resolve labels from UM master data
+    const status = this.lookupLabel('authstatus', data.authStatus, 'authStatus') || `Status ${data.authStatus}`;
+    const statusReason = this.lookupLabel('authstatusreason', data.authStatusReason, 'authStatusReason') || data.authStatusReason || '';
+    const authType = this.lookupLabel('authtemplate', data.authTypeId, 'authType') || `Type ${data.authTypeId}`;
+    const authClass = this.lookupLabel('authclass', data.authClassId, 'authClass') || `Class ${data.authClassId}`;
+    const urgency = this.lookupLabel('requestpriority', data.requestPriority, 'requestPriority') || data.requestPriority || '';
+    const admissionType = this.lookupLabel('admissiontype', data.admissionType, 'admissionType') || data.admissionType || '';
+    const treatmentType = this.lookupLabel('treatmenttype', data.treatmentType, 'treatmentType') || data.treatmentType || '';
+    const placeOfService = this.lookupLabel('placeofservice', data.placeOfService, 'placeofservice') || data.placeOfService || '';
+    const notificationType = this.lookupLabel('notificationtype', data.notificationType, 'notificationType') || data.notificationType || '';
+    const whoMadeTheRequest = this.lookupLabel('whomadetherequest', data.whoMadeTheRequest, 'whoMadeTheRequest') || data.whoMadeTheRequest || '';
+    const requestSent = this.lookupLabel('requestsent', data.requestSent, 'requestSent') || data.requestSent || '';
 
     return {
       authNumber: this.authNumber,
-      status: status,
-      statusReason: AUTH_STATUS_REASON_MAP[String(data.authStatusReason)] || data.authStatusReason || '',
-      authType: AUTH_TYPE_MAP[Number(data.authTypeId)] || `Type ${data.authTypeId}`,
-      authClass: AUTH_CLASS_MAP[Number(data.authClassId)] || `Class ${data.authClassId}`,
-      urgency: PRIORITY_MAP[String(data.requestPriority)] || data.requestPriority || '',
+      status,
+      statusReason,
+      authType,
+      authClass,
+      urgency,
       requestDatetime: data.requestDatetime,
       actualAdmissionDatetime: data.actualAdmissionDatetime,
       expectedDischargeDatetime: data.expectedDischargeDatetime,
-      admissionType: ADMISSION_TYPE_MAP[String(data.admissionType)] || data.admissionType || '',
+      admissionType,
       admitReason: data.admitReason,
-      treatmentType: TREATMENT_TYPE_MAP[String(data.treatmentType)] || data.treatmentType || '',
-      placeOfService: PLACE_OF_SERVICE_MAP[String(data.placeOfService)] || data.placeOfService || '',
+      treatmentType,
+      placeOfService,
       losRequested: data.losRequested,
-      notificationType: NOTIFICATION_TYPE_MAP[String(data.notificationType)] || data.notificationType || '',
-      whoMadeTheRequest: WHO_MADE_REQUEST_MAP[String(data.whoMadeTheRequest)] || data.whoMadeTheRequest || '',
-      requestSent: REQUEST_SENT_MAP[String(data.requestSent)] || data.requestSent || '',
+      notificationType,
+      whoMadeTheRequest,
+      requestSent,
       extension: data.extension,
       episode: data.episode,
       episodeDescription: data.episodeDescription,
-      icdCodes: icdCodes,
-      providers: providers,
-      procedures: procedures,
-      decisions: decisions,
-      decisionNotes: decisionNotes,
-      timeline: timeline,
-      denial: denial
+      icdCodes,
+      providers,
+      procedures,
+      decisions,
+      decisionNotes,
+      timeline,
+      denial
     };
   }
 
@@ -643,9 +612,12 @@ export class AuthorizationDetailsComponent implements OnInit, OnChanges {
     for (let i = 1; i <= 3; i++) {
       const name = data[`provider${i}_providerName`];
       if (name && name.trim()) {
+        const roleId = data[`provider${i}_providerRole`];
+        const roleLabel = this.lookupLabel('providerrole', roleId, 'providerRole') || roleId || '';
+
         providers.push({
           name: name.trim(),
-          role: PROVIDER_ROLE_MAP[String(data[`provider${i}_providerRole`])] || data[`provider${i}_providerRole`] || '',
+          role: roleLabel,
           npi: data[`provider${i}_providerNPI`] || '',
           taxId: data[`provider${i}_providerTaxId`] || '',
           specialty: data[`provider${i}_providerSpecialty`] || null,
@@ -672,15 +644,21 @@ export class AuthorizationDetailsComponent implements OnInit, OnChanges {
       const code = typeof codeField === 'object' ? codeField.code : codeField;
       const description = data[`procedure${i}_procedureDescription`] || '';
 
+      const unitTypeId = data[`procedure${i}_unitType`];
+      const unitTypeLabel = this.lookupLabel('unittype', unitTypeId, 'unitType') || unitTypeId || '';
+
+      const reviewTypeId = data[`procedure${i}_reviewType`];
+      const reviewTypeLabel = this.lookupLabel('servicereviewtype', reviewTypeId, 'serviceReviewType') || reviewTypeId || '';
+
       procedures.push({
         procedureNo: i,
-        code: code,
-        description: description,
+        code,
+        description,
         fromDate: data[`procedure${i}_fromDate`] || '',
         toDate: data[`procedure${i}_toDate`] || '',
         modifier: data[`procedure${i}_modifier`] || null,
-        unitType: UNIT_TYPE_MAP[String(data[`procedure${i}_unitType`])] || data[`procedure${i}_unitType`] || '',
-        reviewType: REVIEW_TYPE_MAP[String(data[`procedure${i}_reviewType`])] || data[`procedure${i}_reviewType`] || '',
+        unitType: unitTypeLabel,
+        reviewType: reviewTypeLabel,
         requested: data[`procedure${i}_serviceReq`] || 0,
         approved: data[`procedure${i}_serviceAppr`],
         denied: data[`procedure${i}_serviceDenied`],
@@ -872,24 +850,4 @@ export class AuthorizationDetailsComponent implements OnInit, OnChanges {
 
   summary = '';
   isLoading = false;
-
-  loadSummary(): void {
-    if (!this.authNumber?.trim()) return;
-
-    this.isLoading = true;
-    this.summary = '';
-
-    this.summaryService.getAuthSummary(this.authNumber).subscribe({
-      next: (res) => {
-        this.summary = res;
-        console.log('Fetched auth summary:', res);
-        this.isLoading = false;
-      },
-      error: (err) => {
-        console.error('Error fetching auth summary:', err);
-        this.summary = 'Failed to load summary.';
-        this.isLoading = false;
-      }
-    });
-  }
 }

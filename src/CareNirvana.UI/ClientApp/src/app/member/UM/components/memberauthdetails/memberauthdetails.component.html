@@ -175,7 +175,7 @@
 
           <!-- Due Date with countdown -->
           <div class="mad-detail-row">
-            <mat-icon class="mad-detail-icon mad-detail-icon--due">schedule</mat-icon>
+            <!--<mat-icon class="mad-detail-icon mad-detail-icon--due">schedule</mat-icon>-->
             <span class="mad-detail-label">Due Date</span>
             <span class="mad-detail-value"
                   [ngClass]="{
@@ -202,7 +202,7 @@
 
           <!-- Next Review -->
           <div class="mad-detail-row">
-            <mat-icon class="mad-detail-icon mad-detail-icon--review">event</mat-icon>
+            <!--<mat-icon class="mad-detail-icon mad-detail-icon--review">event</mat-icon>-->
             <span class="mad-detail-label">Next Review</span>
             <span class="mad-detail-value">
               {{ row.nextReviewDate ? (row.nextReviewDate | date:'MM/dd/yyyy HH:mm:ss a') : '—' }}
@@ -211,8 +211,8 @@
 
           <!-- Treatment -->
           <div class="mad-detail-row">
-            <mat-icon class="mad-detail-icon mad-detail-icon--treatment">healing</mat-icon>
-            <span class="mad-detail-label">Treatment</span>
+            <!--<mat-icon class="mad-detail-icon mad-detail-icon--treatment">healing</mat-icon>-->
+            <span class="mad-detail-label">Treatment Type</span>
             <span class="mad-detail-value">
               {{ row.treatementType || row.treatmentType || '—' }}
             </span>
@@ -220,7 +220,7 @@
 
           <!-- Created -->
           <div class="mad-detail-row">
-            <mat-icon class="mad-detail-icon mad-detail-icon--created">person</mat-icon>
+            <!--<mat-icon class="mad-detail-icon mad-detail-icon--created">person</mat-icon>-->
             <span class="mad-detail-label">Created</span>
             <span class="mad-detail-value">
               {{ row.createdByUserName || '—' }}
