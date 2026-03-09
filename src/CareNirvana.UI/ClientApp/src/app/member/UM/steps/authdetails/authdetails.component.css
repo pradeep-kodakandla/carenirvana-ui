@@ -2003,3 +2003,380 @@
   background: #FFFBEB;
   box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.12);
 }
+
+/* ═══════════════════════════════════════════════════════════
+   MEDICATION CARD STYLES — Scheduler Design
+   ═══════════════════════════════════════════════════════════ */
+
+/* Add button */
+.mc-add-btn {
+  display: inline-flex; align-items: center; gap: 5px; padding: 5px 14px;
+  border-radius: 8px; border: none;
+  background: linear-gradient(135deg, #0062cc, #007bff);
+  color: #fff; font-size: 12px; font-weight: 700; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,98,204,.2); transition: all .15s;
+  margin-left: auto; white-space: nowrap;
+}
+.mc-add-btn:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(0,98,204,.35); transform: translateY(-1px); }
+.mc-add-btn:disabled { opacity: .4; cursor: not-allowed; }
+.mc-add-btn mat-icon { font-size: 17px; width: 17px; height: 17px; }
+
+/* Card list */
+.mc-list { display: flex; flex-direction: column; gap: 10px; padding: 4px 0; }
+
+/* Card */
+.mc-card {
+  background: #fff; border: 1px solid #BFDBFE; border-radius: 10px;
+  border-left: 4px solid #D1D5DB; overflow: visible;
+  box-shadow: 0 1px 4px rgba(0,0,0,.04); transition: border-color .2s, box-shadow .2s;
+}
+.mc-card--filled { border-left-color: #3B82F6; }
+.mc-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.06); }
+
+.mc-card-top { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px 0; }
+
+/* Identity row */
+.mc-identity {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; background: #FAFCFF; cursor: pointer;
+  transition: background .15s;
+}
+.mc-identity:hover { background: #F0F6FF; }
+.mc-identity--muted { opacity: .65; background: #f8fafc; padding: 6px 10px; border-radius: 6px; margin: 0 8px; cursor: default; }
+
+.mc-pill-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 8px;
+  background: #EFF6FF; color: #3B82F6; flex-shrink: 0;
+}
+.mc-pill-icon mat-icon { font-size: 18px; width: 18px; height: 18px; }
+
+.mc-code { color: #1d4ed8; font-weight: 800; font-size: 13px; letter-spacing: .5px; white-space: nowrap; flex-shrink: 0; }
+.mc-desc { font-size: 13px; font-weight: 600; color: #334155; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mc-identity-actions { margin-left: auto; flex-shrink: 0; }
+
+/* Schedule info strip */
+.mc-schedule-strip {
+  display: flex; align-items: center; gap: 12px; padding: 6px 12px 8px;
+  border-top: 1px solid #EEF2FF; cursor: pointer; flex-wrap: wrap;
+}
+.mc-strip-item {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 600; color: #64748B;
+}
+.mc-strip-icon { font-size: 13px !important; width: 13px !important; height: 13px !important; color: #94A3B8; }
+.mc-strip-sep { width: 1px; height: 12px; background: #E2E8F0; }
+.mc-strip-expand {
+  margin-left: auto; font-size: 10.5px; font-weight: 700; color: #2563EB;
+  display: inline-flex; align-items: center; gap: 2px;
+}
+.mc-strip-arrow { font-size: 16px !important; width: 16px !important; height: 16px !important; transition: transform .2s; }
+.mc-strip-arrow--open { transform: rotate(180deg); }
+
+/* Search */
+.mc-search { flex: 1; border: 1px solid #d1d5db; border-radius: 8px; background: #f9fafb; position: relative; z-index: 10; overflow: visible; }
+.mc-search-input { width: 100%; }
+
+/* Empty */
+.mc-empty { display: flex; align-items: center; gap: 6px; color: #94a3b8; font-size: 13px; padding: 10px 8px; }
+.mc-empty-icon { font-size: 18px !important; width: 18px !important; height: 18px !important; color: #cbd5e1; }
+
+/* Expandable body */
+.mc-body {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px; padding: 12px; border-top: 1px solid #f1f5f9;
+  animation: mc-slide-down .2s ease;
+}
+@keyframes mc-slide-down { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+.mc-body .ff-outline { min-height: 42px; }
+.mc-body .ff-float-label { font-size: 10.5px; }
+
+/* Fax prefill */
+.mc-card.ff-fax-prefilled { border-color: #F59E0B; border-left-color: #F59E0B; background: #FFFBEB; box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.12); }
+
+@media (max-width: 900px) { .mc-body { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .mc-body { grid-template-columns: 1fr; } }
+
+
+/* ═══════════════════════════════════════════════════════════
+   TRANSPORTATION SCHEDULER STYLES
+   ═══════════════════════════════════════════════════════════ */
+
+/* Add Leg button */
+.tl-add-btn {
+  display: inline-flex; align-items: center; gap: 5px; padding: 5px 14px;
+  border-radius: 8px; border: none;
+  background: linear-gradient(135deg, #C2410C, #EA580C);
+  color: #fff; font-size: 12px; font-weight: 700; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(234,88,12,.2); transition: all .15s;
+  margin-left: auto; white-space: nowrap;
+}
+.tl-add-btn:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(234,88,12,.35); transform: translateY(-1px); }
+.tl-add-btn:disabled { opacity: .4; cursor: not-allowed; }
+.tl-add-btn mat-icon { font-size: 17px; width: 17px; height: 17px; }
+
+/* Summary Metrics Bar */
+.tl-metrics-bar {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px; padding: 12px 0; margin: 14px 0;
+  border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;
+}
+.tl-metric {
+  display: flex; flex-direction: column; align-items: center; padding: 8px 4px;
+  border-radius: 8px; background: #F8FAFC; text-align: center;
+}
+.tl-metric-label { font-size: 9.5px; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: .3px; margin-bottom: 3px; line-height: 1.3; }
+.tl-metric-value { font-size: 16px; font-weight: 800; color: #1E293B; }
+
+/* Weekly Calendar */
+.tl-calendar-wrap {
+  border: 1.5px solid #E2E8F0; border-radius: 10px; overflow: hidden; margin: 14px 0;
+}
+.tl-calendar-header {
+  display: flex; align-items: center; gap: 6px; padding: 8px 12px;
+  background: #F8FAFC; border-bottom: 1px solid #E2E8F0;
+}
+.tl-calendar-icon { font-size: 16px !important; width: 16px !important; height: 16px !important; color: #94A3B8; }
+.tl-calendar-title { font-size: 11px; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: .4px; }
+.tl-calendar {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 8px;
+}
+.tl-cal-day {
+  padding: 6px 4px; border-radius: 8px; text-align: center;
+  background: #fff; border: 1px solid transparent; min-height: 56px;
+}
+.tl-cal-day--active { background: #FFF7ED; border-color: #FDBA74; }
+.tl-cal-day-label { font-size: 9.5px; font-weight: 800; color: #94A3B8; margin-bottom: 4px; }
+.tl-cal-day--active .tl-cal-day-label { color: #EA580C; }
+.tl-cal-day-body { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+
+.tl-cal-chip {
+  background: #FFEDD5; border: 1px solid #FDBA74; border-radius: 4px;
+  padding: 2px 5px; font-size: 8.5px; font-weight: 700; color: #9A3412;
+  line-height: 1.3; text-align: center; width: 100%;
+}
+.tl-cal-chip--alt { background: #DBEAFE; border-color: #BFDBFE; color: #1E40AF; }
+.tl-cal-chip-num { display: block; }
+.tl-cal-chip-time { display: block; opacity: .75; }
+.tl-cal-empty-dot { width: 6px; height: 6px; border-radius: 50%; background: #E2E8F0; margin: 8px auto; }
+
+/* Transportation Leg route visualization in normalSubRepeat */
+/* These styles are applied when Transportation Leg subsection uses the normal repeat template.
+   The leg header, route strip, and schedule info are all rendered via standard fields. */
+
+@media (max-width: 900px) {
+  .tl-metrics-bar { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 600px) {
+  .tl-metrics-bar { grid-template-columns: repeat(2, 1fr); }
+  .tl-calendar { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TRANSPORTATION LEG CARD — Structured Schedule Layout
+   ═══════════════════════════════════════════════════════════ */
+
+.tl-leg-list { display: flex; flex-direction: column; gap: 16px; padding: 4px 0; }
+
+.tl-leg-card {
+  background: #fff; border: 1.5px solid #E2E8F0; border-radius: 12px;
+  border-left: 4px solid #D1D5DB; overflow: visible;
+  box-shadow: 0 1px 4px rgba(0,0,0,.04); transition: border-color .2s, box-shadow .2s;
+}
+.tl-leg-card--filled { border-left-color: #EA580C; }
+
+/* ── Leg Card Header ── */
+.tl-leg-card-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; background: #FFF7ED;
+  border-bottom: 1px solid #FDE68A; border-radius: 8px 12px 0 0;
+}
+.tl-leg-card-header-icon {
+  width: 36px; height: 36px; border-radius: 10px; background: #EA580C;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.tl-leg-card-header-icon mat-icon { font-size: 20px; width: 20px; height: 20px; color: #fff; }
+.tl-leg-card-header-text { flex: 1; }
+.tl-leg-card-title { font-size: 14px; font-weight: 800; color: #1E293B; }
+.tl-leg-card-subtitle { font-size: 11px; color: #64748B; margin-top: 1px; }
+
+/* ── Route Visualization ── */
+.tl-route-viz {
+  display: flex; align-items: stretch; padding: 16px 20px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.tl-route-viz-point { flex: 1; display: flex; align-items: flex-start; gap: 10px; }
+.tl-route-viz-dot {
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.tl-route-viz-dot--start { background: #DCFCE7; border: 2px solid #22C55E; }
+.tl-route-viz-dot--start mat-icon { font-size: 16px; width: 16px; height: 16px; color: #16A34A; }
+.tl-route-viz-dot--end { background: #FEE2E2; border: 2px solid #EF4444; }
+.tl-route-viz-dot--end mat-icon { font-size: 16px; width: 16px; height: 16px; color: #DC2626; }
+.tl-route-viz-info { display: flex; flex-direction: column; gap: 2px; }
+.tl-route-viz-label {
+  font-size: 9px; font-weight: 800; color: #94A3B8;
+  text-transform: uppercase; letter-spacing: .5px;
+}
+.tl-route-viz-addr { font-size: 12.5px; font-weight: 700; color: #1E293B; }
+.tl-route-viz-time { font-size: 11px; color: #64748B; }
+.tl-route-viz-connector {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; width: 80px; flex-shrink: 0; gap: 4px;
+}
+.tl-route-viz-line {
+  height: 2px; width: 50px; border-radius: 2px;
+  background: linear-gradient(90deg, #22C55E, #2563EB, #EF4444);
+}
+.tl-route-viz-miles {
+  display: inline-flex; padding: 2px 8px; border-radius: 999px;
+  font-size: 10px; font-weight: 700; background: #EFF6FF;
+  color: #1E40AF; border: 1px solid #BFDBFE; white-space: nowrap;
+}
+
+/* ── Leg Section Labels ── */
+.tl-leg-section { padding: 0 16px 14px; }
+.tl-leg-section-label {
+  font-size: 10.5px; font-weight: 800; color: #94A3B8;
+  text-transform: uppercase; letter-spacing: .5px;
+  padding: 12px 0 8px; border-top: 1px solid #f1f5f9;
+}
+
+/* ── Fields Grid ── */
+.tl-leg-fields-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 12px; overflow: visible;
+}
+.tl-leg-fields-grid--3col { grid-template-columns: repeat(3, 1fr); }
+.tl-leg-fields-grid--4col { grid-template-columns: repeat(4, 1fr); }
+.tl-leg-fields-grid .ff-outline { min-height: 42px; overflow: visible; }
+.tl-leg-fields-grid .ff-float-label { font-size: 10.5px; }
+.tl-leg-fields-grid .ff-span-2 { grid-column: span 1; } /* addresses stay 1-col */
+
+/* ── Weekly Day Grid — Clickable Multi-Select ── */
+.tl-weekday-grid {
+  display: flex; gap: 6px; margin-top: 12px;
+}
+.tl-weekday {
+  flex: 1; padding: 8px 0; border-radius: 8px; text-align: center;
+  border: 1.5px solid #E2E8F0; background: #fff;
+  cursor: pointer; transition: all .15s; min-height: 48px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  user-select: none;
+}
+.tl-weekday:hover { border-color: #FDBA74; background: #FFFBF5; }
+.tl-weekday--active {
+  border-color: #EA580C; background: #FFF7ED;
+  box-shadow: 0 0 0 2px rgba(234,88,12,.12);
+}
+.tl-weekday--active:hover { background: #FFEDD5; }
+.tl-weekday-label {
+  font-size: 10px; font-weight: 800; color: #94A3B8; letter-spacing: .3px;
+}
+.tl-weekday--active .tl-weekday-label { color: #EA580C; }
+.tl-weekday-icon {
+  font-size: 16px !important; width: 16px !important; height: 16px !important;
+  color: #EA580C;
+}
+.tl-weekday-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: #E2E8F0; margin-top: 2px;
+}
+
+/* ── Mileage Summary Cards ── */
+.tl-leg-summary {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 10px; padding: 14px 16px; border-top: 1px solid #f1f5f9;
+}
+.tl-leg-summary-card {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  background: #F8FAFC; border-radius: 10px; border: 1px solid #E2E8F0;
+}
+.tl-leg-summary-icon {
+  font-size: 20px !important; width: 20px !important; height: 20px !important;
+  color: #94A3B8;
+}
+.tl-leg-summary-label {
+  font-size: 9px; font-weight: 700; color: #94A3B8;
+  text-transform: uppercase; letter-spacing: .3px;
+}
+.tl-leg-summary-value { font-size: 16px; font-weight: 800; color: #1E293B; }
+
+/* ── Add Card ── */
+.tl-leg-add-empty {
+  border: 1.5px dashed #E2E8F0; border-radius: 10px; padding: 16px 0;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  cursor: pointer; transition: all .15s; color: #94A3B8; font-size: 12px; font-weight: 600;
+}
+.tl-leg-add-empty:hover { border-color: #FDBA74; background: #FFFBF5; color: #EA580C; }
+.tl-leg-add-icon { font-size: 22px !important; width: 22px !important; height: 22px !important; }
+
+@media (max-width: 1200px) {
+  .tl-leg-fields-grid--4col { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 900px) {
+  .tl-leg-fields-grid { grid-template-columns: repeat(2, 1fr); }
+  .tl-leg-fields-grid--3col { grid-template-columns: repeat(2, 1fr); }
+  .tl-leg-fields-grid--4col { grid-template-columns: repeat(2, 1fr); }
+  .tl-leg-summary { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .tl-leg-fields-grid { grid-template-columns: 1fr; }
+  .tl-leg-fields-grid--3col { grid-template-columns: 1fr; }
+  .tl-leg-fields-grid--4col { grid-template-columns: 1fr; }
+  .tl-weekday-grid { flex-wrap: wrap; }
+  .tl-weekday { min-width: 40px; }
+  .tl-route-viz { flex-direction: column; gap: 10px; }
+  .tl-route-viz-connector { width: auto; flex-direction: row; height: auto; }
+}
+
+/* ── Transportation Ride State ── */
+.tl-add-btn--active {
+  background: linear-gradient(135deg, #059669, #10B981) !important;
+  box-shadow: 0 2px 8px rgba(5,150,105,.25) !important;
+}
+.tl-add-btn--active:hover:not(:disabled) {
+  box-shadow: 0 4px 14px rgba(5,150,105,.35) !important;
+}
+
+.tl-ride-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 32px 16px; gap: 6px; text-align: center;
+}
+.tl-ride-empty-icon {
+  font-size: 40px !important; width: 40px !important; height: 40px !important;
+  color: #CBD5E1; margin-bottom: 4px;
+}
+.tl-ride-empty-text {
+  font-size: 14px; font-weight: 700; color: #64748B;
+}
+.tl-ride-empty-hint {
+  font-size: 12px; color: #94A3B8; max-width: 340px;
+}
+
+/* ── Add Leg inside ride ── */
+.tl-leg-section-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 0 8px; margin-top: 6px;
+  border-top: 1px solid #f1f5f9;
+}
+.tl-leg-section-title {
+  font-size: 11px; font-weight: 700; color: #94A3B8;
+  text-transform: uppercase; letter-spacing: .4px; flex: 1;
+  display: flex; align-items: center; gap: 6px;
+}
+.tl-leg-section-title mat-icon {
+  font-size: 15px !important; width: 15px !important; height: 15px !important;
+}
+.tl-add-leg-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 12px; border-radius: 7px;
+  border: 1.5px solid #EA580C; background: #fff;
+  color: #EA580C; font-size: 11px; font-weight: 700;
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.tl-add-leg-btn:hover:not(:disabled) { background: #FFF7ED; }
+.tl-add-leg-btn:disabled { opacity: .4; cursor: not-allowed; }
+.tl-add-leg-btn mat-icon {
+  font-size: 14px !important; width: 14px !important; height: 14px !important;
+}

@@ -851,6 +851,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
             typeof tpl?.jsonContent === 'string' ? JSON.parse(tpl.jsonContent) : tpl?.jsonContent;
 
           const normalized = this.normalizeTemplate(jsonRoot);
+          this.ensureTransportationLegRepeat(normalized);
           this.normalizedTemplate = normalized;
 
           // Parse persisted jsonData (used to infer repeat counts + patch)
@@ -878,6 +879,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
             // Rebuild diagnosis card display data from patched form values
             this.rehydrateDiagnosisData();
             this.rehydrateServiceData();
+            this.rehydrateMedicationData();
           }
 
           // Smart Check prefill: if user arrived from Smart Check, fill ICD + Procedure codes (new auth only)
@@ -891,6 +893,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
           this.setupVisibilityWatcher();
           this.setupServiceReqAutoCalc();
+          this.setupTransportationDateWatcher();
 
           // ✅ After all init operations, capture the clean form state.
           this._captureCleanSnapshot();
@@ -1215,6 +1218,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     // ── 5. REHYDRATE CARD DISPLAY DATA ───────────────────────────────────
     this.rehydrateDiagnosisData();
     this.rehydrateServiceData();
+            this.rehydrateMedicationData();
 
     // ── 6. FORCE RE-PATCH so pickers / card views get the values ─────────
     setTimeout(() => {
@@ -1250,7 +1254,10 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       this.diagnosisEditMode.clear();
       this.providerEditMode.clear();
       this.serviceDataByInstance = {};
+      this.medicationDataByInstance = {};
+      this.legSelectedDays = {};
       this.serviceEditMode.clear();
+      this.medicationEditMode.clear();
     }
 
     Object.keys(this.form.controls).forEach(k => {
@@ -1309,6 +1316,8 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     if (t.includes('financial') || t.includes('billing') || t.includes('cost'))  return 'payments';
     // Medication / Pharmacy / Drug
     if (t.includes('medication') || t.includes('pharmacy') || t.includes('drug')) return 'medication';
+    // Transportation
+    if (t.includes('transportation') || t.includes('transport')) return 'directions_car';
     // Treatment / Care
     if (t.includes('treatment') || t.includes('care'))              return 'health_and_safety';
     // Letter / Correspondence
@@ -1395,6 +1404,70 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   private normalizeTemplate(root: TemplateJsonRoot): TemplateJsonRoot {
     const sections = (root?.sections || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
     return { sections };
+  }
+
+  /**
+   * Inject repeat config into the Transportation Leg subsection if missing.
+   * This allows the standard addRepeat/removeRepeat/canAddRepeat machinery
+   * to work for Transportation Legs regardless of template config.
+   */
+  private ensureTransportationLegRepeat(root: TemplateJsonRoot): void {
+    for (const sec of (root?.sections ?? [])) {
+      const secName = (sec.sectionDisplayName ?? sec.sectionName ?? '').toLowerCase();
+      if (!secName.includes('transportation')) continue;
+
+      const subs: Record<string, any> = sec.subsections ?? {};
+
+      // ── Move "Transportation Code Details" fields into section-level fields (after tripType) ──
+      for (const key of Object.keys(subs)) {
+        if (!key.toLowerCase().includes('code')) continue;
+        const codeSub = subs[key];
+        const codeFields: any[] = codeSub?.fields ?? [];
+        const lastOrder = Math.max(...(sec.fields ?? []).map((f: any) => f.order ?? 0), 0);
+        for (let i = 0; i < codeFields.length; i++) {
+          codeFields[i].order = lastOrder + 1 + i;
+          codeFields[i].sectionName = sec.sectionName;
+        }
+        sec.fields = [...(sec.fields ?? []), ...codeFields];
+        delete subs[key]; // remove the code details subsection
+        break;
+      }
+
+      // ── Leg subsection: inject repeat + lookup + fix field types ──
+      for (const key of Object.keys(subs)) {
+        if (!key.toLowerCase().includes('leg')) continue;
+        const sub = subs[key];
+        if (!sub.repeat || !sub.repeat.enabled) {
+          sub.repeat = {
+            enabled: true,
+            min: 1,
+            max: 30,
+            defaultCount: 1,
+            showControls: true,
+            instanceLabel: 'Transportation Leg',
+          };
+        }
+        for (const field of (sub.fields ?? [])) {
+          const fid = (field.id ?? '').toLowerCase();
+          // Inject lookup for address search fields
+          if (field.type === 'search' && fid.includes('address') && !field.lookup) {
+            field.lookup = {
+              enabled: true,
+              entity: 'address',
+              minChars: 1,
+              debounceMs: 150,
+              valueField: 'address',
+              placeholder: fid.includes('start') ? 'Search start address...' : 'Search end address...',
+              displayTemplate: '{{address}} ({{mileage}} mi)',
+            };
+          }
+          // Change legDays from select to text so weekday grid can set free-text values
+          if (fid === 'legdays' && field.type === 'select') {
+            field.type = 'text';
+          }
+        }
+      }
+    }
   }
 
   private buildRenderModel(root: TemplateJsonRoot, persistedObj: any | null): RenderSection[] {
@@ -1758,6 +1831,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   private rebuildFromNormalizedTemplate(snapshot: any): void {
     if (!this.normalizedTemplate) return;
 
+    // Preserve weekday selections — keys are stable across add (indices don't shift)
+    const savedLegDays = { ...this.legSelectedDays };
+
     // keep templateId + authClassId/authTypeId in form
     this.clearTemplate(false);
 
@@ -1786,12 +1862,19 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     this.diagnosisEditMode.clear();
     this.primaryDiagnosisKey = null;
     this.serviceDataByInstance = {};
+    this.medicationDataByInstance = {};
     this.serviceEditMode.clear();
+    this.medicationEditMode.clear();
+
+    // Restore weekday selections
+    this.legSelectedDays = savedLegDays;
 
     this.rehydrateProviderData();
     this.rehydrateDiagnosisData();
     this.rehydrateServiceData();
+    this.rehydrateMedicationData();
     this.setupServiceReqAutoCalc();
+    this.setupTransportationDateWatcher();
   }
 
   private shiftRepeatSnapshotDown(snapshot: any, meta: RepeatRegistryMeta, removeIndex: number, totalCount: number): any {
@@ -2188,7 +2271,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
   private getLookupEntity(f: any): string | null {
     const cfg = this.getLookupCfg(f);
-    const raw = (cfg?.entity || cfg?.datasource || f?.datasource || f?.lookupEntity || f?.id || '').toString();
+    const raw = (cfg?.entity || cfg?.datasource || f?.datasource || f?.lookupEntity || f?._rawId || f?.id || '').toString();
     const k = raw.trim().toLowerCase();
     if (!k) return null;
     if (k.includes('icd')) return 'icd';
@@ -2198,6 +2281,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     if (k.includes('claim')) return 'claims';
     if (k.includes('medication')) return 'medication';
     if (k.includes('staff') || k.includes('user')) return 'staff';
+    if (k.includes('address') || k.includes('startaddress') || k.includes('endaddress')) return 'address';
     return k;
   }
 
@@ -2247,7 +2331,16 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         case 'staff':
           return svc.searchStaff ? svc.searchStaff(q, limit) : of([]);
 
-        default:
+        case 'address': {
+          // Filter static addresses for transportation leg address fields
+          const lower = (q || '').toLowerCase();
+          const filtered = this.staticAddresses
+            .filter(a => a.address.toLowerCase().includes(lower))
+            .slice(0, limit);
+          return of(filtered);
+        }
+
+        default: {
           // Optional: template can specify the exact service method name to call
           const method = cfg?.serviceMethod ? String(cfg.serviceMethod) : null;
           const callable = method && typeof (svc as any)[method] === 'function' ? (svc as any)[method] : null;
@@ -2255,6 +2348,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
           // Fallback to generic lookup if available
           return svc.searchLookup ? svc.searchLookup(entity, q, limit) : of([]);
+        }
       }
     };
 
@@ -2346,6 +2440,11 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         return code ? `${code}${datePart}` : String(item.display ?? item.label ?? '');
       }
 
+      // Address items from static list
+      if (entity === 'address') {
+        return item.address ?? item.label ?? String(item ?? '');
+      }
+
       return (item.display ?? item.label ?? item.name ?? item.text ?? item.code ?? '').toString();
     };
 
@@ -2377,6 +2476,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         item.memberDetailsId ??
         item.code ??
         item.npi ??
+        item.address ??
         item.value ??
         item
       );
@@ -2407,9 +2507,6 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
     const ctrl = this.form.get(f.controlName);
     if (ctrl) {
-      // Match CaseDetails behavior:
-      // - if valueField is provided, store that primitive in the control
-      // - otherwise store the display string (so the input does not show an id)
       const storeValue = valueField ? this.pickPath(item, valueField) : this.getLookupDisplayWith(f)(item);
       ctrl.setValue(storeValue ?? null, { emitEvent: true });
       ctrl.markAsDirty();
@@ -2434,6 +2531,14 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
     // Filling lookup targets can affect visibility/enablement rules.
     this.syncVisibility();
+
+    // Transportation: recalculate mileage when an address is selected
+    if (f?.type === 'search') {
+      const entity = this.getLookupEntity(f);
+      if (entity === 'address') {
+        this.recalculateTransportationMileage();
+      }
+    }
   }
 
   onLookupTextChange(f: any, _text: string): void {
@@ -2475,6 +2580,14 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     }
 
     this.syncVisibility();
+
+    // Transportation: recalculate mileage when address cleared
+    if (f?.type === 'search') {
+      const entity = this.getLookupEntity(f);
+      if (entity === 'address') {
+        this.recalculateTransportationMileage();
+      }
+    }
   }
 
   private defaultLookupFill(f: any): Array<{ targetFieldId: string; sourcePath: string }> {
@@ -3524,7 +3637,10 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     this.primaryDiagnosisKey = null;
     this.diagnosisEditMode.clear();
     this.serviceDataByInstance = {};
+      this.medicationDataByInstance = {};
+      this.legSelectedDays = {};
     this.serviceEditMode.clear();
+      this.medicationEditMode.clear();
 
     // Reset base form
     if (this.form) {
@@ -3887,6 +4003,115 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   // ---------- Service / Procedure Card State ----------
   serviceDataByInstance: Record<string, any> = {};
   private serviceEditMode: Set<string> = new Set();
+
+  // ---------- Medication Card State ----------
+  medicationDataByInstance: Record<string, any> = {};
+  private medicationEditMode: Set<string> = new Set();
+
+  // ---------- Transportation Scheduler State ----------
+  readonly weekDayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  /** Direct state map for weekday multi-select per leg instance (keyed by leg controlName prefix) */
+  legSelectedDays: Record<string, string[]> = {};
+
+  /** Static addresses for testing (simulates address lookup results) */
+  readonly staticAddresses: { address: string; mileage: number }[] = [
+    { address: '123 Main St, Mechanicsburg, PA 17050', mileage: 0 },
+    { address: '456 Health Dr, Harrisburg, PA 17101', mileage: 12.4 },
+    { address: '789 Care Ln, Lancaster, PA 17601', mileage: 28.6 },
+    { address: '100 Market St, Camp Hill, PA 17011', mileage: 4.2 },
+    { address: '250 Wellness Blvd, Hershey, PA 17033', mileage: 15.8 },
+    { address: '1500 Elm Ave, Carlisle, PA 17013', mileage: 18.3 },
+    { address: '320 Oak Rd, New Cumberland, PA 17070', mileage: 6.7 },
+    { address: '45 Hospital Dr, York, PA 17401', mileage: 25.1 },
+    { address: '678 Pine St, Lemoyne, PA 17043', mileage: 3.5 },
+    { address: '900 Cedar Blvd, Enola, PA 17025', mileage: 8.9 },
+    { address: '1200 Maple Dr, Palmyra, PA 17078', mileage: 22.0 },
+    { address: '55 Walnut St, Middletown, PA 17057', mileage: 14.6 },
+    { address: '333 Birch Ave, Elizabethtown, PA 17022', mileage: 19.4 },
+    { address: '777 Spruce Ln, Gettysburg, PA 17325', mileage: 38.2 },
+    { address: '410 Chestnut Dr, Shippensburg, PA 17257', mileage: 32.5 },
+    { address: '88 Willow Way, Dillsburg, PA 17019', mileage: 11.0 },
+    { address: '620 Poplar Ct, Hummelstown, PA 17036', mileage: 13.2 },
+    { address: '150 Ash Rd, Mount Joy, PA 17552', mileage: 24.7 },
+    { address: '2100 Sycamore Blvd, Lebanon, PA 17042', mileage: 30.1 },
+    { address: '475 Hickory St, Lititz, PA 17543', mileage: 26.3 },
+    { address: '830 Magnolia Ave, Ephrata, PA 17522', mileage: 33.8 },
+    { address: '1050 Cherry Ln, Red Lion, PA 17356', mileage: 35.4 },
+    { address: '290 Dogwood Dr, Hanover, PA 17331', mileage: 40.2 },
+    { address: '165 Juniper Ct, Chambersburg, PA 17201', mileage: 45.6 },
+    { address: '500 Ivy Blvd, Waynesboro, PA 17268', mileage: 52.1 },
+  ];
+
+  /** Auto-calculate Interval(Weeks) and Sub Interval(Days) from Begin/End Date */
+  onTransportationDateChange(sec: any): void {
+    const secFields: any[] = sec?.fields ?? [];
+    const getField = (pattern: string) => secFields.find((f: any) => (f?._rawId ?? f?.id ?? '').toLowerCase().includes(pattern));
+    const getCtrl = (pattern: string) => {
+      const f = getField(pattern);
+      return f?.controlName ? this.form.get(f.controlName) : null;
+    };
+
+    const beginCtrl = getCtrl('begindate');
+    const endCtrl = getCtrl('enddate');
+    const intervalCtrl = getCtrl('interval');
+    const subIntervalCtrl = getCtrl('subinterval');
+
+    if (!beginCtrl?.value || !endCtrl?.value) return;
+
+    const begin = new Date(beginCtrl.value);
+    const end = new Date(endCtrl.value);
+    if (isNaN(begin.getTime()) || isNaN(end.getTime()) || end <= begin) return;
+
+    const diffMs = end.getTime() - begin.getTime();
+    const totalDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const weeks = Math.floor(totalDays / 7);
+    const remainingDays = totalDays % 7;
+
+    if (intervalCtrl) intervalCtrl.setValue(String(weeks), { emitEvent: false });
+    if (subIntervalCtrl) subIntervalCtrl.setValue(String(remainingDays), { emitEvent: false });
+
+    this.recalculateTransportationMileage();
+  }
+
+  /** Get a stable key for a leg instance (for weekday state map) */
+  private getLegKey(inst: any): string {
+    const fields: any[] = inst?.fields ?? [];
+    const f = fields.find((fl: any) => (fl?._rawId ?? fl?.id ?? '').toLowerCase().includes('legdays'));
+    return f?.controlName ?? `leg_${inst?.index ?? 0}`;
+  }
+
+  /** Toggle a weekday in the leg's day grid */
+  toggleLegWeekDay(inst: any, dayLabel: string): void {
+    const key = this.getLegKey(inst);
+    const current = this.legSelectedDays[key] || [];
+    const idx = current.findIndex(d => d.toLowerCase() === dayLabel.toLowerCase());
+
+    let updated: string[];
+    if (idx >= 0) {
+      updated = current.filter((_, i) => i !== idx);
+    } else {
+      updated = [...current, dayLabel];
+      updated.sort((a, b) => this.weekDayLabels.indexOf(a) - this.weekDayLabels.indexOf(b));
+    }
+    this.legSelectedDays = { ...this.legSelectedDays, [key]: updated };
+
+    // Sync to form control
+    const fields: any[] = inst?.fields ?? [];
+    const legDaysField = fields.find((fl: any) => (fl?._rawId ?? fl?.id ?? '').toLowerCase().includes('legdays'));
+    if (legDaysField?.controlName) {
+      const ctrl = this.form.get(legDaysField.controlName);
+      if (ctrl) { ctrl.setValue(updated.join(', '), { emitEvent: true }); ctrl.markAsDirty(); }
+    }
+
+    // Update legs per week
+    const lpwField = fields.find((fl: any) => (fl?._rawId ?? fl?.id ?? '').toLowerCase().includes('legsperweek'));
+    if (lpwField?.controlName) {
+      const lpwCtrl = this.form.get(lpwField.controlName);
+      if (lpwCtrl) lpwCtrl.setValue(String(updated.length), { emitEvent: false });
+    }
+
+    this.recalculateTransportationMileage();
+  }
 
   /** Detects diagnosis sections by title — only "Diagnosis Details", NOT "Additional Details" */
   isDiagnosisSection(sec: RenderSection): boolean {
@@ -4520,6 +4745,517 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         if (sub.repeat?.enabled && this.isServiceRepeatGroup(sub, sec) && sub.instances) {
           for (const inst of sub.instances) wireInstance(inst);
         }
+      }
+    }
+  }
+
+  // ============================================================
+  // MEDICATION — Section/Repeat Detection + Card State
+  // ============================================================
+
+  isMedicationSection(sec: any): boolean {
+    const t = (sec?.title ?? '').toLowerCase();
+    return t.includes('medication');
+  }
+
+  isMedicationRepeatGroup(target: any, parentSection?: any): boolean {
+    if (!target?.repeat?.enabled) return false;
+    const t = (target?.title ?? '').toLowerCase();
+    const looks = t.includes('medication') || t.includes('drug') || t.includes('pharmacy');
+    if (!looks) return false;
+    if (parentSection) return this.isMedicationSection(parentSection);
+    return looks;
+  }
+
+  getMedicationRepeatSub(sec: any): any | null {
+    if (sec.repeat?.enabled && this.isMedicationRepeatGroup(sec)) return sec;
+    for (const sub of (sec.subsections || [])) {
+      if (sub.repeat?.enabled && this.isMedicationRepeatGroup(sub, sec)) return sub;
+    }
+    return null;
+  }
+
+  getMedicationSearchField(inst: any): any | null {
+    const byEntity = (inst?.fields ?? []).find((f: any) => {
+      if (f?.type !== 'search') return false;
+      const entity = this.getLookupEntity(f);
+      if (entity === 'medication' || entity === 'drug' || entity === 'ndc') return true;
+      const id = (f?._rawId ?? f?.id ?? '').toLowerCase();
+      return id.includes('medicationcode');
+    });
+    if (byEntity) return byEntity;
+    return (inst?.fields ?? []).find((f: any) => {
+      if (f?.type !== 'search') return false;
+      const entity = this.getLookupEntity(f);
+      return entity !== 'providers' && entity !== 'provider';
+    }) ?? null;
+  }
+
+  getMedicationDescField(inst: any): any | null {
+    return (inst?.fields ?? []).find((f: any) => {
+      if (f?.type !== 'text') return false;
+      const id = (f?._rawId ?? f?.id ?? '').toLowerCase();
+      return id.includes('medicationdesc') || id.includes('description') || id.includes('drugname');
+    }) ?? null;
+  }
+
+  /** Body fields = everything except the med search + description (shown in card identity) */
+  getMedicationBodyFields(inst: any): any[] {
+    const search = this.getMedicationSearchField(inst);
+    const desc = this.getMedicationDescField(inst);
+    return this.getNonActionFields(inst?.fields).filter((f: any) => f !== search && f !== desc);
+  }
+
+  /** Schedule-strip fields: frequency, fromDate, toDate, quantity */
+  getMedicationScheduleInfo(inst: any): { frequency: string; fromDate: string; toDate: string; quantity: string; prescribedBy: string } {
+    const fields = inst?.fields ?? [];
+    const getVal = (pattern: string) => {
+      const f = fields.find((fl: any) => (fl?._rawId ?? fl?.id ?? '').toLowerCase().includes(pattern));
+      return f?.controlName ? (this.form.get(f.controlName)?.value ?? '') : '';
+    };
+    const formatDate = (raw: any): string => {
+      if (!raw) return '';
+      const d = raw instanceof Date ? raw : new Date(raw);
+      if (isNaN(d.getTime())) return typeof raw === 'string' ? raw : '';
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      return `${mm}/${dd}/${yyyy}`;
+    };
+    const getDisplay = (pattern: string, datasrc?: string) => {
+      const f = fields.find((fl: any) => (fl?._rawId ?? fl?.id ?? '').toLowerCase().includes(pattern));
+      if (!f?.controlName) return '';
+      const val = this.form.get(f.controlName)?.value;
+      if (!val) return '';
+      // Try to resolve display text from dropdown options
+      const opts = this.getDropdownOptions(f.controlName);
+      const opt = opts?.find((o: any) => String(o.value) === String(val));
+      return opt?.label ?? String(val);
+    };
+    return {
+      frequency: getDisplay('frequency'),
+      fromDate: formatDate(getVal('fromdate')),
+      toDate: formatDate(getVal('todate')),
+      quantity: getVal('quantity') ? String(getVal('quantity')) : '',
+      prescribedBy: getVal('prescribed') || getVal('45epn7vhg'),
+    };
+  }
+
+  getMedicationInstanceKey(inst: any): string {
+    const sf = this.getMedicationSearchField(inst);
+    return sf?.controlName ?? `med_${inst?.index ?? 0}`;
+  }
+
+  hasMedicationSelected(inst: any): boolean {
+    const key = this.getMedicationInstanceKey(inst);
+    if (this.medicationEditMode.has(key)) return false;
+    return !!this.medicationDataByInstance[key];
+  }
+
+  hasMedicationData(inst: any): boolean {
+    return !!this.medicationDataByInstance[this.getMedicationInstanceKey(inst)];
+  }
+
+  getMedicationCode(inst: any): string {
+    const d = this.medicationDataByInstance[this.getMedicationInstanceKey(inst)];
+    return d?.ndc ?? d?.code ?? d?.medicationCode ?? '';
+  }
+
+  getMedicationDescription(inst: any): string {
+    const d = this.medicationDataByInstance[this.getMedicationInstanceKey(inst)];
+    return d?.drugName ?? d?.description ?? d?.medicationDescription ?? '';
+  }
+
+  isMedicationInEditMode(inst: any): boolean {
+    return this.medicationEditMode.has(this.getMedicationInstanceKey(inst));
+  }
+
+  onMedicationLookupSelected(f: any, inst: any, item: any): void {
+    const key = this.getMedicationInstanceKey(inst);
+    this.medicationDataByInstance[key] = item;
+    this.medicationEditMode.delete(key);
+    if (f?.controlName) this.lookupSelectedByControl[f.controlName] = item;
+    this.onLookupSelected(f, item);
+  }
+
+  onMedicationLookupCleared(f: any, inst: any): void {
+    const key = this.getMedicationInstanceKey(inst);
+    delete this.medicationDataByInstance[key];
+    this.medicationEditMode.delete(key);
+    this.onLookupCleared(f);
+  }
+
+  clearMedicationData(inst: any): void {
+    const key = this.getMedicationInstanceKey(inst);
+    delete this.medicationDataByInstance[key];
+    this.medicationEditMode.delete(key);
+    const sf = this.getMedicationSearchField(inst);
+    if (sf?.controlName) {
+      const ctrl = this.form.get(sf.controlName);
+      if (ctrl) { ctrl.setValue(null, { emitEvent: true }); ctrl.markAsDirty(); }
+      this.onLookupCleared(sf);
+    }
+    const df = this.getMedicationDescField(inst);
+    if (df?.controlName) {
+      const ctrl = this.form.get(df.controlName);
+      if (ctrl) ctrl.setValue(null, { emitEvent: true });
+    }
+  }
+
+  editMedication(inst: any): void {
+    const key = this.getMedicationInstanceKey(inst);
+    this.medicationEditMode.add(key);
+    const sf = this.getMedicationSearchField(inst);
+    if (sf?.controlName) {
+      const ctrl = this.form.get(sf.controlName);
+      if (ctrl) {
+        const data = this.medicationDataByInstance[key];
+        if (data) ctrl.setValue(this.getLookupDisplayWith(sf)(data) ?? null, { emitEvent: false });
+      }
+    }
+  }
+
+  cancelEditMedication(inst: any): void {
+    const key = this.getMedicationInstanceKey(inst);
+    this.medicationEditMode.delete(key);
+    const data = this.medicationDataByInstance[key];
+    if (data) {
+      const sf = this.getMedicationSearchField(inst);
+      if (sf?.controlName) {
+        const ctrl = this.form.get(sf.controlName);
+        if (ctrl) ctrl.setValue(this.getLookupDisplayWith(sf)(data) ?? null, { emitEvent: false });
+      }
+    }
+  }
+
+  private rehydrateMedicationData(): void {
+    if (!this.renderSections?.length) return;
+    const processInstances = (target: any) => {
+      for (const inst of (target.instances || [])) {
+        const sf = this.getMedicationSearchField(inst);
+        if (!sf?.controlName) continue;
+        const key = this.getMedicationInstanceKey(inst);
+        if (this.medicationDataByInstance[key]) continue;
+        let resolved: any = null;
+        const searchVal = this.form.get(sf.controlName)?.value;
+        if (searchVal && typeof searchVal === 'object' && (searchVal.ndc || searchVal.code)) resolved = searchVal;
+        if (!resolved && searchVal) {
+          const code = typeof searchVal === 'string' ? searchVal.trim() : null;
+          const df = this.getMedicationDescField(inst);
+          const desc = df?.controlName ? (this.form.get(df.controlName)?.value ?? '') : '';
+          if (code) resolved = { ndc: code, drugName: typeof desc === 'string' ? desc : '' };
+        }
+        if (resolved) this.medicationDataByInstance[key] = resolved;
+      }
+    };
+    for (const sec of this.renderSections) {
+      if (!this.isMedicationSection(sec)) continue;
+      if (sec.repeat?.enabled) processInstances(sec);
+      for (const sub of (sec.subsections || [])) {
+        if (sub.repeat?.enabled && this.isMedicationRepeatGroup(sub, sec)) processInstances(sub);
+      }
+    }
+  }
+
+  // ============================================================
+  // TRANSPORTATION — Section Detection + Scheduler Helpers
+  // ============================================================
+
+  isTransportationSection(sec: any): boolean {
+    return (sec?.title ?? '').toLowerCase().includes('transportation');
+  }
+
+  /** Find the Transportation Leg subsection by title — works with or without repeat */
+  isTransportationLegSub(target: any, parentSection?: any): boolean {
+    const t = (target?.title ?? '').toLowerCase();
+    if (!t.includes('leg')) return false;
+    if (parentSection) return this.isTransportationSection(parentSection);
+    return false;
+  }
+
+  /** Also support repeat-based detection for templates that DO have repeat */
+  isTransportationLegGroup(target: any, parentSection?: any): boolean {
+    if (!target?.repeat?.enabled) return false;
+    return this.isTransportationLegSub(target, parentSection);
+  }
+
+  getTransportationLegSub(sec: any): any | null {
+    for (const sub of (sec.subsections || [])) {
+      // Match by title regardless of repeat config
+      if (this.isTransportationLegSub(sub, sec)) return sub;
+    }
+    return null;
+  }
+
+  /** True if field is a computed/disabled summary (mileage, counts — NOT amounts) */
+  isTransportationSummaryField(f: any): boolean {
+    const id = (f?._rawId ?? f?.id ?? '').toLowerCase();
+    return id.includes('totalservicemileage') || id.includes('numberoflegs') ||
+      id.includes('requestedmiles') || id.includes('approvedmiles');
+  }
+
+  /** True if field is an amount field (excluded from display) */
+  private isTransportationAmountField(f: any): boolean {
+    const id = (f?._rawId ?? f?.id ?? '').toLowerCase();
+    return id.includes('requestedamount') || id.includes('approvedamount');
+  }
+
+  /** Editable form fields (not summary metrics, not amounts) */
+  getTransportationFormFields(sec: any): any[] {
+    return this.getNonActionFields(sec?.fields ?? []).filter((f: any) =>
+      !this.isTransportationSummaryField(f) && !this.isTransportationAmountField(f)
+    );
+  }
+
+  /** Read-only summary metric fields */
+  getTransportationSummaryFields(sec: any): any[] {
+    return this.getNonActionFields(sec?.fields ?? []).filter((f: any) => this.isTransportationSummaryField(f));
+  }
+
+  /** Get a field value from a subsection or instance by id pattern */
+  private getFieldValueByPattern(fieldsSource: any, pattern: string): string {
+    const fields: any[] = fieldsSource?.fields ?? [];
+    const f = fields.find((fl: any) => (fl?._rawId ?? fl?.id ?? '').toLowerCase().includes(pattern));
+    if (!f?.controlName) return '';
+    const val = this.form.get(f.controlName)?.value;
+    if (val == null) return '';
+    if (typeof val === 'string') return val;
+    if (typeof val === 'number') return String(val);
+    if (typeof val === 'object') {
+      // Address lookup objects
+      if (val.address) return val.address;
+      // Generic lookup objects — try common display fields
+      return val.label ?? val.name ?? val.displayName ?? val.description ?? '';
+    }
+    return String(val);
+  }
+
+  /** Resolve a dropdown field's display label from a subsection or instance */
+  private getDropdownDisplayByPattern(fieldsSource: any, pattern: string): string {
+    const fields: any[] = fieldsSource?.fields ?? [];
+    const f = fields.find((fl: any) => (fl?._rawId ?? fl?.id ?? '').toLowerCase().includes(pattern));
+    if (!f?.controlName) return '';
+    const val = this.form.get(f.controlName)?.value;
+    if (!val) return '';
+    const opts = this.getDropdownOptions(f.controlName);
+    const opt = opts?.find((o: any) => String(o.value) === String(val));
+    return opt?.label ?? String(val);
+  }
+
+  getLegStartAddress(src: any): string { return this.getFieldValueByPattern(src, 'startaddress'); }
+  getLegEndAddress(src: any): string { return this.getFieldValueByPattern(src, 'endaddress'); }
+  getLegPickUpTime(src: any): string { return this.getFieldValueByPattern(src, 'legpickuptime') || this.getFieldValueByPattern(src, 'pickuptime'); }
+  getLegDropOffTime(src: any): string { return this.getFieldValueByPattern(src, 'legdropofftime') || this.getFieldValueByPattern(src, 'dropofftime'); }
+  getLegMileage(src: any): string { return this.getFieldValueByPattern(src, 'perlegmileage'); }
+  getLegDays(src: any): string {
+    const key = this.getLegKey(src);
+    const selected = this.legSelectedDays[key];
+    if (selected?.length) return selected.join(', ');
+    return this.getFieldValueByPattern(src, 'legdays');
+  }
+  getLegPerWeek(src: any): string { return this.getDropdownDisplayByPattern(src, 'legsperweek'); }
+  hasLegData(src: any): boolean { return !!this.getLegStartAddress(src) || !!this.getLegEndAddress(src); }
+
+  /** Categorize leg fields into route/timing vs recurring schedule groups */
+  private isLegRouteTimingField(f: any): boolean {
+    const id = (f?._rawId ?? f?.id ?? '').toLowerCase();
+    return id.includes('address') || id.includes('appointment') || id.includes('willcall') ||
+      id.includes('pickup') || id.includes('pickuptime') || id.includes('dropoff') ||
+      id.includes('legpickupdate') || id.includes('custommileage') ||
+      id.includes('zrwzhhgdm'); // will-call field id
+  }
+
+  private isLegRecurringField(f: any): boolean {
+    const id = (f?._rawId ?? f?.id ?? '').toLowerCase();
+    // Exclude legDays — the weekday grid replaces it
+    return (id.includes('legsperweek') || id.includes('perlegmileage'));
+  }
+
+  getLegRouteTimingFields(inst: any): any[] {
+    return this.getNonActionFields(inst?.fields).filter((f: any) => this.isLegRouteTimingField(f));
+  }
+
+  getLegRecurringFields(inst: any): any[] {
+    return this.getNonActionFields(inst?.fields).filter((f: any) => this.isLegRecurringField(f));
+  }
+
+  getLegOtherFields(inst: any): any[] {
+    return this.getNonActionFields(inst?.fields).filter((f: any) => {
+      const id = (f?._rawId ?? f?.id ?? '').toLowerCase();
+      return !this.isLegRouteTimingField(f) && !this.isLegRecurringField(f) &&
+        !id.includes('totalmileage') && !id.includes('legdays');
+    });
+  }
+
+  /** Get total mileage for a specific leg */
+  getLegTotalMileage(inst: any): string {
+    return this.getFieldValueByPattern(inst, 'totalmileage');
+  }
+
+  /** Build weekly day grid data for a single leg instance */
+  getLegWeekDayGrid(inst: any): { label: string; active: boolean }[] {
+    const key = this.getLegKey(inst);
+    const selected = this.legSelectedDays[key] || [];
+    return this.weekDayLabels.map(d => ({
+      label: d,
+      active: selected.some(s => s.toLowerCase() === d.toLowerCase()),
+    }));
+  }
+
+  /** Check if a specific day is active for a leg instance — used in template binding */
+  isLegDayActive(inst: any, day: string): boolean {
+    const key = this.getLegKey(inst);
+    const selected = this.legSelectedDays[key];
+    if (!selected?.length) return false;
+    return selected.some(s => s.toLowerCase() === day.toLowerCase());
+  }
+
+  /**
+   * Build weekly calendar data.
+   * Works with both repeat subsections (multiple instances) and single non-repeat subsections.
+   */
+  getTransportationWeeklyCalendar(sec: any): { day: string; legs: { index: number; pickUp: string }[] }[] {
+    const legSub = this.getTransportationLegSub(sec);
+    const emptyWeek = this.weekDayLabels.map(d => ({ day: d, legs: [] as { index: number; pickUp: string }[] }));
+    if (!legSub) return emptyWeek;
+
+    // Collect all sources: repeat instances if available, otherwise the subsection itself
+    const sources: { src: any; index: number }[] = [];
+    if (legSub.instances?.length) {
+      for (const inst of legSub.instances) {
+        sources.push({ src: inst, index: inst.index ?? 1 });
+      }
+    } else if (legSub.fields?.length) {
+      // Single non-repeat subsection — treat its fields as one "instance"
+      sources.push({ src: legSub, index: 1 });
+    }
+
+    if (!sources.length) return emptyWeek;
+
+    const result = this.weekDayLabels.map(d => ({ day: d, legs: [] as { index: number; pickUp: string }[] }));
+    for (const { src, index } of sources) {
+      const key = this.getLegKey(src);
+      const selected = this.legSelectedDays[key] || [];
+      const pickUp = this.getLegPickUpTime(src);
+      for (let i = 0; i < this.weekDayLabels.length; i++) {
+        if (selected.some(s => s.toLowerCase() === this.weekDayLabels[i].toLowerCase())) {
+          result[i].legs.push({ index, pickUp });
+        }
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Recalculate transportation mileage and summary metrics.
+   * Called whenever an address is selected in a transportation leg.
+   *
+   * For each leg: perLegMileage = |startAddress.mileage - endAddress.mileage|
+   * Section summary: totalServiceMileage = sum of all (perLegMileage * legsPerWeek * weeks)
+   *                  numberOfLegs = count of legs with addresses
+   */
+  recalculateTransportationMileage(): void {
+    if (!this.renderSections?.length) return;
+
+    for (const sec of this.renderSections) {
+      if (!this.isTransportationSection(sec)) continue;
+
+      const legSub = this.getTransportationLegSub(sec);
+      if (!legSub) continue;
+
+      const instances = legSub.instances || [];
+      let totalServiceMiles = 0;
+      let legCount = 0;
+
+      for (const inst of instances) {
+        const fields: any[] = inst?.fields ?? [];
+
+        // Find start/end address control names
+        const startField = fields.find((fl: any) => (fl?._rawId ?? fl?.id ?? '').toLowerCase().includes('startaddress'));
+        const endField = fields.find((fl: any) => (fl?._rawId ?? fl?.id ?? '').toLowerCase().includes('endaddress'));
+        const mileageField = fields.find((fl: any) => (fl?._rawId ?? fl?.id ?? '').toLowerCase().includes('perlegmileage'));
+        const totalMileageField = fields.find((fl: any) => (fl?._rawId ?? fl?.id ?? '').toLowerCase().includes('totalmileage'));
+
+        // Get the cached lookup items (full address objects with mileage)
+        const startItem = startField?.controlName ? this.lookupSelectedByControl[startField.controlName] : null;
+        const endItem = endField?.controlName ? this.lookupSelectedByControl[endField.controlName] : null;
+
+        if (startItem?.mileage != null && endItem?.mileage != null) {
+          const perLeg = Math.abs(endItem.mileage - startItem.mileage);
+          const rounded = Math.round(perLeg);
+
+          // Set per-leg mileage
+          if (mileageField?.controlName) {
+            const ctrl = this.form.get(mileageField.controlName);
+            if (ctrl) ctrl.setValue(String(rounded), { emitEvent: false });
+          }
+
+          // Legs per week
+          const lpwField = fields.find((fl: any) => (fl?._rawId ?? fl?.id ?? '').toLowerCase().includes('legsperweek'));
+          const lpwVal = lpwField?.controlName ? this.form.get(lpwField.controlName)?.value : null;
+          const legsPerWeek = parseInt(lpwVal, 10) || 1;
+
+          // Total mileage for this leg = perLeg * legsPerWeek
+          const legTotal = Math.round(rounded * legsPerWeek);
+          if (totalMileageField?.controlName) {
+            const ctrl = this.form.get(totalMileageField.controlName);
+            if (ctrl) ctrl.setValue(String(legTotal), { emitEvent: false });
+          }
+
+          totalServiceMiles += legTotal;
+          legCount++;
+        } else if (startItem || endItem) {
+          legCount++; // partial data, still count the leg
+        }
+      }
+
+      // Update section-level summary fields
+      const secFields: any[] = sec?.fields ?? [];
+      const setSecField = (pattern: string, value: string) => {
+        const f = secFields.find((fl: any) => (fl?._rawId ?? fl?.id ?? '').toLowerCase().includes(pattern));
+        if (f?.controlName) {
+          const ctrl = this.form.get(f.controlName);
+          if (ctrl) ctrl.setValue(value, { emitEvent: false });
+        }
+      };
+
+      // Get interval weeks from form
+      const weeksField = secFields.find((fl: any) => (fl?._rawId ?? fl?.id ?? '').toLowerCase().includes('interval'));
+      const weeksVal = weeksField?.controlName ? this.form.get(weeksField.controlName)?.value : null;
+      const weeks = parseInt(weeksVal, 10) || 1;
+
+      const grandTotal = Math.round(totalServiceMiles * weeks);
+
+      setSecField('totalservicemileage', grandTotal > 0 ? String(grandTotal) : '');
+      setSecField('numberoflegs', legCount > 0 ? String(legCount) : '');
+      setSecField('requestedmiles', grandTotal > 0 ? String(grandTotal) : '');
+      setSecField('approvedmiles', grandTotal > 0 ? String(grandTotal) : '');
+    }
+  }
+
+  /** Watch begin/end date changes to auto-calculate interval and sub-interval */
+  private setupTransportationDateWatcher(): void {
+    if (!this.renderSections?.length) return;
+
+    for (const sec of this.renderSections) {
+      if (!this.isTransportationSection(sec)) continue;
+      const secFields: any[] = sec?.fields ?? [];
+
+      const findCtrl = (pattern: string) => {
+        const f = secFields.find((fl: any) => (fl?._rawId ?? fl?.id ?? '').toLowerCase().includes(pattern));
+        return f?.controlName ? this.form.get(f.controlName) : null;
+      };
+
+      const beginCtrl = findCtrl('begindate');
+      const endCtrl = findCtrl('enddate');
+
+      if (beginCtrl) {
+        beginCtrl.valueChanges.pipe(takeUntil(this.templateDestroy$), debounceTime(300))
+          .subscribe(() => this.onTransportationDateChange(sec));
+      }
+      if (endCtrl) {
+        endCtrl.valueChanges.pipe(takeUntil(this.templateDestroy$), debounceTime(300))
+          .subscribe(() => this.onTransportationDateChange(sec));
       }
     }
   }
@@ -5328,6 +6064,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     // ── 6. Rehydrate card display data so diagnosis/service show view mode ─
     this.rehydrateDiagnosisData();
     this.rehydrateServiceData();
+            this.rehydrateMedicationData();
 
     // ── 7. Force all form controls to re-push values to their ControlValueAccessors.
     //       Date controls (ui-datetime-picker) are created when the section expands.

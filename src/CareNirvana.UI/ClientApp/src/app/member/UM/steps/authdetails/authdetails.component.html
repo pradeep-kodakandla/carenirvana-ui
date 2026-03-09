@@ -111,6 +111,20 @@
               <mat-icon>add_circle</mat-icon> Add Procedure
             </button>
           </ng-container>
+          <ng-container *ngIf="isMedicationSection(sec) && getMedicationRepeatSub(sec) as ms">
+            <button type="button" class="mc-add-btn"
+                    [disabled]="!canAddRepeat(ms)"
+                    (click)="addRepeat(ms); $event.stopPropagation()">
+              <mat-icon>add_circle</mat-icon> Add Medication
+            </button>
+          </ng-container>
+          <ng-container *ngIf="isTransportationSection(sec) && getTransportationLegSub(sec) as tls">
+            <button type="button" class="tl-add-btn"
+                    [disabled]="!canAddRepeat(tls)"
+                    (click)="addRepeat(tls); $event.stopPropagation()">
+              <mat-icon>add_circle</mat-icon> Add Ride
+            </button>
+          </ng-container>
         </div>
 
         <ng-container *ngIf="sec.expanded">
@@ -140,6 +154,87 @@
                SECTION FIELDS (NON-REPEAT)
           ========================= -->
           <ng-container *ngIf="!sec.repeat?.enabled; else sectionRepeatTpl">
+
+            <!-- ── TRANSPORTATION: special layout ── -->
+            <ng-container *ngIf="isTransportationSection(sec); else defaultNonRepeatSec">
+
+              <!-- Editable fields grid -->
+              <div class="grid">
+                <ng-container *ngFor="let f of getTransportationFormFields(sec)">
+                  <ng-container *ngIf="isVisible(f)">
+                    <ng-container *ngIf="form.get(f.controlName) as ctrl">
+                      <ng-container *ngIf="f.type === 'checkbox'; else tOutField">
+                        <div class="ff-field">
+                          <div class="ff-checkbox" [class.ff-disabled]="ctrl.disabled">
+                            <input type="checkbox" class="form-check-input" [formControlName]="f.controlName" />
+                            <label class="form-check-label ff-checkbox-text">{{ f.displayName }}<span class="req-star" *ngIf="f.required">*</span></label>
+                          </div>
+                        </div>
+                      </ng-container>
+                      <ng-template #tOutField>
+                        <div class="ff-field" [class.ff-span-all]="isFullRowField(f) && f.type !== 'search'" [class.ff-span-2]="f.type === 'search'">
+                          <div class="ff-outline" [class.ff-disabled]="ctrl.disabled" [class.ff-invalid]="ctrl.touched && ctrl.invalid" [class.ff-fax-prefilled]="isFaxPrefilled(f.controlName)">
+                            <div class="ff-float-label">{{ f.displayName }}<span class="req-star" *ngIf="f.required">*</span></div>
+                            <div class="ff-body">
+                              <ng-container [ngSwitch]="f.type">
+                                <ui-smart-dropdown *ngSwitchCase="'select'" class="ff-ui" label="" placeholder="Select..." [options]="getDropdownOptions(f.controlName)" [formControlName]="f.controlName"></ui-smart-dropdown>
+                                <ui-datetime-picker *ngSwitchCase="'datetime-local'" class="ff-ui" placeholderDate="mm/dd/yyyy" placeholderDateTime="mm/dd/yyyy --:--" [dateOnly]="!!f.dateOnly" [formControlName]="f.controlName"></ui-datetime-picker>
+                                <textarea *ngSwitchCase="'textarea'" class="ff-input ff-textarea" rows="3" [formControlName]="f.controlName"></textarea>
+                                <ui-smart-lookup *ngSwitchCase="'search'" class="ff-ui ff-lookup" [placeholder]="getLookupPlaceholder(f)" [minChars]="getLookupMinChars(f)" [debounceMs]="getLookupDebounceMs(f)" [limit]="getLookupLimit(f)" [searchFn]="getLookupSearchFn(f)" [displayWith]="getLookupDisplayWith(f)" [trackBy]="getLookupTrackBy(f)" [formControlName]="f.controlName" (selected)="onLookupSelected(f, $event)" (textChange)="onLookupTextChange(f, $event)" (cleared)="onLookupCleared(f)"></ui-smart-lookup>
+                                <input *ngSwitchDefault class="ff-input" [type]="f.type === 'number' ? 'number' : 'text'" [formControlName]="f.controlName" />
+                              </ng-container>
+                            </div>
+                          </div>
+                          <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">{{ f.requiredMsg || (f.displayName + ' is required') }}</div>
+                        </div>
+                      </ng-template>
+                    </ng-container>
+                  </ng-container>
+                </ng-container>
+              </div>
+
+              <!-- Summary Metrics Bar -->
+              <div class="tl-metrics-bar" *ngIf="getTransportationSummaryFields(sec).length">
+                <ng-container *ngFor="let f of getTransportationSummaryFields(sec)">
+                  <ng-container *ngIf="form.get(f.controlName) as ctrl">
+                    <div class="tl-metric">
+                      <span class="tl-metric-label">{{ f.displayName }}</span>
+                      <span class="tl-metric-value">{{ ctrl.value || '—' }}</span>
+                    </div>
+                  </ng-container>
+                </ng-container>
+              </div>
+
+              <!-- Weekly Trip Schedule Calendar -->
+              <div class="tl-calendar-wrap">
+                <div class="tl-calendar-header">
+                  <mat-icon class="tl-calendar-icon">calendar_view_week</mat-icon>
+                  <span class="tl-calendar-title">Weekly Trip Schedule</span>
+                </div>
+                <div class="tl-calendar">
+                  <div class="tl-cal-day" *ngFor="let day of getTransportationWeeklyCalendar(sec)"
+                       [class.tl-cal-day--active]="day.legs.length > 0">
+                    <div class="tl-cal-day-label">{{ day.day | uppercase }}</div>
+                    <div class="tl-cal-day-body">
+                      <ng-container *ngIf="day.legs.length; else calEmpty">
+                        <div class="tl-cal-chip" *ngFor="let leg of day.legs; let i = index"
+                             [class.tl-cal-chip--alt]="i > 0">
+                          <span class="tl-cal-chip-num">Leg #{{ leg.index }}</span>
+                          <span class="tl-cal-chip-time" *ngIf="leg.pickUp">{{ leg.pickUp }}</span>
+                        </div>
+                      </ng-container>
+                      <ng-template #calEmpty>
+                        <div class="tl-cal-empty-dot"></div>
+                      </ng-template>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </ng-container>
+
+            <!-- ── DEFAULT non-repeat ── -->
+            <ng-template #defaultNonRepeatSec>
             <div class="grid">
               <ng-container *ngFor="let f of getNonActionFields(sec.fields)">
                 <ng-container *ngIf="isVisible(f)">
@@ -234,6 +329,7 @@
                 </ng-container>
               </ng-container>
             </div>
+            </ng-template>
           </ng-container>
 
           <!-- =========================
@@ -485,7 +581,7 @@
 
             <!-- ═══ SERVICE / PROCEDURE CARDS (section-level) ═══ -->
             <ng-template #serviceOrNormalSecRepeat>
-              <ng-container *ngIf="isServiceRepeatGroup(sec); else normalSecRepeat">
+              <ng-container *ngIf="isServiceRepeatGroup(sec); else medicationOrNormalSecRepeat">
                 <div class="sc-list">
                   <ng-container *ngFor="let inst of sec.instances; trackBy: trackProvIdx">
                     <div class="sc-card" [class.sc-card--filled]="hasServiceData(inst)" [class.ff-fax-prefilled]="isInstanceFaxPrefilled(inst)">
@@ -522,6 +618,95 @@
                           <ng-container *ngIf="isVisible(f)">
                             <ng-container *ngIf="form.get(f.controlName) as ctrl">
                               <div class="sc-field" [ngClass]="{'sc-field--select': f.type === 'select', 'sc-field--date': f.type === 'datetime-local', 'sc-field--num': f.type === 'number'}">
+                                <div class="ff-outline" [class.ff-disabled]="ctrl.disabled" [class.ff-invalid]="ctrl.touched && ctrl.invalid" [class.ff-fax-prefilled]="isFaxPrefilled(f.controlName)">
+                                  <div class="ff-float-label">{{ f.displayName }}<span class="req-star" *ngIf="f.required">*</span></div>
+                                  <div class="ff-body">
+                                    <ng-container [ngSwitch]="f.type">
+                                      <ui-smart-dropdown *ngSwitchCase="'select'" class="ff-ui" label="" placeholder="Select..." [options]="getDropdownOptions(f.controlName)" [formControlName]="f.controlName"></ui-smart-dropdown>
+                                      <ui-datetime-picker *ngSwitchCase="'datetime-local'" class="ff-ui" placeholderDate="mm/dd/yyyy" [dateOnly]="!!f.dateOnly" [formControlName]="f.controlName"></ui-datetime-picker>
+                                      <ui-smart-lookup *ngSwitchCase="'search'" class="ff-ui ff-lookup" [placeholder]="getLookupPlaceholder(f)" [minChars]="getLookupMinChars(f)" [debounceMs]="getLookupDebounceMs(f)" [limit]="getLookupLimit(f)" [searchFn]="getLookupSearchFn(f)" [displayWith]="getLookupDisplayWith(f)" [trackBy]="getLookupTrackBy(f)" [formControlName]="f.controlName" (selected)="onLookupSelected(f, $event)" (textChange)="onLookupTextChange(f, $event)" (cleared)="onLookupCleared(f)"></ui-smart-lookup>
+                                      <textarea *ngSwitchCase="'textarea'" class="ff-input ff-textarea" rows="2" [formControlName]="f.controlName"></textarea>
+                                      <input *ngSwitchDefault class="ff-input" [type]="f.type === 'number' ? 'number' : 'text'" [formControlName]="f.controlName" />
+                                    </ng-container>
+                                  </div>
+                                </div>
+                                <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">{{ f.requiredMsg || (f.displayName + ' is required') }}</div>
+                              </div>
+                            </ng-container>
+                          </ng-container>
+                        </ng-container>
+                      </div>
+                    </div>
+                  </ng-container>
+                </div>
+              </ng-container>
+            </ng-template>
+
+            <!-- ═══ MEDICATION CARDS (section-level) ═══ -->
+            <ng-template #medicationOrNormalSecRepeat>
+              <ng-container *ngIf="isMedicationRepeatGroup(sec); else normalSecRepeat">
+                <div class="mc-list">
+                  <ng-container *ngFor="let inst of sec.instances; trackBy: trackProvIdx">
+                    <div class="mc-card" [class.mc-card--filled]="hasMedicationData(inst)"
+                         [class.ff-fax-prefilled]="isInstanceFaxPrefilled(inst)">
+
+                      <!-- NOT SELECTED: search mode -->
+                      <ng-container *ngIf="!hasMedicationSelected(inst)">
+                        <div class="mc-card-top">
+                          <div class="dc-top-actions">
+                            <button type="button" class="dc-top-btn dc-top-btn--delete"
+                                    (click)="hasMedicationData(inst) ? clearMedicationData(inst) : removeRepeat(sec, inst.index)">
+                              <mat-icon class="dc-action-icon">delete</mat-icon>
+                            </button>
+                          </div>
+                        </div>
+                        <ng-container *ngIf="getMedicationSearchField(inst) as sf">
+                          <ng-container *ngIf="form.get(sf.controlName) as sc">
+                            <div class="dc-search-row">
+                              <div class="mc-search">
+                                <ui-smart-lookup class="ff-ui ff-lookup mc-search-input"
+                                  [placeholder]="getLookupPlaceholder(sf)" [minChars]="getLookupMinChars(sf)"
+                                  [debounceMs]="getLookupDebounceMs(sf)" [limit]="getLookupLimit(sf)"
+                                  [searchFn]="getLookupSearchFn(sf)" [displayWith]="getLookupDisplayWith(sf)"
+                                  [trackBy]="getLookupTrackBy(sf)" [formControlName]="sf.controlName"
+                                  (selected)="onMedicationLookupSelected(sf, inst, $event)"
+                                  (textChange)="onLookupTextChange(sf, $event)"
+                                  (cleared)="onMedicationLookupCleared(sf, inst)">
+                                </ui-smart-lookup>
+                              </div>
+                              <button type="button" class="dc-cancel-btn" *ngIf="isMedicationInEditMode(inst)" (click)="cancelEditMedication(inst)">Cancel</button>
+                            </div>
+                          </ng-container>
+                        </ng-container>
+                        <div class="mc-identity mc-identity--muted" *ngIf="isMedicationInEditMode(inst)">
+                          <span class="mc-code">{{ getMedicationCode(inst) }}</span>
+                          <span class="mc-desc">{{ getMedicationDescription(inst) }}</span>
+                        </div>
+                        <div class="mc-empty" *ngIf="!isMedicationInEditMode(inst)">
+                          <mat-icon class="mc-empty-icon">medication</mat-icon>
+                          <span>Search for a medication</span>
+                        </div>
+                      </ng-container>
+
+                      <!-- SELECTED: identity row + always-visible body -->
+                      <ng-container *ngIf="hasMedicationSelected(inst)">
+                        <div class="mc-identity">
+                          <span class="mc-pill-icon"><mat-icon>vaccines</mat-icon></span>
+                          <span class="mc-code">{{ getMedicationCode(inst) }}</span>
+                          <span class="mc-desc">{{ getMedicationDescription(inst) }}</span>
+                          <div class="dc-top-actions mc-identity-actions">
+                            <button type="button" class="dc-top-btn dc-top-btn--edit" (click)="editMedication(inst)" title="Edit"><mat-icon class="dc-action-icon">edit</mat-icon></button>
+                            <button type="button" class="dc-top-btn dc-top-btn--delete" (click)="clearMedicationData(inst)"><mat-icon class="dc-action-icon">delete</mat-icon></button>
+                          </div>
+                        </div>
+                      </ng-container>
+
+                      <!-- Body Fields — always visible when selected -->
+                      <div class="mc-body" *ngIf="hasMedicationSelected(inst)">
+                        <ng-container *ngFor="let f of getMedicationBodyFields(inst)">
+                          <ng-container *ngIf="isVisible(f)">
+                            <ng-container *ngIf="form.get(f.controlName) as ctrl">
+                              <div class="sc-field" [ngClass]="{'sc-field--select': f.type === 'select', 'sc-field--date': f.type === 'datetime-local', 'sc-field--num': f.type === 'number', 'sc-field--search': f.type === 'search'}">
                                 <div class="ff-outline" [class.ff-disabled]="ctrl.disabled" [class.ff-invalid]="ctrl.touched && ctrl.invalid" [class.ff-fax-prefilled]="isFaxPrefilled(f.controlName)">
                                   <div class="ff-float-label">{{ f.displayName }}<span class="req-star" *ngIf="f.required">*</span></div>
                                   <div class="ff-body">
@@ -1013,7 +1198,7 @@
 
         <!-- ═══ SERVICE / PROCEDURE CARDS (subsection-level) ═══ -->
         <ng-template #serviceOrNormalSubRepeat>
-          <ng-container *ngIf="isServiceRepeatGroup(sub, parentSec); else normalSubRepeat">
+          <ng-container *ngIf="isServiceRepeatGroup(sub, parentSec); else medicationOrNormalSubRepeat">
             <div class="sc-list">
               <ng-container *ngFor="let inst of sub.instances; trackBy: trackProvIdx">
                 <div class="sc-card" [class.sc-card--filled]="hasServiceData(inst)" [class.ff-fax-prefilled]="isInstanceFaxPrefilled(inst)">
@@ -1147,6 +1332,247 @@
                   </div>
                 </div>
               </ng-container>
+            </div>
+          </ng-container>
+        </ng-template>
+
+        <!-- ═══ MEDICATION CARDS (subsection-level) ═══ -->
+        <ng-template #medicationOrNormalSubRepeat>
+          <ng-container *ngIf="isMedicationRepeatGroup(sub, parentSec); else transportLegOrNormalSubRepeat">
+            <div class="mc-list">
+              <ng-container *ngFor="let inst of sub.instances; trackBy: trackProvIdx">
+                <div class="mc-card" [class.mc-card--filled]="hasMedicationData(inst)"
+                     [class.ff-fax-prefilled]="isInstanceFaxPrefilled(inst)">
+
+                  <!-- NOT SELECTED: search mode -->
+                  <ng-container *ngIf="!hasMedicationSelected(inst)">
+                    <div class="mc-card-top">
+                      <div class="dc-top-actions">
+                        <button type="button" class="dc-top-btn dc-top-btn--delete"
+                                (click)="hasMedicationData(inst) ? clearMedicationData(inst) : removeRepeat(sub, inst.index)">
+                          <mat-icon class="dc-action-icon">delete</mat-icon>
+                        </button>
+                      </div>
+                    </div>
+                    <ng-container *ngIf="getMedicationSearchField(inst) as sf">
+                      <ng-container *ngIf="form.get(sf.controlName) as sc">
+                        <div class="dc-search-row">
+                          <div class="mc-search">
+                            <ui-smart-lookup class="ff-ui ff-lookup mc-search-input"
+                              [placeholder]="getLookupPlaceholder(sf)" [minChars]="getLookupMinChars(sf)"
+                              [debounceMs]="getLookupDebounceMs(sf)" [limit]="getLookupLimit(sf)"
+                              [searchFn]="getLookupSearchFn(sf)" [displayWith]="getLookupDisplayWith(sf)"
+                              [trackBy]="getLookupTrackBy(sf)" [formControlName]="sf.controlName"
+                              (selected)="onMedicationLookupSelected(sf, inst, $event)"
+                              (textChange)="onLookupTextChange(sf, $event)"
+                              (cleared)="onMedicationLookupCleared(sf, inst)">
+                            </ui-smart-lookup>
+                          </div>
+                          <button type="button" class="dc-cancel-btn" *ngIf="isMedicationInEditMode(inst)" (click)="cancelEditMedication(inst)">Cancel</button>
+                        </div>
+                      </ng-container>
+                    </ng-container>
+                    <div class="mc-identity mc-identity--muted" *ngIf="isMedicationInEditMode(inst)">
+                      <span class="mc-code">{{ getMedicationCode(inst) }}</span>
+                      <span class="mc-desc">{{ getMedicationDescription(inst) }}</span>
+                    </div>
+                    <div class="mc-empty" *ngIf="!isMedicationInEditMode(inst)">
+                      <mat-icon class="mc-empty-icon">medication</mat-icon>
+                      <span>Search for a medication</span>
+                    </div>
+                  </ng-container>
+
+                  <!-- SELECTED: identity row + always-visible body -->
+                  <ng-container *ngIf="hasMedicationSelected(inst)">
+                    <div class="mc-identity">
+                      <span class="mc-pill-icon"><mat-icon>vaccines</mat-icon></span>
+                      <span class="mc-code">{{ getMedicationCode(inst) }}</span>
+                      <span class="mc-desc">{{ getMedicationDescription(inst) }}</span>
+                      <div class="dc-top-actions mc-identity-actions">
+                        <button type="button" class="dc-top-btn dc-top-btn--edit" (click)="editMedication(inst)" title="Edit"><mat-icon class="dc-action-icon">edit</mat-icon></button>
+                        <button type="button" class="dc-top-btn dc-top-btn--delete" (click)="clearMedicationData(inst)"><mat-icon class="dc-action-icon">delete</mat-icon></button>
+                      </div>
+                    </div>
+                  </ng-container>
+
+                  <!-- Body Fields — always visible when selected -->
+                  <div class="mc-body" *ngIf="hasMedicationSelected(inst)">
+                    <ng-container *ngFor="let f of getMedicationBodyFields(inst)">
+                      <ng-container *ngIf="isVisible(f)">
+                        <ng-container *ngIf="form.get(f.controlName) as ctrl">
+                          <div class="sc-field" [ngClass]="{'sc-field--select': f.type === 'select', 'sc-field--date': f.type === 'datetime-local', 'sc-field--num': f.type === 'number', 'sc-field--search': f.type === 'search'}">
+                            <div class="ff-outline" [class.ff-disabled]="ctrl.disabled" [class.ff-invalid]="ctrl.touched && ctrl.invalid" [class.ff-fax-prefilled]="isFaxPrefilled(f.controlName)">
+                              <div class="ff-float-label">{{ f.displayName }}<span class="req-star" *ngIf="f.required">*</span></div>
+                              <div class="ff-body">
+                                <ng-container [ngSwitch]="f.type">
+                                  <ui-smart-dropdown *ngSwitchCase="'select'" class="ff-ui" label="" placeholder="Select..." [options]="getDropdownOptions(f.controlName)" [formControlName]="f.controlName"></ui-smart-dropdown>
+                                  <ui-datetime-picker *ngSwitchCase="'datetime-local'" class="ff-ui" placeholderDate="mm/dd/yyyy" [dateOnly]="!!f.dateOnly" [formControlName]="f.controlName"></ui-datetime-picker>
+                                  <ui-smart-lookup *ngSwitchCase="'search'" class="ff-ui ff-lookup" [placeholder]="getLookupPlaceholder(f)" [minChars]="getLookupMinChars(f)" [debounceMs]="getLookupDebounceMs(f)" [limit]="getLookupLimit(f)" [searchFn]="getLookupSearchFn(f)" [displayWith]="getLookupDisplayWith(f)" [trackBy]="getLookupTrackBy(f)" [formControlName]="f.controlName" (selected)="onLookupSelected(f, $event)" (textChange)="onLookupTextChange(f, $event)" (cleared)="onLookupCleared(f)"></ui-smart-lookup>
+                                  <textarea *ngSwitchCase="'textarea'" class="ff-input ff-textarea" rows="2" [formControlName]="f.controlName"></textarea>
+                                  <input *ngSwitchDefault class="ff-input" [type]="f.type === 'number' ? 'number' : 'text'" [formControlName]="f.controlName" />
+                                </ng-container>
+                              </div>
+                            </div>
+                            <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">{{ f.requiredMsg || (f.displayName + ' is required') }}</div>
+                          </div>
+                        </ng-container>
+                      </ng-container>
+                    </ng-container>
+                  </div>
+                </div>
+              </ng-container>
+            </div>
+          </ng-container>
+        </ng-template>
+
+        <!-- ═══ TRANSPORTATION LEG CARDS (subsection-level) ═══ -->
+        <ng-template #transportLegOrNormalSubRepeat>
+          <ng-container *ngIf="isTransportationLegSub(sub, parentSec); else normalSubRepeat">
+            <!-- Trip Legs section header with Add Leg -->
+            <div class="tl-leg-section-header">
+              <span class="tl-leg-section-title"><mat-icon>route</mat-icon> Trip Legs</span>
+              <button type="button" class="tl-add-leg-btn"
+                      [disabled]="!canAddRepeat(sub)"
+                      (click)="addRepeat(sub)">
+                <mat-icon>add_circle</mat-icon> Add Leg
+              </button>
+            </div>
+            <div class="tl-leg-list">
+              <ng-container *ngFor="let inst of sub.instances; trackBy: trackProvIdx">
+                <div class="tl-leg-card" [class.tl-leg-card--filled]="hasLegData(inst)">
+
+                  <!-- ═══ LEG HEADER ═══ -->
+                  <div class="tl-leg-card-header">
+                    <div class="tl-leg-card-header-icon">
+                      <mat-icon>route</mat-icon>
+                    </div>
+                    <div class="tl-leg-card-header-text">
+                      <div class="tl-leg-card-title">Trip Leg Schedule — Leg #{{ inst.index }}</div>
+                      <div class="tl-leg-card-subtitle">Configure pickup, drop-off, route and weekly recurrence</div>
+                    </div>
+                    <button type="button" class="dc-top-btn dc-top-btn--delete"
+                            (click)="removeRepeat(sub, inst.index)">
+                      <mat-icon class="dc-action-icon">close</mat-icon>
+                    </button>
+                  </div>
+
+                  <!-- ═══ ROUTE VISUALIZATION ═══ -->
+                  <div class="tl-route-viz" *ngIf="hasLegData(inst)">
+                    <div class="tl-route-viz-point">
+                      <div class="tl-route-viz-dot tl-route-viz-dot--start">
+                        <mat-icon>trip_origin</mat-icon>
+                      </div>
+                      <div class="tl-route-viz-info">
+                        <span class="tl-route-viz-label">PICK UP</span>
+                        <span class="tl-route-viz-addr">{{ getLegStartAddress(inst) }}</span>
+                        <span class="tl-route-viz-time" *ngIf="getLegPickUpTime(inst)">{{ getLegPickUpTime(inst) }}</span>
+                      </div>
+                    </div>
+                    <div class="tl-route-viz-connector">
+                      <div class="tl-route-viz-line"></div>
+                      <span class="tl-route-viz-miles" *ngIf="getLegMileage(inst)">{{ getLegMileage(inst) }} mi</span>
+                    </div>
+                    <div class="tl-route-viz-point">
+                      <div class="tl-route-viz-dot tl-route-viz-dot--end">
+                        <mat-icon>location_on</mat-icon>
+                      </div>
+                      <div class="tl-route-viz-info">
+                        <span class="tl-route-viz-label">DROP OFF</span>
+                        <span class="tl-route-viz-addr">{{ getLegEndAddress(inst) }}</span>
+                        <span class="tl-route-viz-time" *ngIf="getLegDropOffTime(inst)">{{ getLegDropOffTime(inst) }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- ═══ ROUTE & TIMING SECTION ═══ -->
+                  <div class="tl-leg-section">
+                    <div class="tl-leg-section-label">Route & Timing</div>
+                    <div class="tl-leg-fields-grid tl-leg-fields-grid--4col">
+                      <ng-container *ngFor="let f of getLegRouteTimingFields(inst)">
+                        <ng-container *ngIf="isVisible(f)">
+                          <ng-container *ngIf="form.get(f.controlName) as ctrl">
+                            <div class="ff-field" [class.ff-span-2]="f.type === 'search'">
+                              <div class="ff-outline" [class.ff-disabled]="ctrl.disabled" [class.ff-invalid]="ctrl.touched && ctrl.invalid">
+                                <div class="ff-float-label">{{ f.displayName }}<span class="req-star" *ngIf="f.required">*</span></div>
+                                <div class="ff-body">
+                                  <ng-container [ngSwitch]="f.type">
+                                    <ui-smart-dropdown *ngSwitchCase="'select'" class="ff-ui" label="" placeholder="Select..." [options]="getDropdownOptions(f.controlName)" [formControlName]="f.controlName"></ui-smart-dropdown>
+                                    <ui-datetime-picker *ngSwitchCase="'datetime-local'" class="ff-ui" placeholderDate="mm/dd/yyyy" [dateOnly]="!!f.dateOnly" [formControlName]="f.controlName"></ui-datetime-picker>
+                                    <ui-smart-lookup *ngSwitchCase="'search'" class="ff-ui ff-lookup" [placeholder]="getLookupPlaceholder(f)" [minChars]="getLookupMinChars(f)" [debounceMs]="getLookupDebounceMs(f)" [limit]="getLookupLimit(f)" [searchFn]="getLookupSearchFn(f)" [displayWith]="getLookupDisplayWith(f)" [trackBy]="getLookupTrackBy(f)" [formControlName]="f.controlName" (selected)="onLookupSelected(f, $event)" (textChange)="onLookupTextChange(f, $event)" (cleared)="onLookupCleared(f)"></ui-smart-lookup>
+                                    <input *ngSwitchDefault class="ff-input" [type]="f.type === 'number' ? 'number' : 'text'" [formControlName]="f.controlName" />
+                                  </ng-container>
+                                </div>
+                              </div>
+                              <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">{{ f.requiredMsg || (f.displayName + ' is required') }}</div>
+                            </div>
+                          </ng-container>
+                        </ng-container>
+                      </ng-container>
+                    </div>
+                  </div>
+
+                  <!-- ═══ RECURRING SCHEDULE SECTION ═══ -->
+                  <div class="tl-leg-section">
+                    <div class="tl-leg-section-label">Recurring Schedule</div>
+                    <div class="tl-leg-fields-grid">
+                      <ng-container *ngFor="let f of getLegRecurringFields(inst)">
+                        <ng-container *ngIf="isVisible(f)">
+                          <ng-container *ngIf="form.get(f.controlName) as ctrl">
+                            <div class="ff-field">
+                              <div class="ff-outline" [class.ff-disabled]="ctrl.disabled" [class.ff-invalid]="ctrl.touched && ctrl.invalid">
+                                <div class="ff-float-label">{{ f.displayName }}<span class="req-star" *ngIf="f.required">*</span></div>
+                                <div class="ff-body">
+                                  <ng-container [ngSwitch]="f.type">
+                                    <ui-smart-dropdown *ngSwitchCase="'select'" class="ff-ui" label="" placeholder="Select..." [options]="getDropdownOptions(f.controlName)" [formControlName]="f.controlName"></ui-smart-dropdown>
+                                    <input *ngSwitchDefault class="ff-input" [type]="f.type === 'number' ? 'number' : 'text'" [formControlName]="f.controlName" />
+                                  </ng-container>
+                                </div>
+                              </div>
+                            </div>
+                          </ng-container>
+                        </ng-container>
+                      </ng-container>
+                    </div>
+
+                    <!-- Weekly Day Grid — click to select/deselect -->
+                    <div class="tl-weekday-grid">
+                      <div class="tl-weekday" *ngFor="let day of weekDayLabels"
+                           [class.tl-weekday--active]="isLegDayActive(inst, day)"
+                           (click)="toggleLegWeekDay(inst, day)">
+                        <span class="tl-weekday-label">{{ day | uppercase }}</span>
+                        <mat-icon class="tl-weekday-icon" *ngIf="isLegDayActive(inst, day)">directions_car</mat-icon>
+                        <div class="tl-weekday-dot" *ngIf="!isLegDayActive(inst, day)"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- ═══ MILEAGE SUMMARY CARDS ═══ -->
+                  <div class="tl-leg-summary">
+                    <div class="tl-leg-summary-card">
+                      <mat-icon class="tl-leg-summary-icon">straighten</mat-icon>
+                      <span class="tl-leg-summary-label">Per Leg</span>
+                      <span class="tl-leg-summary-value">{{ getLegMileage(inst) || '—' }} mi</span>
+                    </div>
+                    <div class="tl-leg-summary-card">
+                      <mat-icon class="tl-leg-summary-icon">functions</mat-icon>
+                      <span class="tl-leg-summary-label">Total Mileage</span>
+                      <span class="tl-leg-summary-value">{{ getLegTotalMileage(inst) || '—' }} mi</span>
+                    </div>
+                    <div class="tl-leg-summary-card">
+                      <mat-icon class="tl-leg-summary-icon">repeat</mat-icon>
+                      <span class="tl-leg-summary-label">Legs/Week</span>
+                      <span class="tl-leg-summary-value">{{ getLegPerWeek(inst) || '—' }}</span>
+                    </div>
+                  </div>
+
+                </div>
+              </ng-container>
+
+              <!-- Empty add card -->
+              <div class="tl-leg-add-empty" (click)="addRepeat(sub)">
+                <mat-icon class="tl-leg-add-icon">add_circle_outline</mat-icon>
+                <span>Add new trip leg</span>
+              </div>
             </div>
           </ng-container>
         </ng-template>
