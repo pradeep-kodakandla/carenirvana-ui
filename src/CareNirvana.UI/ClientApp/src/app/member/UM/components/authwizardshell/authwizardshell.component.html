@@ -256,7 +256,7 @@
                    placeholder="Ask AI about this auth..."
                    [(ngModel)]="aiQuery"
                    (keydown.enter)="askAi()" />
-            <button class="aw-ai-send" (click)="askAi()" [disabled]="!aiQuery?.trim()">→</button>
+            <button class="aw-ai-send" (click)="askAi()" [disabled]="!aiQuery.trim()">→</button>
           </div>
         </div>
       </ng-container>

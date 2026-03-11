@@ -102,7 +102,7 @@
                 class="btn btn-sm btn-link"
                 (click)="emitViewAll()"
                 [disabled]="loading || saving || readOnly">
-          View all Documents ({{ documents?.length || 0 }})
+          View all Documents ({{ documents.length || 0 }})
         </button>
       </div>
     </div>
@@ -262,7 +262,7 @@
       <ng-template #docsSummary>
         <div class="ai-summary">
           <h3>📄 Documents Summary</h3>
-          <p><strong>Total Documents:</strong> {{ (documents?.length || 0) }}</p>
+          <p><strong>Total Documents:</strong> {{ (documents.length || 0) }}</p>
           <p><strong>With Files:</strong> {{ documentsWithFilesCount }}</p>
           <p class="text-muted" style="margin-top: 10px;">
             Click “Add Document” to create a new document, or select one from the list to edit.

@@ -9,7 +9,7 @@ import { RulesengineService, RulesDashboardStats, RuleExecutionLogRow, PagedResu
   styleUrls: ['./rulesdashboard.component.css']
 })
 export class RulesDashboardComponent implements OnInit {
-  stats!: RulesDashboardStats;
+  stats?: RulesDashboardStats;
 
   logs: RuleExecutionLogRow[] = [];
   loadingLogs = false;

@@ -216,6 +216,16 @@ type DepDropdownCfg = {
  * the overall ordering (group order first, then child order).
  */
 
+/** ---- Transportation Ride + Code structures ---- */
+interface TransportRide {
+  id: number;
+}
+
+interface TransportCodeEntry {
+  id: number;
+  rideId: number;
+}
+
 type RepeatKind = 'section' | 'subsection';
 
 type RepeatRegistryMeta = {
@@ -894,6 +904,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
           this.setupVisibilityWatcher();
           this.setupServiceReqAutoCalc();
           this.setupTransportationDateWatcher();
+          this.initTransportRides();
 
           // ✅ After all init operations, capture the clean form state.
           this._captureCleanSnapshot();
@@ -1256,6 +1267,15 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       this.serviceDataByInstance = {};
       this.medicationDataByInstance = {};
       this.legSelectedDays = {};
+      this.expandedLegs = new Set();
+      this.transportRides = [];
+      this.rideLegsCount = {};
+      this._nextRideId = 1;
+      this.transportCodesByRide = {};
+      this.primaryTransportCodeByRide = {};
+      this._nextCodeId = 1;
+      this.transportRideFieldDefs = [];
+      this._rideFieldDefsExtracted = false;
       this.serviceEditMode.clear();
       this.medicationEditMode.clear();
     }
@@ -1418,18 +1438,14 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
       const subs: Record<string, any> = sec.subsections ?? {};
 
-      // ── Move "Transportation Code Details" fields into section-level fields (after tripType) ──
+      // ── Extract "Transportation Code Details" fields and store as code field definitions ──
       for (const key of Object.keys(subs)) {
         if (!key.toLowerCase().includes('code')) continue;
         const codeSub = subs[key];
         const codeFields: any[] = codeSub?.fields ?? [];
-        const lastOrder = Math.max(...(sec.fields ?? []).map((f: any) => f.order ?? 0), 0);
-        for (let i = 0; i < codeFields.length; i++) {
-          codeFields[i].order = lastOrder + 1 + i;
-          codeFields[i].sectionName = sec.sectionName;
-        }
-        sec.fields = [...(sec.fields ?? []), ...codeFields];
-        delete subs[key]; // remove the code details subsection
+        // Store field definitions for transportation codes (used per-ride)
+        this.transportCodeFieldDefs = codeFields.map((f: any) => ({ ...f }));
+        delete subs[key]; // remove the code details subsection so it doesn't render normally
         break;
       }
 
@@ -1833,6 +1849,13 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
     // Preserve weekday selections — keys are stable across add (indices don't shift)
     const savedLegDays = { ...this.legSelectedDays };
+    // Preserve ride/code state across rebuild
+    const savedRides = [...this.transportRides];
+    const savedRideLegsCount = { ...this.rideLegsCount };
+    const savedTransportCodes = JSON.parse(JSON.stringify(this.transportCodesByRide));
+    const savedPrimaryCodes = { ...this.primaryTransportCodeByRide };
+    const savedRideFieldDefs = [...this.transportRideFieldDefs];
+    const savedRideFieldDefsExtracted = this._rideFieldDefsExtracted;
 
     // keep templateId + authClassId/authTypeId in form
     this.clearTemplate(false);
@@ -1868,6 +1891,19 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
     // Restore weekday selections
     this.legSelectedDays = savedLegDays;
+
+    // Restore ride/code state
+    this.transportRides = savedRides;
+    this.rideLegsCount = savedRideLegsCount;
+    this.transportCodesByRide = savedTransportCodes;
+    this.primaryTransportCodeByRide = savedPrimaryCodes;
+    this.transportRideFieldDefs = savedRideFieldDefs;
+    this._rideFieldDefsExtracted = savedRideFieldDefsExtracted;
+
+    // Re-register transport code and ride form controls
+    this.rebuildTransportCodeFormControls();
+    this.rebuildRideFieldFormControls();
+    this.setupRideDateWatchers();
 
     this.rehydrateProviderData();
     this.rehydrateDiagnosisData();
@@ -3065,6 +3101,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     const authUpdatedBy = pick<any>('authUpdatedBy', 'authupdatedby');
 
     // Rebuild jsonData
+    this.injectTransportMetaToPayload(merged);
     const jsonDataFinal = JSON.stringify(merged ?? {});
     const safeJsonDataFinal = jsonDataFinal && jsonDataFinal.trim() ? jsonDataFinal : '{}';
 
@@ -3639,6 +3676,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     this.serviceDataByInstance = {};
       this.medicationDataByInstance = {};
       this.legSelectedDays = {};
+      this.expandedLegs = new Set();
     this.serviceEditMode.clear();
       this.medicationEditMode.clear();
 
@@ -4012,6 +4050,26 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   readonly weekDayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   /** Direct state map for weekday multi-select per leg instance (keyed by leg controlName prefix) */
   legSelectedDays: Record<string, string[]> = {};
+
+  // ---------- Transportation Rides State ----------
+  transportRides: TransportRide[] = [];
+  rideLegsCount: Record<number, number> = {};
+  private _nextRideId = 1;
+
+  // ---------- Transportation Codes State ----------
+  transportCodesByRide: Record<number, TransportCodeEntry[]> = {};
+  primaryTransportCodeByRide: Record<number, number> = {};
+  /** Field definitions extracted from the "Transportation Code Details" subsection */
+  transportCodeFieldDefs: TplField[] = [];
+  private _nextCodeId = 1;
+
+  /** Field definitions for ride-level fields (Begin Date, End Date, Trip Type, etc.) */
+  transportRideFieldDefs: TplField[] = [];
+  /** Whether ride field defs have been extracted from the template */
+  private _rideFieldDefsExtracted = false;
+
+  /** Tracks which leg instances are expanded (by controlName-based key). Collapsed by default for existing legs. */
+  private expandedLegs: Set<string> = new Set();
 
   /** Static addresses for testing (simulates address lookup results) */
   readonly staticAddresses: { address: string; mileage: number }[] = [
@@ -5108,6 +5166,697 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     const selected = this.legSelectedDays[key];
     if (!selected?.length) return false;
     return selected.some(s => s.toLowerCase() === day.toLowerCase());
+  }
+
+  // ============================================================
+  // TRANSPORTATION RIDES — Multi-Ride Management
+  // ============================================================
+
+  /** Initialize rides from existing leg instances (first load or after template switch) */
+  private initTransportRides(): void {
+    if (!this.renderSections?.length) return;
+    // Only initialize if no rides exist yet
+    if (this.transportRides.length > 0) return;
+
+    for (const sec of this.renderSections) {
+      if (!this.isTransportationSection(sec)) continue;
+
+      // Extract ride-level field definitions from the section's form fields
+      if (!this._rideFieldDefsExtracted) {
+        const formFields = this.getTransportationFormFields(sec);
+        this.transportRideFieldDefs = formFields.map((f: any) => ({
+          id: f._rawId ?? f.id,
+          type: f.type,
+          displayName: f.displayName,
+          label: f.label,
+          required: f.required,
+          requiredMsg: f.requiredMsg,
+          datasource: (f as any).datasource,
+          options: (f as any).options,
+          dateOnly: (f as any).dateOnly,
+          lookup: (f as any).lookup,
+        }));
+        this._rideFieldDefsExtracted = true;
+      }
+
+      const legSub = this.getTransportationLegSub(sec);
+      if (!legSub) continue;
+
+      // Try to rehydrate from saved metadata
+      const savedMeta = this.getSavedTransportMeta();
+      if (savedMeta) {
+        this.rehydrateTransportState(savedMeta, sec);
+        break;
+      }
+
+      const legCount = legSub.instances?.length ?? 0;
+      if (legCount > 0) {
+        // Create one ride with all existing legs + 1 default code
+        const rideId = this._nextRideId++;
+        this.transportRides = [{ id: rideId }];
+        this.rideLegsCount = { [rideId]: legCount };
+        this.transportCodesByRide = { [rideId]: [] };
+        this.primaryTransportCodeByRide = {};
+
+        // Create ride-level form controls and copy values from section-level controls
+        this.createRideFieldControls(rideId);
+        this.migrateSecFieldsToRide(sec, rideId);
+
+        // Add one default transportation code
+        this.addTransportCode(rideId);
+      }
+
+      // Set up date watchers for this ride
+      this.setupRideDateWatchers();
+
+      // Rehydrate weekday selections from form control values
+      this.rehydrateLegSelectedDays(legSub);
+
+      // Expand legs that have no data (new empty legs); collapse existing ones with data
+      if (legSub?.instances?.length) {
+        for (const inst of legSub.instances) {
+          if (!this.hasLegData(inst)) {
+            this.expandLeg(inst);
+          }
+        }
+      }
+      break;
+    }
+  }
+
+  // ── Ride Field Control Management ──
+
+  /** Get the form control name for a ride-level field */
+  getRideFieldControlName(rideId: number, fieldId: string): string {
+    return `ride_${rideId}_${this.safeControlName(fieldId)}`;
+  }
+
+  /** Create form controls for all ride-level fields for a given ride */
+  private createRideFieldControls(rideId: number): void {
+    for (const fieldDef of this.transportRideFieldDefs) {
+      const cn = this.getRideFieldControlName(rideId, fieldDef.id);
+      if (!this.form.get(cn)) {
+        const ctrl = new FormControl('');
+        if (fieldDef.required) {
+          ctrl.setValidators(Validators.required);
+        }
+        this.form.addControl(cn, ctrl);
+      }
+      // Prefetch dropdown options if needed
+      if (fieldDef.type === 'select' && fieldDef.datasource) {
+        this.loadDatasourceOptions(cn, fieldDef.datasource);
+      } else if (fieldDef.type === 'select' && fieldDef.options?.length) {
+        this.optionsByControlName[cn] = this.mapStaticOptions(fieldDef.options);
+      }
+    }
+  }
+
+  /** Remove form controls for a ride's fields */
+  private removeRideFieldControls(rideId: number): void {
+    for (const fieldDef of this.transportRideFieldDefs) {
+      const cn = this.getRideFieldControlName(rideId, fieldDef.id);
+      if (this.form.get(cn)) {
+        this.form.removeControl(cn);
+      }
+    }
+  }
+
+  /** Copy section-level field values to ride-level controls (migration for ride #1) */
+  private migrateSecFieldsToRide(sec: any, rideId: number): void {
+    const secFormFields = this.getTransportationFormFields(sec);
+    for (const f of secFormFields) {
+      const rawId = f._rawId ?? f.id;
+      const rideCn = this.getRideFieldControlName(rideId, rawId);
+      const rideCtrl = this.form.get(rideCn);
+      const secCtrl = this.form.get(f.controlName);
+      if (rideCtrl && secCtrl?.value) {
+        rideCtrl.setValue(secCtrl.value, { emitEvent: false });
+      }
+    }
+  }
+
+  /** Rebuild ride-level field form controls after a template rebuild */
+  private rebuildRideFieldFormControls(): void {
+    const snap = this.form.getRawValue();
+    for (const ride of this.transportRides) {
+      this.createRideFieldControls(ride.id);
+    }
+    // Restore values
+    if (snap && typeof snap === 'object') {
+      for (const ride of this.transportRides) {
+        for (const fieldDef of this.transportRideFieldDefs) {
+          const cn = this.getRideFieldControlName(ride.id, fieldDef.id);
+          if (snap[cn] !== undefined && this.form.get(cn)) {
+            this.form.get(cn)!.setValue(snap[cn], { emitEvent: false });
+          }
+        }
+      }
+    }
+  }
+
+  /** Get ride-level field definitions (for template rendering) */
+  getRideFieldDefs(): TplField[] {
+    return this.transportRideFieldDefs;
+  }
+
+  /** Set up date watchers for all rides to auto-calculate interval/subinterval */
+  private setupRideDateWatchers(): void {
+    for (const ride of this.transportRides) {
+      const beginCn = this.getRideFieldControlName(ride.id, this.findRideFieldIdByPattern('begindate'));
+      const endCn = this.getRideFieldControlName(ride.id, this.findRideFieldIdByPattern('enddate'));
+
+      const beginCtrl = this.form.get(beginCn);
+      const endCtrl = this.form.get(endCn);
+
+      if (beginCtrl) {
+        beginCtrl.valueChanges.pipe(takeUntil(this.templateDestroy$), debounceTime(300))
+          .subscribe(() => this.onRideDateChange(ride.id));
+      }
+      if (endCtrl) {
+        endCtrl.valueChanges.pipe(takeUntil(this.templateDestroy$), debounceTime(300))
+          .subscribe(() => this.onRideDateChange(ride.id));
+      }
+    }
+  }
+
+  /** Find a ride field ID by pattern (e.g. 'begindate') */
+  private findRideFieldIdByPattern(pattern: string): string {
+    const def = this.transportRideFieldDefs.find(f =>
+      (f.id ?? '').toLowerCase().includes(pattern)
+    );
+    return def?.id ?? '';
+  }
+
+  /** Auto-calculate Interval(Weeks) and Sub Interval(Days) for a specific ride */
+  onRideDateChange(rideId: number): void {
+    const getCtrl = (pattern: string) => {
+      const fieldId = this.findRideFieldIdByPattern(pattern);
+      if (!fieldId) return null;
+      return this.form.get(this.getRideFieldControlName(rideId, fieldId));
+    };
+
+    const beginCtrl = getCtrl('begindate');
+    const endCtrl = getCtrl('enddate');
+    const intervalCtrl = getCtrl('interval');
+    const subIntervalCtrl = getCtrl('subinterval');
+
+    if (!beginCtrl?.value || !endCtrl?.value) return;
+
+    const begin = new Date(beginCtrl.value);
+    const end = new Date(endCtrl.value);
+    if (isNaN(begin.getTime()) || isNaN(end.getTime()) || end <= begin) return;
+
+    const diffMs = end.getTime() - begin.getTime();
+    const totalDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const weeks = Math.floor(totalDays / 7);
+    const remainingDays = totalDays % 7;
+
+    if (intervalCtrl) intervalCtrl.setValue(String(weeks), { emitEvent: false });
+    if (subIntervalCtrl) subIntervalCtrl.setValue(String(remainingDays), { emitEvent: false });
+
+    this.recalculateTransportationMileage();
+  }
+
+  /** Get the global leg start index (1-based) for a given ride */
+  getRideLegStartIndex(rideId: number): number {
+    let start = 1;
+    for (const ride of this.transportRides) {
+      if (ride.id === rideId) return start;
+      start += (this.rideLegsCount[ride.id] ?? 0);
+    }
+    return start;
+  }
+
+  /** Get leg instances belonging to a specific ride */
+  getRideLegs(sub: any, rideId: number): any[] {
+    const allInstances: any[] = sub?.instances ?? [];
+    const startIdx = this.getRideLegStartIndex(rideId);
+    const count = this.rideLegsCount[rideId] ?? 0;
+    return allInstances.filter((inst: any) => inst.index >= startIdx && inst.index < startIdx + count);
+  }
+
+  /** Get total number of legs across all rides */
+  private getTotalLegsCount(): number {
+    let total = 0;
+    for (const ride of this.transportRides) {
+      total += (this.rideLegsCount[ride.id] ?? 0);
+    }
+    return total;
+  }
+
+  /** Add a new ride to the transportation section */
+  addTransportRide(sec: any): void {
+    const legSub = this.getTransportationLegSub(sec);
+    if (!legSub) return;
+
+    const rideId = this._nextRideId++;
+    this.transportRides = [...this.transportRides, { id: rideId }];
+    this.rideLegsCount = { ...this.rideLegsCount, [rideId]: 1 };
+    this.transportCodesByRide = { ...this.transportCodesByRide, [rideId]: [] };
+
+    // Create ride-level form controls
+    this.createRideFieldControls(rideId);
+
+    // Add one default transportation code
+    this.addTransportCode(rideId);
+
+    // Increase total leg count by 1
+    const key = legSub.repeatKey;
+    if (key) {
+      const rep = legSub.repeat;
+      const cur = this.repeatCounts[key] ?? (legSub.instances?.length ?? rep?.defaultCount ?? 1);
+      this.repeatCounts[key] = cur + 1;
+      const snap = this.form.getRawValue();
+      this.rebuildFromNormalizedTemplate(snap);
+
+      // Expand the new ride's first (only) leg
+      const freshSec = this.renderSections?.find((s: any) => this.isTransportationSection(s));
+      const freshLegSub = freshSec ? this.getTransportationLegSub(freshSec) : null;
+      if (freshLegSub) {
+        this.expandNewLegs(freshLegSub, rideId);
+      }
+    }
+
+    // Set up date watchers for the new ride
+    this.setupRideDateWatchers();
+  }
+
+  /** Remove a ride and all its legs */
+  removeTransportRide(sec: any, rideId: number): void {
+    const legSub = this.getTransportationLegSub(sec);
+    if (!legSub) return;
+    if (this.transportRides.length <= 1) return; // Must keep at least 1 ride
+
+    const legCount = this.rideLegsCount[rideId] ?? 0;
+    const startIdx = this.getRideLegStartIndex(rideId);
+
+    // Remove ride from state first
+    this.transportRides = this.transportRides.filter(r => r.id !== rideId);
+    const newRideLegsCounts = { ...this.rideLegsCount };
+    delete newRideLegsCounts[rideId];
+    this.rideLegsCount = newRideLegsCounts;
+
+    // Clean up ride-level form controls
+    this.removeRideFieldControls(rideId);
+
+    // Clean up transport codes for this ride
+    const newCodes = { ...this.transportCodesByRide };
+    const rideCodes = newCodes[rideId] ?? [];
+    delete newCodes[rideId];
+    this.transportCodesByRide = newCodes;
+    const newPrimary = { ...this.primaryTransportCodeByRide };
+    delete newPrimary[rideId];
+    this.primaryTransportCodeByRide = newPrimary;
+
+    // Remove transport code form controls
+    for (const code of rideCodes) {
+      this.removeTransportCodeControls(rideId, code.id);
+    }
+
+    // Remove legs (from last to first to avoid index shifting issues)
+    const key = legSub.repeatKey;
+    if (key && legCount > 0) {
+      const meta = this.repeatRegistry[key];
+      let snap = this.form.getRawValue();
+      const curTotal = this.repeatCounts[key] ?? (legSub.instances?.length ?? 1);
+
+      // Shift down from last leg of this ride to first
+      for (let i = legCount - 1; i >= 0; i--) {
+        const removeIdx = startIdx + i;
+        if (meta) {
+          snap = this.shiftRepeatSnapshotDown(snap, meta, removeIdx, curTotal - (legCount - 1 - i));
+        }
+      }
+
+      this.repeatCounts[key] = curTotal - legCount;
+      this.rebuildFromNormalizedTemplate(snap);
+    }
+  }
+
+  /** Add a leg to a specific ride */
+  addLegToRide(sec: any, rideId: number): void {
+    const legSub = this.getTransportationLegSub(sec);
+    if (!legSub) return;
+
+    // Increment this ride's leg count
+    this.rideLegsCount = {
+      ...this.rideLegsCount,
+      [rideId]: (this.rideLegsCount[rideId] ?? 0) + 1
+    };
+
+    // Increase total leg repeat count
+    const key = legSub.repeatKey;
+    if (key) {
+      const cur = this.repeatCounts[key] ?? (legSub.instances?.length ?? 1);
+      this.repeatCounts[key] = cur + 1;
+      const snap = this.form.getRawValue();
+      this.rebuildFromNormalizedTemplate(snap);
+
+      // After rebuild, expand the newly added leg
+      const freshSec = this.renderSections?.find((s: any) => this.isTransportationSection(s));
+      const freshLegSub = freshSec ? this.getTransportationLegSub(freshSec) : null;
+      if (freshLegSub) {
+        this.expandNewLegs(freshLegSub, rideId);
+      }
+    }
+  }
+
+  /** Remove a specific leg from a ride by its global index */
+  removeLegFromRide(sec: any, sub: any, rideId: number, globalIndex: number): void {
+    const legCount = this.rideLegsCount[rideId] ?? 0;
+    if (legCount <= 1) return; // Must keep at least 1 leg per ride
+
+    // Decrement this ride's leg count
+    this.rideLegsCount = {
+      ...this.rideLegsCount,
+      [rideId]: legCount - 1
+    };
+
+    // Use the existing removeRepeat mechanism
+    this.removeRepeat(sub, globalIndex);
+  }
+
+  /** Can add more legs to this ride? */
+  canAddLegToRide(sub: any): boolean {
+    return this.canAddRepeat(sub);
+  }
+
+  /** Can remove a leg from this ride? (must keep at least 1) */
+  canRemoveLegFromRide(rideId: number, sub: any): boolean {
+    const legCount = this.rideLegsCount[rideId] ?? 0;
+    return legCount > 1 && this.canRemoveRepeat(sub);
+  }
+
+  /** Get dropdown options for a ride-level field */
+  getRideFieldOptions(rideId: number, fieldDef: TplField): any[] {
+    const cn = this.getRideFieldControlName(rideId, fieldDef.id);
+    return this.optionsByControlName[cn] ?? [];
+  }
+
+  /** Get the local leg index (1-based) within a ride */
+  getRideLegLocalIndex(rideId: number, globalIndex: number): number {
+    const startIdx = this.getRideLegStartIndex(rideId);
+    return globalIndex - startIdx + 1;
+  }
+
+  // ── Leg Expand / Collapse ──
+
+  /** Get a stable expand/collapse key for a leg instance */
+  private getLegExpandKey(inst: any): string {
+    return this.getLegKey(inst);
+  }
+
+  /** Is this leg currently expanded? */
+  isLegExpanded(inst: any): boolean {
+    return this.expandedLegs.has(this.getLegExpandKey(inst));
+  }
+
+  /** Toggle expand/collapse for a leg */
+  toggleLegExpand(inst: any): void {
+    const key = this.getLegExpandKey(inst);
+    if (this.expandedLegs.has(key)) {
+      this.expandedLegs.delete(key);
+    } else {
+      this.expandedLegs.add(key);
+    }
+    // Force new Set reference for change detection
+    this.expandedLegs = new Set(this.expandedLegs);
+  }
+
+  /** Mark a leg as expanded (used when adding new legs) */
+  expandLeg(inst: any): void {
+    this.expandedLegs.add(this.getLegExpandKey(inst));
+    this.expandedLegs = new Set(this.expandedLegs);
+  }
+
+  /** Get active weekday labels for collapsed display */
+  getLegActiveDays(inst: any): string {
+    const key = this.getLegKey(inst);
+    const selected = this.legSelectedDays[key];
+    if (selected?.length) return selected.join(', ');
+    return this.getFieldValueByPattern(inst, 'legdays') || '—';
+  }
+
+  /** Get legs-per-week display for collapsed view */
+  getLegPerWeekDisplay(inst: any): string {
+    return this.getLegPerWeek(inst) || '—';
+  }
+
+  /** Expand newly added legs after a ride adds them */
+  private expandNewLegs(legSub: any, rideId: number): void {
+    // The last leg instance belonging to this ride is the newly added one
+    const legs = this.getRideLegs(legSub, rideId);
+    if (legs.length) {
+      const newLeg = legs[legs.length - 1];
+      this.expandLeg(newLeg);
+    }
+  }
+
+  // ── Save / Restore Transport Metadata ──
+
+  /** Inject transport ride/code metadata into the save payload */
+  injectTransportMetaToPayload(merged: any): void {
+    if (!this.transportRides?.length) return;
+    merged._transportMeta = {
+      rides: this.transportRides.map(r => ({ id: r.id })),
+      rideLegsCount: { ...this.rideLegsCount },
+      codesByRide: {} as Record<number, Array<{ id: number; rideId: number }>>,
+      primaryCodeByRide: { ...this.primaryTransportCodeByRide },
+      nextRideId: this._nextRideId,
+      nextCodeId: this._nextCodeId,
+      legSelectedDays: { ...this.legSelectedDays },
+    };
+    for (const ride of this.transportRides) {
+      merged._transportMeta.codesByRide[ride.id] = (this.transportCodesByRide[ride.id] ?? [])
+        .map(c => ({ id: c.id, rideId: c.rideId }));
+    }
+  }
+
+  /** Read saved transport metadata from persisted jsonData */
+  private getSavedTransportMeta(): any | null {
+    const obj = this.safeParseJson(this.pendingAuth?.jsonData);
+    return obj?._transportMeta ?? null;
+  }
+
+  /** Restore transport state from saved metadata */
+  private rehydrateTransportState(meta: any, sec: any): void {
+    // Restore rides
+    this.transportRides = (meta.rides ?? []).map((r: any) => ({ id: r.id }));
+    this.rideLegsCount = meta.rideLegsCount ?? {};
+    this._nextRideId = meta.nextRideId ?? (Math.max(...this.transportRides.map(r => r.id), 0) + 1);
+    this._nextCodeId = meta.nextCodeId ?? 1;
+    this.primaryTransportCodeByRide = meta.primaryCodeByRide ?? {};
+
+    // Restore codes
+    this.transportCodesByRide = {};
+    const codesByRide = meta.codesByRide ?? {};
+    for (const rideIdStr of Object.keys(codesByRide)) {
+      const rideId = Number(rideIdStr);
+      this.transportCodesByRide[rideId] = (codesByRide[rideIdStr] ?? [])
+        .map((c: any) => ({ id: c.id, rideId: c.rideId ?? rideId }));
+    }
+
+    // Create ride-level and code form controls, then patch values
+    for (const ride of this.transportRides) {
+      this.createRideFieldControls(ride.id);
+      for (const code of (this.transportCodesByRide[ride.id] ?? [])) {
+        for (const fieldDef of this.transportCodeFieldDefs) {
+          const cn = this.getTransportCodeControlName(ride.id, code.id, fieldDef.id);
+          if (!this.form.get(cn)) {
+            this.form.addControl(cn, new FormControl(''));
+          }
+        }
+      }
+    }
+
+    // Patch values from jsonData (controls now exist)
+    const obj = this.safeParseJson(this.pendingAuth?.jsonData);
+    if (obj && typeof obj === 'object') {
+      this.form.patchValue(obj, { emitEvent: false });
+    }
+
+    // Restore weekday selections
+    this.legSelectedDays = meta.legSelectedDays ?? {};
+
+    // Set up date watchers
+    this.setupRideDateWatchers();
+  }
+
+  /** Rehydrate legSelectedDays from form control values (for cases without saved meta) */
+  private rehydrateLegSelectedDays(legSub: any): void {
+    if (!legSub?.instances?.length) return;
+    for (const inst of legSub.instances) {
+      const key = this.getLegKey(inst);
+      const fields: any[] = inst?.fields ?? [];
+      const legDaysField = fields.find((fl: any) =>
+        (fl?._rawId ?? fl?.id ?? '').toLowerCase().includes('legdays')
+      );
+      if (legDaysField?.controlName) {
+        const val = this.form.get(legDaysField.controlName)?.value;
+        if (val && typeof val === 'string' && val.trim()) {
+          const days = val.split(',').map((d: string) => d.trim()).filter((d: string) => d);
+          if (days.length) {
+            this.legSelectedDays = { ...this.legSelectedDays, [key]: days };
+          }
+        }
+      }
+    }
+  }
+
+  // ============================================================
+  // TRANSPORTATION CODES — Per-Ride Code Management
+  // ============================================================
+
+  /** Get the form control name for a transport code field */
+  getTransportCodeControlName(rideId: number, codeId: number, fieldId: string): string {
+    return `tc_r${rideId}_c${codeId}_${this.safeControlName(fieldId)}`;
+  }
+
+  /** Add a new transportation code entry to a ride */
+  addTransportCode(rideId: number): void {
+    const codeId = this._nextCodeId++;
+    const entry: TransportCodeEntry = { id: codeId, rideId };
+
+    const codes = this.transportCodesByRide[rideId] ?? [];
+    this.transportCodesByRide = {
+      ...this.transportCodesByRide,
+      [rideId]: [...codes, entry]
+    };
+
+    // Create form controls for each code field
+    for (const fieldDef of this.transportCodeFieldDefs) {
+      const cn = this.getTransportCodeControlName(rideId, codeId, fieldDef.id);
+      if (!this.form.get(cn)) {
+        this.form.addControl(cn, new FormControl(''));
+      }
+    }
+
+    // Auto-set first code as primary if none set
+    if (!this.primaryTransportCodeByRide[rideId]) {
+      this.primaryTransportCodeByRide = {
+        ...this.primaryTransportCodeByRide,
+        [rideId]: codeId
+      };
+    }
+  }
+
+  /** Remove a transportation code entry from a ride */
+  removeTransportCode(rideId: number, codeId: number): void {
+    const codes = this.transportCodesByRide[rideId] ?? [];
+    this.transportCodesByRide = {
+      ...this.transportCodesByRide,
+      [rideId]: codes.filter(c => c.id !== codeId)
+    };
+
+    // Remove form controls
+    this.removeTransportCodeControls(rideId, codeId);
+
+    // If the removed code was primary, set first remaining as primary
+    if (this.primaryTransportCodeByRide[rideId] === codeId) {
+      const remaining = this.transportCodesByRide[rideId] ?? [];
+      this.primaryTransportCodeByRide = {
+        ...this.primaryTransportCodeByRide,
+        [rideId]: remaining.length > 0 ? remaining[0].id : 0
+      };
+    }
+  }
+
+  /** Remove form controls for a transport code */
+  private removeTransportCodeControls(rideId: number, codeId: number): void {
+    for (const fieldDef of this.transportCodeFieldDefs) {
+      const cn = this.getTransportCodeControlName(rideId, codeId, fieldDef.id);
+      if (this.form.get(cn)) {
+        this.form.removeControl(cn);
+      }
+    }
+  }
+
+  /** Set a transportation code as primary for a ride */
+  setTransportCodePrimary(rideId: number, codeId: number): void {
+    this.primaryTransportCodeByRide = {
+      ...this.primaryTransportCodeByRide,
+      [rideId]: codeId
+    };
+  }
+
+  /** Check if a transportation code is primary */
+  isTransportCodePrimary(rideId: number, codeId: number): boolean {
+    return this.primaryTransportCodeByRide[rideId] === codeId;
+  }
+
+  /** Get all transportation codes for a ride */
+  getTransportCodes(rideId: number): TransportCodeEntry[] {
+    return this.transportCodesByRide[rideId] ?? [];
+  }
+
+  /** Get transport code field value from form */
+  getTransportCodeValue(rideId: number, codeId: number, fieldId: string): string {
+    const cn = this.getTransportCodeControlName(rideId, codeId, fieldId);
+    return this.form.get(cn)?.value ?? '';
+  }
+
+  /** Get display label for a transport code field */
+  getTransportCodeFieldLabel(fieldId: string): string {
+    const def = this.transportCodeFieldDefs.find(f => f.id === fieldId);
+    return def?.displayName ?? def?.label ?? fieldId;
+  }
+
+  /** Get the field definitions for transport codes */
+  getTransportCodeFieldDefs(): TplField[] {
+    return this.transportCodeFieldDefs;
+  }
+
+  /** Get dropdown options for a transport code field */
+  getTransportCodeOptions(rideId: number, codeId: number, fieldDef: TplField): any[] {
+    const cn = this.getTransportCodeControlName(rideId, codeId, fieldDef.id);
+    // Check if we already have cached options
+    const cached = this.optionsByControlName[cn];
+    if (cached?.length) return cached;
+
+    // Try to load from datasource if available
+    if (fieldDef.datasource) {
+      this.loadDatasourceOptions(cn, fieldDef.datasource);
+      return this.optionsByControlName[cn] ?? [];
+    }
+    // Use static options if available
+    return fieldDef.options ?? [];
+  }
+
+  /** Rebuild transport code form controls after a template rebuild */
+  private rebuildTransportCodeFormControls(): void {
+    for (const ride of this.transportRides) {
+      const codes = this.transportCodesByRide[ride.id] ?? [];
+      for (const code of codes) {
+        for (const fieldDef of this.transportCodeFieldDefs) {
+          const cn = this.getTransportCodeControlName(ride.id, code.id, fieldDef.id);
+          if (!this.form.get(cn)) {
+            this.form.addControl(cn, new FormControl(''));
+          }
+        }
+      }
+    }
+    // Restore values from snapshot if available
+  }
+
+  /** Load datasource options for a transport code dropdown control */
+  private loadDatasourceOptions(controlName: string, datasource: string): void {
+    if (this.optionsByControlName[controlName]?.length) return;
+
+    this.optionsByControlName[controlName] = [];
+    this.dsLookup
+      .getOptionsWithFallback(
+        datasource,
+        (r: any) => {
+          const value = r?.value ?? r?.id ?? r?.code;
+          const label = r?.text ?? r?.name ?? r?.description ?? String(value ?? '');
+          return { value, label, raw: r } as any;
+        },
+        ['UM', 'Admin', 'Provider']
+      )
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((opts: UiSmartOption[] | null) => {
+        this.optionsByControlName[controlName] = opts ?? [];
+      });
   }
 
   /**

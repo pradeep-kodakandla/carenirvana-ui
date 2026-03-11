@@ -154,7 +154,7 @@
           </div>
         </div>
 
-        <div *ngIf="!serviceLines?.length" class="muted">No service lines found in the auth data.</div>
+        <div *ngIf="!serviceLines.length" class="muted">No service lines found in the auth data.</div>
 
         <div class="table-responsive" *ngIf="serviceLines?.length">
           <table class="table mdr-table">
@@ -201,7 +201,7 @@
           <button class="btn primary"
                   type="button"
                   (click)="submitCreate()"
-                  [disabled]="mdrForm.invalid || !serviceLines?.length">
+                  [disabled]="mdrForm.invalid || !serviceLines.length">
             Create MD Review Activity
           </button>
         </div>

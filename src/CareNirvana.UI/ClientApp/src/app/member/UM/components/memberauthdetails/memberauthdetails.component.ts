@@ -89,6 +89,9 @@ export class MemberauthdetailsComponent implements OnInit {
   detailPanelExpanded = false;
   selectedAuthNumber = '';
 
+  /** Tracks which cards have their decisions expanded (by authNumber) */
+  expandedDecisions = new Set<string>();
+
   /** Cache for parsed decision arrays (avoids re-parsing in template) */
   private parsedDecisionsCache = new Map<string, ParsedDecision[]>();
 
@@ -346,6 +349,29 @@ export class MemberauthdetailsComponent implements OnInit {
     const parsed = this.parseDecisionJson(row.decisionStatusesJson ?? null);
     this.parsedDecisionsCache.set(row.authNumber, parsed);
     return parsed;
+  }
+
+  /** Toggle expanded state for decisions on a card */
+  toggleDecisionExpand(authNumber: string): void {
+    if (this.expandedDecisions.has(authNumber)) {
+      this.expandedDecisions.delete(authNumber);
+    } else {
+      this.expandedDecisions.add(authNumber);
+    }
+  }
+
+  /** Returns whether decisions are expanded for a given auth card */
+  isDecisionsExpanded(authNumber: string): boolean {
+    return this.expandedDecisions.has(authNumber);
+  }
+
+  /** Returns the decisions to display (first 1 or all depending on expanded state) */
+  getVisibleDecisions(row: MemberAuthGridRow): ParsedDecision[] {
+    const all = this.getDecisionStatuses(row);
+    if (all.length <= 1 || this.expandedDecisions.has(row.authNumber)) {
+      return all;
+    }
+    return all.slice(0, 1);
   }
 
   /** Whether the row has any decision data to display */

@@ -2302,6 +2302,102 @@
 }
 .tl-leg-summary-value { font-size: 16px; font-weight: 800; color: #1E293B; }
 
+/* ── Leg Card: Collapsed State ── */
+.tl-leg-card--collapsed {
+  border-left-width: 3px;
+}
+.tl-leg-card--collapsed .tl-leg-card-header {
+  cursor: pointer; border-bottom: none; border-radius: 8px 12px 8px 12px;
+  padding: 10px 14px;
+}
+.tl-leg-card--collapsed .tl-leg-card-header:hover {
+  background: #FFF0E0;
+}
+.tl-leg-card--collapsed .tl-leg-card-header-icon {
+  width: 30px; height: 30px; border-radius: 8px;
+}
+.tl-leg-card--collapsed .tl-leg-card-header-icon mat-icon {
+  font-size: 16px; width: 16px; height: 16px;
+}
+
+/* ── Toggle Chevron ── */
+.tl-leg-toggle {
+  font-size: 14px; font-weight: 700; color: #94A3B8;
+  transition: transform .2s, color .15s;
+  display: inline-block; margin-left: auto; margin-right: 4px;
+  user-select: none;
+}
+.tl-leg-toggle--open {
+  transform: rotate(90deg); color: #EA580C;
+}
+.tl-leg-card-header:hover .tl-leg-toggle { color: #EA580C; }
+
+/* Make header clickable in expanded mode too */
+.tl-leg-card-header { cursor: pointer; }
+
+/* ── Collapsed Summary ── */
+.tl-leg-collapsed {
+  padding: 0 14px 12px; cursor: pointer;
+}
+.tl-leg-collapsed:hover { background: #FFFBF5; border-radius: 0 0 8px 12px; }
+
+/* Compact route bar */
+.tl-collapsed-route {
+  display: flex; align-items: center; gap: 0; padding: 4px 0 8px;
+}
+.tl-collapsed-stop {
+  display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;
+}
+.tl-collapsed-stop-info {
+  display: flex; flex-direction: column; gap: 1px; min-width: 0;
+}
+.tl-collapsed-addr {
+  font-size: 12px; font-weight: 700; color: #1E293B;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tl-collapsed-time {
+  font-size: 10.5px; color: #64748B;
+}
+.tl-collapsed-dot {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+}
+.tl-collapsed-dot--start { background: #22C55E; }
+.tl-collapsed-dot--end { background: #EF4444; }
+
+.tl-collapsed-connector {
+  display: flex; align-items: center; gap: 6px;
+  flex-shrink: 0; padding: 0 8px;
+}
+.tl-collapsed-line {
+  height: 2px; width: 28px; border-radius: 2px;
+  background: linear-gradient(90deg, #22C55E, #94A3B8, #EF4444);
+}
+.tl-collapsed-miles {
+  font-size: 9.5px; font-weight: 700; color: #1E40AF;
+  background: #EFF6FF; border: 1px solid #BFDBFE;
+  border-radius: 999px; padding: 1px 6px; white-space: nowrap;
+}
+
+/* Schedule & mileage chips */
+.tl-collapsed-chips {
+  display: flex; flex-wrap: wrap; gap: 6px; padding-top: 2px;
+}
+.tl-collapsed-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10.5px; font-weight: 600; color: #475569;
+  background: #F1F5F9; border: 1px solid #E2E8F0;
+  border-radius: 6px; padding: 3px 8px; white-space: nowrap;
+}
+.tl-collapsed-chip-icon {
+  font-size: 13px !important; width: 13px !important; height: 13px !important;
+  color: #94A3B8;
+}
+
+@media (max-width: 600px) {
+  .tl-collapsed-route { flex-direction: column; align-items: stretch; gap: 6px; }
+  .tl-collapsed-connector { justify-content: center; padding: 2px 0; }
+}
+
 /* ── Add Card ── */
 .tl-leg-add-empty {
   border: 1.5px dashed #E2E8F0; border-radius: 10px; padding: 16px 0;
@@ -2379,4 +2475,161 @@
 .tl-add-leg-btn:disabled { opacity: .4; cursor: not-allowed; }
 .tl-add-leg-btn mat-icon {
   font-size: 14px !important; width: 14px !important; height: 14px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TRANSPORTATION RIDES — Multi-Ride Grouping
+   ═══════════════════════════════════════════════════════════ */
+
+.tr-rides-container {
+  display: flex; flex-direction: column; gap: 18px; padding: 4px 0;
+}
+
+.tr-ride-group {
+  border: 1.5px solid #E2E5EA;
+  border-left: 4px solid #EA580C;
+  border-radius: 12px;
+  background: #fff;
+  overflow: visible;
+  box-shadow: 0 1px 4px rgba(0,0,0,.04);
+  transition: border-color .2s, box-shadow .2s;
+}
+.tr-ride-group:hover {
+  box-shadow: 0 2px 10px rgba(0,0,0,.06);
+}
+
+/* ── Ride Header ── */
+.tr-ride-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #FFF7ED 0%, #FFFBEB 100%);
+  border-bottom: 1px solid #FDE68A;
+  border-radius: 8px 12px 0 0;
+}
+.tr-ride-header-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: linear-gradient(135deg, #C2410C, #EA580C);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(234,88,12,.25);
+}
+.tr-ride-header-icon mat-icon { font-size: 20px; width: 20px; height: 20px; color: #fff; }
+.tr-ride-header-text { flex: 1; }
+.tr-ride-title { font-size: 15px; font-weight: 800; color: #1E293B; }
+.tr-ride-subtitle { font-size: 11px; color: #64748B; margin-top: 1px; }
+
+/* ── Ride-level fields (Begin Date, End Date, etc. inside each ride) ── */
+.tr-ride-fields {
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.tr-ride-fields .grid {
+  gap: 10px;
+}
+.tr-ride-fields .ff-outline {
+  min-height: 42px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TRANSPORTATION CODES — Per-Ride Code Rows
+   ═══════════════════════════════════════════════════════════ */
+
+.tr-codes-section {
+  padding: 12px 16px; border-bottom: 1px solid #f1f5f9;
+}
+
+.tr-codes-header {
+  display: flex; align-items: center; gap: 8px;
+  padding-bottom: 8px;
+}
+.tr-codes-label {
+  font-size: 11px; font-weight: 700; color: #94A3B8;
+  text-transform: uppercase; letter-spacing: .4px; flex: 1;
+  display: flex; align-items: center; gap: 6px;
+}
+.tr-codes-label mat-icon {
+  font-size: 15px !important; width: 15px !important; height: 15px !important;
+}
+
+.tr-codes-list {
+  display: flex; flex-direction: column; gap: 8px;
+}
+
+.tr-code-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px;
+  background: #FAFAFE;
+  border: 1.5px solid #E2E5EA;
+  border-left: 3.5px solid #D1D5DB;
+  border-radius: 10px;
+  transition: box-shadow .2s, border-color .2s;
+}
+.tr-code-row:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,.05);
+}
+.tr-code-row--primary {
+  border-left-color: #EA580C;
+  background: #FFF7ED;
+}
+
+.tr-code-field {
+  flex: 1; min-width: 0;
+}
+.tr-code-field .ff-outline {
+  min-height: 38px;
+}
+.tr-code-field .ff-float-label {
+  font-size: 10px;
+}
+.tr-code-field .ff-input {
+  font-size: 12.5px; padding: 2px 6px;
+}
+.tr-code-field--select {
+  max-width: 220px;
+}
+
+.tr-code-primary {
+  flex-shrink: 0;
+}
+
+/* Transportation code primary radio — override colors with orange theme */
+.tr-code-row .dc-primary-radio:hover {
+  border-color: #EA580C;
+  background: #FFF7ED;
+}
+.tr-code-row .dc-primary-radio--active {
+  border-color: #C2410C;
+  background: #FFEDD5;
+}
+.tr-code-row .dc-primary-radio input[type="radio"] {
+  accent-color: #EA580C;
+}
+.tr-code-row .dc-primary-radio--active .dc-primary-label {
+  color: #C2410C;
+}
+
+/* Empty state for codes */
+.tr-codes-empty {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 14px;
+  background: #F8FAFC; border: 1.5px dashed #E2E8F0; border-radius: 8px;
+  color: #94A3B8; font-size: 12px; font-weight: 500;
+}
+.tr-codes-empty-icon {
+  font-size: 18px !important; width: 18px !important; height: 18px !important;
+  color: #CBD5E1;
+}
+
+/* ── Legs section within a ride ── */
+.tr-legs-section {
+  padding: 0 16px 16px;
+}
+
+@media (max-width: 900px) {
+  .tr-code-row { flex-wrap: wrap; }
+  .tr-code-field--select { max-width: 100%; }
+}
+@media (max-width: 600px) {
+  .tr-code-row { flex-direction: column; align-items: stretch; }
+  .tr-code-field { flex: none; }
+  .tr-code-primary { align-self: flex-start; }
 }

@@ -120,8 +120,7 @@
           </ng-container>
           <ng-container *ngIf="isTransportationSection(sec) && getTransportationLegSub(sec) as tls">
             <button type="button" class="tl-add-btn"
-                    [disabled]="!canAddRepeat(tls)"
-                    (click)="addRepeat(tls); $event.stopPropagation()">
+                    (click)="addTransportRide(sec); $event.stopPropagation()">
               <mat-icon>add_circle</mat-icon> Add Ride
             </button>
           </ng-container>
@@ -155,46 +154,11 @@
           ========================= -->
           <ng-container *ngIf="!sec.repeat?.enabled; else sectionRepeatTpl">
 
-            <!-- ── TRANSPORTATION: special layout ── -->
+            <!-- ── TRANSPORTATION: special layout with Rides ── -->
             <ng-container *ngIf="isTransportationSection(sec); else defaultNonRepeatSec">
 
-              <!-- Editable fields grid -->
-              <div class="grid">
-                <ng-container *ngFor="let f of getTransportationFormFields(sec)">
-                  <ng-container *ngIf="isVisible(f)">
-                    <ng-container *ngIf="form.get(f.controlName) as ctrl">
-                      <ng-container *ngIf="f.type === 'checkbox'; else tOutField">
-                        <div class="ff-field">
-                          <div class="ff-checkbox" [class.ff-disabled]="ctrl.disabled">
-                            <input type="checkbox" class="form-check-input" [formControlName]="f.controlName" />
-                            <label class="form-check-label ff-checkbox-text">{{ f.displayName }}<span class="req-star" *ngIf="f.required">*</span></label>
-                          </div>
-                        </div>
-                      </ng-container>
-                      <ng-template #tOutField>
-                        <div class="ff-field" [class.ff-span-all]="isFullRowField(f) && f.type !== 'search'" [class.ff-span-2]="f.type === 'search'">
-                          <div class="ff-outline" [class.ff-disabled]="ctrl.disabled" [class.ff-invalid]="ctrl.touched && ctrl.invalid" [class.ff-fax-prefilled]="isFaxPrefilled(f.controlName)">
-                            <div class="ff-float-label">{{ f.displayName }}<span class="req-star" *ngIf="f.required">*</span></div>
-                            <div class="ff-body">
-                              <ng-container [ngSwitch]="f.type">
-                                <ui-smart-dropdown *ngSwitchCase="'select'" class="ff-ui" label="" placeholder="Select..." [options]="getDropdownOptions(f.controlName)" [formControlName]="f.controlName"></ui-smart-dropdown>
-                                <ui-datetime-picker *ngSwitchCase="'datetime-local'" class="ff-ui" placeholderDate="mm/dd/yyyy" placeholderDateTime="mm/dd/yyyy --:--" [dateOnly]="!!f.dateOnly" [formControlName]="f.controlName"></ui-datetime-picker>
-                                <textarea *ngSwitchCase="'textarea'" class="ff-input ff-textarea" rows="3" [formControlName]="f.controlName"></textarea>
-                                <ui-smart-lookup *ngSwitchCase="'search'" class="ff-ui ff-lookup" [placeholder]="getLookupPlaceholder(f)" [minChars]="getLookupMinChars(f)" [debounceMs]="getLookupDebounceMs(f)" [limit]="getLookupLimit(f)" [searchFn]="getLookupSearchFn(f)" [displayWith]="getLookupDisplayWith(f)" [trackBy]="getLookupTrackBy(f)" [formControlName]="f.controlName" (selected)="onLookupSelected(f, $event)" (textChange)="onLookupTextChange(f, $event)" (cleared)="onLookupCleared(f)"></ui-smart-lookup>
-                                <input *ngSwitchDefault class="ff-input" [type]="f.type === 'number' ? 'number' : 'text'" [formControlName]="f.controlName" />
-                              </ng-container>
-                            </div>
-                          </div>
-                          <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">{{ f.requiredMsg || (f.displayName + ' is required') }}</div>
-                        </div>
-                      </ng-template>
-                    </ng-container>
-                  </ng-container>
-                </ng-container>
-              </div>
-
-              <!-- Summary Metrics Bar -->
-              <div class="tl-metrics-bar" *ngIf="getTransportationSummaryFields(sec).length">
+              <!-- Summary Metrics Bar (section-level) -->
+              <!--<div class="tl-metrics-bar" *ngIf="getTransportationSummaryFields(sec).length">
                 <ng-container *ngFor="let f of getTransportationSummaryFields(sec)">
                   <ng-container *ngIf="form.get(f.controlName) as ctrl">
                     <div class="tl-metric">
@@ -203,32 +167,322 @@
                     </div>
                   </ng-container>
                 </ng-container>
-              </div>
+              </div>-->
 
-              <!-- Weekly Trip Schedule Calendar -->
-              <div class="tl-calendar-wrap">
-                <div class="tl-calendar-header">
-                  <mat-icon class="tl-calendar-icon">calendar_view_week</mat-icon>
-                  <span class="tl-calendar-title">Weekly Trip Schedule</span>
-                </div>
-                <div class="tl-calendar">
-                  <div class="tl-cal-day" *ngFor="let day of getTransportationWeeklyCalendar(sec)"
-                       [class.tl-cal-day--active]="day.legs.length > 0">
-                    <div class="tl-cal-day-label">{{ day.day | uppercase }}</div>
-                    <div class="tl-cal-day-body">
-                      <ng-container *ngIf="day.legs.length; else calEmpty">
-                        <div class="tl-cal-chip" *ngFor="let leg of day.legs; let i = index"
-                             [class.tl-cal-chip--alt]="i > 0">
-                          <span class="tl-cal-chip-num">Leg #{{ leg.index }}</span>
-                          <span class="tl-cal-chip-time" *ngIf="leg.pickUp">{{ leg.pickUp }}</span>
-                        </div>
-                      </ng-container>
-                      <ng-template #calEmpty>
-                        <div class="tl-cal-empty-dot"></div>
-                      </ng-template>
+              <!-- ═══ RIDES ═══ -->
+              <div class="tr-rides-container" *ngIf="getTransportationLegSub(sec) as legSub">
+                <ng-container *ngFor="let ride of transportRides; let ri = index">
+                  <div class="tr-ride-group">
+
+                    <!-- ── Ride Header ── -->
+                    <div class="tr-ride-header">
+                      <div class="tr-ride-header-icon">
+                        <mat-icon>directions_car</mat-icon>
+                      </div>
+                      <div class="tr-ride-header-text">
+                        <div class="tr-ride-title">Ride #{{ ri + 1 }}</div>
+                        <div class="tr-ride-subtitle">{{ (rideLegsCount[ride.id] || 0) }} leg(s) · {{ getTransportCodes(ride.id).length }} code(s)</div>
+                      </div>
+                      <button type="button" class="dc-top-btn dc-top-btn--delete"
+                              *ngIf="transportRides.length > 1"
+                              (click)="removeTransportRide(sec, ride.id); $event.stopPropagation()">
+                        <mat-icon class="dc-action-icon">delete</mat-icon>
+                      </button>
                     </div>
+
+                    <!-- ── Transportation Codes ── -->
+                    <div class="tr-codes-section" *ngIf="transportCodeFieldDefs.length">
+                      <div class="tr-codes-header">
+                        <span class="tr-codes-label"><mat-icon>local_shipping</mat-icon> Transportation Codes</span>
+                        <button type="button" class="tl-add-leg-btn" (click)="addTransportCode(ride.id)">
+                          <mat-icon>add_circle</mat-icon> Add Code
+                        </button>
+                      </div>
+
+                      <!-- Code Rows -->
+                      <div class="tr-codes-list">
+                        <ng-container *ngFor="let code of getTransportCodes(ride.id)">
+                          <div class="tr-code-row" [class.tr-code-row--primary]="isTransportCodePrimary(ride.id, code.id)">
+                            <ng-container *ngFor="let fieldDef of getTransportCodeFieldDefs()">
+                              <div class="tr-code-field" [ngClass]="{'tr-code-field--select': fieldDef.type === 'select'}">
+                                <div class="ff-outline">
+                                  <div class="ff-float-label">{{ fieldDef.displayName || fieldDef.label }}</div>
+                                  <div class="ff-body">
+                                    <ng-container [ngSwitch]="fieldDef.type">
+                                      <ui-smart-dropdown *ngSwitchCase="'select'" class="ff-ui" label="" placeholder="Select..."
+                                        [options]="getTransportCodeOptions(ride.id, code.id, fieldDef)"
+                                        [formControlName]="getTransportCodeControlName(ride.id, code.id, fieldDef.id)">
+                                      </ui-smart-dropdown>
+                                      <input *ngSwitchDefault class="ff-input" type="text"
+                                        [formControlName]="getTransportCodeControlName(ride.id, code.id, fieldDef.id)" />
+                                    </ng-container>
+                                  </div>
+                                </div>
+                              </div>
+                            </ng-container>
+                            <label class="dc-primary-radio tr-code-primary"
+                                   [class.dc-primary-radio--active]="isTransportCodePrimary(ride.id, code.id)">
+                              <input type="radio" [name]="'primaryTransCode_' + ride.id"
+                                     [checked]="isTransportCodePrimary(ride.id, code.id)"
+                                     (change)="setTransportCodePrimary(ride.id, code.id)" />
+                              <span class="dc-primary-label">Primary</span>
+                            </label>
+                            <div class="dc-top-actions">
+                              <button type="button" class="dc-top-btn dc-top-btn--delete"
+                                      (click)="removeTransportCode(ride.id, code.id)">
+                                <mat-icon class="dc-action-icon">delete</mat-icon>
+                              </button>
+                            </div>
+                          </div>
+                        </ng-container>
+
+                        <!-- Empty state for codes -->
+                        <div class="tr-codes-empty" *ngIf="!getTransportCodes(ride.id).length">
+                          <mat-icon class="tr-codes-empty-icon">local_shipping</mat-icon>
+                          <span>No transportation codes added. Click "Add Code" to begin.</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- ── Ride-level Fields (Begin Date, End Date, Trip Type, etc.) ── -->
+                    <div class="tr-ride-fields">
+                      <div class="grid">
+                        <ng-container *ngFor="let fieldDef of getRideFieldDefs()">
+                          <ng-container *ngIf="form.get(getRideFieldControlName(ride.id, fieldDef.id)) as ctrl">
+                            <ng-container *ngIf="fieldDef.type === 'checkbox'; else trRideOutField">
+                              <div class="ff-field">
+                                <div class="ff-checkbox" [class.ff-disabled]="ctrl.disabled">
+                                  <input type="checkbox" class="form-check-input" [formControlName]="getRideFieldControlName(ride.id, fieldDef.id)" />
+                                  <label class="form-check-label ff-checkbox-text">{{ fieldDef.displayName }}<span class="req-star" *ngIf="fieldDef.required">*</span></label>
+                                </div>
+                              </div>
+                            </ng-container>
+                            <ng-template #trRideOutField>
+                              <div class="ff-field" [class.ff-span-all]="fieldDef.type === 'textarea'">
+                                <div class="ff-outline" [class.ff-disabled]="ctrl.disabled" [class.ff-invalid]="ctrl.touched && ctrl.invalid">
+                                  <div class="ff-float-label">{{ fieldDef.displayName }}<span class="req-star" *ngIf="fieldDef.required">*</span></div>
+                                  <div class="ff-body">
+                                    <ng-container [ngSwitch]="fieldDef.type">
+                                      <ui-smart-dropdown *ngSwitchCase="'select'" class="ff-ui" label="" placeholder="Select..."
+                                        [options]="getRideFieldOptions(ride.id, fieldDef)"
+                                        [formControlName]="getRideFieldControlName(ride.id, fieldDef.id)">
+                                      </ui-smart-dropdown>
+                                      <ui-datetime-picker *ngSwitchCase="'datetime-local'" class="ff-ui"
+                                        placeholderDate="mm/dd/yyyy" placeholderDateTime="mm/dd/yyyy --:--"
+                                        [dateOnly]="!!fieldDef.dateOnly"
+                                        [formControlName]="getRideFieldControlName(ride.id, fieldDef.id)">
+                                      </ui-datetime-picker>
+                                      <textarea *ngSwitchCase="'textarea'" class="ff-input ff-textarea" rows="3"
+                                        [formControlName]="getRideFieldControlName(ride.id, fieldDef.id)"></textarea>
+                                      <input *ngSwitchDefault class="ff-input" [type]="fieldDef.type === 'number' ? 'number' : 'text'"
+                                        [formControlName]="getRideFieldControlName(ride.id, fieldDef.id)" />
+                                    </ng-container>
+                                  </div>
+                                </div>
+                                <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">{{ fieldDef.requiredMsg || (fieldDef.displayName + ' is required') }}</div>
+                              </div>
+                            </ng-template>
+                          </ng-container>
+                        </ng-container>
+                      </div>
+                    </div>
+
+                    <!-- ── Trip Legs ── -->
+                    <div class="tr-legs-section">
+                      <div class="tl-leg-section-header">
+                        <span class="tl-leg-section-title"><mat-icon>route</mat-icon> Trip Legs</span>
+                        <button type="button" class="tl-add-leg-btn"
+                                [disabled]="!canAddLegToRide(legSub)"
+                                (click)="addLegToRide(sec, ride.id)">
+                          <mat-icon>add_circle</mat-icon> Add Leg
+                        </button>
+                      </div>
+                      <div class="tl-leg-list">
+                        <ng-container *ngFor="let inst of getRideLegs(legSub, ride.id); trackBy: trackProvIdx">
+                          <div class="tl-leg-card"
+                               [class.tl-leg-card--filled]="hasLegData(inst)"
+                               [class.tl-leg-card--collapsed]="!isLegExpanded(inst)">
+
+                            <!-- ═══ LEG HEADER (always visible — clickable toggle) ═══ -->
+                            <div class="tl-leg-card-header" (click)="toggleLegExpand(inst)">
+                              <div class="tl-leg-card-header-icon">
+                                <mat-icon>route</mat-icon>
+                              </div>
+                              <div class="tl-leg-card-header-text">
+                                <div class="tl-leg-card-title">Trip Leg — Leg #{{ getRideLegLocalIndex(ride.id, inst.index) }}</div>
+                                <div class="tl-leg-card-subtitle" *ngIf="isLegExpanded(inst)">Configure pickup, drop-off, route and weekly recurrence</div>
+                              </div>
+                              <span class="tl-leg-toggle" [class.tl-leg-toggle--open]="isLegExpanded(inst)">▸</span>
+                              <button type="button" class="dc-top-btn dc-top-btn--delete"
+                                      *ngIf="canRemoveLegFromRide(ride.id, legSub)"
+                                      (click)="removeLegFromRide(sec, legSub, ride.id, inst.index); $event.stopPropagation()">
+                                <mat-icon class="dc-action-icon">close</mat-icon>
+                              </button>
+                            </div>
+
+                            <!-- ═══ COLLAPSED SUMMARY (visible when collapsed & has data) ═══ -->
+                            <div class="tl-leg-collapsed" *ngIf="!isLegExpanded(inst) && hasLegData(inst)" (click)="toggleLegExpand(inst)">
+                              <!-- Compact route bar -->
+                              <div class="tl-collapsed-route">
+                                <div class="tl-collapsed-stop">
+                                  <div class="tl-collapsed-dot tl-collapsed-dot--start"></div>
+                                  <div class="tl-collapsed-stop-info">
+                                    <span class="tl-collapsed-addr">{{ getLegStartAddress(inst) || 'Pick Up' }}</span>
+                                    <span class="tl-collapsed-time" *ngIf="getLegPickUpTime(inst)">{{ getLegPickUpTime(inst) }}</span>
+                                  </div>
+                                </div>
+                                <div class="tl-collapsed-connector">
+                                  <div class="tl-collapsed-line"></div>
+                                  <span class="tl-collapsed-miles" *ngIf="getLegMileage(inst)">{{ getLegMileage(inst) }} mi</span>
+                                </div>
+                                <div class="tl-collapsed-stop">
+                                  <div class="tl-collapsed-dot tl-collapsed-dot--end"></div>
+                                  <div class="tl-collapsed-stop-info">
+                                    <span class="tl-collapsed-addr">{{ getLegEndAddress(inst) || 'Drop Off' }}</span>
+                                    <span class="tl-collapsed-time" *ngIf="getLegDropOffTime(inst)">{{ getLegDropOffTime(inst) }}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <!-- Schedule & mileage chips -->
+                              <div class="tl-collapsed-chips">
+                                <span class="tl-collapsed-chip" *ngIf="getLegActiveDays(inst) !== '—'">
+                                  <mat-icon class="tl-collapsed-chip-icon">calendar_today</mat-icon>
+                                  {{ getLegActiveDays(inst) }}
+                                </span>
+                                <span class="tl-collapsed-chip" *ngIf="getLegPerWeekDisplay(inst) !== '—'">
+                                  <mat-icon class="tl-collapsed-chip-icon">repeat</mat-icon>
+                                  {{ getLegPerWeekDisplay(inst) }}/wk
+                                </span>
+                                <span class="tl-collapsed-chip" *ngIf="getLegTotalMileage(inst)">
+                                  <mat-icon class="tl-collapsed-chip-icon">straighten</mat-icon>
+                                  {{ getLegTotalMileage(inst) }} mi total
+                                </span>
+                              </div>
+                            </div>
+
+                            <!-- ═══ EXPANDED CONTENT (visible when expanded) ═══ -->
+                            <ng-container *ngIf="isLegExpanded(inst)">
+
+                              <!-- ROUTE VISUALIZATION -->
+                              <div class="tl-route-viz" *ngIf="hasLegData(inst)">
+                                <div class="tl-route-viz-point">
+                                  <div class="tl-route-viz-dot tl-route-viz-dot--start"><mat-icon>trip_origin</mat-icon></div>
+                                  <div class="tl-route-viz-info">
+                                    <span class="tl-route-viz-label">PICK UP</span>
+                                    <span class="tl-route-viz-addr">{{ getLegStartAddress(inst) }}</span>
+                                    <span class="tl-route-viz-time" *ngIf="getLegPickUpTime(inst)">{{ getLegPickUpTime(inst) }}</span>
+                                  </div>
+                                </div>
+                                <div class="tl-route-viz-connector">
+                                  <div class="tl-route-viz-line"></div>
+                                  <span class="tl-route-viz-miles" *ngIf="getLegMileage(inst)">{{ getLegMileage(inst) }} mi</span>
+                                </div>
+                                <div class="tl-route-viz-point">
+                                  <div class="tl-route-viz-dot tl-route-viz-dot--end"><mat-icon>location_on</mat-icon></div>
+                                  <div class="tl-route-viz-info">
+                                    <span class="tl-route-viz-label">DROP OFF</span>
+                                    <span class="tl-route-viz-addr">{{ getLegEndAddress(inst) }}</span>
+                                    <span class="tl-route-viz-time" *ngIf="getLegDropOffTime(inst)">{{ getLegDropOffTime(inst) }}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <!-- ROUTE & TIMING SECTION -->
+                              <div class="tl-leg-section">
+                                <div class="tl-leg-section-label">Route & Timing</div>
+                                <div class="tl-leg-fields-grid tl-leg-fields-grid--4col">
+                                  <ng-container *ngFor="let f of getLegRouteTimingFields(inst)">
+                                    <ng-container *ngIf="isVisible(f)">
+                                      <ng-container *ngIf="form.get(f.controlName) as ctrl">
+                                        <div class="ff-field" [class.ff-span-2]="f.type === 'search'">
+                                          <div class="ff-outline" [class.ff-disabled]="ctrl.disabled" [class.ff-invalid]="ctrl.touched && ctrl.invalid">
+                                            <div class="ff-float-label">{{ f.displayName }}<span class="req-star" *ngIf="f.required">*</span></div>
+                                            <div class="ff-body">
+                                              <ng-container [ngSwitch]="f.type">
+                                                <ui-smart-dropdown *ngSwitchCase="'select'" class="ff-ui" label="" placeholder="Select..." [options]="getDropdownOptions(f.controlName)" [formControlName]="f.controlName"></ui-smart-dropdown>
+                                                <ui-datetime-picker *ngSwitchCase="'datetime-local'" class="ff-ui" placeholderDate="mm/dd/yyyy" [dateOnly]="!!f.dateOnly" [formControlName]="f.controlName"></ui-datetime-picker>
+                                                <ui-smart-lookup *ngSwitchCase="'search'" class="ff-ui ff-lookup" [placeholder]="getLookupPlaceholder(f)" [minChars]="getLookupMinChars(f)" [debounceMs]="getLookupDebounceMs(f)" [limit]="getLookupLimit(f)" [searchFn]="getLookupSearchFn(f)" [displayWith]="getLookupDisplayWith(f)" [trackBy]="getLookupTrackBy(f)" [formControlName]="f.controlName" (selected)="onLookupSelected(f, $event)" (textChange)="onLookupTextChange(f, $event)" (cleared)="onLookupCleared(f)"></ui-smart-lookup>
+                                                <input *ngSwitchDefault class="ff-input" [type]="f.type === 'number' ? 'number' : 'text'" [formControlName]="f.controlName" />
+                                              </ng-container>
+                                            </div>
+                                          </div>
+                                          <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">{{ f.requiredMsg || (f.displayName + ' is required') }}</div>
+                                        </div>
+                                      </ng-container>
+                                    </ng-container>
+                                  </ng-container>
+                                </div>
+                              </div>
+
+                              <!-- RECURRING SCHEDULE SECTION -->
+                              <div class="tl-leg-section">
+                                <div class="tl-leg-section-label">Recurring Schedule</div>
+                                <div class="tl-leg-fields-grid">
+                                  <ng-container *ngFor="let f of getLegRecurringFields(inst)">
+                                    <ng-container *ngIf="isVisible(f)">
+                                      <ng-container *ngIf="form.get(f.controlName) as ctrl">
+                                        <div class="ff-field">
+                                          <div class="ff-outline" [class.ff-disabled]="ctrl.disabled" [class.ff-invalid]="ctrl.touched && ctrl.invalid">
+                                            <div class="ff-float-label">{{ f.displayName }}<span class="req-star" *ngIf="f.required">*</span></div>
+                                            <div class="ff-body">
+                                              <ng-container [ngSwitch]="f.type">
+                                                <ui-smart-dropdown *ngSwitchCase="'select'" class="ff-ui" label="" placeholder="Select..." [options]="getDropdownOptions(f.controlName)" [formControlName]="f.controlName"></ui-smart-dropdown>
+                                                <input *ngSwitchDefault class="ff-input" [type]="f.type === 'number' ? 'number' : 'text'" [formControlName]="f.controlName" />
+                                              </ng-container>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </ng-container>
+                                    </ng-container>
+                                  </ng-container>
+                                </div>
+
+                                <!-- Weekly Day Grid -->
+                                <div class="tl-weekday-grid">
+                                  <div class="tl-weekday" *ngFor="let day of weekDayLabels"
+                                       [class.tl-weekday--active]="isLegDayActive(inst, day)"
+                                       (click)="toggleLegWeekDay(inst, day)">
+                                    <span class="tl-weekday-label">{{ day | uppercase }}</span>
+                                    <mat-icon class="tl-weekday-icon" *ngIf="isLegDayActive(inst, day)">directions_car</mat-icon>
+                                    <div class="tl-weekday-dot" *ngIf="!isLegDayActive(inst, day)"></div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <!-- MILEAGE SUMMARY CARDS -->
+                              <div class="tl-leg-summary">
+                                <div class="tl-leg-summary-card">
+                                  <mat-icon class="tl-leg-summary-icon">straighten</mat-icon>
+                                  <span class="tl-leg-summary-label">Per Leg</span>
+                                  <span class="tl-leg-summary-value">{{ getLegMileage(inst) || '—' }} mi</span>
+                                </div>
+                                <div class="tl-leg-summary-card">
+                                  <mat-icon class="tl-leg-summary-icon">functions</mat-icon>
+                                  <span class="tl-leg-summary-label">Total Mileage</span>
+                                  <span class="tl-leg-summary-value">{{ getLegTotalMileage(inst) || '—' }} mi</span>
+                                </div>
+                                <div class="tl-leg-summary-card">
+                                  <mat-icon class="tl-leg-summary-icon">repeat</mat-icon>
+                                  <span class="tl-leg-summary-label">Legs/Week</span>
+                                  <span class="tl-leg-summary-value">{{ getLegPerWeek(inst) || '—' }}</span>
+                                </div>
+                              </div>
+
+                            </ng-container>
+
+                          </div>
+                        </ng-container>
+
+                        <!-- Empty add leg card -->
+                        <div class="tl-leg-add-empty" (click)="addLegToRide(sec, ride.id)">
+                          <mat-icon class="tl-leg-add-icon">add_circle_outline</mat-icon>
+                          <span>Add new trip leg</span>
+                        </div>
+                      </div>
+                    </div>
+
                   </div>
-                </div>
+                </ng-container>
               </div>
 
             </ng-container>
@@ -790,9 +1044,11 @@
             </ng-template>
           </ng-template>
 
-          <!-- Subsections (recursive) -->
+          <!-- Subsections (recursive) — skip transport legs for transportation sections (handled in ride groups) -->
           <ng-container *ngFor="let sub of sec.subsections">
-            <ng-container *ngTemplateOutlet="subTpl; context: { $implicit: sub, depth: 0, parentSec: sec }"></ng-container>
+            <ng-container *ngIf="!(isTransportationSection(sec) && isTransportationLegSub(sub, sec))">
+              <ng-container *ngTemplateOutlet="subTpl; context: { $implicit: sub, depth: 0, parentSec: sec }"></ng-container>
+            </ng-container>
           </ng-container>
 
         </ng-container>

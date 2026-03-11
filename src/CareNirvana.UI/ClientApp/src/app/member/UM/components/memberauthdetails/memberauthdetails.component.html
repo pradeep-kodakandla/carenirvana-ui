@@ -177,27 +177,29 @@
           <div class="mad-detail-row">
             <!--<mat-icon class="mad-detail-icon mad-detail-icon--due">schedule</mat-icon>-->
             <span class="mad-detail-label">Due Date</span>
-            <span class="mad-detail-value"
-                  [ngClass]="{
-                    'mad-detail-value--overdue': getDueDateInfo(row).level === 'overdue',
-                    'mad-detail-value--warning': getDueDateInfo(row).level === 'warning',
-                    'mad-detail-value--safe':    getDueDateInfo(row).level === 'safe'
-                  }">
-              {{ row.authDueDate ? (row.authDueDate | date:'MM/dd/yyyy HH:mm:ss a') : '—' }}
-            </span>
-            <!-- Countdown tag -->
-            <span *ngIf="row.authDueDate && getDueDateInfo(row).level !== 'none'"
-                  class="mad-due-tag"
-                  [ngClass]="{
-                    'mad-due--overdue': getDueDateInfo(row).level === 'overdue',
-                    'mad-due--warning': getDueDateInfo(row).level === 'warning',
-                    'mad-due--safe':    getDueDateInfo(row).level === 'safe'
-                  }"
-                  [matTooltip]="getDueDateInfo(row).tooltip">
-              <mat-icon *ngIf="getDueDateInfo(row).level === 'overdue'">warning</mat-icon>
-              <mat-icon *ngIf="getDueDateInfo(row).level === 'warning'">timelapse</mat-icon>
-              {{ getDueDateInfo(row).label }}
-            </span>
+            <div class="mad-detail-value-group">
+              <span class="mad-detail-value"
+                    [ngClass]="{
+                      'mad-detail-value--overdue': getDueDateInfo(row).level === 'overdue',
+                      'mad-detail-value--warning': getDueDateInfo(row).level === 'warning',
+                      'mad-detail-value--safe':    getDueDateInfo(row).level === 'safe'
+                    }">
+                {{ row.authDueDate ? (row.authDueDate | date:'MM/dd/yyyy HH:mm:ss a') : '—' }}
+              </span>
+              <!-- Countdown tag -->
+              <span *ngIf="row.authDueDate && getDueDateInfo(row).level !== 'none'"
+                    class="mad-due-tag"
+                    [ngClass]="{
+                      'mad-due--overdue': getDueDateInfo(row).level === 'overdue',
+                      'mad-due--warning': getDueDateInfo(row).level === 'warning',
+                      'mad-due--safe':    getDueDateInfo(row).level === 'safe'
+                    }"
+                    [matTooltip]="getDueDateInfo(row).tooltip">
+                <mat-icon *ngIf="getDueDateInfo(row).level === 'overdue'">warning</mat-icon>
+                <mat-icon *ngIf="getDueDateInfo(row).level === 'warning'">timelapse</mat-icon>
+                {{ getDueDateInfo(row).label }}
+              </span>
+            </div>
           </div>
 
           <!-- Next Review -->
@@ -253,7 +255,7 @@
 
           <!-- Individual decision lines (each procedure) -->
           <div class="mad-ds-lines" *ngIf="getDecisionStatuses(row).length > 0">
-            <div class="mad-ds-line" *ngFor="let dec of getDecisionStatuses(row)">
+            <div class="mad-ds-line" *ngFor="let dec of getVisibleDecisions(row)">
               <!-- Procedure code chip -->
               <span class="mad-ds-code" [matTooltip]="dec.procedureDescription || ''">
                 {{ dec.serviceCode }}
@@ -284,6 +286,18 @@
                 </span>
               </div>
             </div>
+
+            <!-- Expand / Collapse toggle (only when more than 1 decision) -->
+            <a class="mad-ds-expand-link"
+               *ngIf="getDecisionStatuses(row).length > 1"
+               (click)="toggleDecisionExpand(row.authNumber); $event.stopPropagation()">
+              <mat-icon class="mad-ds-expand-icon">
+                {{ isDecisionsExpanded(row.authNumber) ? 'expand_less' : 'expand_more' }}
+              </mat-icon>
+              {{ isDecisionsExpanded(row.authNumber)
+                   ? 'Show less'
+                   : 'Show all ' + getDecisionStatuses(row).length + ' decisions' }}
+            </a>
           </div>
 
         </div>

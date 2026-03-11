@@ -341,7 +341,7 @@
                    placeholder="Ask AI about this case..."
                    [(ngModel)]="aiQuery"
                    (keydown.enter)="askAi()" />
-            <button class="cw-ai-send" (click)="askAi()" [disabled]="!aiQuery?.trim()">→</button>
+            <button class="cw-ai-send" (click)="askAi()" [disabled]="!aiQuery.trim()">→</button>
           </div>
         </div>
       </ng-container>

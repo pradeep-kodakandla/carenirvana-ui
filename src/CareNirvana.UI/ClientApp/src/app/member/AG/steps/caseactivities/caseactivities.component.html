@@ -103,7 +103,7 @@
         <button type="button"
                 class="btn btn-sm btn-link"
                 (click)="viewAll.emit()">
-          View all activities ({{ activities?.length || 0 }})
+          View all activities ({{ activities.length || 0 }})
         </button>
       </div>
     </div>
@@ -213,7 +213,7 @@
       <h3>📊 Activities Summary</h3>
 
       <div class="summary-grid">
-        <p><strong>Total Activities:</strong> {{ activities?.length || 0 }}</p>
+        <p><strong>Total Activities:</strong> {{ activities.length || 0 }}</p>
         <p><strong>Completed:</strong> {{ getCompletedCount() }}</p>
         <p><strong>Pending:</strong> {{ getPendingCount() }}</p>
         <p><strong>High Priority:</strong> {{ getPriorityCount('High') }}</p>
