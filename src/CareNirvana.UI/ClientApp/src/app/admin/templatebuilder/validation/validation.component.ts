@@ -29,7 +29,7 @@ interface ValidationRule {
 @Component({
   selector: 'app-validation',
   templateUrl: './validation.component.html',
-  styleUrl: './validation.component.css'
+  styleUrls: ['./validation.component.css']
 })
 export class ValidationComponent implements OnInit {
 
@@ -56,6 +56,8 @@ export class ValidationComponent implements OnInit {
   saving = false;
   deleting = false;
   headerError: string | null = null;
+  headerSuccess: string | null = null;
+  private successTimer: any = null;
 
   private originalSnapshotJson: string | null = null; // for "Cancel" (revert)
 
@@ -96,8 +98,65 @@ export class ValidationComponent implements OnInit {
     { label: 'Numeric Range', value: '{A} >= {CONST} && {A} <= {CONST2}', dependsOn: ['{A}', '{CONST}', '{CONST2}'], message: '{A} must be between {CONST} and {CONST2}.', tempConstant: '', tempConstant2: '' },
   ];
 
+  // ====== UM-specific advanced presets (configurable before adding) ======
+  duplicateCheckConfig = {
+    expanded: false,
+    matchFields: ['treatmentType', 'procedure1_procedureCode', 'beginDate', 'endDate'] as string[],
+    excludeStatuses: ['3', '6'] as string[],
+    dateOverlapDays: 0,
+    errorMessage: 'Potential duplicate authorization found. An existing auth with matching criteria and overlapping dates was detected. Please verify before saving.'
+  };
+
+  blockCloseConfig = {
+    expanded: false,
+    triggerStatuses: ['2', '4'] as string[],
+    blockingDecisionStatuses: ['2'] as string[],
+    requireDecisionExists: true,
+    errorMessage: 'Cannot close this authorization. One or more decisions are still in progress. Please finalize all decisions before closing.'
+  };
+
+  // Lookup options for status pickers
+  authStatusOptions: UiSmartOption<string>[] = [
+    { label: 'Open', value: '1' },
+    { label: 'Close', value: '2' },
+    { label: 'Cancelled', value: '3' },
+    { label: 'Close and Adjusted', value: '4' },
+    { label: 'Reopen', value: '5' },
+    { label: 'Withdrawn', value: '6' }
+  ];
+
+  decisionStatusOptions: UiSmartOption<string>[] = [
+    { label: 'Approved', value: '1' },
+    { label: 'Pended', value: '2' },
+    { label: 'Denied', value: '3' },
+    { label: 'Void', value: '4' },
+    { label: 'Partial Approval', value: '5' }
+  ];
+
   allFields: { id: string; label: string }[] = [];
   allAliases: string[] = [];
+
+  // ====== Dropdown option arrays for ui-smart-dropdown ======
+  operatorOptions: UiSmartOption<string>[] = [
+    { label: 'Greater than', value: '>' },
+    { label: 'Less than', value: '<' },
+    { label: 'Equal to', value: '==' },
+    { label: 'Not Equal to', value: '!=' },
+    { label: '>= (Not less than)', value: '>=' },
+    { label: '<= (Not greater than)', value: '<=' },
+    { label: 'Is NULL', value: '== null' },
+    { label: 'Is NOT NULL', value: '!= null' }
+  ];
+
+  logicalOptions: UiSmartOption<string>[] = [
+    { label: '--', value: '' },
+    { label: 'AND', value: '&&' },
+    { label: 'OR', value: '||' }
+  ];
+
+  // These are recomputed when allFields changes
+  fieldOptions: UiSmartOption<string>[] = [];
+  rightValueOptions: UiSmartOption<string>[] = [];
 
   autoCompleteControl = new FormControl('');
   filteredOptions$!: Observable<string[]>;
@@ -107,8 +166,18 @@ export class ValidationComponent implements OnInit {
   testResult: string | null = null;
 
   @ViewChild('inputElement', { static: false }) inputElement!: ElementRef<HTMLInputElement>;
-  @ViewChild(MatPaginator) paginator!: MatPaginator;
-  @ViewChild(MatSort) sort!: MatSort;
+
+  // Setter-based ViewChild: re-attaches paginator/sort every time *ngIf recreates them
+  @ViewChild(MatPaginator) set matPaginator(paginator: MatPaginator) {
+    if (paginator) {
+      this.dataSource.paginator = paginator;
+    }
+  }
+  @ViewChild(MatSort) set matSort(sort: MatSort) {
+    if (sort) {
+      this.dataSource.sort = sort;
+    }
+  }
 
   constructor(
     private cfgService: CfgvalidationService,
@@ -127,8 +196,8 @@ export class ValidationComponent implements OnInit {
   }
 
   ngAfterViewInit() {
-    this.dataSource.paginator = this.paginator;
-    this.dataSource.sort = this.sort;
+    // Paginator and sort are auto-attached via ViewChild setters
+    // (required because *ngIf destroys/recreates the table DOM)
   }
 
   // =========================
@@ -209,6 +278,7 @@ export class ValidationComponent implements OnInit {
   onValidationSelected(validationId: number | null) {
     this.selectedValidationId = validationId;
     this.headerError = null;
+    this.headerSuccess = null;
 
     if (!validationId) {
       this.clearEditor(false);
@@ -244,6 +314,7 @@ export class ValidationComponent implements OnInit {
 
   saveValidation() {
     this.headerError = null;
+    this.headerSuccess = null;
 
     if (!this.selectedModuleId) {
       this.headerError = 'Module is required.';
@@ -269,8 +340,8 @@ export class ValidationComponent implements OnInit {
         next: () => {
           this.saving = false;
           this.loadValidations(this.selectedModuleId!);
-          // refresh snapshot
           this.originalSnapshotJson = JSON.stringify({ validationName: this.validationName, rules: this.dataSource.data });
+          this.showSuccess('Validation saved successfully.');
         },
         error: () => {
           this.saving = false;
@@ -285,9 +356,9 @@ export class ValidationComponent implements OnInit {
           this.loadValidations(this.selectedModuleId!);
           if (newId) {
             this.selectedValidationId = newId;
-            // after list reload, keep selection stable (best effort)
             setTimeout(() => this.onValidationSelected(newId), 200);
           }
+          this.showSuccess('Validation created successfully.');
         },
         error: () => {
           this.saving = false;
@@ -307,6 +378,7 @@ export class ValidationComponent implements OnInit {
         const moduleId = this.selectedModuleId;
         this.clearEditor(true);
         if (moduleId) this.loadValidations(moduleId);
+        this.showSuccess('Validation deleted successfully.');
       },
       error: () => {
         this.deleting = false;
@@ -341,7 +413,21 @@ export class ValidationComponent implements OnInit {
     this.showTabs = false;
     this.testResult = null;
     this.headerError = null;
+    this.headerSuccess = null;
     this.resetBuilder();
+  }
+
+  /** Show a success message that auto-clears after a delay */
+  private showSuccess(message: string, durationMs = 4000): void {
+    this.headerError = null;
+    this.headerSuccess = message;
+    if (this.successTimer) {
+      clearTimeout(this.successTimer);
+    }
+    this.successTimer = setTimeout(() => {
+      this.headerSuccess = null;
+      this.successTimer = null;
+    }, durationMs);
   }
 
   private loadRulesFromJson(json: string) {
@@ -378,6 +464,14 @@ export class ValidationComponent implements OnInit {
       label: f.displayName || f.label || f.id || 'Unnamed Field'
     }));
     this.allAliases = Array.from(new Set(fields.map((f: any) => f.displayName || f.label).filter(Boolean)));
+
+    // Rebuild ui-smart-dropdown option arrays
+    this.fieldOptions = this.allFields.map(f => ({ label: f.label, value: f.id }));
+    this.rightValueOptions = [
+      { label: 'Now', value: 'now' },
+      { label: 'Constant', value: 'constant' },
+      ...this.fieldOptions
+    ];
   }
 
   private setupAutocomplete() {
@@ -466,6 +560,7 @@ export class ValidationComponent implements OnInit {
       this.dataSource.data = [...this.dataSource.data, newRule];
       this.autoCompleteControl.setValue('');
       this.newRuleText = '';
+      this.showTabs = false;
     } catch {
       this.generateError = true;
     }
@@ -486,6 +581,7 @@ export class ValidationComponent implements OnInit {
 
     this.dataSource.data = [...this.dataSource.data, newRule];
     this.resetBuilder();
+    this.showTabs = false;
   }
 
   testStructuredRule() {
@@ -493,10 +589,8 @@ export class ValidationComponent implements OnInit {
     this.testResult = this.buildStructuredExpression() ? 'Looks valid.' : 'Please complete required fields.';
   }
 
-  removeValidation(index: number) {
-    const copy = [...this.dataSource.data];
-    copy.splice(index, 1);
-    this.dataSource.data = copy;
+  removeValidation(ruleId: string) {
+    this.dataSource.data = this.dataSource.data.filter(r => r.id !== ruleId);
   }
 
   getFieldLabel(fieldId: string): string {
@@ -550,6 +644,227 @@ export class ValidationComponent implements OnInit {
     // reset preset temps
     preset.tempConstant = '';
     preset.tempConstant2 = '';
+    this.showTabs = false;
+  }
+
+  // ====== UM Advanced Preset — Configuration Methods ======
+
+  /** Build DUPLICATE_CHECK expression from current config */
+  get duplicateCheckExpression(): string {
+    const cfg = this.duplicateCheckConfig;
+    const fields = cfg.matchFields.join(',');
+    const excludes = cfg.excludeStatuses.join(',');
+    return `DUPLICATE_CHECK(${fields}|${excludes}|${cfg.dateOverlapDays})`;
+  }
+
+  /** Build BLOCK_CLOSE expression from current config */
+  get blockCloseExpression(): string {
+    const cfg = this.blockCloseConfig;
+    const triggers = cfg.triggerStatuses.join(',');
+    const blocking = cfg.blockingDecisionStatuses.join(',');
+    return `BLOCK_CLOSE(${triggers}|${blocking}|${cfg.requireDecisionExists})`;
+  }
+
+  /** Toggle a field in the duplicate check match list */
+  toggleMatchField(fieldId: string): void {
+    const list = this.duplicateCheckConfig.matchFields;
+    const idx = list.indexOf(fieldId);
+    if (idx >= 0) {
+      list.splice(idx, 1);
+    } else {
+      list.push(fieldId);
+    }
+  }
+
+  isMatchFieldSelected(fieldId: string): boolean {
+    return this.duplicateCheckConfig.matchFields.includes(fieldId);
+  }
+
+  /** Toggle an auth status in the exclude list (for duplicate check) */
+  toggleExcludeStatus(statusId: string): void {
+    const list = this.duplicateCheckConfig.excludeStatuses;
+    const idx = list.indexOf(statusId);
+    if (idx >= 0) {
+      list.splice(idx, 1);
+    } else {
+      list.push(statusId);
+    }
+  }
+
+  isExcludeStatusSelected(statusId: string): boolean {
+    return this.duplicateCheckConfig.excludeStatuses.includes(statusId);
+  }
+
+  /** Toggle an auth status that triggers the close prevention check */
+  toggleTriggerStatus(statusId: string): void {
+    const list = this.blockCloseConfig.triggerStatuses;
+    const idx = list.indexOf(statusId);
+    if (idx >= 0) {
+      list.splice(idx, 1);
+    } else {
+      list.push(statusId);
+    }
+  }
+
+  isTriggerStatusSelected(statusId: string): boolean {
+    return this.blockCloseConfig.triggerStatuses.includes(statusId);
+  }
+
+  /** Toggle a decision status that blocks closing */
+  toggleBlockingDecisionStatus(statusId: string): void {
+    const list = this.blockCloseConfig.blockingDecisionStatuses;
+    const idx = list.indexOf(statusId);
+    if (idx >= 0) {
+      list.splice(idx, 1);
+    } else {
+      list.push(statusId);
+    }
+  }
+
+  isBlockingDecisionStatusSelected(statusId: string): boolean {
+    return this.blockCloseConfig.blockingDecisionStatuses.includes(statusId);
+  }
+
+  /** Resolve a status ID to its display label */
+  getAuthStatusLabel(id: string): string {
+    return this.authStatusOptions.find(o => o.value === id)?.label || id;
+  }
+
+  getDecisionStatusLabel(id: string): string {
+    return this.decisionStatusOptions.find(o => o.value === id)?.label || id;
+  }
+
+  /** Resolve match field IDs to comma-separated labels (for template binding) */
+  getMatchFieldLabels(): string {
+    return this.duplicateCheckConfig.matchFields
+      .map(id => this.getFieldLabel(id))
+      .join(', ');
+  }
+
+  /** Can the duplicate check rule be added? (needs at least 1 match field) */
+  isDupCheckValid(): boolean {
+    return this.duplicateCheckConfig.matchFields.length > 0;
+  }
+
+  /** Can the block-close rule be added? (needs trigger + blocking statuses) */
+  isBlockCloseValid(): boolean {
+    return this.blockCloseConfig.triggerStatuses.length > 0
+        && this.blockCloseConfig.blockingDecisionStatuses.length > 0;
+  }
+
+  /** Add the configured duplicate check rule to the table */
+  addDuplicateCheckRule(): void {
+    const cfg = this.duplicateCheckConfig;
+    const rule: ValidationRule = {
+      id: uuidv4(),
+      errorMessage: cfg.errorMessage,
+      expression: this.duplicateCheckExpression,
+      dependsOn: [...cfg.matchFields],
+      enabled: true,
+      isError: true
+    };
+    this.dataSource.data = [...this.dataSource.data, rule];
+    cfg.expanded = false;
+    this.showTabs = false;
+  }
+
+  /** Add the configured block-close rule to the table */
+  addBlockCloseRule(): void {
+    const cfg = this.blockCloseConfig;
+    const rule: ValidationRule = {
+      id: uuidv4(),
+      errorMessage: cfg.errorMessage,
+      expression: this.blockCloseExpression,
+      dependsOn: ['authStatus', 'decisionDetails'],
+      enabled: true,
+      isError: true
+    };
+    this.dataSource.data = [...this.dataSource.data, rule];
+    cfg.expanded = false;
+    this.showTabs = false;
+  }
+
+  /**
+   * Evaluates a BLOCK_CLOSE expression against the current auth data.
+   * Call this from ValidationExpressionsService.evaluateRule().
+   *
+   * Usage:
+   *   const result = this.evaluateBlockClose(authData, 'BLOCK_CLOSE(2,4|2|true)');
+   *   if (!result.valid) showError(result.error);
+   */
+  evaluateBlockClose(authData: any, expression: string): { valid: boolean; error?: string } {
+    // Parse: BLOCK_CLOSE(triggerStatuses|blockingDecisionStatuses|requireDecisionExists)
+    const inner = expression.replace('BLOCK_CLOSE(', '').replace(')', '');
+    const parts = inner.split('|');
+
+    const triggerStatuses = (parts[0] || '2,4').split(',').map(s => s.trim());
+    const blockingStatuses = (parts[1] || '2').split(',').map(s => s.trim());
+    const requireExists = (parts[2] || 'true').trim() === 'true';
+
+    const currentStatus = String(authData?.authStatus ?? '');
+
+    // Only enforce when auth status is one of the trigger statuses
+    if (!triggerStatuses.includes(currentStatus)) {
+      return { valid: true };
+    }
+
+    const decisions: any[] = authData?.decisionDetails || [];
+
+    // Must have at least one decision?
+    if (requireExists && decisions.length === 0) {
+      return {
+        valid: false,
+        error: 'Cannot close authorization — no decisions have been recorded. At least one decision must be finalized before closing.'
+      };
+    }
+
+    // Check for any decisions in a blocking status (or null = not yet decided)
+    const inProgress = decisions.filter(d => {
+      const status = d?.data?.decisionStatus;
+      return status == null || blockingStatuses.includes(String(status));
+    });
+
+    if (inProgress.length > 0) {
+      return {
+        valid: false,
+        error: `Cannot close authorization — ${inProgress.length} decision(s) still in progress (Pended or not yet decided). All decisions must be finalized before closing.`
+      };
+    }
+
+    return { valid: true };
+  }
+
+  /**
+   * Parses a DUPLICATE_CHECK expression into structured params for the backend API call.
+   * The actual API call should be made by ValidationExpressionsService.
+   *
+   * Usage:
+   *   const params = this.parseDuplicateCheck(authData, 'DUPLICATE_CHECK(treatmentType,...|3,6|0)');
+   *   // Then call: cfgService.checkDuplicate(params)
+   */
+  parseDuplicateCheck(authData: any, expression: string): any {
+    const inner = expression.replace('DUPLICATE_CHECK(', '').replace(')', '');
+    const parts = inner.split('|');
+
+    const matchFieldIds = (parts[0] || '').split(',').map(s => s.trim());
+    const excludeStatuses = (parts[1] || '3,6').split(',').map(s => s.trim());
+    const dateOverlapDays = parseInt(parts[2] || '0', 10) || 0;
+
+    // Build match criteria from current auth data
+    const matchFields: Record<string, any> = {};
+    for (const fieldId of matchFieldIds) {
+      const value = authData?.[fieldId];
+      if (value !== undefined && value !== null) {
+        // For object fields (like procedure code), extract the code
+        matchFields[fieldId] = typeof value === 'object' ? (value.code || value.id || value) : value;
+      }
+    }
+
+    return {
+      matchFields,
+      excludeStatuses,
+      dateOverlapDays
+    };
   }
 
   isValidStructuredRule(): boolean {
@@ -659,6 +974,11 @@ export class ValidationComponent implements OnInit {
       presetConstant: '',
       presetConstant2: ''
     };
+  }
+
+  /** Add Rule is only available when user has selected a validation or entered a name */
+  get canAddRule(): boolean {
+    return !!this.selectedValidationId || !!(this.validationName && this.validationName.trim());
   }
 
   onFocus() { this.isFocused = true; }

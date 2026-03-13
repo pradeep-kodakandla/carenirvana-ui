@@ -1,5 +1,5 @@
 <div class="validation-page">
-  <div class="validation-shell" style="background-color: transparent !important; box-shadow:none;">
+  <div class="validation-shell">
     <div class="validation-header">
       <div class="header-grid">
         <div class="header-left">
@@ -13,15 +13,17 @@
         </div>
 
         <div class="header-right">
-          <!-- Select existing validation (also using ui-smart-dropdown for consistency) -->
-          <ui-smart-dropdown class="header-field"
-                             [options]="validationOptions"
-                             [(ngModel)]="selectedValidationId"
-                             (valueChange)="onValidationSelected($event)"
-                             label="Select Validation"
-                             placeholder="Choose..."
-                             [clearable]="true">
-          </ui-smart-dropdown>
+          <!-- Select existing validation -->
+          <div class="smart-dropdown-wrap header-field">
+            <label class="float-label">Select Validation</label>
+            <ui-smart-dropdown
+                               [options]="validationOptions"
+                               [(ngModel)]="selectedValidationId"
+                               (valueChange)="onValidationSelected($event)"
+                               placeholder="Choose..."
+                               [clearable]="true">
+            </ui-smart-dropdown>
+          </div>
 
           <div class="header-field name-field">
             <div class="float-input">
@@ -36,8 +38,7 @@
             </div>
           </div>
 
-
-          <div class="header-actions">
+          <div class="header-actions" *ngIf="!showTabs">
             <button mat-stroked-button color="primary" (click)="newValidation()">
               <mat-icon>add</mat-icon>
               New
@@ -49,13 +50,6 @@
               <mat-icon>delete</mat-icon>
               Delete
             </button>
-
-            <!--<button mat-stroked-button
-                    [disabled]="saving"
-                    (click)="cancelChanges()">
-              <mat-icon>undo</mat-icon>
-              Clear
-            </button>-->
 
             <button mat-raised-button color="primary"
                     [disabled]="saving || !selectedModuleId || !validationName.trim()"
@@ -71,10 +65,15 @@
         <mat-icon>error</mat-icon>
         <span>{{ headerError }}</span>
       </div>
+
+      <div *ngIf="headerSuccess" class="header-success">
+        <mat-icon>check_circle</mat-icon>
+        <span>{{ headerSuccess }}</span>
+      </div>
     </div>
 
     <div class="validation-content">
-      <!-- Builder Tabs (moved from dialog) -->
+      <!-- Builder Tabs -->
       <mat-tab-group *ngIf="showTabs" class="builder-tabs">
         <mat-tab label="Structured Builder">
           <div class="builder-panel">
@@ -86,40 +85,40 @@
               </mat-radio-group>
             </div>
 
-            <!-- Simple -->
+            <!-- ========== Simple Mode ========== -->
             <div *ngIf="builder.mode === 'simple'" class="row mb-3">
               <div class="col-md-4">
-                <label>Left Field</label>
-                <select class="form-select" [(ngModel)]="builder.leftField">
-                  <option value="">-- Select Field --</option>
-                  <option *ngFor="let field of allFields" [value]="field.id">{{ field.label }}</option>
-                </select>
+                <div class="smart-dropdown-wrap">
+                  <label class="float-label">Left Field</label>
+                  <ui-smart-dropdown
+                                     [options]="fieldOptions"
+                                     [(ngModel)]="builder.leftField"
+                                     placeholder="Select Field">
+                  </ui-smart-dropdown>
+                </div>
               </div>
 
               <div class="col-md-2">
-                <label>Operator</label>
-                <select class="form-select" [(ngModel)]="builder.operator">
-                  <option value=">">Greater than</option>
-                  <option value="<">Less than</option>
-                  <option value="==">Equal to</option>
-                  <option value="!=">Not Equal to</option>
-                  <option value=">=">>= (Not less than)</option>
-                  <option value="<="><= (Not greater than)</option>
-                  <option value="== null">Is NULL</option>
-                  <option value="!= null">Is NOT NULL</option>
-                </select>
+                <div class="smart-dropdown-wrap">
+                  <label class="float-label">Operator</label>
+                  <ui-smart-dropdown
+                                     [options]="operatorOptions"
+                                     [(ngModel)]="builder.operator"
+                                     placeholder="Operator">
+                  </ui-smart-dropdown>
+                </div>
               </div>
 
               <div class="col-md-4" *ngIf="builder.operator !== '== null' && builder.operator !== '!= null'">
-                <label>Right Value</label>
-                <select class="form-select"
-                        [(ngModel)]="builder.rightField"
-                        (change)="builder.rightConstant = ''; onRightValueChange()">
-                  <option value="">-- Select Value --</option>
-                  <option value="now">Now</option>
-                  <option value="constant">Constant</option>
-                  <option *ngFor="let field of allFields" [value]="field.id">{{ field.label }}</option>
-                </select>
+                <div class="smart-dropdown-wrap">
+                  <label class="float-label">Right Value</label>
+                  <ui-smart-dropdown
+                                     [options]="rightValueOptions"
+                                     [(ngModel)]="builder.rightField"
+                                     (valueChange)="builder.rightConstant = ''; onRightValueChange()"
+                                     placeholder="Select Value">
+                  </ui-smart-dropdown>
+                </div>
 
                 <input *ngIf="builder.rightField === 'constant'"
                        type="number"
@@ -129,40 +128,40 @@
               </div>
             </div>
 
-            <!-- Conditional first condition -->
+            <!-- ========== Conditional Mode — First Condition ========== -->
             <div *ngIf="builder.mode === 'conditional'" class="row mb-3">
               <div class="col-md-4">
-                <label>Left Condition</label>
-                <select class="form-select" [(ngModel)]="builder.leftField">
-                  <option value="">-- Select Field --</option>
-                  <option *ngFor="let field of allFields" [value]="field.id">{{ field.label }}</option>
-                </select>
+                <div class="smart-dropdown-wrap">
+                  <label class="float-label">Left Condition</label>
+                  <ui-smart-dropdown
+                                     [options]="fieldOptions"
+                                     [(ngModel)]="builder.leftField"
+                                     placeholder="Select Field">
+                  </ui-smart-dropdown>
+                </div>
               </div>
 
               <div class="col-md-2">
-                <label>Operator</label>
-                <select class="form-select" [(ngModel)]="builder.operator">
-                  <option value=">">Greater than</option>
-                  <option value="<">Less than</option>
-                  <option value="==">Equal to</option>
-                  <option value="!=">Not Equal to</option>
-                  <option value=">=">>= (Not less than)</option>
-                  <option value="<="><= (Not greater than)</option>
-                  <option value="== null">Is NULL</option>
-                  <option value="!= null">Is NOT NULL</option>
-                </select>
+                <div class="smart-dropdown-wrap">
+                  <label class="float-label">Operator</label>
+                  <ui-smart-dropdown
+                                     [options]="operatorOptions"
+                                     [(ngModel)]="builder.operator"
+                                     placeholder="Operator">
+                  </ui-smart-dropdown>
+                </div>
               </div>
 
               <div class="col-md-4" *ngIf="builder.operator !== '== null' && builder.operator !== '!= null'">
-                <label>Right Value</label>
-                <select class="form-select"
-                        [(ngModel)]="builder.rightField"
-                        (change)="builder.rightConstant = ''; onRightValueChange()">
-                  <option value="">-- Select Value --</option>
-                  <option value="now">Now</option>
-                  <option value="constant">Constant</option>
-                  <option *ngFor="let field of allFields" [value]="field.id">{{ field.label }}</option>
-                </select>
+                <div class="smart-dropdown-wrap">
+                  <label class="float-label">Right Value</label>
+                  <ui-smart-dropdown
+                                     [options]="rightValueOptions"
+                                     [(ngModel)]="builder.rightField"
+                                     (valueChange)="builder.rightConstant = ''; onRightValueChange()"
+                                     placeholder="Select Value">
+                  </ui-smart-dropdown>
+                </div>
                 <input *ngIf="builder.rightField === 'constant'"
                        type="number"
                        class="form-control mt-2"
@@ -171,49 +170,51 @@
               </div>
 
               <div class="col-md-2">
-                <label>Logical</label>
-                <select class="form-select" [(ngModel)]="builder.logical">
-                  <option value="">--</option>
-                  <option value="&&">AND</option>
-                  <option value="||">OR</option>
-                </select>
+                <div class="smart-dropdown-wrap">
+                  <label class="float-label">Logical</label>
+                  <ui-smart-dropdown
+                                     [options]="logicalOptions"
+                                     [(ngModel)]="builder.logical"
+                                     placeholder="--">
+                  </ui-smart-dropdown>
+                </div>
               </div>
             </div>
 
-            <!-- Conditional second condition -->
+            <!-- ========== Conditional Mode — Second Condition ========== -->
             <div *ngIf="builder.mode === 'conditional' && builder.logical" class="row mb-3">
               <div class="col-md-4">
-                <label>Left Field 2</label>
-                <select class="form-select" [(ngModel)]="builder.leftField2">
-                  <option value="">-- Select Field --</option>
-                  <option *ngFor="let field of allFields" [value]="field.id">{{ field.label }}</option>
-                </select>
+                <div class="smart-dropdown-wrap">
+                  <label class="float-label">Left Field 2</label>
+                  <ui-smart-dropdown
+                                     [options]="fieldOptions"
+                                     [(ngModel)]="builder.leftField2"
+                                     placeholder="Select Field">
+                  </ui-smart-dropdown>
+                </div>
               </div>
 
               <div class="col-md-2">
-                <label>Op 2</label>
-                <select class="form-select" [(ngModel)]="builder.operator2">
-                  <option value=">">Greater than</option>
-                  <option value="<">Less than</option>
-                  <option value="==">Equal to</option>
-                  <option value="!=">Not Equal to</option>
-                  <option value=">=">>= (Not less than)</option>
-                  <option value="<="><= (Not greater than)</option>
-                  <option value="== null">Is NULL</option>
-                  <option value="!= null">Is NOT NULL</option>
-                </select>
+                <div class="smart-dropdown-wrap">
+                  <label class="float-label">Op 2</label>
+                  <ui-smart-dropdown
+                                     [options]="operatorOptions"
+                                     [(ngModel)]="builder.operator2"
+                                     placeholder="Operator">
+                  </ui-smart-dropdown>
+                </div>
               </div>
 
               <div class="col-md-4" *ngIf="builder.operator2 !== '== null' && builder.operator2 !== '!= null'">
-                <label>Right Value 2</label>
-                <select class="form-select"
-                        [(ngModel)]="builder.rightField2"
-                        (change)="builder.rightConstant2 = ''; onRightValueChange(true)">
-                  <option value="">-- Select Value --</option>
-                  <option value="now">Now</option>
-                  <option value="constant">Constant</option>
-                  <option *ngFor="let field of allFields" [value]="field.id">{{ field.label }}</option>
-                </select>
+                <div class="smart-dropdown-wrap">
+                  <label class="float-label">Right Value 2</label>
+                  <ui-smart-dropdown
+                                     [options]="rightValueOptions"
+                                     [(ngModel)]="builder.rightField2"
+                                     (valueChange)="builder.rightConstant2 = ''; onRightValueChange(true)"
+                                     placeholder="Select Value">
+                  </ui-smart-dropdown>
+                </div>
                 <input *ngIf="builder.rightField2 === 'constant'"
                        type="number"
                        class="form-control mt-2"
@@ -276,7 +277,7 @@
               </div>
 
               <button mat-raised-button color="primary" (click)="addGeneratedValidation()">
-                Generate & Add
+                Generate &amp; Add
               </button>
             </div>
 
@@ -288,29 +289,210 @@
 
         <mat-tab label="Presets">
           <div class="builder-panel">
+            <!-- UM Advanced Rules (at top) -->
+            <label class="um-presets-heading">UM Advanced Validations</label>
+
+            <!-- ======== Duplicate Check Config Card ======== -->
+            <div class="um-preset-card" [class.expanded]="duplicateCheckConfig.expanded">
+              <div class="um-preset-header">
+                <div>
+                  <div class="um-preset-title">Auth Duplicate Check</div>
+                  <div class="um-preset-desc">Check for existing auths with matching fields and overlapping dates before saving.</div>
+                </div>
+                <button mat-stroked-button color="primary"
+                        (click)="duplicateCheckConfig.expanded = !duplicateCheckConfig.expanded">
+                  <mat-icon>{{ duplicateCheckConfig.expanded ? 'expand_less' : 'settings' }}</mat-icon>
+                  {{ duplicateCheckConfig.expanded ? 'Collapse' : 'Configure' }}
+                </button>
+              </div>
+
+              <div *ngIf="duplicateCheckConfig.expanded" class="um-config-body">
+
+                <!-- Match Fields Picker -->
+                <div class="um-config-section">
+                  <label class="um-config-label">Match Fields <span class="um-config-hint">(select which fields must match to flag a duplicate)</span></label>
+                  <div class="chip-grid">
+                    <span *ngFor="let field of allFields"
+                          class="config-chip"
+                          [class.selected]="isMatchFieldSelected(field.id)"
+                          (click)="toggleMatchField(field.id)">
+                      {{ field.label }}
+                      <span class="chip-check" *ngIf="isMatchFieldSelected(field.id)">&#10003;</span>
+                    </span>
+                  </div>
+                  <div class="um-selected-summary" *ngIf="duplicateCheckConfig.matchFields.length > 0">
+                    Selected: {{ duplicateCheckConfig.matchFields.length }} field(s) —
+                    <em>{{ getMatchFieldLabels() }}</em>
+                  </div>
+                </div>
+
+                <!-- Exclude Auth Statuses -->
+                <div class="um-config-section">
+                  <label class="um-config-label">Exclude Auth Statuses <span class="um-config-hint">(auths with these statuses are ignored)</span></label>
+                  <div class="chip-grid">
+                    <span *ngFor="let opt of authStatusOptions"
+                          class="config-chip status-chip"
+                          [class.selected]="isExcludeStatusSelected(opt.value)"
+                          (click)="toggleExcludeStatus(opt.value)">
+                      {{ opt.label }}
+                      <span class="chip-check" *ngIf="isExcludeStatusSelected(opt.value)">&#10003;</span>
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Date Overlap Days -->
+                <div class="um-config-section">
+                  <label class="um-config-label">Date Overlap Tolerance <span class="um-config-hint">(days of gap still considered overlapping)</span></label>
+                  <input type="number"
+                         class="form-control um-config-input"
+                         [(ngModel)]="duplicateCheckConfig.dateOverlapDays"
+                         min="0"
+                         placeholder="0" />
+                </div>
+
+                <!-- Error Message -->
+                <div class="um-config-section">
+                  <label class="um-config-label">Error Message</label>
+                  <textarea class="form-control um-config-textarea"
+                            [(ngModel)]="duplicateCheckConfig.errorMessage"
+                            rows="2"></textarea>
+                </div>
+
+                <!-- Live Expression Preview -->
+                <div class="um-config-section">
+                  <label class="um-config-label">Expression Preview</label>
+                  <div class="preview-box">{{ duplicateCheckExpression }}</div>
+                </div>
+
+                <!-- Add Button -->
+                <div class="um-config-actions">
+                  <button mat-raised-button color="primary"
+                          [disabled]="!isDupCheckValid()"
+                          (click)="addDuplicateCheckRule()">
+                    <mat-icon>add</mat-icon>
+                    Add Duplicate Check Rule
+                  </button>
+                  <button mat-button (click)="duplicateCheckConfig.expanded = false">Cancel</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ======== Block Close Config Card ======== -->
+            <div class="um-preset-card" [class.expanded]="blockCloseConfig.expanded">
+              <div class="um-preset-header">
+                <div>
+                  <div class="um-preset-title">Prevent Close with In-Progress Decisions</div>
+                  <div class="um-preset-desc">Block closing an auth when decisions or activities are still pending.</div>
+                </div>
+                <button mat-stroked-button color="primary"
+                        (click)="blockCloseConfig.expanded = !blockCloseConfig.expanded">
+                  <mat-icon>{{ blockCloseConfig.expanded ? 'expand_less' : 'settings' }}</mat-icon>
+                  {{ blockCloseConfig.expanded ? 'Collapse' : 'Configure' }}
+                </button>
+              </div>
+
+              <div *ngIf="blockCloseConfig.expanded" class="um-config-body">
+
+                <!-- Trigger Auth Statuses -->
+                <div class="um-config-section">
+                  <label class="um-config-label">Trigger on Auth Status <span class="um-config-hint">(check runs when auth status is set to one of these)</span></label>
+                  <div class="chip-grid">
+                    <span *ngFor="let opt of authStatusOptions"
+                          class="config-chip status-chip"
+                          [class.selected]="isTriggerStatusSelected(opt.value)"
+                          (click)="toggleTriggerStatus(opt.value)">
+                      {{ opt.label }}
+                      <span class="chip-check" *ngIf="isTriggerStatusSelected(opt.value)">&#10003;</span>
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Blocking Decision Statuses -->
+                <div class="um-config-section">
+                  <label class="um-config-label">Blocking Decision Statuses <span class="um-config-hint">(block close if any decision has one of these statuses)</span></label>
+                  <div class="chip-grid">
+                    <span *ngFor="let opt of decisionStatusOptions"
+                          class="config-chip status-chip"
+                          [class.selected]="isBlockingDecisionStatusSelected(opt.value)"
+                          (click)="toggleBlockingDecisionStatus(opt.value)">
+                      {{ opt.label }}
+                      <span class="chip-check" *ngIf="isBlockingDecisionStatusSelected(opt.value)">&#10003;</span>
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Require Decision Exists -->
+                <div class="um-config-section">
+                  <label class="um-config-label">Also block if no decisions exist?</label>
+                  <mat-checkbox [(ngModel)]="blockCloseConfig.requireDecisionExists">
+                    Require at least one finalized decision before allowing close
+                  </mat-checkbox>
+                </div>
+
+                <!-- Error Message -->
+                <div class="um-config-section">
+                  <label class="um-config-label">Error Message</label>
+                  <textarea class="form-control um-config-textarea"
+                            [(ngModel)]="blockCloseConfig.errorMessage"
+                            rows="2"></textarea>
+                </div>
+
+                <!-- Live Expression Preview -->
+                <div class="um-config-section">
+                  <label class="um-config-label">Expression Preview</label>
+                  <div class="preview-box">{{ blockCloseExpression }}</div>
+                </div>
+
+                <!-- Add Button -->
+                <div class="um-config-actions">
+                  <button mat-raised-button color="primary"
+                          [disabled]="!isBlockCloseValid()"
+                          (click)="addBlockCloseRule()">
+                    <mat-icon>add</mat-icon>
+                    Add Close Prevention Rule
+                  </button>
+                  <button mat-button (click)="blockCloseConfig.expanded = false">Cancel</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Standard Field-Based Presets -->
+            <div class="um-presets-divider"></div>
+            <label class="um-presets-heading">Field-Based Rules</label>
+
             <div class="row mb-3" *ngFor="let preset of presets">
               <div class="col-md-4">
                 <label>{{ preset.label }}</label>
               </div>
               <div class="col-md-8">
-                <select class="form-select mb-2" (change)="onPresetFieldAChange($event)">
-                  <option value="">-- Select Field A --</option>
-                  <option *ngFor="let field of allFields" [value]="field.id">{{ field.label }}</option>
-                </select>
+                <div class="smart-dropdown-wrap mb-2">
+                  <label class="float-label">Field A</label>
+                  <ui-smart-dropdown
+                                     [options]="fieldOptions"
+                                     [(ngModel)]="builder.presetFieldA"
+                                     placeholder="Select Field A">
+                  </ui-smart-dropdown>
+                </div>
 
-                <select class="form-select mb-2"
-                        *ngIf="preset.dependsOn.includes('{B}')"
-                        (change)="onPresetFieldBChange($event)">
-                  <option value="">-- Select Field B --</option>
-                  <option *ngFor="let field of allFields" [value]="field.id">{{ field.label }}</option>
-                </select>
+                <div class="smart-dropdown-wrap mb-2"
+                     *ngIf="preset.dependsOn.includes('{B}')">
+                  <label class="float-label">Field B</label>
+                  <ui-smart-dropdown
+                                     [options]="fieldOptions"
+                                     [(ngModel)]="builder.presetFieldB"
+                                     placeholder="Select Field B">
+                  </ui-smart-dropdown>
+                </div>
 
-                <select class="form-select mb-2"
-                        *ngIf="preset.dependsOn.includes('{C}')"
-                        (change)="onPresetFieldCChange($event)">
-                  <option value="">-- Select Field C --</option>
-                  <option *ngFor="let field of allFields" [value]="field.id">{{ field.label }}</option>
-                </select>
+                <div class="smart-dropdown-wrap mb-2"
+                     *ngIf="preset.dependsOn.includes('{C}')">
+                  <label class="float-label">Field C</label>
+                  <ui-smart-dropdown
+                                     [options]="fieldOptions"
+                                     [(ngModel)]="builder.presetFieldC"
+                                     placeholder="Select Field C">
+                  </ui-smart-dropdown>
+                </div>
 
                 <input *ngIf="preset.dependsOn.includes('{CONST}')"
                        type="text"
@@ -343,17 +525,28 @@
         </mat-tab>
       </mat-tab-group>
 
-      <!-- Rules Table -->
-      <div class="table-container mt-3">
+      <!-- Rules Table — hidden while builder is open -->
+      <div class="table-container mt-3" *ngIf="!showTabs">
         <div class="d-flex justify-content-between align-items-center table-toolbar">
 
-          <div class="search-section">
-            <input type="text" placeholder="🔍 Search..." (input)="applyFilter($event)" class="search-input" />
+          <div class="search-box" [class.active]="isFocused">
+            <span class="search-icon">
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </span>
+            <input type="text"
+                   class="search-input"
+                   placeholder="Search rules..."
+                   (input)="applyFilter($event)"
+                   (focus)="onFocus()"
+                   (blur)="onBlur()" />
           </div>
 
-
-
-          <button mat-raised-button color="primary" (click)="showTabs = true">
+          <button mat-raised-button color="primary"
+                  [disabled]="!canAddRule"
+                  (click)="showTabs = true">
             <mat-icon>add</mat-icon>
             Add Rule
           </button>
@@ -380,21 +573,21 @@
             <ng-container matColumnDef="errorMessage">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Error Message</th>
               <td mat-cell *matCellDef="let rule">
-                <textarea class="form-control textarea-auto" [(ngModel)]="rule.errorMessage" rows="2"></textarea>
+                <textarea class="textarea-auto" [(ngModel)]="rule.errorMessage" rows="2"></textarea>
               </td>
             </ng-container>
 
             <ng-container matColumnDef="expression">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Expression</th>
               <td mat-cell *matCellDef="let rule">
-                <textarea class="form-control textarea-auto" [(ngModel)]="rule.expression" rows="2"></textarea>
+                <textarea class="textarea-auto" [(ngModel)]="rule.expression" rows="2"></textarea>
               </td>
             </ng-container>
 
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef>Actions</th>
-              <td mat-cell *matCellDef="let rule; let i = index">
-                <button mat-icon-button color="warn" (click)="removeValidation(i)">
+              <td mat-cell *matCellDef="let rule">
+                <button mat-icon-button color="warn" (click)="removeValidation(rule.id)">
                   <mat-icon>delete</mat-icon>
                 </button>
               </td>

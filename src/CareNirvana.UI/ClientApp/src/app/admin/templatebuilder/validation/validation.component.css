@@ -1,70 +1,80 @@
-/* Page + card */
+/* ============================================================
+   VALIDATION COMPONENT — Professional Enterprise Design
+   Palette: Indigo-600 primary, slate neutrals, clean depth
+   ============================================================ */
+
+/* ===== Page Shell ===== */
 .validation-page {
-  
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color: #1e293b;
 }
 
-.validation-shell{
-  border-radius: 12px;
-  padding: 12px;
+.validation-shell {
+  border-radius: 14px;
+  padding: 0;
+  background: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.04) !important;
+  overflow: hidden;
 }
 
-.validation-header{
-  padding-bottom: 10px;
-  border-bottom: 1px solid #efefef;
-}
-
-.validation-content{
-  padding-top: 12px;
-}
-
-
-/* Header */
+/* ===== Header ===== */
 .validation-header {
   width: 100%;
-  padding: 10px 12px 0 12px;
+  padding: 20px 24px 16px 24px;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
 }
 
 .header-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 10px;
+  gap: 16px;
 }
 
-/* Title row */
+/* ---- Title row ---- */
 .header-left .header-title {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .title-icon {
-  font-size: 22px;
-  height: 22px;
-  width: 22px;
-  opacity: 0.85;
+  font-size: 20px;
+  height: 36px;
+  width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef2ff;
+  color: #4f46e5;
+  border-radius: 10px;
+  flex-shrink: 0;
 }
 
 .title {
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 1.1;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #0f172a;
+  letter-spacing: -0.02em;
 }
 
 .subtitle {
-  font-size: 12px;
-  color: #6b6b6b;
-  line-height: 1.2;
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.3;
+  margin-top: 1px;
 }
 
-/* Toolbar row: fields + actions aligned */
+/* ---- Toolbar row ---- */
 .header-right {
   display: grid;
-  grid-template-columns: 180px 260px 1fr auto;
-  gap: 12px;
+  grid-template-columns: 220px minmax(320px, 1fr) auto;
+  gap: 14px;
   align-items: center;
 }
 
-/* consistent sizing */
 .header-field {
   width: 100%;
   min-width: 160px;
@@ -72,121 +82,722 @@
 
 .name-field {
   width: 100%;
+  min-width: 320px;
+  align-self: stretch;
 }
 
-/* action buttons: fixed alignment, no wrap chaos */
 .header-actions {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   justify-content: flex-end;
   align-items: center;
+  margin-left: auto;
   white-space: nowrap;
 }
 
-/* error */
+
+/* ============================================================
+   Floating-label inputs
+   ============================================================ */
+.float-input {
+  position: relative;
+  width: 100%;
+}
+
+.float-control {
+  width: 100%;
+  height: 40px;
+  padding: 10px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #1e293b;
+  outline: none;
+  background: #fff;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.float-control:hover {
+  border-color: #94a3b8;
+}
+
+.float-control:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.float-label {
+  position: absolute;
+  top: -7px;
+  left: 12px;
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+  background: #fff;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  z-index: 1;
+}
+
+.required {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+
+/* ============================================================
+   ui-smart-dropdown — border lives on the WRAPPER we control
+   ============================================================ */
+
+/*  The wrapper IS the visible bordered box  */
+.smart-dropdown-wrap {
+  position: relative;
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.smart-dropdown-wrap:hover {
+  border-color: #94a3b8;
+}
+
+.smart-dropdown-wrap:focus-within {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.smart-dropdown-wrap .float-label {
+  z-index: 1;
+}
+
+/*  The dropdown itself fills the wrapper — strip its own borders  */
+ui-smart-dropdown {
+  display: block;
+  width: 100%;
+}
+
+.smart-dropdown-wrap ui-smart-dropdown {
+  width: 100%;
+  min-height: 38px;
+}
+
+/*  Strip internal borders/outlines from the trigger — but keep text readable  */
+::ng-deep .smart-dropdown-wrap ui-smart-dropdown > div,
+::ng-deep .smart-dropdown-wrap ui-smart-dropdown > div > * {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/*  Ensure selected value text is visible  */
+::ng-deep .smart-dropdown-wrap ui-smart-dropdown {
+  color: #1e293b;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+/*  Restore border only on the popup/overlay panel (not the trigger)  */
+::ng-deep .cdk-overlay-pane,
+::ng-deep .smart-dropdown-panel,
+::ng-deep .dropdown-panel {
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+  background: #fff !important;
+}
+
+/*  Builder-panel specifics  */
+.builder-panel .smart-dropdown-wrap {
+  margin-bottom: 0;
+  background: #fff;
+}
+
+.builder-panel .smart-dropdown-wrap .float-label {
+  font-size: 11px;
+  font-weight: 600;
+  background: #fafbfe;
+}
+
+/*  Header specifics — label bg matches header gradient end  */
+.validation-header .smart-dropdown-wrap .float-label {
+  background: #fff;
+}
+
+
+/* ============================================================
+   Header Error
+   ============================================================ */
 .header-error {
-  margin: 4px 0 0 0;
-  padding: 8px 10px;
-  border: 1px solid rgba(176, 0, 32, 0.25);
+  margin: 12px 0 0 0;
+  padding: 10px 14px;
+  border: 1px solid #fecaca;
   border-radius: 8px;
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #b00020;
+  color: #dc2626;
   font-size: 13px;
+  font-weight: 500;
+  background: #fef2f2;
 }
 
-/* ===== Builder panels (no bg color) ===== */
+/* ============================================================
+   Header Success
+   ============================================================ */
+.header-success {
+  margin: 12px 0 0 0;
+  padding: 10px 14px;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #15803d;
+  font-size: 13px;
+  font-weight: 500;
+  background: #f0fdf4;
+}
+
+
+/* ============================================================
+   Content area
+   ============================================================ */
+.validation-content {
+  padding: 20px 24px 24px 24px;
+}
+
+
+/* ============================================================
+   Tabs — Professional segmented style
+   ============================================================ */
 .builder-tabs {
-  margin-top: 6px;
+  margin-top: 0;
 }
 
+/* Tab header bar */
+::ng-deep .builder-tabs .mat-mdc-tab-header,
+::ng-deep .builder-tabs .mat-tab-header {
+  border-bottom: 2px solid #e2e8f0;
+}
+
+/* All tabs — base */
+::ng-deep .builder-tabs .mat-mdc-tab,
+::ng-deep .builder-tabs .mat-tab-label {
+  min-width: 140px;
+  padding: 0 24px;
+  height: 44px;
+  opacity: 1;
+  transition: background-color 0.15s ease;
+}
+
+/* Active tab */
+::ng-deep .builder-tabs .mat-mdc-tab.mdc-tab--active,
+::ng-deep .builder-tabs .mat-tab-label-active {
+  background-color: #eef2ff;
+  border-radius: 8px 8px 0 0;
+}
+
+::ng-deep .builder-tabs .mat-mdc-tab.mdc-tab--active .mdc-tab__text-label,
+::ng-deep .builder-tabs .mat-tab-label-active {
+  color: #4f46e5 !important;
+  font-weight: 700;
+}
+
+/* Ink bar */
+::ng-deep .builder-tabs .mat-mdc-tab-header .mdc-tab-indicator__content--underline,
+::ng-deep .builder-tabs .mat-ink-bar {
+  background-color: #4f46e5 !important;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+}
+
+/* Inactive tab */
+::ng-deep .builder-tabs .mat-mdc-tab:not(.mdc-tab--active) .mdc-tab__text-label,
+::ng-deep .builder-tabs .mat-tab-label:not(.mat-tab-label-active) {
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* Hover inactive tab */
+::ng-deep .builder-tabs .mat-mdc-tab:not(.mdc-tab--active):hover,
+::ng-deep .builder-tabs .mat-tab-label:not(.mat-tab-label-active):hover {
+  background-color: #f8fafc;
+  border-radius: 8px 8px 0 0;
+}
+
+/* Remove Material ripple on tabs */
+::ng-deep .builder-tabs .mat-mdc-tab .mat-ripple,
+::ng-deep .builder-tabs .mat-mdc-tab .mdc-tab__ripple {
+  display: none;
+}
+
+
+/* ============================================================
+   Builder Panels
+   ============================================================ */
 .builder-panel {
-  margin-top: 12px;
-  border: 1px solid #e6e6e6;
+  margin-top: 16px;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
-  padding: 14px;
+  padding: 20px;
+  background: #fafbfe;
 }
 
-  /* Keep bootstrap inputs but make them match */
-  .builder-panel .form-select,
-  .builder-panel .form-control {
-    border-radius: 10px;
-    border: 1px solid #d9d9d9;
-    font-size: 13px;
-  }
+.builder-panel label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 6px;
+}
 
-  .builder-panel label {
-    font-size: 12px;
-    font-weight: 600;
-    color: #444;
-    margin-bottom: 6px;
-  }
+.builder-panel .form-control {
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  font-size: 14px;
+  font-family: inherit;
+  color: #1e293b;
+  height: 40px;
+  padding: 8px 14px;
+  background: #fff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
 
-/* Expression preview */
+.builder-panel .form-control:hover {
+  border-color: #94a3b8;
+}
+
+.builder-panel .form-control:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  outline: none;
+}
+
+/* Expression preview — monospace */
 .preview-box {
-  border: 1px solid #e6e6e6;
-  border-radius: 10px;
-  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
+  color: #334155;
+  background: #f1f5f9;
+  line-height: 1.5;
 }
 
-/* ===== Table area ===== */
+
+/* ============================================================
+   Buttons — Polished, enterprise-grade
+   ============================================================ */
+
+/* Base reset */
+.validation-page button[mat-raised-button],
+.validation-page button[mat-stroked-button],
+.validation-page button[mat-button],
+.validation-page button[mat-icon-button] {
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+/* ---- PRIMARY FILLED ---- */
+.validation-page button[mat-raised-button][color="primary"] {
+  background: #4f46e5;
+  color: #fff;
+  border: none;
+  padding: 8px 20px;
+  height: 38px;
+  box-shadow: 0 1px 2px rgba(79, 70, 229, 0.2), 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.validation-page button[mat-raised-button][color="primary"]:hover:not([disabled]) {
+  background: #4338ca;
+  box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3), 0 1px 6px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.validation-page button[mat-raised-button][color="primary"]:active:not([disabled]) {
+  background: #3730a3;
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(79, 70, 229, 0.2);
+}
+
+.validation-page button[mat-raised-button][color="primary"][disabled] {
+  background: #c7d2fe;
+  color: #fff;
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ---- PRIMARY OUTLINED (New) ---- */
+.validation-page button[mat-stroked-button][color="primary"] {
+  border: 1.5px solid #4f46e5;
+  color: #4f46e5;
+  background: #fff;
+  padding: 8px 20px;
+  height: 38px;
+}
+
+.validation-page button[mat-stroked-button][color="primary"]:hover:not([disabled]) {
+  background: #eef2ff;
+  border-color: #4338ca;
+  color: #4338ca;
+}
+
+.validation-page button[mat-stroked-button][color="primary"]:active:not([disabled]) {
+  background: #e0e7ff;
+}
+
+/* ---- DANGER OUTLINED (Delete) ---- */
+.validation-page button[mat-stroked-button][color="warn"] {
+  border: 1.5px solid #e2e8f0;
+  color: #64748b;
+  background: #fff;
+  padding: 8px 20px;
+  height: 38px;
+}
+
+.validation-page button[mat-stroked-button][color="warn"]:hover:not([disabled]) {
+  border-color: #fca5a5;
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+.validation-page button[mat-stroked-button][color="warn"]:active:not([disabled]) {
+  background: #fee2e2;
+}
+
+.validation-page button[mat-stroked-button][color="warn"][disabled] {
+  border-color: #e2e8f0;
+  color: #cbd5e1;
+  cursor: not-allowed;
+}
+
+/* ---- NEUTRAL OUTLINED (Test Rule) ---- */
+.validation-page button[mat-stroked-button][color="accent"] {
+  border: 1.5px solid #e2e8f0;
+  color: #475569;
+  background: #fff;
+  padding: 8px 20px;
+  height: 38px;
+}
+
+.validation-page button[mat-stroked-button][color="accent"]:hover:not([disabled]) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+/* ---- TEXT BUTTON (Close) ---- */
+.validation-page button[mat-button] {
+  color: #64748b;
+  padding: 8px 18px;
+  height: 38px;
+}
+
+.validation-page button[mat-button]:hover {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+/* ---- ICON BUTTON (row delete) ---- */
+.validation-page button[mat-icon-button][color="warn"] {
+  color: #94a3b8;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+}
+
+.validation-page button[mat-icon-button][color="warn"]:hover {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+/* Icons inside buttons */
+.validation-page button mat-icon {
+  font-size: 18px;
+  height: 18px;
+  width: 18px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+/* Override Material internal height */
+::ng-deep .validation-page .mat-mdc-button-base {
+  height: 38px !important;
+}
+
+::ng-deep .validation-page .mdc-button {
+  height: 38px !important;
+}
+
+
+/* ============================================================
+   Table Area
+   ============================================================ */
 .table-container {
-  margin-top: 14px;
-  padding-top: 10px;
-  border-top: 1px solid #efefef;
+  margin-top: 0;
+  padding-top: 0;
 }
 
 .table-toolbar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  padding-bottom: 10px;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 16px;
+  flex-wrap: wrap;
 }
 
-/* search */
+/* ===== Search Box ===== */
 .search-box {
   display: flex;
   align-items: center;
-  width: 420px;
-  max-width: 100%;
-  padding: 6px 10px;
-  border: 1px solid #e0e0e0;
-  border-radius: 999px;
+  flex: 1 1 320px;
+  max-width: 480px;
+  height: 38px;
+  padding: 0 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-  .search-box.active {
-    border-color: #bdbdbd;
-  }
+.search-box:hover {
+  border-color: #cbd5e1;
+}
+
+.search-box.active {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.search-icon {
+  display: flex;
+  align-items: center;
+  margin-right: 10px;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.search-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+}
 
 .search-input {
   border: none;
   outline: none;
   flex: 1;
   background: transparent;
-  font-size: 13px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #1e293b;
+  min-width: 0;
+  height: 100%;
 }
 
-/* textareas inside table */
+.search-input::placeholder {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+
+/* ===== Table styling ===== */
+.table-wrapper {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+
+/* Table header */
+::ng-deep .validation-page .mat-mdc-header-row,
+::ng-deep .validation-page .mat-header-row {
+  background: #f8fafc !important;
+  height: 48px;
+}
+
+::ng-deep .validation-page .mat-mdc-header-cell,
+::ng-deep .validation-page th.mat-header-cell {
+  color: #475569 !important;
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid #e2e8f0 !important;
+}
+
+/* Table rows */
+::ng-deep .validation-page .mat-mdc-row,
+::ng-deep .validation-page .mat-row {
+  transition: background-color 0.1s ease;
+}
+
+::ng-deep .validation-page .mat-mdc-row:hover,
+::ng-deep .validation-page .mat-row:hover {
+  background-color: #f8fafc !important;
+}
+
+::ng-deep .validation-page .mat-mdc-cell,
+::ng-deep .validation-page td.mat-cell {
+  border-bottom: 1px solid #f1f5f9 !important;
+  font-size: 14px;
+  color: #334155;
+  padding: 10px 16px;
+}
+
+/* Remove default elevation */
+::ng-deep .validation-page .mat-elevation-z1 {
+  box-shadow: none !important;
+}
+
+/* Paginator */
+::ng-deep .validation-page .mat-mdc-paginator,
+::ng-deep .validation-page .mat-paginator {
+  border-top: 1px solid #f1f5f9;
+  background: #fafbfe;
+  font-size: 13px;
+  color: #64748b;
+}
+
+
+/* Textarea inside table */
 .textarea-auto {
   width: 100%;
   font-size: 13px;
-  padding: 10px;
+  font-family: inherit;
+  padding: 8px 12px;
   resize: vertical;
-  border: 1px solid #d9d9d9;
-  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
   box-sizing: border-box;
-  background-color: transparent; /* no background blocks */
+  background-color: #fff;
+  color: #1e293b;
   min-height: 44px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Remove the old "common-button" forced blue (let Material theme handle it) */
-.common-button {
+.textarea-auto:hover {
+  border-color: #94a3b8;
+}
+
+.textarea-auto:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+
+/* No data state */
+.no-data {
+  padding: 40px 20px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 500;
+  border-top: 1px solid #f1f5f9;
+}
+
+
+/* ============================================================
+   Radio + Checkbox — match indigo theme
+   ============================================================ */
+::ng-deep .validation-page .mat-mdc-radio-button.mat-accent .mdc-radio__native-control:enabled:checked + .mdc-radio__background .mdc-radio__outer-circle,
+::ng-deep .validation-page .mat-radio-button.mat-accent.mat-radio-checked .mat-radio-outer-circle {
+  border-color: #4f46e5 !important;
+}
+
+::ng-deep .validation-page .mat-mdc-radio-button.mat-accent .mdc-radio__native-control:enabled:checked + .mdc-radio__background .mdc-radio__inner-circle,
+::ng-deep .validation-page .mat-radio-button.mat-accent.mat-radio-checked .mat-radio-inner-circle {
+  background-color: #4f46e5 !important;
+}
+
+::ng-deep .validation-page .mat-mdc-checkbox.mat-accent .mdc-checkbox__native-control:enabled:checked ~ .mdc-checkbox__background,
+::ng-deep .validation-page .mat-checkbox-checked .mat-checkbox-background {
+  background-color: #4f46e5 !important;
+  border-color: #4f46e5 !important;
+}
+
+
+/* ============================================================
+   Autocomplete (Natural Language tab)
+   ============================================================ */
+.autocomplete-container .form-control {
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  font-size: 14px;
+  font-family: inherit;
+  height: 40px;
+  color: #1e293b;
+  background: #fff;
+}
+
+.autocomplete-container .form-control:hover {
+  border-color: #94a3b8;
+}
+
+.autocomplete-container .form-control:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  outline: none;
+}
+
+.autocomplete-list {
   border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
 }
 
-/* Responsive */
+.autocomplete-item {
+  cursor: pointer;
+  font-size: 14px;
+  padding: 8px 14px;
+  color: #334155;
+  transition: background-color 0.1s ease;
+}
+
+.autocomplete-item:hover {
+  background-color: #eef2ff;
+  color: #4f46e5;
+}
+
+
+/* ============================================================
+   Test result alert
+   ============================================================ */
+.validation-page .alert-info {
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  color: #3730a3;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 13px;
+}
+
+
+/* ============================================================
+   Responsive
+   ============================================================ */
 @media (max-width: 1200px) {
   .header-right {
     grid-template-columns: 1fr 1fr;
@@ -199,149 +810,198 @@
     white-space: normal;
   }
 
+  .name-field {
+    min-width: unset;
+  }
+
   .search-box {
-    width: 100%;
+    max-width: 100%;
+    flex: 1 1 100%;
   }
 }
-
-/* Floating label input (matches your screenshot) */
-.float-input {
-  position: relative;
-  width: 100%;
-}
-
-.float-control {
-  width: 100%;
-  height: 36px;
-  padding: 12px 12px 10px 12px;
-  border: 1px solid #d6dbe3;
-  border-radius: 6px;
-  font-size: 14px;
-  outline: none;
-  background: transparent;
-  box-sizing: border-box;
-}
-
-  .float-control:focus {
-    border-color: #b9c2cf;
-    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.03);
-  }
-
-.float-label {
-  position: absolute;
-  top: -6px;
-  left: 12px;
-  padding: 0 3px;
-  font-size: 12px;
-  color: #2b2f36;
-  background: #fff; /* makes label sit cleanly on border */
-  line-height: 1;
-  font-weight: 500;
-}
-
-.required {
-  color: #d32f2f;
-  font-weight: 700;
-}
-
-/* Ensure name field aligns perfectly with dropdowns in header */
-.name-field {
-  align-self: stretch;
-}
-
-/* Header row: give name field more width */
-.header-right {
-  display: grid;
-  grid-template-columns: 200px minmax(420px, 1fr) auto;
-  gap: 12px;
-  align-items: center;
-}
-
-/* Make name field wider and consistent */
-.name-field {
-  min-width: 420px;
-}
-
-/* Force actions to the far right */
-.header-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  align-items: center;
-  margin-left: auto;
-  white-space: nowrap;
-}
-
-.table-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap; /* allows wrap on smaller screens */
-}
-
-/* search box fixed size */
-.search-box {
-  flex: 1 1 360px;
-  max-width: 520px;
-}
-
-/* dropdown sized nicely */
-.table-toolbar ui-smart-dropdown {
-  flex: 0 0 280px;
-  min-width: 260px;
-}
-
-/* Add rule aligned to right */
-.table-toolbar button {
-  margin-left: auto;
-}
-
-.search-section {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1 1 auto;
-  flex-wrap: nowrap;
-}
-
-.search-input {
-  flex: 1 1 auto;
-  min-width: 0;
-  width: auto;
-  height: 40px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  font-size: 14px;
-}
-
-.filter-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: 1px solid #d1d5db;
-  background: #fff;
-  border-radius: 8px;
-  cursor: pointer;
-  fill: #007BFF;
-}
-
-.no-data {
-  padding: 18px 12px;
-  text-align: center;
-  color: #6b6b6b;
-  font-size: 13px;
-  border: 1px dashed #e0e0e0;
-  border-radius: 10px;
-  margin-top: 10px;
-}
-
 
 @media (max-width: 600px) {
   .validation-header {
-    padding: 10px 10px 0 10px;
+    padding: 16px 16px 12px 16px;
   }
+
+  .validation-content {
+    padding: 16px;
+  }
+
+  .header-right {
+    grid-template-columns: 1fr;
+  }
+
+  .builder-panel {
+    padding: 14px;
+  }
+}
+
+
+/* ============================================================
+   UM Advanced Presets — Configurable Cards
+   ============================================================ */
+.um-presets-divider {
+  margin: 20px 0 16px 0;
+  border-top: 1px solid #e2e8f0;
+}
+
+.um-presets-heading {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 12px;
+  letter-spacing: -0.01em;
+}
+
+.um-preset-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 12px;
+  background: #fff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.um-preset-card:hover {
+  border-color: #cbd5e1;
+}
+
+.um-preset-card.expanded {
+  border-color: #a5b4fc;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.06);
+}
+
+.um-preset-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.um-preset-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 2px;
+}
+
+.um-preset-desc {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+/* ---- Config body (expanded) ---- */
+.um-config-body {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.um-config-section {
+  margin-bottom: 16px;
+}
+
+.um-config-label {
+  display: block;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #334155 !important;
+  margin-bottom: 8px;
+}
+
+.um-config-hint {
+  font-weight: 400 !important;
+  color: #94a3b8 !important;
+  font-size: 11px;
+}
+
+.um-config-input {
+  max-width: 120px;
+}
+
+.um-config-textarea {
+  font-size: 13px;
+  resize: vertical;
+  min-height: 44px;
+}
+
+.um-selected-summary {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.um-selected-summary em {
+  color: #475569;
+  font-style: normal;
+  font-weight: 500;
+}
+
+.um-config-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #f1f5f9;
+}
+
+
+/* ---- Chip Grid (field / status selector) ---- */
+.chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.config-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+  line-height: 1.3;
+}
+
+.config-chip:hover {
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+}
+
+.config-chip.selected {
+  background: #eef2ff;
+  border-color: #a5b4fc;
+  color: #4338ca;
+  font-weight: 600;
+}
+
+.config-chip.selected:hover {
+  background: #e0e7ff;
+  border-color: #818cf8;
+}
+
+.chip-check {
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+/* Status chips — slightly different colors per state */
+.config-chip.status-chip {
+  min-width: 60px;
+  justify-content: center;
+  text-align: center;
 }
