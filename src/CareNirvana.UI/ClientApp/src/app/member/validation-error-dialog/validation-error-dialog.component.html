@@ -12,6 +12,10 @@
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-  <button mat-button *ngIf="data.allowContinue" color="primary" (click)="dialogRef.close('continue')">Continue</button>
-  <button mat-button (click)="dialogRef.close()">Close</button>
+  <button mat-button *ngIf="data.allowContinue" color="primary" (click)="dialogRef.close('continue')">
+    {{ data.continueLabel || 'Continue' }}
+  </button>
+  <button mat-button (click)="dialogRef.close('close')">
+    {{ data.closeLabel || 'Close' }}
+  </button>
 </mat-dialog-actions>

@@ -3015,6 +3015,10 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       }
     }
 
+    // ── Duplicate authorization check (async — calls backend API) ──
+    const dupResult = await this.runDuplicateChecks();
+    if (dupResult === 'blocked') return;
+
     const userId = Number(sessionStorage.getItem('loggedInUserid') || 0);
 
     const authClassId = Number(this.unwrapValue(this.form.get('authClassId')?.value) || 0);
@@ -3344,7 +3348,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     const failedWarnings: any[] = [];
     const allMessages: Array<{ msg: string; type: 'error' | 'warning' }> = [];
 
-    const rules = (this.validationRules || []).filter(r => r?.enabled);
+    const rules = (this.validationRules || []).filter(
+      (r: any) => r?.enabled && !String(r?.expression ?? '').startsWith('DUPLICATE_CHECK(')
+    );
     if (!rules.length) return { failedErrors, failedWarnings, allMessages };
 
     // Build flat values using your existing renderSections + form
@@ -3427,6 +3433,251 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     return { failedErrors, failedWarnings, allMessages };
   }
 
+  // ============================================================
+  // Duplicate Authorization Check (async — backend API)
+  // ============================================================
+
+  /**
+   * Finds all DUPLICATE_CHECK rules, builds the API request from the
+   * current form data using each rule's dependsOn fields, calls the
+   * backend, and shows a dialog with any matching auth numbers.
+   *
+   * Returns 'blocked' if an error-level duplicate was found and the
+   * user chose not to continue, 'continue' otherwise.
+   */
+  private async runDuplicateChecks(): Promise<'continue' | 'blocked'> {
+    const rules = (this.validationRules || []).filter(
+      (r: any) => r?.enabled && String(r?.expression ?? '').startsWith('DUPLICATE_CHECK(')
+    );
+    if (!rules.length) return 'continue';
+
+    const memberDetailsId = Number(this.memberDetailsId || 0);
+    if (!memberDetailsId) return 'continue';
+
+    const authDetailId = Number(
+      this.pendingAuth?.authDetailId ?? this.pendingAuth?.id ?? 0
+    );
+
+    // Build flat values from the form (same approach as runTemplateValidation)
+    const allFields = this.collectAllRenderFields(this.renderSections);
+    const flatValues: Record<string, any> = {};
+    for (const f of allFields) {
+      const rawId = String((f as any)?._rawId ?? '').trim();
+      if (!rawId) continue;
+      const ctrl = this.form?.get((f as any).controlName);
+      if (!ctrl) continue;
+      const v = this.unwrapValue(ctrl.value);
+      if (flatValues[rawId] === undefined || flatValues[rawId] === null || flatValues[rawId] === '') {
+        flatValues[rawId] = v;
+      }
+    }
+
+    // Also merge in the existing pendingAuth data (for prefixed repeat fields like procedure1_procedureCode)
+    if (this.pendingAuth) {
+      const existing = this.safeParseJson(this.pendingAuth.jsonData) ?? {};
+      for (const [k, v] of Object.entries(existing)) {
+        if (flatValues[k] === undefined || flatValues[k] === null || flatValues[k] === '') {
+          flatValues[k] = v;
+        }
+      }
+    }
+
+    // Merge current form raw values (catches repeat-prefixed keys)
+    const rawForm = this.form?.getRawValue() ?? {};
+    for (const [k, v] of Object.entries(rawForm)) {
+      if (flatValues[k] === undefined || flatValues[k] === null || flatValues[k] === '') {
+        flatValues[k] = v;
+      }
+    }
+
+    for (const rule of rules) {
+      const parsed = this.parseDuplicateCheckExpression(rule.expression);
+      if (!parsed) continue;
+
+      // ── Build matchFields using the ACTUAL key that exists in stored data ──
+      // The validation builder uses template field IDs like "procedureCode",
+      // but the stored auth data uses prefixed keys like "procedure1_procedureCode".
+      // We must send the key that actually lives in the JSONB column.
+      const matchFields: Record<string, string> = {};
+      const repeatPrefixes = ['procedure1_', 'icd1_', 'medication1_', 'provider1_'];
+
+      for (const fieldId of parsed.matchFieldIds) {
+        // Skip date fields — handled separately in dateRange
+        if (['beginDate', 'endDate', 'fromDate', 'toDate'].includes(fieldId)) continue;
+
+        // Strategy: find which key actually has a value — unprefixed or prefixed
+        let resolvedKey = '';
+        let resolvedVal: any = null;
+
+        // 1. Check the unprefixed key (e.g. "treatmentType" — exists at top level)
+        const directVal = flatValues[fieldId];
+        if (directVal !== undefined && directVal !== null && directVal !== '') {
+          resolvedKey = fieldId;
+          resolvedVal = directVal;
+        }
+
+        // 2. If unprefixed didn't resolve (or field doesn't include '_'),
+        //    also check prefixed keys — and PREFER the prefixed key if it exists,
+        //    because that's what's actually in the JSONB data column.
+        if (!fieldId.includes('_')) {
+          for (const prefix of repeatPrefixes) {
+            const prefixed = prefix + fieldId;
+            const pVal = flatValues[prefixed];
+            if (pVal !== undefined && pVal !== null && pVal !== '') {
+              resolvedKey = prefixed;
+              resolvedVal = pVal;
+              break;
+            }
+          }
+        }
+
+        if (!resolvedKey || resolvedVal === null || resolvedVal === undefined || resolvedVal === '') continue;
+
+        // Extract scalar value from object fields (lookup fields store {id, code, ...})
+        matchFields[resolvedKey] = typeof resolvedVal === 'object'
+          ? (resolvedVal?.code ?? resolvedVal?.id ?? JSON.stringify(resolvedVal))
+          : String(resolvedVal);
+      }
+
+      // If none of the match fields have values, skip this rule
+      if (Object.keys(matchFields).length === 0) continue;
+
+      // ── Build date range using actual stored keys ──
+      let dateRange: any = null;
+      const dateKeyPairs = [
+        { begin: 'beginDate', end: 'endDate' },
+        { begin: 'fromDate', end: 'toDate' }
+      ];
+
+      // Check all combinations: prefixed first (matches actual JSONB keys),
+      // then unprefixed as fallback
+      const datePrefixes = [...repeatPrefixes, ''];
+
+      for (const prefix of datePrefixes) {
+        if (dateRange) break;
+        for (const pair of dateKeyPairs) {
+          const bk = prefix + pair.begin;
+          const ek = prefix + pair.end;
+          const bVal = flatValues[bk];
+          const eVal = flatValues[ek];
+          if (bVal && eVal) {
+            const toIso = (v: any) => {
+              if (typeof v === 'string') return v;
+              if (v instanceof Date) return v.toISOString();
+              try { return new Date(v).toISOString(); } catch { return null; }
+            };
+            const beginIso = toIso(bVal);
+            const endIso = toIso(eVal);
+            if (beginIso && endIso) {
+              dateRange = {
+                beginDateKey: bk,
+                beginDateValue: beginIso,
+                endDateKey: ek,
+                endDateValue: endIso
+              };
+              break;
+            }
+          }
+        }
+      }
+
+      const apiReq = {
+        memberDetailsId,
+        currentAuthDetailId: authDetailId > 0 ? authDetailId : null,
+        matchFields,
+        excludeStatuses: parsed.excludeStatuses.map(Number),
+        dateOverlapDays: parsed.dateOverlapDays,
+        dateRange
+      };
+
+      try {
+        console.log('Running duplicate check with API request:', apiReq);
+        const result = await firstValueFrom(this.authApi.checkDuplicate(apiReq));
+        console.log('Duplicate check API result:', result);
+
+        if (result?.hasDuplicates && result.duplicates?.length > 0) {
+          const authNos = result.duplicates.map((d: any) => d.authNumber).join(', ');
+          const message = String(rule.errorMessage || 'Potential duplicate authorization found.')
+            + `\n\nMatching Auth(s): ${authNos}`;
+
+          const dialogRef = this.dialog.open(ValidationErrorDialogComponent, {
+            width: '600px',
+            disableClose: true,
+            data: {
+              title: 'Duplicate Authorization Check',
+              messages: [
+                {
+                  msg: `⚠️ ${message}`,
+                  type: 'warning' as const
+                }
+              ],
+              // Always allow proceed for duplicate checks — user decides
+              allowContinue: true,
+              continueLabel: 'Proceed with Save',
+              closeLabel: 'Close'
+            }
+          });
+
+          const dialogResult = await firstValueFrom(dialogRef.afterClosed());
+
+          // Only proceed if user explicitly clicked "continue" / Proceed
+          if (dialogResult !== 'continue') {
+            return 'blocked';
+          }
+        }
+      } catch (err) {
+        console.error('Duplicate check API call failed:', err);
+        // Don't block save on API failure — log and continue
+      }
+    }
+
+    return 'continue';
+  }
+
+  /**
+   * Parses a DUPLICATE_CHECK expression string into structured params.
+   * Format: DUPLICATE_CHECK(field1,field2,...|excludeStatus1,excludeStatus2|overlapDays)
+   */
+  private parseDuplicateCheckExpression(expression: string): {
+    matchFieldIds: string[];
+    excludeStatuses: string[];
+    dateOverlapDays: number;
+  } | null {
+    try {
+      const inner = expression
+        .replace('DUPLICATE_CHECK(', '')
+        .replace(/\)$/, '');
+      const parts = inner.split('|');
+
+      const matchFieldIds = (parts[0] || '').split(',').map(s => s.trim()).filter(Boolean);
+      const excludeStatuses = (parts[1] || '').split(',').map(s => s.trim()).filter(Boolean);
+      const dateOverlapDays = parseInt(parts[2] || '0', 10) || 0;
+
+      if (!matchFieldIds.length) return null;
+
+      return { matchFieldIds, excludeStatuses, dateOverlapDays };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Resolves a date field value — tries unprefixed, then common repeat prefixes.
+   * Returns an ISO string or null.
+   */
+  private resolveDateField(fieldId: string, flatValues: Record<string, any>): string | null {
+    let val = flatValues[fieldId];
+    if (!val && !fieldId.includes('_')) {
+      for (const prefix of ['procedure1_', 'medication1_']) {
+        val = flatValues[prefix + fieldId];
+        if (val) break;
+      }
+    }
+    if (!val) return null;
+    if (typeof val === 'string') return val;
+    if (val instanceof Date) return val.toISOString();
+    try { return new Date(val).toISOString(); } catch { return null; }
+  }
 
 
   // ============================================================

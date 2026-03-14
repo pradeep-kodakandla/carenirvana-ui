@@ -101,7 +101,7 @@ export class ValidationComponent implements OnInit {
   // ====== UM-specific advanced presets (configurable before adding) ======
   duplicateCheckConfig = {
     expanded: false,
-    matchFields: ['treatmentType', 'procedure1_procedureCode', 'beginDate', 'endDate'] as string[],
+    matchFields: ['treatmentType', 'procedureCode', 'beginDate', 'endDate'] as string[],
     excludeStatuses: ['3', '6'] as string[],
     dateOverlapDays: 0,
     errorMessage: 'Potential duplicate authorization found. An existing auth with matching criteria and overlapping dates was detected. Please verify before saving.'
@@ -213,9 +213,6 @@ export class ValidationComponent implements OnInit {
         // refresh everything that depends on templateJson
         this.loadFieldsAndAliases();
         this.setupAutocomplete();
-
-        // if you want to preserve current rule table, do nothing else here
-        // if you want to reset rule builder on module change, do that in onModuleChanged
       },
       error: () => {
         this.templateJson = null;
@@ -247,12 +244,7 @@ export class ValidationComponent implements OnInit {
   }
 
   onModuleChanged(moduleId: number | null) {
-    //this.selectedModuleId = moduleId;
-    //this.clearEditor(true);
-    //if (moduleId) {
-    //  this.loadTemplateJsonForModule(moduleId);
-    //  this.loadValidations(moduleId);
-    //}
+
     if (this.isModuleLocked && moduleId !== this.selectedModuleId) {
       return;
     }
@@ -457,13 +449,50 @@ export class ValidationComponent implements OnInit {
     this.dataSource.filter = filterValue;
   }
 
+  // Sections whose fields should NOT appear in the validation field picker
+  private excludedSections = new Set([
+    'Authorization Notes',
+    'Authorization Documents',
+    'Decision Details',
+    'Member Provider Decision Info',
+    'Decision Notes'
+  ]);
+
   private loadFieldsAndAliases() {
-    const fields = (this.templateJson?.sections || []).flatMap((section: any) => section.fields || []);
-    this.allFields = fields.map((f: any) => ({
+    const fields: any[] = [];
+
+    const collectFields = (source: any) => {
+      if (Array.isArray(source.fields)) {
+        fields.push(...source.fields);
+      }
+      if (source.subsections && typeof source.subsections === 'object') {
+        for (const key of Object.keys(source.subsections)) {
+          collectFields(source.subsections[key]);
+        }
+      }
+    };
+
+    for (const section of (this.templateJson?.sections || [])) {
+      if (this.excludedSections.has(section.sectionName)) {
+        continue;
+      }
+      collectFields(section);
+    }
+
+    // De-duplicate by field id (same id can appear in multiple sections)
+    const seen = new Set<string>();
+    const uniqueFields = fields.filter((f: any) => {
+      const id = f.id;
+      if (!id || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+
+    this.allFields = uniqueFields.map((f: any) => ({
       id: f.id || ('unknown_' + Math.random().toString(36).substr(2, 9)),
       label: f.displayName || f.label || f.id || 'Unnamed Field'
     }));
-    this.allAliases = Array.from(new Set(fields.map((f: any) => f.displayName || f.label).filter(Boolean)));
+    this.allAliases = Array.from(new Set(uniqueFields.map((f: any) => f.displayName || f.label).filter(Boolean)));
 
     // Rebuild ui-smart-dropdown option arrays
     this.fieldOptions = this.allFields.map(f => ({ label: f.label, value: f.id }));

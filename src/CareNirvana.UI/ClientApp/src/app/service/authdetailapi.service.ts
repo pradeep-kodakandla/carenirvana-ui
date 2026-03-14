@@ -253,4 +253,21 @@ export class AuthDetailApiService {
     const params = new HttpParams().set('userId', String(userId));
     return this.http.delete<void>(url, { params });
   }
+
+
+  checkDuplicate(req: {
+    memberDetailsId: number;
+    currentAuthDetailId: number | null;
+    matchFields: Record<string, string>;
+    excludeStatuses: number[];
+    dateOverlapDays: number;
+    dateRange?: {
+      beginDateKey: string;
+      beginDateValue: string;
+      endDateKey: string;
+      endDateValue: string;
+    } | null;
+  }): Observable<{ hasDuplicates: boolean; duplicates: Array<{ authDetailId: number; authNumber: string }> }> {
+    return this.http.post<any>(`${this.baseUrl}/duplicate-check`, req);
+  }
 }

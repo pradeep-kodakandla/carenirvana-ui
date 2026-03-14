@@ -15,6 +15,8 @@ export class ValidationErrorDialogComponent {
       title: string;
       messages: { msg: string; type: 'error' | 'warning' }[];
       allowContinue?: boolean;
+      continueLabel?: string;
+      closeLabel?: string;
     }
   ) { }
 }
