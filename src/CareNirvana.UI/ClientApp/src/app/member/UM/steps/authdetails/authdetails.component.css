@@ -1,17 +1,13 @@
-/* Layout */
 .auth-details {
   width: 100%;
 }
 
-
-/* Cards */
 .section-card, .sub-card {
   border-radius: 10px;
   padding: 5px;
   background: #fff;
-  overflow: visible;  /* ← allow dropdown panels to overflow outside the card */
-/*  margin-bottom: 14px;
-*/}
+  overflow: visible;
+}
 
 .section-header {
   display: flex;
@@ -22,6 +18,8 @@
   margin: -5px -5px 14px;
   padding: 14px 16px 10px;
   border-radius: 0;
+  cursor: pointer;
+  user-select: none;
 }
 
 .section-title {
@@ -32,7 +30,6 @@
   flex: 1;
 }
 
-/* Section leading icon (Material icon) */
 .section-icon {
   display: inline-flex;
   align-items: center;
@@ -49,13 +46,6 @@
     height: 22px;
   }
 
-.sub-title {
-  font-weight: 700;
-  font-size: 13px;
-  margin: 6px 0 10px;
-}
-
-/* ============ Outlined Floating Field ============ */
 .ff-outline {
   position: relative;
   border: 1.5px solid #D1D5DB;
@@ -64,18 +54,14 @@
   padding: 1px 1px 1px;
   align-self: start;
   height: fit-content;
-  overflow: visible;  /* ← critical: allow dropdown panels to overflow */
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  overflow: visible;
 }
 
-  /* Hover — lift + accent border */
   .ff-outline:hover {
     border-color: #80bfff;
     background: #f5f9ff;
-    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.06);
   }
 
-  /* Focus-within — active ring */
   .ff-outline:focus-within {
     border-color: #007bff;
     box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.12);
@@ -115,17 +101,14 @@
   font-weight: 700;
   color: #64748B;
   line-height: 18px;
-  transition: color 0.2s ease;
 }
 
-/* body holds the actual control */
 .ff-body {
   display: flex;
   align-items: center;
   min-height: 34px;
 }
 
-/* Native inputs inside outlined */
 .ff-input {
   width: 100%;
   border: 0;
@@ -136,7 +119,6 @@
   padding-left: 5px;
 }
 
-  /* Consistent height for non-textarea inputs */
   .ff-input:not(.ff-textarea) {
     height: 34px;
   }
@@ -147,20 +129,19 @@
   padding-top: 5px;
 }
 
-/* Required asterisk */
 .req-star {
   color: #EF4444;
   margin-left: 4px;
   font-weight: 800;
 }
 
-/* Your UI controls should fill the width */
 .ff-ui {
   display: block;
   width: 100%;
+  border: 0 !important;
+  box-shadow: none !important;
 }
 
-/* Try to remove double-borders if ui-smart-dropdown / ui-datetime-picker render their own border */
 :host ::ng-deep .ff-outline ui-smart-dropdown,
 :host ::ng-deep .ff-outline ui-datetime-picker {
   width: 100%;
@@ -178,7 +159,6 @@
     line-height: 22px !important;
   }
 
-/* Prevent dropdown panel clipping */
 :host ::ng-deep ui-smart-dropdown {
   overflow: visible !important;
 }
@@ -187,7 +167,6 @@
   overflow: visible !important;
 }
 
-/* Checkbox row (keep clean) */
 .ff-checkbox {
   display: flex;
   align-items: center;
@@ -195,7 +174,6 @@
   padding: 6px 10px;
   align-self: start;
   border-radius: 8px;
-  transition: background 0.15s ease;
 }
 
   .ff-checkbox:hover {
@@ -212,7 +190,6 @@
     cursor: pointer;
   }
 
-/* Errors */
 .ff-error {
   color: #EF4444;
   font-size: 12px;
@@ -222,11 +199,6 @@
 .form-outline .ff-ui,
 .field-box .ff-ui {
   border: 0 !important;
-}
-
-.ff-ui {
-  border: 0 !important;
-  box-shadow: none !important;
 }
 
 .sub-float-label {
@@ -241,73 +213,49 @@
   line-height: 18px;
 }
 
-
-/* Grid: 4-col default with !important for specificity */
 .auth-details .grid {
   display: grid !important;
   gap: 14px;
-  /* Prevent tall controls (e.g., textarea) from stretching other fields in the same row */
+
   align-items: start;
   grid-auto-flow: row;
-  /* default: 4 columns */
+
   grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  position: relative;
 }
 
-/* Column span helpers */
 .ff-span-2 {
   grid-column: span 2;
 }
 
-.ff-span-3 {
-  grid-column: span 3;
-}
-
-/* drop to 4 */
 @media (max-width: 1400px) {
   .auth-details .grid {
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   }
 }
 
-/* drop to 3 */
 @media (max-width: 1200px) {
   .auth-details .grid {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
 }
 
-/* drop to 2 */
 @media (max-width: 900px) {
   .auth-details .grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
 
-/* drop to 1 */
 @media (max-width: 600px) {
   .auth-details .grid {
     grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
   }
 }
 
-
-/* Make section header clickable like accordion */
-.section-header {
-  cursor: pointer;
-  user-select: none;
-  transition: background 0.15s ease;
-}
-
   .section-header:hover {
     background: rgba(0, 123, 255, 0.03);
   }
 
-  .section-header:focus {
-    outline: 2px solid rgba(59, 130, 246, 0.35);
-    outline-offset: 2px;
-  }
-
-/* Chevron icon — sits on the right via flex order */
 .section-acc-icon {
   display: inline-flex;
   width: 22px;
@@ -316,10 +264,9 @@
   justify-content: center;
   margin-left: auto;
   font-size: 18px;
-  transition: transform 200ms ease;
   color: #94A3B8;
   flex-shrink: 0;
-  order: 99; /* push to the far right */
+  order: 99;
 }
 
   .section-acc-icon.open {
@@ -327,8 +274,6 @@
     color: #007bff;
   }
 
-
-/* Wrap a field + its validation message so error never flows beside */
 .ff-field {
   display: flex;
   flex-direction: column;
@@ -337,20 +282,14 @@
   min-width: 0;
 }
 
-/* Ensure checkbox stays on one line and error below */
 .ff-checkbox, .ff-outline {
   width: 100%;
 }
 
-
-/* Make a field span the full row */
 .ff-span-all {
   grid-column: 1 / -1;
 }
 
-/* =========================
-   Repeat groups (+ / −)
-========================= */
 .ff-repeat-wrap {
   display: flex;
   flex-direction: column;
@@ -359,9 +298,7 @@
 }
 
 .ff-repeat-group {
-  /*  border: 1px dashed #e1e5ee;
-  border-radius: 12px;
-  padding: 12px;*/
+
   background: #fcfcfd;
 }
 
@@ -380,11 +317,10 @@
 }
 
 .auth-details .grid.ff-repeat-grid {
-  /* 4 fields per row + an actions column at the end */
+
   grid-template-columns: repeat(4, minmax(0, 1fr)) auto !important;
 }
 
-/* Keep responsiveness: repeat(N) + auto actions col */
 @media (max-width: 1400px) {
   .auth-details .grid.ff-repeat-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr)) auto !important;
@@ -409,7 +345,6 @@
   }
 }
 
-/* In repeat grids, a full-width field should NOT cover the actions column */
 .auth-details .grid.ff-repeat-grid .ff-span-all {
   grid-column: 1 / -2;
 }
@@ -420,15 +355,12 @@
   justify-content: flex-end;
   gap: 8px;
   padding-top: 1px;
-  /* Put the actions in the last (auto) column.
-     Because this cell is the LAST DOM node in the grid, it naturally lands
-     at the end of the final row. */
+
   grid-column: -1;
   align-self: end;
   justify-self: end;
 }
 
-/* Don't let lookup components force extra width */
 :host ::ng-deep ui-smart-lookup,
 :host ::ng-deep ui-smart-lookup * {
   min-width: 0;
@@ -437,6 +369,9 @@
 .sub-card.sub-nested {
   margin-left: 12px;
   border-left: 3px dashed #e1e5ee;
+  border-style: dashed;
+  background: #fff;
+  margin-top: 14px;
 }
 
 .ff-repeat-btn {
@@ -453,16 +388,10 @@
   font-weight: 800;
   line-height: 1;
   user-select: none;
-  transition: box-shadow .15s ease, border-color .15s ease, transform .05s ease;
 }
 
   .ff-repeat-btn:hover {
     border-color: #aeb6c2;
-    box-shadow: 0 2px 10px rgba(17,24,39,.06);
-  }
-
-  .ff-repeat-btn:active {
-    transform: translateY(1px);
   }
 
   .ff-repeat-btn:disabled {
@@ -479,20 +408,11 @@
       border-color: rgba(220,53,69,.6);
     }
 
-/* Nested subsection visual hint */
-.sub-card.sub-nested {
-  border-style: dashed;
-  background: #fff;
-  margin-top: 14px;
-}
-
-/* Enrollment cards — compact horizontal layout */
 .selection-container {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  /*  padding: 0 8px 8px;
-*/
+
 }
 
 .rounded-box {
@@ -501,13 +421,11 @@
   padding: 10px 16px;
   background: #fff;
   cursor: pointer;
-  transition: all .2s ease;
 }
 
   .rounded-box:hover {
     border-color: #80bfff;
     background: #f5f9ff;
-    box-shadow: 0 2px 10px rgba(0, 123, 255, 0.08);
     transform: translateY(-1px);
   }
 
@@ -521,7 +439,6 @@
       color: #0056b3;
     }
 
-/* Key-value pairs — single-row inline flow */
 .pairs {
   display: flex;
   flex-wrap: wrap;
@@ -536,7 +453,6 @@
   white-space: nowrap;
 }
 
-  /* Separator dot between pairs (except first) */
   .pair-row + .pair-row::before {
     content: "·";
     color: #CBD5E1;
@@ -567,8 +483,6 @@
     max-width: 180px;
   }
 
-
-/* First-time guidance message */
 .ff-hint {
   display: flex;
   gap: 10px;
@@ -583,10 +497,6 @@
   width: 100%;
 }
 
-
-/* =========================
-   Template action buttons
-========================= */
 .ff-buttonbar {
   display: flex;
   flex-wrap: wrap;
@@ -594,8 +504,7 @@
   padding: 10px 14px 14px;
 }
 
-.ff-action-btn {
-  height: 34px;
+.ff-action-btn {height: 34px;
   padding: 0 14px;
   border-radius: 10px;
   border: none;
@@ -605,17 +514,11 @@
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
-  box-shadow: 0 2px 6px rgba(0, 98, 204, 0.2);
-  transition: box-shadow .15s ease, transform .05s ease;
+
 }
 
   .ff-action-btn:hover {
-    box-shadow: 0 4px 12px rgba(0, 98, 204, 0.3);
     transform: translateY(-1px);
-  }
-
-  .ff-action-btn:active {
-    transform: translateY(1px);
   }
 
   .ff-action-btn:disabled {
@@ -624,8 +527,6 @@
     box-shadow: none;
   }
 
-
-/* Section-level validation (keeps messages ABOVE fields, not behind them) */
 .auth-details .validation-messages {
   position: relative;
   z-index: 3;
@@ -646,26 +547,12 @@
     line-height: 1.25;
   }
 
-/* Grid position: no z-index to avoid stacking context issues */
-.auth-details .grid {
-  position: relative;
-  /* z-index intentionally omitted — would create an isolated stacking context */
-}
-
-/* Dropdown z-index: only focused field gets position:relative + z-index */
 .ff-field:focus-within {
   position: relative;
   z-index: 100;
 }
 
-
-/* ================================================================
-   PROVIDER CARDS — matches screenshot design
-   ================================================================ */
-
-/* "Add Provider" button in section header */
-.pc-add-btn {
-  display: inline-flex;
+.pc-add-btn {display: inline-flex;
   align-items: center;
   gap: 5px;
   padding: 5px 14px;
@@ -676,18 +563,16 @@
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,98,204,.2);
-  transition: all .15s;
+
   margin-left: auto;
   order: 98;
   white-space: nowrap;
   z-index: 1;
 }
-.pc-add-btn:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(0,98,204,.35); transform: translateY(-1px); }
+.pc-add-btn:hover:not(:disabled) { transform: translateY(-1px); }
 .pc-add-btn:disabled { opacity:.4; cursor:not-allowed; }
 .pc-add-btn mat-icon { font-size:17px; width:17px; height:17px; }
 
-/* 2-per-row grid */
 .pc-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -696,20 +581,8 @@
 }
 @media (max-width:1100px) { .pc-grid { grid-template-columns:1fr; } }
 
-/* Each provider item wrapper */
 .pc { display: flex; flex-direction: column; }
 
-/* Role label ABOVE the card — uppercase small gray */
-.pc-role-label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  color: #64748B;
-  padding: 0 2px 6px;
-}
-
-/* The card itself */
 .pc-card {
   border: 1px solid #E2E5EA;
   border-radius: 10px;
@@ -718,15 +591,12 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  transition: border-color .2s, box-shadow .2s;
-  overflow: visible;  /* ← allow dropdown panels to overflow outside the card */
+  overflow: visible;
 }
 .pc-card:hover {
   border-color: #cbd5e1;
-  box-shadow: 0 2px 12px rgba(0,0,0,.05);
 }
 
-/* Top row: role dropdown + close */
 .pc-card-top {
   display: flex;
   align-items: flex-start;
@@ -734,10 +604,8 @@
 }
 .pc-role-wrap { flex: 1; min-width: 0; max-width: 260px; }
 
-/* Search row */
 .pc-search { display: flex; flex-direction: column; gap: 3px; }
 
-/* Action buttons row */
 .pc-actions {
   display: flex;
   gap: 8px;
@@ -757,34 +625,23 @@
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: all .12s;
 }
 .pc-action-btn:hover:not(:disabled) { background: #DBEAFE; border-color: #3B82F6; }
 .pc-action-btn:disabled { opacity:.4; cursor:not-allowed; }
 
-/* Dropdown inside card — override to match flat style */
 .pc-dropdown { width: 100%; }
 .pc-search-input { width: 100%; }
 
-
-/* ================================================================
-   PROVIDER INFO CARD — display-only card after search selection
-   ================================================================ */
-
-/* Bordered role dropdown wrapper */
 .pc-role-bordered {
   border: 1.5px solid #D1D5DB;
   border-radius: 8px;
-/*  padding: 6px 10px;
-*/  background: #fff;
-  transition: border-color .2s;
+  background: #fff;
 }
 .pc-role-bordered:focus-within {
   border-color: #007bff;
   box-shadow: 0 0 0 3px rgba(0,123,255,.10);
 }
 
-/* Static role value — view mode (no dropdown) */
 .pc-role-static {
   display: flex;
   align-items: center;
@@ -800,27 +657,16 @@
   line-height: 1.3;
 }
 
-/* Bordered search wrapper */
 .pc-search-bordered {
   border: 1.5px solid #D1D5DB;
   border-radius: 8px;
-/*  padding: 6px 10px;
-*/  background: #fff;
-  transition: border-color .2s;
+  background: #fff;
 }
 .pc-search-bordered:focus-within {
   border-color: #007bff;
   box-shadow: 0 0 0 3px rgba(0,123,255,.10);
 }
 
-/* Delete icon in close / clear buttons */
-.pc-delete-icon {
-  font-size: 18px !important;
-  width: 18px !important;
-  height: 18px !important;
-}
-
-/* Filled state: accent left border */
 .pc-card--filled {
   border-left: 3px solid #22C55E;
   background: #F8FDF9;
@@ -830,7 +676,6 @@
   border-left-color: #22C55E;
 }
 
-/* Out-of-Network filled state */
 .pc-card--oon {
   border-left-color: #F59E0B;
   background: #FFFDF5;
@@ -839,14 +684,12 @@
   border-left-color: #F59E0B;
 }
 
-/* Empty state placeholder */
 .pc-empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-/*  gap: 8px;
-  padding: 24px 16px;*/
+
   color: #94A3B8;
   font-size: 12px;
   font-weight: 500;
@@ -858,7 +701,6 @@
   color: #CBD5E1;
 }
 
-/* Provider info block */
 .pc-info {
   display: flex;
   flex-direction: column;
@@ -866,25 +708,17 @@
   position: relative;
 }
 
-/* ── Clickable provider card — opens detail panel ── */
 .pc-info--clickable {
   cursor: pointer;
   border-radius: 8px;
   padding: 10px;
-  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   border: 1px solid transparent;
 }
 
 .pc-info--clickable:hover {
   background: #F0FDFA;
   border-color: #99F6E4;
-  box-shadow: 0 4px 16px rgba(13, 148, 136, 0.1);
   transform: translateY(-1px);
-}
-
-.pc-info--clickable:active {
-  transform: translateY(0);
-  box-shadow: 0 1px 4px rgba(13, 148, 136, 0.08);
 }
 
 .pc-view-details {
@@ -910,7 +744,6 @@
 .pc-view-details-arrow {
   margin-left: auto;
   font-size: 14px;
-  transition: transform 0.15s ease;
 }
 
 .pc-info--clickable:hover .pc-view-details-arrow {
@@ -926,7 +759,6 @@
   font-size: 0.92em;
 }
 
-/* Header row: name + badge + clear btn */
 .pc-info-header {
   display: flex;
   align-items: flex-start;
@@ -951,13 +783,12 @@
   line-height: 1.3;
 }
 
-/* Network status badge */
 .pc-network-badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   padding: 2px 10px;
-  border-radius: 999px;
+  border-radius: 9e3px;
   font-size: 11px;
   font-weight: 600;
   line-height: 1.4;
@@ -990,29 +821,6 @@
   background: #F59E0B;
 }
 
-/* Clear / remove provider button (inside info card) */
-.pc-info-clear {
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: transparent;
-  color: #94A3B8;
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: all .12s;
-}
-.pc-info-clear:hover {
-  background: #FEF2F2;
-  color: #EF4444;
-}
-
-/* Detail lines */
 .pc-info-details {
   display: flex;
   flex-direction: column;
@@ -1052,7 +860,6 @@
   font-size: 11.5px;
 }
 
-/* Out-of-Network warning banner */
 .pc-oon-warning {
   display: flex;
   align-items: center;
@@ -1075,34 +882,23 @@
   flex-shrink: 0;
 }
 
-
-/* Lift section-card during focus for dropdown stacking */
 .section-card {
   position: relative;
   z-index: 0;
 }
 
-  /* When interacting with any control inside a card, lift that card above siblings */
   .section-card:focus-within {
     z-index: 2000;
   }
 
-/* Focus outline styling (z-index intentionally omitted) */
 .ff-outline:focus-within {
-  /* z-index intentionally omitted */
+
   border-color: #007bff;
   box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.12);
   background: #f7fbff;
 }
 
-
-/* ================================================================
-   DIAGNOSIS / ICD CARDS — mirrors Provider card design
-   ================================================================ */
-
-/* "Add Diagnosis" button in section header */
-.dc-add-btn {
-  display: inline-flex;
+.dc-add-btn {display: inline-flex;
   align-items: center;
   gap: 5px;
   padding: 5px 14px;
@@ -1113,26 +909,22 @@
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,98,204,.2);
-  transition: all .15s;
+
   margin-left: auto;
   order: 98;
   white-space: nowrap;
   z-index: 1;
 }
-.dc-add-btn:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(0,98,204,.35); transform: translateY(-1px); }
+.dc-add-btn:hover:not(:disabled) { transform: translateY(-1px); }
 .dc-add-btn:disabled { opacity:.4; cursor:not-allowed; }
 .dc-add-btn mat-icon { font-size:17px; width:17px; height:17px; }
 
-/* Diagnosis list — vertical stack */
 .dc-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
-/*  padding: 8px 10px 18px;
-*/}
+}
 
-/* Single-line selected row */
 .dc-row {
   display: flex;
   align-items: center;
@@ -1142,16 +934,10 @@
   border: 1.5px solid #E2E5EA;
   border-left: 3.5px solid gray;
   border-radius: 10px;
-  transition: box-shadow .2s;
-}
-.dc-row:hover {
-  box-shadow: 0 2px 8px rgba(0,0,0,.05);
 }
 
-/* Each diagnosis item wrapper */
 .dc { display: flex; flex-direction: column; }
 
-/* The card itself */
 .dc-card {
   border: 1.5px solid #E2E5EA;
   border-radius: 12px;
@@ -1160,31 +946,21 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  transition: border-color .2s, box-shadow .2s, background .2s;
 }
 .dc-card:hover {
   border-color: #cbd5e1;
-  box-shadow: 0 2px 12px rgba(0,0,0,.05);
-}
-
-/* Filled state: purple left border accent */
-.dc-card--filled {
-  border-left: 3.5px solid #8B5CF6;
-  background: #FAFAFE;
 }
 .dc-card--filled:hover {
   border-color: #cbd5e1;
   border-left-color: #8B5CF6;
 }
 
-/* Top row: code-type + primary + edit + delete */
 .dc-card-top {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-/* Code Type dropdown wrapper */
 .dc-codetype-wrap {
   flex: 1;
   min-width: 0;
@@ -1192,21 +968,10 @@
   border: 1.5px solid #D1D5DB;
   border-radius: 8px;
   background: #fff;
-  transition: border-color .2s;
 }
 .dc-codetype-wrap:focus-within {
   border-color: #8B5CF6;
   box-shadow: 0 0 0 3px rgba(139,92,246,.10);
-}
-
-/* Static code type value — view mode (no dropdown) */
-.dc-codetype-static {
-  border: none;
-  background: transparent;
-  display: flex;
-  align-items: center;
-  padding: 4px 2px;
-  min-height: 34px;
 }
 .dc-codetype-value {
   font-size: 13px;
@@ -1219,11 +984,9 @@
   flex-shrink: 0;
 }
 
-/* Dropdown and search inside card */
 .dc-dropdown { width: 100%; }
 .dc-search-input { width: 100%; }
 
-/* Primary radio button */
 .dc-primary-radio {
   display: inline-flex;
   align-items: center;
@@ -1233,7 +996,6 @@
   border: 1.5px solid #D1D5DB;
   background: #fff;
   cursor: pointer;
-  transition: all .15s ease;
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -1257,13 +1019,11 @@
   font-weight: 700;
   color: #64748B;
   letter-spacing: 0.2px;
-  transition: color .15s;
 }
 .dc-primary-radio--active .dc-primary-label {
   color: #7C3AED;
 }
 
-/* ── Top action icons (edit + delete) ── */
 .dc-top-actions {
   display: flex;
   align-items: center;
@@ -1283,7 +1043,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all .12s;
 }
 .dc-top-btn--edit:hover { background: #EFF6FF; color: #3B82F6; }
 .dc-top-btn--delete:hover { background: #FEF2F2; color: #EF4444; }
@@ -1294,7 +1053,6 @@
   height: 17px !important;
 }
 
-/* ── Search row with optional Cancel button ── */
 .dc-search-row {
   display: flex;
   align-items: center;
@@ -1302,22 +1060,18 @@
 }
 .dc-search-row .dc-search { flex: 1; min-width: 0; }
 
-/* Search row */
 .dc-search { display: flex; flex-direction: column; gap: 3px; }
 
-/* Bordered search wrapper */
 .dc-search-bordered {
   border: 1.5px solid #D1D5DB;
   border-radius: 8px;
   background: #fff;
-  transition: border-color .2s;
 }
 .dc-search-bordered:focus-within {
   border-color: #8B5CF6;
   box-shadow: 0 0 0 3px rgba(139,92,246,.10);
 }
 
-/* Cancel button (edit mode) */
 .dc-cancel-btn {
   display: inline-flex;
   align-items: center;
@@ -1332,7 +1086,6 @@
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
-  transition: all .12s;
 }
 .dc-cancel-btn:hover {
   border-color: #94A3B8;
@@ -1340,7 +1093,6 @@
   color: #334155;
 }
 
-/* Empty state placeholder */
 .dc-empty-state {
   display: flex;
   flex-direction: column;
@@ -1358,15 +1110,6 @@
   color: #CBD5E1;
 }
 
-/* ── ICD Info Display Block ── */
-.dc-info {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-/* ICD Code + Description SIDE BY SIDE */
-/* ICD Code — bold blue text */
 .dc-icd-code {
   display: inline-flex;
   align-items: center;
@@ -1382,7 +1125,6 @@
   flex-shrink: 0;
 }
 
-/* ICD Description — right next to code */
 .dc-icd-desc {
   font-size: 13px;
   color: #334155;
@@ -1395,14 +1137,7 @@
   white-space: nowrap;
 }
 
-
-/* ═══════════════════════════════════════════════════════════
-   SERVICE / PROCEDURE CARD STYLES
-   ═══════════════════════════════════════════════════════════ */
-
-/* Add Procedure button (section header) */
-.sc-add-btn {
-  display: inline-flex;
+.sc-add-btn {display: inline-flex;
   align-items: center;
   gap: 5px;
   padding: 5px 14px;
@@ -1413,16 +1148,14 @@
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,98,204,.2);
-  transition: all .15s;
+
   margin-left: auto;
   white-space: nowrap;
 }
-.sc-add-btn:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(0,98,204,.35); transform: translateY(-1px); }
+.sc-add-btn:hover:not(:disabled) { transform: translateY(-1px); }
 .sc-add-btn:disabled { opacity: .4; cursor: not-allowed; }
 .sc-add-btn mat-icon { font-size: 17px; width: 17px; height: 17px; }
 
-/* Service card list — full width stacked cards */
 .sc-list {
   display: flex;
   flex-direction: column;
@@ -1430,50 +1163,31 @@
   padding: 4px 0;
 }
 
-/* Individual service card */
-.sc-card {
-  background: #fff;
+.sc-card {background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   padding: 7px 8px;
-  box-shadow: 0 1px 4px rgba(0,0,0,.04);
-  transition: border-color .2s, box-shadow .2s;
+
   border-left: 4px solid gray;
   overflow: visible;
   position: relative;
 }
-.sc-card--filled {
-  border-left-color: gray;
-  box-shadow: 0 2px 8px rgba(5,150,105,.08);
-}
-.sc-card:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,.06);
+.sc-card--filled {border-left-color: gray;
+
 }
 
-/* Card top bar */
 .sc-card-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 10px;
 }
-.sc-number {
-  font-size: 13px;
-  font-weight: 700;
-  color: #059669;
-  letter-spacing: 0.3px;
-}
 
-/* Procedure identity display */
 .sc-identity {
   display: flex;
   align-items: center;
   gap: 10px;
-/*  padding: 8px 12px;
-  background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
-  border-radius: 8px;
-  margin-bottom: 12px;
-  border: 1px solid #d1fae5;*/
+
 }
 .sc-identity--muted {
   opacity: .65;
@@ -1481,7 +1195,6 @@
   border-color: #e2e8f0;
 }
 
-/* Procedure code — bold blue text */
 .sc-code {
   display: inline-flex;
   align-items: center;
@@ -1497,7 +1210,6 @@
   flex-shrink: 0;
 }
 
-/* Procedure description */
 .sc-desc {
   font-size: 13px;
   font-weight: 600;
@@ -1509,13 +1221,11 @@
   min-width: 0;
 }
 
-/* Edit/Delete actions inline with procedure identity */
 .sc-identity-actions {
   margin-left: auto;
   flex-shrink: 0;
 }
 
-/* Search area */
 .sc-search {
   flex: 1;
   border: 1px solid #d1d5db;
@@ -1527,7 +1237,6 @@
 }
 .sc-search-input { width: 100%; }
 
-/* Empty state */
 .sc-empty {
   display: flex;
   align-items: center;
@@ -1538,7 +1247,6 @@
 }
 .sc-empty-icon { font-size: 18px; width: 18px; height: 18px; color: #cbd5e1; }
 
-/* Body fields grid — compact multi-column layout */
 .sc-body {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -1557,7 +1265,6 @@
   padding: 2px 6px;
 }
 
-/* Field sizing hints */
 .sc-field--num { max-width: 110px; }
 .sc-field--select { min-width: 140px; }
 .sc-field--date { min-width: 160px; }
@@ -1572,7 +1279,6 @@
   .sc-field--search { grid-column: span 1; }
 }
 
-/* ── Fax mode: Save / Cancel action bar ───────────────────────────── */
 .fax-action-bar {
   position: sticky;
   bottom: 0;
@@ -1600,7 +1306,6 @@
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  transition: background 0.15s ease;
 }
 .fax-save-btn:hover:not(:disabled) {
   background: linear-gradient(135deg, #1d4ed8, #1e40af);
@@ -1624,7 +1329,6 @@
   border: 1px solid #cbd5e1;
   border-radius: 6px;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
 }
 .fax-cancel-btn:hover:not(:disabled) {
   background: #f1f5f9;
@@ -1635,12 +1339,6 @@
   cursor: not-allowed;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   FAX PREFILL HIGHLIGHT — Orange glow for fields populated from fax OCR
-   Only applied when navigating from Fax → Create Auth
-   ═══════════════════════════════════════════════════════════ */
-
-/* Outlined form fields (inputs, dropdowns, date pickers, textareas, lookups) */
 .ff-outline.ff-fax-prefilled {
   border-color: #F59E0B;
   background: #FFFBEB;
@@ -1664,7 +1362,6 @@
   pointer-events: none;
 }
 
-/* Diagnosis inline row */
 .dc-row.ff-fax-prefilled {
   background: #FFFBEB;
   border: 1.5px solid #F59E0B;
@@ -1673,14 +1370,12 @@
   box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.12);
 }
 
-/* Diagnosis card */
 .dc-card.ff-fax-prefilled {
   border-color: #F59E0B;
   background: #FFFBEB;
   box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.12);
 }
 
-/* Service / Procedure card */
 .sc-card.ff-fax-prefilled {
   border-color: #F59E0B;
   border-left-color: #F59E0B;
@@ -1688,49 +1383,36 @@
   box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.12);
 }
 
-/* Provider card */
 .pc-card.ff-fax-prefilled {
   border-color: #F59E0B;
   background: #FFFBEB;
   box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.12);
 }
 
-/* ═══════════════════════════════════════════════════════════
-   MEDICATION CARD STYLES — Scheduler Design
-   ═══════════════════════════════════════════════════════════ */
-
-/* Add button */
-.mc-add-btn {
-  display: inline-flex; align-items: center; gap: 5px; padding: 5px 14px;
+.mc-add-btn {display: inline-flex; align-items: center; gap: 5px; padding: 5px 14px;
   border-radius: 8px; border: none;
   background: linear-gradient(135deg, #0062cc, #007bff);
   color: #fff; font-size: 12px; font-weight: 700; cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,98,204,.2); transition: all .15s;
+
   margin-left: auto; white-space: nowrap;
 }
-.mc-add-btn:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(0,98,204,.35); transform: translateY(-1px); }
+.mc-add-btn:hover:not(:disabled) { transform: translateY(-1px); }
 .mc-add-btn:disabled { opacity: .4; cursor: not-allowed; }
 .mc-add-btn mat-icon { font-size: 17px; width: 17px; height: 17px; }
 
-/* Card list */
 .mc-list { display: flex; flex-direction: column; gap: 10px; padding: 4px 0; }
 
-/* Card */
-.mc-card {
-  background: #fff; border: 1px solid #BFDBFE; border-radius: 10px;
+.mc-card {background: #fff; border: 1px solid #BFDBFE; border-radius: 10px;
   border-left: 4px solid #D1D5DB; overflow: visible;
-  box-shadow: 0 1px 4px rgba(0,0,0,.04); transition: border-color .2s, box-shadow .2s;
+
 }
 .mc-card--filled { border-left-color: #3B82F6; }
-.mc-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.06); }
 
 .mc-card-top { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px 0; }
 
-/* Identity row */
 .mc-identity {
   display: flex; align-items: center; gap: 10px;
   padding: 10px 12px; background: #FAFCFF; cursor: pointer;
-  transition: background .15s;
 }
 .mc-identity:hover { background: #F0F6FF; }
 .mc-identity--muted { opacity: .65; background: #f8fafc; padding: 6px 10px; border-radius: 6px; margin: 0 8px; cursor: default; }
@@ -1746,67 +1428,37 @@
 .mc-desc { font-size: 13px; font-weight: 600; color: #334155; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mc-identity-actions { margin-left: auto; flex-shrink: 0; }
 
-/* Schedule info strip */
-.mc-schedule-strip {
-  display: flex; align-items: center; gap: 12px; padding: 6px 12px 8px;
-  border-top: 1px solid #EEF2FF; cursor: pointer; flex-wrap: wrap;
-}
-.mc-strip-item {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 11px; font-weight: 600; color: #64748B;
-}
-.mc-strip-icon { font-size: 13px !important; width: 13px !important; height: 13px !important; color: #94A3B8; }
-.mc-strip-sep { width: 1px; height: 12px; background: #E2E8F0; }
-.mc-strip-expand {
-  margin-left: auto; font-size: 10.5px; font-weight: 700; color: #2563EB;
-  display: inline-flex; align-items: center; gap: 2px;
-}
-.mc-strip-arrow { font-size: 16px !important; width: 16px !important; height: 16px !important; transition: transform .2s; }
-.mc-strip-arrow--open { transform: rotate(180deg); }
-
-/* Search */
 .mc-search { flex: 1; border: 1px solid #d1d5db; border-radius: 8px; background: #f9fafb; position: relative; z-index: 10; overflow: visible; }
 .mc-search-input { width: 100%; }
 
-/* Empty */
 .mc-empty { display: flex; align-items: center; gap: 6px; color: #94a3b8; font-size: 13px; padding: 10px 8px; }
 .mc-empty-icon { font-size: 18px !important; width: 18px !important; height: 18px !important; color: #cbd5e1; }
 
-/* Expandable body */
 .mc-body {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 14px; padding: 12px; border-top: 1px solid #f1f5f9;
-  animation: mc-slide-down .2s ease;
+  animation: mc-slide-down .2s;
 }
-@keyframes mc-slide-down { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
 .mc-body .ff-outline { min-height: 42px; }
 .mc-body .ff-float-label { font-size: 10.5px; }
 
-/* Fax prefill */
 .mc-card.ff-fax-prefilled { border-color: #F59E0B; border-left-color: #F59E0B; background: #FFFBEB; box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.12); }
 
 @media (max-width: 900px) { .mc-body { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 600px) { .mc-body { grid-template-columns: 1fr; } }
 
-
-/* ═══════════════════════════════════════════════════════════
-   TRANSPORTATION SCHEDULER STYLES
-   ═══════════════════════════════════════════════════════════ */
-
-/* Add Leg button */
-.tl-add-btn {
-  display: inline-flex; align-items: center; gap: 5px; padding: 5px 14px;
+.tl-add-btn {display: inline-flex; align-items: center; gap: 5px; padding: 5px 14px;
   border-radius: 8px; border: none;
   background: linear-gradient(135deg, #C2410C, #EA580C);
   color: #fff; font-size: 12px; font-weight: 700; cursor: pointer;
-  box-shadow: 0 2px 8px rgba(234,88,12,.2); transition: all .15s;
+
   margin-left: auto; white-space: nowrap;
 }
-.tl-add-btn:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(234,88,12,.35); transform: translateY(-1px); }
+.tl-add-btn:hover:not(:disabled) { transform: translateY(-1px); }
 .tl-add-btn:disabled { opacity: .4; cursor: not-allowed; }
 .tl-add-btn mat-icon { font-size: 17px; width: 17px; height: 17px; }
 
-/* Summary Metrics Bar */
 .tl-metrics-bar {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   gap: 8px; padding: 12px 0; margin: 14px 0;
@@ -1826,20 +1478,14 @@
   .tl-metrics-bar { grid-template-columns: repeat(2, 1fr); }
 }
 
-/* ═══════════════════════════════════════════════════════════
-   TRANSPORTATION LEG CARD — Structured Schedule Layout
-   ═══════════════════════════════════════════════════════════ */
-
 .tl-leg-list { display: flex; flex-direction: column; gap: 16px; padding: 4px 0; }
 
-.tl-leg-card {
-  background: #fff; border: 1.5px solid #E2E8F0; border-radius: 12px;
+.tl-leg-card {background: #fff; border: 1.5px solid #E2E8F0; border-radius: 12px;
   border-left: 4px solid #D1D5DB; overflow: visible;
-  box-shadow: 0 1px 4px rgba(0,0,0,.04); transition: border-color .2s, box-shadow .2s;
+
 }
 .tl-leg-card--filled { border-left-color: #EA580C; }
 
-/* ── Leg Card Header ── */
 .tl-leg-card-header {
   display: flex; align-items: center; gap: 12px;
   padding: 14px 16px; background: #FFF7ED;
@@ -1854,7 +1500,6 @@
 .tl-leg-card-title { font-size: 14px; font-weight: 800; color: #1E293B; }
 .tl-leg-card-subtitle { font-size: 11px; color: #64748B; margin-top: 1px; }
 
-/* ── Route Visualization ── */
 .tl-route-viz {
   display: flex; align-items: stretch; padding: 16px 20px;
   border-bottom: 1px solid #f1f5f9;
@@ -1884,12 +1529,11 @@
   background: linear-gradient(90deg, #22C55E, #2563EB, #EF4444);
 }
 .tl-route-viz-miles {
-  display: inline-flex; padding: 2px 8px; border-radius: 999px;
+  display: inline-flex; padding: 2px 8px; border-radius: 9e3px;
   font-size: 10px; font-weight: 700; background: #EFF6FF;
   color: #1E40AF; border: 1px solid #BFDBFE; white-space: nowrap;
 }
 
-/* ── Leg Section Labels ── */
 .tl-leg-section { padding: 0 16px 14px; }
 .tl-leg-section-label {
   font-size: 10.5px; font-weight: 800; color: #94A3B8;
@@ -1897,25 +1541,22 @@
   padding: 12px 0 8px; border-top: 1px solid #f1f5f9;
 }
 
-/* ── Fields Grid ── */
 .tl-leg-fields-grid {
   display: grid; grid-template-columns: repeat(2, 1fr);
   gap: 12px; overflow: visible;
 }
-.tl-leg-fields-grid--3col { grid-template-columns: repeat(3, 1fr); }
 .tl-leg-fields-grid--4col { grid-template-columns: repeat(4, 1fr); }
 .tl-leg-fields-grid .ff-outline { min-height: 42px; overflow: visible; }
 .tl-leg-fields-grid .ff-float-label { font-size: 10.5px; }
-.tl-leg-fields-grid .ff-span-2 { grid-column: span 1; } /* addresses stay 1-col */
+.tl-leg-fields-grid .ff-span-2 { grid-column: span 1; }
 
-/* ── Weekly Day Grid — Clickable Multi-Select ── */
 .tl-weekday-grid {
   display: flex; gap: 6px; margin-top: 12px;
 }
 .tl-weekday {
   flex: 1; padding: 8px 0; border-radius: 8px; text-align: center;
   border: 1.5px solid #E2E8F0; background: #fff;
-  cursor: pointer; transition: all .15s; min-height: 48px;
+  cursor: pointer; min-height: 48px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
   user-select: none;
 }
@@ -1937,7 +1578,6 @@
   width: 6px; height: 6px; border-radius: 50%; background: #E2E8F0; margin-top: 2px;
 }
 
-/* ── Mileage Summary Cards ── */
 .tl-leg-summary {
   display: grid; grid-template-columns: repeat(3, 1fr);
   gap: 10px; padding: 14px 16px; border-top: 1px solid #f1f5f9;
@@ -1956,7 +1596,6 @@
 }
 .tl-leg-summary-value { font-size: 16px; font-weight: 800; color: #1E293B; }
 
-/* ── Leg Card: Collapsed State ── */
 .tl-leg-card--collapsed {
   border-left-width: 3px;
 }
@@ -1974,10 +1613,8 @@
   font-size: 16px; width: 16px; height: 16px;
 }
 
-/* ── Toggle Chevron ── */
 .tl-leg-toggle {
   font-size: 14px; font-weight: 700; color: #94A3B8;
-  transition: transform .2s, color .15s;
   display: inline-block; margin-left: auto; margin-right: 4px;
   user-select: none;
 }
@@ -1986,16 +1623,13 @@
 }
 .tl-leg-card-header:hover .tl-leg-toggle { color: #EA580C; }
 
-/* Make header clickable in expanded mode too */
 .tl-leg-card-header { cursor: pointer; }
 
-/* ── Collapsed Summary ── */
 .tl-leg-collapsed {
   padding: 0 14px 12px; cursor: pointer;
 }
 .tl-leg-collapsed:hover { background: #FFFBF5; border-radius: 0 0 8px 12px; }
 
-/* Compact route bar */
 .tl-collapsed-route {
   display: flex; align-items: center; gap: 0; padding: 4px 0 8px;
 }
@@ -2029,10 +1663,9 @@
 .tl-collapsed-miles {
   font-size: 9.5px; font-weight: 700; color: #1E40AF;
   background: #EFF6FF; border: 1px solid #BFDBFE;
-  border-radius: 999px; padding: 1px 6px; white-space: nowrap;
+  border-radius: 9e3px; padding: 1px 6px; white-space: nowrap;
 }
 
-/* Schedule & mileage chips */
 .tl-collapsed-chips {
   display: flex; flex-wrap: wrap; gap: 6px; padding-top: 2px;
 }
@@ -2052,11 +1685,10 @@
   .tl-collapsed-connector { justify-content: center; padding: 2px 0; }
 }
 
-/* ── Add Card ── */
 .tl-leg-add-empty {
   border: 1.5px dashed #E2E8F0; border-radius: 10px; padding: 16px 0;
   display: flex; flex-direction: column; align-items: center; gap: 6px;
-  cursor: pointer; transition: all .15s; color: #94A3B8; font-size: 12px; font-weight: 600;
+  cursor: pointer; color: #94A3B8; font-size: 12px; font-weight: 600;
 }
 .tl-leg-add-empty:hover { border-color: #FDBA74; background: #FFFBF5; color: #EA580C; }
 .tl-leg-add-icon { font-size: 22px !important; width: 22px !important; height: 22px !important; }
@@ -2066,21 +1698,20 @@
 }
 @media (max-width: 900px) {
   .tl-leg-fields-grid { grid-template-columns: repeat(2, 1fr); }
-  .tl-leg-fields-grid--3col { grid-template-columns: repeat(2, 1fr); }
-  .tl-leg-fields-grid--4col { grid-template-columns: repeat(2, 1fr); }
+
+.tl-leg-fields-grid--4col { grid-template-columns: repeat(2, 1fr); }
   .tl-leg-summary { grid-template-columns: 1fr; }
 }
 @media (max-width: 600px) {
   .tl-leg-fields-grid { grid-template-columns: 1fr; }
-  .tl-leg-fields-grid--3col { grid-template-columns: 1fr; }
-  .tl-leg-fields-grid--4col { grid-template-columns: 1fr; }
+
+.tl-leg-fields-grid--4col { grid-template-columns: 1fr; }
   .tl-weekday-grid { flex-wrap: wrap; }
   .tl-weekday { min-width: 40px; }
   .tl-route-viz { flex-direction: column; gap: 10px; }
   .tl-route-viz-connector { width: auto; flex-direction: row; height: auto; }
 }
 
-/* ── Add Leg inside ride ── */
 .tl-leg-section-header {
   display: flex; align-items: center; gap: 8px;
   padding: 10px 0 8px; margin-top: 6px;
@@ -2099,7 +1730,7 @@
   padding: 4px 12px; border-radius: 7px;
   border: 1.5px solid #EA580C; background: #fff;
   color: #EA580C; font-size: 11px; font-weight: 700;
-  cursor: pointer; transition: all .15s; white-space: nowrap;
+  cursor: pointer; white-space: nowrap;
 }
 .tl-add-leg-btn:hover:not(:disabled) { background: #FFF7ED; }
 .tl-add-leg-btn:disabled { opacity: .4; cursor: not-allowed; }
@@ -2107,28 +1738,18 @@
   font-size: 14px !important; width: 14px !important; height: 14px !important;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   TRANSPORTATION RIDES — Multi-Ride Grouping
-   ═══════════════════════════════════════════════════════════ */
-
 .tr-rides-container {
   display: flex; flex-direction: column; gap: 18px; padding: 4px 0;
 }
 
-.tr-ride-group {
-  border: 1.5px solid #E2E5EA;
+.tr-ride-group {border: 1.5px solid #E2E5EA;
   border-left: 4px solid #EA580C;
   border-radius: 12px;
   background: #fff;
   overflow: visible;
-  box-shadow: 0 1px 4px rgba(0,0,0,.04);
-  transition: border-color .2s, box-shadow .2s;
-}
-.tr-ride-group:hover {
-  box-shadow: 0 2px 10px rgba(0,0,0,.06);
+
 }
 
-/* ── Ride Header ── */
 .tr-ride-header {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 16px;
@@ -2136,18 +1757,16 @@
   border-bottom: 1px solid #FDE68A;
   border-radius: 8px 12px 0 0;
 }
-.tr-ride-header-icon {
-  width: 36px; height: 36px; border-radius: 10px;
+.tr-ride-header-icon {width: 36px; height: 36px; border-radius: 10px;
   background: linear-gradient(135deg, #C2410C, #EA580C);
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(234,88,12,.25);
+
 }
 .tr-ride-header-icon mat-icon { font-size: 20px; width: 20px; height: 20px; color: #fff; }
 .tr-ride-header-text { flex: 1; }
 .tr-ride-title { font-size: 15px; font-weight: 800; color: #1E293B; }
 .tr-ride-subtitle { font-size: 11px; color: #64748B; margin-top: 1px; }
 
-/* ── Ride-level fields (Begin Date, End Date, etc. inside each ride) ── */
 .tr-ride-fields {
   padding: 14px 16px;
   border-bottom: 1px solid #f1f5f9;
@@ -2158,10 +1777,6 @@
 .tr-ride-fields .ff-outline {
   min-height: 42px;
 }
-
-/* ═══════════════════════════════════════════════════════════
-   TRANSPORTATION CODES — Per-Ride Code Rows
-   ═══════════════════════════════════════════════════════════ */
 
 .tr-codes-section {
   padding: 12px 16px; border-bottom: 1px solid #f1f5f9;
@@ -2191,11 +1806,8 @@
   border: 1.5px solid #E2E5EA;
   border-left: 3.5px solid #D1D5DB;
   border-radius: 10px;
-  transition: box-shadow .2s, border-color .2s;
 }
-.tr-code-row:hover {
-  box-shadow: 0 2px 8px rgba(0,0,0,.05);
-}
+
 .tr-code-row--primary {
   border-left-color: #EA580C;
   background: #FFF7ED;
@@ -2221,7 +1833,6 @@
   flex-shrink: 0;
 }
 
-/* Transportation code primary radio — override colors with orange theme */
 .tr-code-row .dc-primary-radio:hover {
   border-color: #EA580C;
   background: #FFF7ED;
@@ -2237,7 +1848,6 @@
   color: #C2410C;
 }
 
-/* Empty state for codes */
 .tr-codes-empty {
   display: flex; align-items: center; gap: 8px;
   padding: 12px 14px;
@@ -2249,7 +1859,6 @@
   color: #CBD5E1;
 }
 
-/* ── Legs section within a ride ── */
 .tr-legs-section {
   padding: 0 16px 16px;
 }
@@ -2264,90 +1873,39 @@
   .tr-code-primary { align-self: flex-start; }
 }
 
-/* ═══════════════════════════════════════════════════════
-   ADDITIONAL DETAILS — Member Provider Info Table
-   ═══════════════════════════════════════════════════════ */
 .mp-table-section-wrap { overflow:visible }
 .bulk-mp-table-wrap { overflow:visible; padding:0 }
 .bulk-mp-table { width:100%; border-collapse:collapse; font-size:13px; overflow:visible }
-.bulk-mp-table thead th {
-  background:#FFF7ED;color:#9A3412;font-weight:700;font-size:10.5px;
-  text-transform:uppercase;letter-spacing:.05em;
-  padding:10px 12px;border-bottom:2px solid #FDBA74;
-  white-space:nowrap;text-align:left;
-}
+.bulk-mp-table thead th { background:#FFF7ED; color:#9A3412; font-weight:700; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; padding:10px 12px; border-bottom:2px solid #FDBA74; white-space:nowrap; text-align:left }
 .bulk-mp-table tbody { overflow:visible }
-.bulk-mp-table tbody td {
-  padding:8px 10px;border-bottom:1px solid #F1F5F9;
-  color:#1E293B;vertical-align:middle;
-  overflow:visible;
-}
+.bulk-mp-table tbody td { padding:8px 10px; border-bottom:1px solid #F1F5F9; color:#1E293B; vertical-align:middle; overflow:visible }
 .bulk-mp-table tbody tr:hover { background:#FFFBEB }
 .bulk-mp-table tbody tr:last-child td { border-bottom:none }
-.mpcol-num    { width:40px;text-align:center;font-weight:700;color:#9A3412;font-size:12px }
-.mpcol-type   { width:180px }
-.mpcol-notif  { min-width:180px }
-.mpcol-date   { min-width:220px; position:relative }
-.mpcol-attempt { width:80px;text-align:center }
-.mpcol-action { width:44px;text-align:center }
-
-/* Cell wrappers — must allow dropdown overlay to escape */
+.mpcol-num { width:40px; text-align:center; font-weight:700; color:#9A3412; font-size:12px }
+.mpcol-type { width:180px }
+.mpcol-notif { min-width:180px }
+.mpcol-date { min-width:220px; position:relative }
+.mpcol-attempt { width:80px; text-align:center }
+.mpcol-action { width:44px; text-align:center }
 .mp-cell-select { position:relative; overflow:visible }
-
-/* Compact ff-outline for MP table cells — no clipping */
 .mp-ff-outline { border-radius:8px; padding:0; overflow:visible }
 .mp-ff-outline .ff-body { min-height:34px; overflow:visible }
 .mp-ff-outline .ff-float-label { display:none }
-
-/* Ensure dropdown panels inside MP table are not clipped */
 :host ::ng-deep .mp-ff-outline ui-smart-dropdown { overflow:visible }
 :host ::ng-deep .mp-ff-outline ui-smart-dropdown .p-dropdown-panel,
 :host ::ng-deep .mp-ff-outline ui-smart-dropdown .ng-dropdown-panel,
-:host ::ng-deep .mp-ff-outline ui-smart-dropdown .dropdown-menu,
-:host ::ng-deep .mp-ff-outline ui-smart-dropdown .mat-autocomplete-panel,
-:host ::ng-deep .mp-ff-outline ui-smart-dropdown .cdk-overlay-pane { z-index:1050!important }
-
-.mp-inline-number {
-  width:60px;height:34px;
-  border:1.5px solid #E2E8F0;border-radius:8px;
-  text-align:center;font-size:13px;font-weight:600;
-  color:#1E293B;background:#fff;
-  transition:border-color .12s,box-shadow .12s;
-  -moz-appearance:textfield;
-}
+:host ::ng-deep .mp-ff-outline ui-smart-dropdown .dropdown-menu { z-index:1050 !important }
+.mp-inline-number { width:60px; height:34px; border:1.5px solid #E2E8F0; border-radius:8px; text-align:center; font-size:13px; font-weight:600; color:#1E293B; background:#fff; -moz-appearance:textfield }
 .mp-inline-number::-webkit-inner-spin-button,
-.mp-inline-number::-webkit-outer-spin-button { -webkit-appearance:none;margin:0 }
-.mp-inline-number:focus { outline:none;border-color:#EA580C;box-shadow:0 0 0 2px rgba(234,88,12,.12) }
-
-.mp-remove-btn {
-  background:none;border:none;cursor:pointer;
-  color:#CBD5E1;padding:4px;border-radius:6px;
-  display:flex;align-items:center;justify-content:center;
-  transition:color .12s,background .12s;
-}
-.mp-remove-btn:hover { color:#DC2626;background:#FEF2F2 }
-
+.mp-inline-number::-webkit-outer-spin-button { -webkit-appearance:none; margin:0 }
+.mp-inline-number:focus { outline:none; border-color:#EA580C; box-shadow:0 0 0 2px rgba(234,88,12,.12) }
+.mp-remove-btn { background:none; border:none; cursor:pointer; color:#CBD5E1; padding:4px; border-radius:6px; display:flex; align-items:center; justify-content:center }
+.mp-remove-btn:hover { color:#DC2626; background:#FEF2F2 }
 .bulk-mp-add-bar { padding:10px 24px 16px }
-.mp-add-btn {
-  display:inline-flex;align-items:center;gap:6px;
-  background:none;border:1.5px dashed #FDBA74;border-radius:10px;
-  color:#EA580C;font-size:12.5px;font-weight:700;
-  padding:8px 18px;cursor:pointer;
-  transition:background .12s,border-color .12s;
-}
-.mp-add-btn:hover { background:#FFF7ED;border-color:#EA580C }
-.mp-add-btn mat-icon { font-size:18px;width:18px;height:18px }
-.mp-row { transition:background .1s; overflow:visible }
-
-/* ═══════════════════════════════════════════════════════
-   ADDITIONAL DETAILS — ICD Subsection Inline Header
-   ═══════════════════════════════════════════════════════ */
-.addl-icd-header {
-  display:flex;align-items:center;justify-content:space-between;
-  padding:8px 0 6px;margin-bottom:4px;
-}
-.addl-icd-title {
-  font-weight:700;font-size:13px;color:#64748B;
-  letter-spacing:.03em;text-transform:uppercase;
-}
+.mp-add-btn { display:inline-flex; align-items:center; gap:6px; background:none; border:1.5px dashed #FDBA74; border-radius:10px; color:#EA580C; font-size:12.5px; font-weight:700; padding:8px 18px; cursor:pointer }
+.mp-add-btn:hover { background:#FFF7ED; border-color:#EA580C }
+.mp-add-btn mat-icon { font-size:18px; width:18px; height:18px }
+.mp-row { overflow:visible }
+.addl-icd-header { display:flex; align-items:center; justify-content:space-between; padding:8px 0 6px; margin-bottom:4px }
+.addl-icd-title { font-weight:700; font-size:13px; color:#64748B; letter-spacing:.03em; text-transform:uppercase }
 .addl-icd-add-btn { margin-left:auto }
