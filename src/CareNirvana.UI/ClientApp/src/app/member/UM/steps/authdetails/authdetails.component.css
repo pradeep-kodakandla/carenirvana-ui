@@ -2263,3 +2263,91 @@
   .tr-code-field { flex: none; }
   .tr-code-primary { align-self: flex-start; }
 }
+
+/* ═══════════════════════════════════════════════════════
+   ADDITIONAL DETAILS — Member Provider Info Table
+   ═══════════════════════════════════════════════════════ */
+.mp-table-section-wrap { overflow:visible }
+.bulk-mp-table-wrap { overflow:visible; padding:0 }
+.bulk-mp-table { width:100%; border-collapse:collapse; font-size:13px; overflow:visible }
+.bulk-mp-table thead th {
+  background:#FFF7ED;color:#9A3412;font-weight:700;font-size:10.5px;
+  text-transform:uppercase;letter-spacing:.05em;
+  padding:10px 12px;border-bottom:2px solid #FDBA74;
+  white-space:nowrap;text-align:left;
+}
+.bulk-mp-table tbody { overflow:visible }
+.bulk-mp-table tbody td {
+  padding:8px 10px;border-bottom:1px solid #F1F5F9;
+  color:#1E293B;vertical-align:middle;
+  overflow:visible;
+}
+.bulk-mp-table tbody tr:hover { background:#FFFBEB }
+.bulk-mp-table tbody tr:last-child td { border-bottom:none }
+.mpcol-num    { width:40px;text-align:center;font-weight:700;color:#9A3412;font-size:12px }
+.mpcol-type   { width:180px }
+.mpcol-notif  { min-width:180px }
+.mpcol-date   { min-width:220px; position:relative }
+.mpcol-attempt { width:80px;text-align:center }
+.mpcol-action { width:44px;text-align:center }
+
+/* Cell wrappers — must allow dropdown overlay to escape */
+.mp-cell-select { position:relative; overflow:visible }
+
+/* Compact ff-outline for MP table cells — no clipping */
+.mp-ff-outline { border-radius:8px; padding:0; overflow:visible }
+.mp-ff-outline .ff-body { min-height:34px; overflow:visible }
+.mp-ff-outline .ff-float-label { display:none }
+
+/* Ensure dropdown panels inside MP table are not clipped */
+:host ::ng-deep .mp-ff-outline ui-smart-dropdown { overflow:visible }
+:host ::ng-deep .mp-ff-outline ui-smart-dropdown .p-dropdown-panel,
+:host ::ng-deep .mp-ff-outline ui-smart-dropdown .ng-dropdown-panel,
+:host ::ng-deep .mp-ff-outline ui-smart-dropdown .dropdown-menu,
+:host ::ng-deep .mp-ff-outline ui-smart-dropdown .mat-autocomplete-panel,
+:host ::ng-deep .mp-ff-outline ui-smart-dropdown .cdk-overlay-pane { z-index:1050!important }
+
+.mp-inline-number {
+  width:60px;height:34px;
+  border:1.5px solid #E2E8F0;border-radius:8px;
+  text-align:center;font-size:13px;font-weight:600;
+  color:#1E293B;background:#fff;
+  transition:border-color .12s,box-shadow .12s;
+  -moz-appearance:textfield;
+}
+.mp-inline-number::-webkit-inner-spin-button,
+.mp-inline-number::-webkit-outer-spin-button { -webkit-appearance:none;margin:0 }
+.mp-inline-number:focus { outline:none;border-color:#EA580C;box-shadow:0 0 0 2px rgba(234,88,12,.12) }
+
+.mp-remove-btn {
+  background:none;border:none;cursor:pointer;
+  color:#CBD5E1;padding:4px;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  transition:color .12s,background .12s;
+}
+.mp-remove-btn:hover { color:#DC2626;background:#FEF2F2 }
+
+.bulk-mp-add-bar { padding:10px 24px 16px }
+.mp-add-btn {
+  display:inline-flex;align-items:center;gap:6px;
+  background:none;border:1.5px dashed #FDBA74;border-radius:10px;
+  color:#EA580C;font-size:12.5px;font-weight:700;
+  padding:8px 18px;cursor:pointer;
+  transition:background .12s,border-color .12s;
+}
+.mp-add-btn:hover { background:#FFF7ED;border-color:#EA580C }
+.mp-add-btn mat-icon { font-size:18px;width:18px;height:18px }
+.mp-row { transition:background .1s; overflow:visible }
+
+/* ═══════════════════════════════════════════════════════
+   ADDITIONAL DETAILS — ICD Subsection Inline Header
+   ═══════════════════════════════════════════════════════ */
+.addl-icd-header {
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 0 6px;margin-bottom:4px;
+}
+.addl-icd-title {
+  font-weight:700;font-size:13px;color:#64748B;
+  letter-spacing:.03em;text-transform:uppercase;
+}
+.addl-icd-add-btn { margin-left:auto }

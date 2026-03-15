@@ -1086,6 +1086,8 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
           this.toastSvc.success('Decision saved successfully.');
           // refresh only items, keep template + auth data
           this.refreshItemsOnly();
+          // ✅ Refresh shell header so Decision Summary / Overall Decision updates in real-time
+          this._shellRefreshHeader?.();
         }
       });
   }
@@ -1121,7 +1123,11 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
         takeUntil(this.destroy$)
       )
       .subscribe({
-        next: () => this.refreshItemsOnly()
+        next: () => {
+          this.refreshItemsOnly();
+          // ✅ Refresh shell header so Decision Summary updates after delete
+          this._shellRefreshHeader?.();
+        }
       });
   }
 

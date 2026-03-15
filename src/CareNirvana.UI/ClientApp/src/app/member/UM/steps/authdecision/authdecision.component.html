@@ -117,9 +117,9 @@
                    *ngIf="isVisible(activeState, field)"
                    [class.ff-span-all]="field.type === 'textarea'">
 
-                <!-- Text / Number / DateTime inputs -->
+                <!-- Text / Number inputs (non-datetime) -->
                 <div class="ff-outline"
-                     *ngIf="field.type !== 'select' && field.type !== 'checkbox' && field.type !== 'textarea'"
+                     *ngIf="field.type !== 'select' && field.type !== 'checkbox' && field.type !== 'textarea' && field.type !== 'datetime-local'"
                      [class.ff-disabled]="!field.isEnabled"
                      [class.ff-invalid]="isInvalidField(field)">
                   <label class="ff-float-label">
@@ -130,8 +130,26 @@
                     <input class="ff-input"
                            [type]="field.type"
                            [formControl]="getCtrl(field.controlName)"
-                           [attr.step]="field.type === 'datetime-local' ? '1' : null"
-                           [attr.placeholder]="field.type === 'datetime-local' ? 'mm/dd/yyyy' : '—'" />
+                           placeholder="—" />
+                  </div>
+                </div>
+
+                <!-- DateTime — use ui-datetime-picker to match authdetails -->
+                <div class="ff-outline"
+                     *ngIf="field.type === 'datetime-local'"
+                     [class.ff-disabled]="!field.isEnabled"
+                     [class.ff-invalid]="isInvalidField(field)">
+                  <label class="ff-float-label">
+                    {{ field.displayName }}
+                    <span class="req-star" *ngIf="field.required || field.isRequired">*</span>
+                  </label>
+                  <div class="ff-body">
+                    <ui-datetime-picker class="ff-ui"
+                                        placeholderDate="mm/dd/yyyy"
+                                        placeholderDateTime="mm/dd/yyyy --:--"
+                                        [dateOnly]="false"
+                                        [formControl]="getCtrl(field.controlName)">
+                    </ui-datetime-picker>
                   </div>
                 </div>
 
@@ -207,27 +225,41 @@
                   <td class="mpcol-num">{{ ri + 1 }}</td>
                   <td class="mpcol-type">
                     <div class="mp-cell-select">
-                      <select class="mp-inline-select"
-                              [(ngModel)]="mpRow.type">
-                        <option [ngValue]="null" disabled>Select…</option>
-                        <option *ngFor="let o of singleMpTypeOptions" [ngValue]="o.value">{{ o.label }}</option>
-                      </select>
+                      <div class="ff-outline mp-ff-outline">
+                        <div class="ff-body">
+                          <ui-smart-dropdown class="ff-ui"
+                            label="" placeholder="Select…"
+                            [options]="singleMpTypeOptions"
+                            [(ngModel)]="mpRow.type">
+                          </ui-smart-dropdown>
+                        </div>
+                      </div>
                     </div>
                   </td>
                   <td class="mpcol-notif">
                     <div class="mp-cell-select">
-                      <select class="mp-inline-select"
-                              [(ngModel)]="mpRow.notificationType">
-                        <option [ngValue]="null" disabled>Select…</option>
-                        <option *ngFor="let o of singleMpNotifTypeOptions" [ngValue]="o.value">{{ o.label }}</option>
-                      </select>
+                      <div class="ff-outline mp-ff-outline">
+                        <div class="ff-body">
+                          <ui-smart-dropdown class="ff-ui"
+                            label="" placeholder="Select…"
+                            [options]="singleMpNotifTypeOptions"
+                            [(ngModel)]="mpRow.notificationType">
+                          </ui-smart-dropdown>
+                        </div>
+                      </div>
                     </div>
                   </td>
                   <td class="mpcol-date">
-                    <input type="datetime-local"
-                           class="mp-inline-datetime"
-                           [(ngModel)]="mpRow.notificationDate"
-                           step="1" />
+                    <div class="ff-outline mp-ff-outline">
+                      <div class="ff-body">
+                        <ui-datetime-picker class="ff-ui"
+                          placeholderDate="mm/dd/yyyy"
+                          placeholderDateTime="mm/dd/yyyy --:--"
+                          [dateOnly]="false"
+                          [(ngModel)]="mpRow.notificationDate">
+                        </ui-datetime-picker>
+                      </div>
+                    </div>
                   </td>
                   <td class="mpcol-attempt">
                     <input type="number" class="mp-inline-number"
@@ -437,28 +469,41 @@
               <td class="mpcol-num">{{ ri + 1 }}</td>
               <td class="mpcol-type">
                 <div class="mp-cell-select">
-                  <select class="mp-inline-select"
-                          [(ngModel)]="mpRow.type">
-                    <option [ngValue]="null" disabled>Select…</option>
-                    <option *ngFor="let o of bulkMpTypeOptions" [ngValue]="o.value">{{ o.label }}</option>
-                  </select>
+                  <div class="ff-outline mp-ff-outline">
+                    <div class="ff-body">
+                      <ui-smart-dropdown class="ff-ui"
+                        label="" placeholder="Select…"
+                        [options]="bulkMpTypeOptions"
+                        [(ngModel)]="mpRow.type">
+                      </ui-smart-dropdown>
+                    </div>
+                  </div>
                 </div>
               </td>
               <td class="mpcol-notif">
                 <div class="mp-cell-select">
-                  <select class="mp-inline-select"
-                          [(ngModel)]="mpRow.notificationType">
-                    <option [ngValue]="null" disabled>Select…</option>
-                    <option *ngFor="let o of bulkMpNotifTypeOptions" [ngValue]="o.value">{{ o.label }}</option>
-                  </select>
+                  <div class="ff-outline mp-ff-outline">
+                    <div class="ff-body">
+                      <ui-smart-dropdown class="ff-ui"
+                        label="" placeholder="Select…"
+                        [options]="bulkMpNotifTypeOptions"
+                        [(ngModel)]="mpRow.notificationType">
+                      </ui-smart-dropdown>
+                    </div>
+                  </div>
                 </div>
               </td>
               <td class="mpcol-date">
-                <input type="datetime-local"
-                       class="mp-inline-datetime"
-                       [(ngModel)]="mpRow.notificationDate"
-                       step="1"
-                       placeholder="mm/dd/yyyy hh:mm:ss" />
+                <div class="ff-outline mp-ff-outline">
+                  <div class="ff-body">
+                    <ui-datetime-picker class="ff-ui"
+                      placeholderDate="mm/dd/yyyy"
+                      placeholderDateTime="mm/dd/yyyy --:--"
+                      [dateOnly]="false"
+                      [(ngModel)]="mpRow.notificationDate">
+                    </ui-datetime-picker>
+                  </div>
+                </div>
               </td>
               <td class="mpcol-attempt">
                 <input type="number" class="mp-inline-number"
@@ -511,14 +556,27 @@
             <div class="ff-field" [class.ff-span-all]="field.type === 'textarea'">
 
               <div class="ff-outline"
-                   *ngIf="field.type !== 'select' && field.type !== 'checkbox' && field.type !== 'textarea'"
+                   *ngIf="field.type !== 'select' && field.type !== 'checkbox' && field.type !== 'textarea' && field.type !== 'datetime-local'"
                    [class.ff-disabled]="!field.isEnabled">
                 <label class="ff-float-label">{{ field.displayName }}</label>
                 <div class="ff-body">
                   <input class="ff-input" [type]="field.type"
                          [formControl]="getBulkCtrl(field.controlName)"
-                         [attr.step]="field.type === 'datetime-local' ? '1' : null"
-                         [attr.placeholder]="field.type === 'datetime-local' ? 'mm/dd/yyyy' : '—'" />
+                         placeholder="—" />
+                </div>
+              </div>
+
+              <div class="ff-outline"
+                   *ngIf="field.type === 'datetime-local'"
+                   [class.ff-disabled]="!field.isEnabled">
+                <label class="ff-float-label">{{ field.displayName }}</label>
+                <div class="ff-body">
+                  <ui-datetime-picker class="ff-ui"
+                    placeholderDate="mm/dd/yyyy"
+                    placeholderDateTime="mm/dd/yyyy --:--"
+                    [dateOnly]="false"
+                    [formControl]="getBulkCtrl(field.controlName)">
+                  </ui-datetime-picker>
                 </div>
               </div>
 

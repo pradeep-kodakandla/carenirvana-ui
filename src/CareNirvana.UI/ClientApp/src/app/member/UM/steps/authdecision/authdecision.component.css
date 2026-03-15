@@ -215,7 +215,7 @@
 .section-card.collapsed .section-chevron { transform:rotate(-90deg) }
 .section-card.collapsed .section-header  { border-bottom-color:transparent }
 .section-body { padding:16px 20px 20px;overflow:visible }
-.section-body.mp-table-section { padding:0 0 0 }
+.section-body.mp-table-section { padding:0 0 0; overflow:visible }
 .section-card.collapsed .section-body { display:none }
 
 
@@ -394,31 +394,45 @@
 
 /* ── Member Provider — Editable Table ── */
 .bulk-mp-table-wrap {
-  overflow-x:auto;padding:0;
+  overflow:visible;padding:0;
 }
-.bulk-mp-table { width:100%;border-collapse:collapse;font-size:13px }
+.bulk-mp-table { width:100%;border-collapse:collapse;font-size:13px;overflow:visible }
 .bulk-mp-table thead th {
   background:#FFF7ED;color:#9A3412;font-weight:700;font-size:10.5px;
   text-transform:uppercase;letter-spacing:.05em;
   padding:10px 12px;border-bottom:2px solid #FDBA74;
   white-space:nowrap;text-align:left;
 }
+.bulk-mp-table tbody { overflow:visible }
 .bulk-mp-table tbody td {
   padding:8px 10px;border-bottom:1px solid #F1F5F9;
-  color:#1E293B;vertical-align:middle;
+  color:#1E293B;vertical-align:middle;overflow:visible;
 }
 .bulk-mp-table tbody tr:hover { background:#FFFBEB }
 .bulk-mp-table tbody tr:last-child td { border-bottom:none }
 
 .mpcol-num    { width:40px;text-align:center;font-weight:700;color:#9A3412;font-size:12px }
-.mpcol-type   { width:160px }
-.mpcol-notif  { min-width:170px }
-.mpcol-date   { min-width:200px;position:relative }
+.mpcol-type   { width:180px }
+.mpcol-notif  { min-width:180px }
+.mpcol-date   { min-width:220px;position:relative }
 .mpcol-attempt { width:80px;text-align:center }
 .mpcol-action { width:44px;text-align:center }
 
 /* Inline select */
-.mp-cell-select { position:relative }
+.mp-cell-select { position:relative;overflow:visible }
+
+/* Compact ff-outline for MP table cells — no clipping */
+.mp-ff-outline { border-radius:8px;padding:0;overflow:visible }
+.mp-ff-outline .ff-body { min-height:34px;overflow:visible }
+.mp-ff-outline .ff-float-label { display:none }
+:host ::ng-deep .mp-ff-outline ui-smart-dropdown { overflow:visible }
+:host ::ng-deep .mp-ff-outline ui-smart-dropdown input,
+:host ::ng-deep .mp-ff-outline ui-datetime-picker input { height:34px!important;font-size:12.5px!important }
+:host ::ng-deep .mp-ff-outline ui-smart-dropdown .p-dropdown-panel,
+:host ::ng-deep .mp-ff-outline ui-smart-dropdown .ng-dropdown-panel,
+:host ::ng-deep .mp-ff-outline ui-smart-dropdown .dropdown-menu { z-index:1050!important }
+
+.mp-row { overflow:visible }
 .mp-inline-select {
   width:100%;height:34px;
   border:1.5px solid #E2E8F0;border-radius:8px;

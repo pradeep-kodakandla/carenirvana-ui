@@ -1102,6 +1102,100 @@
            SUBSECTION FIELDS (NON-REPEAT)
       ========================= -->
       <ng-container *ngIf="!sub.repeat?.enabled; else subRepeatTpl">
+
+        <!-- ═══ MEMBER PROVIDER INFO TABLE (non-repeat, inside Additional Details) ═══ -->
+        <ng-container *ngIf="isMemberProviderInfoSub(sub, parentSec); else normalNonRepeatSub">
+          <div class="mp-table-section-wrap">
+            <div class="bulk-mp-table-wrap">
+              <table class="bulk-mp-table">
+                <thead>
+                  <tr>
+                    <th class="mpcol-num">#</th>
+                    <th class="mpcol-type">Type</th>
+                    <th class="mpcol-notif">Notification Type</th>
+                    <th class="mpcol-date">Notification Date</th>
+                    <th class="mpcol-attempt">Attempt</th>
+                    <th class="mpcol-action"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let mpRow of additionalMpRows; let ri = index" class="mp-row">
+                    <td class="mpcol-num">{{ ri + 1 }}</td>
+                    <td class="mpcol-type">
+                      <div class="mp-cell-select">
+                        <div class="ff-outline mp-ff-outline">
+                          <div class="ff-body">
+                            <ui-smart-dropdown class="ff-ui"
+                              label="" placeholder="Select…"
+                              [options]="getDropdownOptions(additionalMpTypeCtrlName)"
+                              [(ngModel)]="mpRow.type"
+                              [ngModelOptions]="{standalone: true}">
+                            </ui-smart-dropdown>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="mpcol-notif">
+                      <div class="mp-cell-select">
+                        <div class="ff-outline mp-ff-outline">
+                          <div class="ff-body">
+                            <ui-smart-dropdown class="ff-ui"
+                              label="" placeholder="Select…"
+                              [options]="getDropdownOptions(additionalMpNotifCtrlName)"
+                              [(ngModel)]="mpRow.notificationType"
+                              [ngModelOptions]="{standalone: true}">
+                            </ui-smart-dropdown>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="mpcol-date">
+                      <div class="ff-outline mp-ff-outline">
+                        <div class="ff-body">
+                          <ui-datetime-picker class="ff-ui"
+                            placeholderDate="mm/dd/yyyy"
+                            placeholderDateTime="mm/dd/yyyy --:--"
+                            [dateOnly]="false"
+                            [(ngModel)]="mpRow.notificationDate"
+                            [ngModelOptions]="{standalone: true}">
+                          </ui-datetime-picker>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="mpcol-attempt">
+                      <input type="number" class="mp-inline-number"
+                             [(ngModel)]="mpRow.notificationAttempt"
+                             [ngModelOptions]="{standalone: true}"
+                             min="0" placeholder="0" />
+                    </td>
+                    <td class="mpcol-action">
+                      <button type="button" class="mp-remove-btn"
+                              *ngIf="additionalMpRows.length > 1"
+                              (click)="removeAdditionalMpRow(ri)"
+                              title="Remove row">
+                        <mat-icon class="dc-action-icon">delete</mat-icon>
+                      </button>
+                    </td>
+                  </tr>
+                  <tr *ngIf="!additionalMpRows.length">
+                    <td colspan="6" style="text-align:center;color:#94A3B8;padding:20px;font-size:13px">
+                      No notification records. Click below to add one.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="bulk-mp-add-bar">
+              <button type="button" class="mp-add-btn" (click)="addAdditionalMpRow()">
+                <mat-icon>add_circle</mat-icon>
+                Add Notification Row
+              </button>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- ═══ DEFAULT NON-REPEAT SUBSECTION FIELDS ═══ -->
+        <ng-template #normalNonRepeatSub>
         <div class="grid">
           <ng-container *ngFor="let f of getNonActionFields(sub.fields)">
             <ng-container *ngIf="isVisible(f)">
@@ -1194,6 +1288,7 @@
             </ng-container>
           </ng-container>
         </div>
+        </ng-template>
       </ng-container>
 
       <!-- =========================
@@ -1357,7 +1452,7 @@
 
         <!-- ═══ DIAGNOSIS / ICD CARDS (subsection-level) ═══ -->
         <ng-template #diagOrNormalSubRepeat>
-          <ng-container *ngIf="isDiagnosisRepeatGroup(sub, parentSec); else serviceOrNormalSubRepeat">
+          <ng-container *ngIf="isDiagnosisRepeatGroup(sub, parentSec); else additionalIcdOrServiceSubRepeat">
             <div class="dc-list">
               <ng-container *ngFor="let inst of sub.instances; trackBy: trackProvIdx">
 
@@ -1447,6 +1542,74 @@
                   </div>
                 </ng-template>
 
+              </ng-container>
+            </div>
+          </ng-container>
+        </ng-template>
+
+        <!-- ═══ ADDITIONAL DETAILS — ICD CARDS (separate from Diagnosis) ═══ -->
+        <ng-template #additionalIcdOrServiceSubRepeat>
+          <ng-container *ngIf="isAdditionalIcdRepeatGroup(sub, parentSec); else serviceOrNormalSubRepeat">
+            <!-- Inline subsection header with +Add ICD on right -->
+            <div class="addl-icd-header">
+              <span class="addl-icd-title">ICD</span>
+              <button type="button" class="dc-add-btn addl-icd-add-btn"
+                      [disabled]="!canAddRepeat(sub)"
+                      (click)="addRepeat(sub)">
+                <mat-icon>add_circle</mat-icon> Add ICD
+              </button>
+            </div>
+            <div class="dc-list">
+              <ng-container *ngFor="let inst of sub.instances; trackBy: trackProvIdx">
+                <div class="dc-row" *ngIf="hasAdditionalIcdSelected(inst); else subAddlIcdEditCard">
+                  <ng-container *ngIf="getDiagCodeTypeField(inst) as ctf">
+                    <span class="dc-codetype-value">{{ getAdditionalIcdCodeType(inst) || ctf.displayName }}</span>
+                  </ng-container>
+                  <span class="dc-icd-code">{{ getAdditionalIcdCode(inst) }}</span>
+                  <span class="dc-icd-desc">{{ getAdditionalIcdDescription(inst) }}</span>
+                  <label class="dc-primary-radio" [class.dc-primary-radio--active]="isAdditionalIcdPrimary(inst)">
+                    <input type="radio" name="primaryAddlIcd" [checked]="isAdditionalIcdPrimary(inst)" (change)="setAdditionalIcdPrimary(inst)" />
+                    <span class="dc-primary-label">Primary</span>
+                  </label>
+                  <div class="dc-top-actions">
+                    <button type="button" class="dc-top-btn dc-top-btn--edit" (click)="editAdditionalIcd(inst)" title="Edit"><mat-icon class="dc-action-icon">edit</mat-icon></button>
+                    <button type="button" class="dc-top-btn dc-top-btn--delete" (click)="clearAdditionalIcdData(inst)"><mat-icon class="dc-action-icon">delete</mat-icon></button>
+                  </div>
+                </div>
+                <ng-template #subAddlIcdEditCard>
+                  <div class="dc-card">
+                    <div class="dc-card-top">
+                      <ng-container *ngIf="getDiagCodeTypeField(inst) as ctf">
+                        <ng-container *ngIf="form.get(ctf.controlName) as ctc">
+                          <div class="dc-codetype-wrap">
+                            <ui-smart-dropdown class="ff-ui dc-dropdown" label="{{ ctf.displayName }}" placeholder="Select code type..." [options]="getDropdownOptions(ctf.controlName)" [formControlName]="ctf.controlName"></ui-smart-dropdown>
+                          </div>
+                        </ng-container>
+                      </ng-container>
+                      <label class="dc-primary-radio" [class.dc-primary-radio--active]="isAdditionalIcdPrimary(inst)">
+                        <input type="radio" name="primaryAddlIcd" [checked]="isAdditionalIcdPrimary(inst)" (change)="setAdditionalIcdPrimary(inst)" />
+                        <span class="dc-primary-label">Primary</span>
+                      </label>
+                      <div class="dc-top-actions">
+                        <button type="button" class="dc-top-btn dc-top-btn--delete" (click)="removeRepeat(sub, inst.index)"><mat-icon class="dc-action-icon">delete</mat-icon></button>
+                      </div>
+                    </div>
+                    <ng-container *ngIf="getDiagSearchField(inst) as sf">
+                      <ng-container *ngIf="form.get(sf.controlName) as sc">
+                        <div class="dc-search-row">
+                          <div class="dc-search dc-search-bordered">
+                            <ui-smart-lookup class="ff-ui dc-search-input" [placeholder]="getLookupPlaceholder(sf)" [minChars]="getLookupMinChars(sf)" [debounceMs]="getLookupDebounceMs(sf)" [limit]="getLookupLimit(sf)" [searchFn]="getLookupSearchFn(sf)" [displayWith]="getLookupDisplayWith(sf)" [trackBy]="getLookupTrackBy(sf)" [formControlName]="sf.controlName" (selected)="onAdditionalIcdLookupSelected(sf, inst, $event)" (textChange)="onLookupTextChange(sf, $event)" (cleared)="onAdditionalIcdLookupCleared(sf, inst)"></ui-smart-lookup>
+                          </div>
+                          <button type="button" class="dc-cancel-btn" *ngIf="isAdditionalIcdInEditMode(inst)" (click)="cancelEditAdditionalIcd(inst)">Cancel</button>
+                        </div>
+                      </ng-container>
+                    </ng-container>
+                    <div class="dc-empty-state" *ngIf="!isAdditionalIcdInEditMode(inst)">
+                      <mat-icon class="dc-empty-icon">search</mat-icon>
+                      <span>Search for an ICD code</span>
+                    </div>
+                  </div>
+                </ng-template>
               </ng-container>
             </div>
           </ng-container>

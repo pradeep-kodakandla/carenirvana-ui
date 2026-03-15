@@ -888,6 +888,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
             this.rehydrateProviderData();
             // Rebuild diagnosis card display data from patched form values
             this.rehydrateDiagnosisData();
+            this.rehydrateAdditionalIcdData();
+            this.initAdditionalMpControlNames();
+            this.loadAdditionalMpRowsFromForm();
             this.rehydrateServiceData();
             this.rehydrateMedicationData();
           }
@@ -1228,6 +1231,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
     // ── 5. REHYDRATE CARD DISPLAY DATA ───────────────────────────────────
     this.rehydrateDiagnosisData();
+    this.rehydrateAdditionalIcdData();
+    this.initAdditionalMpControlNames();
+    this.loadAdditionalMpRowsFromForm();
     this.rehydrateServiceData();
             this.rehydrateMedicationData();
 
@@ -1263,6 +1269,10 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       this.diagnosisDataByInstance = {};
       this.primaryDiagnosisKey = null;
       this.diagnosisEditMode.clear();
+      this.additionalIcdDataByInstance = {};
+      this.primaryAdditionalIcdKey = null;
+      this.additionalIcdEditMode.clear();
+      this.additionalMpRows = [this.createEmptyAdditionalMpRow()];
       this.providerEditMode.clear();
       this.serviceDataByInstance = {};
       this.medicationDataByInstance = {};
@@ -1884,6 +1894,10 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     this.diagnosisDataByInstance = {};
     this.diagnosisEditMode.clear();
     this.primaryDiagnosisKey = null;
+    this.additionalIcdDataByInstance = {};
+    this.additionalIcdEditMode.clear();
+    this.primaryAdditionalIcdKey = null;
+    this.additionalMpRows = [this.createEmptyAdditionalMpRow()];
     this.serviceDataByInstance = {};
     this.medicationDataByInstance = {};
     this.serviceEditMode.clear();
@@ -1907,6 +1921,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
     this.rehydrateProviderData();
     this.rehydrateDiagnosisData();
+    this.rehydrateAdditionalIcdData();
+    this.initAdditionalMpControlNames();
+    this.loadAdditionalMpRowsFromForm();
     this.rehydrateServiceData();
     this.rehydrateMedicationData();
     this.setupServiceReqAutoCalc();
@@ -3016,8 +3033,12 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     }
 
     // ── Duplicate authorization check (async — calls backend API) ──
-    const dupResult = await this.runDuplicateChecks();
-    if (dupResult === 'blocked') return;
+    // Only run on authorization creation (before authNumber is generated);
+    // skip on update since the authorization already exists.
+    if (!this.hasExistingAuthNumberInRoute()) {
+      const dupResult = await this.runDuplicateChecks();
+      if (dupResult === 'blocked') return;
+    }
 
     const userId = Number(sessionStorage.getItem('loggedInUserid') || 0);
 
@@ -3028,6 +3049,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     const memberEnrollmentId = Number(enrollment?.memberEnrollmentId || 0);
 
     const authDetailId = Number(this.pendingAuth?.authDetailId ?? this.pendingAuth?.id ?? 0);
+
+    // Sync Additional Details Member Provider Info table rows into form
+    this.syncAdditionalMpRowsToForm();
 
     // Merge existing JSON data + current form step data
     const existingObj = this.safeParseJson(this.pendingAuth?.jsonData) ?? {};
@@ -3150,6 +3174,21 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
         // Seed Decision Details rows (idempotent) after save
         await this.seedDecisionAfterSave(authDetailId, merged, userId, authTypeId, effectiveAuthApprove);
+
+        // ✅ Update pendingAuth in-place with saved values.
+        // Do NOT re-fetch via getById — that overwrites createdBy with the current
+        // updater's userId, losing the original creator info shown in the header.
+        if (this.pendingAuth) {
+          (this.pendingAuth as any).authStatus = authStatus;
+          (this.pendingAuth as any).authStatusReason = authStatusReason;
+          (this.pendingAuth as any).authClassId = authClassId;
+          (this.pendingAuth as any).authTypeId = authTypeId;
+          (this.pendingAuth as any).authDueDate = authDueDate;
+          (this.pendingAuth as any).jsonData = safeJsonDataFinal;
+        }
+
+        // ✅ Re-hydrate shell header from the now-updated pendingAuth
+        this.shell?.refreshHeader();
 
         // Fax mode — emit instead of navigating
         if (this.isFaxMode) {
@@ -3924,6 +3963,10 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     this.diagnosisDataByInstance = {};
     this.primaryDiagnosisKey = null;
     this.diagnosisEditMode.clear();
+    this.additionalIcdDataByInstance = {};
+    this.primaryAdditionalIcdKey = null;
+    this.additionalIcdEditMode.clear();
+    this.additionalMpRows = [this.createEmptyAdditionalMpRow()];
     this.serviceDataByInstance = {};
       this.medicationDataByInstance = {};
       this.legSelectedDays = {};
@@ -4297,6 +4340,23 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   medicationDataByInstance: Record<string, any> = {};
   private medicationEditMode: Set<string> = new Set();
 
+  // ---------- Additional Details ICD Card State (separate from Diagnosis) ----------
+  additionalIcdDataByInstance: Record<string, any> = {};
+  primaryAdditionalIcdKey: string | null = null;
+  private additionalIcdEditMode: Set<string> = new Set();
+
+  // ---------- Additional Details — Member Provider Info Table State ----------
+  additionalMpRows: Array<{
+    type: any;
+    notificationType: any;
+    notificationDate: string;
+    notificationAttempt: number | string;
+  }> = [];
+  /** controlName of the Type field (for getDropdownOptions in template) */
+  additionalMpTypeCtrlName = '';
+  /** controlName of the Notification Type field */
+  additionalMpNotifCtrlName = '';
+
   // ---------- Transportation Scheduler State ----------
   readonly weekDayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   /** Direct state map for weekday multi-select per leg instance (keyed by leg controlName prefix) */
@@ -4425,6 +4485,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   /** Detects diagnosis sections by title — only "Diagnosis Details", NOT "Additional Details" */
   isDiagnosisSection(sec: RenderSection): boolean {
     const t = (sec?.title ?? '').toLowerCase();
+    if (t.includes('additional')) return false;
     return t.includes('diagnos');
   }
 
@@ -4748,6 +4809,292 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
 
   // ============================================================
+  // ADDITIONAL DETAILS — Section Detection
+  // ============================================================
+
+  isAdditionalDetailsSection(sec: any): boolean {
+    const t = (sec?.title ?? '').toLowerCase();
+    return t.includes('additional');
+  }
+
+  // ============================================================
+  // ADDITIONAL DETAILS — ICD Cards (separate from Diagnosis)
+  // ============================================================
+
+  isAdditionalIcdRepeatGroup(target: any, parentSection?: any): boolean {
+    if (!target?.repeat?.enabled) return false;
+    const t = (target?.title ?? '').toLowerCase();
+    const looksLikeIcd = t.includes('icd') || t.includes('diagnos');
+    if (!looksLikeIcd) return false;
+    if (parentSection) return this.isAdditionalDetailsSection(parentSection);
+    return false;
+  }
+
+  getAdditionalIcdRepeatSub(sec: RenderSection): any | null {
+    for (const sub of (sec.subsections || [])) {
+      if (sub.repeat?.enabled && this.isAdditionalIcdRepeatGroup(sub, sec)) return sub;
+    }
+    return null;
+  }
+
+  getAdditionalIcdInstanceKey(inst: RenderRepeatInstance): string {
+    const sf = this.getDiagSearchField(inst);
+    return sf?.controlName ?? `addl_icd_${inst?.index ?? 0}`;
+  }
+
+  hasAdditionalIcdSelected(inst: RenderRepeatInstance): boolean {
+    const key = this.getAdditionalIcdInstanceKey(inst);
+    if (this.additionalIcdEditMode.has(key)) return false;
+    return !!this.additionalIcdDataByInstance[key];
+  }
+
+  getAdditionalIcdData(inst: RenderRepeatInstance): any | null {
+    return this.additionalIcdDataByInstance[this.getAdditionalIcdInstanceKey(inst)] ?? null;
+  }
+
+  getAdditionalIcdCode(inst: RenderRepeatInstance): string {
+    const d = this.getAdditionalIcdData(inst);
+    return d?.code ?? d?.icdCode ?? '';
+  }
+
+  getAdditionalIcdDescription(inst: RenderRepeatInstance): string {
+    const d = this.getAdditionalIcdData(inst);
+    return d?.codeDesc ?? d?.description ?? d?.icdDescription ?? '';
+  }
+
+  getAdditionalIcdCodeType(inst: RenderRepeatInstance): string {
+    const ctf = this.getDiagCodeTypeField(inst);
+    if (!ctf?.controlName) return '';
+    const val = this.form.get(ctf.controlName)?.value;
+    if (!val) return '';
+    const opts = this.getDropdownOptions(ctf.controlName);
+    const match = opts.find((o: any) => String(o?.value) === String(val));
+    return match?.label ?? String(val);
+  }
+
+  isAdditionalIcdPrimary(inst: RenderRepeatInstance): boolean {
+    return this.primaryAdditionalIcdKey === this.getAdditionalIcdInstanceKey(inst);
+  }
+
+  setAdditionalIcdPrimary(inst: RenderRepeatInstance): void {
+    this.primaryAdditionalIcdKey = this.getAdditionalIcdInstanceKey(inst);
+  }
+
+  onAdditionalIcdLookupSelected(f: any, inst: RenderRepeatInstance, item: any): void {
+    const key = this.getAdditionalIcdInstanceKey(inst);
+    this.additionalIcdDataByInstance[key] = item;
+    this.additionalIcdEditMode.delete(key);
+    if (Object.keys(this.additionalIcdDataByInstance).length === 1 || !this.primaryAdditionalIcdKey) {
+      this.primaryAdditionalIcdKey = key;
+    }
+    if (f?.controlName) this.lookupSelectedByControl[f.controlName] = item;
+    this.onLookupSelected(f, item);
+  }
+
+  onAdditionalIcdLookupCleared(f: any, inst: RenderRepeatInstance): void {
+    const key = this.getAdditionalIcdInstanceKey(inst);
+    delete this.additionalIcdDataByInstance[key];
+    this.additionalIcdEditMode.delete(key);
+    if (this.primaryAdditionalIcdKey === key) {
+      const remaining = Object.keys(this.additionalIcdDataByInstance);
+      this.primaryAdditionalIcdKey = remaining.length > 0 ? remaining[0] : null;
+    }
+    this.onLookupCleared(f);
+  }
+
+  clearAdditionalIcdData(inst: RenderRepeatInstance): void {
+    const key = this.getAdditionalIcdInstanceKey(inst);
+    delete this.additionalIcdDataByInstance[key];
+    this.additionalIcdEditMode.delete(key);
+    if (this.primaryAdditionalIcdKey === key) {
+      const remaining = Object.keys(this.additionalIcdDataByInstance);
+      this.primaryAdditionalIcdKey = remaining.length > 0 ? remaining[0] : null;
+    }
+    const sf = this.getDiagSearchField(inst);
+    if (sf?.controlName) {
+      const ctrl = this.form.get(sf.controlName);
+      if (ctrl) { ctrl.setValue(null, { emitEvent: true }); ctrl.markAsDirty(); }
+      this.onLookupCleared(sf);
+    }
+  }
+
+  editAdditionalIcd(inst: RenderRepeatInstance): void {
+    const key = this.getAdditionalIcdInstanceKey(inst);
+    this.additionalIcdEditMode.add(key);
+    const sf = this.getDiagSearchField(inst);
+    if (sf?.controlName) {
+      const ctrl = this.form.get(sf.controlName);
+      if (ctrl) {
+        const data = this.additionalIcdDataByInstance[key];
+        ctrl.setValue(data ? this.getLookupDisplayWith(sf)(data) : null, { emitEvent: false });
+      }
+    }
+  }
+
+  cancelEditAdditionalIcd(inst: RenderRepeatInstance): void {
+    const key = this.getAdditionalIcdInstanceKey(inst);
+    this.additionalIcdEditMode.delete(key);
+    const data = this.additionalIcdDataByInstance[key];
+    if (data) {
+      const sf = this.getDiagSearchField(inst);
+      if (sf?.controlName) {
+        const ctrl = this.form.get(sf.controlName);
+        if (ctrl) ctrl.setValue(this.getLookupDisplayWith(sf)(data), { emitEvent: false });
+      }
+    }
+  }
+
+  isAdditionalIcdInEditMode(inst: RenderRepeatInstance): boolean {
+    return this.additionalIcdEditMode.has(this.getAdditionalIcdInstanceKey(inst));
+  }
+
+  private rehydrateAdditionalIcdData(): void {
+    if (!this.renderSections?.length) return;
+    const processInstances = (target: any) => {
+      for (const inst of (target.instances || [])) {
+        const sf = this.getDiagSearchField(inst);
+        if (!sf?.controlName) continue;
+        const key = this.getAdditionalIcdInstanceKey(inst);
+        if (this.additionalIcdDataByInstance[key]) continue;
+        let resolved: any = null;
+        const searchVal = this.form.get(sf.controlName)?.value;
+        if (searchVal && typeof searchVal === 'object' && searchVal.code) resolved = searchVal;
+        if (!resolved) {
+          const bodyFields = this.getNonActionFields(inst?.fields).filter((f: any) => f !== sf && f !== this.getDiagCodeTypeField(inst));
+          const data: any = {};
+          for (const f of bodyFields) {
+            const val = this.form.get(f?.controlName)?.value;
+            if (val == null || val === '' || typeof val === 'object') continue;
+            const id = String(f?._rawId ?? f?.id ?? '').toLowerCase();
+            if (id.includes('code') && !id.includes('type') && !id.includes('desc')) data.code = val;
+            else if (id.includes('desc') || id.includes('description')) data.codeDesc = val;
+          }
+          if (data.code || data.codeDesc) resolved = data;
+        }
+        if (!resolved && typeof searchVal === 'string' && searchVal.includes(' - ')) {
+          const parts = searchVal.split(' - ');
+          resolved = { code: parts[0].trim(), codeDesc: parts.slice(1).join(' - ').trim() };
+        } else if (!resolved && typeof searchVal === 'string' && searchVal.trim()) {
+          resolved = { code: searchVal.trim() };
+        }
+        if (resolved) {
+          this.additionalIcdDataByInstance[key] = resolved;
+          if (!this.primaryAdditionalIcdKey) this.primaryAdditionalIcdKey = key;
+        }
+      }
+    };
+    for (const sec of this.renderSections) {
+      if (!this.isAdditionalDetailsSection(sec)) continue;
+      for (const sub of (sec.subsections || [])) {
+        if (sub.repeat?.enabled && this.isAdditionalIcdRepeatGroup(sub, sec)) processInstances(sub);
+      }
+    }
+  }
+
+  // ============================================================
+  // ADDITIONAL DETAILS — Member Provider Info Table
+  // ============================================================
+
+  /** Detects Member Provider Info subsections (inside Additional Details) */
+  isMemberProviderInfoSub(sub: any, parentSection?: any): boolean {
+    const t = (sub?.title ?? '').toLowerCase();
+    if (!t.includes('member provider')) return false;
+    if (parentSection) return this.isAdditionalDetailsSection(parentSection);
+    return false;
+  }
+
+  /**
+   * Discover the controlNames of Type/NotificationType fields so that
+   * the template can call getDropdownOptions(ctrlName) dynamically.
+   * This way options load correctly even when datasources resolve async.
+   * Also ensures at least one empty row exists.
+   */
+  private initAdditionalMpControlNames(): void {
+    for (const sec of (this.renderSections || [])) {
+      if (!this.isAdditionalDetailsSection(sec)) continue;
+      for (const sub of (sec.subsections || [])) {
+        if (!this.isMemberProviderInfoSub(sub, sec)) continue;
+        for (const f of (sub.fields ?? [])) {
+          if (f?.type !== 'select') continue;
+          const rawId = String(f?._rawId ?? f?.id ?? '').toLowerCase();
+          if ((rawId.includes('type') && !rawId.includes('notification')) || rawId.includes('memberprovidertype')) {
+            this.additionalMpTypeCtrlName = f.controlName;
+          } else if (rawId.includes('notification') && rawId.includes('type')) {
+            this.additionalMpNotifCtrlName = f.controlName;
+          }
+        }
+      }
+    }
+    // Ensure at least one empty row
+    if (!this.additionalMpRows.length) {
+      this.additionalMpRows = [this.createEmptyAdditionalMpRow()];
+    }
+  }
+
+  private createEmptyAdditionalMpRow() {
+    return { type: null, notificationType: null, notificationDate: '', notificationAttempt: '' };
+  }
+
+  addAdditionalMpRow(): void {
+    this.additionalMpRows = [...this.additionalMpRows, this.createEmptyAdditionalMpRow()];
+  }
+
+  removeAdditionalMpRow(index: number): void {
+    if (this.additionalMpRows.length <= 1) return;
+    this.additionalMpRows = this.additionalMpRows.filter((_, i) => i !== index);
+  }
+
+  /** Load MP rows from form values on reopen */
+  private loadAdditionalMpRowsFromForm(): void {
+    for (const sec of (this.renderSections || [])) {
+      if (!this.isAdditionalDetailsSection(sec)) continue;
+      for (const sub of (sec.subsections || [])) {
+        if (!this.isMemberProviderInfoSub(sub, sec)) continue;
+        const fields = sub?.fields ?? [];
+        const row: any = { type: null, notificationType: null, notificationDate: '', notificationAttempt: '' };
+        for (const f of fields) {
+          const val = this.form.get(f?.controlName)?.value;
+          if (val == null || val === '') continue;
+          const rawId = String(f?._rawId ?? f?.id ?? '').toLowerCase();
+          if ((rawId.includes('type') && !rawId.includes('notification')) || rawId.includes('memberprovidertype')) row.type = val;
+          else if (rawId.includes('notification') && rawId.includes('type')) row.notificationType = val;
+          else if (rawId.includes('date') && rawId.includes('notification')) row.notificationDate = val;
+          else if (rawId.includes('attempt')) row.notificationAttempt = val;
+        }
+        const hasValue = row.type || row.notificationType || row.notificationDate || row.notificationAttempt;
+        if (hasValue) {
+          this.additionalMpRows = [row];
+        }
+      }
+    }
+  }
+
+  /** Sync first MP row back into form controls before save */
+  syncAdditionalMpRowsToForm(): void {
+    for (const sec of (this.renderSections || [])) {
+      if (!this.isAdditionalDetailsSection(sec)) continue;
+      for (const sub of (sec.subsections || [])) {
+        if (!this.isMemberProviderInfoSub(sub, sec)) continue;
+        const fields = sub?.fields ?? [];
+        const row = this.additionalMpRows?.[0];
+        if (!row) return;
+        for (const f of fields) {
+          const rawId = String(f?._rawId ?? f?.id ?? '').toLowerCase();
+          if ((rawId.includes('type') && !rawId.includes('notification')) || rawId.includes('memberprovidertype')) {
+            this.form.get(f?.controlName)?.setValue(row.type, { emitEvent: false });
+          } else if (rawId.includes('notification') && rawId.includes('type')) {
+            this.form.get(f?.controlName)?.setValue(row.notificationType, { emitEvent: false });
+          } else if (rawId.includes('date') && rawId.includes('notification')) {
+            this.form.get(f?.controlName)?.setValue(row.notificationDate, { emitEvent: false });
+          } else if (rawId.includes('attempt')) {
+            this.form.get(f?.controlName)?.setValue(row.notificationAttempt, { emitEvent: false });
+          }
+        }
+      }
+    }
+  }
+
+    // ============================================================
   // Service / Procedure Card Helpers
   // ============================================================
 
@@ -7063,6 +7410,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
     // ── 6. Rehydrate card display data so diagnosis/service show view mode ─
     this.rehydrateDiagnosisData();
+    this.rehydrateAdditionalIcdData();
+    this.initAdditionalMpControlNames();
+    this.loadAdditionalMpRowsFromForm();
     this.rehydrateServiceData();
             this.rehydrateMedicationData();
 

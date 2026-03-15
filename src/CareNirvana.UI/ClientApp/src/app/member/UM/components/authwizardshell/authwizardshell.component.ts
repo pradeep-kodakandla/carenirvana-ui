@@ -5,7 +5,9 @@ import { WizardToastService, WizardToastMessage } from './wizard-toast.service';
 import { AuthDetailApiService } from 'src/app/service/authdetailapi.service';
 import { AuthDetailRow } from 'src/app/member/UM/services/authdetail';
 import { AuthService } from 'src/app/service/auth.service';
+import { CrudService, DatasourceLookupService } from 'src/app/service/crud.service';
 import { AuthunsavedchangesawareService } from 'src/app/member/UM/services/authunsavedchangesaware.service';
+import { AuthenticateService } from 'src/app/service/authentication.service';
 export interface AuthWizardStep {
   id: string;
   label: string;
@@ -73,48 +75,16 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     decisionSummary: { total: 0, approved: 0, partial: 0, denied: 0, pending: 0 }
   };
 
-  // ── Lookup maps for coded fields ──
-  private readonly AUTH_TYPE_MAP: Record<string, string> = {
-    '1': 'Elective Surgery',       '2': 'Emergency',
-    '3': 'Outpatient Surgery',     '4': 'Skilled Nursing',
-    '5': 'Home Health',            '6': 'DME',
-    '7': 'Rehabilitation',         '8': 'Acute Hospitalization',
-    '9': 'Physical Therapy',       '10': 'Behavioral Health',
-    '11': 'Specialty Pharmacy',    '12': 'Dialysis',
-    '13': 'Transplant',            '14': 'Home Infusion'
-  };
+  // ── Dynamic lookup caches (fetched from API, same sources as Auth Details step) ──
+  private authClassMap: Map<string, string> = new Map();
+  private authTypeMap: Map<string, string> = new Map();
+  private statusLookup: Map<string, string> = new Map();    // authStatus id → label
+  private priorityLookup: Map<string, string> = new Map();  // requestPriority id → label
+  private userLookup: Map<string, string> = new Map();      // userId → userName (for Created By)
+  private lastAuthClassIdForTypeLookup: number | null = null;
 
-  private readonly AUTH_CLASS_MAP: Record<string, string> = {
-    '1': 'Inpatient',  '2': 'Outpatient',
-    '3': 'Concurrent', '4': 'Observation',
-    '5': 'Emergency'
-  };
-
-  private readonly PRIORITY_MAP: Record<string, { label: string; code: string }> = {
-    '1': { label: 'Urgent',     code: 'urgent' },
-    '2': { label: 'Standard',   code: 'standard' },
-    '3': { label: 'Routine',    code: 'routine' },
-    '4': { label: 'Expedited',  code: 'expedited' }
-  };
-
-  private readonly AUTH_STATUS_MAP: Record<string, { label: string; code: string }> = {
-    '1': { label: 'In Review',    code: '1' },
-    '2': { label: 'Approved',     code: '2' },
-    '3': { label: 'Denied',       code: '3' },
-    '4': { label: 'Pending',      code: '4' },
-    '5': { label: 'Cancelled',    code: '5' },
-    '6': { label: 'Deferred',     code: '6' },
-    '7': { label: 'Pended',       code: '7' },
-    '8': { label: 'Partial',      code: '8' }
-  };
-
-  /** Decision status codes → bucket keys */
-  private readonly DECISION_STATUS_BUCKET: Record<string, 'approved' | 'partial' | 'denied' | 'pending'> = {
-    '1': 'approved', 'approved': 'approved',
-    '2': 'partial',  'partial': 'partial',
-    '3': 'denied',   'denied': 'denied',
-    '4': 'pending',  'pending': 'pending'
-  };
+  /** Reference to the currently active child step instance (for reading resolved options) */
+  private activeChildInst: any = null;
 
   // ---------------------------
   // Common toast beside stepper
@@ -186,7 +156,10 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     private route: ActivatedRoute,
     private authApi: AuthDetailApiService,
     private toastSvc: WizardToastService,
-    private activityService: AuthService
+    private activityService: AuthService,
+    private crudService: CrudService,
+    private dsLookup: DatasourceLookupService,
+    private authenticateService: AuthenticateService
   ) { }
 
   ngOnInit(): void {
@@ -242,6 +215,11 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     );
 
     // on every child navigation, push context into the newly activated component
+    // ✅ Fetch auth class lookup once at shell init (auth type lookup is loaded per auth class)
+    this.loadAuthClassLookup();
+    // ✅ Fetch requestpriority + authstatus from datasource lookups (same pattern as CaseWizardShell)
+    this.loadHeaderLookups();
+
     this.sub.add(
       this.router.events
         .pipe(filter(e => e instanceof NavigationEnd))
@@ -292,6 +270,7 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
       this.sub.add(
         outletAny.deactivateEvents.subscribe(() => {
           this.currentStepRef = undefined;
+          this.activeChildInst = null;
         })
       );
     }
@@ -408,35 +387,71 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
   private refreshHeaderFromStep(inst: any): void {
     if (!inst) return;
 
+    // Track active child for resolving dropdown labels dynamically
+    this.activeChildInst = inst;
+
     this.header.authNumber = String(this.ctx?.authNumber ?? this.authNumber ?? this.header.authNumber ?? '');
 
     const p = inst?.pendingAuth ?? inst?.auth ?? inst?.authDetails ?? inst?.model ?? null;
     if (!p) return;
 
-    const createdBy = sessionStorage.getItem('loggedInUsername') || '';
-    const createdOn = p?.createdOn ?? p?.createdon ?? p?.createdDate ?? p?.created_date ?? null;
-    const due = p?.authDueDate ?? p?.authduedate ?? p?.dueDate ?? p?.duedate ?? null;
+    // ── Parse jsonData to get dataObj (fields like requestPriority live inside jsonData, not on the row) ──
+    const dataObj = this.safeParseJson(p?.jsonData ?? p?.dataJson) ?? {};
 
-    if (createdBy != null) this.header.createdBy = String(createdBy);
+    // ── Created By: resolve userId → userName via userLookup, then fallback ──
+    const createdByRaw = p?.createdBy ?? p?.createdby ?? '';
+    const createdByName = p?.createdByName ?? p?.createdByUserName ?? p?.created_by_name ?? '';
+    //this.header.createdBy = createdByName
+    //  || this.resolveLabel(createdByRaw, this.userLookup)
+    //  || sessionStorage.getItem('loggedInUsername')
+    //  || '';
+    // Cache raw createdBy id for re-resolution when userLookup loads later
+    if (createdByRaw) (this as any)._cachedCreatedById = String(createdByRaw);
+
+    const createdOn = p?.createdOn ?? p?.createdon ?? p?.createdDate ?? p?.created_date ?? null;
+    const due = p?.authDueDate ?? p?.authduedate ?? dataObj?.authDueDate ?? dataObj?.authduedate ?? dataObj?.dueDate ?? p?.dueDate ?? null;
+
     if (createdOn != null) this.header.createdOn = this.formatDate(createdOn);
     if (due != null) {
       this.header.dueDate = this.formatDate(due);
       this.computeDaysLeft(due);
     }
 
-    this.hydrateRichHeader(p, p);
+    // Ensure auth type lookup is loaded for the current auth class
+    const classId = Number(p?.authClassId ?? dataObj?.authClassId ?? 0);
+    if (classId > 0 && this.lastAuthClassIdForTypeLookup !== classId) {
+      this.loadAuthTypeLookup(classId);
+    }
+
+    // Pass row + parsed jsonData (not row + row) so fields in jsonData are resolved
+    this.hydrateRichHeader(p, dataObj);
   }
 
   private refreshHeaderFromAuthRow(row: any, dataObj: any): void {
-    const createdBy = sessionStorage.getItem('loggedInUsername') || '';
+    // ── Created By: resolve userId → userName via userLookup, then fallback ──
+    const createdByRaw = row?.createdBy ?? row?.createdby ?? dataObj?.createdBy ?? dataObj?.createdby ?? '';
+    const createdByName = row?.createdByName ?? row?.createdByUserName ?? row?.created_by_name
+      ?? dataObj?.createdByName ?? dataObj?.createdByUserName ?? '';
+    //this.header.createdBy = createdByName
+    //  //|| this.resolveLabel(createdByRaw, this.userLookup)
+    //  //|| sessionStorage.getItem('loggedInUsername')
+    //  || '';
+    // Cache raw createdBy id for re-resolution when userLookup loads later
+    if (createdByRaw) (this as any)._cachedCreatedById = String(createdByRaw);
+
     const createdOn = row?.createdOn ?? row?.createdon ?? dataObj?.createdOn ?? dataObj?.createdon ?? null;
     const due = row?.authDueDate ?? row?.authduedate ?? dataObj?.authDueDate ?? dataObj?.authduedate ?? dataObj?.dueDate ?? null;
 
-    if (createdBy != null) this.header.createdBy = String(createdBy);
     if (createdOn != null) this.header.createdOn = this.formatDate(createdOn);
     if (due != null) {
       this.header.dueDate = this.formatDate(due);
       this.computeDaysLeft(due);
+    }
+
+    // Ensure auth type lookup is loaded for the current auth class
+    const classId = Number(row?.authClassId ?? dataObj?.authClassId ?? 0);
+    if (classId > 0 && this.lastAuthClassIdForTypeLookup !== classId) {
+      this.loadAuthTypeLookup(classId);
     }
 
     this.hydrateRichHeader(row, dataObj);
@@ -445,30 +460,79 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
   /**
    * Populates the rich header fields (authType, priority, status, decisionSummary)
    * from either a row-level object or parsed dataJson.
+   * Uses dynamically-fetched lookups and child step resolved labels — no hardcoded maps.
    */
   private hydrateRichHeader(row: any, dataObj: any): void {
-    // Auth Type
-    const authTypeId = String(row?.authTypeId ?? dataObj?.authTypeId ?? '');
-    this.header.authTypeName = this.AUTH_TYPE_MAP[authTypeId] || '';
-
-    // Auth Class
     const authClassId = String(row?.authClassId ?? dataObj?.authClassId ?? '');
-    this.header.authClassName = this.AUTH_CLASS_MAP[authClassId] || '';
+    const authTypeId = String(row?.authTypeId ?? dataObj?.authTypeId ?? '');
 
-    // Priority
-    const priorityKey = String(dataObj?.requestPriority ?? row?.requestPriority ?? '');
-    const priorityEntry = this.PRIORITY_MAP[priorityKey];
-    this.header.priorityLabel = priorityEntry?.label ?? '';
-    this.header.priorityCode  = priorityEntry?.code ?? priorityKey.toLowerCase();
+    // ── Auth Class: try child step options first, then API cache ──
+    const childClassLabel = this.resolveFromChildOptions('authClassOptions', authClassId);
+    this.header.authClassName = childClassLabel
+      || this.authClassMap.get(authClassId)
+      || '';
 
-    // Auth Status
-    const statusKey = String(dataObj?.authStatus ?? row?.authStatus ?? '');
-    const statusEntry = this.AUTH_STATUS_MAP[statusKey];
-    this.header.authStatusLabel = statusEntry?.label ?? '';
-    this.header.authStatusCode  = statusEntry?.code ?? statusKey;
+    // ── Auth Type: try child step options first, then API cache ──
+    const childTypeLabel = this.resolveFromChildOptions('authTypeOptions', authTypeId);
+    this.header.authTypeName = childTypeLabel
+      || this.authTypeMap.get(authTypeId)
+      || '';
 
-    // Decision Summary
-    this.computeDecisionSummary(dataObj?.decisionDetails ?? row?.decisionDetails);
+    // If auth type cache is empty or stale for this class, trigger a load
+    const numericClassId = Number(authClassId);
+    if (numericClassId > 0 && !this.header.authTypeName && this.lastAuthClassIdForTypeLookup !== numericClassId) {
+      this.loadAuthTypeLookup(numericClassId);
+    }
+
+    // ── Priority: resolve from dsLookup map → child options → raw value ──
+    const priorityRaw = String(dataObj?.requestPriority ?? row?.requestPriority ?? '');
+    const priorityFromLookup = this.resolveLabel(priorityRaw, this.priorityLookup);
+    const childPriorityLabel = this.resolveFromChildOptionsMap('requestPriority', priorityRaw);
+    this.header.priorityLabel = priorityFromLookup || childPriorityLabel || '';
+    this.header.priorityCode = (priorityFromLookup || priorityRaw).toLowerCase().replace(/\s+/g, '');
+
+    // ── Auth Status: resolve from dsLookup map → child options → raw value ──
+    const statusRaw = String(dataObj?.authStatus ?? row?.authStatus ?? '');
+    const statusFromLookup = this.resolveLabel(statusRaw, this.statusLookup);
+    const childStatusLabel = this.resolveFromChildOptionsMap('authStatus', statusRaw);
+    this.header.authStatusLabel = statusFromLookup || childStatusLabel || '';
+    this.header.authStatusCode = statusRaw;
+
+    // Decision Summary — only recompute when decisionDetails is actually present in the data.
+    // When called from refreshHeaderFromStep (pendingAuth row), decisionDetails won't exist
+    // because decisions are stored separately. Preserve existing summary in that case.
+    const decisions = dataObj?.decisionDetails ?? row?.decisionDetails;
+    if (decisions !== undefined && decisions !== null) {
+      this.computeDecisionSummary(decisions);
+    }
+  }
+
+  /**
+   * Try to resolve a label from the active child step's dropdown options array.
+   * E.g., inst.authClassOptions or inst.authTypeOptions.
+   */
+  private resolveFromChildOptions(optionsKey: string, id: string): string {
+    const inst = this.activeChildInst;
+    if (!inst || !id) return '';
+    const options: any[] = inst?.[optionsKey];
+    if (!Array.isArray(options)) return '';
+    const match = options.find((o: any) => String(o.value) === id);
+    return match?.label ?? '';
+  }
+
+  /**
+   * Try to resolve a label from child step's optionsByControlName map.
+   * Auth Details stores datasource-resolved dropdown options keyed by control name.
+   */
+  private resolveFromChildOptionsMap(controlName: string, value: string): string {
+    const inst = this.activeChildInst;
+    if (!inst || !value) return '';
+    const optMap: Record<string, any[]> = inst?.optionsByControlName;
+    if (!optMap || typeof optMap !== 'object') return '';
+    const options = optMap[controlName];
+    if (!Array.isArray(options)) return '';
+    const match = options.find((o: any) => String(o.value) === value);
+    return match?.label ?? '';
   }
 
   /** Compute daysLeft and status colour from a due date value. */
@@ -495,7 +559,7 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
 
       for (const d of active) {
         const statusRaw = String(d?.data?.decisionStatus ?? d?.decisionStatus ?? '').toLowerCase();
-        const bucket = this.DECISION_STATUS_BUCKET[statusRaw] ?? 'pending';
+        const bucket = this.resolveDecisionBucket(statusRaw);
         summary[bucket]++;
       }
     }
@@ -519,6 +583,200 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
       this.header.overallDecision     = 'Pending';
       this.header.overallDecisionCode = 'pending';
     }
+  }
+
+  /** Map raw decision status string → summary bucket key */
+  private resolveDecisionBucket(statusRaw: string): 'approved' | 'partial' | 'denied' | 'pending' {
+    const s = statusRaw.toLowerCase().trim();
+    if (s === '1' || s === 'approved') return 'approved';
+    if (s === '2' || s === 'partial') return 'partial';
+    if (s === '3' || s === 'denied') return 'denied';
+    return 'pending';
+  }
+
+  // ═══════════════════════════════════
+  //  DYNAMIC LOOKUP LOADING (from API)
+  // ═══════════════════════════════════
+
+  /**
+   * Fetch auth class options from the same CRUD endpoint used by Auth Details step.
+   * Caches results in authClassMap so header can resolve authClassId → label.
+   */
+  private loadAuthClassLookup(): void {
+    this.crudService.getData('um', 'authclass')
+      .pipe(take(1))
+      .subscribe({
+        next: (rows: any[]) => {
+          this.authClassMap.clear();
+          (rows || []).forEach(r => {
+            const id = String(r?.id ?? r?.Id ?? '');
+            const label = r?.authClass ?? r?.AuthClass ?? r?.name ?? '';
+            if (id && label) this.authClassMap.set(id, label);
+          });
+
+          // Re-hydrate header if we already have data
+          if (this.header.authStatusCode || this.header.authTypeName === '') {
+            this.rehydrateHeaderFromCache();
+          }
+        },
+        error: (e) => console.error('Shell: authclass lookup failed', e)
+      });
+  }
+
+  /**
+   * Fetch auth type (template) options for a given authClassId.
+   * Uses the same AuthService.getTemplates() endpoint as Auth Details step.
+   */
+  private loadAuthTypeLookup(authClassId: number): void {
+    if (!authClassId || authClassId <= 0) return;
+    this.lastAuthClassIdForTypeLookup = authClassId;
+
+    this.activityService.getTemplates('UM', authClassId)
+      .pipe(take(1))
+      .subscribe({
+        next: (data: any[]) => {
+          this.authTypeMap.clear();
+          (data || []).forEach(t => {
+            const id = String(t?.Id ?? t?.id ?? '');
+            const label = t?.TemplateName ?? t?.templateName ?? '';
+            if (id && label) this.authTypeMap.set(id, label);
+          });
+
+          // Re-hydrate header with the newly loaded type labels
+          this.rehydrateHeaderFromCache();
+        },
+        error: (e) => console.error('Shell: auth type lookup failed for classId=' + authClassId, e)
+      });
+  }
+
+  /**
+   * Re-run header hydration using the cached auth data + freshly-loaded lookup maps.
+   * Called after async lookup APIs return AND after child step saves.
+   * Always re-resolves all fields (no guards) so real-time updates work.
+   */
+  private rehydrateHeaderFromCache(): void {
+    if (!this.cachedDataObj) return;
+    const dataObj = this.cachedDataObj;
+    const authTypeId = String(dataObj?.authTypeId ?? '');
+    const authClassId = String(dataObj?.authClassId ?? '');
+
+    if (authClassId) {
+      const resolved = this.authClassMap.get(authClassId) || '';
+      if (resolved) this.header.authClassName = resolved;
+    }
+    if (authTypeId) {
+      const resolved = this.authTypeMap.get(authTypeId) || '';
+      if (resolved) this.header.authTypeName = resolved;
+    }
+
+    // Always re-resolve priority/status labels (values may have changed after save)
+    const priorityRaw = String(dataObj?.requestPriority ?? '');
+    if (priorityRaw) {
+      const label = this.resolveLabel(priorityRaw, this.priorityLookup);
+      if (label) {
+        this.header.priorityLabel = label;
+        this.header.priorityCode = label.toLowerCase().replace(/\s+/g, '');
+      }
+    }
+    const statusRaw = String(dataObj?.authStatus ?? '');
+    if (statusRaw) {
+      const label = this.resolveLabel(statusRaw, this.statusLookup);
+      if (label) {
+        this.header.authStatusLabel = label;
+        this.header.authStatusCode = statusRaw;
+      }
+    }
+
+    // Re-resolve Created By if we have a cached userId
+    const cachedCreatedById = (this as any)._cachedCreatedById;
+    if (cachedCreatedById && this.userLookup.size > 0) {
+      const userName = this.userLookup.get(cachedCreatedById);
+      if (userName) this.header.createdBy = userName;
+    }
+  }
+
+  /**
+   * Fetch requestpriority + authstatus from DatasourceLookupService.
+   * Same pattern as CaseWizardShell.loadHeaderLookups(), but with UM datasources.
+   */
+  private loadHeaderLookups(): void {
+    // Auth Status lookup (datasource: 'authstatus')
+    this.dsLookup
+      .getOptionsWithFallback(
+        'authstatus',
+        (r: any) => ({
+          value: r?.value ?? r?.id ?? r?.code,
+          label: r?.label ?? r?.authStatus ?? r?.name ?? r?.description ?? String(r?.value ?? '')
+        }),
+        ['UM']
+      )
+      .pipe(take(1))
+      .subscribe({
+        next: (opts: any) => {
+          this.statusLookup.clear();
+          for (const o of (opts ?? [])) {
+            this.statusLookup.set(String(o.value), o.label ?? o.text ?? String(o.value));
+          }
+          // Re-hydrate header now that status labels are available
+          this.rehydrateHeaderFromCache();
+        },
+        error: (err) => console.error('Shell: authstatus lookup failed', err)
+      });
+
+    // Request Priority lookup (datasource: 'requestpriority')
+    this.dsLookup
+      .getOptionsWithFallback(
+        'requestpriority',
+        (r: any) => ({
+          value: r?.value ?? r?.id ?? r?.code,
+          label: r?.label ?? r?.requestPriority ?? r?.name ?? r?.description ?? String(r?.value ?? '')
+        }),
+        ['UM']
+      )
+      .pipe(take(1))
+      .subscribe({
+        next: (opts: any) => {
+          this.priorityLookup.clear();
+          for (const o of (opts ?? [])) {
+            this.priorityLookup.set(String(o.value), o.label ?? o.text ?? String(o.value));
+          }
+          // Re-hydrate header now that priority labels are available
+          this.rehydrateHeaderFromCache();
+        },
+        error: (err) => console.error('Shell: requestpriority lookup failed', err)
+      });
+
+    // User lookup for Created By (userId → userName)
+    this.authenticateService.getAllUsers().subscribe({
+      next: (users: any[]) => {
+        this.userLookup.clear();
+        for (const u of (users ?? [])) {
+          this.userLookup.set(String(u.userId), u.userName ?? u.name ?? String(u.userId));
+        }
+        // Re-hydrate header now that user names are available
+        this.rehydrateHeaderFromCache();
+      },
+      error: (e) => console.warn('Shell: user lookup failed', e)
+    });
+  }
+
+  /**
+   * Resolve a raw value (often a numeric ID) to a display label via a lookup map.
+   * If the map has no entry but the value is already a non-numeric string, returns it as-is.
+   */
+  private resolveLabel(rawValue: any, lookup: Map<string, string>): string {
+    if (rawValue == null || rawValue === '') return '';
+    const key = String(rawValue);
+
+    // Check lookup map
+    const label = lookup.get(key);
+    if (label) return label;
+
+    // If rawValue is already a string label (not a numeric ID), return as-is
+    if (isNaN(Number(key))) return key;
+
+    // Numeric ID but no lookup match yet (options may still be loading) — return empty
+    return '';
   }
 
   private checkMdReviewActivitiesAndEnableStep(authDetailId: number | null): void {

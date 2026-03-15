@@ -8,10 +8,20 @@
 
       <div class="authWizardMeta">
 
+        <!-- Auth # -->
+        <div class="metaItem aw-meta-authnum">
+          <div class="metaLabel">Auth #</div>
+          <div class="metaValue aw-authnum-value">{{ header.authNumber && header.authNumber !== '0' ? header.authNumber : 'New' }}</div>
+          <div class="aw-meta-subtitle" *ngIf="header.createdBy">by {{ header.createdBy }}</div>
+        </div>
+
+        <!-- Divider -->
+        <div class="aw-meta-divider"></div>
+
         <!-- Auth Type -->
         <div class="metaItem aw-meta-authtype">
           <div class="metaLabel">Auth Type</div>
-          <div class="metaValue aw-authtype-value">{{ header.authTypeName || (header.authNumber ? ('Auth #' + (header.authNumber | uppercase)) : '-') }}</div>
+          <div class="metaValue aw-authtype-value">{{ header.authTypeName || '—' }}</div>
           <div class="aw-meta-subtitle" *ngIf="header.authClassName">{{ header.authClassName }}</div>
         </div>
 

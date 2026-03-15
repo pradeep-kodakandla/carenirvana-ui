@@ -88,6 +88,19 @@
   padding-left: 4px;
 }
 
+/* Auth # metaItem — slightly wider for the auth number display */
+.metaItem.aw-meta-authnum {
+  flex: 1.2 1 0;
+  padding-left: 4px;
+}
+
+.aw-authnum-value {
+  font-size: 13px;
+  font-weight: 800;
+  color: #1D4ED8;
+  letter-spacing: 0.3px;
+}
+
 .aw-meta-divider {
   flex: 0 0 1px;
   align-self: stretch;
