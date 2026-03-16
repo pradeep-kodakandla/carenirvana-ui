@@ -355,14 +355,21 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
         await res;
       }
 
-      // If the step didn't emit toast itself, show a generic success toast
+      // Only show success toast if save actually completed (no throw)
       this.notifySaveSuccess(`${stepLabel} saved successfully.`);
 
       // Refresh header after save (if the step has fresh pendingAuth)
       this.refreshHeaderFromStep(inst);
-    } catch (e) {
-      console.error('AuthWizardShell: save failed', e);
-      this.notifySaveError('Save failed.');
+    } catch (e: any) {
+      // If it's a validation error thrown by the step, the step already
+      // displayed its own messages — don't show a generic "Save failed."
+      if (e?.validation) {
+        // Validation was handled by the child component (toast + scroll)
+        // Do nothing here — no duplicate toast needed.
+      } else {
+        console.error('AuthWizardShell: save failed', e);
+        this.notifySaveError('Save failed.');
+      }
     } finally {
       this.shellSaving = false;
     }
@@ -823,9 +830,12 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
       text: m.text
     } as any;
 
+    // Error messages with field names need more reading time
+    const duration = m.type === 'error' ? 6000 : 3500;
+
     this.toastTimer = setTimeout(() => {
       this.toast.visible = false;
-    }, 3500);
+    }, duration);
   }
 
   private dismissToast(): void {

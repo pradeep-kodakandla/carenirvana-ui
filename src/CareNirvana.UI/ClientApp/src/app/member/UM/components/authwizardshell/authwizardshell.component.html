@@ -3,141 +3,138 @@
   <!-- Sticky Top (Header + Stepper) -->
   <div class="authWizardTop">
 
-    <!-- ═══ NEW RICH HEADER ═══ -->
-    <div class="authWizardHeader">
+    <!-- ═══ HEADER CARD (casewizardshell style) ═══ -->
+    <div class="aw-header-card">
 
-      <div class="authWizardMeta">
+      <!-- Row 1: Primary info + Actions -->
+      <div class="aw-header-row">
 
-        <!-- Auth # -->
-        <div class="metaItem aw-meta-authnum">
-          <div class="metaLabel">Auth #</div>
-          <div class="metaValue aw-authnum-value">{{ header.authNumber && header.authNumber !== '0' ? header.authNumber : 'New' }}</div>
-          <div class="aw-meta-subtitle" *ngIf="header.createdBy">by {{ header.createdBy }}</div>
+        <!-- Auth identity block -->
+        <div class="aw-header-identity">
+          <div class="aw-header-field">
+            <span class="aw-field-label">Auth Number</span>
+            <span class="aw-field-value aw-auth-number">{{ header.authNumber && header.authNumber !== '0' ? header.authNumber : 'New' }}</span>
+          </div>
         </div>
 
-        <!-- Divider -->
-        <div class="aw-meta-divider"></div>
+        <div class="aw-header-divider"></div>
 
-        <!-- Auth Type -->
-        <div class="metaItem aw-meta-authtype">
-          <div class="metaLabel">Auth Type</div>
-          <div class="metaValue aw-authtype-value">{{ header.authTypeName || '—' }}</div>
-          <div class="aw-meta-subtitle" *ngIf="header.authClassName">{{ header.authClassName }}</div>
-        </div>
+        <!-- Meta fields -->
+        <div class="aw-header-fields">
 
-        <!-- Divider -->
-        <div class="aw-meta-divider"></div>
+          <div class="aw-header-field">
+            <span class="aw-field-label">Auth Type</span>
+            <span class="aw-field-value">{{ header.authTypeName || '—' }}</span>
+            <span class="aw-field-sub" *ngIf="header.authClassName">{{ header.authClassName }}</span>
+          </div>
 
-        <!-- Priority -->
-        <div class="metaItem">
-          <div class="metaLabel">Priority</div>
-          <div class="metaValue">
+          <div class="aw-header-field">
+            <span class="aw-field-label">Priority</span>
             <span *ngIf="header.priorityLabel"
-                  class="aw-status-pill"
+                  class="aw-priority-badge"
                   [ngClass]="'aw-priority--' + header.priorityCode">
               {{ header.priorityLabel }}
             </span>
-            <span *ngIf="!header.priorityLabel" class="aw-meta-empty">—</span>
+            <span *ngIf="!header.priorityLabel" class="aw-field-value">—</span>
           </div>
-        </div>
 
-        <!-- Divider -->
-        <div class="aw-meta-divider"></div>
-
-        <!-- Due Date -->
-        <div class="metaItem">
-          <div class="metaLabel">Due Date</div>
-          <div class="metaValue" [ngClass]="header.daysLeft !== null ? 'aw-due--' + header.daysLeftStatus : ''">
-            {{ header.dueDate ? (header.dueDate | date:'MM/dd/yyyy HH:mm:ss a') : '—' }}
-
-          </div>
-          <div *ngIf="header.daysLeft !== null"
-               class="aw-days-left"
-               [ngClass]="'aw-due--' + header.daysLeftStatus">
-            <span *ngIf="header.daysLeft > 0">{{ header.daysLeft }} days left</span>
-            <span *ngIf="header.daysLeft === 0">Due today</span>
-            <span *ngIf="header.daysLeft < 0">{{ -header.daysLeft }} days overdue</span>
-          </div>
-        </div>
-
-        <!-- Divider -->
-        <div class="aw-meta-divider"></div>
-
-        <!-- Auth Status -->
-        <div class="metaItem">
-          <div class="metaLabel">Auth Status</div>
-          <div class="metaValue">
+          <div class="aw-header-field">
+            <span class="aw-field-label">Auth Status</span>
             <span *ngIf="header.authStatusLabel"
-                  class="aw-status-pill"
+                  class="aw-status-badge"
                   [ngClass]="'aw-auth-status--' + header.authStatusCode">
+              <span class="aw-status-dot"></span>
               {{ header.authStatusLabel }}
             </span>
-            <span *ngIf="!header.authStatusLabel" class="aw-meta-empty">—</span>
+            <span *ngIf="!header.authStatusLabel" class="aw-field-value">—</span>
           </div>
-        </div>
 
-        <!-- Divider -->
-        <div class="aw-meta-divider"></div>
-
-        <!-- Overall Decision -->
-        <div class="metaItem">
-          <div class="metaLabel">Overall Decision</div>
-          <div class="metaValue">
-            <span class="aw-status-pill"
+          <div class="aw-header-field">
+            <span class="aw-field-label">Overall Decision</span>
+            <span class="aw-status-badge"
                   [ngClass]="'aw-decision--' + header.overallDecisionCode">
+              <span class="aw-status-dot"></span>
               {{ header.overallDecision || 'Pending' }}
             </span>
           </div>
-        </div>
 
-        <!-- Divider -->
-        <div class="aw-meta-divider"></div>
-
-        <!-- Decision Summary -->
-        <div class="metaItem">
-          <div class="metaLabel">Decision Summary</div>
-          <div class="aw-decision-summary" *ngIf="header.decisionSummary.total > 0; else noDecisions">
-            <span class="aw-ds-total"># {{ header.decisionSummary.total }} Total</span>
-            <span *ngIf="header.decisionSummary.approved" class="aw-ds-dot aw-ds-dot--approved">
-              ● {{ header.decisionSummary.approved }}
+          <div class="aw-header-field">
+            <span class="aw-field-label">Due Date</span>
+            <span class="aw-field-value"
+                  [class.aw-due-warning]="header.daysLeftStatus === 'warning'"
+                  [class.aw-due-overdue]="header.daysLeftStatus === 'danger'">
+              {{ header.dueDate ? (header.dueDate | date:'MM/dd/yyyy') : '—' }}
             </span>
-            <span *ngIf="header.decisionSummary.partial" class="aw-ds-dot aw-ds-dot--partial">
-              ● {{ header.decisionSummary.partial }}
-            </span>
-            <span *ngIf="header.decisionSummary.denied" class="aw-ds-dot aw-ds-dot--denied">
-              ● {{ header.decisionSummary.denied }}
-            </span>
-            <span *ngIf="header.decisionSummary.pending" class="aw-ds-dot aw-ds-dot--pending">
-              ● {{ header.decisionSummary.pending }}
+            <span *ngIf="header.daysLeft !== null"
+                  class="aw-field-sub"
+                  [ngClass]="'aw-due--' + header.daysLeftStatus">
+              <span *ngIf="header.daysLeft > 0">{{ header.daysLeft }} days left</span>
+              <span *ngIf="header.daysLeft === 0">Due today</span>
+              <span *ngIf="header.daysLeft < 0">{{ -header.daysLeft }} days overdue</span>
             </span>
           </div>
-          <ng-template #noDecisions>
-            <span class="aw-meta-empty">—</span>
-          </ng-template>
+
+          <div class="aw-header-field">
+            <span class="aw-field-label">Decision Summary</span>
+            <div class="aw-decision-summary" *ngIf="header.decisionSummary.total > 0; else noDecisions">
+              <span class="aw-ds-total"># {{ header.decisionSummary.total }} Total</span>
+              <span *ngIf="header.decisionSummary.approved" class="aw-ds-dot aw-ds-dot--approved">
+                ● {{ header.decisionSummary.approved }}
+              </span>
+              <span *ngIf="header.decisionSummary.partial" class="aw-ds-dot aw-ds-dot--partial">
+                ● {{ header.decisionSummary.partial }}
+              </span>
+              <span *ngIf="header.decisionSummary.denied" class="aw-ds-dot aw-ds-dot--denied">
+                ● {{ header.decisionSummary.denied }}
+              </span>
+              <span *ngIf="header.decisionSummary.pending" class="aw-ds-dot aw-ds-dot--pending">
+                ● {{ header.decisionSummary.pending }}
+              </span>
+            </div>
+            <ng-template #noDecisions>
+              <span class="aw-field-value">—</span>
+            </ng-template>
+          </div>
+
+          <div class="aw-header-field">
+            <span class="aw-field-label">Created By</span>
+            <span class="aw-field-value">{{ header.createdBy || '—' }}</span>
+          </div>
+
+          <div class="aw-header-field">
+            <span class="aw-field-label">Created On</span>
+            <span class="aw-field-value">
+              {{ header.createdOn ? (header.createdOn | date:'MM/dd/yyyy hh:mm a') : '—' }}
+            </span>
+          </div>
+
+        </div><!-- /aw-header-fields -->
+
+        <div class="aw-header-divider"></div>
+
+        <!-- Action buttons -->
+        <div class="aw-header-actions">
+          <button type="button"
+                  class="btn btn-primary"
+                  (click)="saveCurrentStep()"
+                  [disabled]="shellSaving">
+            {{ shellSaving ? 'Saving...' : 'Save' }}
+          </button>
+
+          <!-- AI Panel toggle -->
+          <button type="button"
+                  class="aw-btn-ai-toggle"
+                  [class.active]="rightPanelMode === 'ai'"
+                  (click)="openRightPanel('ai')"
+                  title="Toggle AI Assistant">
+            <span class="aw-ai-text-icon">AI</span>
+            <span class="aw-ai-online-dot"></span>
+          </button>
         </div>
 
-      </div><!-- /authWizardMeta -->
+      </div><!-- /aw-header-row -->
 
-      <div class="authWizardActions">
-        <button type="button"
-                class="btn btn-primary"
-                (click)="saveCurrentStep()"
-                [disabled]="shellSaving">
-          {{ shellSaving ? 'Saving...' : 'Save' }}
-        </button>
-
-        <!-- AI Panel toggle -->
-        <button type="button"
-                class="aw-btn-ai-toggle"
-                [class.active]="rightPanelMode === 'ai'"
-                (click)="openRightPanel('ai')"
-                title="Toggle AI Assistant">
-          <span class="aw-ai-text-icon">AI</span>
-          <span class="aw-ai-online-dot"></span>
-        </button>
-      </div>
-
-    </div><!-- /authWizardHeader -->
+    </div><!-- /aw-header-card -->
 
     <div class="stepperRow">
       <app-authchevronstepper class="stepper"

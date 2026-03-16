@@ -327,4 +327,105 @@ export class AuthDecisionSeedService {
     const s = String(v ?? '').trim().toLowerCase();
     return s === 'y' || s === 'yes' || s === 'true' || s === '1';
   }
+
+  // ═══════════════════════════════════════════════════════════
+  //  BI-DIRECTIONAL SYNC: Service → Decision
+  //
+  //  Called from AuthDetails after save to push service-level
+  //  field changes into existing Decision Details items.
+  //  This ensures that when a user updates procedure codes,
+  //  dates, or units in the service section, those changes
+  //  are reflected in the decision section automatically.
+  // ═══════════════════════════════════════════════════════════
+
+  async syncServiceChangesToDecision(args: {
+    authDetailId: number;
+    authData: any;
+    userId: number;
+  }): Promise<void> {
+    const authDetailId = Number(args?.authDetailId ?? 0);
+    const authData = args?.authData ?? {};
+    const userId = Number(args?.userId ?? 0);
+
+    if (!authDetailId || !userId) return;
+
+    // Load existing Decision Details items
+    const existing = await firstValueFrom(
+      this.api.getItems(authDetailId, this.DECISION_DETAILS).pipe(catchError(() => of([] as any[])))
+    );
+
+    if (!Array.isArray(existing) || !existing.length) return;
+
+    const updateCalls: Promise<any>[] = [];
+
+    for (const item of existing) {
+      const rawData: any = item?.data ?? item?.jsonData ?? item?.payload ?? item?.itemData ?? null;
+      let data: any = null;
+      try {
+        data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+      } catch {
+        data = rawData;
+      }
+      data = data ?? {};
+
+      const procNo = Number(
+        item?.procedureNo ??
+        data?.procedureNo ??
+        data?.procedureIndex ??
+        data?.serviceNo ??
+        0
+      );
+      if (!procNo) continue;
+
+      const itemId = String(item?.itemId ?? item?.id ?? item?.decisionItemId ?? '');
+      if (!itemId) continue;
+
+      const prefix = `procedure${procNo}_`;
+
+      // Map service fields → decision fields
+      const fieldMap: Array<{ authSuffix: string; decisionKey: string }> = [
+        { authSuffix: 'procedureCode',       decisionKey: 'serviceCode' },
+        { authSuffix: 'procedureDescription', decisionKey: 'serviceDescription' },
+        { authSuffix: 'fromDate',             decisionKey: 'fromDate' },
+        { authSuffix: 'toDate',               decisionKey: 'toDate' },
+        { authSuffix: 'serviceReq',           decisionKey: 'requested' },
+        { authSuffix: 'serviceAppr',          decisionKey: 'approved' },
+        { authSuffix: 'serviceDenied',        decisionKey: 'denied' },
+        { authSuffix: 'modifier',             decisionKey: 'modifier' },
+        { authSuffix: 'unitType',             decisionKey: 'unitType' },
+        { authSuffix: 'reviewType',           decisionKey: 'reviewType' },
+      ];
+
+      let changed = false;
+      const updatedPayload = { ...data };
+
+      for (const { authSuffix, decisionKey } of fieldMap) {
+        const authVal = authData?.[prefix + authSuffix];
+        if (authVal === undefined || authVal === null) continue;
+
+        const authStr = String(this.extractServiceCodeString(authVal) || authVal || '').trim();
+        const decStr = String(this.extractServiceCodeString(data?.[decisionKey]) || data?.[decisionKey] || '').trim();
+
+        if (authStr && authStr !== decStr) {
+          updatedPayload[decisionKey] = authVal;
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        updatedPayload.updatedDateTime = new Date().toISOString();
+        updateCalls.push(
+          firstValueFrom(
+            this.api.updateItem(authDetailId, this.DECISION_DETAILS, itemId, { data: updatedPayload } as any, userId)
+              .pipe(catchError(() => of(null)))
+          )
+        );
+      }
+    }
+
+    if (updateCalls.length) {
+      await Promise.all(updateCalls);
+      console.log(`[DecisionSeed] Synced ${updateCalls.length} decision item(s) from service data.`);
+    }
+  }
 }

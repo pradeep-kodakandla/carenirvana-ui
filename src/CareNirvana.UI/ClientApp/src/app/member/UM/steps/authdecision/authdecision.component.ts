@@ -191,9 +191,17 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
 
   private bulkStatusSub$ = new Subject<void>();
 
+  /** Tracks whether an add-line operation is in progress */
+  addingLine = false;
+
+  /** Procedure numbers for newly added (unsaved) decision lines */
+  private newLineIds = new Set<number>();
+
   /** Shell callbacks (injected by AuthWizardShell via pushContextIntoCurrentStep) */
   _shellRefreshBadgeCounts?: (patch?: Partial<Record<string, number>>) => void;
   _shellRefreshHeader?: () => void;
+  /** Callback to push updated authData back to the shell/AuthDetails for persistence */
+  _shellSyncAuthData?: (updatedAuthData: any) => void;
 
   /**
    * Cached UI value for the "Pended" option in Decision Status dropdown.
@@ -357,6 +365,140 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
     });
   }
 
+  // ═══════════════════════════════════════════════════════════
+  //  ADD DECISION LINE
+  //  Creates a new Decision Details row with the next procedure
+  //  number, adds it as a new tab, and selects it with all
+  //  fields enabled for the user to fill in.
+  // ═══════════════════════════════════════════════════════════
+
+  addDecisionLine(): void {
+    if (this.addingLine || !this.authDetailId || !this.authTemplateId) return;
+
+    // Compute the next procedure number
+    const existingNums = this.tabs.map(t => t.procedureNo);
+    const maxExisting = existingNums.length ? Math.max(...existingNums) : 0;
+    const nextProcNo = maxExisting + 1;
+
+    const userId = Number(sessionStorage.getItem('loggedInUserid') || 0);
+    const authDetailId = this.authDetailId;
+    const nowIso = new Date().toISOString();
+
+    // Resolve Decision Status "Pended" value for the new line
+    const pendedValue = this.pendedDecisionStatusValue ?? null;
+
+    // Build minimal seed payload for the new decision line
+    const payload: any = {
+      procedureNo: nextProcNo,
+      decisionNumber: String(nextProcNo),
+      decisionStatus: pendedValue,
+      createdDateTime: this.authCreatedOn ?? nowIso,
+      updatedDateTime: nowIso,
+      decisionDateTime: null
+    };
+
+    // Convert empty strings to null
+    for (const k of Object.keys(payload)) {
+      if (payload[k] === '') payload[k] = null;
+    }
+
+    this.addingLine = true;
+    this.errorMsg = '';
+
+    this.api.createItem(authDetailId, 'Decision Details', { data: payload } as any, userId)
+      .pipe(
+        catchError((e) => {
+          console.error('Failed to create new decision line:', e);
+          this.errorMsg = 'Failed to add decision line. Please try again.';
+          this.toastSvc.error('Failed to add decision line.');
+          return of(null);
+        }),
+        finalize(() => (this.addingLine = false)),
+        takeUntil(this.destroy$)
+      )
+      .subscribe({
+        next: (res: any) => {
+          if (res === null) return;
+
+          // Track this as a new unsaved line (for the badge)
+          this.newLineIds.add(nextProcNo);
+
+          // Also seed the corresponding service-level keys in authData so sync works
+          this.seedAuthDataKeysForNewLine(nextProcNo);
+
+          this.toastSvc.success(`Decision Line #${nextProcNo} added.`);
+
+          // Refresh items and select the new tab
+          this.refreshAndSelectProcedure(nextProcNo);
+
+          // Refresh wizard shell header
+          this._shellRefreshBadgeCounts?.();
+          this._shellRefreshHeader?.();
+        }
+      });
+  }
+
+  /** Returns true if the currently active tab is a newly added line that hasn't been fully saved yet */
+  isNewUnsavedLine(): boolean {
+    if (!this.activeState) return false;
+    return this.newLineIds.has(this.activeState.tab.procedureNo);
+  }
+
+  /** Seeds empty procedure keys in authData for a new decision line so fields can be mapped */
+  private seedAuthDataKeysForNewLine(procedureNo: number): void {
+    const prefix = `procedure${procedureNo}_`;
+    const keysToCopy = [
+      'procedureCode', 'procedureDescription', 'serviceCode', 'serviceDescription',
+      'fromDate', 'toDate', 'effectiveDate',
+      'serviceReq', 'serviceAppr', 'serviceDenied',
+      'modifier', 'unitType', 'reviewType',
+      'createdDateTime'
+    ];
+    for (const k of keysToCopy) {
+      if (!(prefix + k in this.authData)) {
+        this.authData[prefix + k] = null;
+      }
+    }
+  }
+
+  /** Refresh items from the API and select a specific procedure tab */
+  private refreshAndSelectProcedure(targetProcNo: number): void {
+    if (!this.authDetailId) return;
+
+    const sections: DecisionSectionName[] = [
+      'Decision Details',
+      'Member Provider Decision Info',
+      'Decision Notes'
+    ];
+
+    this.loading = true;
+    forkJoin(
+      sections.reduce((acc, s) => {
+        acc[s] = this.api.getItems(this.authDetailId!, s).pipe(catchError(() => of([])));
+        return acc;
+      }, {} as Record<DecisionSectionName, any>)
+    )
+      .pipe(finalize(() => (this.loading = false)), takeUntil(this.destroy$))
+      .subscribe({
+        next: (res: any) => {
+          this.itemsBySection = res ?? {};
+          this.buildTabsFromAuthData();
+          this.updateTabStatuses();
+
+          // Select the new tab
+          const newTab = this.tabs.find(t => t.procedureNo === targetProcNo) ?? this.tabs[this.tabs.length - 1];
+          if (newTab) {
+            this.selectedTabId = newTab.id;
+            this.buildActiveState(newTab);
+          }
+        },
+        error: (e) => {
+          console.error(e);
+          this.errorMsg = 'Unable to reload decision items.';
+        }
+      });
+  }
+
 
 
   ngOnDestroy(): void {
@@ -378,6 +520,21 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
 
     this.authDetailId = nextDetailId;
     this.authTemplateId = nextTemplateId;
+
+    // Check if authData was refreshed (e.g. after AuthDetails save) and trigger service→decision sync
+    const incomingAuthData = ctx?.authData ?? null;
+    if (incomingAuthData && !changed && this.tabs.length > 0) {
+      const prevSnapshot = JSON.stringify(this.authData ?? {});
+      const newSnapshot = JSON.stringify(incomingAuthData ?? {});
+      if (prevSnapshot !== newSnapshot) {
+        console.log('[AuthDecision] authData changed — syncing service→decision');
+        this.authData = typeof incomingAuthData === 'string'
+          ? (this.safeParseJson(incomingAuthData) ?? {})
+          : incomingAuthData;
+        this.syncServiceToDecision();
+        return; // sync will handle refresh
+      }
+    }
 
     if (this.authDetailId && this.authTemplateId) {
       this.reload(this.authDetailId, this.authTemplateId);
@@ -1083,7 +1240,16 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
       .subscribe({
         next: (res: any) => {
           if (res === null) return;
+
+          // Clear new-line tracking on successful save
+          const procNo = this.activeState?.tab?.procedureNo;
+          if (procNo) this.newLineIds.delete(procNo);
+
           this.toastSvc.success('Decision saved successfully.');
+
+          // Sync decision data back to service (authData) for bi-directional consistency
+          this.syncDecisionToService(procNo!);
+
           // refresh only items, keep template + auth data
           this.refreshItemsOnly();
           // ✅ Refresh shell header so Decision Summary / Overall Decision updates in real-time
@@ -1947,6 +2113,220 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
           this.errorMsg = 'Unable to reload decision items.';
         }
       });
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  BI-DIRECTIONAL SYNC: Decision ⟷ Service (AuthDetails)
+  //
+  //  • syncDecisionToService(): After a decision save, pushes
+  //    relevant fields (code, dates, units) back into the
+  //    auth's jsonData so the service section stays consistent.
+  //
+  //  • syncServiceToDecision(): Called when the component
+  //    receives updated authData (e.g. after AuthDetails save).
+  //    Pushes service-level changes into existing decision items.
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * After decision save: push relevant decision data back into auth jsonData
+   * so the Service section in AuthDetails reflects the decision state.
+   *
+   * Mapped fields:
+   *   Decision → Service
+   *   serviceCode           → procedure{N}_procedureCode
+   *   serviceDescription    → procedure{N}_procedureDescription
+   *   fromDate              → procedure{N}_fromDate
+   *   toDate                → procedure{N}_toDate
+   *   approved (units)      → procedure{N}_serviceAppr
+   *   denied  (units)       → procedure{N}_serviceDenied
+   *   requested (units)     → procedure{N}_serviceReq
+   */
+  private syncDecisionToService(procedureNo: number): void {
+    if (!this.authDetailId || !this.activeState) return;
+
+    const sec = this.activeState.sections.find(s => s.sectionName === 'Decision Details');
+    if (!sec) return;
+
+    const prefix = `procedure${procedureNo}_`;
+
+    // Collect values from the decision form
+    const decisionValues: Record<string, any> = {};
+    for (const f of sec.fields) {
+      const ctrl = this.form.get(f.controlName);
+      if (ctrl) {
+        decisionValues[f.id] = this.unwrapValue(ctrl.value);
+      }
+    }
+
+    // Build the mapping: decision field id → authData key
+    const syncMap: Array<{ decisionField: string; authKey: string }> = [
+      { decisionField: 'serviceCode',        authKey: prefix + 'procedureCode' },
+      { decisionField: 'serviceDescription',  authKey: prefix + 'procedureDescription' },
+      { decisionField: 'fromDate',            authKey: prefix + 'fromDate' },
+      { decisionField: 'toDate',              authKey: prefix + 'toDate' },
+      { decisionField: 'requested',           authKey: prefix + 'serviceReq' },
+      { decisionField: 'approved',            authKey: prefix + 'serviceAppr' },
+      { decisionField: 'denied',              authKey: prefix + 'serviceDenied' },
+      { decisionField: 'modifier',            authKey: prefix + 'modifier' },
+      { decisionField: 'unitType',            authKey: prefix + 'unitType' },
+      { decisionField: 'reviewType',          authKey: prefix + 'reviewType' },
+    ];
+
+    let authDataChanged = false;
+
+    for (const { decisionField, authKey } of syncMap) {
+      const val = decisionValues[decisionField];
+      if (val !== undefined && val !== null && String(val).trim() !== '') {
+        const existing = this.authData?.[authKey];
+        const newVal = this.extractServiceCodeString(val) || val;
+        if (String(existing ?? '').trim() !== String(newVal ?? '').trim()) {
+          this.authData[authKey] = newVal;
+          authDataChanged = true;
+        }
+      }
+    }
+
+    if (!authDataChanged) return;
+
+    // Persist the updated authData back to the backend
+    this.persistAuthDataToBackend();
+  }
+
+  /**
+   * Syncs updated service-level data FROM authData INTO existing decision items.
+   * Called when the component detects that authData has been refreshed (e.g. after
+   * AuthDetails save or when the wizard shell pushes new context).
+   *
+   * For each procedure that has a saved Decision Details item, we compare the
+   * service-level keys in authData with the decision data. If the service data
+   * is newer/different, we update the decision item.
+   */
+  syncServiceToDecision(): void {
+    if (!this.authDetailId) return;
+
+    const userId = Number(sessionStorage.getItem('loggedInUserid') || 0);
+    const ddList = (this.itemsBySection?.['Decision Details'] ?? []) as any[];
+    if (!ddList.length) return;
+
+    const calls: any[] = [];
+
+    for (const item of ddList) {
+      const rawData: any = item?.data ?? item?.jsonData ?? item?.payload ?? item?.itemData ?? null;
+      const data: any = this.safeParseJson(rawData) ?? rawData ?? {};
+
+      const procNo = Number(
+        item?.procedureNo ?? data?.procedureNo ?? data?.procedureIndex ?? 0
+      );
+      if (!procNo) continue;
+
+      const prefix = `procedure${procNo}_`;
+      const itemId = String(item?.itemId ?? item?.id ?? item?.decisionItemId ?? '');
+      if (!itemId) continue;
+
+      // Check if service-level data has changed vs what's in the decision
+      const fieldSyncMap: Array<{ authKeySuffix: string; decisionKey: string }> = [
+        { authKeySuffix: 'procedureCode',         decisionKey: 'serviceCode' },
+        { authKeySuffix: 'procedureDescription',   decisionKey: 'serviceDescription' },
+        { authKeySuffix: 'fromDate',               decisionKey: 'fromDate' },
+        { authKeySuffix: 'toDate',                 decisionKey: 'toDate' },
+        { authKeySuffix: 'serviceReq',             decisionKey: 'requested' },
+        { authKeySuffix: 'serviceAppr',            decisionKey: 'approved' },
+        { authKeySuffix: 'serviceDenied',          decisionKey: 'denied' },
+        { authKeySuffix: 'modifier',               decisionKey: 'modifier' },
+        { authKeySuffix: 'unitType',               decisionKey: 'unitType' },
+        { authKeySuffix: 'reviewType',             decisionKey: 'reviewType' },
+      ];
+
+      let changed = false;
+      const updatedPayload = { ...data };
+
+      for (const { authKeySuffix, decisionKey } of fieldSyncMap) {
+        const authVal = this.authData?.[prefix + authKeySuffix];
+        if (authVal === undefined || authVal === null) continue;
+
+        const authStr = String(this.extractServiceCodeString(authVal) || authVal || '').trim();
+        const decStr = String(this.extractServiceCodeString(data?.[decisionKey]) || data?.[decisionKey] || '').trim();
+
+        if (authStr && authStr !== decStr) {
+          updatedPayload[decisionKey] = authVal;
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        updatedPayload.updatedDateTime = new Date().toISOString();
+        calls.push(
+          this.api.updateItem(this.authDetailId, 'Decision Details', itemId, { data: updatedPayload } as any, userId)
+            .pipe(catchError(() => of(null)))
+        );
+      }
+    }
+
+    if (calls.length) {
+      forkJoin(calls)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: () => {
+            console.log(`[AuthDecision] Synced ${calls.length} decision item(s) from service data.`);
+            this.refreshItemsOnly();
+          }
+        });
+    }
+  }
+
+  /**
+   * Notifies the wizard shell that authData was changed by the decision component
+   * so the parent (AuthDetails/Shell) can persist the updates.
+   *
+   * Instead of directly updating the auth record (which could conflict with
+   * AuthDetails), we push the updated authData through the shell callback.
+   */
+  private persistAuthDataToBackend(): void {
+    if (!this.authDetailId) return;
+
+    // Notify shell that authData changed from Decision side
+    if (typeof this._shellSyncAuthData === 'function') {
+      this._shellSyncAuthData(this.authData);
+      console.log('[AuthDecision] Decision→Service sync: notified shell to persist authData.');
+    } else {
+      console.warn('[AuthDecision] No _shellSyncAuthData callback available — authData changes are in-memory only.');
+    }
+
+    // Always refresh header so status/badges update
+    this._shellRefreshHeader?.();
+  }
+
+  /**
+   * Sync a single bulk-saved decision row back into authData (service section).
+   * Lighter than syncDecisionToService because we read from the BulkSaveRow directly.
+   */
+  private syncBulkDecisionToService(procedureNo: number, row: BulkSaveRow): void {
+    const prefix = `procedure${procedureNo}_`;
+    let changed = false;
+
+    const syncPairs: Array<[string, any]> = [
+      [prefix + 'serviceAppr', row.approved],
+      [prefix + 'serviceDenied', row.denied],
+      [prefix + 'serviceReq', row.requested],
+      [prefix + 'procedureCode', row.serviceCode],
+      [prefix + 'procedureDescription', row.serviceDescription],
+    ];
+
+    for (const [key, val] of syncPairs) {
+      if (val !== undefined && val !== null && String(val).trim() !== '') {
+        const existing = String(this.authData?.[key] ?? '').trim();
+        const newVal = String(val).trim();
+        if (existing !== newVal) {
+          this.authData[key] = val;
+          changed = true;
+        }
+      }
+    }
+
+    // Only persist once after all rows are processed (called at the end of the loop)
+    if (changed) {
+      this.persistAuthDataToBackend();
+    }
   }
 
   private toCamelCase(input: string): string {
@@ -3085,6 +3465,11 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
           setTimeout(() => {
             this.closeBulkEdit();
             this.refreshItemsOnly();
+
+            // Sync all saved decision lines back to service data
+            for (const row of selectedRows) {
+              this.syncBulkDecisionToService(row.procedureNo, row);
+            }
 
             // Refresh wizard shell header (status, decision summary, badges)
             if (typeof this._shellRefreshBadgeCounts === 'function') {

@@ -1104,7 +1104,7 @@
       <ng-container *ngIf="!sub.repeat?.enabled; else subRepeatTpl">
 
         <!-- ═══ MEMBER PROVIDER INFO TABLE (non-repeat, inside Additional Details) ═══ -->
-        <ng-container *ngIf="isMemberProviderInfoSub(sub, parentSec); else normalNonRepeatSub">
+        <ng-container *ngIf="isMemberProviderInfoSub(sub, parentSec); else airOrNormalNonRepeatSub">
           <div class="mp-table-section-wrap">
             <div class="bulk-mp-table-wrap">
               <table class="bulk-mp-table">
@@ -1193,6 +1193,91 @@
             </div>
           </div>
         </ng-container>
+
+        <!-- ═══ ADDITIONAL INFO REQUESTED/RECEIVED TABLE (non-repeat, inside Additional Details) ═══ -->
+        <ng-template #airOrNormalNonRepeatSub>
+        <ng-container *ngIf="isAdditionalInfoRequestedReceivedSub(sub, parentSec); else normalNonRepeatSub">
+          <div class="mp-table-section-wrap">
+            <div class="bulk-mp-table-wrap">
+              <table class="bulk-mp-table bulk-air-table">
+                <thead>
+                  <tr>
+                    <th class="mpcol-num">#</th>
+                    <th class="aircol-datetime">Requested Datetime</th>
+                    <th class="aircol-datetime">Received Datetime</th>
+                    <th class="aircol-notes">Notes</th>
+                    <th class="aircol-complete">Complete</th>
+                    <th class="mpcol-action"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let airRow of additionalAirRows; let ri = index" class="mp-row">
+                    <td class="mpcol-num">{{ ri + 1 }}</td>
+                    <td class="aircol-datetime">
+                      <div class="ff-outline mp-ff-outline">
+                        <div class="ff-body">
+                          <ui-datetime-picker class="ff-ui"
+                            placeholderDate="mm/dd/yyyy"
+                            placeholderDateTime="mm/dd/yyyy --:--"
+                            [dateOnly]="false"
+                            [(ngModel)]="airRow.requestedDatetime"
+                            [ngModelOptions]="{standalone: true}">
+                          </ui-datetime-picker>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="aircol-datetime">
+                      <div class="ff-outline mp-ff-outline">
+                        <div class="ff-body">
+                          <ui-datetime-picker class="ff-ui"
+                            placeholderDate="mm/dd/yyyy"
+                            placeholderDateTime="mm/dd/yyyy --:--"
+                            [dateOnly]="false"
+                            [(ngModel)]="airRow.receivedDatetime"
+                            [ngModelOptions]="{standalone: true}">
+                          </ui-datetime-picker>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="aircol-notes">
+                      <textarea class="air-inline-textarea"
+                                [(ngModel)]="airRow.notes"
+                                [ngModelOptions]="{standalone: true}"
+                                rows="2"
+                                placeholder="Enter notes..."></textarea>
+                    </td>
+                    <td class="aircol-complete">
+                      <input type="checkbox"
+                             class="air-inline-checkbox"
+                             [(ngModel)]="airRow.complete"
+                             [ngModelOptions]="{standalone: true}" />
+                    </td>
+                    <td class="mpcol-action">
+                      <button type="button" class="mp-remove-btn"
+                              *ngIf="additionalAirRows.length > 1"
+                              (click)="removeAdditionalAirRow(ri)"
+                              title="Remove row">
+                        <mat-icon class="dc-action-icon">delete</mat-icon>
+                      </button>
+                    </td>
+                  </tr>
+                  <tr *ngIf="!additionalAirRows.length">
+                    <td colspan="6" style="text-align:center;color:#94A3B8;padding:20px;font-size:13px">
+                      No records. Click below to add one.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="bulk-mp-add-bar">
+              <button type="button" class="mp-add-btn" (click)="addAdditionalAirRow()">
+                <mat-icon>add_circle</mat-icon>
+                Add Info Request Row
+              </button>
+            </div>
+          </div>
+        </ng-container>
+        </ng-template>
 
         <!-- ═══ DEFAULT NON-REPEAT SUBSECTION FIELDS ═══ -->
         <ng-template #normalNonRepeatSub>

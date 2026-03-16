@@ -891,6 +891,8 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
             this.rehydrateAdditionalIcdData();
             this.initAdditionalMpControlNames();
             this.loadAdditionalMpRowsFromForm();
+            this.initAdditionalAirRows();
+            this.loadAdditionalAirRowsFromForm();
             this.rehydrateServiceData();
             this.rehydrateMedicationData();
           }
@@ -936,12 +938,20 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       : ['medical', 'cpt', 'procedure', 'proc', 'service', 'code'];
 
     const metas = Object.values(this.repeatRegistry || {});
-    const candidate = metas.find(m => {
+    const candidates = metas.filter(m => {
       const s = `${m?.prefix ?? ''} ${m?.title ?? ''}`.toLowerCase();
       return patterns.some(p => s.includes(p));
     });
 
-    return candidate?.key ?? null;
+    if (!candidates.length) return null;
+
+    // For ICD, prefer the Diagnosis section entry (not Additional Details "addl_icd")
+    if (kind === 'icd' && candidates.length > 1) {
+      const diagOnly = candidates.find(m => !(m?.prefix ?? '').toLowerCase().startsWith('addl_'));
+      if (diagOnly) return diagOnly.key;
+    }
+
+    return candidates[0]?.key ?? null;
   }
 
   private ensureRepeatCountForKind(kind: 'icd' | 'medicalcodes', desiredCount: number): void {
@@ -1234,6 +1244,8 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     this.rehydrateAdditionalIcdData();
     this.initAdditionalMpControlNames();
     this.loadAdditionalMpRowsFromForm();
+    this.initAdditionalAirRows();
+    this.loadAdditionalAirRowsFromForm();
     this.rehydrateServiceData();
             this.rehydrateMedicationData();
 
@@ -1272,6 +1284,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       this.additionalIcdDataByInstance = {};
       this.primaryAdditionalIcdKey = null;
       this.additionalIcdEditMode.clear();
+      this.additionalAirRows = [];
       this.additionalMpRows = [this.createEmptyAdditionalMpRow()];
       this.providerEditMode.clear();
       this.serviceDataByInstance = {};
@@ -1539,7 +1552,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         const subsections = this.asSubArray(sec.subsections)
           .slice()
           .sort((a, b) => (a.order || 0) - (b.order || 0))
-          .map((sub, subIndex) => this.buildRenderSubsection(sub, `${pathKey}/sub:${subIndex}`, persistedObj));
+          .map((sub, subIndex) => this.buildRenderSubsection(sub, `${pathKey}/sub:${subIndex}`, persistedObj, title));
 
         return {
           title,
@@ -1557,7 +1570,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       });
   }
 
-  private buildRenderSubsection(rawSub: TplSubsection, parentPathKey: string, persistedObj: any | null): RenderSubsection {
+  private buildRenderSubsection(rawSub: TplSubsection, parentPathKey: string, persistedObj: any | null, parentSectionTitle?: string): RenderSubsection {
     const key = (rawSub.subsectionKey ?? rawSub.sectionName ?? rawSub.displayName ?? rawSub.sectionDisplayName ?? rawSub.title ?? 'sub').toString();
     const title = (rawSub.sectionDisplayName ?? rawSub.displayName ?? rawSub.title ?? rawSub.sectionName ?? rawSub.subsectionKey ?? key).toString();
     const pathKey = `${parentPathKey}/${this.safeKey(title)}`;
@@ -1567,7 +1580,19 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     // non-repeat fields keep original naming: safeControlName(field.id)
     const flatFields = this.expandTplFields(rawSub.fields);
     const fieldsSorted = flatFields.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
-    const baseFields: RenderField[] = fieldsSorted.map(f => this.toRenderField(f, this.safeControlName(f.id)));
+
+    // Determine if this ICD subsection lives inside "Additional Details" — if so,
+    // prefix controlNames with "addl_" so they don't collide with Diagnosis ICD.
+    const parentIsAdditional = (parentSectionTitle ?? '').toLowerCase().includes('additional');
+    const baseKeyRaw = String(rawSub.baseKey ?? '').toLowerCase();
+    const needsAdditionalPrefix = parentIsAdditional && (baseKeyRaw === 'icd');
+
+    const baseFields: RenderField[] = fieldsSorted.map(f => {
+      if (needsAdditionalPrefix && !subRepeat?.enabled) {
+        return this.toRenderField(f, this.safeControlName(`addl_${f.id}`));
+      }
+      return this.toRenderField(f, this.safeControlName(f.id));
+    });
 
     let instances: RenderRepeatInstance[] | undefined;
     let repeatKey: string | undefined;
@@ -1576,6 +1601,13 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     if (subRepeat?.enabled) {
       // UM repeat: prefer baseKey (template provides it), else subsectionKey
       repeatPrefix = String(rawSub.baseKey ?? rawSub.subsectionKey ?? this.safeKey(title)).trim() || this.safeKey(title);
+
+      // Disambiguate: Additional Details ICD gets "addl_icd" prefix to avoid
+      // colliding with Diagnosis Details ICD controls (both have baseKey "icd").
+      if (needsAdditionalPrefix) {
+        repeatPrefix = `addl_${repeatPrefix}`;
+      }
+
       repeatKey = `${repeatPrefix}__repeat__sub`;
 
       const count = this.getInitialRepeatCount(repeatKey, subRepeat, repeatPrefix, persistedObj);
@@ -1596,7 +1628,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     const nested = this.asSubArray(rawSub.subsections)
       .slice()
       .sort((a, b) => (a.order || 0) - (b.order || 0))
-      .map((child, idx) => this.buildRenderSubsection(child, `${pathKey}/sub:${idx}`, persistedObj));
+      .map((child, idx) => this.buildRenderSubsection(child, `${pathKey}/sub:${idx}`, persistedObj, parentSectionTitle));
 
     return {
       key,
@@ -1924,6 +1956,8 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     this.rehydrateAdditionalIcdData();
     this.initAdditionalMpControlNames();
     this.loadAdditionalMpRowsFromForm();
+    this.initAdditionalAirRows();
+    this.loadAdditionalAirRowsFromForm();
     this.rehydrateServiceData();
     this.rehydrateMedicationData();
     this.setupServiceReqAutoCalc();
@@ -2697,6 +2731,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     if (!authDetailId || !authTemplateId) return;
 
     try {
+      // 1) Seed new decision rows (idempotent — won't overwrite existing)
       await this.decisionSeed.ensureSeeded({
         authDetailId,
         authTemplateId,
@@ -2704,8 +2739,15 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         userId,
         authApprove
       });
+
+      // 2) Sync service-level changes to existing decision items (bi-directional)
+      await this.decisionSeed.syncServiceChangesToDecision({
+        authDetailId,
+        authData: mergedAuthData ?? {},
+        userId
+      });
     } catch (e) {
-      console.error('Decision seeding failed', e);
+      console.error('Decision seeding/sync failed', e);
     }
   }
 
@@ -3008,7 +3050,23 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     if (!this.form) return;
 
     this.form.markAllAsTouched();
-    if (this.form.invalid) return;
+
+    if (this.form.invalid) {
+      // Collect labels of all invalid required fields
+      const missingFields = this.collectInvalidFieldLabels();
+      const message = missingFields.length > 0
+        ? `Please fill in the required fields: ${missingFields.join(', ')}`
+        : 'Please fill in all required fields before saving.';
+
+      // Notify shell about validation failure
+      this.shell?.notifySaveError(message);
+
+      // Scroll to the first invalid field so the user can see it
+      this.scrollToFirstInvalidField();
+
+      // Throw so the shell does NOT show "saved successfully"
+      throw { validation: true, message };
+    }
 
     // Template validation (rules from getTemplateValidation), displayed per section like AuthorizationComponent
     const { failedErrors, failedWarnings, allMessages } = this.runTemplateValidation();
@@ -3028,7 +3086,8 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       const result = await firstValueFrom(dialogRef.afterClosed());
       if (!(result === 'continue' && allowContinue)) {
         this.scrollToFirstValidationSection();
-        return;
+        // Throw so the shell does NOT show "saved successfully"
+        throw { validation: true, message: 'Validation errors must be resolved before saving.' };
       }
     }
 
@@ -3053,10 +3112,16 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     // Sync Additional Details Member Provider Info table rows into form
     this.syncAdditionalMpRowsToForm();
 
+    // Sync Additional Info Requested/Received table rows into form
+    this.syncAdditionalAirRowsToForm();
+
     // Merge existing JSON data + current form step data
     const existingObj = this.safeParseJson(this.pendingAuth?.jsonData) ?? {};
     const stepObj = this.form.getRawValue();
     const merged: any = { ...(existingObj ?? {}), ...(stepObj ?? {}) };
+
+    // Persist multi-row AIR table into jsonData
+    this.mergeAdditionalAirRowsIntoPayload(merged);
 
     const jsonData = JSON.stringify(merged ?? {});
     const safeJsonData = jsonData && jsonData.trim() ? jsonData : '{}';
@@ -3303,6 +3368,108 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     setTimeout(() => {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 200);
+  }
+
+  /**
+   * Collect display labels for all invalid (required) form controls.
+   * Walks the renderSections tree to find the displayName for each invalid control.
+   */
+  private collectInvalidFieldLabels(): string[] {
+    const labels: string[] = [];
+    if (!this.form) return labels;
+
+    // Build a quick map of controlName -> displayName from all rendered fields
+    const allFields = this.collectAllRenderFields(this.renderSections);
+    const nameMap = new Map<string, string>();
+    for (const f of allFields) {
+      if (f.controlName) {
+        nameMap.set(f.controlName, f.displayName || f.label || f.controlName);
+      }
+    }
+
+    // Also add the top-level fixed controls
+    nameMap.set('authClassId', 'Auth Case');
+    nameMap.set('authTypeId', 'Auth Type');
+
+    // Walk all form controls and collect labels for invalid ones
+    const controls = this.form.controls;
+    for (const key of Object.keys(controls)) {
+      const ctrl = controls[key];
+      if (ctrl && ctrl.invalid) {
+        labels.push(nameMap.get(key) || key);
+      }
+    }
+
+    return labels;
+  }
+
+  /**
+   * Scroll to the first invalid form field in the DOM so the user can easily
+   * identify and fix the missing value.
+   */
+  private scrollToFirstInvalidField(): void {
+    setTimeout(() => {
+      // First expand any collapsed section that contains an invalid field
+      this.expandSectionsWithInvalidFields();
+
+      // Wait a tick for the section to expand and render
+      setTimeout(() => {
+        const firstInvalid = document.querySelector(
+          '.ff-invalid, .ng-invalid:not(form):not(.ng-untouched)'
+        ) as HTMLElement;
+
+        if (firstInvalid) {
+          firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Try to focus the field for accessibility
+          const focusable = firstInvalid.querySelector('input, select, textarea') as HTMLElement;
+          (focusable || firstInvalid).focus?.();
+        }
+      }, 150);
+    }, 50);
+  }
+
+  /**
+   * Expand any collapsed renderSection that contains at least one invalid form control,
+   * so the user can see the validation error.
+   */
+  private expandSectionsWithInvalidFields(): void {
+    if (!this.renderSections?.length || !this.form) return;
+
+    for (const sec of this.renderSections) {
+      if (sec.expanded) continue; // already expanded
+
+      // Check if any field in this section (including subsections) is invalid
+      const sectionFields = this.collectSectionFields(sec);
+      const hasInvalid = sectionFields.some(f => {
+        const ctrl = this.form.get(f.controlName);
+        return ctrl && ctrl.invalid;
+      });
+
+      if (hasInvalid) {
+        sec.expanded = true;
+      }
+    }
+  }
+
+  /**
+   * Collect all RenderFields from a single section including nested subsections and instances.
+   */
+  private collectSectionFields(sec: RenderSection | RenderSubsection): RenderField[] {
+    const result: RenderField[] = [...(sec.fields || [])];
+
+    if ((sec as any).instances?.length) {
+      for (const inst of (sec as any).instances) {
+        result.push(...(inst.fields || []));
+      }
+    }
+
+    if (sec.subsections?.length) {
+      for (const sub of sec.subsections) {
+        result.push(...this.collectSectionFields(sub));
+      }
+    }
+
+    return result;
   }
 
   // ============================================================
@@ -4357,6 +4524,14 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   /** controlName of the Notification Type field */
   additionalMpNotifCtrlName = '';
 
+  // ---------- Additional Details — Additional Info Requested/Received Table State ----------
+  additionalAirRows: Array<{
+    requestedDatetime: string;
+    receivedDatetime: string;
+    notes: string;
+    complete: boolean;
+  }> = [];
+
   // ---------- Transportation Scheduler State ----------
   readonly weekDayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   /** Direct state map for weekday multi-select per leg instance (keyed by leg controlName prefix) */
@@ -5041,6 +5216,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
   removeAdditionalMpRow(index: number): void {
     if (this.additionalMpRows.length <= 1) return;
+    if (!confirm('Do you want to delete this notification row?')) return;
     this.additionalMpRows = this.additionalMpRows.filter((_, i) => i !== index);
   }
 
@@ -5092,6 +5268,112 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         }
       }
     }
+  }
+
+  // ============================================================
+  // ADDITIONAL DETAILS — Additional Information Requested/Received Table
+  // ============================================================
+
+  /** Detects "Additional Information Requested Received" subsection inside Additional Details */
+  isAdditionalInfoRequestedReceivedSub(sub: any, parentSection?: any): boolean {
+    const t = (sub?.title ?? '').toLowerCase();
+    if (!(t.includes('additional') && t.includes('information') && (t.includes('request') || t.includes('receive')))) return false;
+    if (parentSection) return this.isAdditionalDetailsSection(parentSection);
+    return false;
+  }
+
+  private createEmptyAdditionalAirRow() {
+    return { requestedDatetime: '', receivedDatetime: '', notes: '', complete: false };
+  }
+
+  addAdditionalAirRow(): void {
+    this.additionalAirRows = [...this.additionalAirRows, this.createEmptyAdditionalAirRow()];
+  }
+
+  removeAdditionalAirRow(index: number): void {
+    if (this.additionalAirRows.length <= 1) return;
+    if (!confirm('Do you want to delete this info request row?')) return;
+    this.additionalAirRows = this.additionalAirRows.filter((_, i) => i !== index);
+  }
+
+  /** Ensure at least one row exists on init */
+  private initAdditionalAirRows(): void {
+    if (!this.additionalAirRows.length) {
+      this.additionalAirRows = [this.createEmptyAdditionalAirRow()];
+    }
+  }
+
+  /** Load AIR rows from form values on reopen */
+  private loadAdditionalAirRowsFromForm(): void {
+    for (const sec of (this.renderSections || [])) {
+      if (!this.isAdditionalDetailsSection(sec)) continue;
+      for (const sub of (sec.subsections || [])) {
+        if (!this.isAdditionalInfoRequestedReceivedSub(sub, sec)) continue;
+        const fields = sub?.fields ?? [];
+
+        // Try multi-row data from persisted jsonData
+        const persisted = this.safeParseJson(this.pendingAuth?.jsonData);
+        const airData: any[] = persisted?.additionalAirRows ?? [];
+        if (Array.isArray(airData) && airData.length) {
+          this.additionalAirRows = airData.map((r: any) => ({
+            requestedDatetime: r.requestedDatetime ?? '',
+            receivedDatetime: r.receivedDatetime ?? '',
+            notes: r.notes ?? '',
+            complete: !!r.complete
+          }));
+          return;
+        }
+
+        // Fallback: extract single row from form controls
+        const row = this.createEmptyAdditionalAirRow();
+        for (const f of fields) {
+          const val = this.form.get(f?.controlName)?.value;
+          if (val == null || val === '') continue;
+          const rawId = String(f?._rawId ?? f?.id ?? '').toLowerCase();
+          if (rawId.includes('request') && rawId.includes('date')) row.requestedDatetime = val;
+          else if (rawId.includes('receive') && rawId.includes('date')) row.receivedDatetime = val;
+          else if (rawId.includes('note')) row.notes = val;
+          else if (rawId.includes('complete')) row.complete = !!val;
+        }
+        const hasValue = row.requestedDatetime || row.receivedDatetime || row.notes || row.complete;
+        if (hasValue) {
+          this.additionalAirRows = [row];
+        }
+      }
+    }
+  }
+
+  /** Sync AIR rows back into form controls before save */
+  syncAdditionalAirRowsToForm(): void {
+    for (const sec of (this.renderSections || [])) {
+      if (!this.isAdditionalDetailsSection(sec)) continue;
+      for (const sub of (sec.subsections || [])) {
+        if (!this.isAdditionalInfoRequestedReceivedSub(sub, sec)) continue;
+        const fields = sub?.fields ?? [];
+        const row = this.additionalAirRows?.[0];
+        if (row) {
+          for (const f of fields) {
+            const rawId = String(f?._rawId ?? f?.id ?? '').toLowerCase();
+            if (rawId.includes('request') && rawId.includes('date')) {
+              this.form.get(f?.controlName)?.setValue(row.requestedDatetime, { emitEvent: false });
+            } else if (rawId.includes('receive') && rawId.includes('date')) {
+              this.form.get(f?.controlName)?.setValue(row.receivedDatetime, { emitEvent: false });
+            } else if (rawId.includes('note')) {
+              this.form.get(f?.controlName)?.setValue(row.notes, { emitEvent: false });
+            } else if (rawId.includes('complete')) {
+              this.form.get(f?.controlName)?.setValue(row.complete, { emitEvent: false });
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /** Merges additionalAirRows into the JSON payload for multi-row persistence */
+  private mergeAdditionalAirRowsIntoPayload(merged: any): void {
+    merged.additionalAirRows = this.additionalAirRows.filter(r =>
+      r.requestedDatetime || r.receivedDatetime || r.notes || r.complete
+    );
   }
 
     // ============================================================
@@ -7413,6 +7695,8 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     this.rehydrateAdditionalIcdData();
     this.initAdditionalMpControlNames();
     this.loadAdditionalMpRowsFromForm();
+    this.initAdditionalAirRows();
+    this.loadAdditionalAirRowsFromForm();
     this.rehydrateServiceData();
             this.rehydrateMedicationData();
 

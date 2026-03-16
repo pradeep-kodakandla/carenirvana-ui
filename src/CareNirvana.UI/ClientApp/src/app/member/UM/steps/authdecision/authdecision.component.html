@@ -43,6 +43,18 @@
         <div class="tab-line4" *ngIf="tab.line4">{{ tab.line4 }}</div>
       </div>
     </div>
+
+    <!-- Add Decision Line button -->
+    <div class="add-decision-line-bar" *ngIf="!bulkEditMode">
+      <button class="add-decision-line-btn"
+              (click)="addDecisionLine()"
+              [disabled]="saving || addingLine">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+        </svg>
+        {{ addingLine ? 'Adding…' : 'Add Decision Line' }}
+      </button>
+    </div>
   </div>
 
   <!-- ═══════════════════════════════════════════════
@@ -61,6 +73,7 @@
         </span>
       </div>
       <div class="content-header-actions">
+        <span class="new-line-badge" *ngIf="isNewUnsavedLine()">New — Unsaved</span>
         <button class="btn btn-outline-secondary btn-sm" (click)="openBulkEdit()" [disabled]="saving">
           Bulk Save
         </button>
@@ -644,6 +657,22 @@
 <div *ngIf="loading" style="padding:40px;text-align:center;color:#94A3B8">
   Loading decisions…
 </div>
-<div *ngIf="!loading && errorMsg" style="padding:20px;color:#dc3545">
+<div *ngIf="!loading && errorMsg && !tabs.length" class="empty-decision-state">
+  <div class="empty-decision-icon">
+    <svg viewBox="0 0 20 20" fill="currentColor" width="40" height="40">
+      <path d="M10 1L3 5v6c0 4.25 3 7.4 7 8 4-.6 7-3.75 7-8V5l-7-4zm-1 12.17L5.83 10l1.42-1.41L9 10.34l3.75-3.75 1.42 1.41L9 13.17z"/>
+    </svg>
+  </div>
+  <p class="empty-decision-text">{{ errorMsg }}</p>
+  <button class="add-decision-line-btn add-decision-line-btn--primary"
+          (click)="addDecisionLine()"
+          [disabled]="saving || addingLine">
+    <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+      <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+    </svg>
+    {{ addingLine ? 'Adding…' : 'Add First Decision Line' }}
+  </button>
+</div>
+<div *ngIf="!loading && errorMsg && tabs.length" style="padding:20px;color:#dc3545">
   {{ errorMsg }}
 </div>

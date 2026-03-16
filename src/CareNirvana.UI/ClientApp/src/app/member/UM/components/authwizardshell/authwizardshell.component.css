@@ -51,201 +51,220 @@
 
 
 /* ═══════════════════════════════════════════
-   HEADER
+   HEADER CARD (casewizardshell style)
    ═══════════════════════════════════════════ */
-.authWizardHeader {
+.aw-header-card {
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.aw-header-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 5px 10px;
-  background: #ffffff;
-  border: 1px solid #e6e8ec;
-  border-radius: 10px;
-  margin-bottom: 1px;
-  min-height: 52px;
+  gap: 16px;
+  padding: 12px 0 10px;
+  flex-wrap: wrap;
 }
 
-/* ── Meta grid: 6 data columns with thin dividers between ── */
-.authWizardMeta {
+/* ── Auth identity ── */
+.aw-header-identity {
   display: flex;
   align-items: center;
-  gap: 0;
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
+  gap: 10px;
+  margin-right: 4px;
+  flex-shrink: 0;
 }
 
-.metaItem {
-  min-width: 0;
-  flex: 1 1 0;
-  padding: 0 12px;
-}
-
-/* First metaItem: Auth Type — give it a bit more weight */
-.metaItem.aw-meta-authtype {
-  flex: 1.4 1 0;
-  padding-left: 4px;
-}
-
-/* Auth # metaItem — slightly wider for the auth number display */
-.metaItem.aw-meta-authnum {
-  flex: 1.2 1 0;
-  padding-left: 4px;
-}
-
-.aw-authnum-value {
-  font-size: 13px;
-  font-weight: 800;
+.aw-auth-number {
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.2px;
   color: #1D4ED8;
-  letter-spacing: 0.3px;
 }
 
-.aw-meta-divider {
-  flex: 0 0 1px;
-  align-self: stretch;
-  background: #E5E7EB;
-  margin: 4px 0;
+/* ── Divider ── */
+.aw-header-divider {
+  width: 1px;
+  height: 32px;
+  background: #e5e7eb;
+  flex-shrink: 0;
 }
 
-.metaLabel {
+/* ── Generic header field ── */
+.aw-header-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.aw-header-fields {
+  display: flex;
+  gap: 20px;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.aw-field-label {
   font-size: 10px;
-  font-weight: 700;
-  color: #9CA3AF;
+  font-weight: 600;
+  color: #8b95a5;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
-  margin-bottom: 3px;
-  white-space: nowrap;
+  letter-spacing: 0.8px;
+  line-height: 1;
 }
 
-.metaValue {
-  font-size: 12px;
-  font-weight: 800;
-  color: #111827;
+.aw-field-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a2332;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.2;
 }
 
-/* Auth Type value is slightly larger */
-.aw-authtype-value {
-  font-size: 13px;
-}
-
-/* Subtitle under Auth Type (e.g. "Inpatient") */
-.aw-meta-subtitle {
+/* ── Subtitle (e.g. auth class name under auth type, days-left under due date) ── */
+.aw-field-sub {
   font-size: 10px;
   color: #6B7280;
   font-weight: 600;
   margin-top: 1px;
   text-transform: capitalize;
-}
-
-.aw-meta-empty {
-  font-size: 13px;
-  color: #D1D5DB;
-  font-weight: 600;
-}
-
-/* ── Days-left text below due date ── */
-.aw-days-left {
-  font-size: 10px;
-  font-weight: 700;
-  margin-top: 1px;
   white-space: nowrap;
 }
 
+/* ── Due date warnings ── */
+.aw-due-warning {
+  color: #9A3412 !important;
+  font-weight: 700 !important;
+}
+
+.aw-due-overdue {
+  color: #DC2626 !important;
+  font-weight: 800 !important;
+}
+
 /* ── Due date / days-left colour states ── */
-.aw-due--ok    { color: #059669; }
+.aw-due--ok      { color: #059669; }
 .aw-due--warning { color: #D97706; }
 .aw-due--danger  { color: #DC2626; }
 
 
 /* ═══════════════════════════════════════════
-   STATUS PILLS — shared base
+   STATUS BADGES — casewizardshell style
    ═══════════════════════════════════════════ */
-.aw-status-pill {
+.aw-status-badge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 9px;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+.aw-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Priority badges ── */
+.aw-priority-badge {
+  display: inline-flex;
+  align-items: center;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
+  padding: 3px 10px;
   white-space: nowrap;
-  border: 1px solid transparent;
-  line-height: 1.5;
 }
 
-/* ── Priority pills ── */
+/* ── Priority badges ── */
 .aw-priority--urgent,
 .aw-priority--1 {
   background: #FEE2E2;
   color: #B91C1C;
-  border-color: #FECACA;
+  border: 1px solid #FECACA;
 }
 
 .aw-priority--expedited,
 .aw-priority--4 {
   background: #FEF3C7;
   color: #B45309;
-  border-color: #FDE68A;
+  border: 1px solid #FDE68A;
 }
 
 .aw-priority--standard,
 .aw-priority--2 {
   background: #EFF6FF;
   color: #1D4ED8;
-  border-color: #BFDBFE;
+  border: 1px solid #BFDBFE;
 }
 
 .aw-priority--routine,
 .aw-priority--3 {
   background: #F3F4F6;
   color: #374151;
-  border-color: #E5E7EB;
+  border: 1px solid #E5E7EB;
 }
 
-/* ── Auth Status pills ── */
+/* ── Auth Status badges ── */
 /* "In Review" / status 1 — purple/violet */
 .aw-auth-status--1,
 .aw-auth-status--inreview {
   background: #F5F3FF;
   color: #6D28D9;
-  border-color: #DDD6FE;
+  border: 1px solid #DDD6FE;
 }
+.aw-auth-status--1 .aw-status-dot,
+.aw-auth-status--inreview .aw-status-dot { background: #7C3AED; }
 
 /* Approved / status 2 — green */
 .aw-auth-status--2,
 .aw-auth-status--approved {
   background: #ECFDF5;
   color: #065F46;
-  border-color: #A7F3D0;
+  border: 1px solid #A7F3D0;
 }
+.aw-auth-status--2 .aw-status-dot,
+.aw-auth-status--approved .aw-status-dot { background: #10B981; }
 
 /* Denied / status 3 — red */
 .aw-auth-status--3,
 .aw-auth-status--denied {
   background: #FEF2F2;
   color: #991B1B;
-  border-color: #FECACA;
+  border: 1px solid #FECACA;
 }
+.aw-auth-status--3 .aw-status-dot,
+.aw-auth-status--denied .aw-status-dot { background: #EF4444; }
 
 /* Pending / status 4 — amber */
 .aw-auth-status--4,
 .aw-auth-status--pending {
   background: #FFFBEB;
   color: #92400E;
-  border-color: #FDE68A;
+  border: 1px solid #FDE68A;
 }
+.aw-auth-status--4 .aw-status-dot,
+.aw-auth-status--pending .aw-status-dot { background: #F59E0B; }
 
 /* Cancelled / status 5 — gray */
 .aw-auth-status--5,
 .aw-auth-status--cancelled {
   background: #F9FAFB;
   color: #6B7280;
-  border-color: #E5E7EB;
+  border: 1px solid #E5E7EB;
 }
+.aw-auth-status--5 .aw-status-dot,
+.aw-auth-status--cancelled .aw-status-dot { background: #9CA3AF; }
 
 /* Deferred / Pended / status 6,7 — blue-gray */
 .aw-auth-status--6,
@@ -254,42 +273,53 @@
 .aw-auth-status--pended {
   background: #EFF6FF;
   color: #1D4ED8;
-  border-color: #BFDBFE;
+  border: 1px solid #BFDBFE;
 }
+.aw-auth-status--6 .aw-status-dot,
+.aw-auth-status--7 .aw-status-dot,
+.aw-auth-status--deferred .aw-status-dot,
+.aw-auth-status--pended .aw-status-dot { background: #3B82F6; }
 
 /* Partial / status 8 */
 .aw-auth-status--8,
 .aw-auth-status--partial {
   background: #FFF7ED;
   color: #C2410C;
-  border-color: #FED7AA;
+  border: 1px solid #FED7AA;
 }
+.aw-auth-status--8 .aw-status-dot,
+.aw-auth-status--partial .aw-status-dot { background: #F97316; }
 
-/* ── Overall Decision pills ── */
+/* ── Overall Decision badges ── */
 .aw-decision--approved {
   background: #ECFDF5;
   color: #065F46;
-  border-color: #A7F3D0;
+  border: 1px solid #A7F3D0;
 }
+.aw-decision--approved .aw-status-dot { background: #10B981; }
 
 .aw-decision--partial {
   background: #FFF7ED;
   color: #C2410C;
-  border-color: #FED7AA;
+  border: 1px solid #FED7AA;
 }
+.aw-decision--partial .aw-status-dot { background: #F97316; }
 
 .aw-decision--denied {
   background: #FEF2F2;
   color: #991B1B;
-  border-color: #FECACA;
+  border: 1px solid #FECACA;
 }
+.aw-decision--denied .aw-status-dot { background: #EF4444; }
 
 .aw-decision--pending,
 .aw-decision-- {
   background: #FFFBEB;
   color: #92400E;
-  border-color: #FDE68A;
+  border: 1px solid #FDE68A;
 }
+.aw-decision--pending .aw-status-dot,
+.aw-decision-- .aw-status-dot { background: #F59E0B; }
 
 
 /* ═══════════════════════════════════════════
@@ -324,14 +354,13 @@
 
 
 /* ═══════════════════════════════════════════
-   ACTIONS
+   HEADER BUTTONS
    ═══════════════════════════════════════════ */
-.authWizardActions {
+.aw-header-actions {
   display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  flex: 0 0 auto;
   gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 
@@ -430,11 +459,14 @@
   background: #ffffff;
   white-space: nowrap;
   box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  max-width: 600px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.wizardToast.success { border-color: #86efac; }
-.wizardToast.error   { border-color: #fca5a5; }
-.wizardToast.info    { border-color: #93c5fd; }
+.wizardToast.success { border-color: #86efac; background: #f0fdf4; color: #166534; }
+.wizardToast.error   { border-color: #fca5a5; background: #fef2f2; color: #991b1b; white-space: normal; }
+.wizardToast.info    { border-color: #93c5fd; background: #eff6ff; color: #1e40af; }
 
 
 /* ═══════════════════════════════════════════
@@ -819,9 +851,7 @@
    RESPONSIVE
    ═══════════════════════════════════════════ */
 @media (max-width: 1400px) {
-  .authWizardMeta { gap: 0; }
-  .metaItem { padding: 0 8px; }
-  .metaItem.aw-meta-authtype { padding-left: 4px; }
+  .aw-header-fields { gap: 14px; }
 }
 
 @media (max-width: 1200px) {
@@ -829,20 +859,14 @@
   .aw-right-panel--expanded { width: 480px; }
   .wizardBody--panel-open { margin-right: 340px; }
   .wizardBody--panel-expanded { margin-right: 480px; }
-  /* Hide dividers + compress on medium screens */
-  .aw-meta-divider { display: none; }
-  .authWizardMeta {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
+  .aw-header-fields {
+    gap: 12px;
   }
-  .metaItem { padding: 0; }
-  .metaItem.aw-meta-authtype { padding: 0; }
 }
 
 @media (max-width: 900px) {
-  .authWizardMeta {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .aw-header-fields {
+    gap: 10px;
   }
   .aw-right-panel {
     width: 100%;
@@ -861,10 +885,14 @@
 }
 
 @media (max-width: 520px) {
-  .authWizardHeader {
+  .aw-header-row {
     flex-direction: column;
     align-items: stretch;
   }
-  .authWizardActions { justify-content: flex-start; }
-  .authWizardMeta { grid-template-columns: 1fr; }
+  .aw-header-divider { display: none; }
+  .aw-header-actions { justify-content: flex-start; }
+  .aw-header-fields {
+    flex-direction: column;
+    gap: 8px;
+  }
 }
