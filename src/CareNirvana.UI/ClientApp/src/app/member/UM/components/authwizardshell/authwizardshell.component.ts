@@ -51,6 +51,9 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
   /** Hide MD Review step by default; enable when user opts-in or when an existing MD Review is detected */
   showMdReview = false;
 
+  /** True when the authorization is in a "Closed" status — puts the entire wizard into view-only mode */
+  isAuthClosed = false;
+
   // ---------------------------
   // Header bar (above stepper)
   // ---------------------------
@@ -317,6 +320,12 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
   // Shell Save (saves active step)
   // ---------------------------
   public async saveCurrentStep(): Promise<void> {
+    // ── View-Only guard: block saves when authorization is Closed ──
+    if (this.isAuthClosed) {
+      this.notifySaveInfo('This authorization is in Closed status and cannot be edited. Reopen to make changes.');
+      return;
+    }
+
     const inst: any =
       (this.outlet as any)?.activatedComponent ??
       (this.outlet as any)?.component ??
@@ -504,6 +513,9 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     const childStatusLabel = this.resolveFromChildOptionsMap('authStatus', statusRaw);
     this.header.authStatusLabel = statusFromLookup || childStatusLabel || '';
     this.header.authStatusCode = statusRaw;
+
+    // ── Detect Closed status and put wizard into view-only mode ──
+    this.detectClosedStatus(statusRaw, this.header.authStatusLabel);
 
     // Decision Summary — only recompute when decisionDetails is actually present in the data.
     // When called from refreshHeaderFromStep (pendingAuth row), decisionDetails won't exist
@@ -942,6 +954,55 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     this.aiQuery = '';
   }
 
+  // ═══════════════════════════════════
+  //  CLOSED STATUS — View-Only Mode
+  // ═══════════════════════════════════
+
+  /**
+   * Detects if the auth status is "Closed" (by code or label) and flips the
+   * isAuthClosed flag, which puts the entire wizard into view-only mode.
+   */
+  private detectClosedStatus(statusCode: string, statusLabel: string): void {
+    const code = (statusCode ?? '').toLowerCase().trim();
+    const label = (statusLabel ?? '').toLowerCase().trim();
+
+    const wasClosed = this.isAuthClosed;
+
+    this.isAuthClosed =
+      code === 'closed' || code === 'close' ||
+      label === 'closed' || label === 'close' ||
+      label.startsWith('close');
+
+    // If state changed, re-push context into the current step so it picks up the new viewOnly flag
+    if (this.isAuthClosed !== wasClosed) {
+      queueMicrotask(() => this.pushContextIntoCurrentStep());
+    }
+  }
+
+  /**
+   * Reopens a closed authorization by changing its status back to a reviewable state.
+   * Steps call this via the "Reopen Authorization" button in the closed banner.
+   */
+  public reopenAuth(): void {
+    if (!this.ctx.authDetailId) {
+      this.notifySaveError('Cannot reopen: authorization has not been saved yet.');
+      return;
+    }
+
+    // Optimistic UI — remove the closed banner immediately
+    this.isAuthClosed = false;
+    queueMicrotask(() => this.pushContextIntoCurrentStep());
+
+    // TODO: Replace with actual API call to reopen the auth
+    // Example: this.authApi.reopenAuth(this.ctx.authDetailId).subscribe(...)
+    this.notifySaveInfo('Authorization reopened — you may now edit all fields.');
+
+    // Re-fetch context so header reflects the updated status
+    if (this.authNumber && this.authNumber !== '0') {
+      this.resolveContextFromAuthNumber(this.authNumber);
+    }
+  }
+
   ngOnDestroy(): void {
     this.dismissToast();
     this.sub.unsubscribe();
@@ -1302,6 +1363,8 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
 
     if ('userId' in inst) inst.userId = ctx.userId;
 
+    // ── View-Only Mode (Closed Authorization) ──
+    if ('isViewOnly' in inst) inst.isViewOnly = this.isAuthClosed;
 
     // Preferred hook
     if (typeof inst?.setContext === 'function') {

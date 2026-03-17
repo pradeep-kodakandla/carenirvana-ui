@@ -278,6 +278,56 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   selectedDiv = 0;               // 1-based
   enrollmentSelect = false;
 
+  /** Active / Inactive toggle for enrollment display (default: active always) */
+  enrollmentFilter: 'active' | 'inactive' = 'active';
+
+  /** True once an authorization number has been generated/saved (locks enrollment + class/type). */
+  get isExistingAuth(): boolean {
+    const an = String(this.authNumber ?? '').trim();
+    return !!an && an !== '0';
+  }
+
+  /**
+   * Enrollments filtered by active/inactive based on endDate vs today.
+   * Active = endDate >= today (or no endDate). Always filtered — both new and existing auths.
+   * For existing auths the toggle is hidden so only active records display.
+   */
+  get filteredEnrollments(): MemberEnrollment[] {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    return (this.memberEnrollments ?? []).filter(enr => {
+      const endRaw = enr.endDate;
+      if (!endRaw) {
+        // No end date → treat as active (open-ended enrollment)
+        return this.enrollmentFilter === 'active';
+      }
+      const endDate = new Date(endRaw);
+      if (isNaN(endDate.getTime())) return this.enrollmentFilter === 'active';
+      endDate.setHours(0, 0, 0, 0);
+      const isActive = endDate.getTime() >= now.getTime();
+      return this.enrollmentFilter === 'active' ? isActive : !isActive;
+    });
+  }
+
+  /** Toggle between Active and Inactive enrollment views. Only allowed on new auths. */
+  toggleEnrollmentFilter(filter: 'active' | 'inactive'): void {
+    if (this.isExistingAuth) return;
+    this.enrollmentFilter = filter;
+  }
+
+  /** Check if an enrollment is active based on its endDate vs today. */
+  isEnrollmentActive(enr: MemberEnrollment): boolean {
+    const endRaw = enr?.endDate;
+    if (!endRaw) return true;
+    const endDate = new Date(endRaw);
+    if (isNaN(endDate.getTime())) return true;
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    endDate.setHours(0, 0, 0, 0);
+    return endDate.getTime() >= now.getTime();
+  }
+
   // ---------- Auth Class + Auth Type ----------
   authClassRaw: any[] = [];
   authTemplatesRaw: any[] = [];
@@ -396,6 +446,10 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
   // ---------- Save ----------
   isSaving = false;
+
+  // ---------- View-Only (Closed Authorization) ----------
+  /** Set by the shell when auth status is "Closed". Disables all form controls. */
+  isViewOnly = false;
 
   // ── FAX MODE ────────────────────────────────────────────────────────────
   /** When set, the component operates in "fax embedded" mode. */
@@ -710,7 +764,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     if (targetEnrollmentId) {
       const idx = this.memberEnrollments.findIndex((e: any) => e.memberEnrollmentId === targetEnrollmentId);
       if (idx >= 0) {
-        this.selectEnrollment(idx);
+        this._selectEnrollmentInternal(idx);
         return;
       }
     }
@@ -720,17 +774,41 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       const prefId = Number(this.smartCheckPrefill.enrollmentId || 0);
       const idx2 = this.memberEnrollments.findIndex((e: any) => Number(e?.memberEnrollmentId || 0) === prefId);
       if (idx2 >= 0) {
-        this.selectEnrollment(idx2);
+        this._selectEnrollmentInternal(idx2);
         return;
       }
     }
 
-    this.selectEnrollment(0);
+    this._selectEnrollmentInternal(0);
   }
 
   selectEnrollment(i: number): void {
+    if (this.isExistingAuth) return;
+    this._selectEnrollmentInternal(i);
+  }
+
+  /** Internal enrollment selection — bypasses the existing-auth lock (for programmatic use). */
+  private _selectEnrollmentInternal(i: number): void {
     this.selectedDiv = i + 1;
     this.enrollmentSelect = true;
+  }
+
+  /**
+   * Disables Auth Class and Auth Type form controls once an authorization has been created.
+   * Called after save, after bindAuthorization, and after form is built for an existing auth.
+   */
+  private lockEnrollmentAndClassType(): void {
+    if (!this.isExistingAuth || !this.form) return;
+
+    const classCtrl = this.form.get('authClassId');
+    const typeCtrl = this.form.get('authTypeId');
+
+    if (classCtrl && !classCtrl.disabled) {
+      classCtrl.disable({ emitEvent: false });
+    }
+    if (typeCtrl && !typeCtrl.disabled) {
+      typeCtrl.disable({ emitEvent: false });
+    }
   }
 
   getEnrollmentDisplayPairs(enr: MemberEnrollment): Array<{ label: string; value: string }> {
@@ -3047,6 +3125,12 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   // Save (AuthDetails step)
   // ============================================================
   async save(): Promise<void> {
+    // ── View-Only guard: block saves when authorization is Closed ──
+    if (this.isViewOnly) {
+      this.shell?.notifySaveInfo('This authorization is in Closed status and cannot be edited.');
+      return;
+    }
+
     if (!this.form) return;
 
     this.form.markAllAsTouched();
@@ -3301,6 +3385,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
           // keep shell + header in sync in case API returns a different authNumber than the locally-generated one
           this.shell?.setContext({ authNumber: String(this.authNumber) });
+
+          // ── Lock enrollment + class/type now that auth is created ──
+          this.lockEnrollmentAndClassType();
         }
 
 
@@ -4062,7 +4149,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     // Select enrollment if list already loaded
     if (normalized.memberEnrollmentId && this.memberEnrollments?.length) {
       const idx = this.memberEnrollments.findIndex((e: any) => e.memberEnrollmentId === normalized.memberEnrollmentId);
-      if (idx >= 0) this.selectEnrollment(idx);
+      if (idx >= 0) this._selectEnrollmentInternal(idx);
     }
 
     // Trigger template chain
@@ -7370,6 +7457,14 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       this._initialLoadInProgress = false;
       this.form?.markAsPristine();
       this._snapshotTimer = null;
+
+      // ── View-Only: disable entire form when authorization is Closed ──
+      if (this.isViewOnly && this.form) {
+        this.form.disable({ emitEvent: false });
+      }
+
+      // ── Lock enrollment + class/type when editing an existing auth ──
+      this.lockEnrollmentAndClassType();
     }, 600);
   }
 

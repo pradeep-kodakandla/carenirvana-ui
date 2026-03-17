@@ -117,8 +117,8 @@
           <button type="button"
                   class="btn btn-primary"
                   (click)="saveCurrentStep()"
-                  [disabled]="shellSaving">
-            {{ shellSaving ? 'Saving...' : 'Save' }}
+                  [disabled]="shellSaving || isAuthClosed">
+            {{ shellSaving ? 'Saving...' : (isAuthClosed ? 'View Only' : 'Save') }}
           </button>
 
           <!-- AI Panel toggle -->
@@ -148,9 +148,26 @@
       </div>
     </div>
 
+    <!-- ═══ CLOSED AUTHORIZATION — View-Only Banner ═══ -->
+    <div class="aw-closed-banner" *ngIf="isAuthClosed">
+      <div class="aw-closed-banner-inner">
+        <div class="aw-closed-banner-content">
+          <span class="material-icons-outlined aw-closed-icon">lock</span>
+          <div class="aw-closed-text">
+            <span class="aw-closed-title">View-Only Mode</span>
+            <span class="aw-closed-msg">This authorization is currently in <strong>Closed</strong> status. All fields are displayed in read-only mode. To make changes, please reopen the authorization.</span>
+          </div>
+        </div>
+        <button type="button" class="aw-closed-reopen-btn" (click)="reopenAuth()">
+          <span class="material-icons-outlined" style="font-size:15px">lock_open</span>
+          Reopen Authorization
+        </button>
+      </div>
+    </div>
+
   </div><!-- /authWizardTop -->
   <!-- ═══════ BODY: content + right panel ═══════ -->
-  <div class="aw-body">
+  <div class="aw-body" [class.aw-body--view-only]="isAuthClosed">
 
     <!-- Scrollable step content -->
     <div class="wizardBody"

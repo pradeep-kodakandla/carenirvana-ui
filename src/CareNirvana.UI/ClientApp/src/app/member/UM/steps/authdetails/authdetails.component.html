@@ -1,25 +1,61 @@
-<form class="auth-details" [formGroup]="form">
-
+<form class="auth-details" [formGroup]="form" [class.auth-details--view-only]="isViewOnly">
   <!-- Enrollment Details -->
-  <div class="section-card">
+  <div class="section-card" [class.section-card--locked]="isExistingAuth">
     <div class="section-header">
       <span class="section-icon"><mat-icon>badge</mat-icon></span>
       <span class="section-acc-icon open">▸</span>
       <div class="section-title">Enrollment Details</div>
+
+      <!-- Active / Inactive Toggle (only for new auth) -->
+      <div class="enr-toggle" *ngIf="!isExistingAuth">
+        <button type="button" class="enr-toggle-btn"
+                [class.enr-toggle-btn--active]="enrollmentFilter === 'active'"
+                (click)="toggleEnrollmentFilter('active')">
+          Active
+        </button>
+        <button type="button" class="enr-toggle-btn"
+                [class.enr-toggle-btn--active]="enrollmentFilter === 'inactive'"
+                (click)="toggleEnrollmentFilter('inactive')">
+          Inactive
+        </button>
+      </div>
+
+      <!-- Lock indicator for existing auth -->
+      <span class="enr-lock-badge" *ngIf="isExistingAuth">
+        <span class="material-icons-outlined" style="font-size:13px">lock</span>
+        Locked
+      </span>
     </div>
 
     <div class="selection-container">
       <div class="rounded-box"
-           *ngFor="let enr of memberEnrollments; let i = index"
+           *ngFor="let enr of filteredEnrollments; let i = index"
            (click)="selectEnrollment(i)"
-           [ngClass]="{ 'selected': selectedDiv === (i + 1) }">
+           [ngClass]="{
+             'selected': selectedDiv === (i + 1),
+             'rounded-box--locked': isExistingAuth
+           }">
 
         <div class="pairs">
           <div class="pair-row" *ngFor="let pair of getEnrollmentDisplayPairs(enr)">
             <label class="label key">{{ pair.label }}</label>
             <label class="label value" [title]="pair.value">{{ pair.value }}</label>
           </div>
+          <!-- Active / Inactive status badge -->
+          <div class="pair-row">
+            <span class="enr-status-badge"
+                  [class.enr-status--active]="isEnrollmentActive(enr)"
+                  [class.enr-status--inactive]="!isEnrollmentActive(enr)">
+              <span class="enr-status-dot"></span>
+              {{ isEnrollmentActive(enr) ? 'Active' : 'Inactive' }}
+            </span>
+          </div>
         </div>
+      </div>
+
+      <!-- Empty state when filter returns no results -->
+      <div class="enr-empty-state" *ngIf="filteredEnrollments.length === 0 && memberEnrollments.length > 0">
+        No {{ enrollmentFilter }} enrollments found.
       </div>
     </div>
 
@@ -29,7 +65,7 @@
   </div>
 
   <!-- Auth Case + Auth Type -->
-  <div class="section-card">
+  <div class="section-card" [class.section-card--locked]="isExistingAuth">
     <!--<div class="section-header">
       <span class="section-acc-icon open">▸</span>
       <div class="section-title">Auth Details</div>
@@ -39,6 +75,7 @@
       <div class="ff-field">
         <div class="ff-outline"
              [class.ff-invalid]="form.get('authClassId')?.touched && form.get('authClassId')?.invalid"
+             [class.ff-disabled]="isExistingAuth"
              [class.ff-fax-prefilled]="isFaxPrefilled('authClassId')">
           <div class="ff-float-label">Auth Case <span class="req-star">*</span></div>
           <div class="ff-body">
@@ -57,7 +94,7 @@
 
       <div class="ff-field">
         <div class="ff-outline"
-             [class.ff-disabled]="!form.get('authClassId')?.value"
+             [class.ff-disabled]="!form.get('authClassId')?.value || isExistingAuth"
              [class.ff-invalid]="form.get('authTypeId')?.touched && form.get('authTypeId')?.invalid"
              [class.ff-fax-prefilled]="isFaxPrefilled('authTypeId')">
           <div class="ff-float-label">Auth Type <span class="req-star">*</span></div>

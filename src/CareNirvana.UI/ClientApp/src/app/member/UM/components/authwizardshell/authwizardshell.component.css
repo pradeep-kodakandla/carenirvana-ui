@@ -848,6 +848,112 @@
 
 
 /* ═══════════════════════════════════════════
+   CLOSED AUTHORIZATION — View-Only Banner
+   ═══════════════════════════════════════════ */
+.aw-closed-banner {
+  background: #FFFBEB;
+  border-bottom: 1px solid #FDE68A;
+  padding: 0 20px;
+}
+
+.aw-closed-banner-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+}
+
+.aw-closed-banner-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.aw-closed-icon {
+  font-size: 20px;
+  color: #D97706;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.aw-closed-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.aw-closed-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #92400E;
+  letter-spacing: -0.1px;
+}
+
+.aw-closed-msg {
+  font-size: 12px;
+  color: #78350F;
+  line-height: 1.45;
+}
+
+.aw-closed-msg strong {
+  font-weight: 800;
+}
+
+.aw-closed-reopen-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 8px;
+  border: 1px solid #D97706;
+  background: #fff;
+  color: #92400E;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.aw-closed-reopen-btn:hover {
+  background: #FEF3C7;
+  border-color: #B45309;
+  box-shadow: 0 0 0 3px rgba(217,119,6,0.08);
+}
+
+/* ── View-Only body overlay ── */
+.aw-body--view-only .wizardBody {
+  position: relative;
+  pointer-events: none;
+  opacity: 0.72;
+  user-select: text;
+}
+
+/* Allow scroll but block interactions */
+.aw-body--view-only .wizardBody::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  cursor: not-allowed;
+}
+
+/* Mute the Save button when closed */
+.btn.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
+/* ═══════════════════════════════════════════
    RESPONSIVE
    ═══════════════════════════════════════════ */
 @media (max-width: 1400px) {
@@ -894,5 +1000,13 @@
   .aw-header-fields {
     flex-direction: column;
     gap: 8px;
+  }
+  .aw-closed-banner-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .aw-closed-reopen-btn {
+    align-self: flex-start;
   }
 }
