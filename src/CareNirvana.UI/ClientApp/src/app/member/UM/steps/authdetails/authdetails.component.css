@@ -109,7 +109,7 @@ box-shadow: none;
 :host ::ng-deep .ff-outline ui-datetime-picker { width: 100%; display: block; }
 :host ::ng-deep .ff-outline ui-smart-dropdown input,
 :host ::ng-deep .ff-outline ui-datetime-picker input {
-border: 0;
+border: 0px !important;
 outline: none;
 box-shadow: none;
 font-size: 14px;
@@ -1515,3 +1515,18 @@ border-color:#F59E0B;
 color:#fff;
 }
 .unsaved-dialog-actions .btn-warning:hover { background:#D97706; border-color:#D97706; }
+.enr-edit-btn {
+display:inline-flex;align-items:center;gap:4px;
+margin-left:auto;padding:4px 12px;border-radius:8px;
+font-size:12px;font-weight:600;color:#2563EB;
+background:#EFF6FF;border:1px solid #BFDBFE;
+cursor:pointer;letter-spacing:.2px;
+transition:background .15s,border-color .15s,color .15s;
+}
+.enr-edit-btn:hover { background:#DBEAFE;border-color:#93C5FD;color:#1D4ED8 }
+.unsaved-dialog-icon--info { background:#DBEAFE;color:#2563EB }
+.unsaved-dialog-actions .btn-primary-custom {
+background:#3B82F6;border-color:#3B82F6;color:#fff;
+border-radius:999px;font-weight:600;font-size:13px;padding:8px 22px;
+}
+.unsaved-dialog-actions .btn-primary-custom:hover { background:#2563EB;border-color:#2563EB }
