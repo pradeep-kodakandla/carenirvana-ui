@@ -260,6 +260,10 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   private _initialLoadInProgress = false;
   private _snapshotTimer: any = null;
 
+  /** Unsaved changes warning dialog state */
+  showUnsavedWarning = false;
+  private _leaveResolver: ((canLeave: boolean) => void) | null = null;
+
   form!: FormGroup;
 
   // route params
@@ -310,9 +314,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     });
   }
 
-  /** Toggle between Active and Inactive enrollment views. Only allowed on new auths. */
+  /** Toggle between Active and Inactive enrollment views. Allowed on new auths and in edit mode. */
   toggleEnrollmentFilter(filter: 'active' | 'inactive'): void {
-    if (this.isExistingAuth) return;
+    if (this.isExistingAuth && !this.enrollmentEditMode) return;
     this.enrollmentFilter = filter;
   }
 
@@ -448,8 +452,49 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   isSaving = false;
 
   // ---------- View-Only (Closed Authorization) ----------
-  /** Set by the shell when auth status is "Closed". Disables all form controls. */
-  isViewOnly = false;
+  /**
+   * Set by the shell when auth status is "Closed" or when reopened.
+   * Uses a setter so the form is re-enabled when the shell sets isViewOnly = false
+   * (e.g. after clicking "Reopen Authorization" in the shell header).
+   */
+  private _isViewOnly = false;
+
+  get isViewOnly(): boolean {
+    return this._isViewOnly;
+  }
+
+  set isViewOnly(value: boolean) {
+    const wasViewOnly = this._isViewOnly;
+    this._isViewOnly = value;
+
+    // Transitioning from view-only → editable: re-enable the form
+    if (wasViewOnly && !value && this.form) {
+      this.form.enable({ emitEvent: false });
+      // Re-apply visibility sync so conditionally hidden fields stay disabled
+      this.syncVisibility();
+      // Keep enrollment and class/type locked (separate concern)
+      this.lockEnrollmentAndClassType();
+      this._captureCleanSnapshot();
+    }
+  }
+
+  // ---------- Enrollment Edit Mode ----------
+  /** When true, existing-auth enrollment section is unlocked for editing */
+  enrollmentEditMode = false;
+  showEnrollmentEditWarning = false;
+
+  onEnrollmentEditClick(): void {
+    this.showEnrollmentEditWarning = true;
+  }
+
+  confirmEnrollmentEdit(): void {
+    this.showEnrollmentEditWarning = false;
+    this.enrollmentEditMode = true;
+  }
+
+  cancelEnrollmentEdit(): void {
+    this.showEnrollmentEditWarning = false;
+  }
 
   // ── FAX MODE ────────────────────────────────────────────────────────────
   /** When set, the component operates in "fax embedded" mode. */
@@ -636,6 +681,12 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       clearTimeout(this._snapshotTimer);
       this._snapshotTimer = null;
     }
+    // Resolve any pending leave promise to prevent memory leaks
+    if (this._leaveResolver) {
+      this._leaveResolver(true);
+      this._leaveResolver = null;
+    }
+    this.showUnsavedWarning = false;
   }
 
   // ============================================================
@@ -783,7 +834,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   }
 
   selectEnrollment(i: number): void {
-    if (this.isExistingAuth) return;
+    if (this.isExistingAuth && !this.enrollmentEditMode) return;
     this._selectEnrollmentInternal(i);
   }
 
@@ -2361,6 +2412,96 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         this.updateDependentChild(childControlName);
       }
     }
+
+    // Wire Auth Status → Auth Status Reason dependency (field-ID based)
+    this.wireAuthStatusReasonDependency(allFields);
+  }
+
+  /**
+   * Wires Auth Status → Auth Status Reason cascading dependency.
+   * When the user changes Auth Status, the Status Reason options are filtered
+   * to only show reasons linked to that status (via authStatus / authStatusId on the raw option).
+   * If no match property exists on the reason options, all reasons are shown.
+   */
+  private wireAuthStatusReasonDependency(allFields: RenderField[]): void {
+    // Find the two fields by their raw IDs
+    const statusField = allFields.find(f => {
+      const rawId = String((f as any)?._rawId ?? '').trim().toLowerCase();
+      return rawId === 'authstatus';
+    });
+    const reasonField = allFields.find(f => {
+      const rawId = String((f as any)?._rawId ?? '').trim().toLowerCase();
+      return rawId === 'authstatusreason' || rawId === 'authstatusreasoncode';
+    });
+
+    if (!statusField?.controlName || !reasonField?.controlName) return;
+
+    const statusCtrlName = statusField.controlName;
+    const reasonCtrlName = reasonField.controlName;
+    const statusCtrl = this.form.get(statusCtrlName);
+    const reasonCtrl = this.form.get(reasonCtrlName);
+    if (!statusCtrl || !reasonCtrl) return;
+
+    /** Full (unfiltered) reason options — captured once after load */
+    let allReasonOptions: UiSmartOption[] | null = null;
+
+    const applyFilter = () => {
+      // Lazily capture full options on first run
+      if (allReasonOptions === null) {
+        allReasonOptions = [...(this.optionsByControlName[reasonCtrlName] ?? [])];
+      }
+
+      const statusVal = String(this.unwrapValue(statusCtrl.value) ?? '').trim();
+
+      if (!statusVal) {
+        // No status selected → clear reason
+        this.optionsByControlName[reasonCtrlName] = [];
+        if (reasonCtrl.value) reasonCtrl.setValue(null, { emitEvent: false });
+        if (!reasonCtrl.disabled) reasonCtrl.disable({ emitEvent: false });
+        return;
+      }
+
+      // Enable reason dropdown
+      if (reasonCtrl.disabled) reasonCtrl.enable({ emitEvent: false });
+
+      // Filter: keep options whose raw.authStatus / raw.authStatusId / raw.parentId matches
+      const filtered = (allReasonOptions ?? []).filter((o: any) => {
+        const raw: any = o?.raw ?? o;
+        const cand =
+          raw?.authStatus ??
+          raw?.authStatusId ??
+          raw?.statusId ??
+          raw?.parentId ??
+          raw?.groupId ??
+          null;
+        // If no linking property exists on the option, keep it (unlinked datasource)
+        if (cand === null || cand === undefined || String(cand).trim() === '') return true;
+        return String(cand).trim() === statusVal;
+      });
+
+      this.optionsByControlName[reasonCtrlName] = filtered.length ? filtered : (allReasonOptions ?? []);
+
+      // If current reason value is no longer in the filtered list, clear it
+      const currentReason = String(this.unwrapValue(reasonCtrl.value) ?? '').trim();
+      if (currentReason) {
+        const stillValid = this.optionsByControlName[reasonCtrlName]
+          .some((o: any) => String((o as any)?.value ?? '').trim() === currentReason);
+        if (!stillValid) reasonCtrl.setValue(null, { emitEvent: false });
+      }
+    };
+
+    // Apply on load and on status changes
+    // Delay initial apply to let options load first
+    setTimeout(() => applyFilter(), 800);
+    statusCtrl.valueChanges
+      .pipe(distinctUntilChanged(), takeUntil(this.destroy$))
+      .subscribe(() => {
+        // Re-capture if options were loaded after initial capture
+        if ((allReasonOptions?.length ?? 0) === 0) {
+          allReasonOptions = [...(this.optionsByControlName[reasonCtrlName] ?? [])];
+        }
+        applyFilter();
+      });
   }
 
   private filterDependentOptions(controlName: string, all: UiSmartOption[]): UiSmartOption[] {
@@ -7426,6 +7567,43 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   // Alias for older naming
   hasUnsavedChanges(): boolean {
     return this.authHasUnsavedChanges();
+  }
+
+  /**
+   * Called by the wizard shell before navigating away from this step.
+   * Returns a Promise that resolves true (allow leave) or false (stay).
+   * Shows a warning dialog if the form has unsaved changes.
+   */
+  canLeaveStep(): Promise<boolean> {
+    if (!this.authHasUnsavedChanges()) {
+      return Promise.resolve(true);
+    }
+
+    this.showUnsavedWarning = true;
+    return new Promise<boolean>((resolve) => {
+      this._leaveResolver = resolve;
+    });
+  }
+
+  /** User chose to stay and keep editing — close the warning */
+  dismissUnsavedWarning(): void {
+    this.showUnsavedWarning = false;
+    if (this._leaveResolver) {
+      this._leaveResolver(false);
+      this._leaveResolver = null;
+    }
+  }
+
+  /** User chose to discard changes and leave */
+  confirmLeaveStep(): void {
+    this.showUnsavedWarning = false;
+    // Reset dirty state so the guard allows navigation
+    this._formCleanSnapshot = this._serializeFormState();
+    this.form?.markAsPristine();
+    if (this._leaveResolver) {
+      this._leaveResolver(true);
+      this._leaveResolver = null;
+    }
   }
 
   /**

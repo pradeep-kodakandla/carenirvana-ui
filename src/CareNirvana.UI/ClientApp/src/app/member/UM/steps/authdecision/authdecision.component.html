@@ -44,17 +44,6 @@
       </div>
     </div>
 
-    <!-- Add Decision Line button -->
-    <div class="add-decision-line-bar" *ngIf="!bulkEditMode">
-      <button class="add-decision-line-btn"
-              (click)="addDecisionLine()"
-              [disabled]="saving || addingLine">
-        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-          <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
-        </svg>
-        {{ addingLine ? 'Adding…' : 'Add Decision Line' }}
-      </button>
-    </div>
   </div>
 
   <!-- ═══════════════════════════════════════════════
@@ -74,16 +63,32 @@
       </div>
       <div class="content-header-actions">
         <span class="new-line-badge" *ngIf="isNewUnsavedLine()">New — Unsaved</span>
-        <button class="btn btn-outline-secondary btn-sm" (click)="openBulkEdit()" [disabled]="saving">
+        <button class="btn btn-outline-secondary btn-sm btn-add-new"
+                (click)="addDecisionLine()"
+                [disabled]="saving || addingLine">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" style="margin-right:4px;vertical-align:-2px">
+            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+          </svg>
+          {{ addingLine ? 'Adding…' : 'Add New' }}
+        </button>
+        <button class="btn btn-outline-secondary btn-sm"
+                (click)="openBulkEdit()"
+                [disabled]="saving"
+                *ngIf="tabs.length > 1 && !isNewUnsavedLine()">
           Bulk Save
         </button>
         <button class="btn btn-outline-secondary btn-sm" (click)="saveCurrentTab()" [disabled]="saving">
           Save
         </button>
-        <button class="btn btn-outline-secondary btn-sm" (click)="openMdReview()">
+        <button class="btn btn-outline-secondary btn-sm"
+                (click)="openMdReview()"
+                *ngIf="!isNewUnsavedLine()">
           MD Review
         </button>
-        <button class="btn btn-outline-danger btn-sm" (click)="deleteCurrentTab()" [disabled]="saving">
+        <button class="btn btn-outline-danger btn-sm"
+                (click)="deleteCurrentTab()"
+                [disabled]="saving"
+                *ngIf="isNewUnsavedLine()">
           Delete
         </button>
       </div>
@@ -651,6 +656,32 @@
 
   </div><!-- /bulk-edit-panel -->
 
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     UNSAVED CHANGES WARNING DIALOG
+     Shown when user tries to switch tabs with dirty form
+     ═══════════════════════════════════════════════ -->
+<div class="unsaved-overlay" *ngIf="showUnsavedWarning" (click)="cancelTabSwitch()">
+  <div class="unsaved-dialog" (click)="$event.stopPropagation()">
+    <div class="unsaved-dialog-icon">
+      <svg width="28" height="28" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+      </svg>
+    </div>
+    <div class="unsaved-dialog-title">Unsaved Changes</div>
+    <div class="unsaved-dialog-message">
+      You have unsaved changes on this decision line. Switching tabs will discard your modifications.
+    </div>
+    <div class="unsaved-dialog-actions">
+      <button class="btn btn-outline-secondary btn-sm" (click)="cancelTabSwitch()">
+        Stay &amp; Continue Editing
+      </button>
+      <button class="btn btn-warning btn-sm" (click)="confirmTabSwitch()">
+        Discard &amp; Switch
+      </button>
+    </div>
+  </div>
 </div>
 
 <!-- Loading / Error states -->

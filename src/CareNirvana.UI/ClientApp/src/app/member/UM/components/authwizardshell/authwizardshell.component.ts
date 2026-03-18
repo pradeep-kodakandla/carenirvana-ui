@@ -54,6 +54,9 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
   /** True when the authorization is in a "Closed" status — puts the entire wizard into view-only mode */
   isAuthClosed = false;
 
+  /** When true, detectClosedStatus() skips re-closing (set by reopenAuth, cleared on next save) */
+  private _reopenOverrideActive = false;
+
   // ---------------------------
   // Header bar (above stepper)
   // ---------------------------
@@ -366,6 +369,9 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
 
       // Only show success toast if save actually completed (no throw)
       this.notifySaveSuccess(`${stepLabel} saved successfully.`);
+
+      // Clear the reopen override — after save the DB status is now whatever the user set
+      this._reopenOverrideActive = false;
 
       // Refresh header after save (if the step has fresh pendingAuth)
       this.refreshHeaderFromStep(inst);
@@ -963,6 +969,10 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
    * isAuthClosed flag, which puts the entire wizard into view-only mode.
    */
   private detectClosedStatus(statusCode: string, statusLabel: string): void {
+    // If a manual reopen is active, skip re-detecting Closed from the DB
+    // (the DB still says "Closed" until the next save persists the new status)
+    if (this._reopenOverrideActive) return;
+
     const code = (statusCode ?? '').toLowerCase().trim();
     const label = (statusLabel ?? '').toLowerCase().trim();
 
@@ -989,18 +999,19 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
       return;
     }
 
-    // Optimistic UI — remove the closed banner immediately
+    // Activate the override so detectClosedStatus() won't re-close
+    // when the header refreshes (DB still says "Closed" until saved)
+    this._reopenOverrideActive = true;
+
+    // Remove the closed banner and enable editing
     this.isAuthClosed = false;
     queueMicrotask(() => this.pushContextIntoCurrentStep());
 
-    // TODO: Replace with actual API call to reopen the auth
-    // Example: this.authApi.reopenAuth(this.ctx.authDetailId).subscribe(...)
-    this.notifySaveInfo('Authorization reopened — you may now edit all fields.');
+    // Update the header status locally so the UI reflects "Open" immediately
+    this.header.authStatusLabel = 'Open';
+    this.header.authStatusCode = 'open';
 
-    // Re-fetch context so header reflects the updated status
-    if (this.authNumber && this.authNumber !== '0') {
-      this.resolveContextFromAuthNumber(this.authNumber);
-    }
+    this.notifySaveInfo('Authorization reopened — you may now edit all fields. Please save to persist the change.');
   }
 
   ngOnDestroy(): void {

@@ -25,10 +25,10 @@ export const authpendingchangesGuard: CanDeactivateFn<any> = (component) => {
       width: '420px',
       disableClose: true,
       data: {
-        title: 'Leave this page?',
-        message: 'You have unsaved changes. If you leave now, your changes will be lost.',
-        confirmText: 'Leave',
-        cancelText: 'Stay',
+        title: 'Unsaved Changes',
+        message: 'You have unsaved changes on this page. Switching now will discard your modifications.',
+        cancelText: 'Stay & Continue Editing',
+        confirmText: 'Discard & Switch'
       },
     })
     .afterClosed()

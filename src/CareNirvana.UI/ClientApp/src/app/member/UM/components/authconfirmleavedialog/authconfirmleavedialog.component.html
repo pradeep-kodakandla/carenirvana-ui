@@ -1,25 +1,26 @@
 <div class="leave-dialog" role="dialog" aria-modal="true">
-  <h2 mat-dialog-title class="leave-dialog__title">
-    <mat-icon class="leave-dialog__icon" aria-hidden="true">warning_amber</mat-icon>
-    <span class="leave-dialog__titleText">{{ title }}</span>
-  </h2>
 
-  <mat-dialog-content class="leave-dialog__content">
-    <p class="leave-dialog__message">{{ message }}</p>
+  <!-- Amber warning icon -->
+  <div class="leave-dialog__icon-wrap">
+    <svg width="28" height="28" viewBox="0 0 20 20" fill="currentColor">
+      <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+    </svg>
+  </div>
 
-    <div class="leave-dialog__helper">
-      Select <strong>{{ cancelText }}</strong> to continue editing, or
-      <strong>{{ confirmText }}</strong> to discard changes.
-    </div>
-  </mat-dialog-content>
+  <!-- Title -->
+  <div class="leave-dialog__title">{{ title }}</div>
 
-  <mat-dialog-actions align="end" class="leave-dialog__actions">
-    <button mat-button type="button" (click)="stay()" cdkFocusInitial>
+  <!-- Message -->
+  <div class="leave-dialog__message">{{ message }}</div>
+
+  <!-- Action buttons -->
+  <div class="leave-dialog__actions">
+    <button type="button" class="leave-dialog__btn leave-dialog__btn--stay" (click)="stay()" cdkFocusInitial>
       {{ cancelText }}
     </button>
-
-    <button mat-raised-button color="warn" type="button" (click)="leave()">
+    <button type="button" class="leave-dialog__btn leave-dialog__btn--leave" (click)="leave()">
       {{ confirmText }}
     </button>
-  </mat-dialog-actions>
+  </div>
+
 </div>

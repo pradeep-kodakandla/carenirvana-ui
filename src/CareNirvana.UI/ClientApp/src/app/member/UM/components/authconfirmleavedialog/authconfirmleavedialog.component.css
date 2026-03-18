@@ -1,59 +1,133 @@
+/* ═══════════════════════════════════════════════
+   Auth Confirm Leave Dialog
+   Matches the unsaved-changes warning in AuthDecision
+   ═══════════════════════════════════════════════ */
+
 :host {
   display: block;
 }
 
-.leave-dialog {
-  min-width: 360px;
-  max-width: 560px;
+/*
+ * Backdrop + panel styles for Material Dialog.
+ * When opening this dialog, pass these options:
+ *   panelClass: 'leave-dialog-panel'
+ *   backdropClass: 'leave-dialog-backdrop'
+ *   disableClose: true
+ *
+ * The backdrop blur style must be placed in a global stylesheet (e.g. styles.css):
+ *   .leave-dialog-backdrop { background: rgba(15,23,42,.45) !important; backdrop-filter: blur(2px); }
+ */
+
+/* Remove Material Dialog default padding/chrome */
+:host ::ng-deep .mat-mdc-dialog-container,
+:host ::ng-deep .mat-dialog-container {
+  padding: 0 !important;
+  border-radius: 16px !important;
+  overflow: hidden;
+}
+:host ::ng-deep .mat-mdc-dialog-surface {
+  border-radius: 16px !important;
+  box-shadow: 0 20px 60px rgba(0,0,0,.18), 0 4px 16px rgba(0,0,0,.08) !important;
 }
 
+.leave-dialog {
+  padding: 28px 32px 24px;
+  text-align: center;
+  max-width: 420px;
+  min-width: 340px;
+}
+
+/* ── Amber icon circle ── */
+.leave-dialog__icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #FEF3C7;
+  color: #D97706;
+  margin-bottom: 14px;
+}
+
+/* ── Title ── */
 .leave-dialog__title {
+  font-weight: 800;
+  font-size: 17px;
+  color: #1E293B;
+  margin-bottom: 8px;
+  line-height: 24px;
+}
+
+/* ── Message ── */
+.leave-dialog__message {
+  font-size: 13.5px;
+  color: #64748B;
+  line-height: 21px;
+  margin-bottom: 22px;
+}
+
+/* ── Action buttons ── */
+.leave-dialog__actions {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin: 0;
-  padding: 0 0 8px 0;
+  justify-content: center;
+  gap: 10px;
 }
 
-.leave-dialog__icon {
-  width: 24px;
-  height: 24px;
-  font-size: 24px;
-  line-height: 24px;
-  flex: 0 0 24px;
-}
-
-.leave-dialog__titleText {
+.leave-dialog__btn {
+  border-radius: 999px;
   font-weight: 600;
+  font-size: 13px;
+  padding: 8px 22px;
+  white-space: nowrap;
+  cursor: pointer;
+  border: 1px solid transparent;
+  outline: none;
+  transition: background .15s, border-color .15s;
+  line-height: 20px;
 }
 
-.leave-dialog__content {
-  padding-top: 4px;
+/* Stay button (outline) */
+.leave-dialog__btn--stay {
+  border-color: #D8DEE4;
+  color: #475569;
+  background: #fff;
+}
+.leave-dialog__btn--stay:hover {
+  background: #F8FAFC;
+  border-color: #94A3B8;
+}
+.leave-dialog__btn--stay:focus-visible {
+  box-shadow: 0 0 0 2px rgba(59,130,246,.3);
 }
 
-.leave-dialog__message {
-  margin: 0;
-  line-height: 1.5;
+/* Leave button (amber/warning) */
+.leave-dialog__btn--leave {
+  background: #F59E0B;
+  border-color: #F59E0B;
+  color: #fff;
+}
+.leave-dialog__btn--leave:hover {
+  background: #D97706;
+  border-color: #D97706;
+}
+.leave-dialog__btn--leave:focus-visible {
+  box-shadow: 0 0 0 2px rgba(245,158,11,.35);
 }
 
-.leave-dialog__helper {
-  margin-top: 10px;
-  font-size: 12px;
-  line-height: 1.4;
-  opacity: 0.75;
-}
-
-.leave-dialog__actions {
-  padding-top: 16px;
-}
-
-  .leave-dialog__actions button + button {
-    margin-left: 8px;
-  }
-
+/* ── Responsive ── */
 @media (max-width: 420px) {
   .leave-dialog {
     min-width: 0;
+    width: 100%;
+    padding: 24px 20px 20px;
+  }
+  .leave-dialog__actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .leave-dialog__btn {
     width: 100%;
   }
 }

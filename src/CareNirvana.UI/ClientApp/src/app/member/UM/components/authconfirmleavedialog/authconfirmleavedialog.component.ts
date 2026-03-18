@@ -23,10 +23,10 @@ export class AuthconfirmleavedialogComponent {
     private dialogRef: MatDialogRef<AuthconfirmleavedialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: AuthConfirmLeaveDialogData
   ) {
-    this.title = data?.title ?? 'Leave this page?';
-    this.message = data?.message ?? 'You have unsaved changes. If you leave now, your changes will be lost.';
-    this.confirmText = data?.confirmText ?? 'Leave';
-    this.cancelText = data?.cancelText ?? 'Stay';
+    this.title = data?.title ?? 'Unsaved Changes';
+    this.message = data?.message ?? 'You have unsaved changes. Leaving now will discard your modifications.';
+    this.confirmText = data?.confirmText ?? 'Discard & Switch';
+    this.cancelText = data?.cancelText ?? 'Stay & Continue Editing';
   }
 
   stay(): void {

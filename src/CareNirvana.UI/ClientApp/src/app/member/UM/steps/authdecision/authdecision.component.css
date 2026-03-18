@@ -76,11 +76,13 @@
   transition:background .15s,opacity .15s;
   border-left:4px solid var(--line);
   border-top:var(--bw) solid var(--line);
-  border-bottom:none;
+  border-bottom:var(--bw) solid var(--line);
   border-right:var(--bw) solid var(--line);
+  /* Collapse adjacent borders so top/bottom don't double up */
+  margin-bottom:calc(-1 * var(--bw));
 }
 .tab:first-child { border-top-left-radius:var(--r) }
-.tab:last-child  { border-bottom:var(--bw) solid var(--line);border-bottom-left-radius:var(--r) }
+.tab:last-child  { border-bottom-left-radius:var(--r);margin-bottom:0 }
 
 .tab.status-pended   { border-left-color:var(--clr-pended) }
 .tab.status-approved  { border-left-color:var(--clr-approved) }
@@ -95,31 +97,26 @@
 .tab.active {
   opacity:1;z-index:5;
   border-right:none;
-  margin-right:calc(-1 * var(--bw));
-  padding-right:calc(16px + var(--bw));
+/*  margin-right:calc(-1 * var(--bw));
+*/  padding-right:calc(16px + var(--bw));
 }
 
-.tab.active.status-approved  { border-top-color:var(--clr-approved); border-left-color:var(--clr-approved); background:var(--clr-approved-bg) }
-.tab.active.status-denied    { border-top-color:var(--clr-denied);   border-left-color:var(--clr-denied);   background:var(--clr-denied-bg) }
-.tab.active.status-pended    { border-top-color:var(--clr-pended);   border-left-color:var(--clr-pended);   background:var(--clr-pended-bg) }
-.tab.active.status-partial   { border-top-color:var(--clr-partial);  border-left-color:var(--clr-partial);  background:var(--clr-partial-bg) }
-.tab.active.status-other     { border-top-color:var(--clr-other);    border-left-color:var(--clr-other);    background:var(--clr-other-bg) }
+/* Status-colored borders: left + top + bottom for ALL active tabs */
+.tab.active.status-approved  { border-top-color:var(--clr-approved); border-left-color:var(--clr-approved); border-bottom-color:var(--clr-approved); background:var(--clr-approved-bg) }
+.tab.active.status-denied    { border-top-color:var(--clr-denied);   border-left-color:var(--clr-denied);   border-bottom-color:var(--clr-denied);   background:var(--clr-denied-bg) }
+.tab.active.status-pended    { border-top-color:var(--clr-pended);   border-left-color:var(--clr-pended);   border-bottom-color:var(--clr-pended);   background:var(--clr-pended-bg) }
+.tab.active.status-partial   { border-top-color:var(--clr-partial);  border-left-color:var(--clr-partial);  border-bottom-color:var(--clr-partial);  background:var(--clr-partial-bg) }
+.tab.active.status-other     { border-top-color:var(--clr-other);    border-left-color:var(--clr-other);    border-bottom-color:var(--clr-other);    background:var(--clr-other-bg) }
 
-.tab.active:last-child.status-approved  { border-bottom:var(--bw) solid var(--clr-approved) }
-.tab.active:last-child.status-denied    { border-bottom:var(--bw) solid var(--clr-denied) }
-.tab.active:last-child.status-pended    { border-bottom:var(--bw) solid var(--clr-pended) }
-.tab.active:last-child.status-partial   { border-bottom:var(--bw) solid var(--clr-partial) }
-.tab.active:last-child.status-other     { border-bottom:var(--bw) solid var(--clr-other) }
+/* Tab immediately AFTER the active tab: hide its top border to avoid visible double-line */
+.tab.active + .tab { border-top-color:transparent }
 
-/* Tab before active */
-.tab.before-active { border-bottom:var(--bw) solid var(--line) }
+/* Tab BEFORE the active tab: color its bottom edge to match the active tab's status */
 .tab.before-active.before-status-approved  { border-bottom-color:var(--clr-approved) }
 .tab.before-active.before-status-denied    { border-bottom-color:var(--clr-denied) }
 .tab.before-active.before-status-pended    { border-bottom-color:var(--clr-pended) }
 .tab.before-active.before-status-partial   { border-bottom-color:var(--clr-partial) }
 .tab.before-active.before-status-other     { border-bottom-color:var(--clr-other) }
-
-.tab.active + .tab { border-top-color:transparent }
 
 /* ===== Tab internals ===== */
 .tab-header-row { display:flex;align-items:center;justify-content:space-between;gap:8px }
@@ -284,7 +281,7 @@
   .decision-details-layout { flex-direction:column;gap:12px }
   .tabs-container { width:100%;min-width:0;position:static }
   .tabs { flex-direction:row;flex-wrap:wrap;gap:8px }
-  .tab { flex:1;min-width:220px;border-radius:var(--r)!important;border:var(--bw) solid var(--line)!important;border-left-width:4px!important }
+  .tab { flex:1;min-width:220px;border-radius:var(--r)!important;border:var(--bw) solid var(--line)!important;border-left-width:4px!important;margin-bottom:0!important }
   .tab.active { margin-right:0!important;padding-right:16px!important;border-right:var(--bw) solid!important }
   .tab:not(.active) { border-right:var(--bw) solid var(--line)!important }
   .tab-content { border:var(--bw) solid var(--line);border-radius:var(--r);border-left:var(--bw) solid var(--clr) }
@@ -698,4 +695,115 @@
   margin-bottom:24px;
   max-width:360px;
   line-height:22px;
+}
+
+/* ═══════════════════════════════════════════════
+   ADD NEW BUTTON — Content header (adjacent to Bulk Save)
+   ═══════════════════════════════════════════════ */
+.content-header-actions .btn-add-new {
+  border-color:#3B82F6;
+  color:#3B82F6;
+  background:#fff;
+}
+.content-header-actions .btn-add-new:hover:not(:disabled) {
+  background:#EFF6FF;
+  border-color:#2563EB;
+  color:#2563EB;
+}
+.content-header-actions .btn-add-new:disabled {
+  opacity:.5;
+  cursor:not-allowed;
+}
+
+/* ═══════════════════════════════════════════════
+   UNSAVED CHANGES WARNING DIALOG
+   ═══════════════════════════════════════════════ */
+.unsaved-overlay {
+  position:fixed;
+  top:0;left:0;right:0;bottom:0;
+  background:rgba(15,23,42,.45);
+  backdrop-filter:blur(2px);
+  z-index:9999;
+  display:flex;align-items:center;justify-content:center;
+  animation:unsavedFadeIn .15s ease;
+}
+
+@keyframes unsavedFadeIn {
+  from { opacity:0 }
+  to   { opacity:1 }
+}
+
+.unsaved-dialog {
+  background:#fff;
+  border-radius:16px;
+  padding:28px 32px 24px;
+  max-width:420px;
+  width:90%;
+  box-shadow:0 20px 60px rgba(0,0,0,.18), 0 4px 16px rgba(0,0,0,.08);
+  text-align:center;
+  animation:unsavedSlideIn .2s ease;
+}
+
+@keyframes unsavedSlideIn {
+  from { transform:translateY(12px);opacity:0 }
+  to   { transform:translateY(0);opacity:1 }
+}
+
+.unsaved-dialog-icon {
+  display:inline-flex;
+  align-items:center;justify-content:center;
+  width:52px;height:52px;
+  border-radius:50%;
+  background:#FEF3C7;
+  color:#D97706;
+  margin-bottom:14px;
+}
+
+.unsaved-dialog-title {
+  font-weight:800;
+  font-size:17px;
+  color:#1E293B;
+  margin-bottom:8px;
+  line-height:24px;
+}
+
+.unsaved-dialog-message {
+  font-size:13.5px;
+  color:#64748B;
+  line-height:21px;
+  margin-bottom:22px;
+}
+
+.unsaved-dialog-actions {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+}
+
+.unsaved-dialog-actions .btn {
+  border-radius:999px;
+  font-weight:600;
+  font-size:13px;
+  padding:8px 22px;
+  white-space:nowrap;
+}
+
+.unsaved-dialog-actions .btn-outline-secondary {
+  border-color:#D8DEE4;
+  color:#475569;
+}
+.unsaved-dialog-actions .btn-outline-secondary:hover {
+  background:#F8FAFC;
+  border-color:#94A3B8;
+}
+
+.unsaved-dialog-actions .btn-warning {
+  background:#F59E0B;
+  border-color:#F59E0B;
+  color:#fff;
+}
+.unsaved-dialog-actions .btn-warning:hover {
+  background:#D97706;
+  border-color:#D97706;
 }

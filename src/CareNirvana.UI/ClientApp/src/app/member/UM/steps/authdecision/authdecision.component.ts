@@ -194,6 +194,21 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
   /** Tracks whether an add-line operation is in progress */
   addingLine = false;
 
+  /** Guards against re-entrant reload during add-new-line refresh */
+  private refreshingForNewLine = false;
+
+  /** Backup: if reload fires after guard expires, still select this procedure tab */
+  private pendingSelectProcedureNo: number | null = null;
+
+  /** Unsaved changes warning dialog state */
+  showUnsavedWarning = false;
+  private pendingTabId: number | null = null;
+  private pendingAddNew = false;
+
+  /** Snapshot of the form value when a tab is first loaded (used for dirty detection) */
+  private formSnapshot: string = '';
+  private formSnapshotTimer: any = null;
+
   /** Procedure numbers for newly added (unsaved) decision lines */
   private newLineIds = new Set<number>();
 
@@ -349,8 +364,11 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
     const tabRect = activeTab.getBoundingClientRect();
     const bw = 2; // must match --bw
 
+    // ::before runs from top of content down to the active tab's top edge
     const gapTop = Math.max(0, (tabRect.top - ctRect.top) + bw);
-    const gapBottom = (tabRect.bottom - ctRect.top) + bw;
+    // ::after runs from the active tab's bottom edge down to the content bottom
+    // tabRect.bottom already includes the tab's bottom border, so no extra offset needed
+    const gapBottom = 0;// tabRect.bottom - ctRect.top;
 
     content.style.setProperty('--gap-top', gapTop + 'px');
     content.style.setProperty('--gap-bottom', gapBottom + 'px');
@@ -374,6 +392,14 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
 
   addDecisionLine(): void {
     if (this.addingLine || !this.authDetailId || !this.authTemplateId) return;
+
+    // If current form has unsaved changes, warn user before adding new line
+    if (this.isFormDirty()) {
+      this.pendingAddNew = true;
+      this.pendingTabId = null;
+      this.showUnsavedWarning = true;
+      return;
+    }
 
     // Compute the next procedure number
     const existingNums = this.tabs.map(t => t.procedureNo);
@@ -428,12 +454,15 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
 
           this.toastSvc.success(`Decision Line #${nextProcNo} added.`);
 
-          // Refresh items and select the new tab
-          this.refreshAndSelectProcedure(nextProcNo);
+          // Clear stale form state so the new tab loads cleanly
+          this.formSnapshot = '';
+          this.selectedTabId = null;
+          this.pendingSelectProcedureNo = nextProcNo;
 
-          // Refresh wizard shell header
-          this._shellRefreshBadgeCounts?.();
-          this._shellRefreshHeader?.();
+          // Refresh items, select the new tab
+          // (shell callbacks are NOT fired here — they would trigger re-entrant
+          //  setContext→reload which causes flicker. They fire on save instead.)
+          this.refreshAndSelectProcedure(nextProcNo);
         }
       });
   }
@@ -471,6 +500,7 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
       'Decision Notes'
     ];
 
+    this.refreshingForNewLine = true;
     this.loading = true;
     forkJoin(
       sections.reduce((acc, s) => {
@@ -478,7 +508,10 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
         return acc;
       }, {} as Record<DecisionSectionName, any>)
     )
-      .pipe(finalize(() => (this.loading = false)), takeUntil(this.destroy$))
+      .pipe(
+        finalize(() => (this.loading = false)),
+        takeUntil(this.destroy$)
+      )
       .subscribe({
         next: (res: any) => {
           this.itemsBySection = res ?? {};
@@ -491,8 +524,17 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
             this.selectedTabId = newTab.id;
             this.buildActiveState(newTab);
           }
+
+          // Keep the guard active to block any re-entrant setContext/reload triggered
+          // by shell async callbacks. Clear after a safe window.
+          // Shell badges/header will refresh on the next save action.
+          setTimeout(() => {
+            this.refreshingForNewLine = false;
+            this.pendingSelectProcedureNo = null;
+          }, 1500);
         },
         error: (e) => {
+          this.refreshingForNewLine = false;
           console.error(e);
           this.errorMsg = 'Unable to reload decision items.';
         }
@@ -502,6 +544,12 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
 
 
   ngOnDestroy(): void {
+    if (this.formSnapshotTimer) {
+      clearTimeout(this.formSnapshotTimer);
+      this.formSnapshotTimer = null;
+    }
+    this.refreshingForNewLine = false;
+    this.pendingSelectProcedureNo = null;
     this.tabDestroy$.next();
     this.tabDestroy$.complete();
     this.bulkStatusSub$.next();
@@ -520,6 +568,13 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
 
     this.authDetailId = nextDetailId;
     this.authTemplateId = nextTemplateId;
+
+    // Skip reload if we're in the middle of adding a new line —
+    // refreshAndSelectProcedure is already handling the refresh and tab selection.
+    if (this.refreshingForNewLine) {
+      console.log('[AuthDecision] setContext skipped — refreshingForNewLine in progress');
+      return;
+    }
 
     // Check if authData was refreshed (e.g. after AuthDetails save) and trigger service→decision sync
     const incomingAuthData = ctx?.authData ?? null;
@@ -598,8 +653,20 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
               return;
             }
             console.log('AuthDecisionComponent.reload: tabs=', this.tabs);
-            this.selectedTabId = this.tabs[0].id;
-            this.buildActiveState(this.tabs[0]);
+
+            // If a new line was just added, select that tab instead of tabs[0]
+            if (this.pendingSelectProcedureNo !== null) {
+              const targetTab = this.tabs.find(t => t.procedureNo === this.pendingSelectProcedureNo)
+                ?? this.tabs[this.tabs.length - 1];
+              this.pendingSelectProcedureNo = null;
+              if (targetTab) {
+                this.selectedTabId = targetTab.id;
+                this.buildActiveState(targetTab);
+              }
+            } else {
+              this.selectedTabId = this.tabs[0].id;
+              this.buildActiveState(this.tabs[0]);
+            }
           });
         },
         error: (e) => {
@@ -1001,8 +1068,8 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
       if (reasonRaw && typeof reasonRaw === 'object') {
         const obj: any = reasonRaw;
         reasonText = obj?.decisionStatusCodeName ?? obj?.decisionStatusName ?? obj?.decisionStatusCode ??
-                     obj?.reasonDescription ?? obj?.description ??
-                     obj?.name ?? obj?.label ?? obj?.text ?? '';
+          obj?.reasonDescription ?? obj?.description ??
+          obj?.name ?? obj?.label ?? obj?.text ?? '';
       } else {
         const reasonPrim = this.asDisplayString(reasonRaw);
         if (reasonPrim) {
@@ -1064,9 +1131,9 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
       const decisionNo = this.asDisplayString(dd?.decisionNumber).trim() || String(procNo);
 
       const fromRaw = dd?.fromDate ?? this.authData?.[`procedure${procNo}_fromDate`];
-      const toRaw   = dd?.toDate   ?? this.authData?.[`procedure${procNo}_toDate`];
+      const toRaw = dd?.toDate ?? this.authData?.[`procedure${procNo}_toDate`];
       const fromComp = this.formatDateCompact(fromRaw);
-      const toComp   = this.formatDateCompactFull(toRaw);
+      const toComp = this.formatDateCompactFull(toRaw);
       const line2 = (fromComp || toComp)
         ? `${fromComp || '—'} → ${toComp || '—'}`
         : '';
@@ -1140,9 +1207,9 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
       const decisionNo = this.asDisplayString(dd?.decisionNumber).trim() || String(n);
 
       const fromRaw = dd?.fromDate ?? this.authData?.[`procedure${n}_fromDate`];
-      const toRaw   = dd?.toDate   ?? this.authData?.[`procedure${n}_toDate`];
+      const toRaw = dd?.toDate ?? this.authData?.[`procedure${n}_toDate`];
       const fromComp = this.formatDateCompact(fromRaw);
-      const toComp   = this.formatDateCompactFull(toRaw);
+      const toComp = this.formatDateCompactFull(toRaw);
       const line2 = (fromComp || toComp)
         ? `${fromComp || '—'} → ${toComp || '—'}`
         : '';
@@ -1172,6 +1239,59 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
   // UI interactions
   // ---------------------------
   selectTab(tabId: number): void {
+    const tab = this.tabs.find((t) => t.id === tabId);
+    if (!tab) return;
+
+    // If switching away from the current tab and form has been modified, show warning
+    if (this.selectedTabId !== null && this.selectedTabId !== tabId && this.isFormDirty()) {
+      this.pendingTabId = tabId;
+      this.showUnsavedWarning = true;
+      return;
+    }
+
+    this.selectedTabId = tabId;
+    this.buildActiveState(tab);
+  }
+
+  /** Detects whether the form has been modified since the tab was loaded */
+  private isFormDirty(): boolean {
+    if (!this.form) return false;
+    // Compare current form value snapshot with the initial snapshot
+    const currentSnapshot = JSON.stringify(this.form.getRawValue());
+    return this.formSnapshot !== '' && currentSnapshot !== this.formSnapshot;
+  }
+
+  /** User chose to stay on current tab — close the warning */
+  cancelTabSwitch(): void {
+    this.showUnsavedWarning = false;
+    this.pendingTabId = null;
+    this.pendingAddNew = false;
+  }
+
+  /** User chose to discard changes and switch — proceed to the pending tab */
+  confirmTabSwitch(): void {
+    this.showUnsavedWarning = false;
+    const tabId = this.pendingTabId;
+    const isAddNew = this.pendingAddNew;
+    this.pendingTabId = null;
+    this.pendingAddNew = false;
+
+    // Reset form dirty state
+    this.form.markAsPristine();
+    this.formSnapshot = '';
+    if (this.formSnapshotTimer) {
+      clearTimeout(this.formSnapshotTimer);
+      this.formSnapshotTimer = null;
+    }
+
+    if (isAddNew) {
+      // Re-invoke addDecisionLine now that dirty state is cleared
+      this.addDecisionLine();
+      return;
+    }
+
+    if (tabId === null) return;
+
     const tab = this.tabs.find((t) => t.id === tabId);
     if (!tab) return;
 
@@ -1475,6 +1595,17 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
       return { sectionName, fields };
     });
 
+    // For new unsaved lines, enable ALL fields so the user can fill everything in.
+    // Once saved, refreshItemsOnly() rebuilds from the template, restoring original isEnabled config.
+    const isNewLine = this.newLineIds.has(procedureNo);
+    if (isNewLine) {
+      for (const sec of sections) {
+        for (const field of sec.fields) {
+          field.isEnabled = true;
+        }
+      }
+    }
+
     // Attach values from backend items (preferred) or authData (fallback)
     const itemIdsBySection: Partial<Record<DecisionSectionName, string>> = {};
 
@@ -1523,6 +1654,18 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
     this.form.valueChanges
       .pipe(takeUntil(this.tabDestroy$), takeUntil(this.destroy$))
       .subscribe(() => this.syncVisibility());
+
+    // Capture a snapshot of the form after it's fully initialized (deferred to allow async option loads)
+    // Cancel any pending snapshot from a previous tab first
+    if (this.formSnapshotTimer) {
+      clearTimeout(this.formSnapshotTimer);
+      this.formSnapshotTimer = null;
+    }
+    this.formSnapshot = '';
+    this.formSnapshotTimer = setTimeout(() => {
+      this.formSnapshot = JSON.stringify(this.form.getRawValue());
+      this.formSnapshotTimer = null;
+    }, 0);
   }
 
   private defaultValueForType(type?: string): any {
@@ -2087,6 +2230,10 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
   private refreshItemsOnly(): void {
     if (!this.authDetailId || !this.activeState) return;
 
+    // Skip if we're in the middle of adding a new line —
+    // refreshAndSelectProcedure is already handling the refresh.
+    if (this.refreshingForNewLine) return;
+
     const sections: DecisionSectionName[] = [
       'Decision Details',
       'Member Provider Decision Info',
@@ -2160,16 +2307,16 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
 
     // Build the mapping: decision field id → authData key
     const syncMap: Array<{ decisionField: string; authKey: string }> = [
-      { decisionField: 'serviceCode',        authKey: prefix + 'procedureCode' },
-      { decisionField: 'serviceDescription',  authKey: prefix + 'procedureDescription' },
-      { decisionField: 'fromDate',            authKey: prefix + 'fromDate' },
-      { decisionField: 'toDate',              authKey: prefix + 'toDate' },
-      { decisionField: 'requested',           authKey: prefix + 'serviceReq' },
-      { decisionField: 'approved',            authKey: prefix + 'serviceAppr' },
-      { decisionField: 'denied',              authKey: prefix + 'serviceDenied' },
-      { decisionField: 'modifier',            authKey: prefix + 'modifier' },
-      { decisionField: 'unitType',            authKey: prefix + 'unitType' },
-      { decisionField: 'reviewType',          authKey: prefix + 'reviewType' },
+      { decisionField: 'serviceCode', authKey: prefix + 'procedureCode' },
+      { decisionField: 'serviceDescription', authKey: prefix + 'procedureDescription' },
+      { decisionField: 'fromDate', authKey: prefix + 'fromDate' },
+      { decisionField: 'toDate', authKey: prefix + 'toDate' },
+      { decisionField: 'requested', authKey: prefix + 'serviceReq' },
+      { decisionField: 'approved', authKey: prefix + 'serviceAppr' },
+      { decisionField: 'denied', authKey: prefix + 'serviceDenied' },
+      { decisionField: 'modifier', authKey: prefix + 'modifier' },
+      { decisionField: 'unitType', authKey: prefix + 'unitType' },
+      { decisionField: 'reviewType', authKey: prefix + 'reviewType' },
     ];
 
     let authDataChanged = false;
@@ -2225,16 +2372,16 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
 
       // Check if service-level data has changed vs what's in the decision
       const fieldSyncMap: Array<{ authKeySuffix: string; decisionKey: string }> = [
-        { authKeySuffix: 'procedureCode',         decisionKey: 'serviceCode' },
-        { authKeySuffix: 'procedureDescription',   decisionKey: 'serviceDescription' },
-        { authKeySuffix: 'fromDate',               decisionKey: 'fromDate' },
-        { authKeySuffix: 'toDate',                 decisionKey: 'toDate' },
-        { authKeySuffix: 'serviceReq',             decisionKey: 'requested' },
-        { authKeySuffix: 'serviceAppr',            decisionKey: 'approved' },
-        { authKeySuffix: 'serviceDenied',          decisionKey: 'denied' },
-        { authKeySuffix: 'modifier',               decisionKey: 'modifier' },
-        { authKeySuffix: 'unitType',               decisionKey: 'unitType' },
-        { authKeySuffix: 'reviewType',             decisionKey: 'reviewType' },
+        { authKeySuffix: 'procedureCode', decisionKey: 'serviceCode' },
+        { authKeySuffix: 'procedureDescription', decisionKey: 'serviceDescription' },
+        { authKeySuffix: 'fromDate', decisionKey: 'fromDate' },
+        { authKeySuffix: 'toDate', decisionKey: 'toDate' },
+        { authKeySuffix: 'serviceReq', decisionKey: 'requested' },
+        { authKeySuffix: 'serviceAppr', decisionKey: 'approved' },
+        { authKeySuffix: 'serviceDenied', decisionKey: 'denied' },
+        { authKeySuffix: 'modifier', decisionKey: 'modifier' },
+        { authKeySuffix: 'unitType', decisionKey: 'unitType' },
+        { authKeySuffix: 'reviewType', decisionKey: 'reviewType' },
       ];
 
       let changed = false;

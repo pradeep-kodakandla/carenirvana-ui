@@ -1,13 +1,13 @@
 <form class="auth-details" [formGroup]="form" [class.auth-details--view-only]="isViewOnly">
   <!-- Enrollment Details -->
-  <div class="section-card" [class.section-card--locked]="isExistingAuth">
+  <div class="section-card" [class.section-card--locked]="isExistingAuth && !enrollmentEditMode">
     <div class="section-header">
       <span class="section-icon"><mat-icon>badge</mat-icon></span>
       <span class="section-acc-icon open">▸</span>
       <div class="section-title">Enrollment Details</div>
 
-      <!-- Active / Inactive Toggle (only for new auth) -->
-      <div class="enr-toggle" *ngIf="!isExistingAuth">
+      <!-- Active / Inactive Toggle (shown for new auth OR enrollment edit mode) -->
+      <div class="enr-toggle" *ngIf="!isExistingAuth || enrollmentEditMode">
         <button type="button" class="enr-toggle-btn"
                 [class.enr-toggle-btn--active]="enrollmentFilter === 'active'"
                 (click)="toggleEnrollmentFilter('active')">
@@ -20,11 +20,14 @@
         </button>
       </div>
 
-      <!-- Lock indicator for existing auth -->
-      <span class="enr-lock-badge" *ngIf="isExistingAuth">
-        <span class="material-icons-outlined" style="font-size:13px">lock</span>
-        Locked
-      </span>
+      <!-- Edit Enrollment button for existing auth (replaces the old Lock icon) -->
+      <button type="button" class="enr-edit-btn"
+              *ngIf="isExistingAuth && !enrollmentEditMode"
+              (click)="onEnrollmentEditClick()"
+              title="Edit Enrollment Details">
+        <span class="material-icons-outlined" style="font-size:15px;vertical-align:-2px">edit</span>
+        Edit
+      </button>
     </div>
 
     <div class="selection-container">
@@ -33,7 +36,7 @@
            (click)="selectEnrollment(i)"
            [ngClass]="{
              'selected': selectedDiv === (i + 1),
-             'rounded-box--locked': isExistingAuth
+             'rounded-box--locked': isExistingAuth && !enrollmentEditMode
            }">
 
         <div class="pairs">
@@ -2188,3 +2191,55 @@
 
 
 </form>
+
+<!-- ═══════════════════════════════════════════════
+     UNSAVED CHANGES WARNING DIALOG
+     Shown when user tries to leave step with dirty form
+     ═══════════════════════════════════════════════ -->
+<div class="unsaved-overlay" *ngIf="showUnsavedWarning" (click)="dismissUnsavedWarning()">
+  <div class="unsaved-dialog" (click)="$event.stopPropagation()">
+    <div class="unsaved-dialog-icon">
+      <svg width="28" height="28" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+      </svg>
+    </div>
+    <div class="unsaved-dialog-title">Unsaved Changes</div>
+    <div class="unsaved-dialog-message">
+      You have unsaved changes on this page. Leaving now will discard your modifications.
+    </div>
+    <div class="unsaved-dialog-actions">
+      <button class="btn btn-outline-secondary btn-sm" (click)="dismissUnsavedWarning()">
+        Stay &amp; Continue Editing
+      </button>
+      <button class="btn btn-warning btn-sm" (click)="confirmLeaveStep()">
+        Discard &amp; Leave
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     ENROLLMENT EDIT WARNING DIALOG
+     Shown when user clicks Edit on locked enrollment
+     ═══════════════════════════════════════════════ -->
+<div class="unsaved-overlay" *ngIf="showEnrollmentEditWarning" (click)="cancelEnrollmentEdit()">
+  <div class="unsaved-dialog" (click)="$event.stopPropagation()">
+    <div class="unsaved-dialog-icon unsaved-dialog-icon--info">
+      <svg width="28" height="28" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+      </svg>
+    </div>
+    <div class="unsaved-dialog-title">Edit Enrollment Details</div>
+    <div class="unsaved-dialog-message">
+      Changing the enrollment on an existing authorization may affect linked decisions, service lines, and claim processing. Please ensure the new enrollment is correct before saving.
+    </div>
+    <div class="unsaved-dialog-actions">
+      <button class="btn btn-outline-secondary btn-sm" (click)="cancelEnrollmentEdit()">
+        Cancel
+      </button>
+      <button class="btn btn-primary-custom btn-sm" (click)="confirmEnrollmentEdit()">
+        Continue to Edit
+      </button>
+    </div>
+  </div>
+</div>
