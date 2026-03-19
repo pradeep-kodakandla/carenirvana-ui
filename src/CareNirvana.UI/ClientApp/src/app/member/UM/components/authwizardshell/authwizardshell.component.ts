@@ -914,7 +914,7 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
 
     this.rightPanelMode = mode;
     this.rightPanelOpen = true;
-    this.rightPanelExpanded = false;
+    this.rightPanelExpanded = true;
 
     if (mode === 'provider') {
       this.selectedProviderId = identifier || '';
