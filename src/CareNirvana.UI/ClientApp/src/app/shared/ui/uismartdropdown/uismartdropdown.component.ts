@@ -9,7 +9,10 @@ import {
   ViewChild,
   forwardRef,
   OnChanges,
-  SimpleChanges, HostListener
+  OnDestroy,
+  SimpleChanges,
+  Renderer2,
+  NgZone
 } from '@angular/core';
 import {
   ControlValueAccessor,
@@ -20,6 +23,11 @@ export interface UiSmartOption<T = any> {
   label: string;
   value: T;
   disabled?: boolean;
+}
+
+/** Default comparator – strict reference equality. */
+function defaultCompareWith(a: any, b: any): boolean {
+  return a === b;
 }
 
 @Component({
@@ -35,7 +43,7 @@ export interface UiSmartOption<T = any> {
     }
   ]
 })
-export class UiSmartDropdownComponent implements ControlValueAccessor, OnChanges {
+export class UiSmartDropdownComponent implements ControlValueAccessor, OnChanges, OnDestroy {
   // === Inputs ===
   @Input() options: UiSmartOption[] = [];
   @Input() placeholder = 'Select...';
@@ -48,6 +56,9 @@ export class UiSmartDropdownComponent implements ControlValueAccessor, OnChanges
   @Input() label: string | null = null;
   @Input() autoOpenOnFocus = true;
 
+  /** Custom comparator for option values (useful when values are objects). */
+  @Input() compareWith: (a: any, b: any) => boolean = defaultCompareWith;
+
   @ViewChild('searchInput') searchInputRef?: ElementRef<HTMLInputElement>;
   @ViewChild('container', { static: true }) containerRef!: ElementRef<HTMLElement>;
 
@@ -57,24 +68,38 @@ export class UiSmartDropdownComponent implements ControlValueAccessor, OnChanges
   @Output() opened = new EventEmitter<void>();
   @Output() closed = new EventEmitter<void>();
 
-
   // === State ===
   isOpen = false;
   isFocused = false;
+  panelDropUp = false; // true → panel opens above the control
 
   searchTerm = '';
   filteredOptions: UiSmartOption[] = [];
-  highlightedIndex = -1;        // public for template
+  highlightedIndex = -1;
   private innerValue: any = null;
 
-  private onChange: (value: any) => void = () => { };
-  private onTouched: () => void = () => { };
+  private onChange: (value: any) => void = () => {};
+  private onTouched: () => void = () => {};
   private lastInteractionWasKeyboard = false;
+
+  /** Handles for dynamically registered global listeners. */
+  private globalClickUnlisten: (() => void) | null = null;
+  private globalKeydownUnlisten: (() => void) | null = null;
+  private globalMousedownUnlisten: (() => void) | null = null;
+
+  /** Guard for the focus setTimeout inside openPanel(). */
+  private focusTimerId: ReturnType<typeof setTimeout> | null = null;
+
+  /** Unique id seed for ARIA id attributes. */
+  private static nextId = 0;
+  readonly instanceId = `ui-sd-${UiSmartDropdownComponent.nextId++}`;
 
   constructor(
     private cdr: ChangeDetectorRef,
-    private hostRef: ElementRef<HTMLElement>
-  ) { }
+    private hostRef: ElementRef<HTMLElement>,
+    private renderer: Renderer2,
+    private ngZone: NgZone
+  ) {}
 
   // ---------- ControlValueAccessor ----------
   writeValue(obj: any): void {
@@ -97,9 +122,15 @@ export class UiSmartDropdownComponent implements ControlValueAccessor, OnChanges
 
   // ---------- OnChanges ----------
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['options']) {
+    if (changes['options'] || changes['caseSensitive'] || changes['minSearchLength']) {
       this.applyFilter();
     }
+  }
+
+  // ---------- OnDestroy ----------
+  ngOnDestroy(): void {
+    this.clearFocusTimer();
+    this.removeGlobalListeners();
   }
 
   // ---------- Getters / helpers ----------
@@ -109,19 +140,30 @@ export class UiSmartDropdownComponent implements ControlValueAccessor, OnChanges
 
   get selectedOption(): UiSmartOption | null {
     if (this.innerValue === null || this.innerValue === undefined) return null;
-    return this.options.find(o => o.value === this.innerValue) ?? null;
+    return this.options.find(o => this.compareWith(o.value, this.innerValue)) ?? null;
   }
 
   get selectedLabel(): string | null {
     return this.selectedOption?.label ?? null;
   }
 
+  /** ARIA: id of the currently highlighted option element. */
+  get activeDescendantId(): string | null {
+    if (this.highlightedIndex < 0) return null;
+    return `${this.instanceId}-opt-${this.highlightedIndex}`;
+  }
+
+  /** Generate a unique id for each option element in the template. */
+  optionId(index: number): string {
+    return `${this.instanceId}-opt-${index}`;
+  }
+
   trackByValue(_index: number, item: UiSmartOption): any {
-    return item.value;
+    return item.value ?? _index; // fall back to index when values could collide
   }
 
   isSelected(opt: UiSmartOption): boolean {
-    return this.innerValue === opt.value;
+    return this.compareWith(this.innerValue, opt.value);
   }
 
   // ---------- Open / close ----------
@@ -135,14 +177,17 @@ export class UiSmartDropdownComponent implements ControlValueAccessor, OnChanges
 
     this.isOpen = true;
     this.isFocused = true;
+    this.searchTerm = '';
     this.applyFilter();
     this.syncHighlightToSelected();
+    this.computePanelDirection();
+    this.addGlobalListeners();
     this.opened.emit();
     this.cdr.markForCheck();
 
-    // IMPORTANT: no auto-focus to avoid focus/blur loops
-    // If you want it later, we can add an Input to control it.
-    setTimeout(() => {
+    this.clearFocusTimer();
+    this.focusTimerId = setTimeout(() => {
+      this.focusTimerId = null;
       if (this.searchInputRef?.nativeElement) {
         this.searchInputRef.nativeElement.focus();
         this.searchInputRef.nativeElement.select();
@@ -156,8 +201,25 @@ export class UiSmartDropdownComponent implements ControlValueAccessor, OnChanges
     this.isOpen = false;
     this.isFocused = false;
     this.highlightedIndex = -1;
+    this.searchTerm = '';
+    this.panelDropUp = false;
+    this.removeGlobalListeners();
+    this.clearFocusTimer();
+    this.onTouched();
     this.closed.emit();
     this.cdr.markForCheck();
+  }
+
+  // ---------- Panel direction ----------
+  private computePanelDirection(): void {
+    const controlEl = this.containerRef?.nativeElement?.querySelector('.ui-smart-dropdown__control');
+    if (!controlEl) {
+      this.panelDropUp = false;
+      return;
+    }
+    const rect = (controlEl as HTMLElement).getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    this.panelDropUp = spaceBelow < this.maxPanelHeight && rect.top > spaceBelow;
   }
 
   // ---------- Search / filtering ----------
@@ -194,7 +256,7 @@ export class UiSmartDropdownComponent implements ControlValueAccessor, OnChanges
   }
 
   private setValue(value: any): void {
-    if (this.innerValue === value) {
+    if (this.compareWith(this.innerValue, value)) {
       this.selectionChange.emit(this.selectedOption);
       return;
     }
@@ -251,10 +313,8 @@ export class UiSmartDropdownComponent implements ControlValueAccessor, OnChanges
         }
         break;
       case 'Tab':
-        // User is tabbing away from the control → close the panel
         this.closePanel();
-        // do NOT preventDefault → let focus move to next field
-        return;
+        return; // let focus move naturally
     }
   }
 
@@ -263,7 +323,6 @@ export class UiSmartDropdownComponent implements ControlValueAccessor, OnChanges
 
     switch (event.key) {
       case 'Tab':
-        // User tabs out of search → close, let focus move on
         this.closePanel();
         return;
       case 'ArrowDown':
@@ -291,10 +350,6 @@ export class UiSmartDropdownComponent implements ControlValueAccessor, OnChanges
   onControlFocus(): void {
     this.isFocused = true;
 
-    // Only auto-open if:
-    // - autoOpenOnFocus is enabled
-    // - the last interaction was from keyboard (Tab/Shift+Tab)
-    // - not already open and not disabled
     if (
       this.autoOpenOnFocus &&
       this.lastInteractionWasKeyboard &&
@@ -305,7 +360,18 @@ export class UiSmartDropdownComponent implements ControlValueAccessor, OnChanges
     }
   }
 
+  onControlBlur(): void {
+    // Delay so a click inside the panel isn't lost.
+    setTimeout(() => {
+      if (!this.isOpen) {
+        this.isFocused = false;
+        this.onTouched();
+        this.cdr.markForCheck();
+      }
+    });
+  }
 
+  // ---------- Highlight navigation ----------
   private moveHighlight(delta: number): void {
     if (!this.filteredOptions.length) {
       this.highlightedIndex = -1;
@@ -339,7 +405,9 @@ export class UiSmartDropdownComponent implements ControlValueAccessor, OnChanges
       this.highlightedIndex = this.filteredOptions.length ? 0 : -1;
       return;
     }
-    const idx = this.filteredOptions.findIndex(o => o.value === this.selectedOption!.value);
+    const idx = this.filteredOptions.findIndex(o =>
+      this.compareWith(o.value, this.selectedOption!.value)
+    );
     this.highlightedIndex = idx >= 0 ? idx : (this.filteredOptions.length ? 0 : -1);
   }
 
@@ -354,37 +422,48 @@ export class UiSmartDropdownComponent implements ControlValueAccessor, OnChanges
     const panelRect = (panel as HTMLElement).getBoundingClientRect();
     const elRect = el.getBoundingClientRect();
 
-    if (elRect.top < panelRect.top) {
-      el.scrollIntoView({ block: 'nearest' });
-    } else if (elRect.bottom > panelRect.bottom) {
+    if (elRect.top < panelRect.top || elRect.bottom > panelRect.bottom) {
       el.scrollIntoView({ block: 'nearest' });
     }
   }
 
-  @HostListener('document:click', ['$event'])
-  onDocumentClick(event: MouseEvent): void {
-    if (!this.isOpen) return;
+  // ---------- Dynamic global listeners (only while panel is open) ----------
+  private addGlobalListeners(): void {
+    this.removeGlobalListeners(); // safety: avoid duplicates
 
-    const target = event.target as Node | null;
-    if (!target) return;
+    // Run outside Angular to avoid unnecessary change-detection cycles.
+    this.ngZone.runOutsideAngular(() => {
+      this.globalClickUnlisten = this.renderer.listen('document', 'click', (event: MouseEvent) => {
+        const target = event.target as Node | null;
+        if (!target) return;
+        if (!this.containerRef.nativeElement.contains(target)) {
+          this.ngZone.run(() => this.closePanel());
+        }
+      });
 
-    // If click happened OUTSIDE the dropdown → close it
-    if (!this.containerRef.nativeElement.contains(target)) {
-      this.closePanel();
+      this.globalKeydownUnlisten = this.renderer.listen('document', 'keydown', () => {
+        this.lastInteractionWasKeyboard = true;
+      });
+
+      this.globalMousedownUnlisten = this.renderer.listen('document', 'mousedown', () => {
+        this.lastInteractionWasKeyboard = false;
+      });
+    });
+  }
+
+  private removeGlobalListeners(): void {
+    this.globalClickUnlisten?.();
+    this.globalClickUnlisten = null;
+    this.globalKeydownUnlisten?.();
+    this.globalKeydownUnlisten = null;
+    this.globalMousedownUnlisten?.();
+    this.globalMousedownUnlisten = null;
+  }
+
+  private clearFocusTimer(): void {
+    if (this.focusTimerId !== null) {
+      clearTimeout(this.focusTimerId);
+      this.focusTimerId = null;
     }
   }
-
-  @HostListener('document:keydown', ['$event'])
-  onGlobalKeydown(event: KeyboardEvent): void {
-    // Any keydown means the next focus is likely from keyboard (Tab, Shift+Tab, etc.)
-    this.lastInteractionWasKeyboard = true;
-  }
-
-  @HostListener('document:mousedown')
-  onGlobalMousedown(): void {
-    // Mouse interaction: next focus is from mouse
-    this.lastInteractionWasKeyboard = false;
-  }
-
-
 }

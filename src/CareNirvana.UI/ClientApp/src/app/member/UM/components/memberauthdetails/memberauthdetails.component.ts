@@ -44,6 +44,10 @@ export interface MemberAuthGridRow {
   createdOn?: string | Date | null;
   createdByUserName?: string | null;
 
+  // Closed datetime (populated when auth status is Close / Close and Adjusted)
+  authClosedDatetime?: string | Date | null;
+  closedDatetime?: string | Date | null;
+
   // Decision fields from API
   totalDecisions?: number | null;
   decisionStatusesJson?: string | null;
@@ -519,13 +523,22 @@ export class MemberauthdetailsComponent implements OnInit {
       return { daysLeft: 0, label: '', level: 'none', tooltip: '' };
     }
 
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
+    // Use closedDateTime as the reference point when available,
+    // so overdue days freeze at the moment the auth was closed.
+    const closedRaw = row.authClosedDatetime ?? row.closedDateTime ?? row.closeddatetime ?? row.authcloseddatetime ?? null;
+    let ref: Date;
+    if (closedRaw) {
+      ref = new Date(closedRaw);
+      if (isNaN(ref.getTime())) ref = new Date();
+    } else {
+      ref = new Date();
+    }
+    ref.setHours(0, 0, 0, 0);
 
     const due = new Date(row.authDueDate);
     due.setHours(0, 0, 0, 0);
 
-    const diffMs = due.getTime() - now.getTime();
+    const diffMs = due.getTime() - ref.getTime();
     const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
     if (daysLeft < 0) {

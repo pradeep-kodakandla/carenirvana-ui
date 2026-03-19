@@ -230,6 +230,14 @@
             </span>
           </div>
 
+          <!-- Closed Date (only when available) -->
+          <div class="mad-detail-row" *ngIf="row.closedDateTime || row.closeddatetime">
+            <span class="mad-detail-label">Closed Date</span>
+            <span class="mad-detail-value">
+              {{ (row.closedDateTime || row.closeddatetime) | date:'MM/dd/yyyy hh:mm:ss a' }}
+            </span>
+          </div>
+
         </div>
 
         <!-- ═══════════════════════════════════════════

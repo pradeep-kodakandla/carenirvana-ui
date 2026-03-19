@@ -17,26 +17,26 @@
   min-height: 36px;
   padding: 6px 30px 6px 10px;
   border-radius: 4px;
-/*  border: 1px solid #c4c4c4;
-*/  background: #ffffff;
+  border: 1px solid #c4c4c4;
+  background: #ffffff;
   display: flex;
   align-items: center;
   cursor: pointer;
   position: relative;
   outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-/* Strong active/focus ring around the dropdown */
-.ui-smart-dropdown__wrapper--focused .ui-smart-dropdown__control {
-  border-color: #0078d4; /* your primary/brand color */
-  box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
-}
-
-/* Optional: a softer hover state when not focused */
+/* Hover state (when not focused) */
 .ui-smart-dropdown__control:hover {
   border-color: #999;
 }
 
+/* Focus / open ring */
+.ui-smart-dropdown__wrapper--focused .ui-smart-dropdown__control {
+  border-color: #0078d4;
+  box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
+}
 
 .ui-smart-dropdown__placeholder {
   color: #999;
@@ -44,6 +44,9 @@
 
 .ui-smart-dropdown__value {
   flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .ui-smart-dropdown__clear {
@@ -54,6 +57,11 @@
   margin-right: 4px;
   font-size: 12px;
   line-height: 1;
+  color: #666;
+}
+
+.ui-smart-dropdown__clear:hover {
+  color: #333;
 }
 
 .ui-smart-dropdown__arrow {
@@ -61,8 +69,15 @@
   right: 8px;
   font-size: 20px;
   pointer-events: none;
+  transition: transform 0.15s ease;
 }
 
+/* Rotate arrow when open */
+.ui-smart-dropdown__wrapper--focused .ui-smart-dropdown__arrow {
+  transform: rotate(180deg);
+}
+
+/* ---- Panel (dropdown below) ---- */
 .ui-smart-dropdown__panel {
   position: absolute;
   z-index: 1000;
@@ -77,12 +92,28 @@
   flex-direction: column;
 }
 
+/* Panel opens above the control */
+.ui-smart-dropdown__panel--drop-up {
+  top: auto;
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: 4px;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.12);
+}
+
 .ui-smart-dropdown__search {
   border: none;
   border-bottom: 1px solid #e0e0e0;
   padding: 6px 8px;
   outline: none;
   font-size: 13px;
+}
+
+/* When dropping up, put the search input border on top instead */
+.ui-smart-dropdown__panel--drop-up .ui-smart-dropdown__search {
+  order: 1;
+  border-bottom: none;
+  border-top: 1px solid #e0e0e0;
 }
 
 .ui-smart-dropdown__options {
@@ -123,17 +154,10 @@
   color: #777;
 }
 
-
+/* ---- Wrapper & floating label ---- */
 .ui-smart-dropdown__wrapper {
   position: relative;
   width: 100%;
-  /*padding-top: 0.75rem;*/ /* space for floating label */
-}
-
-.ui-smart-dropdown__wrapper--has-value .ui-smart-dropdown__label,
-.ui-smart-dropdown__wrapper--focused .ui-smart-dropdown__label {
-  top: 0; /* already have this */
-  transform: translateY(-50%) scale(0.9);
 }
 
 /* Floating label base */
@@ -150,15 +174,14 @@
   transition: all 0.15s ease;
 }
 
-/* When value or focus: float label up */
+/* Float label up when value exists or control is focused */
 .ui-smart-dropdown__wrapper--has-value .ui-smart-dropdown__label,
 .ui-smart-dropdown__wrapper--focused .ui-smart-dropdown__label {
   top: 0;
   transform: translateY(-50%) scale(0.9);
   font-size: 13px;
-  color: #555; /* your primary color */
+  color: #555;
 }
-
 
 .ui-smart-dropdown__options .option-label {
   display: block;
@@ -168,8 +191,7 @@
   text-overflow: ellipsis;
 }
 
-/* When the dropdown is placed inside our ff-outline field (host has class ff-ui),
-   remove the dropdown's own border so you only see the outer border. */
+/* When inside ff-outline field: strip internal borders */
 :host(.ff-ui) .ui-smart-dropdown__wrapper,
 :host(.ff-ui) .ui-smart-dropdown__control {
   border: 0 !important;

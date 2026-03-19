@@ -68,7 +68,7 @@
   </div>
 
   <!-- Auth Case + Auth Type -->
-  <div class="section-card" [class.section-card--locked]="isExistingAuth">
+  <div class="section-card" [class.section-card--locked]="isExistingAuth && !enrollmentEditMode">
     <!--<div class="section-header">
       <span class="section-acc-icon open">▸</span>
       <div class="section-title">Auth Details</div>
@@ -78,7 +78,7 @@
       <div class="ff-field">
         <div class="ff-outline"
              [class.ff-invalid]="form.get('authClassId')?.touched && form.get('authClassId')?.invalid"
-             [class.ff-disabled]="isExistingAuth"
+             [class.ff-disabled]="isExistingAuth && !enrollmentEditMode"
              [class.ff-fax-prefilled]="isFaxPrefilled('authClassId')">
           <div class="ff-float-label">Auth Case <span class="req-star">*</span></div>
           <div class="ff-body">
@@ -97,7 +97,7 @@
 
       <div class="ff-field">
         <div class="ff-outline"
-             [class.ff-disabled]="!form.get('authClassId')?.value || isExistingAuth"
+             [class.ff-disabled]="!form.get('authClassId')?.value || (isExistingAuth && !enrollmentEditMode)"
              [class.ff-invalid]="form.get('authTypeId')?.touched && form.get('authTypeId')?.invalid"
              [class.ff-fax-prefilled]="isFaxPrefilled('authTypeId')">
           <div class="ff-float-label">Auth Type <span class="req-star">*</span></div>

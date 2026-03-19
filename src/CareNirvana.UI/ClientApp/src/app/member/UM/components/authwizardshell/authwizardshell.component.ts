@@ -78,6 +78,7 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     daysLeftStatus: 'ok' as 'ok' | 'warning' | 'danger',
     overallDecision: 'Pending',
     overallDecisionCode: 'pending',
+    closedDatetime: '' as string,
     decisionSummary: { total: 0, approved: 0, partial: 0, denied: 0, pending: 0 }
   };
 
@@ -433,7 +434,7 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     const createdOn = p?.createdOn ?? p?.createdon ?? p?.createdDate ?? p?.created_date ?? null;
     const due = p?.authDueDate ?? p?.authduedate ?? dataObj?.authDueDate ?? dataObj?.authduedate ?? dataObj?.dueDate ?? p?.dueDate ?? null;
 
-    if (createdOn != null) this.header.createdOn = this.formatDate(createdOn);
+    if (createdOn != null) this.header.createdOn = this.toIsoString(createdOn);
     if (due != null) {
       this.header.dueDate = this.formatDate(due);
       this.computeDaysLeft(due);
@@ -464,7 +465,7 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     const createdOn = row?.createdOn ?? row?.createdon ?? dataObj?.createdOn ?? dataObj?.createdon ?? null;
     const due = row?.authDueDate ?? row?.authduedate ?? dataObj?.authDueDate ?? dataObj?.authduedate ?? dataObj?.dueDate ?? null;
 
-    if (createdOn != null) this.header.createdOn = this.formatDate(createdOn);
+    if (createdOn != null) this.header.createdOn = this.toIsoString(createdOn);
     if (due != null) {
       this.header.dueDate = this.formatDate(due);
       this.computeDaysLeft(due);
@@ -523,6 +524,18 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     // ── Detect Closed status and put wizard into view-only mode ──
     this.detectClosedStatus(statusRaw, this.header.authStatusLabel);
 
+    // ── Closed Datetime: extract from auth JSON when status is Close / Close and Adjusted ──
+    const closedDtRaw = dataObj?.authClosedDatetime ?? dataObj?.closeddatetime
+      ?? dataObj?.authcloseddatetime ?? row?.authClosedDatetime ?? row?.closeddatetime ?? '';
+    this.header.closedDatetime = closedDtRaw ? this.toIsoString(closedDtRaw) : '';
+
+    // ── Re-compute daysLeft against closedDatetime so overdue days freeze at close ──
+    if (closedDtRaw && this.header.dueDate) {
+      const dueRaw = dataObj?.authDueDate ?? dataObj?.authduedate ?? dataObj?.dueDate
+        ?? row?.authDueDate ?? row?.authduedate ?? row?.dueDate ?? '';
+      this.computeDaysLeft(dueRaw, closedDtRaw);
+    }
+
     // Decision Summary — only recompute when decisionDetails is actually present in the data.
     // When called from refreshHeaderFromStep (pendingAuth row), decisionDetails won't exist
     // because decisions are stored separately. Preserve existing summary in that case.
@@ -560,14 +573,23 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     return match?.label ?? '';
   }
 
-  /** Compute daysLeft and status colour from a due date value. */
-  private computeDaysLeft(dueRaw: any): void {
+  /** Compute daysLeft and status colour from a due date value.
+   *  If referenceDate is provided (e.g. closedDatetime), diff is calculated against that
+   *  instead of the current date — so overdue days freeze at the moment the auth was closed. */
+  private computeDaysLeft(dueRaw: any, referenceDate?: any): void {
     if (!dueRaw) { this.header.daysLeft = null; return; }
     const due = dueRaw instanceof Date ? dueRaw : new Date(dueRaw);
     if (isNaN(due.getTime())) { this.header.daysLeft = null; return; }
 
-    const now = new Date();
-    const diffMs = due.getTime() - now.getTime();
+    let ref: Date;
+    if (referenceDate) {
+      ref = referenceDate instanceof Date ? referenceDate : new Date(referenceDate);
+      if (isNaN(ref.getTime())) ref = new Date();
+    } else {
+      ref = new Date();
+    }
+
+    const diffMs = due.getTime() - ref.getTime();
     const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
     this.header.daysLeft = diffDays;
@@ -712,6 +734,9 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
       }
     }
 
+    // ── Re-detect Closed status now that lookup labels are resolved ──
+    this.detectClosedStatus(this.header.authStatusCode, this.header.authStatusLabel);
+
     // Re-resolve Created By if we have a cached userId
     const cachedCreatedById = (this as any)._cachedCreatedById;
     if (cachedCreatedById && this.userLookup.size > 0) {
@@ -833,6 +858,19 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     const dd = String(d.getDate()).padStart(2, '0');
     const yyyy = d.getFullYear();
     return `${mm}/${dd}/${yyyy}`;
+  }
+
+  /**
+   * Converts a date value to an ISO string, preserving the full timestamp.
+   * Used for header fields that display time (Created On, Closed Date)
+   * so Angular's date pipe can format them correctly.
+   */
+  private toIsoString(v: any): string {
+    if (v == null || v === '') return '';
+    if (typeof v === 'string' && v.includes('T')) return v;  // already ISO — keep as-is
+    const d = v instanceof Date ? v : new Date(v);
+    if (isNaN(d.getTime())) return '';
+    return d.toISOString();
   }
 
   private showToast(m: WizardToastMessage): void {

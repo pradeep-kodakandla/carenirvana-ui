@@ -49,6 +49,13 @@
             <span *ngIf="!header.authStatusLabel" class="aw-field-value">—</span>
           </div>
 
+          <div class="aw-header-field" *ngIf="isAuthClosed && header.closedDatetime">
+            <span class="aw-field-label">Closed Date</span>
+            <span class="aw-field-value">
+              {{ header.closedDatetime | date:'MM/dd/yyyy hh:mm:ss a' }}
+            </span>
+          </div>
+
           <div class="aw-header-field">
             <span class="aw-field-label">Overall Decision</span>
             <span class="aw-status-badge"
@@ -63,7 +70,7 @@
             <span class="aw-field-value"
                   [class.aw-due-warning]="header.daysLeftStatus === 'warning'"
                   [class.aw-due-overdue]="header.daysLeftStatus === 'danger'">
-              {{ header.dueDate ? (header.dueDate | date:'MM/dd/yyyy') : '—' }}
+              {{ header.dueDate ? (header.dueDate | date:'MM/dd/yyyy hh:mm:ss a') : '—' }}
             </span>
             <span *ngIf="header.daysLeft !== null"
                   class="aw-field-sub"
@@ -104,7 +111,7 @@
           <div class="aw-header-field">
             <span class="aw-field-label">Created On</span>
             <span class="aw-field-value">
-              {{ header.createdOn ? (header.createdOn | date:'MM/dd/yyyy hh:mm a') : '—' }}
+              {{ header.createdOn ? (header.createdOn | date:'MM/dd/yyyy hh:mm:ss a') : '—' }}
             </span>
           </div>
 

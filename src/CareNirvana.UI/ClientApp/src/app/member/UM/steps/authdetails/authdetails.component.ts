@@ -490,6 +490,16 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   confirmEnrollmentEdit(): void {
     this.showEnrollmentEditWarning = false;
     this.enrollmentEditMode = true;
+
+    // Unlock Auth Case & Auth Type dropdowns for editing
+    const classCtrl = this.form.get('authClassId');
+    const typeCtrl = this.form.get('authTypeId');
+    if (classCtrl && classCtrl.disabled) {
+      classCtrl.enable({ emitEvent: false });
+    }
+    if (typeCtrl && typeCtrl.disabled) {
+      typeCtrl.enable({ emitEvent: false });
+    }
   }
 
   cancelEnrollmentEdit(): void {
@@ -3051,6 +3061,34 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   }
 
   /**
+   * Resolves the display label of the current Auth Status value by looking up
+   * the authStatus dropdown options from the rendered template fields.
+   * Returns the label string (e.g. "Close", "Close and Adjusted", "Open") or
+   * the raw value as a string fallback if the lookup cannot be resolved.
+   */
+  private resolveAuthStatusLabel(authStatusValue: any): string {
+    if (authStatusValue == null || authStatusValue === '') return '';
+    try {
+      const allFields = this.collectAllRenderFields(this.renderSections || []);
+      const statusField = allFields.find(f => {
+        const rawId = String((f as any)?._rawId ?? '').trim().toLowerCase();
+        return rawId === 'authstatus';
+      });
+      if (statusField?.controlName) {
+        const opts = this.getDropdownOptions(statusField.controlName);
+        const match = (opts ?? []).find(
+          (o: any) => String(o?.value) === String(authStatusValue)
+        );
+        if (match?.label) return String(match.label);
+      }
+    } catch (e) {
+      console.error('[AuthDetails] Failed to resolve auth status label', e);
+    }
+    // Fallback: return the raw value as a string (handles cases where value IS the label)
+    return String(authStatusValue ?? '');
+  }
+
+  /**
    * For each procedure/service in the merged jsonData, sets:
    *   - approved (serviceAppr) = requested (serviceReq)
    *   - denied (serviceDenied) = 0
@@ -3415,8 +3453,20 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     console.log('Saving auth with workgroup/workbasket IDs:', wgwbIds);
 
     const authStatusReason = pick<any>('authStatusReason', 'authstatusreason');
-    const authClosedDt = pick<any>('authClosedDatetime', 'authcloseddatetime');
+    let authClosedDt = pick<any>('authClosedDatetime', 'authcloseddatetime');
     const authUpdatedBy = pick<any>('authUpdatedBy', 'authupdatedby');
+
+    // ── Auto-set closedDatetime when Auth Status is "Close" or "Close and Adjusted" ──
+    const resolvedStatusLabel = this.resolveAuthStatusLabel(authStatus);
+    const statusLabelLower = resolvedStatusLabel.toLowerCase().trim();
+    if (statusLabelLower === 'close' || statusLabelLower === 'closed'
+        || statusLabelLower === 'close and adjusted' || statusLabelLower === 'closed and adjusted') {
+      const closedNowIso = new Date().toISOString();
+      authClosedDt = authClosedDt || closedNowIso;
+      merged.authClosedDatetime = authClosedDt;
+      merged.closeddatetime = authClosedDt;
+      console.log(`[AuthDetails] Auth status is "${resolvedStatusLabel}" — setting closedDatetime:`, authClosedDt);
+    }
 
     // Rebuild jsonData
     this.injectTransportMetaToPayload(merged);
@@ -3471,6 +3521,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         if (this.pendingAuth) {
           (this.pendingAuth as any).authStatus = authStatus;
           (this.pendingAuth as any).authStatusReason = authStatusReason;
+          (this.pendingAuth as any).authClosedDatetime = authClosedDt;
           (this.pendingAuth as any).authClassId = authClassId;
           (this.pendingAuth as any).authTypeId = authTypeId;
           (this.pendingAuth as any).authDueDate = authDueDate;

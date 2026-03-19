@@ -2,27 +2,39 @@
 <div #container
      class="ui-smart-dropdown"
      [class.ui-smart-dropdown--disabled]="disabled">
-  <!-- Control (display selected value) -->
+
   <div class="ui-smart-dropdown__wrapper"
        [class.ui-smart-dropdown__wrapper--has-value]="selectedLabel"
        [class.ui-smart-dropdown__wrapper--focused]="isOpen || isFocused">
-    <!-- Control (display selected value) -->
+
+    <!-- Control (combobox trigger) -->
     <div class="ui-smart-dropdown__control"
+         role="combobox"
          tabindex="0"
+         [attr.aria-expanded]="isOpen"
+         [attr.aria-haspopup]="'listbox'"
+         [attr.aria-owns]="isOpen ? instanceId + '-listbox' : null"
+         [attr.aria-activedescendant]="activeDescendantId"
+         [attr.aria-disabled]="disabled"
+         [attr.aria-label]="label || placeholder"
          (click)="togglePanel()"
          (keydown)="onControlKeydown($event)"
-         (focus)="onControlFocus()">
-      <!-- If using floating label, keep placeholder visually empty -->
+         (focus)="onControlFocus()"
+         (blur)="onControlBlur()">
+
+      <!-- Placeholder (only when no floating label) -->
       <span class="ui-smart-dropdown__placeholder"
             *ngIf="!selectedLabel && !label">
         {{ placeholder }}
       </span>
 
+      <!-- Selected value -->
       <span class="ui-smart-dropdown__value"
             *ngIf="selectedLabel">
         {{ selectedLabel }}
       </span>
 
+      <!-- Clear button -->
       <button *ngIf="clearable && selectedLabel && !disabled"
               class="ui-smart-dropdown__clear"
               type="button"
@@ -31,42 +43,62 @@
         ✕
       </button>
 
+      <!-- Arrow indicator -->
       <span class="ui-smart-dropdown__arrow" aria-hidden="true">
         ▾
       </span>
     </div>
 
     <!-- Floating label -->
-    <label *ngIf="label" class="ui-smart-dropdown__label">
+    <label *ngIf="label"
+           class="ui-smart-dropdown__label"
+           [attr.id]="instanceId + '-label'">
       {{ label }}
     </label>
 
-    <!-- Panel -->
+    <!-- Dropdown panel -->
     <div class="ui-smart-dropdown__panel"
          *ngIf="isOpen"
+         [class.ui-smart-dropdown__panel--drop-up]="panelDropUp"
          [style.maxHeight.px]="maxPanelHeight">
+
+      <!-- Search input -->
       <input #searchInput
              class="ui-smart-dropdown__search"
              type="text"
+             role="searchbox"
+             [attr.aria-label]="searchPlaceholder"
              [placeholder]="searchPlaceholder"
              [(ngModel)]="searchTerm"
              (ngModelChange)="onSearchChange($event)"
              (keydown)="onSearchKeydown($event)" />
 
-      <div class="ui-smart-dropdown__options" role="listbox">
+      <!-- Options list -->
+      <div class="ui-smart-dropdown__options"
+           role="listbox"
+           [attr.id]="instanceId + '-listbox'"
+           [attr.aria-label]="label || placeholder">
+
         <div *ngFor="let opt of filteredOptions; let i = index; trackBy: trackByValue"
              class="ui-smart-dropdown__option"
+             role="option"
+             [attr.id]="optionId(i)"
+             [attr.aria-selected]="isSelected(opt)"
+             [attr.aria-disabled]="opt.disabled || null"
              [class.ui-smart-dropdown__option--selected]="isSelected(opt)"
              [class.ui-smart-dropdown__option--highlighted]="i === highlightedIndex"
              [class.ui-smart-dropdown__option--disabled]="opt.disabled"
-             (click)="optionClick(opt)" [attr.title]="opt.label">
+             (click)="optionClick(opt)"
+             [attr.title]="opt.label">
           <span class="option-label" [attr.title]="opt.label">
             {{ opt.label }}
           </span>
         </div>
 
         <div *ngIf="filteredOptions.length === 0"
-             class="ui-smart-dropdown__empty">
+             class="ui-smart-dropdown__empty"
+             role="status"
+             aria-live="polite">
           No results
         </div>
       </div>
