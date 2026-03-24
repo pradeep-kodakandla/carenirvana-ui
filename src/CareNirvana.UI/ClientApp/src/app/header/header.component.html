@@ -1,20 +1,23 @@
+<!-- Apps mega-menu (kept; button below is intentionally hidden for future use) -->
 <mat-menu #menu="matMenu" class="my-class">
   <div class="container">
     <div class="column" *ngFor="let column of columns">
       <div class="section" *ngFor="let section of column.sections">
         <h5 style="color: #007BFF;">{{ section.header }}</h5>
         <div class="body-item" *ngFor="let item of section.bodyItems">
-          <button mat-menu-item>
-            {{ item }}
-          </button>
+          <button mat-menu-item>{{ item }}</button>
         </div>
       </div>
     </div>
   </div>
 </mat-menu>
+
 <div class="navbar div-primary">
-  <!-- Left Side: Home Icon -->
+
+  <!-- ═══════════════════════ LEFT: Logo + Tabs ═══════════════════════ -->
   <div class="left">
+
+    <!-- Home / logo buttons -->
     <button mat-icon-button (click)="goToPage('dashboard')">
       <mat-icon style="color:white;">home</mat-icon>
     </button>
@@ -24,51 +27,48 @@
     </button>
     <h4 style="margin-top: 8px !important; padding-right:10px">Care Nirvana</h4>
 
-    <!-- Tabs Container -->
+    <!-- Dynamic tabs -->
     <ul class="nav nav-tabs" style="border-bottom:none;">
       <ng-container *ngFor="let tab of headerService.getTabs()">
         <li class="nav-item">
+          <!--
+            NOTE: The close button sits INSIDE this button.
+            removeTab() calls event.stopPropagation() so only one handler fires.
+          -->
           <button class="nav-link"
                   data-bs-toggle="tab"
                   type="button"
                   role="tab"
-                  [class.active]="tab.route === headerService.getSelectedTab()"
+                  [class.active]="tab.route === selectedTabId"
                   (click)="onTabClick(tab.route)"
-                  [attr.aria-controls]="'tab' + tab.label">
+                  [attr.aria-controls]="'tab' + tab.label"
+                  [attr.aria-selected]="tab.route === selectedTabId">
             <div class="tab">
               <span class="tab-title">Member ID: ({{ tab.memberId }})</span>
-              <!--{{ tab.label.includes('Auth') ? 'Auth' : 'Member' }} - ID: {{ tab.memberId }}-->
               <span style="padding-top:5px;">{{ tab.label }}</span>
-              <span class="close-btn" (click)="removeTab(tab)"><mat-icon style="vertical-align:bottom;">close</mat-icon></span>
+              <!-- FIX: passes $event so stopPropagation prevents onTabClick from also firing -->
+              <span class="close-btn" (click)="removeTab(tab, $event)">
+                <mat-icon style="vertical-align:bottom;">close</mat-icon>
+              </span>
             </div>
           </button>
         </li>
       </ng-container>
 
-      <!-- ✅ "+" button appears at the end of the dynamic tabs -->
+      <!-- "+" button — shown only when at least one tab exists -->
       <li *ngIf="headerService.getTabs().length > 0" class="nav-item">
-        <button class="nav-link add-tab-btn" (click)="onAddNewTab()"> <mat-icon style="vertical-align:bottom;">add</mat-icon></button>
+        <button class="nav-link add-tab-btn" (click)="onAddNewTab()">
+          <mat-icon style="vertical-align:bottom;">add</mat-icon>
+        </button>
       </li>
     </ul>
   </div>
 
-
+  <!-- ═══════════════════════ RIGHT: Action icons ═══════════════════════ -->
   <div class="right">
     <div class="notification-bar">
 
-      <!--<div class="search-bar" *ngIf="isExpanded">
-        <input type="text"
-               class="form-control"
-               placeholder="Search Care Nirvana"
-               [(ngModel)]="searchQuery"
-               [class.expanded]="isExpanded"
-               (blur)="collapseSearch()" />
-
-      </div>
-      <button mat-icon-button (click)="toggleSearch()">
-        <mat-icon style="color:white;">search</mat-icon>
-      </button>-->
-      <!-- Search icon opens member search popover -->
+      <!-- ── Member search ───────────────────────────────────────────── -->
       <button mat-icon-button
               aria-label="Member search"
               #memberSearchTrigger="matMenuTrigger"
@@ -77,7 +77,6 @@
         <mat-icon style="color:white;">search</mat-icon>
       </button>
 
-      <!-- Popover containing the reusable member search component -->
       <mat-menu #memberSearchMenu="matMenu"
                 class="history-popover"
                 yPosition="below"
@@ -86,28 +85,32 @@
                 [backdropClass]="'cdk-overlay-dark-backdrop'"
                 matMenuTriggerRestoreFocus="false">
         <div class="member-search-wrap" (click)="$event.stopPropagation()">
-          <!-- Your reusable member search component -->
-          <ui-member-search #memberSearchComp (memberSelected)="onHeaderMemberSelected($event, memberSearchTrigger)">
+          <ui-member-search #memberSearchComp
+                            (memberSelected)="onHeaderMemberSelected($event, memberSearchTrigger)">
           </ui-member-search>
         </div>
       </mat-menu>
 
-
+      <!-- ── Settings ───────────────────────────────────────────────── -->
       <button mat-icon-button (click)="goToPage('admin-config')">
         <mat-icon style="color:white;">settings</mat-icon>
       </button>
 
+      <!-- Apps button — hidden, kept for future use -->
       <button hidden mat-icon-button [matMenuTriggerFor]="menu">
         <mat-icon style="color:white;">apps</mat-icon>
       </button>
 
-      <!-- History: hover/click to open, stays open until outside click -->
+      <!-- ── History ────────────────────────────────────────────────── -->
+      <!--
+        FIX: was (onclick) — Angular event binding must be (click).
+        Without this fix openHistoryMenu() and the data-refresh throttle never fired.
+      -->
       <button mat-icon-button
               aria-label="Recently accessed (last 24 hours)"
               #historyTrigger="matMenuTrigger"
               [matMenuTriggerFor]="historyMenu"
-              (onclick)="openHistoryMenu(historyTrigger)">
-        <!-- no mouseleave -->
+              (click)="openHistoryMenu(historyTrigger)">
         <mat-icon style="color:white;">history</mat-icon>
       </button>
 
@@ -120,7 +123,7 @@
                 matMenuTriggerRestoreFocus="false"
                 (click)="$event.stopPropagation()">
 
-        <!-- chips + table (your existing content) -->
+        <!-- Counts chips -->
         <div class="counts-wrap">
           <div class="counts-title">
             User accessed <span class="subtle">from last 24 hours</span>
@@ -134,6 +137,7 @@
 
         <div class="divider"></div>
 
+        <!-- Recently accessed table -->
         <div class="table-scroll">
           <table class="recent-table">
             <thead>
@@ -163,7 +167,7 @@
                   <a *ngIf="it.authNumber"
                      href="#"
                      class="link-auth"
-                     (click)="openAuthTab(it.authNumber,it.memberID, it.memberDetailsId); $event.preventDefault()">
+                     (click)="openAuthTab(it.authNumber, it.memberID, it.memberDetailsId); $event.preventDefault()">
                     {{ it.authNumber }}
                   </a>
                   <span *ngIf="!it.authNumber">N/A</span>
@@ -176,20 +180,19 @@
         </div>
       </mat-menu>
 
-
-      <!--<button mat-icon-button>
-        <mat-icon class="mat-badge" aria-hidden="false" style="color:white;" matBadge="15">message</mat-icon>
-      </button>-->
-
+      <!-- ── Messages ───────────────────────────────────────────────── -->
+      <!--
+        FIX: was (onclick) — changed to (click).
+        FIX: this trigger was also named #messagesTrigger (duplicate); renamed to #msgTrigger.
+      -->
       <button mat-icon-button
               aria-label="Messages"
-              #messagesTrigger="matMenuTrigger"
+              #msgTrigger="matMenuTrigger"
               [matMenuTriggerFor]="messagesMenu"
-              (onclick)="openMessagesMenu(messagesTrigger)">
+              (click)="openMessagesMenu(msgTrigger)">
         <mat-icon style="color:white;" matBadge="15">message</mat-icon>
       </button>
 
-      <!-- Messages popover -->
       <mat-menu #messagesMenu="matMenu"
                 class="history-popover"
                 yPosition="below"
@@ -198,25 +201,30 @@
                 [backdropClass]="'cdk-overlay-dark-backdrop'"
                 matMenuTriggerRestoreFocus="false">
         <div class="messages-wrap" (click)="$event.stopPropagation()">
-          <!-- Give the panel a nice fixed size -->
           <app-messages [memberDetailsId]="selectedMemberDetailsId"
                         [careStaffOptions]="careStaffOptions">
           </app-messages>
         </div>
       </mat-menu>
 
+      <!-- Mail badge (static, no popover yet) -->
       <button mat-icon-button>
         <mat-icon class="mat-badge" aria-hidden="false" style="color:white;" matBadge="15">mail</mat-icon>
       </button>
 
+      <!-- ── Alerts ─────────────────────────────────────────────────── -->
+      <!--
+        FIX: was a second #messagesTrigger causing a duplicate template reference.
+        Renamed to #alertsTrigger. Also fixed (onclick) → (click).
+      -->
       <button mat-icon-button
-              aria-label="Messages"
-              #messagesTrigger="matMenuTrigger"
+              aria-label="Alerts"
+              #alertsTrigger="matMenuTrigger"
               [matMenuTriggerFor]="alertsMenu"
-              (onclick)="openMessagesMenu(messagesTrigger)">
+              (click)="openMessagesMenu(alertsTrigger)">
         <mat-icon style="color:white;" aria-hidden="false" matBadge="20">notifications</mat-icon>
       </button>
-      <!-- Alert popover -->
+
       <mat-menu #alertsMenu="matMenu"
                 class="history-popover"
                 yPosition="below"
@@ -225,20 +233,23 @@
                 [backdropClass]="'cdk-overlay-dark-backdrop'"
                 matMenuTriggerRestoreFocus="false">
         <div class="messages-wrap" (click)="$event.stopPropagation()">
-          <!-- Give the panel a nice fixed size -->
           <app-member-alerts [showTable]="true"></app-member-alerts>
         </div>
       </mat-menu>
 
+      <!-- ── Person / account menu ──────────────────────────────────── -->
       <button mat-icon-button [matMenuTriggerFor]="menuperson">
         <mat-icon style="color:white;">person</mat-icon>
       </button>
 
       <mat-menu class="mat-mdc-menu-panel" #menuperson="matMenu">
         <div class="body-item">
-
+          <!--
+            FIX: "manage account" is not a valid Material icon name (spaces not allowed).
+            Corrected to "manage_accounts".
+          -->
           <button mat-menu-item>
-            <mat-icon>manage account</mat-icon>
+            <mat-icon>manage_accounts</mat-icon>
             <span>Profile</span>
           </button>
           <button mat-menu-item>

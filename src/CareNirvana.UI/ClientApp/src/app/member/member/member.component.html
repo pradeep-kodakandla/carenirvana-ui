@@ -2,13 +2,13 @@
   <!-- 🌟 Main Tabs Navigation -->
   <ul class="tab-header nav nav-tabs" role="tablist" *ngIf="!showAuthorizationComponent">
     <li class="nav-item" *ngFor="let tab of getOrderedMainTabs(); let i = index">
-      <!--*ngFor="let tab of mainTabs; let i = index">-->
       <button class="nav-link"
-              [class.active]="i === 0"
+              [class.active]="i === activeMainTabIndex"
               data-bs-toggle="tab"
               [attr.data-bs-target]="'#' + getSafeId(tab.name)"
               type="button"
-              role="tab">
+              role="tab"
+              (click)="setActiveMainTab(i)">
         {{ tab.name }}
       </button>
     </li>
@@ -18,52 +18,50 @@
   <div class="tab-content">
     <div *ngFor="let tab of getOrderedMainTabs(); let i = index"
          class="tab-pane fade"
-         [class.show]="i === 0"
-         [class.active]="i === 0"
+         [class.show]="i === activeMainTabIndex"
+         [class.active]="i === activeMainTabIndex"
          [attr.id]="getSafeId(tab.name)"
          role="tabpanel">
 
-      <!-- 🌟 Special Authorization Handling -->
+      <!-- Authorization -->
       <div *ngIf="tab.name === 'Authorization'">
-        <!--<div *ngIf="!showAuthorizationComponent">
-          <app-authdetails [memberId]="memberId" (addClicked)="onAddClick($event)"></app-authdetails>
-        </div>
-        <div *ngIf="showAuthorizationComponent">
-          <app-authorization [authNumber]="authNumber" [memberId]="memberId" (cancel)="onCancel()"></app-authorization>
-        </div>-->
         <app-memberauthdetails></app-memberauthdetails>
       </div>
-      <!---->
-      <div *ngIf="tab.name === 'Complaints'">
-        <!--<app-casewizardshell></app-casewizardshell>-->
 
+      <!-- Complaints -->
+      <div *ngIf="tab.name === 'Complaints'">
         <app-membercasedetails></app-membercasedetails>
       </div>
 
+      <!-- Member Journey -->
       <div *ngIf="tab.name === 'Member Journey'">
         <app-memberjourney></app-memberjourney>
       </div>
+
+      <!-- Summarize AI -->
       <div *ngIf="tab.name === 'Summarize AI'">
         <app-member-summaryai></app-member-summaryai>
       </div>
-      <!-- 🌟 Child Tabs and Content -->
+
+      <!-- 🌟 Child Tabs -->
       <ng-container *ngIf="tab.name !== 'Authorization' && tab.name !== 'Member Journey' && tab.name !== 'Summarize AI' && tab.name !== 'Complaints'">
 
         <!-- Child Tab Headers -->
         <ul class="child-tab-header nav nav-tabs mt-2" role="tablist" *ngIf="tab.pages.length > 0">
           <li class="nav-item" *ngFor="let page of getOrderedPages(tab); let j = index">
             <button class="nav-link"
-                    [class.active]="j === 0"
+                    [class.active]="j === getActiveChildTabIndex(tab.name)"
                     data-bs-toggle="tab"
                     [attr.data-bs-target]="'#' + getSafeId(tab.name) + '-' + getSafeId(page.name)"
                     type="button"
-                    role="tab">
+                    role="tab"
+                    (click)="setActiveChildTab(tab.name, j)">
               {{ page.name }}
             </button>
           </li>
         </ul>
 
-        <!-- Message when no pages -->
+        <!-- No pages message -->
         <div *ngIf="tab.pages.length === 0" class="p-3 text-muted">
           No pages available for this section.
         </div>
@@ -72,8 +70,8 @@
         <div class="tab-content mt-2" *ngIf="tab.pages.length > 0">
           <div *ngFor="let page of getOrderedPages(tab); let j = index"
                class="tab-pane fade"
-               [class.show]="j === 0"
-               [class.active]="j === 0"
+               [class.show]="j === getActiveChildTabIndex(tab.name)"
+               [class.active]="j === getActiveChildTabIndex(tab.name)"
                [attr.id]="getSafeId(tab.name) + '-' + getSafeId(page.name)"
                role="tabpanel">
 
@@ -92,6 +90,7 @@
           </div>
         </div>
       </ng-container>
+
     </div>
   </div>
 </div>

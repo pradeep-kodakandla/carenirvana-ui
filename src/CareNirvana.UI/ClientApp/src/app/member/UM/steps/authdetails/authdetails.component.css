@@ -1550,3 +1550,215 @@ background:#3B82F6;border-color:#3B82F6;color:#fff;
 border-radius:999px;font-weight:600;font-size:13px;padding:8px 22px;
 }
 .unsaved-dialog-actions .btn-primary-custom:hover { background:#2563EB;border-color:#2563EB }
+
+/* ═══════════════════════════════════════════════
+   CONTACT TRACKING SECTION
+   ═══════════════════════════════════════════════ */
+.ct-section {
+  border-top: 1px solid #E5E7EB;
+  margin-top: 6px;
+  padding-top: 8px;
+}
+.ct-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.ct-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #64748B;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+}
+.ct-title-icon {
+  font-size: 15px;
+  width: 15px;
+  height: 15px;
+  color: #94A3B8;
+}
+.ct-edit-btn {
+  background: none;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1D4ED8;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+  transition: background .15s;
+}
+.ct-edit-btn:hover { background: #EFF6FF; }
+.ct-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 10px;
+}
+.ct-prev-contacts { margin-bottom: 2px; }
+.ct-select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #D1D5DB;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #334155;
+  background: #fff;
+  cursor: pointer;
+}
+.ct-select:focus {
+  border-color: #007bff;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0,123,255,.1);
+}
+.ct-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.ct-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ct-field label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #64748B;
+  letter-spacing: .2px;
+}
+.ct-field--full { grid-column: 1 / -1; }
+.ct-input {
+  padding: 6px 8px;
+  border: 1px solid #D1D5DB;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #1E293B;
+  background: #fff;
+  transition: border-color .15s, box-shadow .15s;
+}
+.ct-input:focus {
+  border-color: #007bff;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0,123,255,.1);
+}
+.ct-input::placeholder { color: #94A3B8; }
+.ct-display {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.ct-display-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid #F1F5F9;
+}
+.ct-display-row:last-child { border-bottom: none; }
+.ct-display-row--notes { flex-direction: column; gap: 2px; }
+.ct-display-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  min-width: 95px;
+  flex-shrink: 0;
+}
+.ct-display-value {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #1E293B;
+  word-break: break-word;
+}
+
+/* ═══════════════════════════════════════════════
+   EDITABLE PHONE / FAX
+   ═══════════════════════════════════════════════ */
+.pc-info-line--editable {
+  position: relative;
+}
+.pc-inline-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  margin-left: 4px;
+  border-radius: 4px;
+  color: #94A3B8;
+  transition: color .15s, background .15s;
+  vertical-align: middle;
+}
+.pc-inline-edit-btn:hover {
+  color: #1D4ED8;
+  background: #EFF6FF;
+}
+.pc-inline-edit-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+}
+.pc-phone-fax-edit {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 10px;
+}
+.pc-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.pc-edit-field label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #64748B;
+  letter-spacing: .2px;
+}
+.pc-edit-input {
+  padding: 6px 8px;
+  border: 1px solid #D1D5DB;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #1E293B;
+  background: #fff;
+  transition: border-color .15s, box-shadow .15s;
+}
+.pc-edit-input:focus {
+  border-color: #007bff;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0,123,255,.1);
+}
+.pc-phone-fax-done-btn {
+  grid-column: 1 / -1;
+  justify-self: end;
+  background: none;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1D4ED8;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+  transition: background .15s;
+}
+.pc-phone-fax-done-btn:hover { background: #EFF6FF; }

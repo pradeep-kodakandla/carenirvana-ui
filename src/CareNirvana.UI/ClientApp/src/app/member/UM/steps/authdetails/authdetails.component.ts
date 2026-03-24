@@ -60,6 +60,15 @@ interface SmartCheckPrefill {
   authApprove?: string;
 }
 
+/** ---- Contact Tracking ---- */
+interface ContactTracking {
+  contactName: string;
+  contactPhone: string;
+  contactEmail: string;
+  date: string;
+  notes: string;
+}
+
 /** ---- Template shapes ---- */
 interface TplRepeat {
   enabled?: boolean;
@@ -447,6 +456,14 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   // ---------- Provider card data (stores full search response per instance) ----------
   providerDataByInstance: Record<string, any> = {};
   private providerEditMode: Set<string> = new Set();
+
+  // ---------- Contact Tracking per provider instance ----------
+  contactTrackingByProvider: Record<string, ContactTracking[]> = {};
+  activeContactTracking: Record<string, ContactTracking> = {};
+  private contactTrackingEditMode: Set<string> = new Set();
+
+  // ---------- Provider Phone/Fax inline edit ----------
+  private providerPhoneFaxEditMode: Set<string> = new Set();
 
   // ---------- Save ----------
   isSaving = false;
@@ -1032,6 +1049,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
             this.loadAdditionalMpRowsFromForm();
             this.initAdditionalAirRows();
             this.loadAdditionalAirRowsFromForm();
+            this.rehydrateContactTracking();
             this.rehydrateServiceData();
             this.rehydrateMedicationData();
           }
@@ -1385,6 +1403,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     this.loadAdditionalMpRowsFromForm();
     this.initAdditionalAirRows();
     this.loadAdditionalAirRowsFromForm();
+    this.rehydrateContactTracking();
     this.rehydrateServiceData();
             this.rehydrateMedicationData();
 
@@ -2062,6 +2081,10 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     // Clear stale card data before rehydrating (instance keys may have shifted)
     this.providerDataByInstance = {};
     this.providerEditMode.clear();
+    this.contactTrackingByProvider = {};
+    this.activeContactTracking = {};
+    this.contactTrackingEditMode.clear();
+    this.providerPhoneFaxEditMode.clear();
     this.diagnosisDataByInstance = {};
     this.diagnosisEditMode.clear();
     this.primaryDiagnosisKey = null;
@@ -2097,6 +2120,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     this.loadAdditionalMpRowsFromForm();
     this.initAdditionalAirRows();
     this.loadAdditionalAirRowsFromForm();
+    this.rehydrateContactTracking();
     this.rehydrateServiceData();
     this.rehydrateMedicationData();
     this.setupServiceReqAutoCalc();
@@ -2244,7 +2268,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
             label: r.workGroupName || r.workGroupCode || `WG #${r.workGroupId}`
           }))
           .filter((o: any) => !isNaN(o.value));
-        console.log('Loaded work basket options:', this.workGroupOptions);
+        
         this.applyWorkGroupAndBasketOptions();
       },
       error: (err: any) => {
@@ -3056,7 +3080,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       console.error('[AuthDetails] Failed to resolve auto-approve auth status values', e);
     }
 
-    console.log('[AuthDetails] Resolved auto-approve values:', { closedValue, decisionedValue });
+
     return { closedValue, decisionedValue };
   }
 
@@ -3123,8 +3147,6 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       merged[`${prefix}serviceAppr`] = requested;
       merged[`${prefix}approvedPsp`] = requested;
       merged[`${prefix}serviceDenied`] = 0;
-
-      console.log(`[AuthDetails] Auto-Approve procedure${procNo}: approved=${requested}, denied=0`);
     }
 
     // Also handle flat (non-indexed) keys if only one procedure
@@ -3227,7 +3249,6 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
     try {
       const facts = this.buildAuthDueDateFacts();
-      console.log('Calculating auth due date with facts:', facts);
       const res: ExecuteTriggerResponse = await firstValueFrom(
         this.rulesengineService.executeTrigger(triggerKeyDue, facts).pipe(
           catchError((e) => {
@@ -3241,7 +3262,6 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       const offsetValue = String(outputs['dt.result.OffsetValue'] ?? '').trim();
       const offsetUnit = String(outputs['dt.result.OffsetUnit'] ?? '').trim();
       const dayType = String(outputs['dt.result.DayType'] ?? '').trim();
-      console.log('AUTH_DUE_DATE trigger outputs:', { offsetValue, offsetUnit, dayType });
       const computed = this.computeDueDate(anchor, offsetValue, offsetUnit, dayType);
       return computed ? computed.toISOString() : null;
     } catch (e) {
@@ -3386,6 +3406,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     // Persist multi-row AIR table into jsonData
     this.mergeAdditionalAirRowsIntoPayload(merged);
 
+    // Persist contact tracking into jsonData
+    this.mergeContactTrackingIntoPayload(merged);
+
     const jsonData = JSON.stringify(merged ?? {});
     const safeJsonData = jsonData && jsonData.trim() ? jsonData : '{}';
 
@@ -3399,7 +3422,6 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
     if (isAutoApprove) {
       const nowIso = new Date().toISOString();
-      console.log('[AuthDetails] Auto-Approve active — setting auth-level closure fields');
 
       // Resolve "Closed" and "Decisioned" dropdown values from template datasources
       const { closedValue, decisionedValue } = await this.resolveAutoApproveAuthStatusValues();
@@ -3442,7 +3464,6 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       merged.authDueDate = computedAuthDueIso;
       merged.authduedate = computedAuthDueIso;
     }
-    console.log('Computed Auth Due Date ISO:', computedAuthDueIso);
     // Backend-required-ish fields (based on your insert parameters)
     const authDueDate = toIsoOrNull(pick('authDueDate', 'authduedate'));
     const nextReviewDate = toIsoOrNull(pick('nextReviewDate', 'nextreviewdate'));
@@ -3450,7 +3471,6 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     const authAssignedTo = pick<number>('authAssignedTo', 'authassignedto');
     const authStatus = pick<any>('authStatus', 'authstatus') ?? (isAutoApprove ? 'Closed' : 'Draft');
     const wgwbIds = this.getSelectedWorkgroupWorkbasketIds();
-    console.log('Saving auth with workgroup/workbasket IDs:', wgwbIds);
 
     const authStatusReason = pick<any>('authStatusReason', 'authstatusreason');
     let authClosedDt = pick<any>('authClosedDatetime', 'authcloseddatetime');
@@ -3465,7 +3485,6 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       authClosedDt = authClosedDt || closedNowIso;
       merged.authClosedDatetime = authClosedDt;
       merged.closeddatetime = authClosedDt;
-      console.log(`[AuthDetails] Auth status is "${resolvedStatusLabel}" — setting closedDatetime:`, authClosedDt);
     }
 
     // Rebuild jsonData
@@ -3785,12 +3804,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       return;
     }
 
-    console.log('Fetching template validation rules for templateId:', this.templateId);
-
     this.authService.getTemplateValidation(this.templateId).subscribe({
       next: (response: any) => {
         try {
-          console.log('Received template validation response:', response);
 
           // Your payload uses `validationJson` (lowercase v).
           // Keep fallbacks for other envelopes/casing.
@@ -3805,7 +3821,6 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
           this.validationRules = this.parseValidationJson(raw);
 
-          console.log('Loaded validation rules:', this.validationRules);
         } catch (e) {
           console.error('Failed to parse validationJson:', e);
           this.validationRules = [];
@@ -4076,9 +4091,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       };
 
       try {
-        console.log('Running duplicate check with API request:', apiReq);
         const result = await firstValueFrom(this.authApi.checkDuplicate(apiReq));
-        console.log('Duplicate check API result:', result);
 
         if (result?.hasDuplicates && result.duplicates?.length > 0) {
           const authNos = result.duplicates.map((d: any) => d.authNumber).join(', ');
@@ -4404,6 +4417,10 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     // Reset provider card data
     this.providerDataByInstance = {};
     this.providerEditMode.clear();
+    this.contactTrackingByProvider = {};
+    this.activeContactTracking = {};
+    this.contactTrackingEditMode.clear();
+    this.providerPhoneFaxEditMode.clear();
 
     // Reset diagnosis card data
     this.diagnosisDataByInstance = {};
@@ -4611,6 +4628,144 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   /** Fax display — returns "-" when empty */
   getProviderFax(inst: RenderRepeatInstance): string {
     return this.getProviderData(inst)?.fax || '-';
+  }
+
+  /** Tax ID display */
+  getProviderTaxId(inst: RenderRepeatInstance): string {
+    return this.getProviderData(inst)?.taxId || this.getProviderData(inst)?.tax_id || '';
+  }
+
+  // ================================================================
+  //  CONTACT TRACKING
+  // ================================================================
+
+  /** Whether contact tracking edit mode is active for this provider instance */
+  isContactTrackingEditMode(inst: RenderRepeatInstance): boolean {
+    const key = this.getProvInstanceKey(inst);
+    return this.contactTrackingEditMode.has(key);
+  }
+
+  /** Toggle contact tracking edit mode */
+  toggleContactTrackingEdit(inst: RenderRepeatInstance): void {
+    const key = this.getProvInstanceKey(inst);
+    if (this.contactTrackingEditMode.has(key)) {
+      // Exiting edit — save current entry to history if it has a name
+      const active = this.activeContactTracking[key];
+      if (active?.contactName?.trim()) {
+        if (!active.date) {
+          active.date = new Date().toISOString().split('T')[0];
+        }
+        if (!this.contactTrackingByProvider[key]) {
+          this.contactTrackingByProvider[key] = [];
+        }
+        // Check if already exists (avoid duplicates)
+        const exists = this.contactTrackingByProvider[key].some(
+          c => c.contactName === active.contactName && c.contactPhone === active.contactPhone && c.date === active.date
+        );
+        if (!exists) {
+          this.contactTrackingByProvider[key].unshift({ ...active });
+        }
+      }
+      this.contactTrackingEditMode.delete(key);
+    } else {
+      // Entering edit — initialize empty entry if none exists
+      if (!this.activeContactTracking[key]) {
+        this.activeContactTracking[key] = {
+          contactName: '', contactPhone: '', contactEmail: '',
+          date: new Date().toISOString().split('T')[0], notes: ''
+        };
+      }
+      this.contactTrackingEditMode.add(key);
+    }
+  }
+
+  /** Get contact history for a provider instance */
+  getContactTrackingHistory(inst: RenderRepeatInstance): ContactTracking[] {
+    const key = this.getProvInstanceKey(inst);
+    return this.contactTrackingByProvider[key] || [];
+  }
+
+  /** Get active (current) contact tracking entry */
+  getActiveContactTracking(inst: RenderRepeatInstance): ContactTracking | null {
+    const key = this.getProvInstanceKey(inst);
+    return this.activeContactTracking[key] || null;
+  }
+
+  /** Select a previous contact from dropdown — prepopulates the fields */
+  onContactTrackingSelect(inst: RenderRepeatInstance, indexStr: string): void {
+    const key = this.getProvInstanceKey(inst);
+    const idx = parseInt(indexStr, 10);
+    const history = this.contactTrackingByProvider[key] || [];
+    if (!isNaN(idx) && history[idx]) {
+      this.activeContactTracking[key] = { ...history[idx] };
+    }
+  }
+
+  /** Update a single field on the active contact tracking entry.
+   *  Creates a NEW object reference so Angular change detection picks up the mutation. */
+  updateContactTracking(inst: RenderRepeatInstance, field: keyof ContactTracking, value: string): void {
+    const key = this.getProvInstanceKey(inst);
+    const current = this.activeContactTracking[key] || {
+      contactName: '', contactPhone: '', contactEmail: '',
+      date: new Date().toISOString().split('T')[0], notes: ''
+    };
+    this.activeContactTracking[key] = { ...current, [field]: value };
+  }
+
+  // ================================================================
+  //  PROVIDER PHONE / FAX INLINE EDIT
+  // ================================================================
+
+  /** Whether phone/fax edit mode is active for this provider instance */
+  isProviderPhoneFaxEditMode(inst: RenderRepeatInstance): boolean {
+    const key = this.getProvInstanceKey(inst);
+    return this.providerPhoneFaxEditMode.has(key);
+  }
+
+  /** Toggle phone/fax inline edit mode */
+  toggleProviderPhoneFaxEdit(inst: RenderRepeatInstance): void {
+    const key = this.getProvInstanceKey(inst);
+    if (this.providerPhoneFaxEditMode.has(key)) {
+      this.providerPhoneFaxEditMode.delete(key);
+    } else {
+      this.providerPhoneFaxEditMode.add(key);
+    }
+  }
+
+  /** Update provider phone value in the data store */
+  updateProviderPhone(inst: RenderRepeatInstance, value: string): void {
+    const d = this.getProviderData(inst);
+    if (d) {
+      d.phone = value;
+      // Also update the corresponding form control if it exists
+      const bodyFields = this.getProvBodyFields(inst);
+      for (const f of bodyFields) {
+        const id = String(f?._rawId ?? f?.id ?? f?.displayName ?? '').toLowerCase();
+        if (id.includes('phone') && !id.includes('fax')) {
+          const ctrl = this.form.get(f?.controlName);
+          if (ctrl) ctrl.setValue(value, { emitEvent: false });
+          break;
+        }
+      }
+    }
+  }
+
+  /** Update provider fax value in the data store */
+  updateProviderFax(inst: RenderRepeatInstance, value: string): void {
+    const d = this.getProviderData(inst);
+    if (d) {
+      d.fax = value;
+      // Also update the corresponding form control if it exists
+      const bodyFields = this.getProvBodyFields(inst);
+      for (const f of bodyFields) {
+        const id = String(f?._rawId ?? f?.id ?? f?.displayName ?? '').toLowerCase();
+        if (id.includes('fax')) {
+          const ctrl = this.form.get(f?.controlName);
+          if (ctrl) ctrl.setValue(value, { emitEvent: false });
+          break;
+        }
+      }
+    }
   }
 
   /** Switch provider instance to edit mode (re-shows search while keeping old data) */
@@ -5653,6 +5808,55 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     merged.additionalAirRows = this.additionalAirRows.filter(r =>
       r.requestedDatetime || r.receivedDatetime || r.notes || r.complete
     );
+  }
+
+  /** Merges contact tracking data into the JSON payload for persistence */
+  private mergeContactTrackingIntoPayload(merged: any): void {
+    const data: Record<string, { active: ContactTracking | null; history: ContactTracking[] }> = {};
+    const allKeys = new Set([
+      ...Object.keys(this.activeContactTracking),
+      ...Object.keys(this.contactTrackingByProvider)
+    ]);
+    for (const key of allKeys) {
+      const active = this.activeContactTracking[key] || null;
+      const history = this.contactTrackingByProvider[key] || [];
+      // Only persist if there's actual data
+      if ((active?.contactName?.trim()) || history.length) {
+        data[key] = { active, history };
+      }
+    }
+    if (Object.keys(data).length) {
+      merged._contactTracking = data;
+    }
+  }
+
+  /** Rehydrate contact tracking from persisted jsonData */
+  private rehydrateContactTracking(): void {
+    const persisted = this.safeParseJson(this.pendingAuth?.jsonData);
+    const ctData = persisted?._contactTracking;
+    if (!ctData || typeof ctData !== 'object') return;
+
+    for (const key of Object.keys(ctData)) {
+      const entry = ctData[key];
+      if (entry?.active) {
+        this.activeContactTracking[key] = {
+          contactName: entry.active.contactName || '',
+          contactPhone: entry.active.contactPhone || '',
+          contactEmail: entry.active.contactEmail || '',
+          date: entry.active.date || '',
+          notes: entry.active.notes || ''
+        };
+      }
+      if (Array.isArray(entry?.history) && entry.history.length) {
+        this.contactTrackingByProvider[key] = entry.history.map((h: any) => ({
+          contactName: h.contactName || '',
+          contactPhone: h.contactPhone || '',
+          contactEmail: h.contactEmail || '',
+          date: h.date || '',
+          notes: h.notes || ''
+        }));
+      }
+    }
   }
 
     // ============================================================
@@ -7445,7 +7649,6 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
 
   public onActionButtonClick(field: any): void {
-    console.log('Button clicked:', field?.id, field);
 
     switch (field?.id) {
       case 'providerButton1':
@@ -8021,6 +8224,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     this.loadAdditionalMpRowsFromForm();
     this.initAdditionalAirRows();
     this.loadAdditionalAirRowsFromForm();
+    this.rehydrateContactTracking();
     this.rehydrateServiceData();
             this.rehydrateMedicationData();
 

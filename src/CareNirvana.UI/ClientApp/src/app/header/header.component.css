@@ -29,6 +29,11 @@ mat-form-field {
   --mat-badge-background-color: red;
 }
 
+/*
+  NOTE: ::ng-deep is deprecated in Angular but is the current workaround for
+  overriding deep Material component styles from within a component stylesheet.
+  The long-term fix is to move these overrides to the global styles.scss file.
+*/
 ::ng-deep .my-class {
   max-width: 800px !important;
   overflow: hidden;
@@ -120,6 +125,9 @@ button {
   font-weight: bold;
   border: none;
   background: none;
+  /* Ensure the close hit-target doesn't underflow the parent button */
+  display: inline-flex;
+  align-items: center;
 }
 
   .close-btn:hover {

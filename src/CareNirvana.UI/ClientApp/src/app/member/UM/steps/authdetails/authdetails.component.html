@@ -713,6 +713,7 @@
                             </div>
                             <div class="pc-info-details">
                               <div class="pc-info-line"><strong>NPI:</strong> {{ getProviderNpi(inst) || '-' }}</div>
+                              <div class="pc-info-line" *ngIf="getProviderTaxId(inst)"><strong>Tax ID:</strong> {{ getProviderTaxId(inst) }}</div>
                               <div class="pc-info-line"><strong>Phone:</strong> {{ getProviderPhone(inst) }} <span class="pc-info-sep">&middot;</span> <strong>Fax:</strong> {{ getProviderFax(inst) }}</div>
                             </div>
                           </div>
@@ -745,10 +746,37 @@
                               <span *ngIf="getProviderNpi(inst) && getProviderSpecialty(inst)" class="pc-info-sep">&middot;</span>
                               <span *ngIf="getProviderSpecialty(inst)">{{ getProviderSpecialty(inst) }}</span>
                             </div>
-                            <div class="pc-info-line">
-                              <strong>Phone:</strong> {{ getProviderPhone(inst) }}
-                              <span class="pc-info-sep">&middot;</span>
-                              <strong>Fax:</strong> {{ getProviderFax(inst) }}
+                            <div class="pc-info-line" *ngIf="getProviderTaxId(inst)">
+                              <strong>Tax ID:</strong> {{ getProviderTaxId(inst) }}
+                            </div>
+                            <div class="pc-info-line pc-info-line--editable">
+                              <ng-container *ngIf="!isProviderPhoneFaxEditMode(inst)">
+                                <strong>Phone:</strong> {{ getProviderPhone(inst) }}
+                                <span class="pc-info-sep">&middot;</span>
+                                <strong>Fax:</strong> {{ getProviderFax(inst) }}
+                                <button type="button" class="pc-inline-edit-btn"
+                                        (click)="toggleProviderPhoneFaxEdit(inst); $event.stopPropagation()"
+                                        title="Edit Phone/Fax">
+                                  <mat-icon class="pc-inline-edit-icon">edit</mat-icon>
+                                </button>
+                              </ng-container>
+                            </div>
+                            <!-- Editable Phone/Fax fields -->
+                            <div class="pc-phone-fax-edit" *ngIf="isProviderPhoneFaxEditMode(inst)" (click)="$event.stopPropagation()">
+                              <div class="pc-edit-field">
+                                <label>Phone</label>
+                                <input class="pc-edit-input" type="text" [value]="getProviderPhone(inst) === '-' ? '' : getProviderPhone(inst)"
+                                       (input)="updateProviderPhone(inst, $any($event.target).value)" />
+                              </div>
+                              <div class="pc-edit-field">
+                                <label>Fax</label>
+                                <input class="pc-edit-input" type="text" [value]="getProviderFax(inst) === '-' ? '' : getProviderFax(inst)"
+                                       (input)="updateProviderFax(inst, $any($event.target).value)" />
+                              </div>
+                              <button type="button" class="pc-phone-fax-done-btn"
+                                      (click)="toggleProviderPhoneFaxEdit(inst); $event.stopPropagation()">
+                                Done
+                              </button>
                             </div>
                             <div class="pc-info-line pc-info-org" *ngIf="getProviderOrganization(inst)">
                               {{ getProviderOrganization(inst) }}
@@ -761,6 +789,75 @@
                             <mat-icon class="pc-oon-icon">info</mat-icon>
                             <span>Out-of-Network provider — additional member cost share may apply</span>
                           </div>
+
+                          <!-- Contact Tracking -->
+                          <div class="ct-section" (click)="$event.stopPropagation()">
+                            <div class="ct-header">
+                              <span class="ct-title"><mat-icon class="ct-title-icon">contact_phone</mat-icon> Contact Tracking</span>
+                              <button type="button" class="ct-edit-btn"
+                                      (click)="toggleContactTrackingEdit(inst); $event.stopPropagation()">
+                                {{ isContactTrackingEditMode(inst) ? 'Done' : 'Edit' }}
+                              </button>
+                            </div>
+                            <!-- Edit mode: fields + previous contacts dropdown -->
+                            <div class="ct-body" *ngIf="isContactTrackingEditMode(inst)">
+                              <div class="ct-prev-contacts" *ngIf="getContactTrackingHistory(inst).length">
+                                <select class="ct-select" (change)="onContactTrackingSelect(inst, $any($event.target).value)">
+                                  <option value="">Select previous contact...</option>
+                                  <option *ngFor="let c of getContactTrackingHistory(inst); let ci = index" [value]="ci">
+                                    {{ c.contactName }} · {{ c.contactPhone }}
+                                  </option>
+                                </select>
+                              </div>
+                              <div class="ct-fields">
+                                <div class="ct-field">
+                                  <label>Contact Name</label>
+                                  <input class="ct-input" type="text"
+                                         [value]="getActiveContactTracking(inst)?.contactName || ''"
+                                         (input)="updateContactTracking(inst, 'contactName', $any($event.target).value)" />
+                                </div>
+                                <div class="ct-field">
+                                  <label>Contact Phone</label>
+                                  <input class="ct-input" type="text"
+                                         [value]="getActiveContactTracking(inst)?.contactPhone || ''"
+                                         (input)="updateContactTracking(inst, 'contactPhone', $any($event.target).value)" />
+                                </div>
+                                <div class="ct-field">
+                                  <label>Contact Email</label>
+                                  <input class="ct-input" type="text"
+                                         [value]="getActiveContactTracking(inst)?.contactEmail || ''"
+                                         (input)="updateContactTracking(inst, 'contactEmail', $any($event.target).value)" />
+                                </div>
+                                <div class="ct-field">
+                                  <label>Notes</label>
+                                  <input class="ct-input" type="text"
+                                         [value]="getActiveContactTracking(inst)?.notes || ''"
+                                         (input)="updateContactTracking(inst, 'notes', $any($event.target).value)"
+                                         placeholder="e.g. UM dept confirmed admission" />
+                                </div>
+                              </div>
+                            </div>
+                            <!-- Display mode: show current contact details with labels -->
+                            <div class="ct-display" *ngIf="!isContactTrackingEditMode(inst) && getActiveContactTracking(inst)?.contactName">
+                              <div class="ct-display-row">
+                                <span class="ct-display-label">Contact Name</span>
+                                <span class="ct-display-value">{{ getActiveContactTracking(inst)!.contactName }}</span>
+                              </div>
+                              <div class="ct-display-row" *ngIf="getActiveContactTracking(inst)?.contactPhone">
+                                <span class="ct-display-label">Phone</span>
+                                <span class="ct-display-value">{{ getActiveContactTracking(inst)!.contactPhone }}</span>
+                              </div>
+                              <div class="ct-display-row" *ngIf="getActiveContactTracking(inst)?.contactEmail">
+                                <span class="ct-display-label">Email</span>
+                                <span class="ct-display-value">{{ getActiveContactTracking(inst)!.contactEmail }}</span>
+                              </div>
+                              <div class="ct-display-row ct-display-row--notes" *ngIf="getActiveContactTracking(inst)?.notes">
+                                <span class="ct-display-label">Notes</span>
+                                <span class="ct-display-value">{{ getActiveContactTracking(inst)!.date }} - {{ getActiveContactTracking(inst)!.notes }}</span>
+                              </div>
+                            </div>
+                          </div>
+
                           <!-- View Details link -->
                           <div class="pc-view-details">
                             <span class="material-icons-outlined pc-view-details-icon">open_in_new</span>
@@ -1512,6 +1609,7 @@
                         </div>
                         <div class="pc-info-details">
                           <div class="pc-info-line"><strong>NPI:</strong> {{ getProviderNpi(inst) || '-' }}</div>
+                          <div class="pc-info-line" *ngIf="getProviderTaxId(inst)"><strong>Tax ID:</strong> {{ getProviderTaxId(inst) }}</div>
                           <div class="pc-info-line"><strong>Phone:</strong> {{ getProviderPhone(inst) }} <span class="pc-info-sep">&middot;</span> <strong>Fax:</strong> {{ getProviderFax(inst) }}</div>
                         </div>
                       </div>
@@ -1544,10 +1642,37 @@
                           <span *ngIf="getProviderNpi(inst) && getProviderSpecialty(inst)" class="pc-info-sep">&middot;</span>
                           <span *ngIf="getProviderSpecialty(inst)">{{ getProviderSpecialty(inst) }}</span>
                         </div>
-                        <div class="pc-info-line">
-                          <strong>Phone:</strong> {{ getProviderPhone(inst) }}
-                          <span class="pc-info-sep">&middot;</span>
-                          <strong>Fax:</strong> {{ getProviderFax(inst) }}
+                        <div class="pc-info-line" *ngIf="getProviderTaxId(inst)">
+                          <strong>Tax ID:</strong> {{ getProviderTaxId(inst) }}
+                        </div>
+                        <div class="pc-info-line pc-info-line--editable">
+                          <ng-container *ngIf="!isProviderPhoneFaxEditMode(inst)">
+                            <strong>Phone:</strong> {{ getProviderPhone(inst) }}
+                            <span class="pc-info-sep">&middot;</span>
+                            <strong>Fax:</strong> {{ getProviderFax(inst) }}
+                            <button type="button" class="pc-inline-edit-btn"
+                                    (click)="toggleProviderPhoneFaxEdit(inst); $event.stopPropagation()"
+                                    title="Edit Phone/Fax">
+                              <mat-icon class="pc-inline-edit-icon">edit</mat-icon>
+                            </button>
+                          </ng-container>
+                        </div>
+                        <!-- Editable Phone/Fax fields -->
+                        <div class="pc-phone-fax-edit" *ngIf="isProviderPhoneFaxEditMode(inst)" (click)="$event.stopPropagation()">
+                          <div class="pc-edit-field">
+                            <label>Phone</label>
+                            <input class="pc-edit-input" type="text" [value]="getProviderPhone(inst) === '-' ? '' : getProviderPhone(inst)"
+                                   (input)="updateProviderPhone(inst, $any($event.target).value)" />
+                          </div>
+                          <div class="pc-edit-field">
+                            <label>Fax</label>
+                            <input class="pc-edit-input" type="text" [value]="getProviderFax(inst) === '-' ? '' : getProviderFax(inst)"
+                                   (input)="updateProviderFax(inst, $any($event.target).value)" />
+                          </div>
+                          <button type="button" class="pc-phone-fax-done-btn"
+                                  (click)="toggleProviderPhoneFaxEdit(inst); $event.stopPropagation()">
+                            Done
+                          </button>
                         </div>
                         <div class="pc-info-line pc-info-org" *ngIf="getProviderOrganization(inst)">
                           {{ getProviderOrganization(inst) }}
@@ -1560,6 +1685,75 @@
                         <mat-icon class="pc-oon-icon">info</mat-icon>
                         <span>Out-of-Network provider — additional member cost share may apply</span>
                       </div>
+
+                      <!-- Contact Tracking -->
+                      <div class="ct-section" (click)="$event.stopPropagation()">
+                        <div class="ct-header">
+                          <span class="ct-title"><mat-icon class="ct-title-icon">contact_phone</mat-icon> Contact Tracking</span>
+                          <button type="button" class="ct-edit-btn"
+                                  (click)="toggleContactTrackingEdit(inst); $event.stopPropagation()">
+                            {{ isContactTrackingEditMode(inst) ? 'Done' : 'Edit' }}
+                          </button>
+                        </div>
+                        <!-- Edit mode: fields + previous contacts dropdown -->
+                        <div class="ct-body" *ngIf="isContactTrackingEditMode(inst)">
+                          <div class="ct-prev-contacts" *ngIf="getContactTrackingHistory(inst).length">
+                            <select class="ct-select" (change)="onContactTrackingSelect(inst, $any($event.target).value)">
+                              <option value="">Select previous contact...</option>
+                              <option *ngFor="let c of getContactTrackingHistory(inst); let ci = index" [value]="ci">
+                                {{ c.contactName }} · {{ c.contactPhone }}
+                              </option>
+                            </select>
+                          </div>
+                          <div class="ct-fields">
+                            <div class="ct-field">
+                              <label>Contact Name</label>
+                              <input class="ct-input" type="text"
+                                     [value]="getActiveContactTracking(inst)?.contactName || ''"
+                                     (input)="updateContactTracking(inst, 'contactName', $any($event.target).value)" />
+                            </div>
+                            <div class="ct-field">
+                              <label>Contact Phone</label>
+                              <input class="ct-input" type="text"
+                                     [value]="getActiveContactTracking(inst)?.contactPhone || ''"
+                                     (input)="updateContactTracking(inst, 'contactPhone', $any($event.target).value)" />
+                            </div>
+                            <div class="ct-field">
+                              <label>Contact Email</label>
+                              <input class="ct-input" type="text"
+                                     [value]="getActiveContactTracking(inst)?.contactEmail || ''"
+                                     (input)="updateContactTracking(inst, 'contactEmail', $any($event.target).value)" />
+                            </div>
+                            <div class="ct-field">
+                              <label>Notes</label>
+                              <input class="ct-input" type="text"
+                                     [value]="getActiveContactTracking(inst)?.notes || ''"
+                                     (input)="updateContactTracking(inst, 'notes', $any($event.target).value)"
+                                     placeholder="e.g. UM dept confirmed admission" />
+                            </div>
+                          </div>
+                        </div>
+                        <!-- Display mode: show current contact details with labels -->
+                        <div class="ct-display" *ngIf="!isContactTrackingEditMode(inst) && getActiveContactTracking(inst)?.contactName">
+                          <div class="ct-display-row">
+                            <span class="ct-display-label">Contact Name</span>
+                            <span class="ct-display-value">{{ getActiveContactTracking(inst)!.contactName }}</span>
+                          </div>
+                          <div class="ct-display-row" *ngIf="getActiveContactTracking(inst)?.contactPhone">
+                            <span class="ct-display-label">Phone</span>
+                            <span class="ct-display-value">{{ getActiveContactTracking(inst)!.contactPhone }}</span>
+                          </div>
+                          <div class="ct-display-row" *ngIf="getActiveContactTracking(inst)?.contactEmail">
+                            <span class="ct-display-label">Email</span>
+                            <span class="ct-display-value">{{ getActiveContactTracking(inst)!.contactEmail }}</span>
+                          </div>
+                          <div class="ct-display-row ct-display-row--notes" *ngIf="getActiveContactTracking(inst)?.notes">
+                            <span class="ct-display-label">Notes</span>
+                            <span class="ct-display-value">{{ getActiveContactTracking(inst)!.date }} - {{ getActiveContactTracking(inst)!.notes }}</span>
+                          </div>
+                        </div>
+                      </div>
+
                       <!-- View Details link -->
                       <div class="pc-view-details">
                         <span class="material-icons-outlined pc-view-details-icon">open_in_new</span>

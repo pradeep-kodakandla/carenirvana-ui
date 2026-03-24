@@ -118,7 +118,6 @@ export class ProviderDetailsComponent implements OnInit, OnChanges {
 
     this.authService.getProviderProfileJson(id).subscribe({
       next: (data: any) => {
-        console.log('Provider API raw response type:', typeof data);
         this.applyData(data);
         this.loading = false;
       },
@@ -139,12 +138,9 @@ export class ProviderDetailsComponent implements OnInit, OnChanges {
       // ★ FIX: API may return JSON string instead of parsed object
       let data = input;
       if (typeof data === 'string') {
-        console.log('Provider response is a string — parsing JSON');
         data = JSON.parse(data);
       }
 
-      console.log('Provider parsed data keys:', Object.keys(data || {}));
-      console.log('Provider object:', data?.provider);
 
       // Extract provider core — try data.provider first, then data itself
       this.prov = data?.provider ?? null;
@@ -156,8 +152,6 @@ export class ProviderDetailsComponent implements OnInit, OnChanges {
           this.prov = data;
         }
       }
-
-      console.log('Resolved prov:', this.prov?.firstname, this.prov?.lastname, 'NPI:', this.prov?.npi);
 
       // Extract arrays — safe filter for active records
       const safe = (arr: any): any[] =>
@@ -178,14 +172,6 @@ export class ProviderDetailsComponent implements OnInit, OnChanges {
 
       this.errorMessage = '';
 
-      console.log('Provider data applied successfully:',
-        'telecom:', this.telecomList.length,
-        'licenses:', this.licenseList.length,
-        'networks:', this.networkList.length,
-        'identifiers:', this.identifierList.length,
-        'education:', this.educationList.length,
-        'boardCerts:', this.boardCertList.length
-      );
     } catch (e) {
       console.error('Error processing provider data:', e);
       this.errorMessage = 'Error processing provider data.';

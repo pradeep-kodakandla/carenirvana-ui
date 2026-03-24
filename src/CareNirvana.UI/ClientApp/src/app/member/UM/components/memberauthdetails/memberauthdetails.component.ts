@@ -308,7 +308,7 @@ export class MemberauthdetailsComponent implements OnInit {
 
     this.selectedAuthNumber = authNumber;
     this.detailPanelOpen = true;
-    this.detailPanelExpanded = false;
+    this.detailPanelExpanded = true;
   }
 
   closeDetailPanel(): void {

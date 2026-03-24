@@ -631,7 +631,7 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     this.rightPanelMode = mode;
     this.rightPanelOpen = true;
     // Reset expanded when switching modes
-    this.rightPanelExpanded = false;
+    this.rightPanelExpanded = true;
 
     // Set identifier for auth/claim
     if (mode === 'auth' && identifier) {

@@ -119,14 +119,19 @@
       <div class="mcd-card-identity">
         <a class="mcd-case-link"
            (click)="onCaseClick(row.caseNumber)"
-           [matTooltip]="'Open case ' + row.caseNumber">
+           matTooltip="Click to access case details">
           {{ row.caseNumber }}
         </a>
         <span class="mcd-status-badge"
               [ngClass]="'mcd-status--' + getStatusSlug(row)"
-              [matTooltip]="'Status: ' + (row.caseStatusText || '—')">
+              [matTooltip]="'Case Status'">
           <span class="mcd-status-dot"></span>
           {{ row.caseStatusText || '—' }}
+        </span>
+        <span class="mcd-priority-badge"
+              [ngClass]="'mcd-priority--' + getPrioritySlug(row)"
+              [matTooltip]="'Case Priority'">
+          {{ row.casePriorityText || row.casePriority || '—' }}
         </span>
       </div>
 
@@ -141,14 +146,10 @@
     <div class="mcd-card-badges">
       <span class="mcd-type-badge"
             [ngClass]="'mcd-type--' + getTypeSlug(row)"
-            [matTooltip]="'Case type: ' + (row.caseTypeText || row.caseType || '—')">
+            [matTooltip]="'Case Type'">
         {{ row.caseTypeText || row.caseType || '—' }}
       </span>
-      <span class="mcd-priority-badge"
-            [ngClass]="'mcd-priority--' + getPrioritySlug(row)"
-            [matTooltip]="'Priority: ' + (row.casePriorityText || row.casePriority || '—')">
-        {{ row.casePriorityText || row.casePriority || '—' }}
-      </span>
+
     </div>
 
     <!-- Level Stepper with pure-CSS hover tooltips (no flicker) -->
@@ -209,24 +210,24 @@
     <!-- Detail rows (hidden in compact) — COLORED ICONS -->
     <div class="mcd-card-details" *ngIf="!compactMode">
 
-      <div class="mcd-detail-row" matTooltip="Date and time the case was received">
-        <mat-icon class="mcd-detail-icon mcd-detail-icon--received">schedule</mat-icon>
+      <div class="mcd-detail-row">
+        <!--<mat-icon class="mcd-detail-icon mcd-detail-icon--received">schedule</mat-icon>matTooltip="Date and time the case was received"-->
         <span class="mcd-detail-label">Received</span>
         <span class="mcd-detail-value">
           {{ row.receivedDateTime ? (row.receivedDateTime | date:'MM/dd/yyyy HH:mm:ss a') : '—' }}
         </span>
       </div>
 
-      <div class="mcd-detail-row" matTooltip="Most recent update to this case">
-        <mat-icon class="mcd-detail-icon mcd-detail-icon--updated">update</mat-icon>
+      <div class="mcd-detail-row">
+        <!--<mat-icon class="mcd-detail-icon mcd-detail-icon--updated">update</mat-icon>matTooltip="Most recent update to this case"-->
         <span class="mcd-detail-label">Updated</span>
         <span class="mcd-detail-value">
           {{ row.lastDetailOn ? (row.lastDetailOn | date:'MM/dd/yyyy HH:mm:ss a') : '—' }}
         </span>
       </div>
 
-      <div class="mcd-detail-row" matTooltip="User who created this case">
-        <mat-icon class="mcd-detail-icon mcd-detail-icon--created">person</mat-icon>
+      <div class="mcd-detail-row">
+        <!--<mat-icon class="mcd-detail-icon mcd-detail-icon--created">person</mat-icon>matTooltip="User who created this case"-->
         <span class="mcd-detail-label">Created</span>
         <span class="mcd-detail-value">
           {{ row.createdByUserName || '—' }}
