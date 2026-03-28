@@ -1,24 +1,66 @@
 <form class="case-details" [formGroup]="form" [class.cw-readonly]="readOnly">
 
   <!-- ═══════ Enrollment Details (only on details step) ═══════ -->
-  <div class="section-card" *ngIf="stepId === 'details'">
+  <div class="section-card" *ngIf="stepId === 'details'"
+       [class.section-card--locked]="isExistingCase && !enrollmentEditMode">
     <div class="section-header">
       <span class="section-icon"><mat-icon>badge</mat-icon></span>
       <span class="section-acc-icon open">▸</span>
       <div class="section-title">Enrollment Details</div>
+
+      <!-- Active / Inactive Toggle (shown for new case OR enrollment edit mode) -->
+      <div class="enr-toggle" *ngIf="!isExistingCase || enrollmentEditMode">
+        <button type="button" class="enr-toggle-btn"
+                [class.enr-toggle-btn--active]="enrollmentFilter === 'active'"
+                (click)="toggleEnrollmentFilter('active')">
+          Active
+        </button>
+        <button type="button" class="enr-toggle-btn"
+                [class.enr-toggle-btn--active]="enrollmentFilter === 'inactive'"
+                (click)="toggleEnrollmentFilter('inactive')">
+          Inactive
+        </button>
+      </div>
+
+      <!-- Edit Enrollment button for existing case (replaces lock icon) -->
+      <button type="button" class="enr-edit-btn"
+              *ngIf="isExistingCase && !enrollmentEditMode && !readOnly"
+              (click)="onEnrollmentEditClick()"
+              title="Edit Enrollment Details">
+        <span class="material-icons-outlined" style="font-size:15px;vertical-align:-2px">edit</span>
+        Edit
+      </button>
     </div>
 
     <div class="selection-container">
       <div class="rounded-box"
-           *ngFor="let enr of memberEnrollments; let i = index"
-           (click)="!readOnly && selectEnrollment(i)"
-           [ngClass]="{ 'selected': selectedDiv === (i + 1) }">
+           *ngFor="let enr of filteredEnrollments; let i = index"
+           (click)="(!readOnly && (!isExistingCase || enrollmentEditMode)) && selectEnrollment(i)"
+           [ngClass]="{
+             'selected': selectedDiv === (i + 1),
+             'rounded-box--locked': isExistingCase && !enrollmentEditMode
+           }">
+
         <div class="pairs">
           <div class="pair-row" *ngFor="let pair of getEnrollmentDisplayPairs(enr)">
             <label class="label key">{{ pair.label }}</label>
             <label class="label value" [title]="pair.value">{{ pair.value }}</label>
           </div>
+          <!-- Active / Inactive status badge -->
+          <div class="pair-row">
+            <span class="enr-status-badge"
+                  [class.enr-status--active]="isEnrollmentActive(enr)"
+                  [class.enr-status--inactive]="!isEnrollmentActive(enr)">
+              <span class="enr-status-dot"></span>
+              {{ isEnrollmentActive(enr) ? 'Active' : 'Inactive' }}
+            </span>
+          </div>
         </div>
+      </div>
+
+      <!-- Empty state when filter returns no results -->
+      <div class="enr-empty-state" *ngIf="filteredEnrollments.length === 0 && memberEnrollments.length > 0">
+        No {{ enrollmentFilter }} enrollments found.
       </div>
     </div>
 
@@ -72,6 +114,19 @@
         <span class="section-icon"><mat-icon>{{ getSectionIcon(sec.title) }}</mat-icon></span>
         <span class="section-acc-icon" [class.open]="isSectionOpen(sec, i)">▸</span>
         <div class="section-title">{{ sec.title }}</div>
+
+        <!-- Incident date link — visible after first save when this section
+             relates to Authorizations or Claims. Opens date-scoped results
+             in the right panel without leaving the form. -->
+        <button type="button"
+                class="cw-incident-link"
+                *ngIf="isIncidentRelatedSection(sec)"
+                (click)="openIncidentPanel(); $event.stopPropagation()"
+                title="View authorizations and claims linked to the recorded Date of Incident">
+          <span class="material-icons-outlined cw-incident-link__icon">event_note</span>
+          <span class="cw-incident-link__text">View related Authorizations &amp; Claims</span>
+          <span class="material-icons-outlined cw-incident-link__arrow">open_in_new</span>
+        </button>
       </div>
 
       <ng-container *ngIf="isSectionOpen(sec, i)">
@@ -287,7 +342,19 @@
          [class.sub-nested]="depth > 0"
          *ngIf="visibleSubsection(sub, sec)">
 
-      <div class="sub-float-label">{{ sub.title }}</div>
+      <!-- Subsection label row: title + optional incident-date link -->
+      <div class="sub-float-label-row">
+        <div class="sub-float-label">{{ sub.title }}</div>
+        <button type="button"
+                class="cw-incident-link"
+                *ngIf="isIncidentRelatedSection(sub)"
+                (click)="openIncidentPanel()"
+                title="View authorizations and claims linked to the recorded Date of Incident">
+          <span class="material-icons-outlined cw-incident-link__icon">event_note</span>
+          <span class="cw-incident-link__text">View related Authorizations &amp; Claims</span>
+          <span class="material-icons-outlined cw-incident-link__arrow">open_in_new</span>
+        </button>
+      </div>
 
       <!-- Non-repeat subsection fields -->
       <ng-container *ngIf="!sub.repeat?.enabled; else subRepeatTpl">
@@ -1026,3 +1093,29 @@
   </ng-template>
 
 </form>
+
+<!-- ═══════════════════════════════════════════════
+     ENROLLMENT EDIT WARNING DIALOG
+     Shown when user clicks Edit on locked enrollment
+     ═══════════════════════════════════════════════ -->
+<div class="unsaved-overlay" *ngIf="showEnrollmentEditWarning" (click)="cancelEnrollmentEdit()">
+  <div class="unsaved-dialog" (click)="$event.stopPropagation()">
+    <div class="unsaved-dialog-icon unsaved-dialog-icon--info">
+      <svg width="28" height="28" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+      </svg>
+    </div>
+    <div class="unsaved-dialog-title">Edit Enrollment Details</div>
+    <div class="unsaved-dialog-message">
+      Changing the enrollment on an existing case may affect linked decisions, service lines, and processing. Please ensure the new enrollment is correct before saving.
+    </div>
+    <div class="unsaved-dialog-actions">
+      <button class="btn btn-outline-secondary btn-sm" (click)="cancelEnrollmentEdit()">
+        Cancel
+      </button>
+      <button class="btn btn-primary-custom btn-sm" (click)="confirmEnrollmentEdit()">
+        Continue to Edit
+      </button>
+    </div>
+  </div>
+</div>

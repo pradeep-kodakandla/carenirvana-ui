@@ -314,6 +314,64 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
   selectedDiv = 0;               // 1-based
   enrollmentSelect = false;
 
+  // ---------- Enrollment edit / filter (mirrors AuthDetails) ----------
+  enrollmentEditMode  = false;
+  enrollmentFilter: 'active' | 'inactive' = 'active';
+  showEnrollmentEditWarning = false;
+
+  /** True when this is an existing (edit-mode) case. */
+  get isExistingCase(): boolean { return this.wizardMode === 'edit'; }
+
+  /**
+   * Enrollments filtered by active/inactive based on endDate vs today.
+   * Active = endDate >= today (or no endDate). Always filtered — both new and existing cases.
+   * For existing cases the toggle is hidden so only active records display.
+   */
+  get filteredEnrollments(): MemberEnrollment[] {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    return (this.memberEnrollments ?? []).filter(enr => {
+      const endRaw = enr.endDate;
+      if (!endRaw) {
+        // No end date => treat as active (open-ended enrollment)
+        return this.enrollmentFilter === 'active';
+      }
+      const endDate = new Date(endRaw);
+      if (isNaN(endDate.getTime())) return this.enrollmentFilter === 'active';
+      endDate.setHours(0, 0, 0, 0);
+      const isActive = endDate.getTime() >= now.getTime();
+      return this.enrollmentFilter === 'active' ? isActive : !isActive;
+    });
+  }
+
+  /** Check if an enrollment is active based on its endDate vs today. */
+  isEnrollmentActive(enr: MemberEnrollment): boolean {
+    const endRaw = enr?.endDate;
+    if (!endRaw) return true;
+    const endDate = new Date(endRaw);
+    if (isNaN(endDate.getTime())) return true;
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    endDate.setHours(0, 0, 0, 0);
+    return endDate.getTime() >= now.getTime();
+  }
+
+  /** Toggle between Active and Inactive enrollment views. Allowed on new cases and in edit mode. */
+  toggleEnrollmentFilter(filter: 'active' | 'inactive'): void {
+    if (this.isExistingCase && !this.enrollmentEditMode) return;
+    this.enrollmentFilter = filter;
+  }
+
+  onEnrollmentEditClick(): void { this.showEnrollmentEditWarning = true; }
+  cancelEnrollmentEdit():  void { this.showEnrollmentEditWarning = false; }
+  confirmEnrollmentEdit(): void {
+    this.showEnrollmentEditWarning = false;
+    this.enrollmentEditMode = true;
+    // Switch filter to active so the user can see enrollments immediately
+    this.enrollmentFilter = 'active';
+  }
+
   // ---------- Repeat state ----------
   /** Current instance count per repeatKey (survives rebuilds) */
   private repeatCounts: Record<string, number> = {};
@@ -640,6 +698,9 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
   private setMemberEnrollments(data: MemberEnrollment[]): void {
     this.memberEnrollments = (data ?? []).map(d => ({ ...d }));
+    // Reset edit mode and filter on each reload
+    this.enrollmentEditMode = false;
+    this.enrollmentFilter   = 'active';
 
     if (!this.memberEnrollments.length) {
       this.selectedDiv = 0;
@@ -877,6 +938,8 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
       this.syncFormControlVisibility();
       this.notify.success(successMsg);
       this.form.markAsPristine();
+
+
     } catch (e: any) {
       this.notify.error(e?.message ? `Save failed: ${e.message}` : 'Save failed. Please try again.');
       console.error(e);
@@ -3255,6 +3318,62 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
   }
   trackByMedicationId = (_: number, m: any) =>
     m?.ndc ?? m?.drugName ?? _;
+
+  // ═══════════════════════════════════════════════════════════
+  //  INCIDENT DATE LOOKUP  (fires once after new case is saved)
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Reads the 'dateOfIncident' field from the live form, adds 10 days,
+   * then calls the shell callback so the right panel can show matching
+   * claims and authorizations.
+   *
+   * Tries several common field-id aliases used across templates.
+   */
+  /**
+   * Called when the user clicks the "View related Authorizations & Claims" link
+   * beside any Authorization or Claim section/subsection.
+   *
+   * Reads the Date of Incident live from the form on every click.
+   * If a valid date is found, the shell fires a ±10-day date-scoped search and
+   * opens the right panel with results.
+   * If no date is recorded yet, the shell still opens the panel and displays
+   * an informative "no date recorded" empty state.
+   */
+  openIncidentPanel(): void {
+    const rawDate =
+      this.getValueByFieldId('dateOfIncident') ??
+      this.getValueByFieldId('dateofincident') ??
+      this.getValueByFieldId('date_of_incident') ??
+      this.getValueByFieldId('incidentDate') ??
+      this.getValueByFieldId('incidentdate');
+
+    let lookupDate: Date | null = null;
+
+    if (rawDate) {
+      const parsed = new Date(rawDate);
+      if (!isNaN(parsed.getTime())) {
+        lookupDate = new Date(parsed);
+        lookupDate.setDate(lookupDate.getDate() + 10);
+      }
+    }
+
+    // Always delegate to the shell — it will handle both the "has date" and
+    // "no date" states, keeping the right panel as the single place for results.
+    const callback = (this as any)._shellTriggerIncidentLookup;
+    if (typeof callback === 'function') {
+      callback(lookupDate);   // null signals "no date recorded"
+    }
+  }
+
+  /**
+   * Returns true when a section or subsection title relates to
+   * Authorization or Claims — controls where the incident link is shown.
+   */
+  isIncidentRelatedSection(item: any): boolean {
+    const title = (item?.title ?? item?.sectionName ?? item?.displayName ?? '').toLowerCase();
+    return title.includes('authorization') || title.includes('claim');
+  }
 
   // ═══════════════════════════════════════════════════════════
   //  FORMATTING HELPERS

@@ -341,7 +341,15 @@
           <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" style="margin-right:4px;vertical-align:-2px">
             <path d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"/>
           </svg>
-          Back to Single Edit
+          Cancel
+        </button>
+        <button class="btn btn-primary btn-sm"
+                (click)="executeBulkSave()"
+                [disabled]="bulkSaving || bulkSelectedCount === 0">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" style="margin-right:4px;vertical-align:-2px" *ngIf="!bulkSaving">
+            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+          </svg>
+          {{ bulkSaving ? 'Saving…' : 'Save All Selected' }}
         </button>
       </div>
     </div>
@@ -452,6 +460,95 @@
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- ── Decision Details (remaining shared fields) ── -->
+    <div class="bulk-section-card" *ngIf="bulkDecisionDetailsSection">
+      <div class="bulk-section-hdr">
+        <div class="bulk-sec-icon bulk-sec-icon--decision">
+          <svg viewBox="0 0 20 20" fill="currentColor">
+            <path d="M10 1L3 5v6c0 4.25 3 7.4 7 8 4-.6 7-3.75 7-8V5l-7-4zm-1 12.17L5.83 10l1.42-1.41L9 10.34l3.75-3.75 1.42 1.41L9 13.17z"/>
+          </svg>
+        </div>
+        <div class="bulk-sec-title-block">
+          <span class="bulk-sec-title">Decision Details</span>
+          <span class="bulk-sec-desc">Additional decision fields — applied to all selected lines</span>
+        </div>
+        <span class="bulk-shared-tag">Applied to all selected</span>
+      </div>
+      <div class="bulk-section-body">
+        <div class="grid" [formGroup]="bulkSharedForm">
+          <ng-container *ngFor="let field of bulkDecisionDetailsSection.fields">
+            <div class="ff-field"
+                 *ngIf="!activeState || isVisible(activeState, field)"
+                 [class.ff-span-all]="field.type === 'textarea'">
+
+              <!-- Text / Number -->
+              <div class="ff-outline"
+                   *ngIf="field.type !== 'select' && field.type !== 'checkbox' && field.type !== 'textarea' && field.type !== 'datetime-local'"
+                   [class.ff-disabled]="!field.isEnabled">
+                <label class="ff-float-label">{{ field.displayName }}</label>
+                <div class="ff-body">
+                  <input class="ff-input" [type]="field.type"
+                         [formControl]="getBulkCtrl(field.controlName)"
+                         placeholder="—" />
+                </div>
+              </div>
+
+              <!-- DateTime -->
+              <div class="ff-outline"
+                   *ngIf="field.type === 'datetime-local'"
+                   [class.ff-disabled]="!field.isEnabled">
+                <label class="ff-float-label">{{ field.displayName }}</label>
+                <div class="ff-body">
+                  <ui-datetime-picker class="ff-ui"
+                    placeholderDate="mm/dd/yyyy"
+                    placeholderDateTime="mm/dd/yyyy --:--"
+                    [dateOnly]="false"
+                    [formControl]="getBulkCtrl(field.controlName)">
+                  </ui-datetime-picker>
+                </div>
+              </div>
+
+              <!-- Textarea -->
+              <div class="ff-outline"
+                   *ngIf="field.type === 'textarea'"
+                   [class.ff-disabled]="!field.isEnabled">
+                <label class="ff-float-label">{{ field.displayName }}</label>
+                <div class="ff-body">
+                  <textarea class="ff-input ff-textarea"
+                            [formControl]="getBulkCtrl(field.controlName)"></textarea>
+                </div>
+              </div>
+
+              <!-- Select -->
+              <div class="ff-outline"
+                   *ngIf="field.type === 'select'"
+                   [class.ff-disabled]="!field.isEnabled">
+                <label class="ff-float-label">{{ field.displayName }}</label>
+                <div class="ff-ui">
+                  <ui-smart-dropdown
+                    [formControl]="getBulkCtrl(field.controlName)"
+                    [options]="getBulkDropdownOptions(field.controlName)"
+                    placeholder="Select...">
+                  </ui-smart-dropdown>
+                </div>
+              </div>
+
+              <!-- Checkbox -->
+              <div class="ff-checkbox" *ngIf="field.type === 'checkbox'">
+                <input type="checkbox" class="form-check-input"
+                       [formControl]="getBulkCtrl(field.controlName)"
+                       [id]="'bulk_dd_' + field.controlName" />
+                <label class="form-check-label" [for]="'bulk_dd_' + field.controlName">
+                  {{ field.displayName }}
+                </label>
+              </div>
+
+            </div>
+          </ng-container>
+        </div>
       </div>
     </div>
 
@@ -639,19 +736,11 @@
     <div class="bulk-msg bulk-msg-error" *ngIf="bulkValidationMsg">{{ bulkValidationMsg }}</div>
     <div class="bulk-msg bulk-msg-success" *ngIf="bulkSuccessMsg">{{ bulkSuccessMsg }}</div>
 
-    <!-- ── Footer Actions ── -->
+    <!-- ── Footer (info strip) ── -->
     <div class="bulk-footer">
       <span class="bulk-footer-info">
         {{ bulkSelectedCount }} of {{ bulkRows.length }} decisions selected
       </span>
-      <div class="bulk-footer-actions">
-        <button class="btn btn-outline-secondary btn-sm" (click)="closeBulkEdit()">Cancel</button>
-        <button class="btn btn-primary btn-sm"
-                (click)="executeBulkSave()"
-                [disabled]="bulkSaving || bulkSelectedCount === 0">
-          {{ bulkSaving ? 'Saving…' : 'Save All Selected' }}
-        </button>
-      </div>
     </div>
 
   </div><!-- /bulk-edit-panel -->

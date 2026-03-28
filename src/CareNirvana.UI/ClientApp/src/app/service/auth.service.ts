@@ -271,14 +271,7 @@ export class AuthService {
     return this.http.get<AuthorizationLookupRow[]>(`${this.apiUrlCodeSets}/search/authorizations`, { params });
   }
 
-  /** Claim JSON */
-  getClaimJson(claimNumber: string): Observable<any> {
-    return this.http
-      .get(`${this.apiUrlCodeSets}/claimjson/${encodeURIComponent(claimNumber)}`, {
-        responseType: 'text'
-      })
-      .pipe(map(txt => JSON.parse(txt)));
-  }
+
 
   /** Provider profile JSON */
   getProviderProfileJson(providerId: string): Observable<any> {
@@ -289,11 +282,30 @@ export class AuthService {
       .pipe(map(txt => JSON.parse(txt)));
   }
 
+  /** Claim JSON */
+  getClaimJson(claimNumber: string, dateOfIncident?: Date): Observable<any> {
+    let params = new HttpParams();
+    if (dateOfIncident) {
+      params = params.set('dateOfIncident', dateOfIncident.toISOString().split('T')[0]);
+    }
+    return this.http
+      .get(`${this.apiUrlCodeSets}/claimjson/${encodeURIComponent(claimNumber)}`, {
+        responseType: 'text',
+        params
+      })
+      .pipe(map(txt => JSON.parse(txt)));
+  }
+
   /** Auth details JSON */
-  getAuthDetailsJson(authNumber: string): Observable<any> {
+  getAuthDetailsJson(authNumber: string, dateOfIncident?: Date): Observable<any> {
+    let params = new HttpParams();
+    if (dateOfIncident) {
+      params = params.set('dateOfIncident', dateOfIncident.toISOString().split('T')[0]);
+    }
     return this.http
       .get(`${this.apiUrlCodeSets}/authdetailsjson/${encodeURIComponent(authNumber)}`, {
-        responseType: 'text'
+        responseType: 'text',
+        params
       })
       .pipe(map(txt => JSON.parse(txt)));
   }

@@ -410,6 +410,142 @@
         </div>
       </ng-container>
 
+      <!-- ══════ INCIDENT DATE LOOKUP MODE ══════ -->
+      <ng-container *ngIf="rightPanelMode === 'incident'">
+
+        <!-- Panel header -->
+        <div class="cw-rpanel-header cw-rpanel-header--incident">
+          <div class="cw-rpanel-title-block">
+            <span class="cw-rpanel-icon cw-rpanel-icon--incident">
+              <span class="material-icons-outlined" style="font-size:14px">event_note</span>
+            </span>
+            <div>
+              <div class="cw-rpanel-title">Incident Date Matches</div>
+              <div class="cw-rpanel-subtitle" *ngIf="incidentLookupDate">
+                Within 10 days of {{ formatIncidentDate(incidentLookupDate) }}
+              </div>
+            </div>
+          </div>
+          <div class="cw-rpanel-actions">
+            <button class="cw-rpanel-btn" (click)="togglePanelExpand()"
+                    [title]="rightPanelExpanded ? 'Collapse' : 'Expand'">
+              <span class="material-icons-outlined">{{ rightPanelExpanded ? 'chevron_right' : 'chevron_left' }}</span>
+            </button>
+            <button class="cw-rpanel-btn" (click)="closeRightPanel()">
+              <span class="material-icons-outlined">close</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Loading state -->
+        <div class="cw-rpanel-body" *ngIf="incidentLookupLoading">
+          <div class="cw-incident-loading">
+            <span class="cw-incident-spinner"></span>
+            <span>Searching claims &amp; authorizations…</span>
+          </div>
+        </div>
+
+        <!-- No date of incident recorded -->
+        <div class="cw-rpanel-body" *ngIf="!incidentLookupLoading && !incidentLookupDate">
+          <div class="cw-incident-no-date">
+            <span class="material-icons-outlined cw-incident-no-date__icon">event_busy</span>
+            <div class="cw-incident-no-date__title">No Date of Incident Recorded</div>
+            <div class="cw-incident-no-date__msg">
+              To view related authorizations and claims, please enter a
+              <strong>Date of Incident</strong> in the case details form and save.
+              Results will be scoped to a ±10-day window around that date.
+            </div>
+          </div>
+        </div>
+
+        <!-- Results -->
+        <div class="cw-rpanel-body" *ngIf="!incidentLookupLoading && incidentLookupDate">
+
+          <!-- Claims section -->
+          <div class="cw-incident-section">
+            <div class="cw-incident-section-header">
+              <span class="cw-incident-section-icon material-icons-outlined">receipt_long</span>
+              <span class="cw-incident-section-title">Claims</span>
+              <span class="cw-incident-badge">{{ incidentClaimsResults.length }}</span>
+            </div>
+
+            <div class="cw-incident-empty" *ngIf="!incidentClaimsResults.length">
+              No claims found for this date range.
+            </div>
+
+            <div class="cw-incident-card"
+                 *ngFor="let claim of incidentClaimsResults"
+                 (click)="openClaimPanel(claim.claimNumber || claim.claimnumber)">
+              <div class="cw-incident-card-row">
+                <span class="cw-incident-card-label">Claim #</span>
+                <span class="cw-incident-card-value cw-incident-card-value--link">
+                  {{ claim.claimNumber || claim.claimnumber || '—' }}
+                </span>
+              </div>
+              <div class="cw-incident-card-row" *ngIf="claim.providerName">
+                <span class="cw-incident-card-label">Provider</span>
+                <span class="cw-incident-card-value">{{ claim.providerName }}</span>
+              </div>
+              <div class="cw-incident-card-row" *ngIf="claim.dosFrom || claim.dosTo">
+                <span class="cw-incident-card-label">DOS</span>
+                <span class="cw-incident-card-value">
+                  {{ claim.dosFrom | date:'MM/dd/yyyy' }}
+                  <ng-container *ngIf="claim.dosTo"> – {{ claim.dosTo | date:'MM/dd/yyyy' }}</ng-container>
+                </span>
+              </div>
+              <div class="cw-incident-card-row" *ngIf="claim.billed != null">
+                <span class="cw-incident-card-label">Billed</span>
+                <span class="cw-incident-card-value">${{ claim.billed | number:'1.2-2' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Authorizations section -->
+          <div class="cw-incident-section">
+            <div class="cw-incident-section-header">
+              <span class="cw-incident-section-icon material-icons-outlined">verified_user</span>
+              <span class="cw-incident-section-title">Authorizations</span>
+              <span class="cw-incident-badge">{{ incidentAuthResults.length }}</span>
+            </div>
+
+            <div class="cw-incident-empty" *ngIf="!incidentAuthResults.length">
+              No authorizations found for this date range.
+            </div>
+
+            <div class="cw-incident-card"
+                 *ngFor="let auth of incidentAuthResults"
+                 (click)="openAuthPanel(auth.authnumber || auth.authNumber)">
+              <div class="cw-incident-card-row">
+                <span class="cw-incident-card-label">Auth #</span>
+                <span class="cw-incident-card-value cw-incident-card-value--link">
+                  {{ auth.authnumber || auth.authNumber || '—' }}
+                </span>
+              </div>
+              <div class="cw-incident-card-row" *ngIf="auth.authtype">
+                <span class="cw-incident-card-label">Type</span>
+                <span class="cw-incident-card-value">{{ auth.authtype }}</span>
+              </div>
+              <div class="cw-incident-card-row" *ngIf="auth.overallstatus">
+                <span class="cw-incident-card-label">Status</span>
+                <span class="cw-incident-card-value">{{ auth.overallstatus }}</span>
+              </div>
+              <div class="cw-incident-card-row" *ngIf="auth.servicecode">
+                <span class="cw-incident-card-label">Service</span>
+                <span class="cw-incident-card-value">{{ auth.servicecode }}</span>
+              </div>
+              <div class="cw-incident-card-row" *ngIf="auth.fromdate || auth.todate">
+                <span class="cw-incident-card-label">Period</span>
+                <span class="cw-incident-card-value">
+                  {{ auth.fromdate | date:'MM/dd/yyyy' }}
+                  <ng-container *ngIf="auth.todate"> – {{ auth.todate | date:'MM/dd/yyyy' }}</ng-container>
+                </span>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /results body -->
+      </ng-container>
+
     </div><!-- /cw-right-panel -->
 
   </div>

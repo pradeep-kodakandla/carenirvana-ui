@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup } from '@angular/forms';
-import { Subject, combineLatest } from 'rxjs';
+import { Subject, combineLatest, forkJoin, of, Observable } from 'rxjs';
 import { distinctUntilChanged, map, takeUntil } from 'rxjs/operators';
 
 import { AuthService } from 'src/app/service/auth.service';
@@ -122,8 +122,8 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
   // ════════════════════════════════════
   //  RIGHT PANEL — unified (AI / Auth / Claim)
   // ════════════════════════════════════
-  /** Which panel mode is active: 'ai' | 'auth' | 'claim' | null */
-  rightPanelMode: 'ai' | 'auth' | 'claim' | null = null;
+  /** Which panel mode is active: 'ai' | 'auth' | 'claim' | 'incident' | null */
+  rightPanelMode: 'ai' | 'auth' | 'claim' | 'incident' | null = null;
   /** Whether the right panel is open */
   rightPanelOpen = false;
   /** Whether the right panel is in expanded (wide) mode */
@@ -138,6 +138,18 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
   /** Selected auth/claim number for the detail panels */
   selectedAuthNumber = '';
   selectedClaimNumber = '';
+
+  // ════════════════════════════════════
+  //  INCIDENT DATE LOOKUP PANEL
+  // ════════════════════════════════════
+  /** The date used for the incident lookup (dateOfIncident + 10 days) */
+  incidentLookupDate: Date | null = null;
+  /** Claims matching the incident date window */
+  incidentClaimsResults: any[] = [];
+  /** Authorizations matching the incident date window */
+  incidentAuthResults: any[] = [];
+  /** True while both searches are in-flight */
+  incidentLookupLoading = false;
 
   // ════════════════════════════════════
   //  Header field lookups (from jsonData)
@@ -621,7 +633,7 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
    * If same mode is already open, toggles it closed.
    * If a different mode is open, switches to the new mode.
    */
-  openRightPanel(mode: 'ai' | 'auth' | 'claim', identifier?: string): void {
+  openRightPanel(mode: 'ai' | 'auth' | 'claim' | 'incident', identifier?: string): void {
     // Toggle off if same mode
     if (this.rightPanelOpen && this.rightPanelMode === mode) {
       this.closeRightPanel();
@@ -673,6 +685,74 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
 
   closeAiPanel(): void {
     if (this.rightPanelMode === 'ai') this.closeRightPanel();
+  }
+
+  // ════════════════════════════════════════════════════
+  //  INCIDENT DATE LOOKUP
+  //  Called by casedetails after a new case is saved.
+  //  Runs forkJoin of claims + auth search by date and
+  //  opens the panel with the combined result set.
+  // ════════════════════════════════════════════════════
+
+  /**
+   * Opens the incident right panel and runs date-scoped searches.
+   * Called by casedetails whenever the user clicks the "View related
+   * Authorizations & Claims" link.
+   *
+   * @param date  The +10-day window date derived from Date of Incident,
+   *              or null when no Date of Incident has been recorded yet.
+   *              When null the panel opens in a "no date recorded" state.
+   */
+  triggerIncidentLookup(date: Date | null): void {
+    this.incidentLookupDate = date;
+    this.incidentClaimsResults = [];
+    this.incidentAuthResults = [];
+
+    // Open the panel immediately
+    this.openRightPanel('incident');
+
+    // If no date was supplied, show the empty state — nothing to search.
+    if (!date) {
+      this.incidentLookupLoading = false;
+      return;
+    }
+
+    this.incidentLookupLoading = true;
+
+    const svc: any = this.authService as any;
+
+    // Pass a 2-char placeholder query to satisfy any minimum-length guard
+    // on the endpoint — the backend ignores it once dateOfIncident is present.
+    const placeholder = '--';
+
+    const claims$ = (svc.searchClaims
+      ? svc.searchClaims(placeholder, 25, date)
+      : of([])) as Observable<any[]>;
+
+    const auths$ = (svc.searchAuthorizations
+      ? svc.searchAuthorizations(placeholder, 25, date)
+      : of([])) as Observable<any[]>;
+
+    forkJoin({ claims: claims$, auths: auths$ })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: ({ claims, auths }: { claims: any[]; auths: any[] }) => {
+          this.incidentClaimsResults = claims ?? [];
+          this.incidentAuthResults = auths ?? [];
+          this.incidentLookupLoading = false;
+        },
+        error: () => {
+          this.incidentLookupLoading = false;
+        }
+      });
+  }
+
+  /** Format Date as MM/DD/YYYY for display in the incident panel header. */
+  formatIncidentDate(d: Date | null): string {
+    if (!d) return '';
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${mm}/${dd}/${d.getFullYear()}`;
   }
 
   /** Load AI panel content after case is saved and has a case number */
@@ -1020,6 +1100,10 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     };
     inst._shellOpenClaimPanel = (claimNumber: string) => {
       this.openClaimPanel(claimNumber);
+    };
+    // ✅ Inject incident-lookup trigger so casedetails can fire date-scoped search after new-case save
+    inst._shellTriggerIncidentLookup = (date: Date) => {
+      this.triggerIncidentLookup(date);
     };
 
     if (inst && 'stepId' in inst) {

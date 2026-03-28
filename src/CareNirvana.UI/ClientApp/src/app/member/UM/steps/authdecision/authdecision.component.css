@@ -329,6 +329,9 @@
 .bulk-header-title { font-weight:800;font-size:15px;color:#1E3A8A;line-height:20px }
 .bulk-header-sub { display:block;font-size:11.5px;color:#3B82F6;font-weight:500;margin-top:1px }
 .bulk-header-actions .btn { border-radius:999px;font-weight:600;font-size:12.5px }
+.bulk-header-actions .btn-primary { background:#3B82F6;border-color:#3B82F6;color:#fff }
+.bulk-header-actions .btn-primary:hover:not(:disabled) { background:#2563EB;border-color:#2563EB }
+.bulk-header-actions .btn-primary:disabled { opacity:.55;cursor:not-allowed }
 
 /* ── Bulk Section Cards ── */
 .bulk-section-card {
@@ -395,9 +398,9 @@
 }
 .bulk-mp-table { width:100%;border-collapse:collapse;font-size:13px;overflow:visible }
 .bulk-mp-table thead th {
-  background:#FFF7ED;color:#9A3412;font-weight:700;font-size:10.5px;
+  background:#F8FAFC;color:#475569;font-weight:700;font-size:10.5px;
   text-transform:uppercase;letter-spacing:.05em;
-  padding:10px 12px;border-bottom:2px solid #FDBA74;
+  padding:10px 12px;border-bottom:1px solid #007bff;
   white-space:nowrap;text-align:left;
 }
 .bulk-mp-table tbody { overflow:visible }
@@ -405,10 +408,10 @@
   padding:8px 10px;border-bottom:1px solid #F1F5F9;
   color:#1E293B;vertical-align:middle;overflow:visible;
 }
-.bulk-mp-table tbody tr:hover { background:#FFFBEB }
+.bulk-mp-table tbody tr:hover { background:#F0F7FF }
 .bulk-mp-table tbody tr:last-child td { border-bottom:none }
 
-.mpcol-num    { width:40px;text-align:center;font-weight:700;color:#9A3412;font-size:12px }
+.mpcol-num    { width:40px;text-align:center;font-weight:700;color:#475569;font-size:12px }
 .mpcol-type   { width:180px }
 .mpcol-notif  { min-width:180px }
 .mpcol-date   { min-width:220px;position:relative }
@@ -443,7 +446,7 @@
   background-position:right 8px center;
   transition:border-color .12s,box-shadow .12s;
 }
-.mp-inline-select:focus { outline:none;border-color:#EA580C;box-shadow:0 0 0 2px rgba(234,88,12,.12) }
+.mp-inline-select:focus { outline:none;border-color:#007bff;box-shadow:0 0 0 2px rgba(0,123,255,.12) }
 .mp-inline-select:hover { border-color:#CBD5E1 }
 
 /* Inline datetime */
@@ -455,12 +458,12 @@
   padding:0 10px;
   transition:border-color .12s,box-shadow .12s;
 }
-.mp-inline-datetime:focus { outline:none;border-color:#EA580C;box-shadow:0 0 0 2px rgba(234,88,12,.12) }
+.mp-inline-datetime:focus { outline:none;border-color:#007bff;box-shadow:0 0 0 2px rgba(0,123,255,.12) }
 
 /* AM/PM display below datetime input */
 .mp-date-display {
   display:block;margin-top:3px;
-  font-size:11px;color:#EA580C;font-weight:600;
+  font-size:11px;color:#2563EB;font-weight:600;
   letter-spacing:.02em;line-height:14px;
 }
 
@@ -475,7 +478,7 @@
 }
 .mp-inline-number::-webkit-inner-spin-button,
 .mp-inline-number::-webkit-outer-spin-button { -webkit-appearance:none;margin:0 }
-.mp-inline-number:focus { outline:none;border-color:#EA580C;box-shadow:0 0 0 2px rgba(234,88,12,.12) }
+.mp-inline-number:focus { outline:none;border-color:#007bff;box-shadow:0 0 0 2px rgba(0,123,255,.12) }
 
 /* Remove row button */
 .mp-remove-btn {
@@ -492,12 +495,12 @@
 }
 .mp-add-btn {
   display:inline-flex;align-items:center;gap:6px;
-  background:none;border:1.5px dashed #FDBA74;border-radius:10px;
-  color:#EA580C;font-size:12.5px;font-weight:700;
+  background:none;border:1.5px dashed #BFDBFE;border-radius:10px;
+  color:#3B82F6;font-size:12.5px;font-weight:700;
   padding:8px 18px;cursor:pointer;
   transition:background .12s,border-color .12s;
 }
-.mp-add-btn:hover { background:#FFF7ED;border-color:#EA580C }
+.mp-add-btn:hover { background:#EFF6FF;border-color:#3B82F6 }
 .mp-add-btn svg { flex-shrink:0 }
 
 /* ── Bulk Table ── */

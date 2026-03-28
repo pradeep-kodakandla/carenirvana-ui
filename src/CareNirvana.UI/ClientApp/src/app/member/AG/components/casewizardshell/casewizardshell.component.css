@@ -1274,3 +1274,170 @@
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.6; transform: scale(1.15); }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   INCIDENT DATE LOOKUP PANEL
+   ═══════════════════════════════════════════════════════════ */
+
+/* Header accent colour */
+.cw-rpanel-header--incident {
+  background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%);
+}
+
+.cw-rpanel-icon--incident {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+/* Loading state */
+.cw-incident-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 24px;
+  color: var(--cw-text-muted, #6B7280);
+  font-size: 13px;
+}
+
+.cw-incident-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--cw-border, #E5E7EB);
+  border-top-color: #0d9488;
+  border-radius: 50%;
+  animation: cw-spin 0.75s linear infinite;
+}
+
+@keyframes cw-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Section blocks (Claims / Authorizations) */
+.cw-incident-section {
+  padding: 12px 16px 4px;
+}
+
+.cw-incident-section + .cw-incident-section {
+  border-top: 1px solid var(--cw-border, #E5E7EB);
+  margin-top: 8px;
+  padding-top: 16px;
+}
+
+.cw-incident-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.cw-incident-section-icon {
+  font-size: 16px !important;
+  color: #0d9488;
+}
+
+.cw-incident-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--cw-text-secondary, #374151);
+}
+
+.cw-incident-badge {
+  margin-left: auto;
+  background: #0d9488;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 1px 8px;
+  min-width: 22px;
+  text-align: center;
+}
+
+/* Empty state */
+.cw-incident-empty {
+  font-size: 12px;
+  color: var(--cw-text-muted, #9CA3AF);
+  padding: 8px 0 16px;
+  text-align: center;
+}
+
+/* Result cards */
+.cw-incident-card {
+  background: var(--cw-surface, #F9FAFB);
+  border: 1px solid var(--cw-border, #E5E7EB);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.cw-incident-card:hover {
+  border-color: #0d9488;
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.12);
+}
+
+.cw-incident-card-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.cw-incident-card-label {
+  color: var(--cw-text-muted, #9CA3AF);
+  min-width: 54px;
+  font-size: 11px;
+}
+
+.cw-incident-card-value {
+  color: var(--cw-text, #111827);
+  font-weight: 500;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cw-incident-card-value--link {
+  color: #0d9488;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ── Incident panel: No date of incident recorded state ── */
+.cw-incident-no-date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 36px 24px 32px;
+  gap: 10px;
+}
+.cw-incident-no-date__icon {
+  font-size: 40px !important;
+  width: 40px !important;
+  height: 40px !important;
+  color: #94A3B8;
+  margin-bottom: 4px;
+}
+.cw-incident-no-date__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #374151;
+}
+.cw-incident-no-date__msg {
+  font-size: 12.5px;
+  color: #64748B;
+  line-height: 1.65;
+  max-width: 280px;
+}
+.cw-incident-no-date__msg strong {
+  color: #1D4ED8;
+  font-weight: 600;
+}

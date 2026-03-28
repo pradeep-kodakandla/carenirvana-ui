@@ -176,6 +176,7 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
   bulkSharedOptions: Record<string, UiSmartOption[]> = {};
 
   /** View-model sections for bulk shared form fields */
+  bulkDecisionDetailsSection: DecisionSectionVm | null = null;
   bulkMemberProviderSection: DecisionSectionVm | null = null;
   bulkNotesSection: DecisionSectionVm | null = null;
 
@@ -3194,6 +3195,7 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
     this.bulkMpRows = [];
     this.bulkValidationMsg = '';
     this.bulkSuccessMsg = '';
+    this.bulkDecisionDetailsSection = null;
     this.bulkMemberProviderSection = null;
     this.bulkNotesSection = null;
   }
@@ -3204,6 +3206,44 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
     const allSections = this.extractDecisionSectionsFromTemplate();
     const group: Record<string, FormControl> = {};
     this.bulkSharedOptions = {};
+
+    // --- Decision Details (remaining fields not covered by the table) ---
+    // Table already handles: decisionStatus, decisionStatusCode,
+    // requested/approved/denied, procedureNo/Code/Description, timestamps.
+    const TABLE_HANDLED_IDS = new Set([
+      'decisionstatus', 'decisionstatuscode',
+      'requested', 'servicereq', 'req',
+      'approved', 'serviceappr', 'appr',
+      'denied', 'servicedenied',
+      'procedureno', 'decisionnumber', 'decisionnumber',
+      'procedurecode', 'proceduredescription',
+      'createddatetime', 'updateddatetime', 'decisiondatetime',
+      'fromdate', 'todate', 'effectivedate',
+      'startdate', 'enddate', 'servicefromedate', 'servicetodate'
+    ]);
+
+    const ddSec = allSections.find(s =>
+      String(s?.sectionName ?? '').trim() === 'Decision Details'
+    );
+    if (ddSec) {
+      const allDdFields = this.getSectionFields(ddSec).map((f: any) => this.toFieldVm(f));
+      const remainingFields = allDdFields.filter(f =>
+        !TABLE_HANDLED_IDS.has(String(f.id ?? '').trim().toLowerCase())
+      );
+      if (remainingFields.length) {
+        for (const f of remainingFields) {
+          f.controlName = `bulk_dd_${f.id}`;
+          const ctrl = new FormControl(this.defaultValueForType(f.type));
+          if (!f.isEnabled) ctrl.disable({ emitEvent: false });
+          group[f.controlName] = ctrl;
+        }
+        this.bulkDecisionDetailsSection = { sectionName: 'Decision Details', fields: remainingFields };
+      } else {
+        this.bulkDecisionDetailsSection = null;
+      }
+    } else {
+      this.bulkDecisionDetailsSection = null;
+    }
 
     // --- Member Provider Decision Info (table-driven now) ---
     const mpSec = allSections.find(s =>
@@ -3338,6 +3378,7 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
   /** Prefetch dropdown options for bulk shared form select fields (Decision Notes only; MP is table-driven) */
   private prefetchBulkSharedDropdowns(): void {
     const allFields: DecisionFieldVm[] = [
+      ...(this.bulkDecisionDetailsSection?.fields ?? []),
       ...(this.bulkNotesSection?.fields ?? [])
     ].filter(f => String(f.type).toLowerCase() === 'select');
 
@@ -3503,6 +3544,8 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
 
     // Build shared payloads from Decision Notes form (MP is now row-based)
     const sharedNotesPayload = this.buildBulkSharedPayload(this.bulkNotesSection);
+    // Build shared payload for remaining Decision Details fields
+    const sharedDecisionDetailsPayload = this.buildBulkSharedPayload(this.bulkDecisionDetailsSection);
 
     // Build MP rows payload (resolve labels for select values)
     const mpRowsPayload = this.buildBulkMpRowsPayload();
@@ -3520,6 +3563,7 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
       // ── 1) Decision Details ──
       const ddPayload = {
         ...(row.existingDecisionData ?? {}),
+        ...sharedDecisionDetailsPayload,
         procedureNo: procNo,
         decisionStatus: statusVal,
         decisionStatusLabel: statusLabel,

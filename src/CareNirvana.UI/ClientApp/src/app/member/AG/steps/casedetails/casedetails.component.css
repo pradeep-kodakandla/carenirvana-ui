@@ -428,6 +428,196 @@
   color: #0056b3;
 }
 
+
+/* ─── Enrollment: Active/Inactive filter toggle ─── */
+.enr-toggle {
+  display: inline-flex;
+  border: 1.5px solid #E2E8F0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #F8FAFC;
+  gap: 0;
+}
+.enr-toggle-btn {
+  padding: 4px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: #64748B;
+  cursor: pointer;
+  letter-spacing: .2px;
+  transition: background .15s, color .15s;
+}
+.enr-toggle-btn + .enr-toggle-btn {
+  border-left: 1.5px solid #E2E8F0;
+}
+.enr-toggle-btn--active {
+  background: #EFF6FF;
+  color: #2563EB;
+}
+.enr-toggle-btn:hover:not(.enr-toggle-btn--active) {
+  background: #F1F5F9;
+  color: #374151;
+}
+
+/* ─── Enrollment: Edit button ─── */
+.enr-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #2563EB;
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  cursor: pointer;
+  letter-spacing: .2px;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.enr-edit-btn:hover {
+  background: #DBEAFE;
+  border-color: #93C5FD;
+  color: #1D4ED8;
+}
+
+/* ─── Enrollment: Locked card state ─── */
+.section-card--locked { position: relative; }
+.rounded-box--locked { cursor: default !important; pointer-events: none; }
+.rounded-box--locked:hover {
+  transform: none !important;
+  border-color: #E2E5EA !important;
+  background: #fff !important;
+  box-shadow: none !important;
+}
+.rounded-box--locked.selected { cursor: default !important; }
+.rounded-box--locked.selected:hover {
+  border-color: #007bff !important;
+  background: #f0f7ff !important;
+}
+
+/* ─── Enrollment: Status badge ─── */
+.enr-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .2px;
+  white-space: nowrap;
+}
+.enr-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.enr-status--active {
+  background: #ECFDF5;
+  color: #065F46;
+  border: 1px solid #A7F3D0;
+}
+.enr-status--active .enr-status-dot { background: #10B981; }
+.enr-status--inactive {
+  background: #F9FAFB;
+  color: #6B7280;
+  border: 1px solid #E5E7EB;
+}
+.enr-status--inactive .enr-status-dot { background: #9CA3AF; }
+
+/* ─── Enrollment: Empty state ─── */
+.enr-empty-state {
+  padding: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: #94A3B8;
+  font-weight: 600;
+  font-style: italic;
+}
+
+/* ─── Enrollment Edit Warning Dialog ─── */
+.unsaved-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(15, 23, 42, .45);
+  backdrop-filter: blur(2px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: unsavedFadeIn .15s ease;
+}
+@keyframes unsavedFadeIn {
+  from { opacity: 0 }
+  to   { opacity: 1 }
+}
+.unsaved-dialog {
+  background: #fff;
+  border-radius: 16px;
+  padding: 28px 32px 24px;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0,0,0,.18), 0 4px 16px rgba(0,0,0,.08);
+  text-align: center;
+  animation: unsavedSlideIn .2s ease;
+}
+@keyframes unsavedSlideIn {
+  from { transform: translateY(12px); opacity: 0 }
+  to   { transform: translateY(0);    opacity: 1 }
+}
+.unsaved-dialog-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #FEF3C7;
+  color: #D97706;
+  margin-bottom: 14px;
+}
+.unsaved-dialog-icon--info { background: #DBEAFE; color: #2563EB; }
+.unsaved-dialog-title {
+  font-weight: 800;
+  font-size: 17px;
+  color: #1E293B;
+  margin-bottom: 8px;
+  line-height: 24px;
+}
+.unsaved-dialog-message {
+  font-size: 13.5px;
+  color: #64748B;
+  line-height: 21px;
+  margin-bottom: 22px;
+}
+.unsaved-dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.unsaved-dialog-actions .btn {
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 22px;
+  white-space: nowrap;
+}
+.unsaved-dialog-actions .btn-outline-secondary { border-color: #D8DEE4; color: #475569; }
+.unsaved-dialog-actions .btn-outline-secondary:hover { background: #F8FAFC; border-color: #94A3B8; }
+.unsaved-dialog-actions .btn-primary-custom {
+  background: #3B82F6;
+  border-color: #3B82F6;
+  color: #fff;
+}
+.unsaved-dialog-actions .btn-primary-custom:hover { background: #2563EB; border-color: #2563EB; }
+
+
 /* Key-value pairs — single-row inline flow with separator dots */
 .pairs {
   display: flex;
@@ -1074,4 +1264,81 @@
 }
 .ff-inline-row--medication .ff-inline-code {
   color: #B45309;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   INCIDENT DATE CONTEXTUAL LINK
+   Shown beside Authorization & Claim section/subsection
+   headers after the first save when a Date of Incident
+   was captured on the case.
+   ═══════════════════════════════════════════════════════ */
+
+/* Subsection label row — makes the label + link sit inline */
+.sub-float-label-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-bottom: 2px;
+}
+
+/* The pill-shaped link button */
+.cw-incident-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px 3px 7px;
+  border-radius: 999px;
+  border: 1px solid #BFDBFE;
+  background: #EFF6FF;
+  color: #1D4ED8;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: .1px;
+  white-space: nowrap;
+  transition: background .15s, border-color .15s, box-shadow .15s;
+  animation: incidentLinkFadeIn .35s ease;
+  flex-shrink: 0;
+}
+.cw-incident-link:hover {
+  background: #DBEAFE;
+  border-color: #93C5FD;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, .14);
+}
+.cw-incident-link:active {
+  background: #BFDBFE;
+}
+
+/* Inside the section-header the link needs auto left margin
+   so it stays right-aligned before the chevron */
+.section-header .cw-incident-link {
+  margin-left: auto;
+  order: 50; /* between title (flex:1) and chevron (order:99) */
+}
+
+.cw-incident-link__icon {
+  font-size: 13px !important;
+  width: 13px !important;
+  height: 13px !important;
+  color: #3B82F6;
+  flex-shrink: 0;
+}
+.cw-incident-link__text {
+  /* truncate if space is tight */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cw-incident-link__arrow {
+  font-size: 11px !important;
+  width: 11px !important;
+  height: 11px !important;
+  color: #60A5FA;
+  flex-shrink: 0;
+}
+
+@keyframes incidentLinkFadeIn {
+  from { opacity: 0; transform: translateX(-5px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
