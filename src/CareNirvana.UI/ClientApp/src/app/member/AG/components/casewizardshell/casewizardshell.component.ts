@@ -142,7 +142,10 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
   // ════════════════════════════════════
   //  INCIDENT DATE LOOKUP PANEL
   // ════════════════════════════════════
-  /** The date used for the incident lookup (dateOfIncident + 10 days) */
+  /** The anchor incident date (raw from form) */
+  incidentLookupDateFrom: Date | null = null;
+  /** Window end: incidentDate + absOffset days */
+  incidentLookupDateTo: Date | null = null;
   incidentLookupDate: Date | null = null;
   /** Claims matching the incident date window */
   incidentClaimsResults: any[] = [];
@@ -703,16 +706,44 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
    *              or null when no Date of Incident has been recorded yet.
    *              When null the panel opens in a "no date recorded" state.
    */
-  triggerIncidentLookup(date: Date | null): void {
-    this.incidentLookupDate = date;
+  /**
+   * Accepts { incidentDate, memberDetailId, dayOffset } from openIncidentPanel(),
+   * or a legacy raw Date for backwards compatibility.
+   * C# computes the ±window from incidentDate + dayOffset — we only derive
+   * dateFrom/dateTo here for the panel header display.
+   */
+  triggerIncidentLookup(payload: { incidentDateStr: string | null; memberDetailId: number; dayOffset: number } | Date | null): void {
     this.incidentClaimsResults = [];
     this.incidentAuthResults = [];
 
-    // Open the panel immediately
+    let incidentDateStr: string | null = null;
+    let memberDetailId = Number(sessionStorage.getItem('selectedMemberDetailsId') || 0);
+    let dayOffset = 10;
+
+    if (payload && typeof payload === 'object' && !(payload instanceof Date)) {
+      incidentDateStr = payload.incidentDateStr ?? null;
+      memberDetailId = payload.memberDetailId ?? memberDetailId;
+      dayOffset = payload.dayOffset ?? 10;
+    } else if (payload instanceof Date) {
+      // legacy fallback
+      incidentDateStr = payload.toISOString().split('T')[0];
+    }
+
+    // Build display dates for panel header only
+    if (incidentDateStr) {
+      const anchor = new Date(incidentDateStr + 'T00:00:00');
+      const from = new Date(anchor); from.setDate(from.getDate() - dayOffset);
+      const to = new Date(anchor); to.setDate(to.getDate() + dayOffset);
+      this.incidentLookupDate = anchor;
+      this.incidentLookupDateFrom = from;
+      this.incidentLookupDateTo = to;
+    } else {
+      this.incidentLookupDate = this.incidentLookupDateFrom = this.incidentLookupDateTo = null;
+    }
+
     this.openRightPanel('incident');
 
-    // If no date was supplied, show the empty state — nothing to search.
-    if (!date) {
+    if (!incidentDateStr) {
       this.incidentLookupLoading = false;
       return;
     }
@@ -720,39 +751,46 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     this.incidentLookupLoading = true;
 
     const svc: any = this.authService as any;
-
-    // Pass a 2-char placeholder query to satisfy any minimum-length guard
-    // on the endpoint — the backend ignores it once dateOfIncident is present.
     const placeholder = '--';
 
+    console.group('[SHELL] triggerIncidentLookup');
+    console.log('  memberDetailId  :', memberDetailId);
+    console.log('  incidentDateStr :', incidentDateStr, '← YYYY-MM-DD sent to API');
+    console.log('  dayOffset       :', dayOffset);
+    console.groupEnd();
+
+    // ✅ Pass the date string directly — Angular service sets it as-is in HttpParams
+    const incidentDate = new Date(incidentDateStr + 'T00:00:00');
+
     const claims$ = (svc.searchClaims
-      ? svc.searchClaims(placeholder, 25, date)
+      ? svc.searchClaims(placeholder, memberDetailId, 25, incidentDate)
       : of([])) as Observable<any[]>;
 
     const auths$ = (svc.searchAuthorizations
-      ? svc.searchAuthorizations(placeholder, 25, date)
+      ? svc.searchAuthorizations(placeholder, memberDetailId, 25, incidentDate, dayOffset)
       : of([])) as Observable<any[]>;
 
     forkJoin({ claims: claims$, auths: auths$ })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: ({ claims, auths }: { claims: any[]; auths: any[] }) => {
+        next: ({ claims, auths }) => {
           this.incidentClaimsResults = claims ?? [];
           this.incidentAuthResults = auths ?? [];
           this.incidentLookupLoading = false;
         },
-        error: () => {
-          this.incidentLookupLoading = false;
-        }
+        error: () => { this.incidentLookupLoading = false; }
       });
   }
 
   /** Format Date as MM/DD/YYYY for display in the incident panel header. */
-  formatIncidentDate(d: Date | null): string {
+  formatIncidentDate(d: Date | null | undefined): string {
     if (!d) return '';
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${mm}/${dd}/${d.getFullYear()}`;
+    // Guard: if somehow a non-Date slips in, coerce it
+    const date = d instanceof Date ? d : new Date(d as any);
+    if (isNaN(date.getTime())) return '';
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${mm}/${dd}/${date.getFullYear()}`;
   }
 
   /** Load AI panel content after case is saved and has a case number */
@@ -1102,8 +1140,8 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
       this.openClaimPanel(claimNumber);
     };
     // ✅ Inject incident-lookup trigger so casedetails can fire date-scoped search after new-case save
-    inst._shellTriggerIncidentLookup = (date: Date) => {
-      this.triggerIncidentLookup(date);
+    inst._shellTriggerIncidentLookup = (payload: any) => {
+      this.triggerIncidentLookup(payload);
     };
 
     if (inst && 'stepId' in inst) {

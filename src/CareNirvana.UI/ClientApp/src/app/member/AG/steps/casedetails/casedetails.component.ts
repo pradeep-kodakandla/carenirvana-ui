@@ -2180,14 +2180,51 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
           break;
         case 'authorization':
         case 'authorizations': {
-          console.log('[lookup] authorizations search called', { q, limit });
+          // Read all three params dynamically at call time so form changes
+          // are always reflected without needing to bust the fn cache.
+          const memberDetailId = Number(sessionStorage.getItem('selectedMemberDetailsId') || 0);
+          const dateOfIncident = this.getIncidentDateFromForm();
+          const dayOffset      = this.getAuthSearchDayOffset();
 
-          obs = (svc.searchAuthorizations ? svc.searchAuthorizations(q, limit) : of([])).pipe(
-            tap((rows) => {
-              console.log('[lookup] authorizations results', rows);
+          // ── DIAGNOSTIC: log every input and whether the method exists ──
+          console.group('[AUTH-SEARCH] Authorization lookup triggered');
+          console.log('  q              :', q);
+          console.log('  limit          :', limit);
+          console.log('  memberDetailId :', memberDetailId,
+            memberDetailId === 0 ? '⚠️ ZERO — sessionStorage key may be missing' : '✅');
+          console.log('  dateOfIncident :', dateOfIncident ?? 'undefined (no date in form)');
+          console.log('  dayOffset      :', dayOffset);
+          console.log('  svc            :', svc);
+          console.log('  svc.searchAuthorizations exists?',
+            typeof svc.searchAuthorizations === 'function' ? '✅ YES' : '❌ NO — method missing on authService');
+          console.log('  sessionStorage selectedMemberDetailsId raw:',
+            sessionStorage.getItem('selectedMemberDetailsId'));
+          console.groupEnd();
+
+          if (typeof svc.searchAuthorizations !== 'function') {
+            console.error('[AUTH-SEARCH] ❌ svc.searchAuthorizations is not a function.',
+              'Available methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(svc)).filter(m => m !== 'constructor'));
+            obs = of([]);
+            break;
+          }
+
+          obs = svc.searchAuthorizations(q, memberDetailId, limit, dateOfIncident, dayOffset).pipe(
+            tap((rows: any[]) => {
+              console.group('[AUTH-SEARCH] Response received');
+              console.log('  row count :', rows?.length ?? 0);
+              console.log('  rows      :', rows);
+              if (!rows || rows.length === 0) {
+                console.warn('  ⚠️ Empty result — check: memberDetailId, date window, or q value');
+              }
+              console.groupEnd();
             }),
             catchError((err) => {
-              console.error('[lookup] authorizations error', err);
+              console.group('[AUTH-SEARCH] ❌ HTTP error');
+              console.error('  error status :', err?.status);
+              console.error('  error message:', err?.message);
+              console.error('  error body   :', err?.error);
+              console.error('  full error   :', err);
+              console.groupEnd();
               return of([]);
             })
           );
@@ -3340,6 +3377,40 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
    * If no date is recorded yet, the shell still opens the panel and displays
    * an informative "no date recorded" empty state.
    */
+  /**
+   * Reads the Date of Incident from the live form.
+   * Tries all common field-id aliases across templates.
+   */
+  private getIncidentDateFromForm(): Date | undefined {
+    const rawDate =
+      this.getValueByFieldId('dateOfIncident') ??
+      this.getValueByFieldId('dateofincident') ??
+      this.getValueByFieldId('date_of_incident') ??
+      this.getValueByFieldId('incidentDate') ??
+      this.getValueByFieldId('incidentdate');
+
+    if (!rawDate) return undefined;
+    const parsed = new Date(rawDate);
+    return isNaN(parsed.getTime()) ? undefined : parsed;
+  }
+
+  /**
+   * Reads the day-offset field from the live form for authorization date-scoped search.
+   * Falls back to -10 if no field is present or the value is not numeric.
+   * Common field ids: authSearchDayOffset, dayOffset, incidentDayOffset
+   */
+  private getAuthSearchDayOffset(): number {
+    const raw =
+      this.getValueByFieldId('authSearchDayOffset') ??
+      this.getValueByFieldId('dayOffset') ??
+      this.getValueByFieldId('incidentDayOffset');
+
+    // Number(null) === 0 which is finite — must verify raw is actually present
+    if (raw === null || raw === undefined || String(raw).trim() === '') return 10;
+    const n = Number(raw);
+    return Number.isFinite(n) && n !== 0 ? Math.abs(n) : 10;
+  }
+
   openIncidentPanel(): void {
     const rawDate =
       this.getValueByFieldId('dateOfIncident') ??
@@ -3348,21 +3419,45 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
       this.getValueByFieldId('incidentDate') ??
       this.getValueByFieldId('incidentdate');
 
-    let lookupDate: Date | null = null;
+    const memberDetailId = Number(sessionStorage.getItem('selectedMemberDetailsId') || 0);
+    const dayOffset = this.getAuthSearchDayOffset();   // always positive, default 10
+    const absOffset = Math.abs(dayOffset);
+    const callback = (this as any)._shellTriggerIncidentLookup;
 
-    if (rawDate) {
-      const parsed = new Date(rawDate);
-      if (!isNaN(parsed.getTime())) {
-        lookupDate = new Date(parsed);
-        lookupDate.setDate(lookupDate.getDate() + 10);
-      }
+    // ✅ Extract date-only string directly from ISO — avoids timezone shift
+    // e.g. '2026-02-12T01:21:03.000Z' → '2026-02-12'
+    let incidentDateStr: string | null = null;
+    if (rawDate && typeof rawDate === 'string' && rawDate.includes('T')) {
+      incidentDateStr = rawDate.split('T')[0];               // '2026-02-12'
+    } else if (rawDate) {
+      incidentDateStr = String(rawDate).split('T')[0];
     }
 
-    // Always delegate to the shell — it will handle both the "has date" and
-    // "no date" states, keeping the right panel as the single place for results.
-    const callback = (this as any)._shellTriggerIncidentLookup;
+    // Compute display-only window for the console (no Date object needed for the call)
+    let dateFromStr: string | null = null;
+    let dateToStr: string | null = null;
+    if (incidentDateStr) {
+      const anchor = new Date(incidentDateStr + 'T00:00:00'); // midnight LOCAL — safe for ±day math
+      const from = new Date(anchor); from.setDate(from.getDate() - absOffset);
+      const to = new Date(anchor); to.setDate(to.getDate() + absOffset);
+      dateFromStr = from.toISOString().split('T')[0];        // '2026-02-02'
+      dateToStr = to.toISOString().split('T')[0];          // '2026-02-22'
+    }
+
+    console.group('[INCIDENT-PANEL] "View related Authorizations & Claims" clicked');
+    console.log('  rawDate from form  :', rawDate ?? 'not found');
+    console.log('  incidentDateStr    :', incidentDateStr, '← date sent to API');
+    console.log('  absOffset          :', absOffset);
+    console.log('  dateFrom (-offset) :', dateFromStr, '← for display only');
+    console.log('  dateTo   (+offset) :', dateToStr, '← for display only');
+    console.log('  memberDetailId     :', memberDetailId,
+      memberDetailId === 0 ? '⚠️ ZERO' : '✅');
+    console.log('  _shellTriggerIncidentLookup exists?',
+      typeof callback === 'function' ? '✅ YES' : '❌ NO');
+    console.groupEnd();
+
     if (typeof callback === 'function') {
-      callback(lookupDate);   // null signals "no date recorded"
+      callback({ incidentDateStr, memberDetailId, dayOffset: absOffset });
     }
   }
 

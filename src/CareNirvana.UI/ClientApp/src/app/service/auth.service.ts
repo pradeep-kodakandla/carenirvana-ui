@@ -104,7 +104,6 @@ export interface ClaimLookupRow {
 }
 
 
-
 @Injectable({
   providedIn: 'root'
 })
@@ -266,9 +265,26 @@ export class AuthService {
     return this.http.get<ClaimLookupRow[]>(`${this.apiUrlCodeSets}/search/claims`, { params });
   }
 
-  searchAuthorizations(q: string, limit = 25): Observable<AuthorizationLookupRow[]> {
-    const params = new HttpParams().set('q', q).set('limit', String(limit));
-    return this.http.get<AuthorizationLookupRow[]>(`${this.apiUrlCodeSets}/search/authorizations`, { params });
+  searchAuthorizations(
+    q: string,
+    memberDetailId: number,
+    limit: number = 25,
+    dateOfIncident?: Date,
+    dayOffset: number = 0
+  ): Observable<any[]> {
+    let params = new HttpParams();
+
+    params = params.set('q', q);
+    params = params.set('memberDetailId', memberDetailId.toString());   // ← was missing
+    params = params.set('limit', limit.toString());
+
+    if (dateOfIncident) {
+      // ✅ Strip time — send date only to avoid timezone shift
+      params = params.set('dateOfIncident', dateOfIncident.toISOString().split('T')[0]);
+      params = params.set('dayOffset', dayOffset.toString());
+    }
+
+    return this.http.get<any[]>(`${this.apiUrlCodeSets}/search/authorizations`, { params });
   }
 
 

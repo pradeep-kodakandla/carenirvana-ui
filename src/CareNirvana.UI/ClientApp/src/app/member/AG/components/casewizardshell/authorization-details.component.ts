@@ -494,6 +494,7 @@ export class AuthorizationDetailsComponent implements OnInit, OnChanges {
     this.detail = null;
     this.errorMessage = '';
 
+    const memberDetailId = Number(sessionStorage.getItem('selectedMemberDetailsId') || 0);
     this.authService.getAuthDetailsJson(this.authNumber).subscribe({
       next: (response: any) => {
         try {
