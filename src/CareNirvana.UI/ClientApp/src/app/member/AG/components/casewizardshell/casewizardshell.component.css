@@ -751,6 +751,8 @@
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 /* Mode-specific gradients */
@@ -809,6 +811,45 @@
   font-weight: 600;
 }
 
+/* ── Incident header is DARK teal → flip text & controls to white ── */
+.cw-rpanel-header--incident .cw-rpanel-title {
+  color: #fff;
+}
+.cw-rpanel-header--incident .cw-rpanel-subtitle {
+  color: rgba(255, 255, 255, 0.82);
+}
+.cw-rpanel-header--incident .cw-rpanel-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.30);
+  color: #fff;
+}
+.cw-rpanel-header--incident .cw-rpanel-btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+/* ── Auth header (light lavender) → back button must use dark colours ── */
+.cw-rpanel-header--auth .cw-rpanel-back-btn {
+  background: rgba(109, 40, 217, 0.08);
+  border-color: rgba(109, 40, 217, 0.30);
+  color: #5B21B6;
+}
+.cw-rpanel-header--auth .cw-rpanel-back-btn:hover {
+  background: rgba(109, 40, 217, 0.15);
+  border-color: rgba(109, 40, 217, 0.50);
+}
+
+/* ── Claim header (light blue) → back button must use dark colours ── */
+.cw-rpanel-header--claim .cw-rpanel-back-btn {
+  background: rgba(37, 99, 235, 0.08);
+  border-color: rgba(37, 99, 235, 0.30);
+  color: #1D4ED8;
+}
+.cw-rpanel-header--claim .cw-rpanel-back-btn:hover {
+  background: rgba(37, 99, 235, 0.15);
+  border-color: rgba(37, 99, 235, 0.50);
+}
+
 .cw-rpanel-actions {
   display: flex;
   align-items: center;
@@ -838,6 +879,33 @@
 
 .cw-rpanel-btn .material-icons-outlined {
   font-size: 16px;
+}
+
+/* ── Back-to-results breadcrumb button (base — dark neutral) ── */
+.cw-rpanel-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px 4px 6px;
+  border-radius: 8px;
+  border: 1.5px solid rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.06);
+  color: #374151;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  flex-shrink: 0;
+  order: -1;
+  align-self: flex-start;
+  margin-bottom: 6px;
+  width: 100%;
+  justify-content: flex-start;
+}
+.cw-rpanel-back-btn:hover {
+  background: rgba(0, 0, 0, 0.11);
+  border-color: rgba(0, 0, 0, 0.25);
 }
 
 /* ── Panel body ── */
@@ -1440,4 +1508,199 @@
 .cw-incident-no-date__msg strong {
   color: #1D4ED8;
   font-weight: 600;
+}
+
+/* ═══════════════════════════════════════════════════════
+   INCIDENT PANEL — FILTER BAR
+   ═══════════════════════════════════════════════════════ */
+
+.cw-incident-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 16px 10px;
+  background: #F0FDFA;
+  border-bottom: 1px solid #CCFBF1;
+}
+
+.cw-incident-filter-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: #0F766E;
+}
+
+.cw-incident-filter-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.cw-incident-pill {
+  padding: 3px 12px;
+  border-radius: 999px;
+  border: 1.5px solid #99F6E4;
+  background: #fff;
+  color: #0F766E;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.cw-incident-pill:hover {
+  background: #CCFBF1;
+  border-color: #5EEAD4;
+}
+
+.cw-incident-pill--active {
+  background: #0D9488;
+  border-color: #0D9488;
+  color: #fff;
+}
+
+.cw-incident-pill--active:hover {
+  background: #0F766E;
+  border-color: #0F766E;
+}
+
+/* Custom range date pickers */
+.cw-incident-custom-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+  animation: cw-slide-down 0.2s ease;
+}
+
+@keyframes cw-slide-down {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.cw-incident-date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 110px;
+}
+
+.cw-incident-date-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cw-incident-date-input {
+  border: 1.5px solid #D1D5DB;
+  border-radius: 7px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #1F2937;
+  background: #fff;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.15s ease;
+}
+
+.cw-incident-date-input:focus {
+  border-color: #0D9488;
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.12);
+}
+
+.cw-incident-date-sep {
+  font-size: 13px;
+  color: #9CA3AF;
+  flex-shrink: 0;
+  align-self: flex-end;
+  padding-bottom: 4px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   INCIDENT PANEL — CARD ACTION BUTTONS
+   ═══════════════════════════════════════════════════════ */
+
+.cw-incident-card--added {
+  opacity: 0.75;
+  background: #F0FDF4 !important;
+  border-color: #86EFAC !important;
+}
+
+.cw-incident-added-badge {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  color: #059669;
+  background: #DCFCE7;
+  border: 1px solid #A7F3D0;
+  border-radius: 999px;
+  padding: 1px 7px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.cw-incident-card-actions {
+  display: flex;
+  gap: 6px;
+  padding-top: 8px;
+  margin-top: 4px;
+  border-top: 1px solid #F3F4F6;
+}
+
+.cw-incident-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  flex: 1;
+  justify-content: center;
+}
+
+.cw-incident-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Add to Case — teal theme */
+.cw-incident-action--add {
+  border: 1.5px solid #5EEAD4;
+  background: #F0FDFA;
+  color: #0F766E;
+}
+
+.cw-incident-action--add:hover:not(:disabled) {
+  background: #CCFBF1;
+  border-color: #2DD4BF;
+  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.12);
+}
+
+.cw-incident-action--add:disabled {
+  background: #DCFCE7;
+  border-color: #86EFAC;
+  color: #059669;
+}
+
+/* View Details — blue theme */
+.cw-incident-action--view {
+  border: 1.5px solid #BFDBFE;
+  background: #EFF6FF;
+  color: #1D4ED8;
+}
+
+.cw-incident-action--view:hover {
+  background: #DBEAFE;
+  border-color: #93C5FD;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12);
 }

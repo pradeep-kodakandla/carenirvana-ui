@@ -3493,5 +3493,118 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     } catch { return String(val); }
   }
 
+  // ═══════════════════════════════════════════════════════════
+  //  ADD TO CASE — called by shell when user clicks "Add to Case"
+  //  on an incident panel card. Pushes the item into every
+  //  authorization / claim search field on the current step
+  //  so the card appears in the relevant subsection(s).
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Adds an authorization object from the incident panel into the
+   * selectedLookupMap for every authorization search field that exists
+   * in the current step's render model.
+   */
+  addAuthToCase(auth: any): void {
+    if (!auth || !this.renderSections?.length) return;
+
+    const allFields = this.collectAllRenderFields(this.renderSections);
+    const authId    = this.getLookupItemId('authorization', auth);
+
+    for (const f of allFields) {
+      if (String(f?.type ?? '').toLowerCase() !== 'search') continue;
+      const entity = this.getLookupEntity(f);
+      if (entity !== 'authorization' && entity !== 'authorizations') continue;
+
+      const key = f.controlName;
+      if (!this.selectedLookupMap[key]) this.selectedLookupMap[key] = [];
+
+      const exists = this.selectedLookupMap[key].some(
+        (existing: any) => this.getLookupItemId('authorization', existing) === authId
+      );
+      if (!exists) {
+        this.selectedLookupMap[key] = [...this.selectedLookupMap[key], auth];
+      }
+    }
+
+    // Mark form dirty so the user knows there are unsaved changes
+    this.form?.markAsDirty();
+  }
+
+  // ─── Read-back helpers (called by shell to sync disabled state) ─────────
+
+  /**
+   * Returns the unique IDs of every authorization already present in
+   * selectedLookupMap. Shell uses this to disable "Add to Case" buttons
+   * for auths that are already in the case (including data loaded from
+   * saved JSON, not only items added in the current session).
+   */
+  getAddedAuthIds(): string[] {
+    if (!this.renderSections?.length) return [];
+    const ids: string[] = [];
+    const allFields = this.collectAllRenderFields(this.renderSections);
+    for (const f of allFields) {
+      if (String(f?.type ?? '').toLowerCase() !== 'search') continue;
+      const entity = this.getLookupEntity(f);
+      if (entity !== 'authorization' && entity !== 'authorizations') continue;
+      for (const item of (this.selectedLookupMap[f.controlName] ?? [])) {
+        const id = String(this.getLookupItemId('authorization', item) ?? '').trim();
+        if (id) ids.push(id);
+      }
+    }
+    return ids;
+  }
+
+  /**
+   * Returns the unique IDs of every claim already present in
+   * selectedLookupMap. Shell uses this to disable "Add to Case" buttons
+   * for claims that are already in the case.
+   */
+  getAddedClaimIds(): string[] {
+    if (!this.renderSections?.length) return [];
+    const ids: string[] = [];
+    const allFields = this.collectAllRenderFields(this.renderSections);
+    for (const f of allFields) {
+      if (String(f?.type ?? '').toLowerCase() !== 'search') continue;
+      const entity = this.getLookupEntity(f);
+      if (entity !== 'claims' && entity !== 'claim') continue;
+      for (const item of (this.selectedLookupMap[f.controlName] ?? [])) {
+        const id = String(this.getLookupItemId('claims', item) ?? '').trim();
+        if (id) ids.push(id);
+      }
+    }
+    return ids;
+  }
+
+  /**
+   * Adds a claim object from the incident panel into the
+   * selectedLookupMap for every claim search field that exists
+   * in the current step's render model.
+   */
+  addClaimToCase(claim: any): void {
+    if (!claim || !this.renderSections?.length) return;
+
+    const allFields = this.collectAllRenderFields(this.renderSections);
+    const claimId   = this.getLookupItemId('claims', claim);
+
+    for (const f of allFields) {
+      if (String(f?.type ?? '').toLowerCase() !== 'search') continue;
+      const entity = this.getLookupEntity(f);
+      if (entity !== 'claims' && entity !== 'claim') continue;
+
+      const key = f.controlName;
+      if (!this.selectedLookupMap[key]) this.selectedLookupMap[key] = [];
+
+      const exists = this.selectedLookupMap[key].some(
+        (existing: any) => this.getLookupItemId('claims', existing) === claimId
+      );
+      if (!exists) {
+        this.selectedLookupMap[key] = [...this.selectedLookupMap[key], claim];
+      }
+    }
+
+    // Mark form dirty so the user knows there are unsaved changes
+    this.form?.markAsDirty();
+  }
 
 }

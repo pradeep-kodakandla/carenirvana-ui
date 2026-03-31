@@ -350,6 +350,16 @@
       <ng-container *ngIf="rightPanelMode === 'auth'">
 
         <div class="cw-rpanel-header cw-rpanel-header--auth">
+          <!-- Back breadcrumb (only when opened from incident panel) -->
+          <button type="button"
+                  class="cw-rpanel-back-btn"
+                  *ngIf="previousPanelMode === 'incident'"
+                  (click)="goBackToIncident()"
+                  title="Back to Incident Results">
+            <span class="material-icons-outlined" style="font-size:16px">arrow_back</span>
+            <span>Back to Results</span>
+          </button>
+
           <div class="cw-rpanel-title-block">
             <span class="cw-rpanel-icon cw-rpanel-icon--auth">
               <span class="material-icons-outlined" style="font-size:14px">verified_user</span>
@@ -382,6 +392,16 @@
       <ng-container *ngIf="rightPanelMode === 'claim'">
 
         <div class="cw-rpanel-header cw-rpanel-header--claim">
+          <!-- Back breadcrumb (only when opened from incident panel) -->
+          <button type="button"
+                  class="cw-rpanel-back-btn"
+                  *ngIf="previousPanelMode === 'incident'"
+                  (click)="goBackToIncident()"
+                  title="Back to Incident Results">
+            <span class="material-icons-outlined" style="font-size:16px">arrow_back</span>
+            <span>Back to Results</span>
+          </button>
+
           <div class="cw-rpanel-title-block">
             <span class="cw-rpanel-icon cw-rpanel-icon--claim">
               <span class="material-icons-outlined" style="font-size:14px">receipt_long</span>
@@ -422,7 +442,7 @@
             <div>
               <div class="cw-rpanel-title">Incident Date Matches</div>
               <div class="cw-rpanel-subtitle" *ngIf="incidentLookupDate">
-                Within 10 days of {{ formatIncidentDate(incidentLookupDate) }}
+                {{ incidentFilterLabel }} of {{ formatIncidentDate(incidentLookupDate) }}
               </div>
             </div>
           </div>
@@ -434,6 +454,44 @@
             <button class="cw-rpanel-btn" (click)="closeRightPanel()">
               <span class="material-icons-outlined">close</span>
             </button>
+          </div>
+        </div>
+
+        <!-- ── Filter bar (shown when date is set) ── -->
+        <div class="cw-incident-filter-bar" *ngIf="incidentLookupDate || !incidentLookupLoading">
+          <div class="cw-incident-filter-label">Date window:</div>
+
+          <!-- Quick-select pills -->
+          <div class="cw-incident-filter-pills">
+            <button type="button" class="cw-incident-pill"
+                    [class.cw-incident-pill--active]="incidentFilterMode === '10'"
+                    (click)="setIncidentFilter('10')">±10 days</button>
+            <button type="button" class="cw-incident-pill"
+                    [class.cw-incident-pill--active]="incidentFilterMode === '20'"
+                    (click)="setIncidentFilter('20')">±20 days</button>
+            <button type="button" class="cw-incident-pill"
+                    [class.cw-incident-pill--active]="incidentFilterMode === '30'"
+                    (click)="setIncidentFilter('30')">±30 days</button>
+            <button type="button" class="cw-incident-pill"
+                    [class.cw-incident-pill--active]="incidentFilterMode === 'custom'"
+                    (click)="setIncidentFilter('custom')">Custom</button>
+          </div>
+
+          <!-- Custom date range (expands when Custom is active) -->
+          <div class="cw-incident-custom-range" *ngIf="incidentFilterMode === 'custom'">
+            <div class="cw-incident-date-field">
+              <label class="cw-incident-date-lbl">From</label>
+              <input type="date" class="cw-incident-date-input"
+                     [(ngModel)]="incidentCustomFrom"
+                     (change)="applyIncidentFilter()" />
+            </div>
+            <span class="cw-incident-date-sep">→</span>
+            <div class="cw-incident-date-field">
+              <label class="cw-incident-date-lbl">To</label>
+              <input type="date" class="cw-incident-date-input"
+                     [(ngModel)]="incidentCustomTo"
+                     (change)="applyIncidentFilter()" />
+            </div>
           </div>
         </div>
 
@@ -475,12 +533,13 @@
 
             <div class="cw-incident-card"
                  *ngFor="let claim of incidentClaimsResults"
-                 (click)="openClaimPanel(claim.claimNumber || claim.claimnumber)">
+                 [class.cw-incident-card--added]="isClaimAdded(claim)">
               <div class="cw-incident-card-row">
                 <span class="cw-incident-card-label">Claim #</span>
                 <span class="cw-incident-card-value cw-incident-card-value--link">
                   {{ claim.claimNumber || claim.claimnumber || '—' }}
                 </span>
+                <span class="cw-incident-added-badge" *ngIf="isClaimAdded(claim)">✓ Added</span>
               </div>
               <div class="cw-incident-card-row" *ngIf="claim.providerName">
                 <span class="cw-incident-card-label">Provider</span>
@@ -496,6 +555,22 @@
               <div class="cw-incident-card-row" *ngIf="claim.billed != null">
                 <span class="cw-incident-card-label">Billed</span>
                 <span class="cw-incident-card-value">${{ claim.billed | number:'1.2-2' }}</span>
+              </div>
+              <!-- Action links -->
+              <div class="cw-incident-card-actions">
+                <button type="button" class="cw-incident-action cw-incident-action--add"
+                        [disabled]="isClaimAdded(claim)"
+                        (click)="addIncidentItemToCase(claim, 'claim'); $event.stopPropagation()"
+                        [title]="isClaimAdded(claim) ? 'Already added to case' : 'Add claim to case'">
+                  <span class="material-icons-outlined" style="font-size:13px">{{ isClaimAdded(claim) ? 'check_circle' : 'add_circle_outline' }}</span>
+                  {{ isClaimAdded(claim) ? 'Added' : 'Add to Case' }}
+                </button>
+                <button type="button" class="cw-incident-action cw-incident-action--view"
+                        (click)="openClaimPanel(claim.claimNumber || claim.claimnumber); $event.stopPropagation()"
+                        title="View claim details">
+                  <span class="material-icons-outlined" style="font-size:13px">open_in_new</span>
+                  View Details
+                </button>
               </div>
             </div>
           </div>
@@ -514,12 +589,13 @@
 
             <div class="cw-incident-card"
                  *ngFor="let auth of incidentAuthResults"
-                 (click)="openAuthPanel(auth.authnumber || auth.authNumber)">
+                 [class.cw-incident-card--added]="isAuthAdded(auth)">
               <div class="cw-incident-card-row">
                 <span class="cw-incident-card-label">Auth #</span>
                 <span class="cw-incident-card-value cw-incident-card-value--link">
                   {{ auth.authnumber || auth.authNumber || '—' }}
                 </span>
+                <span class="cw-incident-added-badge" *ngIf="isAuthAdded(auth)">✓ Added</span>
               </div>
               <div class="cw-incident-card-row" *ngIf="auth.authtype">
                 <span class="cw-incident-card-label">Type</span>
@@ -539,6 +615,22 @@
                   {{ auth.fromdate | date:'MM/dd/yyyy' }}
                   <ng-container *ngIf="auth.todate"> – {{ auth.todate | date:'MM/dd/yyyy' }}</ng-container>
                 </span>
+              </div>
+              <!-- Action links -->
+              <div class="cw-incident-card-actions">
+                <button type="button" class="cw-incident-action cw-incident-action--add"
+                        [disabled]="isAuthAdded(auth)"
+                        (click)="addIncidentItemToCase(auth, 'auth'); $event.stopPropagation()"
+                        [title]="isAuthAdded(auth) ? 'Already added to case' : 'Add authorization to case'">
+                  <span class="material-icons-outlined" style="font-size:13px">{{ isAuthAdded(auth) ? 'check_circle' : 'add_circle_outline' }}</span>
+                  {{ isAuthAdded(auth) ? 'Added' : 'Add to Case' }}
+                </button>
+                <button type="button" class="cw-incident-action cw-incident-action--view"
+                        (click)="openAuthPanel(auth.authnumber || auth.authNumber); $event.stopPropagation()"
+                        title="View authorization details">
+                  <span class="material-icons-outlined" style="font-size:13px">open_in_new</span>
+                  View Details
+                </button>
               </div>
             </div>
           </div>

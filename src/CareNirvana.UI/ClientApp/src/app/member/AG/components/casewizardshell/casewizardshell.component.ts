@@ -154,6 +154,21 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
   /** True while both searches are in-flight */
   incidentLookupLoading = false;
 
+  // ─── Incident panel filter ───────────────────────────────
+  /** Active filter mode */
+  incidentFilterMode: '10' | '20' | '30' | 'custom' = '10';
+  /** Custom range: date strings (YYYY-MM-DD) */
+  incidentCustomFrom = '';
+  incidentCustomTo   = '';
+  /** Stored from last triggerIncidentLookup call — enables re-filtering */
+  private lastIncidentDateStr: string | null = null;
+  private lastMemberDetailId  = 0;
+
+  // ─── "Add to Case" tracking ──────────────────────────────
+  /** IDs of auths/claims already added in this panel session */
+  addedAuthIds  = new Set<string>();
+  addedClaimIds = new Set<string>();
+
   // ════════════════════════════════════
   //  Header field lookups (from jsonData)
   // ════════════════════════════════════
@@ -636,11 +651,27 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
    * If same mode is already open, toggles it closed.
    * If a different mode is open, switches to the new mode.
    */
+  /**
+   * The panel mode that was active before switching to auth/claim detail.
+   * Used to show a "← Back" button so the user can return to incident results.
+   */
+  previousPanelMode: 'ai' | 'auth' | 'claim' | 'incident' | null = null;
+
   openRightPanel(mode: 'ai' | 'auth' | 'claim' | 'incident', identifier?: string): void {
-    // Toggle off if same mode
+    // Toggle off if same mode — but NEVER toggle the incident panel from
+    // internal re-filter calls (those go through openIncidentPanelSilent).
     if (this.rightPanelOpen && this.rightPanelMode === mode) {
       this.closeRightPanel();
       return;
+    }
+
+    // Track where we came from so auth/claim panels can show a "Back" button
+    if (this.rightPanelOpen && this.rightPanelMode === 'incident' &&
+        (mode === 'auth' || mode === 'claim')) {
+      this.previousPanelMode = 'incident';
+    } else if (mode !== 'auth' && mode !== 'claim') {
+      // Leaving auth/claim to something else — clear the breadcrumb
+      this.previousPanelMode = null;
     }
 
     this.rightPanelMode = mode;
@@ -656,6 +687,20 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     }
   }
 
+  /**
+   * Opens (or refreshes) the incident panel WITHOUT the toggle-close behaviour.
+   * Used internally by filter changes and re-queries where the panel must
+   * stay open regardless of its current mode.
+   */
+  private openIncidentPanelSilent(): void {
+    this.previousPanelMode = null;
+    this.rightPanelMode = 'incident';
+    this.rightPanelOpen = true;
+    this.rightPanelExpanded = true;
+    // Sync disabled state from whatever is already saved in the form
+    this.syncAddedSetsFromStep();
+  }
+
   /** Opens auth detail panel for the given auth number */
   openAuthPanel(authNumber: string): void {
     this.openRightPanel('auth', authNumber);
@@ -664,6 +709,16 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
   /** Opens claim detail panel for the given claim number */
   openClaimPanel(claimNumber: string): void {
     this.openRightPanel('claim', claimNumber);
+  }
+
+  /** Returns to the incident results panel from an auth/claim detail view. */
+  goBackToIncident(): void {
+    this.previousPanelMode = null;
+    this.rightPanelMode = 'incident';
+    this.rightPanelOpen = true;
+    this.rightPanelExpanded = true;
+    // Re-sync in case the user added something while viewing the detail panel
+    this.syncAddedSetsFromStep();
   }
 
   /** Close the right panel entirely */
@@ -729,6 +784,20 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
       incidentDateStr = payload.toISOString().split('T')[0];
     }
 
+    // ── Store params so re-filter can replay the search ──
+    const isFreshOpen = incidentDateStr !== this.lastIncidentDateStr;
+    this.lastIncidentDateStr = incidentDateStr;
+    this.lastMemberDetailId  = memberDetailId;
+
+    // Reset filter + added-item tracking only on a brand-new date (not on filter changes)
+    if (isFreshOpen) {
+      this.incidentFilterMode = '10';
+      this.incidentCustomFrom = '';
+      this.incidentCustomTo   = '';
+      this.addedAuthIds.clear();
+      this.addedClaimIds.clear();
+    }
+
     // Build display dates for panel header only
     if (incidentDateStr) {
       const anchor = new Date(incidentDateStr + 'T00:00:00');
@@ -741,7 +810,7 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
       this.incidentLookupDate = this.incidentLookupDateFrom = this.incidentLookupDateTo = null;
     }
 
-    this.openRightPanel('incident');
+    this.openIncidentPanelSilent();
 
     if (!incidentDateStr) {
       this.incidentLookupLoading = false;
@@ -777,6 +846,8 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
           this.incidentClaimsResults = claims ?? [];
           this.incidentAuthResults = auths ?? [];
           this.incidentLookupLoading = false;
+          // ── Sync disabled state from whatever is already in the form ──
+          this.syncAddedSetsFromStep();
         },
         error: () => { this.incidentLookupLoading = false; }
       });
@@ -791,6 +862,133 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     const mm = String(date.getMonth() + 1).padStart(2, '0');
     const dd = String(date.getDate()).padStart(2, '0');
     return `${mm}/${dd}/${date.getFullYear()}`;
+  }
+
+  // ═══════════════════════════════════════════
+  //  INCIDENT PANEL — FILTER HELPERS
+  // ═══════════════════════════════════════════
+
+  /** Human-readable label for the active filter (shown in panel subtitle). */
+  get incidentFilterLabel(): string {
+    switch (this.incidentFilterMode) {
+      case '20': return 'Within 20 days of';
+      case '30': return 'Within 30 days of';
+      case 'custom': return 'Custom range around';
+      default:   return 'Within 10 days of';
+    }
+  }
+
+  /**
+   * Sets the active filter mode and re-runs the search.
+   * Switching to 'custom' just expands the date pickers — the search
+   * is not re-fired until the user picks a date via applyIncidentFilter().
+   */
+  setIncidentFilter(mode: '10' | '20' | '30' | 'custom'): void {
+    this.incidentFilterMode = mode;
+    if (mode !== 'custom') {
+      this.applyIncidentFilter();
+    }
+  }
+
+  /** Compute the effective day offset from the current filter state. */
+  private getIncidentDayOffset(): number {
+    switch (this.incidentFilterMode) {
+      case '20': return 20;
+      case '30': return 30;
+      case 'custom': {
+        if (!this.lastIncidentDateStr) return 10;
+        const anchor = new Date(this.lastIncidentDateStr + 'T00:00:00');
+        let maxOffset = 1;
+        if (this.incidentCustomFrom) {
+          const from = new Date(this.incidentCustomFrom + 'T00:00:00');
+          const diff = (anchor.getTime() - from.getTime()) / 86_400_000;
+          maxOffset = Math.max(maxOffset, Math.ceil(Math.abs(diff)));
+        }
+        if (this.incidentCustomTo) {
+          const to = new Date(this.incidentCustomTo + 'T00:00:00');
+          const diff = (to.getTime() - anchor.getTime()) / 86_400_000;
+          maxOffset = Math.max(maxOffset, Math.ceil(Math.abs(diff)));
+        }
+        return maxOffset;
+      }
+      default: return 10;
+    }
+  }
+
+  /**
+   * Re-fires the incident lookup with the currently selected filter offset.
+   * Preserves the anchor date and member id from the last real open.
+   */
+  applyIncidentFilter(): void {
+    if (!this.lastIncidentDateStr) return;
+    this.triggerIncidentLookup({
+      incidentDateStr:  this.lastIncidentDateStr,
+      memberDetailId:   this.lastMemberDetailId,
+      dayOffset:        this.getIncidentDayOffset()
+    });
+  }
+
+  // ═══════════════════════════════════════════
+  //  INCIDENT PANEL — ADD TO CASE / TRACKING
+  // ═══════════════════════════════════════════
+
+  /** True if the given auth has already been added to the case in this session. */
+  isAuthAdded(auth: any): boolean {
+    const id = String(auth?.authnumber ?? auth?.authNumber ?? '').trim();
+    return !!id && this.addedAuthIds.has(id);
+  }
+
+  /** True if the given claim has already been added to the case in this session. */
+  isClaimAdded(claim: any): boolean {
+    const id = String(claim?.claimNumber ?? claim?.claimnumber ?? '').trim();
+    return !!id && this.addedClaimIds.has(id);
+  }
+
+  /**
+   * Called when user clicks "Add to Case" on an incident panel card.
+   * Marks the item as added (disabling the button) and delegates to the
+   * current step component's addAuthToCase / addClaimToCase method.
+   */
+  addIncidentItemToCase(item: any, type: 'auth' | 'claim'): void {
+    const inst: any = this.currentStepRef?.instance;
+
+    if (type === 'auth') {
+      const id = String(item?.authnumber ?? item?.authNumber ?? '').trim();
+      if (id) this.addedAuthIds.add(id);
+      if (typeof inst?.addAuthToCase === 'function') {
+        inst.addAuthToCase(item);
+      }
+    } else {
+      const id = String(item?.claimNumber ?? item?.claimnumber ?? '').trim();
+      if (id) this.addedClaimIds.add(id);
+      if (typeof inst?.addClaimToCase === 'function') {
+        inst.addClaimToCase(item);
+      }
+    }
+  }
+
+  /**
+   * Reads the IDs of auths and claims already present in the current step's
+   * selectedLookupMap and merges them into the shell's tracking Sets.
+   *
+   * Called whenever the incident panel opens, results arrive, or the user
+   * navigates back from a detail view — ensuring the "Add to Case" buttons
+   * are disabled for items already in the case (including data loaded from
+   * saved JSON on reload, not only items added in the current session).
+   */
+  private syncAddedSetsFromStep(): void {
+    const inst: any = this.currentStepRef?.instance;
+    if (!inst) return;
+
+    if (typeof inst.getAddedAuthIds === 'function') {
+      const ids: string[] = inst.getAddedAuthIds() ?? [];
+      for (const id of ids) this.addedAuthIds.add(id);
+    }
+
+    if (typeof inst.getAddedClaimIds === 'function') {
+      const ids: string[] = inst.getAddedClaimIds() ?? [];
+      for (const id of ids) this.addedClaimIds.add(id);
+    }
   }
 
   /** Load AI panel content after case is saved and has a case number */
