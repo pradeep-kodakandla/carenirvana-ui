@@ -1,10 +1,22 @@
 import { Injectable } from '@angular/core';
 import { firstValueFrom, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 
 import { AuthDetailApiService, DecisionSectionName } from 'src/app/service/authdetailapi.service';
 import { DatasourceLookupService } from 'src/app/service/crud.service';
 import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Source-type constants
+// Procedure numbers are partitioned by source so reverse sync can route correctly:
+//   1   – 999  : Service/Procedure entries  (procedure{n}_*)
+//   1000 – 1999 : Medication entries         (medication{n}_*)
+//   2000 – 2999 : Transportation code entries (tc_r{ride}_c{code}_*)
+// ─────────────────────────────────────────────────────────────────────────────
+export type DecisionSourceType = 'service' | 'medication' | 'transportation';
+
+export const PROC_OFFSET_MED   = 1000;
+export const PROC_OFFSET_TRANS = 2000;
 
 export interface EnsureDecisionSeedArgs {
   authDetailId: number;
@@ -12,16 +24,54 @@ export interface EnsureDecisionSeedArgs {
   /** merged jsonData object from AuthDetails (NOT stringified) */
   authData: any;
   userId: number;
-  /** When 'Yes', auto-sets Decision Status=Approved, Decision Status Code=Medical Necessity Met, Appr=Req, Denied=0 */
+  /** When 'Yes', auto-sets Decision Status=Approved, Appr=Req, Denied=0 */
   authApprove?: string;
 }
 
+/** Describes a transport code entry extracted from authData */
+interface TransportCodeEntry {
+  rideId: number;
+  codeId: number;
+  /** 1-based sequential index used for procedureNo computation */
+  seqIndex: number;
+}
+
+/** Result of a Decision → Source reverse sync */
+export interface DecisionReverseSyncArgs {
+  authDetailId: number;
+  authData: any;
+  userId: number;
+  /** procedureNo of the decision item that was just saved */
+  procedureNo: number;
+  approvedValue: any;
+  deniedValue: any;
+  requestedValue: any;
+  /** The full saved decision payload */
+  decisionPayload?: any;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Service
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
- * Seeds Decision Details items (1 per procedure/service) right AFTER AuthDetails save.
+ * AuthDecisionSyncService
  *
- * Goal:
- * - AuthDecision becomes a pure viewer/editor of existing decision items.
- * - Seeding is idempotent (won't overwrite existing decision rows).
+ * Handles ALL bi-directional data flow between Source Sections
+ * (Service, Medication, Transportation) and Decision Details.
+ *
+ * ┌─────────────────────────────────────────────────────────┐
+ * │                  Source → Decision                       │
+ * │  Service Details    ──────────────────►  Decision Item  │
+ * │  Medication Details ──────────────────►  Decision Item  │
+ * │  Transportation     ──────────────────►  Decision Item  │
+ * └─────────────────────────────────────────────────────────┘
+ * ┌─────────────────────────────────────────────────────────┐
+ * │                  Decision → Source                       │
+ * │  Decision Item  ──────────────────►  Service approved   │
+ * │  Decision Item  ──────────────────►  Medication qty     │
+ * │  Decision Item  ──────────────────►  Transport approved │
+ * └─────────────────────────────────────────────────────────┘
  */
 @Injectable({ providedIn: 'root' })
 export class AuthDecisionSeedService {
@@ -32,359 +82,198 @@ export class AuthDecisionSeedService {
     private dsLookup: DatasourceLookupService
   ) { }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  PUBLIC ENTRY POINTS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Seeds Decision Detail items (idempotent) for ALL source types:
+   *   - Service/Procedure entries  (procedure{n}_*)
+   *   - Medication entries         (medication{n}_*)
+   *   - Transportation code entries (tc_r{ride}_c{code}_*)
+   *
+   * Called right AFTER AuthDetails save.
+   */
   async ensureSeeded(args: EnsureDecisionSeedArgs): Promise<void> {
-    const authDetailId = Number(args?.authDetailId ?? 0);
+    const authDetailId  = Number(args?.authDetailId ?? 0);
     const authTemplateId = Number(args?.authTemplateId ?? 0);
-    const authData = args?.authData ?? {};
-    const userId = Number(args?.userId ?? 0);
-    const authApprove = String(args?.authApprove ?? '').trim();
+    const authData      = args?.authData ?? {};
+    const userId        = Number(args?.userId ?? 0);
+    const authApprove   = String(args?.authApprove ?? '').trim();
 
     if (!authDetailId || !authTemplateId || !userId) return;
 
-    const procedureNos = this.extractProcedureNosFromAuthData(authData);
-    if (!procedureNos.length) return;
-
-    // Load existing Decision Details items to keep this idempotent
-    const existing = await firstValueFrom(
-      this.api.getItems(authDetailId, this.DECISION_DETAILS).pipe(catchError(() => of([] as any[])))
-    );
-
-    const existingProcNos = new Set<number>();
-    for (const it of (existing ?? [])) {
-      const p = this.extractProcedureNoFromItem(it);
-      if (Number.isFinite(p) && p > 0) existingProcNos.add(p);
-    }
-
-    // Determine if auto-approve is active
+    // ── Resolve dropdown values once for all seeds ──
     const isAutoApproved = this.isYesValue(authApprove);
-
-    // Resolve decision status: Approved (if auto-approve) or Pended (default)
-    let resolvedStatusValue: any = null;
+    let resolvedStatusValue: any     = null;
     let resolvedStatusCodeValue: any = null;
 
     if (isAutoApproved) {
-      const { approvedValue, medNecessityMetValue } = await this.resolveApprovedDecisionValues(authTemplateId);
-      resolvedStatusValue = approvedValue;
+      const { approvedValue, medNecessityMetValue } =
+        await this.resolveApprovedDecisionValues(authTemplateId);
+      resolvedStatusValue     = approvedValue;
       resolvedStatusCodeValue = medNecessityMetValue;
-      console.log('[DecisionSeed] Auto-Approve: Status=Approved, StatusCode=Medical Necessity Met');
     } else {
       resolvedStatusValue = await this.resolvePendedDecisionStatusValue(authTemplateId);
     }
 
-    const nowIso = new Date().toISOString();
+    // ── Load existing items once ──
+    const existing: any[] = await firstValueFrom(
+      this.api.getItems(authDetailId, this.DECISION_DETAILS)
+            .pipe(catchError(() => of([] as any[])))
+    ) ?? [];
+
+    const existingProcNos = new Set<number>(
+      existing.map(it => this.extractProcedureNoFromItem(it))
+               .filter(n => Number.isFinite(n) && n > 0)
+    );
+
+    const nowIso     = new Date().toISOString();
     const createCalls: Promise<any>[] = [];
 
-    for (const procNo of procedureNos) {
+    // ── 1. Service/Procedure entries ──────────────────────────────────────
+    const serviceNos = this.extractProcedureNosFromAuthData(authData);
+    for (const procNo of serviceNos) {
       if (existingProcNos.has(procNo)) continue;
-
-      const payload = this.buildDecisionDetailsSeedPayload(authData, procNo, resolvedStatusValue, nowIso, isAutoApproved, resolvedStatusCodeValue);
-
-      // Create only Decision Details row; other decision sections can be created on first save in AuthDecision
-      createCalls.push(
-        firstValueFrom(
-          this.api.createItem(authDetailId, this.DECISION_DETAILS, { data: payload } as any, userId)
-            .pipe(catchError(() => of(null)))
-        )
+      const payload = this.buildServiceDecisionPayload(
+        authData, procNo, resolvedStatusValue, nowIso,
+        isAutoApproved, resolvedStatusCodeValue
       );
+      createCalls.push(this.createDecisionItem(authDetailId, payload, userId));
+    }
+
+    // ── 2. Medication entries ──────────────────────────────────────────────
+    const medicationNos = this.extractMedicationNosFromAuthData(authData);
+    for (const medNo of medicationNos) {
+      const virtualProcNo = PROC_OFFSET_MED + medNo;
+      if (existingProcNos.has(virtualProcNo)) continue;
+      const payload = this.buildMedicationDecisionPayload(
+        authData, medNo, virtualProcNo, resolvedStatusValue, nowIso,
+        isAutoApproved, resolvedStatusCodeValue
+      );
+      createCalls.push(this.createDecisionItem(authDetailId, payload, userId));
+    }
+
+    // ── 3. Transportation code entries ────────────────────────────────────
+    const transportEntries = this.extractTransportCodeEntriesFromAuthData(authData);
+    for (const entry of transportEntries) {
+      const virtualProcNo = PROC_OFFSET_TRANS + entry.seqIndex;
+      if (existingProcNos.has(virtualProcNo)) continue;
+      const payload = this.buildTransportationDecisionPayload(
+        authData, entry, virtualProcNo, resolvedStatusValue, nowIso,
+        isAutoApproved, resolvedStatusCodeValue
+      );
+      createCalls.push(this.createDecisionItem(authDetailId, payload, userId));
     }
 
     if (createCalls.length) {
       await Promise.all(createCalls);
+      console.log(`[DecisionSeed] Created ${createCalls.length} decision item(s).`);
     }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Helpers
-  // ---------------------------------------------------------------------------
-
-  private extractProcedureNosFromAuthData(authData: any): number[] {
-    const keys = Object.keys(authData ?? {});
-    const set = new Set<number>();
-
-    for (const k of keys) {
-      const m = /^procedure(\d+)_/i.exec(k);
-      if (m) set.add(Number(m[1]));
-    }
-
-    return Array.from(set)
-      .filter(n => Number.isFinite(n) && n > 0)
-      .sort((a, b) => a - b);
-  }
-
-  private extractProcedureNoFromItem(item: any): number {
-    const rawData: any =
-      item?.data ??
-      item?.jsonData ??
-      item?.payload ??
-      item?.itemData ??
-      null;
-
-    let parsed: any = null;
-    try {
-      parsed = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-    } catch {
-      parsed = rawData;
-    }
-
-    const p = Number(
-      item?.procedureNo ??
-      item?.procedureIndex ??
-      item?.serviceIndex ??
-      item?.serviceNo ??
-      parsed?.procedureNo ??
-      parsed?.procedureIndex ??
-      parsed?.serviceIndex ??
-      parsed?.serviceNo
-    );
-
-    return p;
-  }
-
-  private extractServiceCodeString(v: any): string {
-    if (v === null || v === undefined) return '';
-    if (typeof v === 'string' || typeof v === 'number') return String(v).trim();
-    if (typeof v !== 'object') return String(v).trim();
-    const obj: any = v;
-    const cand =
-      obj?.code ??
-      obj?.procedureCode?.code ??
-      obj?.serviceCode?.code ??
-      obj?.value ??
-      obj?.id ??
-      '';
-    return String(cand ?? '').trim();
-  }
-
-  private buildDecisionDetailsSeedPayload(authData: any, procedureNo: number, statusValue: any, nowIso: string, isAutoApproved: boolean = false, statusCodeValue: any = null): any {
-    const get = (suffix: string) => authData?.[`procedure${procedureNo}_${suffix}`];
-
-    // Resolve requested units for auto-approve (Approved = Requested, Denied = 0)
-    const requestedUnits =
-      get('serviceReq') ??
-      get('recommendedUnits') ??
-      get('requested') ??
-      get('hours') ??
-      get('days') ??
-      get('weeks');
-
-    // Keep alignment with legacy getServicePrefillValue mapping in AuthDecision
-    const payload: any = {
-      procedureNo,
-      decisionNumber: String(procedureNo),
-
-      decisionStatus: (statusValue !== undefined ? statusValue : null),
-      decisionStatusCode: isAutoApproved ? statusCodeValue : null,
-
-      createdDateTime: get('createdDateTime') ?? nowIso,
-      updatedDateTime: nowIso,
-      decisionDateTime: isAutoApproved ? nowIso : null,
-
-      serviceCode: this.extractServiceCodeString(get('procedureCode') ?? get('serviceCode')),
-      serviceDescription: get('procedureDescription') ?? get('serviceDescription'),
-
-      fromDate: get('fromDate') ?? get('effectiveDate'),
-      toDate: get('toDate'),
-
-      requested: requestedUnits,
-
-      approved: isAutoApproved ? (requestedUnits ?? 0) : (get('serviceAppr') ?? get('approvedPsp')),
-      denied: isAutoApproved ? 0 : get('serviceDenied'),
-      used: get('used'),
-
-      reviewType: get('reviewType'),
-      modifier: get('modifier'),
-      unitType: get('unitType'),
-      alternateServiceId: get('alternateServiceId'),
-
-      // auth-level fields (best-effort)
-      treatmentType: authData?.treatementType ?? authData?.treatmentType ?? get('treatmentType'),
-      requestType: authData?.requestSent ?? authData?.requestType ?? authData?.requestReceivedVia ?? get('requestSent'),
-      requestReceivedVia: authData?.requestReceivedVia ?? authData?.requestSent ?? get('requestSent'),
-      requestPriority: authData?.requestPriority ?? get('requestPriority'),
-
-      // Auto-approve metadata
-      decisionUpdatedBy: isAutoApproved ? 'RulesEngine' : null,
-      decisionUpdatedDatetime: nowIso
-    };
-
-    // Convert empty strings to null for cleaner backend payloads
-    for (const k of Object.keys(payload)) {
-      if (payload[k] === '') payload[k] = null;
-    }
-
-    return payload;
-  }
-
-  private async resolvePendedDecisionStatusValue(authTemplateId: number): Promise<any | null> {
-    const tmpl = await firstValueFrom(
-      this.api.getDecisionTemplate(authTemplateId).pipe(catchError(() => of(null)))
-    );
-
-    const rawSections: any[] = (tmpl as any)?.sections ?? (tmpl as any)?.Sections ?? [];
-    const sections = Array.isArray(rawSections) ? rawSections : [];
-
-    let ds: string | null = null;
-    for (const sec of sections) {
-      const fields: any[] = (sec as any)?.fields ?? (sec as any)?.Fields ?? [];
-      const hit = (fields ?? []).find((f: any) => String(f?.id ?? f?.fieldId ?? '').trim().toLowerCase() === 'decisionstatus');
-      if (hit) {
-        ds = String(hit?.datasource ?? hit?.Datasource ?? '').trim() || null;
-        break;
-      }
-    }
-    if (!ds) return null;
-
-    const opts = await firstValueFrom(
-      this.dsLookup.getOptionsWithFallback(
-        ds,
-        (r: any) => {
-          const value = r?.value ?? r?.code ?? r?.id;
-          const label = r?.label ?? r?.text ?? r?.name ?? r?.description ?? String(value ?? '');
-          return { value, label, text: label, raw: r } as UiSmartOption;
-        },
-        ['UM', 'Admin', 'Provider']
-      ).pipe(catchError(() => of([] as UiSmartOption[])))
-    );
-
-    const pended = (opts ?? []).find(o => String((o as any)?.label ?? '').trim().toLowerCase().startsWith('pend'));
-    return pended ? (pended as any).value : null;
   }
 
   /**
-   * Resolves the dropdown option values for "Approved" status and "Medical Necessity Met" status code
-   * from the decision template datasources.
+   * Syncs source-level field changes into existing Decision Detail items.
+   * Covers Service, Medication, and Transportation in one call.
+   * Called after EVERY AuthDetails save.
    */
-  private async resolveApprovedDecisionValues(authTemplateId: number): Promise<{ approvedValue: any; medNecessityMetValue: any }> {
-    const tmpl = await firstValueFrom(
-      this.api.getDecisionTemplate(authTemplateId).pipe(catchError(() => of(null)))
-    );
+  async syncAllSourceChangesToDecision(args: {
+    authDetailId: number;
+    authData: any;
+    userId: number;
+  }): Promise<void> {
+    await Promise.all([
+      this.syncServiceChangesToDecision(args),
+      this.syncMedicationChangesToDecision(args),
+      this.syncTransportationChangesToDecision(args),
+    ]);
+  }
 
-    const rawSections: any[] = (tmpl as any)?.sections ?? (tmpl as any)?.Sections ?? [];
-    const sections = Array.isArray(rawSections) ? rawSections : [];
+  /**
+   * Reverse sync: Decision → Source sections.
+   * Called after AuthDecision saves an approved/denied value.
+   *
+   * Returns the updated authData so the caller can persist it.
+   */
+  syncDecisionToSource(args: DecisionReverseSyncArgs): any {
+    const { authData, procedureNo, approvedValue, deniedValue, requestedValue, decisionPayload } = args;
+    const updated = { ...(authData ?? {}) };
+    const nowIso  = new Date().toISOString();
 
-    let statusDs: string | null = null;
-    let statusCodeDs: string | null = null;
+    if (procedureNo >= PROC_OFFSET_TRANS) {
+      // ── Transportation code ──────────────────────────────────────────────
+      const seqIndex = procedureNo - PROC_OFFSET_TRANS;
+      // There's no single "approved" field in the transport form, but we persist
+      // the decision outcome as transport-specific authData keys for display.
+      updated[`transport${seqIndex}_decisionApproved`] = approvedValue;
+      updated[`transport${seqIndex}_decisionDenied`]   = deniedValue;
+      updated[`transport${seqIndex}_decisionUpdated`]  = nowIso;
+      console.log(`[DecisionSync] Reverse → Transportation seqIndex=${seqIndex}: approved=${approvedValue}`);
 
-    for (const sec of sections) {
-      const fields: any[] = (sec as any)?.fields ?? (sec as any)?.Fields ?? [];
-      for (const f of (fields ?? [])) {
-        const fid = String(f?.id ?? f?.fieldId ?? '').trim().toLowerCase();
-        if (fid === 'decisionstatus' && !statusDs) {
-          statusDs = String(f?.datasource ?? f?.Datasource ?? '').trim() || null;
-        }
-        if (fid === 'decisionstatuscode' && !statusCodeDs) {
-          statusCodeDs = String(f?.datasource ?? f?.Datasource ?? '').trim() || null;
-        }
+    } else if (procedureNo >= PROC_OFFSET_MED) {
+      // ── Medication ───────────────────────────────────────────────────────
+      const medNo = procedureNo - PROC_OFFSET_MED;
+      const prefix = `medication${medNo}_`;
+      // Map approved → approvedQuantity; denied → deniedQuantity
+      updated[`${prefix}approvedQuantity`] = approvedValue;
+      updated[`${prefix}deniedQuantity`]   = deniedValue;
+      updated[`${prefix}decisionUpdated`]  = nowIso;
+
+      // Also write standard serviceAppr-style keys so any generic lookups work
+      updated[`${prefix}serviceAppr`]   = approvedValue;
+      updated[`${prefix}serviceDenied`] = deniedValue;
+      console.log(`[DecisionSync] Reverse → Medication ${medNo}: approved=${approvedValue}`);
+
+    } else {
+      // ── Service/Procedure ────────────────────────────────────────────────
+      const prefix = `procedure${procedureNo}_`;
+      updated[`${prefix}serviceAppr`]         = approvedValue;
+      updated[`${prefix}serviceDenied`]        = deniedValue;
+      updated[`${prefix}decisionUpdated`]      = nowIso;
+
+      // Keep requested in sync if decision changes the requested amount
+      if (requestedValue !== undefined && requestedValue !== null) {
+        updated[`${prefix}serviceReq`] = requestedValue;
       }
+
+      // Copy decision-specific fields back for display
+      if (decisionPayload?.reviewType != null) {
+        updated[`${prefix}reviewType`] = decisionPayload.reviewType;
+      }
+      console.log(`[DecisionSync] Reverse → Service ${procedureNo}: approved=${approvedValue}`);
     }
 
-    let approvedValue: any = null;
-    let medNecessityMetValue: any = null;
-
-    // Resolve "Approved" from Decision Status datasource
-    if (statusDs) {
-      const opts = await firstValueFrom(
-        this.dsLookup.getOptionsWithFallback(
-          statusDs,
-          (r: any) => {
-            const value = r?.value ?? r?.code ?? r?.id;
-            const label = r?.label ?? r?.text ?? r?.name ?? r?.description ?? String(value ?? '');
-            return { value, label, text: label, raw: r } as UiSmartOption;
-          },
-          ['UM', 'Admin', 'Provider']
-        ).pipe(catchError(() => of([] as UiSmartOption[])))
-      );
-
-      const approved = (opts ?? []).find(o => String((o as any)?.label ?? '').trim().toLowerCase().startsWith('approv'));
-      if (approved) approvedValue = (approved as any).value;
-    }
-
-    // Resolve "Medical Necessity Met" from Decision Status Code datasource
-    if (statusCodeDs) {
-      const codeOpts = await firstValueFrom(
-        this.dsLookup.getOptionsWithFallback(
-          statusCodeDs,
-          (r: any) => {
-            const value = r?.value ?? r?.code ?? r?.id;
-            const label = r?.label ?? r?.text ?? r?.name ?? r?.description ?? String(value ?? '');
-            return { value, label, text: label, raw: r } as UiSmartOption;
-          },
-          ['UM', 'Admin', 'Provider']
-        ).pipe(catchError(() => of([] as UiSmartOption[])))
-      );
-
-      const medNec = (codeOpts ?? []).find(o => {
-        const lbl = String((o as any)?.label ?? '').trim().toLowerCase();
-        return lbl.includes('medical necessity met') || lbl.includes('medical necessity');
-      });
-      if (medNec) medNecessityMetValue = (medNec as any).value;
-    }
-
-    return { approvedValue, medNecessityMetValue };
+    return updated;
   }
 
-  private isYesValue(v: any): boolean {
-    const s = String(v ?? '').trim().toLowerCase();
-    return s === 'y' || s === 'yes' || s === 'true' || s === '1';
-  }
-
-  // ═══════════════════════════════════════════════════════════
-  //  BI-DIRECTIONAL SYNC: Service → Decision
-  //
-  //  Called from AuthDetails after save to push service-level
-  //  field changes into existing Decision Details items.
-  //  This ensures that when a user updates procedure codes,
-  //  dates, or units in the service section, those changes
-  //  are reflected in the decision section automatically.
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  SERVICE / PROCEDURE SYNC  (Source → Decision)
+  // ═══════════════════════════════════════════════════════════════════════════
 
   async syncServiceChangesToDecision(args: {
     authDetailId: number;
     authData: any;
     userId: number;
   }): Promise<void> {
-    const authDetailId = Number(args?.authDetailId ?? 0);
-    const authData = args?.authData ?? {};
-    const userId = Number(args?.userId ?? 0);
-
+    const { authDetailId, authData, userId } = this.normalizeArgs(args);
     if (!authDetailId || !userId) return;
 
-    // Load existing Decision Details items
-    const existing = await firstValueFrom(
-      this.api.getItems(authDetailId, this.DECISION_DETAILS).pipe(catchError(() => of([] as any[])))
-    );
-
-    if (!Array.isArray(existing) || !existing.length) return;
-
+    const existing = await this.loadExistingItems(authDetailId);
     const updateCalls: Promise<any>[] = [];
 
     for (const item of existing) {
-      const rawData: any = item?.data ?? item?.jsonData ?? item?.payload ?? item?.itemData ?? null;
-      let data: any = null;
-      try {
-        data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-      } catch {
-        data = rawData;
-      }
-      data = data ?? {};
+      const data   = this.parseItemData(item);
+      const procNo = this.getProcNoFromData(item, data);
 
-      const procNo = Number(
-        item?.procedureNo ??
-        data?.procedureNo ??
-        data?.procedureIndex ??
-        data?.serviceNo ??
-        0
-      );
-      if (!procNo) continue;
+      // Only handle service-range items
+      if (!procNo || procNo >= PROC_OFFSET_MED) continue;
 
-      const itemId = String(item?.itemId ?? item?.id ?? item?.decisionItemId ?? '');
+      const itemId = this.getItemId(item);
       if (!itemId) continue;
 
       const prefix = `procedure${procNo}_`;
-
-      // Map service fields → decision fields
       const fieldMap: Array<{ authSuffix: string; decisionKey: string }> = [
-        { authSuffix: 'procedureCode',       decisionKey: 'serviceCode' },
+        { authSuffix: 'procedureCode',        decisionKey: 'serviceCode' },
         { authSuffix: 'procedureDescription', decisionKey: 'serviceDescription' },
         { authSuffix: 'fromDate',             decisionKey: 'fromDate' },
         { authSuffix: 'toDate',               decisionKey: 'toDate' },
@@ -396,36 +285,633 @@ export class AuthDecisionSeedService {
         { authSuffix: 'reviewType',           decisionKey: 'reviewType' },
       ];
 
-      let changed = false;
-      const updatedPayload = { ...data };
-
-      for (const { authSuffix, decisionKey } of fieldMap) {
-        const authVal = authData?.[prefix + authSuffix];
-        if (authVal === undefined || authVal === null) continue;
-
-        const authStr = String(this.extractServiceCodeString(authVal) || authVal || '').trim();
-        const decStr = String(this.extractServiceCodeString(data?.[decisionKey]) || data?.[decisionKey] || '').trim();
-
-        if (authStr && authStr !== decStr) {
-          updatedPayload[decisionKey] = authVal;
-          changed = true;
-        }
-      }
-
+      const { updatedPayload, changed } = this.buildUpdatedPayload(data, authData, prefix, fieldMap);
       if (changed) {
-        updatedPayload.updatedDateTime = new Date().toISOString();
-        updateCalls.push(
-          firstValueFrom(
-            this.api.updateItem(authDetailId, this.DECISION_DETAILS, itemId, { data: updatedPayload } as any, userId)
-              .pipe(catchError(() => of(null)))
-          )
-        );
+        updateCalls.push(this.updateDecisionItem(authDetailId, itemId, updatedPayload, userId));
       }
     }
 
     if (updateCalls.length) {
       await Promise.all(updateCalls);
-      console.log(`[DecisionSeed] Synced ${updateCalls.length} decision item(s) from service data.`);
+      console.log(`[DecisionSync] Service → Decision: updated ${updateCalls.length} item(s).`);
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  MEDICATION SYNC  (Source → Decision)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  async syncMedicationChangesToDecision(args: {
+    authDetailId: number;
+    authData: any;
+    userId: number;
+  }): Promise<void> {
+    const { authDetailId, authData, userId } = this.normalizeArgs(args);
+    if (!authDetailId || !userId) return;
+
+    const existing = await this.loadExistingItems(authDetailId);
+    const updateCalls: Promise<any>[] = [];
+
+    for (const item of existing) {
+      const data       = this.parseItemData(item);
+      const sourceType = data?.sourceType as DecisionSourceType;
+
+      // Only handle medication-range items
+      if (sourceType !== 'medication') continue;
+
+      const virtualProcNo = this.getProcNoFromData(item, data);
+      if (!virtualProcNo || virtualProcNo < PROC_OFFSET_MED || virtualProcNo >= PROC_OFFSET_TRANS) continue;
+
+      const medNo  = virtualProcNo - PROC_OFFSET_MED;
+      const itemId = this.getItemId(item);
+      if (!itemId) continue;
+
+      const prefix = `medication${medNo}_`;
+      const fieldMap: Array<{ authSuffix: string; decisionKey: string }> = [
+        { authSuffix: 'medicationCode',        decisionKey: 'serviceCode' },
+        { authSuffix: 'medicationDescription', decisionKey: 'serviceDescription' },
+        { authSuffix: 'fromDate',              decisionKey: 'fromDate' },
+        { authSuffix: 'toDate',                decisionKey: 'toDate' },
+        { authSuffix: 'quantity',              decisionKey: 'requested' },
+        { authSuffix: 'hcpcCode',              decisionKey: 'alternateServiceId' },
+        { authSuffix: 'frequency',             decisionKey: 'reviewType' },
+        // After reverse-sync writes these back:
+        { authSuffix: 'approvedQuantity',      decisionKey: 'approved' },
+        { authSuffix: 'deniedQuantity',        decisionKey: 'denied' },
+      ];
+
+      const { updatedPayload, changed } = this.buildUpdatedPayload(data, authData, prefix, fieldMap);
+      if (changed) {
+        updateCalls.push(this.updateDecisionItem(authDetailId, itemId, updatedPayload, userId));
+      }
+    }
+
+    if (updateCalls.length) {
+      await Promise.all(updateCalls);
+      console.log(`[DecisionSync] Medication → Decision: updated ${updateCalls.length} item(s).`);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  TRANSPORTATION SYNC  (Source → Decision)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  async syncTransportationChangesToDecision(args: {
+    authDetailId: number;
+    authData: any;
+    userId: number;
+  }): Promise<void> {
+    const { authDetailId, authData, userId } = this.normalizeArgs(args);
+    if (!authDetailId || !userId) return;
+
+    const existing = await this.loadExistingItems(authDetailId);
+    const updateCalls: Promise<any>[] = [];
+
+    for (const item of existing) {
+      const data       = this.parseItemData(item);
+      const sourceType = data?.sourceType as DecisionSourceType;
+
+      if (sourceType !== 'transportation') continue;
+
+      const virtualProcNo = this.getProcNoFromData(item, data);
+      if (!virtualProcNo || virtualProcNo < PROC_OFFSET_TRANS) continue;
+
+      const seqIndex = virtualProcNo - PROC_OFFSET_TRANS;
+      const itemId   = this.getItemId(item);
+      if (!itemId) continue;
+
+      // Transport key-fields stored in authData from injectTransportMetaToPayload
+      const rideId  = data?.sourceRideId;
+      const codeId  = data?.sourceCodeId;
+
+      if (!rideId || !codeId) continue;
+
+      const prefix = `tc_r${rideId}_c${codeId}_`;
+      const fieldMap: Array<{ authSuffix: string; decisionKey: string }> = [
+        { authSuffix: 'transportationCode',        decisionKey: 'serviceCode' },
+        { authSuffix: 'transportationDescription', decisionKey: 'serviceDescription' },
+        { authSuffix: 'modifier',                  decisionKey: 'modifier' },
+      ];
+
+      // Transport dates live at the section level (not per-code)
+      const updatedPayload: any = { ...data };
+      let changed = false;
+
+      for (const { authSuffix, decisionKey } of fieldMap) {
+        const authVal = authData?.[prefix + authSuffix];
+        if (authVal === undefined || authVal === null) continue;
+        const authStr = String(this.extractCodeString(authVal)).trim();
+        const curStr  = String(this.extractCodeString(data?.[decisionKey])).trim();
+        if (authStr && authStr !== curStr) {
+          updatedPayload[decisionKey] = authVal;
+          changed = true;
+        }
+      }
+
+      // Also sync the section-level begin/end dates
+      const beginDateVal = authData?.['beginDate'];
+      const endDateVal   = authData?.['endDate'];
+      if (beginDateVal && String(beginDateVal) !== String(data?.fromDate ?? '')) {
+        updatedPayload.fromDate = beginDateVal;
+        changed = true;
+      }
+      if (endDateVal && String(endDateVal) !== String(data?.toDate ?? '')) {
+        updatedPayload.toDate = endDateVal;
+        changed = true;
+      }
+
+      // Sync approved/denied from reverse-sync keys
+      const approvedKey = `transport${seqIndex}_decisionApproved`;
+      const deniedKey   = `transport${seqIndex}_decisionDenied`;
+      if (authData?.[approvedKey] !== undefined && authData?.[approvedKey] !== data?.approved) {
+        updatedPayload.approved = authData[approvedKey];
+        changed = true;
+      }
+      if (authData?.[deniedKey] !== undefined && authData?.[deniedKey] !== data?.denied) {
+        updatedPayload.denied = authData[deniedKey];
+        changed = true;
+      }
+
+      if (changed) {
+        updatedPayload.updatedDateTime = new Date().toISOString();
+        updateCalls.push(this.updateDecisionItem(authDetailId, itemId, updatedPayload, userId));
+      }
+    }
+
+    if (updateCalls.length) {
+      await Promise.all(updateCalls);
+      console.log(`[DecisionSync] Transportation → Decision: updated ${updateCalls.length} item(s).`);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  PAYLOAD BUILDERS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Builds the seed payload for a Service/Procedure → Decision item.
+   * (Existing logic preserved from original seed service.)
+   */
+  private buildServiceDecisionPayload(
+    authData: any,
+    procNo: number,
+    statusValue: any,
+    nowIso: string,
+    isAutoApproved: boolean,
+    statusCodeValue: any
+  ): any {
+    const get = (suffix: string) => authData?.[`procedure${procNo}_${suffix}`];
+
+    const requestedUnits =
+      get('serviceReq') ?? get('recommendedUnits') ?? get('requested') ??
+      get('hours') ?? get('days') ?? get('weeks');
+
+    return this.cleanPayload({
+      procedureNo:    procNo,
+      decisionNumber: String(procNo),
+      sourceType:     'service' as DecisionSourceType,
+
+      decisionStatus:     statusValue !== undefined ? statusValue : null,
+      decisionStatusCode: isAutoApproved ? statusCodeValue : null,
+
+      createdDateTime:  get('createdDateTime') ?? nowIso,
+      updatedDateTime:  nowIso,
+      decisionDateTime: isAutoApproved ? nowIso : null,
+
+      serviceCode:        this.extractCodeString(get('procedureCode') ?? get('serviceCode')),
+      serviceDescription: get('procedureDescription') ?? get('serviceDescription'),
+
+      fromDate: get('fromDate') ?? get('effectiveDate'),
+      toDate:   get('toDate'),
+
+      requested: requestedUnits,
+      approved:  isAutoApproved ? (requestedUnits ?? 0) : (get('serviceAppr') ?? get('approvedPsp')),
+      denied:    isAutoApproved ? 0 : get('serviceDenied'),
+      used:      get('used'),
+
+      reviewType:        get('reviewType'),
+      modifier:          get('modifier'),
+      unitType:          get('unitType'),
+      alternateServiceId: get('alternateServiceId'),
+
+      treatmentType:     authData?.treatementType ?? authData?.treatmentType ?? get('treatmentType'),
+      requestType:       authData?.requestSent ?? authData?.requestType ?? authData?.requestReceivedVia,
+      requestReceivedVia: authData?.requestReceivedVia ?? authData?.requestSent,
+      requestPriority:   authData?.requestPriority ?? get('requestPriority'),
+
+      decisionUpdatedBy:      isAutoApproved ? 'RulesEngine' : null,
+      decisionUpdatedDatetime: nowIso,
+    });
+  }
+
+  /**
+   * Builds the seed payload for a Medication → Decision item.
+   *
+   * Field mapping (UM_master.json medication subsection → Decision Details):
+   *   medicationCode        → serviceCode
+   *   medicationDescription → serviceDescription
+   *   fromDate              → fromDate
+   *   toDate                → toDate
+   *   quantity              → requested
+   *   hcpcCode              → alternateServiceId
+   *   frequency             → reviewType  (closest semantic match)
+   */
+  private buildMedicationDecisionPayload(
+    authData: any,
+    medNo: number,
+    virtualProcNo: number,
+    statusValue: any,
+    nowIso: string,
+    isAutoApproved: boolean,
+    statusCodeValue: any
+  ): any {
+    const get = (suffix: string) => authData?.[`medication${medNo}_${suffix}`];
+
+    const requestedQty = get('quantity');
+
+    return this.cleanPayload({
+      procedureNo:    virtualProcNo,
+      decisionNumber: String(virtualProcNo),
+      sourceType:     'medication' as DecisionSourceType,
+      sourceMedNo:    medNo,        // for reverse sync routing
+
+      decisionStatus:     statusValue !== undefined ? statusValue : null,
+      decisionStatusCode: isAutoApproved ? statusCodeValue : null,
+
+      createdDateTime:  nowIso,
+      updatedDateTime:  nowIso,
+      decisionDateTime: isAutoApproved ? nowIso : null,
+
+      // Primary identification
+      serviceCode:        this.extractCodeString(get('medicationCode') ?? get('hcpcCode')),
+      serviceDescription: get('medicationDescription'),
+
+      // Dates
+      fromDate: get('fromDate'),
+      toDate:   get('toDate'),
+
+      // Units
+      requested: requestedQty,
+      approved:  isAutoApproved ? (requestedQty ?? 0) : null,
+      denied:    isAutoApproved ? 0 : null,
+
+      // Medication-specific fields stored for reference
+      alternateServiceId: get('hcpcCode'),   // HCPC as alternate code
+      reviewType:         get('frequency'),   // frequency maps to reviewType
+
+      // Auth-level context
+      treatmentType:     authData?.treatementType ?? authData?.treatmentType,
+      requestType:       authData?.requestSent ?? authData?.requestType,
+      requestReceivedVia: authData?.requestReceivedVia ?? authData?.requestSent,
+      requestPriority:   authData?.requestPriority,
+
+      decisionUpdatedBy:       isAutoApproved ? 'RulesEngine' : null,
+      decisionUpdatedDatetime: nowIso,
+    });
+  }
+
+  /**
+   * Builds the seed payload for a Transportation Code → Decision item.
+   *
+   * Field mapping (UM_master.json Transportation Code Details → Decision Details):
+   *   transportationCode        → serviceCode
+   *   transportationDescription → serviceDescription
+   *   modifier                  → modifier
+   *   beginDate (section-level) → fromDate
+   *   endDate   (section-level) → toDate
+   *   requestedMilesUnits       → requested
+   */
+  private buildTransportationDecisionPayload(
+    authData: any,
+    entry: TransportCodeEntry,
+    virtualProcNo: number,
+    statusValue: any,
+    nowIso: string,
+    isAutoApproved: boolean,
+    statusCodeValue: any
+  ): any {
+    const { rideId, codeId, seqIndex } = entry;
+    const codePrefix = `tc_r${rideId}_c${codeId}_`;
+    const get = (suffix: string) => authData?.[codePrefix + suffix];
+
+    // Section-level fields (begin/end date, requested miles)
+    const fromDate  = authData?.['beginDate'];
+    const toDate    = authData?.['endDate'];
+    const requested = authData?.['requestedMilesUnits'];
+
+    return this.cleanPayload({
+      procedureNo:    virtualProcNo,
+      decisionNumber: String(virtualProcNo),
+      sourceType:     'transportation' as DecisionSourceType,
+      sourceRideId:   rideId,     // for reverse sync routing
+      sourceCodeId:   codeId,     // for reverse sync routing
+      sourceSeqIndex: seqIndex,
+
+      decisionStatus:     statusValue !== undefined ? statusValue : null,
+      decisionStatusCode: isAutoApproved ? statusCodeValue : null,
+
+      createdDateTime:  nowIso,
+      updatedDateTime:  nowIso,
+      decisionDateTime: isAutoApproved ? nowIso : null,
+
+      serviceCode:        this.extractCodeString(get('transportationCode')),
+      serviceDescription: get('transportationDescription'),
+      modifier:           get('modifier'),
+
+      fromDate,
+      toDate,
+
+      requested,
+      approved:  isAutoApproved ? (requested ?? 0) : null,
+      denied:    isAutoApproved ? 0 : null,
+
+      // Auth-level context
+      treatmentType:     authData?.treatementType ?? authData?.treatmentType,
+      requestType:       authData?.requestSent ?? authData?.requestType,
+      requestReceivedVia: authData?.requestReceivedVia ?? authData?.requestSent,
+      requestPriority:   authData?.requestPriority,
+
+      decisionUpdatedBy:       isAutoApproved ? 'RulesEngine' : null,
+      decisionUpdatedDatetime: nowIso,
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  EXTRACTION HELPERS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Extracts 1-based procedure numbers from `procedure{n}_*` authData keys.
+   */
+  private extractProcedureNosFromAuthData(authData: any): number[] {
+    const set = new Set<number>();
+    for (const k of Object.keys(authData ?? {})) {
+      const m = /^procedure(\d+)_/i.exec(k);
+      if (m) set.add(Number(m[1]));
+    }
+    return Array.from(set).filter(n => Number.isFinite(n) && n > 0 && n < PROC_OFFSET_MED).sort((a, b) => a - b);
+  }
+
+  /**
+   * Extracts 1-based medication numbers from `medication{n}_*` authData keys.
+   */
+  private extractMedicationNosFromAuthData(authData: any): number[] {
+    const set = new Set<number>();
+    for (const k of Object.keys(authData ?? {})) {
+      const m = /^medication(\d+)_/i.exec(k);
+      if (m) set.add(Number(m[1]));
+    }
+    return Array.from(set).filter(n => Number.isFinite(n) && n > 0).sort((a, b) => a - b);
+  }
+
+  /**
+   * Extracts transport code entries from `tc_r{rideId}_c{codeId}_*` authData keys.
+   * Returns them in a stable order with a sequential 1-based index for procedureNo mapping.
+   */
+  private extractTransportCodeEntriesFromAuthData(authData: any): TransportCodeEntry[] {
+    const seen = new Map<string, TransportCodeEntry>();
+    let seqIndex = 1;
+
+    const keys = Object.keys(authData ?? {}).sort(); // stable sort
+    for (const k of keys) {
+      const m = /^tc_r(\d+)_c(\d+)_/i.exec(k);
+      if (!m) continue;
+      const rideId = Number(m[1]);
+      const codeId = Number(m[2]);
+      const mapKey = `${rideId}_${codeId}`;
+      if (!seen.has(mapKey)) {
+        seen.set(mapKey, { rideId, codeId, seqIndex: seqIndex++ });
+      }
+    }
+
+    // Also pull from _transportMeta if present (more reliable source)
+    const meta = authData?._transportMeta;
+    if (meta && typeof meta === 'object') {
+      const codesByRide: Record<string, any[]> = meta.codesByRide ?? {};
+      for (const rideIdStr of Object.keys(codesByRide).sort()) {
+        const rideId = Number(rideIdStr);
+        const codes: any[] = codesByRide[rideIdStr] ?? [];
+        for (const code of codes) {
+          const codeId = Number(code.id ?? code.codeId ?? 0);
+          if (!codeId) continue;
+          const mapKey = `${rideId}_${codeId}`;
+          if (!seen.has(mapKey)) {
+            seen.set(mapKey, { rideId, codeId, seqIndex: seqIndex++ });
+          }
+        }
+      }
+    }
+
+    return Array.from(seen.values());
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  DECISION TEMPLATE HELPERS  (unchanged from original)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  private async resolvePendedDecisionStatusValue(authTemplateId: number): Promise<any | null> {
+    const tmpl = await firstValueFrom(
+      this.api.getDecisionTemplate(authTemplateId).pipe(catchError(() => of(null)))
+    );
+    const sections = this.extractTemplateSections(tmpl);
+    const ds = this.findFieldDatasource(sections, 'decisionstatus');
+    if (!ds) return null;
+
+    const opts = await this.loadDatasourceOptions(ds);
+    const pended = opts.find(o => String((o as any)?.label ?? '').trim().toLowerCase().startsWith('pend'));
+    return pended ? (pended as any).value : null;
+  }
+
+  private async resolveApprovedDecisionValues(
+    authTemplateId: number
+  ): Promise<{ approvedValue: any; medNecessityMetValue: any }> {
+    const tmpl = await firstValueFrom(
+      this.api.getDecisionTemplate(authTemplateId).pipe(catchError(() => of(null)))
+    );
+    const sections = this.extractTemplateSections(tmpl);
+
+    const statusDs     = this.findFieldDatasource(sections, 'decisionstatus');
+    const statusCodeDs = this.findFieldDatasource(sections, 'decisionstatuscode');
+
+    let approvedValue: any       = null;
+    let medNecessityMetValue: any = null;
+
+    if (statusDs) {
+      const opts = await this.loadDatasourceOptions(statusDs);
+      const approved = opts.find(o => String((o as any)?.label ?? '').trim().toLowerCase().startsWith('approv'));
+      if (approved) approvedValue = (approved as any).value;
+    }
+
+    if (statusCodeDs) {
+      const codeOpts = await this.loadDatasourceOptions(statusCodeDs);
+      const medNec = codeOpts.find(o => {
+        const lbl = String((o as any)?.label ?? '').trim().toLowerCase();
+        return lbl.includes('medical necessity met') || lbl.includes('medical necessity');
+      });
+      if (medNec) medNecessityMetValue = (medNec as any).value;
+    }
+
+    return { approvedValue, medNecessityMetValue };
+  }
+
+  private extractTemplateSections(tmpl: any): any[] {
+    const raw = (tmpl as any)?.sections ?? (tmpl as any)?.Sections ?? [];
+    return Array.isArray(raw) ? raw : [];
+  }
+
+  private findFieldDatasource(sections: any[], fieldIdLower: string): string | null {
+    for (const sec of sections) {
+      const fields: any[] = sec?.fields ?? sec?.Fields ?? [];
+      const hit = fields.find(f => String(f?.id ?? f?.fieldId ?? '').trim().toLowerCase() === fieldIdLower);
+      if (hit) {
+        const ds = String(hit?.datasource ?? hit?.Datasource ?? '').trim();
+        return ds || null;
+      }
+    }
+    return null;
+  }
+
+  private async loadDatasourceOptions(ds: string): Promise<UiSmartOption[]> {
+    return firstValueFrom(
+      this.dsLookup.getOptionsWithFallback(
+        ds,
+        (r: any) => {
+          const value = r?.value ?? r?.code ?? r?.id;
+          const label = r?.label ?? r?.text ?? r?.name ?? r?.description ?? String(value ?? '');
+          return { value, label, text: label, raw: r } as UiSmartOption;
+        },
+        ['UM', 'Admin', 'Provider']
+      ).pipe(
+        map((opts: UiSmartOption[] | null) => opts ?? [] as UiSmartOption[]),
+        catchError(() => of([] as UiSmartOption[]))
+      )
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  SHARED INFRASTRUCTURE HELPERS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  private normalizeArgs(args: any) {
+    return {
+      authDetailId: Number(args?.authDetailId ?? 0),
+      authData:     args?.authData ?? {},
+      userId:       Number(args?.userId ?? 0),
+    };
+  }
+
+  private async loadExistingItems(authDetailId: number): Promise<any[]> {
+    const result = await firstValueFrom(
+      this.api.getItems(authDetailId, this.DECISION_DETAILS)
+            .pipe(catchError(() => of([] as any[])))
+    );
+    return Array.isArray(result) ? result : [];
+  }
+
+  private parseItemData(item: any): any {
+    const rawData = item?.data ?? item?.jsonData ?? item?.payload ?? item?.itemData ?? null;
+    try {
+      return typeof rawData === 'string' ? JSON.parse(rawData) : (rawData ?? {});
+    } catch {
+      return rawData ?? {};
+    }
+  }
+
+  private getProcNoFromData(item: any, data: any): number {
+    return Number(
+      item?.procedureNo ?? item?.procedureIndex ?? item?.serviceIndex ?? item?.serviceNo ??
+      data?.procedureNo ?? data?.procedureIndex ?? data?.serviceIndex ?? data?.serviceNo ?? 0
+    );
+  }
+
+  private getItemId(item: any): string {
+    return String(item?.itemId ?? item?.id ?? item?.decisionItemId ?? '');
+  }
+
+  /**
+   * Extracts a procedure number from an existing decision item.
+   * Returns NaN for unresolvable items.
+   */
+  private extractProcedureNoFromItem(item: any): number {
+    return this.getProcNoFromData(item, this.parseItemData(item));
+  }
+
+  /**
+   * Compares authData values against existing decision item values and builds
+   * an updated payload with only the changed fields.
+   */
+  private buildUpdatedPayload(
+    existingData: any,
+    authData: any,
+    prefix: string,
+    fieldMap: Array<{ authSuffix: string; decisionKey: string }>
+  ): { updatedPayload: any; changed: boolean } {
+    let changed = false;
+    const updatedPayload = { ...existingData };
+
+    for (const { authSuffix, decisionKey } of fieldMap) {
+      const authVal = authData?.[prefix + authSuffix];
+      if (authVal === undefined || authVal === null) continue;
+
+      const authStr = String(this.extractCodeString(authVal) || authVal || '').trim();
+      const curStr  = String(this.extractCodeString(existingData?.[decisionKey]) || existingData?.[decisionKey] || '').trim();
+
+      if (authStr && authStr !== curStr) {
+        updatedPayload[decisionKey] = authVal;
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      updatedPayload.updatedDateTime = new Date().toISOString();
+    }
+
+    return { updatedPayload, changed };
+  }
+
+  private async createDecisionItem(
+    authDetailId: number,
+    payload: any,
+    userId: number
+  ): Promise<any> {
+    return firstValueFrom(
+      this.api.createItem(authDetailId, this.DECISION_DETAILS, { data: payload } as any, userId)
+            .pipe(catchError(() => of(null)))
+    );
+  }
+
+  private async updateDecisionItem(
+    authDetailId: number,
+    itemId: string,
+    payload: any,
+    userId: number
+  ): Promise<any> {
+    return firstValueFrom(
+      this.api.updateItem(authDetailId, this.DECISION_DETAILS, itemId, { data: payload } as any, userId)
+            .pipe(catchError(() => of(null)))
+    );
+  }
+
+  /** Extract a plain string code from object or primitive values. */
+  private extractCodeString(v: any): string {
+    if (v === null || v === undefined) return '';
+    if (typeof v === 'string' || typeof v === 'number') return String(v).trim();
+    if (typeof v !== 'object') return String(v).trim();
+    const cand = v?.code ?? v?.procedureCode?.code ?? v?.serviceCode?.code ?? v?.value ?? v?.id ?? '';
+    return String(cand ?? '').trim();
+  }
+
+  /** Remove empty-string values from a payload (cleaner backend payloads). */
+  private cleanPayload(payload: any): any {
+    const out: any = {};
+    for (const k of Object.keys(payload)) {
+      out[k] = payload[k] === '' ? null : payload[k];
+    }
+    return out;
+  }
+
+  private isYesValue(v: any): boolean {
+    const s = String(v ?? '').trim().toLowerCase();
+    return s === 'y' || s === 'yes' || s === 'true' || s === '1';
   }
 }

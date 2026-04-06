@@ -1,54 +1,117 @@
-<div class="ui-multi" [class.disabled]="isDisabled">
-  <!-- Autocomplete input (always visible) -->
-  <div class="position-relative">
-    <input #inputEl
-           type="text"
-           class="form-control ui-dd-toggle"
-           [attr.placeholder]="valueSet().size === 0 ? placeholder : ''"
-           [disabled]="isDisabled"
-           [value]="displayText()"
-           (focus)="onFocus()"
-           (input)="onInput($event)"
-           (blur)="onBlur()"
-           autocomplete="off" />
+<div class="ui-multi" [class.disabled]="isDisabled" [class.open]="open()">
 
-    <span class="ui-dd-caret">▾</span>
-  </div>
+  <!-- ── Trigger input ─────────────────────────────────────────────────── -->
+  <div class="ui-input-wrap">
+    <input
+      #inputEl
+      type="text"
+      class="ui-dd-toggle"
+      autocomplete="off"
+      [attr.placeholder]="valueSet().size === 0 ? placeholder : ''"
+      [disabled]="isDisabled"
+      [value]="displayText()"
+      (focus)="onFocus()"
+      (input)="onInput($event)"
+      (blur)="onBlur()"
+    />
 
-  <!-- Menu with checkboxes -->
-  <div #menu class="ui-dd-menu dropdown-menu show" *ngIf="open()" (keydown)="onMenuKey($event)">
-    <!--<div class="d-flex gap-2 align-items-center px-2 py-2">-->
-      <!--<button type="button" class="btn btn-sm btn-outline-primary" (mousedown)="$event.preventDefault()" (click)="selectAllVisible()">Select visible</button>
-      <button type="button" class="btn btn-sm btn-outline-secondary" (mousedown)="$event.preventDefault()" (click)="clearVisible()">Clear visible</button>-->
-      <!--<div class="ms-auto small text-muted">{{ valueSet().size }} selected</div>-->
-    <!--</div>-->
-
-    <div class="ui-list">
-      <button type="button"
-              class="dropdown-item"
-              *ngFor="let o of filtered(); let i = index"
-              [class.active]="i===highlightedIndex()"
-              [class.disabled]="o.disabled"
-              (mouseenter)="highlightedIndex.set(i)"
-              (mousedown)="$event.preventDefault()"
-              (click)="toggleValue(o.value, o.disabled)">
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox"
-                 [checked]="valueSet().has(o.value)" [disabled]="o.disabled" (click)="$event.preventDefault()">
-          <label class="form-check-label">{{ o.label }}</label>
-          <span class="badge bg-secondary ms-2" *ngIf="o.disabled">{{ disabledText }}</span>
-        </div>
-      </button>
-
-      <div class="dropdown-item text-muted" *ngIf="filtered().length===0">No results</div>
-    </div>
-  </div>
-
-  <!-- Selected chips summary (optional) -->
-  <!--<div class="chips" *ngIf="showChips && valueSet().size>0">
-    <span class="badge text-bg-light me-2" *ngFor="let o of options" [hidden]="!valueSet().has(o.value)">
-      {{ o.label }}
-      <button type="button" class="btn-close btn-close-white btn-chip" aria-label="Remove" (click)="removeChip(o.value)"></button>
+    <!-- Count badge -->
+    <span class="ui-count-badge" *ngIf="valueSet().size > 0 && !focused()">
+      {{ valueSet().size }}
     </span>
-  </div>-->
+
+    <!-- Animated caret -->
+    <span class="ui-dd-caret" [class.rotated]="open()">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 4L6 8L10 4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </span>
+  </div>
+
+  <!-- ── Dropdown menu ──────────────────────────────────────────────────── -->
+  <div
+    #menu
+    class="ui-dd-menu"
+    *ngIf="open()"
+    (keydown)="onMenuKey($event)"
+  >
+    <!-- Toolbar: select/clear actions + count -->
+    <div class="ui-menu-toolbar">
+      <button
+        type="button"
+        class="ui-toolbar-btn"
+        (mousedown)="$event.preventDefault()"
+        (click)="selectAllVisible()"
+      >
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M1 6.5L4 9.5L11 2.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        All
+      </button>
+      <button
+        type="button"
+        class="ui-toolbar-btn"
+        (mousedown)="$event.preventDefault()"
+        (click)="clearVisible()"
+      >
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 2L10 10M10 2L2 10" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+        Clear
+      </button>
+      <span class="ui-toolbar-count">
+        {{ valueSet().size }} selected
+      </span>
+    </div>
+
+    <!-- Options list -->
+    <ul class="ui-list" role="listbox" aria-multiselectable="true">
+      <li
+        *ngFor="let o of filtered(); let i = index"
+        class="ui-option"
+        role="option"
+        [attr.aria-selected]="valueSet().has(o.value)"
+        [attr.aria-disabled]="o.disabled ?? false"
+        [class.is-active]="i === highlightedIndex()"
+        [class.is-checked]="valueSet().has(o.value)"
+        [class.is-disabled]="o.disabled"
+        (mouseenter)="highlightedIndex.set(i)"
+        (mousedown)="$event.preventDefault()"
+        (click)="toggleValue(o.value, o.disabled)"
+      >
+        <!-- Custom checkbox -->
+        <span class="ui-checkbox" aria-hidden="true">
+          <svg *ngIf="valueSet().has(o.value)" width="10" height="10" viewBox="0 0 12 12" fill="none">
+            <path d="M1 6.5L4.5 10L11 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+
+        <span class="ui-option-label">{{ o.label }}</span>
+
+        <span class="ui-disabled-badge" *ngIf="o.disabled">{{ disabledText }}</span>
+      </li>
+
+      <!-- Empty state -->
+      <li class="ui-empty" *ngIf="filtered().length === 0">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.5"/><path d="M21 21L16.65 16.65" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        No results for "<strong>{{ search() }}</strong>"
+      </li>
+    </ul>
+  </div>
+
+  <!-- ── Selected chips ─────────────────────────────────────────────────── -->
+  <div class="ui-chips" *ngIf="showChips && valueSet().size > 0">
+    <ng-container *ngFor="let o of options">
+      <span class="ui-chip" *ngIf="valueSet().has(o.value)">
+        <span class="ui-chip-label">{{ o.label }}</span>
+        <button
+          type="button"
+          class="ui-chip-remove"
+          [attr.aria-label]="'Remove ' + o.label"
+          (click)="removeChip(o.value)"
+        >
+          <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
+            <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </span>
+    </ng-container>
+  </div>
+
 </div>

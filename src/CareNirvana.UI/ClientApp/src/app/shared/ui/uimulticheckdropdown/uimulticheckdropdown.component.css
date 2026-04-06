@@ -1,98 +1,469 @@
+/* ─────────────────────────────────────────────
+   Design tokens
+   ───────────────────────────────────────────── */
+:host {
+  --ui-font:            'DM Sans', system-ui, sans-serif;
+
+  --ui-color-bg:        #ffffff;
+  --ui-color-surface:   #f8f9fb;
+  --ui-color-border:    #e2e5ea;
+  --ui-color-border-focus: #3d5aff;
+
+  --ui-color-text:      #1a1d23;
+  --ui-color-muted:     #7b828f;
+  --ui-color-placeholder: #a9b0bc;
+
+  --ui-color-accent:    #3d5aff;
+  --ui-color-accent-lt: #eef1ff;
+  --ui-color-accent-dk: #2b44e0;
+
+  --ui-color-checked-bg:   #eef1ff;
+  --ui-color-checked-text: #3d5aff;
+  --ui-color-hover-bg:     #f3f5f8;
+
+  --ui-color-disabled-text: #a9b0bc;
+  --ui-color-disabled-badge-bg:  #f0f1f4;
+  --ui-color-disabled-badge-text: #8a919f;
+
+  --ui-color-chip-bg:   #eef1ff;
+  --ui-color-chip-text: #2b44e0;
+  --ui-color-chip-border: #c5ceff;
+
+  --ui-color-count-bg:  #3d5aff;
+  --ui-color-count-text: #ffffff;
+
+  --ui-radius-sm: 0.375rem;
+  --ui-radius-md: 0.5rem;
+  --ui-radius-lg: 0.75rem;
+  --ui-radius-pill: 100px;
+
+  --ui-shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --ui-shadow-menu: 0 4px 6px -1px rgba(0,0,0,0.07),
+                    0 10px 30px -4px rgba(0,0,0,0.1),
+                    0 0 0 1px rgba(0,0,0,0.04);
+
+  --ui-transition: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --ui-transition-slow: 220ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  display: block;
+  font-family: var(--ui-font);
+}
+
+
+/* ─────────────────────────────────────────────
+   Root wrapper
+   ───────────────────────────────────────────── */
 .ui-multi {
   position: relative;
 }
 
-  .ui-multi.disabled {
-    opacity: 0.6;
-    pointer-events: none;
-  }
-
-.ui-dd-toggle {
-  position: relative;
-  padding-right: 2rem;
-  cursor: pointer;
+.ui-multi.disabled {
+  opacity: 0.55;
+  pointer-events: none;
+  cursor: not-allowed;
 }
 
-.ui-dd-caret {
+
+/* ─────────────────────────────────────────────
+   Input wrapper
+   ───────────────────────────────────────────── */
+.ui-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+
+/* ─────────────────────────────────────────────
+   Trigger input
+   ───────────────────────────────────────────── */
+.ui-dd-toggle {
+  width: 100%;
+  padding: 0.5625rem 3rem 0.5625rem 0.875rem;
+  font-family: var(--ui-font);
+  font-size: 0.9rem;
+  font-weight: 450;
+  color: var(--ui-color-text);
+  background: var(--ui-color-bg);
+  border: 1.5px solid var(--ui-color-border);
+  border-radius: var(--ui-radius-md);
+  outline: none;
+  cursor: pointer;
+  transition:
+    border-color var(--ui-transition),
+    box-shadow var(--ui-transition),
+    background var(--ui-transition);
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.ui-dd-toggle::placeholder {
+  color: var(--ui-color-placeholder);
+  font-weight: 400;
+}
+
+.ui-dd-toggle:focus,
+.ui-multi.open .ui-dd-toggle {
+  border-color: var(--ui-color-border-focus);
+  box-shadow: 0 0 0 3px rgba(61, 90, 255, 0.12);
+  background: var(--ui-color-bg);
+}
+
+.ui-dd-toggle:hover:not(:focus) {
+  border-color: #bfc4cc;
+}
+
+
+/* ─────────────────────────────────────────────
+   Count badge (shows number of selections)
+   ───────────────────────────────────────────── */
+.ui-count-badge {
   position: absolute;
-  right: 0.5rem;
+  right: 2rem;
   top: 50%;
   transform: translateY(-50%);
-  opacity: 0.6;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-color-count-bg);
+  color: var(--ui-color-count-text);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  user-select: none;
 }
 
-.ui-dd-label.placeholder {
-  color: #6c757d;
+
+/* ─────────────────────────────────────────────
+   Caret icon
+   ───────────────────────────────────────────── */
+.ui-dd-caret {
+  position: absolute;
+  right: 0.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ui-color-muted);
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  transition: transform var(--ui-transition), color var(--ui-transition);
 }
 
+.ui-dd-caret.rotated {
+  transform: translateY(-50%) rotate(180deg);
+  color: var(--ui-color-accent);
+}
+
+
+/* ─────────────────────────────────────────────
+   Dropdown menu
+   ───────────────────────────────────────────── */
 .ui-dd-menu {
-  display: block;
-  width: 100%;
-  max-height: 320px;
-  overflow: auto;
-  padding: 0.25rem 0;
-  border: 1px solid #ced4da;
-  border-radius: 0.25rem;
-  background-color: #fff;
-  box-shadow: 0 0.25rem 0.5rem rgba(0,0,0,0.1);
+  position: absolute;
+  top: calc(100% + 0.375rem);
+  left: 0;
+  right: 0;
   z-index: 1000;
+  background: var(--ui-color-bg);
+  border-radius: var(--ui-radius-lg);
+  box-shadow: var(--ui-shadow-menu);
+  overflow: hidden;
+
+  /* Slide-in animation */
+  animation: ui-menu-enter var(--ui-transition-slow) both;
 }
 
-.dropdown-item {
-  display: block;
-  width: 100%;
-  padding: 0.375rem 1rem;
-  clear: both;
-  font-weight: 400;
-  color: #212529;
-  text-align: inherit;
-  text-decoration: none;
-  background-color: transparent;
-  border: 0;
+@keyframes ui-menu-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
-  .dropdown-item:hover,
-  .dropdown-item.active {
-    background-color: #e9ecef;
-  }
 
-  .dropdown-item.disabled {
-    pointer-events: none;
-    opacity: 0.5;
-  }
+/* ─────────────────────────────────────────────
+   Toolbar (select all / clear / count)
+   ───────────────────────────────────────────── */
+.ui-menu-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--ui-color-border);
+  background: var(--ui-color-surface);
+}
 
+.ui-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  font-family: var(--ui-font);
+  font-size: 0.75rem;
+  font-weight: 550;
+  color: var(--ui-color-muted);
+  background: transparent;
+  border: 1px solid var(--ui-color-border);
+  border-radius: var(--ui-radius-sm);
+  cursor: pointer;
+  transition:
+    color var(--ui-transition),
+    border-color var(--ui-transition),
+    background var(--ui-transition);
+}
+
+.ui-toolbar-btn:hover {
+  color: var(--ui-color-accent);
+  border-color: var(--ui-color-accent);
+  background: var(--ui-color-accent-lt);
+}
+
+.ui-toolbar-count {
+  margin-left: auto;
+  font-size: 0.73rem;
+  font-weight: 500;
+  color: var(--ui-color-muted);
+}
+
+
+/* ─────────────────────────────────────────────
+   Scrollable list
+   ───────────────────────────────────────────── */
 .ui-list {
-  max-height: 240px;
+  list-style: none;
+  margin: 0;
+  padding: 0.375rem 0;
+  max-height: 260px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+
+  /* Custom scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: var(--ui-color-border) transparent;
 }
 
-.chips {
+.ui-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.ui-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ui-list::-webkit-scrollbar-thumb {
+  background: var(--ui-color-border);
+  border-radius: 4px;
+}
+
+
+/* ─────────────────────────────────────────────
+   Option row
+   ───────────────────────────────────────────── */
+.ui-option {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.875rem;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition:
+    background var(--ui-transition),
+    border-color var(--ui-transition);
+  user-select: none;
+  position: relative;
+}
+
+.ui-option:hover,
+.ui-option.is-active {
+  background: var(--ui-color-hover-bg);
+}
+
+.ui-option.is-checked {
+  background: var(--ui-color-checked-bg);
+  border-left-color: var(--ui-color-accent);
+}
+
+.ui-option.is-checked:hover,
+.ui-option.is-checked.is-active {
+  background: #e5e9fe;
+}
+
+.ui-option.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+
+/* ─────────────────────────────────────────────
+   Custom checkbox
+   ───────────────────────────────────────────── */
+.ui-checkbox {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 0.25rem;
+  border: 1.5px solid var(--ui-color-border);
+  background: var(--ui-color-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background var(--ui-transition),
+    border-color var(--ui-transition),
+    box-shadow var(--ui-transition);
+}
+
+.ui-option.is-checked .ui-checkbox {
+  background: var(--ui-color-accent);
+  border-color: var(--ui-color-accent);
+  box-shadow: 0 1px 3px rgba(61, 90, 255, 0.35);
+  color: #fff;
+}
+
+.ui-option:hover .ui-checkbox,
+.ui-option.is-active .ui-checkbox {
+  border-color: var(--ui-color-accent);
+}
+
+
+/* ─────────────────────────────────────────────
+   Option label
+   ───────────────────────────────────────────── */
+.ui-option-label {
+  flex: 1;
+  font-size: 0.875rem;
+  font-weight: 430;
+  color: var(--ui-color-text);
+  line-height: 1.4;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ui-option.is-checked .ui-option-label {
+  font-weight: 550;
+  color: var(--ui-color-accent-dk);
+}
+
+
+/* ─────────────────────────────────────────────
+   Disabled badge
+   ───────────────────────────────────────────── */
+.ui-disabled-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--ui-color-disabled-badge-text);
+  background: var(--ui-color-disabled-badge-bg);
+  border-radius: var(--ui-radius-pill);
+  padding: 0.1rem 0.5rem;
+}
+
+
+/* ─────────────────────────────────────────────
+   Empty state
+   ───────────────────────────────────────────── */
+.ui-empty {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 0.875rem;
+  font-size: 0.85rem;
+  color: var(--ui-color-muted);
+}
+
+.ui-empty strong {
+  color: var(--ui-color-text);
+  font-weight: 600;
+}
+
+
+/* ─────────────────────────────────────────────
+   Selected chips
+   ───────────────────────────────────────────── */
+.ui-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
   margin-top: 0.5rem;
 }
 
-  .chips .badge {
-    display: inline-flex;
-    align-items: center;
-    background-color: #f8f9fa;
-    color: #212529;
-    border: 1px solid #dee2e6;
-    border-radius: 1rem;
-    padding: 0.25rem 0.75rem;
-    margin-right: 0.25rem;
-  }
-
-.btn-chip {
-  margin-left: 0.5rem;
-  width: 0.6rem;
-  height: 0.6rem;
-  opacity: 0.5;
-  border: none;
-  background: transparent;
-  font-size: 0.8rem;
-  cursor: pointer;
-  line-height: 1;
+.ui-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 200px;
+  padding: 0.25rem 0.35rem 0.25rem 0.65rem;
+  background: var(--ui-color-chip-bg);
+  border: 1px solid var(--ui-color-chip-border);
+  border-radius: var(--ui-radius-pill);
+  animation: ui-chip-enter 180ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
-  .btn-chip:hover {
-    opacity: 1;
-  }
+@keyframes ui-chip-enter {
+  from { opacity: 0; transform: scale(0.8); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.ui-chip-label {
+  font-size: 0.78rem;
+  font-weight: 550;
+  color: var(--ui-color-chip-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+/* ─── Chip remove button (meets WCAG 44px touch target via padding trick) */
+.ui-chip-remove {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Visual size stays compact; touch target expands with padding */
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: rgba(61, 90, 255, 0.12);
+  color: var(--ui-color-accent);
+  cursor: pointer;
+  line-height: 1;
+  transition:
+    background var(--ui-transition),
+    color var(--ui-transition),
+    transform var(--ui-transition);
+
+  /* Expand hit area without altering layout */
+  position: relative;
+}
+
+.ui-chip-remove::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+}
+
+.ui-chip-remove:hover {
+  background: var(--ui-color-accent);
+  color: #fff;
+  transform: scale(1.1);
+}
+
+.ui-chip-remove:focus-visible {
+  outline: 2px solid var(--ui-color-accent);
+  outline-offset: 2px;
+}

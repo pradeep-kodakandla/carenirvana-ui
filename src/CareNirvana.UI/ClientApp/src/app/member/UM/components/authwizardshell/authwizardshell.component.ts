@@ -93,6 +93,15 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
   /** Reference to the currently active child step instance (for reading resolved options) */
   private activeChildInst: any = null;
 
+  /**
+   * Cached reference to the AuthdetailsComponent instance.
+   * Used by _shellSyncDecisionToSources to reverse-sync Decision outcomes
+   * back into the Service / Medication / Transportation form controls
+   * while the user is still in the same wizard session.
+   * Cleared automatically when AuthDetails is deactivated by the router.
+   */
+  private authDetailsInst: any = null;
+
   // ---------------------------
   // Common toast beside stepper
   // ---------------------------
@@ -266,6 +275,13 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
           // RouterOutlet emits the *instance*; some Angular versions also keep a ComponentRef internally.
           this.setCurrentStepRef(cmp);
 
+          // When a non-AuthDetails step activates, clear the stale cached reference.
+          // Angular destroys the previous component before emitting activateEvents for the new one,
+          // so authDetailsInst would be pointing to a destroyed instance at this point.
+          if (typeof cmp?.applyDecisionReverseSync !== 'function') {
+            this.authDetailsInst = null;
+          }
+
           // Hydrate header + ensure the step gets the latest context
           this.refreshHeaderFromStep(cmp);
           queueMicrotask(() => this.pushContextIntoCurrentStep());
@@ -278,6 +294,9 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
         outletAny.deactivateEvents.subscribe(() => {
           this.currentStepRef = undefined;
           this.activeChildInst = null;
+          // authDetailsInst is cleared in activateEvents (when the next step activates),
+          // but also clear it here as a safety net for edge cases (e.g. direct URL navigation).
+          this.authDetailsInst = null;
         })
       );
     }
@@ -1437,6 +1456,71 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     inst._shellRefreshHeader = () => {
       if (!this.isNewAuth && this.authNumber && this.authNumber !== '0') {
         this.resolveContextFromAuthNumber(this.authNumber);
+      }
+    };
+
+    // ── Cache AuthDetails instance for same-session reverse sync ──────────
+    // AuthdetailsComponent exposes applyDecisionReverseSync() as a marker.
+    // We cache the reference here so _shellSyncDecisionToSources can reach it
+    // when the Decision step fires the callback. The reference is cleared in
+    // activateEvents / deactivateEvents when AuthDetails is navigated away from.
+    if (typeof inst?.applyDecisionReverseSync === 'function') {
+      this.authDetailsInst = inst;
+    }
+
+    // ── Wire _shellSyncAuthData ───────────────────────────────────────────
+    // AuthdecisionComponent calls this after every save to push the updated
+    // authData (with Decision-reflected service/medication/transport keys)
+    // back into the shell's cache so the header badges and status labels
+    // stay current without requiring a full page reload.
+    inst._shellSyncAuthData = (updatedAuthData: any) => {
+      if (updatedAuthData && typeof updatedAuthData === 'object') {
+        // Merge Decision-modified keys into cachedDataObj
+        this.cachedDataObj = { ...(this.cachedDataObj ?? {}), ...updatedAuthData };
+      }
+      // Re-hydrate header: decision summary, status labels, priority, badges
+      this.rehydrateHeaderFromCache();
+    };
+
+    // ── Wire _shellSyncDecisionToSources ─────────────────────────────────
+    // AuthdecisionComponent calls this after every single-tab or bulk save
+    // to reverse-sync approved/denied values back into the source section
+    // form controls (Service / Medication / Transportation) in AuthDetails.
+    //
+    // Two-tier strategy:
+    //   Tier 1 (in-session):  authDetailsInst is still in memory → patch
+    //                         form controls directly for immediate visual feedback.
+    //   Tier 2 (post-nav):   authDetailsInst was destroyed by router navigation →
+    //                         the next AuthDetails activation re-fetches from the
+    //                         backend, which contains the latest Decision outcomes
+    //                         in the Decision Detail items table.
+    inst._shellSyncDecisionToSources = (
+      procedureNo: number,
+      approved: any,
+      denied: any,
+      requested?: any,
+      decisionPayload?: any
+    ) => {
+      if (this.authDetailsInst && typeof this.authDetailsInst.applyDecisionReverseSync === 'function') {
+        try {
+          this.authDetailsInst.applyDecisionReverseSync(
+            procedureNo, approved, denied, requested, decisionPayload
+          );
+          console.log(`[Shell] Reverse sync forwarded to AuthDetails: procedureNo=${procedureNo}`);
+        } catch (e) {
+          // AuthDetails component may have been garbage-collected despite our
+          // reference — safe to clear and let the next activation re-cache it.
+          console.warn('[Shell] applyDecisionReverseSync threw (component likely destroyed):', e);
+          this.authDetailsInst = null;
+        }
+      } else {
+        // AuthDetails is not in memory (user navigated away before reverse sync fired).
+        // The next time AuthDetails activates it will re-fetch auth data from the backend,
+        // which reflects the Decision outcomes stored in the Decision Detail items table.
+        console.log(
+          `[Shell] _shellSyncDecisionToSources: AuthDetails not in memory ` +
+          `(procedureNo=${procedureNo}). Reverse sync will apply on next AuthDetails visit.`
+        );
       }
     };
 

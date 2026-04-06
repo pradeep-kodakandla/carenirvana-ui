@@ -658,19 +658,27 @@
                           </ng-container>
                         </ng-container>
                         <div class="dc-top-actions">
+                          <!-- Single unified Edit button — opens ALL editable sections at once -->
                           <button type="button" class="dc-top-btn dc-top-btn--edit"
-                                  *ngIf="hasProviderData(inst) && !isProviderInEditMode(inst)"
-                                  (click)="editProvider(inst)" title="Edit">
+                                  *ngIf="hasProviderData(inst) && !isCardInEditMode(inst)"
+                                  (click)="startCardEdit(inst)" title="Edit Provider">
                             <mat-icon class="dc-action-icon">edit</mat-icon>
                           </button>
+                          <!-- Single Done button — closes ALL editable sections at once -->
+                          <button type="button" class="pc-done-btn"
+                                  *ngIf="isCardInEditMode(inst)"
+                                  (click)="doneCardEdit(inst)">
+                            <mat-icon class="pc-done-icon">check</mat-icon> Done
+                          </button>
                           <button type="button" class="dc-top-btn dc-top-btn--delete"
+                                  *ngIf="!isCardInEditMode(inst)"
                                   (click)="hasProviderData(inst) ? clearProviderData(inst) : removeRepeat(sec, inst.index)">
                             <mat-icon class="dc-action-icon">delete</mat-icon>
                           </button>
                         </div>
                       </div>
 
-                      <!-- Search: visible when NO provider selected OR in edit mode -->
+                      <!-- Search: visible when NO provider selected, OR user clicked "Change" in card edit mode -->
                       <ng-container *ngIf="!hasProviderSelected(inst)">
                         <ng-container *ngIf="getProvSearchField(inst) as sf">
                           <ng-container *ngIf="form.get(sf.controlName) as sc">
@@ -726,8 +734,8 @@
                         </div>
                       </ng-container>
 
-                      <!-- Provider Info Card: visible when provider IS selected and NOT in edit mode -->
-                      <ng-container *ngIf="hasProviderSelected(inst)">
+                      <!-- ═══ VIEW MODE: provider selected, card NOT in edit mode ═══ -->
+                      <ng-container *ngIf="hasProviderSelected(inst) && !isCardInEditMode(inst)">
                         <div class="pc-info pc-info--clickable" (click)="onProviderCardClick(inst, $event)">
                           <div class="pc-info-header">
                             <div class="pc-info-name-row">
@@ -749,34 +757,11 @@
                             <div class="pc-info-line" *ngIf="getProviderTaxId(inst)">
                               <strong>Tax ID:</strong> {{ getProviderTaxId(inst) }}
                             </div>
-                            <div class="pc-info-line pc-info-line--editable">
-                              <ng-container *ngIf="!isProviderPhoneFaxEditMode(inst)">
-                                <strong>Phone:</strong> {{ getProviderPhone(inst) }}
-                                <span class="pc-info-sep">&middot;</span>
-                                <strong>Fax:</strong> {{ getProviderFax(inst) }}
-                                <button type="button" class="pc-inline-edit-btn"
-                                        (click)="toggleProviderPhoneFaxEdit(inst); $event.stopPropagation()"
-                                        title="Edit Phone/Fax">
-                                  <mat-icon class="pc-inline-edit-icon">edit</mat-icon>
-                                </button>
-                              </ng-container>
-                            </div>
-                            <!-- Editable Phone/Fax fields -->
-                            <div class="pc-phone-fax-edit" *ngIf="isProviderPhoneFaxEditMode(inst)" (click)="$event.stopPropagation()">
-                              <div class="pc-edit-field">
-                                <label>Phone</label>
-                                <input class="pc-edit-input" type="text" [value]="getProviderPhone(inst) === '-' ? '' : getProviderPhone(inst)"
-                                       (input)="updateProviderPhone(inst, $any($event.target).value)" />
-                              </div>
-                              <div class="pc-edit-field">
-                                <label>Fax</label>
-                                <input class="pc-edit-input" type="text" [value]="getProviderFax(inst) === '-' ? '' : getProviderFax(inst)"
-                                       (input)="updateProviderFax(inst, $any($event.target).value)" />
-                              </div>
-                              <button type="button" class="pc-phone-fax-done-btn"
-                                      (click)="toggleProviderPhoneFaxEdit(inst); $event.stopPropagation()">
-                                Done
-                              </button>
+                            <!-- Phone/Fax: read-only in view mode -->
+                            <div class="pc-info-line">
+                              <strong>Phone:</strong> {{ getProviderPhone(inst) }}
+                              <span class="pc-info-sep">&middot;</span>
+                              <strong>Fax:</strong> {{ getProviderFax(inst) }}
                             </div>
                             <div class="pc-info-line pc-info-org" *ngIf="getProviderOrganization(inst)">
                               {{ getProviderOrganization(inst) }}
@@ -790,17 +775,100 @@
                             <span>Out-of-Network provider — additional member cost share may apply</span>
                           </div>
 
-                          <!-- Contact Tracking -->
+                          <!-- Contact Tracking: display-only in view mode -->
                           <div class="ct-section" (click)="$event.stopPropagation()">
                             <div class="ct-header">
                               <span class="ct-title"><mat-icon class="ct-title-icon">contact_phone</mat-icon> Contact Tracking</span>
-                              <button type="button" class="ct-edit-btn"
-                                      (click)="toggleContactTrackingEdit(inst); $event.stopPropagation()">
-                                {{ isContactTrackingEditMode(inst) ? 'Done' : 'Edit' }}
+                            </div>
+                            <div class="ct-display" *ngIf="getActiveContactTracking(inst)?.contactName">
+                              <div class="ct-display-row">
+                                <span class="ct-display-label">Contact Name</span>
+                                <span class="ct-display-value">{{ getActiveContactTracking(inst)!.contactName }}</span>
+                              </div>
+                              <div class="ct-display-row" *ngIf="getActiveContactTracking(inst)?.contactPhone">
+                                <span class="ct-display-label">Phone</span>
+                                <span class="ct-display-value">{{ getActiveContactTracking(inst)!.contactPhone }}</span>
+                              </div>
+                              <div class="ct-display-row" *ngIf="getActiveContactTracking(inst)?.contactEmail">
+                                <span class="ct-display-label">Email</span>
+                                <span class="ct-display-value">{{ getActiveContactTracking(inst)!.contactEmail }}</span>
+                              </div>
+                              <div class="ct-display-row ct-display-row--notes" *ngIf="getActiveContactTracking(inst)?.notes">
+                                <span class="ct-display-label">Notes</span>
+                                <span class="ct-display-value">{{ getActiveContactTracking(inst)!.date }} - {{ getActiveContactTracking(inst)!.notes }}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- View Details link -->
+                          <div class="pc-view-details">
+                            <span class="material-icons-outlined pc-view-details-icon">open_in_new</span>
+                            <span>View Details</span>
+                            <span class="pc-view-details-arrow">→</span>
+                          </div>
+                        </div>
+                      </ng-container>
+
+                      <!-- ═══ EDIT MODE: card in unified edit state ═══ -->
+                      <ng-container *ngIf="hasProviderData(inst) && isCardInEditMode(inst)">
+                        <div class="pc-edit-panel">
+
+                          <!-- Provider identity row: name + badge + Change Provider link -->
+                          <div class="pc-edit-identity">
+                            <div class="pc-info-name-row">
+                              <span class="pc-info-name">{{ getProviderFullName(inst) }}</span>
+                              <span class="pc-network-badge"
+                                    [class.pc-badge--in]="getProviderNetworkStatus(inst) === 'In-Network'"
+                                    [class.pc-badge--out]="getProviderNetworkStatus(inst) === 'Out-of-Network'">
+                                <span class="pc-badge-dot"></span>
+                                {{ getProviderNetworkStatus(inst) }}
+                              </span>
+                              <!-- Change Provider: only shown when not already searching -->
+                              <button type="button" class="pc-change-provider-btn"
+                                      *ngIf="!isProviderInEditMode(inst)"
+                                      (click)="editProvider(inst); $event.stopPropagation()">
+                                <mat-icon style="font-size:13px;width:13px;height:13px;vertical-align:-2px">swap_horiz</mat-icon>
+                                Change
                               </button>
                             </div>
-                            <!-- Edit mode: fields + previous contacts dropdown -->
-                            <div class="ct-body" *ngIf="isContactTrackingEditMode(inst)">
+                            <div class="pc-info-line pc-edit-npi-line" *ngIf="getProviderNpi(inst) || getProviderSpecialty(inst)">
+                              <span *ngIf="getProviderNpi(inst)"><strong>NPI:</strong> {{ getProviderNpi(inst) }}</span>
+                              <span *ngIf="getProviderNpi(inst) && getProviderSpecialty(inst)" class="pc-info-sep">&middot;</span>
+                              <span *ngIf="getProviderSpecialty(inst)">{{ getProviderSpecialty(inst) }}</span>
+                            </div>
+                          </div>
+
+                          <!-- Editable Phone/Fax — always open in card edit mode -->
+                          <div class="pc-edit-section">
+                            <div class="pc-edit-section-label">Phone &amp; Fax</div>
+                            <div class="pc-phone-fax-edit" (click)="$event.stopPropagation()">
+                              <div class="pc-edit-field">
+                                <label>Phone</label>
+                                <input class="pc-edit-input" type="text"
+                                       [value]="getProviderPhone(inst) === '-' ? '' : getProviderPhone(inst)"
+                                       (input)="updateProviderPhone(inst, $any($event.target).value)" />
+                              </div>
+                              <div class="pc-edit-field">
+                                <label>Fax</label>
+                                <input class="pc-edit-input" type="text"
+                                       [value]="getProviderFax(inst) === '-' ? '' : getProviderFax(inst)"
+                                       (input)="updateProviderFax(inst, $any($event.target).value)" />
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- Out-of-Network warning -->
+                          <div class="pc-oon-warning" *ngIf="getProviderNetworkStatus(inst) === 'Out-of-Network'">
+                            <mat-icon class="pc-oon-icon">info</mat-icon>
+                            <span>Out-of-Network provider — additional member cost share may apply</span>
+                          </div>
+
+                          <!-- Contact Tracking — always open in card edit mode -->
+                          <div class="ct-section" (click)="$event.stopPropagation()">
+                            <div class="ct-header">
+                              <span class="ct-title"><mat-icon class="ct-title-icon">contact_phone</mat-icon> Contact Tracking</span>
+                            </div>
+                            <div class="ct-body">
                               <div class="ct-prev-contacts" *ngIf="getContactTrackingHistory(inst).length">
                                 <select class="ct-select" (change)="onContactTrackingSelect(inst, $any($event.target).value)">
                                   <option value="">Select previous contact...</option>
@@ -837,33 +905,8 @@
                                 </div>
                               </div>
                             </div>
-                            <!-- Display mode: show current contact details with labels -->
-                            <div class="ct-display" *ngIf="!isContactTrackingEditMode(inst) && getActiveContactTracking(inst)?.contactName">
-                              <div class="ct-display-row">
-                                <span class="ct-display-label">Contact Name</span>
-                                <span class="ct-display-value">{{ getActiveContactTracking(inst)!.contactName }}</span>
-                              </div>
-                              <div class="ct-display-row" *ngIf="getActiveContactTracking(inst)?.contactPhone">
-                                <span class="ct-display-label">Phone</span>
-                                <span class="ct-display-value">{{ getActiveContactTracking(inst)!.contactPhone }}</span>
-                              </div>
-                              <div class="ct-display-row" *ngIf="getActiveContactTracking(inst)?.contactEmail">
-                                <span class="ct-display-label">Email</span>
-                                <span class="ct-display-value">{{ getActiveContactTracking(inst)!.contactEmail }}</span>
-                              </div>
-                              <div class="ct-display-row ct-display-row--notes" *ngIf="getActiveContactTracking(inst)?.notes">
-                                <span class="ct-display-label">Notes</span>
-                                <span class="ct-display-value">{{ getActiveContactTracking(inst)!.date }} - {{ getActiveContactTracking(inst)!.notes }}</span>
-                              </div>
-                            </div>
                           </div>
 
-                          <!-- View Details link -->
-                          <div class="pc-view-details">
-                            <span class="material-icons-outlined pc-view-details-icon">open_in_new</span>
-                            <span>View Details</span>
-                            <span class="pc-view-details-arrow">→</span>
-                          </div>
                         </div>
                       </ng-container>
 
@@ -1548,12 +1591,20 @@
                       </ng-container>
                     </ng-container>
                     <div class="dc-top-actions">
+                      <!-- Single unified Edit button -->
                       <button type="button" class="dc-top-btn dc-top-btn--edit"
-                              *ngIf="hasProviderData(inst) && !isProviderInEditMode(inst)"
-                              (click)="editProvider(inst)" title="Edit">
+                              *ngIf="hasProviderData(inst) && !isCardInEditMode(inst)"
+                              (click)="startCardEdit(inst)" title="Edit Provider">
                         <mat-icon class="dc-action-icon">edit</mat-icon>
                       </button>
+                      <!-- Single Done button -->
+                      <button type="button" class="pc-done-btn"
+                              *ngIf="isCardInEditMode(inst)"
+                              (click)="doneCardEdit(inst)">
+                        <mat-icon class="pc-done-icon">check</mat-icon> Done
+                      </button>
                       <button type="button" class="dc-top-btn dc-top-btn--delete"
+                              *ngIf="!isCardInEditMode(inst)"
                               (click)="hasProviderData(inst) ? clearProviderData(inst) : removeRepeat(sub, inst.index)">
                         <mat-icon class="dc-action-icon">delete</mat-icon>
                       </button>
@@ -1622,8 +1673,8 @@
                     </div>
                   </ng-container>
 
-                  <!-- Provider Info Card: visible when provider IS selected and NOT in edit mode -->
-                  <ng-container *ngIf="hasProviderSelected(inst)">
+                  <!-- ═══ VIEW MODE: provider selected, card NOT in edit mode ═══ -->
+                  <ng-container *ngIf="hasProviderSelected(inst) && !isCardInEditMode(inst)">
                     <div class="pc-info pc-info--clickable" (click)="onProviderCardClick(inst, $event)">
                       <div class="pc-info-header">
                         <div class="pc-info-name-row">
@@ -1645,34 +1696,11 @@
                         <div class="pc-info-line" *ngIf="getProviderTaxId(inst)">
                           <strong>Tax ID:</strong> {{ getProviderTaxId(inst) }}
                         </div>
-                        <div class="pc-info-line pc-info-line--editable">
-                          <ng-container *ngIf="!isProviderPhoneFaxEditMode(inst)">
-                            <strong>Phone:</strong> {{ getProviderPhone(inst) }}
-                            <span class="pc-info-sep">&middot;</span>
-                            <strong>Fax:</strong> {{ getProviderFax(inst) }}
-                            <button type="button" class="pc-inline-edit-btn"
-                                    (click)="toggleProviderPhoneFaxEdit(inst); $event.stopPropagation()"
-                                    title="Edit Phone/Fax">
-                              <mat-icon class="pc-inline-edit-icon">edit</mat-icon>
-                            </button>
-                          </ng-container>
-                        </div>
-                        <!-- Editable Phone/Fax fields -->
-                        <div class="pc-phone-fax-edit" *ngIf="isProviderPhoneFaxEditMode(inst)" (click)="$event.stopPropagation()">
-                          <div class="pc-edit-field">
-                            <label>Phone</label>
-                            <input class="pc-edit-input" type="text" [value]="getProviderPhone(inst) === '-' ? '' : getProviderPhone(inst)"
-                                   (input)="updateProviderPhone(inst, $any($event.target).value)" />
-                          </div>
-                          <div class="pc-edit-field">
-                            <label>Fax</label>
-                            <input class="pc-edit-input" type="text" [value]="getProviderFax(inst) === '-' ? '' : getProviderFax(inst)"
-                                   (input)="updateProviderFax(inst, $any($event.target).value)" />
-                          </div>
-                          <button type="button" class="pc-phone-fax-done-btn"
-                                  (click)="toggleProviderPhoneFaxEdit(inst); $event.stopPropagation()">
-                            Done
-                          </button>
+                        <!-- Phone/Fax: read-only in view mode -->
+                        <div class="pc-info-line">
+                          <strong>Phone:</strong> {{ getProviderPhone(inst) }}
+                          <span class="pc-info-sep">&middot;</span>
+                          <strong>Fax:</strong> {{ getProviderFax(inst) }}
                         </div>
                         <div class="pc-info-line pc-info-org" *ngIf="getProviderOrganization(inst)">
                           {{ getProviderOrganization(inst) }}
@@ -1686,17 +1714,99 @@
                         <span>Out-of-Network provider — additional member cost share may apply</span>
                       </div>
 
-                      <!-- Contact Tracking -->
+                      <!-- Contact Tracking: display-only in view mode -->
                       <div class="ct-section" (click)="$event.stopPropagation()">
                         <div class="ct-header">
                           <span class="ct-title"><mat-icon class="ct-title-icon">contact_phone</mat-icon> Contact Tracking</span>
-                          <button type="button" class="ct-edit-btn"
-                                  (click)="toggleContactTrackingEdit(inst); $event.stopPropagation()">
-                            {{ isContactTrackingEditMode(inst) ? 'Done' : 'Edit' }}
+                        </div>
+                        <div class="ct-display" *ngIf="getActiveContactTracking(inst)?.contactName">
+                          <div class="ct-display-row">
+                            <span class="ct-display-label">Contact Name</span>
+                            <span class="ct-display-value">{{ getActiveContactTracking(inst)!.contactName }}</span>
+                          </div>
+                          <div class="ct-display-row" *ngIf="getActiveContactTracking(inst)?.contactPhone">
+                            <span class="ct-display-label">Phone</span>
+                            <span class="ct-display-value">{{ getActiveContactTracking(inst)!.contactPhone }}</span>
+                          </div>
+                          <div class="ct-display-row" *ngIf="getActiveContactTracking(inst)?.contactEmail">
+                            <span class="ct-display-label">Email</span>
+                            <span class="ct-display-value">{{ getActiveContactTracking(inst)!.contactEmail }}</span>
+                          </div>
+                          <div class="ct-display-row ct-display-row--notes" *ngIf="getActiveContactTracking(inst)?.notes">
+                            <span class="ct-display-label">Notes</span>
+                            <span class="ct-display-value">{{ getActiveContactTracking(inst)!.date }} - {{ getActiveContactTracking(inst)!.notes }}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- View Details link -->
+                      <div class="pc-view-details">
+                        <span class="material-icons-outlined pc-view-details-icon">open_in_new</span>
+                        <span>View Details</span>
+                        <span class="pc-view-details-arrow">→</span>
+                      </div>
+                    </div>
+                  </ng-container>
+
+                  <!-- ═══ EDIT MODE: card in unified edit state ═══ -->
+                  <ng-container *ngIf="hasProviderData(inst) && isCardInEditMode(inst)">
+                    <div class="pc-edit-panel">
+
+                      <!-- Provider identity row: name + badge + Change Provider link -->
+                      <div class="pc-edit-identity">
+                        <div class="pc-info-name-row">
+                          <span class="pc-info-name">{{ getProviderFullName(inst) }}</span>
+                          <span class="pc-network-badge"
+                                [class.pc-badge--in]="getProviderNetworkStatus(inst) === 'In-Network'"
+                                [class.pc-badge--out]="getProviderNetworkStatus(inst) === 'Out-of-Network'">
+                            <span class="pc-badge-dot"></span>
+                            {{ getProviderNetworkStatus(inst) }}
+                          </span>
+                          <button type="button" class="pc-change-provider-btn"
+                                  *ngIf="!isProviderInEditMode(inst)"
+                                  (click)="editProvider(inst); $event.stopPropagation()">
+                            <mat-icon style="font-size:13px;width:13px;height:13px;vertical-align:-2px">swap_horiz</mat-icon>
+                            Change
                           </button>
                         </div>
-                        <!-- Edit mode: fields + previous contacts dropdown -->
-                        <div class="ct-body" *ngIf="isContactTrackingEditMode(inst)">
+                        <div class="pc-info-line pc-edit-npi-line" *ngIf="getProviderNpi(inst) || getProviderSpecialty(inst)">
+                          <span *ngIf="getProviderNpi(inst)"><strong>NPI:</strong> {{ getProviderNpi(inst) }}</span>
+                          <span *ngIf="getProviderNpi(inst) && getProviderSpecialty(inst)" class="pc-info-sep">&middot;</span>
+                          <span *ngIf="getProviderSpecialty(inst)">{{ getProviderSpecialty(inst) }}</span>
+                        </div>
+                      </div>
+
+                      <!-- Editable Phone/Fax -->
+                      <div class="pc-edit-section">
+                        <div class="pc-edit-section-label">Phone &amp; Fax</div>
+                        <div class="pc-phone-fax-edit" (click)="$event.stopPropagation()">
+                          <div class="pc-edit-field">
+                            <label>Phone</label>
+                            <input class="pc-edit-input" type="text"
+                                   [value]="getProviderPhone(inst) === '-' ? '' : getProviderPhone(inst)"
+                                   (input)="updateProviderPhone(inst, $any($event.target).value)" />
+                          </div>
+                          <div class="pc-edit-field">
+                            <label>Fax</label>
+                            <input class="pc-edit-input" type="text"
+                                   [value]="getProviderFax(inst) === '-' ? '' : getProviderFax(inst)"
+                                   (input)="updateProviderFax(inst, $any($event.target).value)" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Out-of-Network warning -->
+                      <div class="pc-oon-warning" *ngIf="getProviderNetworkStatus(inst) === 'Out-of-Network'">
+                        <mat-icon class="pc-oon-icon">info</mat-icon>
+                        <span>Out-of-Network provider — additional member cost share may apply</span>
+                      </div>
+
+                      <!-- Contact Tracking: always open in edit mode -->
+                      <div class="ct-section" (click)="$event.stopPropagation()">
+                        <div class="ct-header">
+                          <span class="ct-title"><mat-icon class="ct-title-icon">contact_phone</mat-icon> Contact Tracking</span>
+                        </div>
+                        <div class="ct-body">
                           <div class="ct-prev-contacts" *ngIf="getContactTrackingHistory(inst).length">
                             <select class="ct-select" (change)="onContactTrackingSelect(inst, $any($event.target).value)">
                               <option value="">Select previous contact...</option>
@@ -1733,33 +1843,8 @@
                             </div>
                           </div>
                         </div>
-                        <!-- Display mode: show current contact details with labels -->
-                        <div class="ct-display" *ngIf="!isContactTrackingEditMode(inst) && getActiveContactTracking(inst)?.contactName">
-                          <div class="ct-display-row">
-                            <span class="ct-display-label">Contact Name</span>
-                            <span class="ct-display-value">{{ getActiveContactTracking(inst)!.contactName }}</span>
-                          </div>
-                          <div class="ct-display-row" *ngIf="getActiveContactTracking(inst)?.contactPhone">
-                            <span class="ct-display-label">Phone</span>
-                            <span class="ct-display-value">{{ getActiveContactTracking(inst)!.contactPhone }}</span>
-                          </div>
-                          <div class="ct-display-row" *ngIf="getActiveContactTracking(inst)?.contactEmail">
-                            <span class="ct-display-label">Email</span>
-                            <span class="ct-display-value">{{ getActiveContactTracking(inst)!.contactEmail }}</span>
-                          </div>
-                          <div class="ct-display-row ct-display-row--notes" *ngIf="getActiveContactTracking(inst)?.notes">
-                            <span class="ct-display-label">Notes</span>
-                            <span class="ct-display-value">{{ getActiveContactTracking(inst)!.date }} - {{ getActiveContactTracking(inst)!.notes }}</span>
-                          </div>
-                        </div>
                       </div>
 
-                      <!-- View Details link -->
-                      <div class="pc-view-details">
-                        <span class="material-icons-outlined pc-view-details-icon">open_in_new</span>
-                        <span>View Details</span>
-                        <span class="pc-view-details-arrow">→</span>
-                      </div>
                     </div>
                   </ng-container>
 

@@ -220,6 +220,20 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
   _shellSyncAuthData?: (updatedAuthData: any) => void;
 
   /**
+   * Reverse sync callback: Decision → Source sections.
+   * Injected by AuthWizardShell. Forwards approved/denied values back into
+   * AuthdetailsComponent form controls (Service, Medication, Transportation)
+   * so the source section reflects decision outcomes in real time.
+   */
+  _shellSyncDecisionToSources?: (
+    procedureNo: number,
+    approved: any,
+    denied: any,
+    requested?: any,
+    decisionPayload?: any
+  ) => void;
+
+  /**
    * Cached UI value for the "Pended" option in Decision Status dropdown.
    * We discover this from dropdown options so we don't have to guess whether Pended is 0/1/etc.
    */
@@ -1317,6 +1331,7 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
     const procNo = this.activeState.tab.procedureNo;
 
     const calls: any[] = [];
+    let savedDecisionPayload: any = null; // capture Decision Details payload for reverse sync
 
     for (const sec of this.activeState.sections) {
       // Member Provider is handled separately via the editable table rows
@@ -1327,6 +1342,7 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
       // Timestamp rules apply only to Decision Details
       if (sec.sectionName === 'Decision Details') {
         this.applyDecisionTimestamps(procNo, payload);
+        savedDecisionPayload = payload; // store for reverse sync after save
       }
 
       const existingId = this.activeState.itemIdsBySection?.[sec.sectionName];
@@ -1368,8 +1384,11 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
 
           this.toastSvc.success('Decision saved successfully.');
 
-          // Sync decision data back to service (authData) for bi-directional consistency
+          // Forward sync: Decision → authData (existing service sync)
           this.syncDecisionToService(procNo!);
+
+          // Reverse sync: Decision → Source section form controls (Service / Medication / Transportation)
+          this.fireDecisionReverseSync(procNo!, savedDecisionPayload);
 
           // refresh only items, keep template + auth data
           this.refreshItemsOnly();
@@ -1794,9 +1813,26 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
       }
     }
 
-    // helpful metadata (optional)
-    obj.procedureCode = this.authData?.[`procedure${procedureNo}_procedureCode`] ?? null;
-    obj.procedureDescription = this.authData?.[`procedure${procedureNo}_procedureDescription`] ?? null;
+    // Source-type-aware procedureCode / procedureDescription metadata
+    const sourceType = this.getSourceTypeForProcedureNo(procedureNo);
+
+    if (sourceType === 'medication') {
+      const medNo = procedureNo - 1000;
+      obj.procedureCode        = this.authData?.[`medication${medNo}_medicationCode`]        ?? obj.serviceCode        ?? null;
+      obj.procedureDescription = this.authData?.[`medication${medNo}_medicationDescription`] ?? obj.serviceDescription ?? null;
+      obj.sourceType           = 'medication';
+      obj.sourceMedNo          = medNo;
+    } else if (sourceType === 'transportation') {
+      // serviceCode/serviceDescription were seeded directly from transport code fields
+      obj.procedureCode        = obj.serviceCode        ?? null;
+      obj.procedureDescription = obj.serviceDescription ?? null;
+      obj.sourceType           = 'transportation';
+    } else {
+      // Original service lookup
+      obj.procedureCode        = this.authData?.[`procedure${procedureNo}_procedureCode`]        ?? null;
+      obj.procedureDescription = this.authData?.[`procedure${procedureNo}_procedureDescription`] ?? null;
+      obj.sourceType           = 'service';
+    }
 
     return obj;
   }
@@ -2277,25 +2313,19 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
 
   /**
    * After decision save: push relevant decision data back into auth jsonData
-   * so the Service section in AuthDetails reflects the decision state.
+   * so the Service / Medication / Transportation sections in AuthDetails
+   * reflect the decision state.
    *
-   * Mapped fields:
-   *   Decision → Service
-   *   serviceCode           → procedure{N}_procedureCode
-   *   serviceDescription    → procedure{N}_procedureDescription
-   *   fromDate              → procedure{N}_fromDate
-   *   toDate                → procedure{N}_toDate
-   *   approved (units)      → procedure{N}_serviceAppr
-   *   denied  (units)       → procedure{N}_serviceDenied
-   *   requested (units)     → procedure{N}_serviceReq
+   * Routes by procedureNo partition:
+   *   1 – 999   → Service   (procedure{n}_*)
+   *   1000–1999 → Medication (medication{n}_*)
+   *   2000+     → Transportation (transport{n}_decisionApproved/Denied)
    */
   private syncDecisionToService(procedureNo: number): void {
     if (!this.authDetailId || !this.activeState) return;
 
     const sec = this.activeState.sections.find(s => s.sectionName === 'Decision Details');
     if (!sec) return;
-
-    const prefix = `procedure${procedureNo}_`;
 
     // Collect values from the decision form
     const decisionValues: Record<string, any> = {};
@@ -2306,19 +2336,43 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
       }
     }
 
-    // Build the mapping: decision field id → authData key
-    const syncMap: Array<{ decisionField: string; authKey: string }> = [
-      { decisionField: 'serviceCode', authKey: prefix + 'procedureCode' },
-      { decisionField: 'serviceDescription', authKey: prefix + 'procedureDescription' },
-      { decisionField: 'fromDate', authKey: prefix + 'fromDate' },
-      { decisionField: 'toDate', authKey: prefix + 'toDate' },
-      { decisionField: 'requested', authKey: prefix + 'serviceReq' },
-      { decisionField: 'approved', authKey: prefix + 'serviceAppr' },
-      { decisionField: 'denied', authKey: prefix + 'serviceDenied' },
-      { decisionField: 'modifier', authKey: prefix + 'modifier' },
-      { decisionField: 'unitType', authKey: prefix + 'unitType' },
-      { decisionField: 'reviewType', authKey: prefix + 'reviewType' },
-    ];
+    const sourceType = this.getSourceTypeForProcedureNo(procedureNo);
+    let syncMap: Array<{ decisionField: string; authKey: string }>;
+
+    if (sourceType === 'medication') {
+      const medNo  = procedureNo - 1000;
+      const prefix = `medication${medNo}_`;
+      syncMap = [
+        { decisionField: 'serviceCode',        authKey: prefix + 'medicationCode' },
+        { decisionField: 'serviceDescription', authKey: prefix + 'medicationDescription' },
+        { decisionField: 'fromDate',           authKey: prefix + 'fromDate' },
+        { decisionField: 'toDate',             authKey: prefix + 'toDate' },
+        { decisionField: 'requested',          authKey: prefix + 'quantity' },
+        { decisionField: 'approved',           authKey: prefix + 'approvedQuantity' },
+        { decisionField: 'denied',             authKey: prefix + 'deniedQuantity' },
+      ];
+    } else if (sourceType === 'transportation') {
+      const seqIndex = procedureNo - 2000;
+      syncMap = [
+        { decisionField: 'approved', authKey: `transport${seqIndex}_decisionApproved` },
+        { decisionField: 'denied',   authKey: `transport${seqIndex}_decisionDenied` },
+      ];
+    } else {
+      // Service (original behaviour)
+      const prefix = `procedure${procedureNo}_`;
+      syncMap = [
+        { decisionField: 'serviceCode',        authKey: prefix + 'procedureCode' },
+        { decisionField: 'serviceDescription', authKey: prefix + 'procedureDescription' },
+        { decisionField: 'fromDate',           authKey: prefix + 'fromDate' },
+        { decisionField: 'toDate',             authKey: prefix + 'toDate' },
+        { decisionField: 'requested',          authKey: prefix + 'serviceReq' },
+        { decisionField: 'approved',           authKey: prefix + 'serviceAppr' },
+        { decisionField: 'denied',             authKey: prefix + 'serviceDenied' },
+        { decisionField: 'modifier',           authKey: prefix + 'modifier' },
+        { decisionField: 'unitType',           authKey: prefix + 'unitType' },
+        { decisionField: 'reviewType',         authKey: prefix + 'reviewType' },
+      ];
+    }
 
     let authDataChanged = false;
 
@@ -2445,20 +2499,39 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
   }
 
   /**
-   * Sync a single bulk-saved decision row back into authData (service section).
-   * Lighter than syncDecisionToService because we read from the BulkSaveRow directly.
+   * Sync a single bulk-saved decision row back into authData.
+   * Routes by procedureNo partition: service / medication / transportation.
    */
   private syncBulkDecisionToService(procedureNo: number, row: BulkSaveRow): void {
-    const prefix = `procedure${procedureNo}_`;
+    const sourceType = this.getSourceTypeForProcedureNo(procedureNo);
     let changed = false;
+    let syncPairs: Array<[string, any]>;
 
-    const syncPairs: Array<[string, any]> = [
-      [prefix + 'serviceAppr', row.approved],
-      [prefix + 'serviceDenied', row.denied],
-      [prefix + 'serviceReq', row.requested],
-      [prefix + 'procedureCode', row.serviceCode],
-      [prefix + 'procedureDescription', row.serviceDescription],
-    ];
+    if (sourceType === 'medication') {
+      const medNo  = procedureNo - 1000;
+      const prefix = `medication${medNo}_`;
+      syncPairs = [
+        [prefix + 'approvedQuantity', row.approved],
+        [prefix + 'deniedQuantity',   row.denied],
+        [prefix + 'quantity',         row.requested],
+        [prefix + 'medicationCode',   row.serviceCode],
+      ];
+    } else if (sourceType === 'transportation') {
+      const seqIndex = procedureNo - 2000;
+      syncPairs = [
+        [`transport${seqIndex}_decisionApproved`, row.approved],
+        [`transport${seqIndex}_decisionDenied`,   row.denied],
+      ];
+    } else {
+      const prefix = `procedure${procedureNo}_`;
+      syncPairs = [
+        [prefix + 'serviceAppr',          row.approved],
+        [prefix + 'serviceDenied',        row.denied],
+        [prefix + 'serviceReq',           row.requested],
+        [prefix + 'procedureCode',        row.serviceCode],
+        [prefix + 'procedureDescription', row.serviceDescription],
+      ];
+    }
 
     for (const [key, val] of syncPairs) {
       if (val !== undefined && val !== null && String(val).trim() !== '') {
@@ -3657,9 +3730,21 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
             this.closeBulkEdit();
             this.refreshItemsOnly();
 
-            // Sync all saved decision lines back to service data
+            // Sync all saved decision lines back to source data (forward sync)
             for (const row of selectedRows) {
               this.syncBulkDecisionToService(row.procedureNo, row);
+            }
+
+            // Reverse sync: Decision → Source section form controls
+            for (const row of selectedRows) {
+              const reversePay = {
+                approved:           this.coerceNumber(row.approved),
+                denied:             this.coerceNumber(row.denied),
+                requested:          this.coerceNumber(row.requested),
+                serviceCode:        row.serviceCode,
+                serviceDescription: row.serviceDescription,
+              };
+              this.fireDecisionReverseSync(row.procedureNo, reversePay);
             }
 
             // Refresh wizard shell header (status, decision summary, badges)
@@ -3781,5 +3866,107 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
     const v = String(this.extractPrimitive(value) ?? value ?? '').trim();
     const match = (options ?? []).find((o: any) => String((o as any)?.value ?? '').trim() === v);
     return String((match as any)?.label ?? (match as any)?.text ?? v).trim();
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  SOURCE-TYPE HELPERS
+  //  Procedure number partitioning:
+  //    1 – 999   → Service/Procedure  (procedure{n}_*)
+  //    1000–1999 → Medication         (medication{n}_*)
+  //    2000+     → Transportation     (tc_r{ride}_c{code}_*)
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Returns the source type of a decision item based on its virtual procedureNo.
+   */
+  private getSourceTypeForProcedureNo(procedureNo: number): 'service' | 'medication' | 'transportation' {
+    if (procedureNo >= 2000) return 'transportation';
+    if (procedureNo >= 1000) return 'medication';
+    return 'service';
+  }
+
+  /**
+   * Human-readable source label used in tab badges / UI indicators.
+   */
+  getTabSourceLabel(tab: DecisionTab): string {
+    const src = this.getSourceTypeForProcedureNo(tab.procedureNo);
+    if (src === 'medication')     return 'Medication';
+    if (src === 'transportation') return 'Transportation';
+    return 'Service';
+  }
+
+  /** True when the tab's decision item originated from a Medication entry. */
+  isTabMedication(tab: DecisionTab): boolean {
+    return this.getSourceTypeForProcedureNo(tab.procedureNo) === 'medication';
+  }
+
+  /** True when the tab's decision item originated from a Transportation code entry. */
+  isTabTransportation(tab: DecisionTab): boolean {
+    return this.getSourceTypeForProcedureNo(tab.procedureNo) === 'transportation';
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  REVERSE SYNC: Decision → Source sections
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Fires the Decision → Source reverse sync after a successful single-tab
+   * or bulk save.
+   *
+   * Step 1: Updates in-memory authData with the saved approved/denied values
+   *         so tab-status badges refresh immediately without a full reload.
+   *
+   * Step 2: Invokes _shellSyncDecisionToSources, which the wizard shell wires
+   *         to AuthdetailsComponent.applyDecisionReverseSync().  This patches
+   *         the Service / Medication / Transportation form controls in real time
+   *         so the user sees the decision outcome reflected in both wizard steps
+   *         without navigating away.
+   *
+   * @param procedureNo     Virtual procedure number of the saved decision item
+   * @param savedPayload    The Decision Details payload just persisted to the backend
+   */
+  private fireDecisionReverseSync(procedureNo: number, savedPayload: any): void {
+    if (!procedureNo || !savedPayload) return;
+
+    const approved  = savedPayload?.approved  ?? null;
+    const denied    = savedPayload?.denied    ?? null;
+    const requested = savedPayload?.requested ?? null;
+
+    // Step 1: patch in-memory authData for immediate tab label / badge refresh
+    const sourceType = this.getSourceTypeForProcedureNo(procedureNo);
+
+    if (sourceType === 'service') {
+      const prefix = `procedure${procedureNo}_`;
+      if (approved  !== null) this.authData[prefix + 'serviceAppr']   = approved;
+      if (denied    !== null) this.authData[prefix + 'serviceDenied'] = denied;
+      if (requested !== null) this.authData[prefix + 'serviceReq']    = requested;
+    } else if (sourceType === 'medication') {
+      const medNo  = procedureNo - 1000;
+      const prefix = `medication${medNo}_`;
+      if (approved  !== null) this.authData[prefix + 'approvedQuantity'] = approved;
+      if (denied    !== null) this.authData[prefix + 'deniedQuantity']   = denied;
+    } else if (sourceType === 'transportation') {
+      const seqIdx = procedureNo - 2000;
+      if (approved !== null) this.authData[`transport${seqIdx}_decisionApproved`] = approved;
+      if (denied   !== null) this.authData[`transport${seqIdx}_decisionDenied`]   = denied;
+    }
+
+    // Step 2: notify shell → AuthDetails form controls
+    if (typeof this._shellSyncDecisionToSources === 'function') {
+      this._shellSyncDecisionToSources(
+        procedureNo,
+        approved,
+        denied,
+        requested,
+        savedPayload
+      );
+      console.log(`[AuthDecision] Reverse sync fired → procedureNo=${procedureNo} type=${sourceType} approved=${approved} denied=${denied}`);
+    } else {
+      console.warn(
+        '[AuthDecision] _shellSyncDecisionToSources not wired. ' +
+        'Add it in AuthWizardShell.pushContextIntoCurrentStep(). ' +
+        'Source sections will not update until next AuthDetails visit.'
+      );
+    }
   }
 }

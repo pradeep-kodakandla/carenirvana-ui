@@ -1445,6 +1445,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       this.additionalAirRows = [];
       this.additionalMpRows = [this.createEmptyAdditionalMpRow()];
       this.providerEditMode.clear();
+      this.cardEditMode.clear();
       this.serviceDataByInstance = {};
       this.medicationDataByInstance = {};
       this.legSelectedDays = {};
@@ -2023,6 +2024,57 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
     const snap = this.form.getRawValue();
     this.rebuildFromNormalizedTemplate(snap);
+
+    // Auto-focus the first editable field of the newly added instance
+    this.focusNewRepeatInstance(target);
+  }
+
+  // ── AUTO-FOCUS HELPERS ──────────────────────────────────────────────
+  // After any add action the DOM doesn't update until the next CD cycle.
+  // We defer via setTimeout so Angular finishes rendering before we focus.
+  // ─────────────────────────────────────────────────────────────────────
+
+  /**
+   * Focus the first editable native input/select/textarea inside the LAST
+   * element that matches groupSelector (i.e. the item just added).
+   */
+  private focusLastGroupFirstField(groupSelector: string, delay = 80): void {
+    setTimeout(() => {
+      const groups = document.querySelectorAll(groupSelector);
+      if (!groups.length) return;
+      const last = groups[groups.length - 1] as HTMLElement;
+      const el = last.querySelector<HTMLElement>(
+        'input:not([type="hidden"]):not([disabled]):not([readonly]),' +
+        'select:not([disabled]),' +
+        'textarea:not([disabled])'
+      );
+      if (!el) return;
+      el.focus();
+      // Move cursor to end for text inputs
+      if (el instanceof HTMLInputElement && el.setSelectionRange) {
+        try { el.setSelectionRange(el.value.length, el.value.length); } catch (_) {}
+      }
+    }, delay);
+  }
+
+  /** Dispatch focus to the correct card/row type after addRepeat */
+  private focusNewRepeatInstance(target: any): void {
+    if (this.isProviderRepeatGroup(target)) {
+      // Provider: focus the search lookup input in the last provider card
+      this.focusLastGroupFirstField('.pc-grid .pc');
+    } else if (this.isDiagnosisRepeatGroup(target)) {
+      // Diagnosis: focus the code-type dropdown in the last dc card
+      this.focusLastGroupFirstField('.dc-list .dc');
+    } else if (this.isServiceRepeatGroup(target)) {
+      // Service/Procedure: focus first field in the last service card
+      this.focusLastGroupFirstField('.sc-list .sc-card');
+    } else if (this.isMedicationRepeatGroup(target)) {
+      // Medication: focus first field in the last medication card
+      this.focusLastGroupFirstField('.mc-list .mc-card');
+    } else {
+      // Normal repeat group (generic): focus first field in last repeat group
+      this.focusLastGroupFirstField('.ff-repeat-group');
+    }
   }
 
   removeRepeat(target: any, index: number): void {
@@ -2984,7 +3036,8 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     if (!authDetailId || !authTemplateId) return;
 
     try {
-      // 1) Seed new decision rows (idempotent — won't overwrite existing)
+      // 1) Seed new decision rows for ALL source types (idempotent — never overwrites existing)
+      //    Covers: Service/Procedure, Medication, and Transportation codes
       await this.decisionSeed.ensureSeeded({
         authDetailId,
         authTemplateId,
@@ -2993,14 +3046,15 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         authApprove
       });
 
-      // 2) Sync service-level changes to existing decision items (bi-directional)
-      await this.decisionSeed.syncServiceChangesToDecision({
+      // 2) Sync ALL source-level changes into existing decision items in one call
+      //    Replaces the old syncServiceChangesToDecision — now covers all three types
+      await this.decisionSeed.syncAllSourceChangesToDecision({
         authDetailId,
         authData: mergedAuthData ?? {},
         userId
       });
     } catch (e) {
-      console.error('Decision seeding/sync failed', e);
+      console.error('[AuthDetails] Decision seeding/sync failed', e);
     }
   }
 
@@ -3331,6 +3385,12 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     }
 
     if (!this.form) return;
+
+    // Sync ride-level transport field values back to their section-level counterparts
+    // BEFORE validation. The ride management UI writes to ride_1_beginDate etc., leaving
+    // the section-level controls (beginDate, endDate, transportationType) empty, which
+    // causes required-field validation failures even though the user filled them in.
+    this.syncRideControlsToSectionControls();
 
     this.form.markAllAsTouched();
 
@@ -4417,6 +4477,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     // Reset provider card data
     this.providerDataByInstance = {};
     this.providerEditMode.clear();
+    this.cardEditMode.clear();
     this.contactTrackingByProvider = {};
     this.activeContactTracking = {};
     this.contactTrackingEditMode.clear();
@@ -4607,6 +4668,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     const key = this.getProvInstanceKey(inst);
     delete this.providerDataByInstance[key];
     this.providerEditMode.delete(key);
+    this.cardEditMode.delete(key);
 
     // Also clear the search field and body fields
     const sf = this.getProvSearchField(inst);
@@ -4810,6 +4872,59 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   isProviderInEditMode(inst: RenderRepeatInstance): boolean {
     const key = this.getProvInstanceKey(inst);
     return this.providerEditMode.has(key);
+  }
+
+  // ── UNIFIED CARD EDIT MODE ───────────────────────────────────────
+  // Single entry/exit point that opens Phone/Fax + Contact Tracking
+  // simultaneously, replacing the three separate edit controls.
+  // ────────────────────────────────────────────────────────────────
+  private cardEditMode: Set<string> = new Set();
+
+  /** True when the card is in the unified edit state */
+  isCardInEditMode(inst: RenderRepeatInstance): boolean {
+    return this.cardEditMode.has(this.getProvInstanceKey(inst));
+  }
+
+  /** Open the card in full edit mode: Phone/Fax + Contact Tracking both editable */
+  startCardEdit(inst: RenderRepeatInstance): void {
+    const key = this.getProvInstanceKey(inst);
+    this.cardEditMode.add(key);
+    // Open Phone/Fax edit
+    this.providerPhoneFaxEditMode.add(key);
+    // Open Contact Tracking edit, initialising an empty entry if none exists
+    if (!this.activeContactTracking[key]) {
+      this.activeContactTracking[key] = {
+        contactName: '', contactPhone: '', contactEmail: '',
+        date: new Date().toISOString().split('T')[0], notes: ''
+      };
+    }
+    this.contactTrackingEditMode.add(key);
+
+    // Auto-focus the Phone field (first editable field in the edit panel)
+    this.focusLastGroupFirstField('.pc-edit-panel', 60);
+  }
+
+  /** Save and close all edit sub-sections on this card */
+  doneCardEdit(inst: RenderRepeatInstance): void {
+    const key = this.getProvInstanceKey(inst);
+    // Persist contact tracking to history (mirrors toggleContactTrackingEdit save logic)
+    const active = this.activeContactTracking[key];
+    if (active?.contactName?.trim()) {
+      if (!active.date) { active.date = new Date().toISOString().split('T')[0]; }
+      if (!this.contactTrackingByProvider[key]) { this.contactTrackingByProvider[key] = []; }
+      const exists = this.contactTrackingByProvider[key].some(
+        c => c.contactName === active.contactName &&
+             c.contactPhone === active.contactPhone &&
+             c.date === active.date
+      );
+      if (!exists) { this.contactTrackingByProvider[key].unshift({ ...active }); }
+    }
+    // Close all sub-modes then the card
+    this.contactTrackingEditMode.delete(key);
+    this.providerPhoneFaxEditMode.delete(key);
+    this.cardEditMode.delete(key);
+    // If user had the Change-Provider search open, cancel it cleanly
+    if (this.providerEditMode.has(key)) { this.cancelEditProvider(inst); }
   }
 
   /** Whether provider data exists (ignoring edit mode — used for showing info during edit) */
@@ -5676,6 +5791,74 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
           this.additionalMpRows = [row];
         }
       }
+    }
+  }
+
+  /**
+   * Syncs ride-level transport field values back to their section-level form controls.
+   *
+   * WHY THIS EXISTS:
+   * The Transportation section maintains two parallel sets of controls:
+   *   • Section-level:  `beginDate`, `endDate`, `transportationType` — required per template,
+   *                      rendered as the "header" of the transport card.
+   *   • Ride-level:     `ride_1_beginDate`, `ride_1_endDate`, etc. — what the user actually
+   *                      edits via the ride management UI.
+   *
+   * `migrateSecFieldsToRide()` copies section → ride on initialisation, but when the user
+   * later edits via the ride UI only the ride controls are updated.  On save,
+   * `form.markAllAsTouched()` then sees the section controls still null and raises:
+   * "Please fill in the required fields: Begin Date, End Date, Trip Type".
+   *
+   * Fix: call this method BEFORE `markAllAsTouched()` to push ride values → section
+   * controls so the required-field check passes.
+   *
+   * Strategy: use the FIRST ride as the authoritative source for section-level fields
+   * (begin/end date, trip type apply to the whole auth, not per-ride).
+   */
+  private syncRideControlsToSectionControls(): void {
+    if (!this.renderSections?.length || !this.transportRides.length) return;
+
+    const firstRide = this.transportRides[0];
+    if (!firstRide) return;
+
+    for (const sec of this.renderSections) {
+      if (!this.isTransportationSection(sec)) continue;
+
+      for (const fieldDef of this.transportRideFieldDefs) {
+        // Find the matching section-level RenderField by rawId
+        const sectionField = (sec.fields ?? []).find(
+          (f: any) => (f._rawId ?? f.id) === fieldDef.id
+        );
+        if (!sectionField?.controlName) continue;
+
+        const rideCn  = this.getRideFieldControlName(firstRide.id, fieldDef.id);
+        const rideCtrl = this.form.get(rideCn);
+        const secCtrl  = this.form.get(sectionField.controlName);
+        if (!rideCtrl || !secCtrl) continue;
+
+        const rideVal = rideCtrl.value;
+        const secVal  = secCtrl.value;
+
+        // Push ride value → section when:
+        //   a) ride has a value  AND
+        //   b) section is empty  (don't overwrite if user filled section directly)
+        const rideHasValue = rideVal !== null && rideVal !== undefined && rideVal !== '';
+        const secIsEmpty   = secVal  === null || secVal  === undefined || secVal  === '';
+
+        if (rideHasValue && secIsEmpty) {
+          secCtrl.setValue(rideVal, { emitEvent: false });
+        }
+
+        // Also push section value → ride when ride is empty but section has a value
+        // (handles the case where the user filled section fields directly)
+        const secHasValue  = !secIsEmpty;
+        const rideIsEmpty  = !rideHasValue;
+        if (secHasValue && rideIsEmpty) {
+          rideCtrl.setValue(secVal, { emitEvent: false });
+        }
+      }
+
+      break; // Only one Transportation section expected
     }
   }
 
@@ -6802,6 +6985,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
     // Set up date watchers for the new ride
     this.setupRideDateWatchers();
+
+    // Auto-focus first editable field of the newly added ride
+    this.focusLastGroupFirstField('.tr-ride-group', 100);
   }
 
   /** Remove a ride and all its legs */
@@ -6881,6 +7067,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       if (freshLegSub) {
         this.expandNewLegs(freshLegSub, rideId);
       }
+
+      // Auto-focus first editable field of the new leg (extra delay to wait for expand animation)
+      this.focusLastGroupFirstField('.tl-leg-card--filled, .tl-leg-card', 120);
     }
   }
 
@@ -7101,6 +7290,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         [rideId]: codeId
       };
     }
+
+    // Auto-focus the first field of the newly added code row
+    this.focusLastGroupFirstField('.tr-code-row', 80);
   }
 
   /** Remove a transportation code entry from a ride */
@@ -8392,6 +8584,106 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         sec.expanded = true;
       }
     }
+  }
+
+  // ============================================================
+  // REVERSE SYNC: Decision → Source sections
+  //
+  // Called by the wizard shell when AuthDecision saves an
+  // approved / denied value.  Routes to the correct source
+  // section based on the procedureNo partition:
+  //   1 – 999   → Service   (procedure{n}_serviceAppr / serviceDenied)
+  //   1000–1999 → Medication (medication{n}_approvedQuantity / deniedQuantity)
+  //   2000+     → Transportation (display-only, stored in authData)
+  // ============================================================
+
+  /**
+   * Patches the form controls of the source section (Service, Medication,
+   * or Transportation) with the latest approved/denied values from Decision.
+   *
+   * Called by AuthWizardShell via _shellSyncDecisionToSources callback.
+   * Public so the shell can call it directly on the ViewChild reference.
+   */
+  public applyDecisionReverseSync(
+    procedureNo: number,
+    approved: any,
+    denied: any,
+    requested?: any,
+    decisionPayload?: any
+  ): void {
+    if (!this.form) return;
+
+    if (procedureNo >= 2000) {
+      // ── Transportation ─────────────────────────────────────────────────
+      // No direct editable form field for approved/denied in the transport
+      // scheduler; values are informational and stored in authData only.
+      console.log(`[AuthDetails] Reverse sync: Transportation seqIndex=${procedureNo - 2000}, approved=${approved}`);
+
+    } else if (procedureNo >= 1000) {
+      // ── Medication ──────────────────────────────────────────────────────
+      const medNo  = procedureNo - 1000;
+      const prefix = `medication${medNo}_`;
+      this._patchFormControlSilently(prefix + 'approvedQuantity', approved);
+      this._patchFormControlSilently(prefix + 'deniedQuantity',   denied);
+      console.log(`[AuthDetails] Reverse sync: Medication ${medNo}, approved=${approved}, denied=${denied}`);
+
+    } else {
+      // ── Service / Procedure ─────────────────────────────────────────────
+      const prefix = `procedure${procedureNo}_`;
+      this._patchFormControlSilently(prefix + 'serviceAppr',   approved);
+      this._patchFormControlSilently(prefix + 'serviceDenied', denied);
+      if (requested !== undefined && requested !== null) {
+        this._patchFormControlSilently(prefix + 'serviceReq', requested);
+      }
+      // Reflect reviewType change from Decision back to Service if provided
+      if (decisionPayload?.reviewType != null) {
+        this._patchFormControlSilently(prefix + 'reviewType', decisionPayload.reviewType);
+      }
+      console.log(`[AuthDetails] Reverse sync: Service ${procedureNo}, approved=${approved}, denied=${denied}`);
+    }
+
+    // ── Keep pendingAuth.jsonData consistent ────────────────────────────
+    // Ensures the next AuthDetails save includes the decision outcome and
+    // does not overwrite it with stale form values.
+    if (this.pendingAuth) {
+      const updatedAuthData = this.decisionSeed.syncDecisionToSource({
+        authDetailId:   Number((this.pendingAuth as any).authDetailId ?? (this.pendingAuth as any).id ?? 0),
+        authData:       this.safeParseJson((this.pendingAuth as any).jsonData) ?? {},
+        userId:         Number(sessionStorage.getItem('loggedInUserid') || 0),
+        procedureNo,
+        approvedValue:  approved,
+        deniedValue:    denied,
+        requestedValue: requested,
+        decisionPayload,
+      });
+
+      const existing  = this.safeParseJson((this.pendingAuth as any).jsonData) ?? {};
+      const merged    = { ...existing, ...updatedAuthData };
+      (this.pendingAuth as any).jsonData = JSON.stringify(merged);
+    }
+
+    // ── Refresh card display data after form patch ──────────────────────
+    if (procedureNo < 1000) {
+      this.rehydrateServiceData();
+    } else if (procedureNo < 2000) {
+      this.rehydrateMedicationData();
+    }
+  }
+
+  /**
+   * Silently patches a single form control.
+   * Skips if the control does not exist or value is unchanged.
+   */
+  private _patchFormControlSilently(controlName: string, value: any): void {
+    if (!controlName) return;
+    const ctrl = this.form?.get(controlName);
+    if (!ctrl) return;
+
+    const incoming = value ?? null;
+    if (String(ctrl.value ?? '') === String(incoming ?? '')) return;
+
+    ctrl.setValue(incoming, { emitEvent: false });
+    ctrl.markAsDirty();
   }
 
 }

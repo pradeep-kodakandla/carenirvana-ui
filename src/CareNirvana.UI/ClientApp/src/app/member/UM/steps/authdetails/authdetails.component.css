@@ -237,6 +237,107 @@ justify-self: end;
 }
 :host ::ng-deep ui-smart-lookup,
 :host ::ng-deep ui-smart-lookup * { min-width: 0; }
+
+/* ═══════════════════════════════════════════════════════════════
+   ui-smart-lookup  ▸  inside .ff-outline floating-label wrapper
+   ───────────────────────────────────────────────────────────────
+   Problem: .sl-input ships with its own border (1.5px), height
+   (42px) and border-radius (10px).  Inside .ff-outline this
+   creates a double border, wrong row height, and a floating label
+   that cuts through the inner box instead of the outer one.
+
+   Fix strategy:
+     1. Strip ALL chrome from .sl-input — ff-outline is the sole
+        visible container/border.
+     2. Reset height to 34px to match every other ff-body field.
+     3. Suppress sl-input's own :focus-within overrides — the
+        ff-outline:focus-within rule already handles the blue ring.
+     4. Align the dropdown panel with ff-outline's outer edges and
+        harmonise its border-color + radius.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* 1 ── Hide the component's own label (ff-float-label owns it) */
+:host ::ng-deep .ff-outline .ff-lookup .sl-label {
+  display: none !important;
+}
+
+/* 2 ── Strip inner border / shadow / radius / height */
+:host ::ng-deep .ff-outline .ff-lookup .sl-input {
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 8px 0 6px;
+  background: transparent !important;
+  transition: none;
+  gap: 6px;
+}
+
+/* 3 ── Suppress sl-input's focus-within + isOpen overrides */
+:host ::ng-deep .ff-outline .ff-lookup .sl-input:focus-within,
+:host ::ng-deep .ff-outline .ff-lookup .sl-input.isOpen {
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+/* 4 ── Text input — match authdetails field typography */
+:host ::ng-deep .ff-outline .ff-lookup .sl-text {
+  font-size: 13px;
+  font-weight: 400;
+  color: #1E293B;
+  height: 28px;
+  line-height: 28px;
+}
+
+/* 5 ── Search icon — muted to match authdetails ink-soft */
+:host ::ng-deep .ff-outline .ff-lookup .sl-icon {
+  color: #94A3B8;
+  transition: color 160ms ease;
+}
+:host ::ng-deep .ff-outline .ff-lookup .sl-input:focus-within .sl-icon {
+  color: #007bff;
+}
+
+/* 6 ── Dropdown panel alignment
+        .sl-panel is absolute inside .sl-wrap.
+        .sl-wrap sits inside .ff-body inside .ff-outline (border 1.5px + pad 1px = 2.5px each side).
+        Shift left/right by -2.5px so panel edges align with ff-outline's outer border.
+        Override border-color to match authdetails blue; square top corners to
+        connect flush with ff-outline's bottom edge. */
+:host ::ng-deep .ff-outline .ff-lookup .sl-panel {
+  left: -3px;
+  right: -3px;
+  top: 100%;
+  border: 1.5px solid #007bff;
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  box-shadow: 0 8px 24px rgba(0, 123, 255, .10), 0 2px 8px rgba(0, 0, 0, .06);
+}
+
+/* 7 ── Round ff-outline bottom corners when panel is open
+        (uses :has — gracefully ignored in browsers without support) */
+:host ::ng-deep .ff-outline:has(.ff-lookup .sl-input.isOpen) {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, .12);
+}
+
+/* 8 ── Clear button — inherits authdetails scale */
+:host ::ng-deep .ff-outline .ff-lookup .sl-clear {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* 9 ── Spinner stays compact */
+:host ::ng-deep .ff-outline .ff-lookup .sl-spinner {
+  width: 13px;
+  height: 13px;
+}
 .sub-card.sub-nested {
 margin-left: 12px;
 border-left: 3px dashed #e1e5ee;
@@ -1762,3 +1863,118 @@ border-radius:999px;font-weight:600;font-size:13px;padding:8px 22px;
   transition: background .15s;
 }
 .pc-phone-fax-done-btn:hover { background: #EFF6FF; }
+
+/* ═══════════════════════════════════════════════════════════════
+   UNIFIED PROVIDER CARD EDIT MODE
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Single "Done" button (replaces Edit + phone-done + ct-done) ── */
+.pc-done-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1.5px solid #22C55E;
+  background: #F0FDF4;
+  color: #15803D;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s, border-color .15s;
+}
+.pc-done-btn:hover { background: #DCFCE7; border-color: #16A34A; }
+.pc-done-icon { font-size: 15px; width: 15px; height: 15px; }
+
+/* ── "Change" link next to provider name inside edit mode ── */
+.pc-change-provider-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1D4ED8;
+  background: none;
+  border: 1px solid #BFDBFE;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 2px 7px;
+  white-space: nowrap;
+  margin-left: auto;
+  transition: background .15s, border-color .15s;
+}
+.pc-change-provider-btn:hover { background: #EFF6FF; border-color: #93C5FD; }
+
+/* ── Edit mode panel container ── */
+.pc-edit-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-radius: 8px;
+  border: 1.5px solid #BFDBFE;
+  background: #F0F6FF;
+  padding: 10px 12px;
+  animation: pc-edit-open .18s ease;
+}
+@keyframes pc-edit-open {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Provider identity row at top of edit panel */
+.pc-edit-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.pc-edit-npi-line {
+  font-size: 11.5px;
+  color: #475569;
+}
+
+/* Section grouping inside edit panel (e.g. Phone & Fax) */
+.pc-edit-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pc-edit-section-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   AUTO-FOCUS VISUAL CUE
+   When a field receives programmatic focus (Add actions), give it
+   a brief attention ring so the user's eye is drawn straight to it.
+   ═══════════════════════════════════════════════════════════════ */
+@keyframes focus-pulse {
+  0%   { box-shadow: 0 0 0 0   rgba(0, 123, 255, .55); }
+  50%  { box-shadow: 0 0 0 5px rgba(0, 123, 255, .20); }
+  100% { box-shadow: 0 0 0 3px rgba(0, 123, 255, .12); }
+}
+.pc-grid .pc:last-child input:focus,
+.dc-list .dc:last-child input:focus,
+.dc-list .dc:last-child select:focus,
+.sc-list .sc-card:last-child input:focus,
+.sc-list .sc-card:last-child select:focus,
+.mc-list .mc-card:last-child input:focus,
+.mc-list .mc-card:last-child select:focus,
+.ff-repeat-group:last-child input:focus,
+.ff-repeat-group:last-child select:focus,
+.tr-ride-group:last-child input:focus,
+.tr-ride-group:last-child select:focus,
+.tr-code-row:last-child input:focus,
+.tr-code-row:last-child select:focus,
+.tl-leg-card:last-child input:focus,
+.tl-leg-card:last-child select:focus,
+.pc-edit-panel input:focus {
+  animation: focus-pulse .4s ease forwards;
+  outline: none;
+  border-color: #007bff !important;
+}
