@@ -1,258 +1,689 @@
-.card {
-  border: 1px solid #dee2e6;
-  border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.card-header {
-  font-size: 1.2rem;
-  font-weight: 600;
-}
-
-.form-label {
-  font-weight: 500;
-}
-
-.form-check-label {
-  cursor: pointer;
-}
-
-.btn-sm {
-  font-size: 0.8rem;
-}
-
-.btn-danger {
-  background-color: #dc3545;
-  border: none;
-}
-
-.btn-success {
-  background-color: #198754;
-  border: none;
-}
-
-.p-3 {
-  padding: 0px !important;
-}
-
-
-/* Outlined Form Fields */
-.form-outline {
-  position: relative;
-  margin-bottom: 0 !important;
-  width: 100%;
-}
-
-  .form-outline .form-label {
-    position: absolute;
-    top: -10px;
-    left: 12px;
-    background: white;
-    padding: 0 5px;
-    font-size: 12px;
-    font-weight: bold;
-    color: #555;
-  }
-
-  .form-outline .form-control {
-    width: 100%;
-    border: 2px solid #ccc;
-    border-radius: 5px;
-    font-size: 12px;
-    outline: none;
-    transition: border-color 0.3s ease-in-out;
-    background-color: white;
-  }
-
-    .form-outline .form-control:focus {
-      border-color: lightgray;
-      box-shadow: 0 0 5px rgba(30, 120, 171, 0.3);
-    }
-
-.info-label {
-  font-weight: bold;
-  font-size: 14px;
-  color: #007bff; /* Blue color for labels */
-  text-transform: uppercase;
-  /*min-width: 150px;*/ /* Ensures labels align properly */
-}
-
-.info-value {
-  font-size: 16px;
-  font-weight: 500;
-  color: #333;
-}
-
-
-
-/* Tabs */
-.field-tabs {
+/* ═══════════════════════════════════════════════════════════
+   CSS CUSTOM PROPERTIES
+═══════════════════════════════════════════════════════════ */
+:host {
+  /* ── FIX 1: host must be a bounded flex container so that
+     .props-panel height:100% has a real reference, and
+     .props-body overflow-y:auto actually triggers a scrollbar ── */
   display: flex;
-  gap: 12px;
-  border-bottom: 1px solid #e5e7eb;
-  margin: -10px -10px 12px;
-  padding: 8px 12px 0;
-  background-color: #fff;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  --c-primary: #2563eb;
+  --c-primary-bg: #eff6ff;
+  --c-danger: #dc2626;
+  --c-surface: #f8fafc;
+  --c-surface-2: #f1f5f9;
+  --c-border: #e2e8f0;
+  --c-text: #0f172a;
+  --c-muted: #64748b;
+  --c-faint: #94a3b8;
+  --radius: 8px;
+  --radius-sm: 6px;
+  --radius-pill: 999px;
+  --shadow-xs: 0 1px 2px rgba(0,0,0,.06);
+  --shadow-sm: 0 2px 8px rgba(0,0,0,.08);
+  --t: 140ms ease;
 }
 
-.field-tab {
-  border: none;
-  background: transparent;
-  padding: 8px 12px;
-  font-size: 13px;
-  color: #6c757d;
-  border-bottom: 3px solid transparent;
-  cursor: pointer;
+/* ═══════════════════════════════════════════════════════════
+   PANEL LAYOUT
+═══════════════════════════════════════════════════════════ */
+.props-panel {
   display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-  .field-tab.active {
-    color: #0d6efd;
-    border-bottom-color: #0d6efd;
-    font-weight: 600;
-  }
-
-/* Panels inside Conditional / Advanced */
-.section-panel {
-  border-radius: 10px;
-/*  padding: 2px 4px;
-  margin-bottom: 6px;
-  background-color: #f9fafb;*/
-}
-
-.section-panel-header {
-  font-weight: 600;
+  flex-direction: column;
+  /* ── FIX 2: use flex:1 instead of height:100% so the panel
+     fills the host without fighting it for sizing ── */
+  flex: 1;
+  min-height: 0; /* critical: lets flex children shrink below content size */
+  overflow: hidden;
+  font-family: 'Inter', system-ui, sans-serif;
   font-size: 13px;
-  color: #4b5563;
-  margin-bottom: 8px;
-/*  border-bottom: 1px solid #e5e7eb;*/
-  padding-bottom: 6px;
+  color: var(--c-text);
 }
 
-
-
-
-.field-header {
+.props-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
-  border-bottom: 1px solid #e5e7eb;
-  background-color: #f9fafb;
-  border-top-left-radius: 10px;
-  border-top-right-radius: 10px;
+  padding: 12px 14px;
+  gap: 10px;
+  background: var(--c-surface);
+  border-bottom: 1.5px solid var(--c-border);
+  flex-shrink: 0;
 }
 
-.field-header-left {
+.props-header-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
-.field-header-icon {
-  font-size: 18px;
-  color: #2563eb; /* blue icon */
-}
-
-.field-header-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #111827;
-}
-
-.field-header-back {
-  border: 1px solid #e5e7eb;
-  background-color: #ffffff;
-  border-radius: 999px;
-  padding: 4px 10px;
+.props-header-icon {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--c-primary-bg);
+  flex-shrink: 0;
+}
+
+  .props-header-icon mat-icon {
+    font-size: 18px;
+    color: var(--c-primary);
+  }
+
+.props-header-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-text);
+}
+
+.props-header-sub {
+  font-size: 11px;
+  color: var(--c-muted);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.props-reset-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--c-faint);
+  cursor: pointer;
+  transition: background var(--t), color var(--t);
+}
+
+  .props-reset-btn:hover {
+    background: var(--c-surface-2);
+    color: var(--c-muted);
+  }
+
+  .props-reset-btn mat-icon {
+    font-size: 17px;
+  }
+
+.props-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 6px 8px;
+  background: var(--c-surface);
+  border-bottom: 1.5px solid var(--c-border);
+  flex-shrink: 0;
+}
+
+.props-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--c-muted);
+  cursor: pointer;
+  transition: background var(--t), color var(--t), border-color var(--t);
+}
+
+  .props-tab mat-icon {
+    font-size: 15px;
+  }
+
+  .props-tab:hover {
+    background: var(--c-surface-2);
+    color: var(--c-text);
+  }
+
+  .props-tab.active {
+    background: var(--c-primary-bg);
+    color: var(--c-primary);
+    border-color: rgba(37,99,235,.25);
+  }
+
+/* ── FIX 3: props-body must own the scrollbar.
+   flex:1 + min-height:0 is the standard pattern for a
+   scrollable flex child inside a bounded flex parent ── */
+.props-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  /* Thin, always-visible scrollbar for webkit browsers */
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-border) transparent;
+}
+
+  .props-body::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .props-body::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .props-body::-webkit-scrollbar-thumb {
+    background: var(--c-border);
+    border-radius: var(--radius-pill);
+  }
+
+    .props-body::-webkit-scrollbar-thumb:hover {
+      background: var(--c-faint);
+    }
+
+/* ═══════════════════════════════════════════════════════════
+   FORM ELEMENTS
+═══════════════════════════════════════════════════════════ */
+.prop-group {
+  margin-bottom: 10px;
+}
+
+.prop-outline {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.prop-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+  color: var(--c-muted);
+}
+
+.prop-input {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  color: var(--c-text);
+  background: var(--c-surface);
+  transition: border-color var(--t), box-shadow var(--t);
+  box-sizing: border-box;
+}
+
+  .prop-input:focus {
+    outline: none;
+    border-color: var(--c-primary);
+    box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+  }
+
+  .prop-input::placeholder {
+    color: var(--c-faint);
+  }
+
+textarea.prop-input {
+  height: auto;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ui-smart-dropdown OVERRIDES  — scoped to this panel only.
+   Class names taken directly from uismartdropdown.component.html
+   so these selectors are exact, not guesses.
+═══════════════════════════════════════════════════════════ */
+
+/* ── Control (the visible trigger row) — border was missing here ── */
+::ng-deep ui-smart-dropdown .ui-smart-dropdown__control {
+  border: 1.5px solid var(--c-border) !important;
+  border-radius: var(--radius-sm) !important;
+  background: var(--c-surface) !important;
+  min-height: 32px !important;
+  font-size: 12.5px !important;
+  color: var(--c-text) !important;
+  transition: border-color var(--t), box-shadow var(--t) !important;
+}
+
+  /* Hover */
+  ::ng-deep ui-smart-dropdown .ui-smart-dropdown__control:hover {
+    border-color: var(--c-faint) !important;
+  }
+
+/* Focused / open — driven by wrapper class set in the component */
+::ng-deep ui-smart-dropdown .ui-smart-dropdown__wrapper--focused .ui-smart-dropdown__control {
+  border-color: var(--c-primary) !important;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.12) !important;
+}
+
+/* Disabled */
+::ng-deep ui-smart-dropdown .ui-smart-dropdown--disabled .ui-smart-dropdown__control {
+  background: var(--c-surface-2) !important;
+  cursor: not-allowed !important;
+}
+
+/* ── Floating label — always shown in uppercase like other prop-labels ── */
+::ng-deep ui-smart-dropdown .ui-smart-dropdown__label {
+  top: 0 !important;
+  transform: translateY(-50%) !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: .3px !important;
+  text-transform: uppercase !important;
+  color: var(--c-muted) !important;
+  background: var(--c-surface) !important;
+}
+
+::ng-deep ui-smart-dropdown .ui-smart-dropdown__wrapper--has-value .ui-smart-dropdown__label,
+::ng-deep ui-smart-dropdown .ui-smart-dropdown__wrapper--focused .ui-smart-dropdown__label {
+  top: 0 !important;
+  transform: translateY(-50%) !important;
+  font-size: 10.5px !important;
+  color: var(--c-muted) !important;
+}
+
+/* ── Dropdown panel ── */
+::ng-deep ui-smart-dropdown .ui-smart-dropdown__panel {
+  border: 1.5px solid var(--c-border) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+/* ── Options: selected & highlighted states ── */
+::ng-deep ui-smart-dropdown .ui-smart-dropdown__option--selected {
+  background: var(--c-primary-bg) !important;
+  color: var(--c-primary) !important;
+}
+
+::ng-deep ui-smart-dropdown .ui-smart-dropdown__option--highlighted,
+::ng-deep ui-smart-dropdown .ui-smart-dropdown__option:not(.ui-smart-dropdown__option--disabled):hover {
+  background: var(--c-primary-bg) !important;
+  color: var(--c-primary) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LABELS / SECTIONS
+═══════════════════════════════════════════════════════════ */
+.prop-section-label {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  color: var(--c-muted);
+  margin-bottom: 6px;
+}
+
+.prop-section-header {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+  color: var(--c-faint);
+  padding: 12px 0 6px;
+  border-bottom: 1px solid var(--c-border);
+  margin-bottom: 10px;
+}
+
+.prop-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+}
+
+.prop-info-label {
+  font-size: 11.5px;
+  color: var(--c-muted);
+  font-weight: 500;
+}
+
+.prop-info-value {
+  font-size: 12px;
+  color: var(--c-text);
+}
+
+.prop-id-chip {
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-border);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'Fira Code', monospace;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TOGGLES / CHECKBOXES
+═══════════════════════════════════════════════════════════ */
+.prop-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 4px 0;
+  user-select: none;
+}
+
+.prop-toggle-label {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--c-text);
+}
+
+.prop-checkbox {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--c-primary);
+  flex-shrink: 0;
   cursor: pointer;
 }
 
-  .field-header-back i {
-    font-size: 14px;
-    color: #2563eb;
+.prop-radio {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--c-primary);
+  cursor: pointer;
+}
+
+.prop-checkbox-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 8px 10px;
+  background: var(--c-surface);
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--radius-sm);
+}
+
+.prop-checkbox-scroll {
+  max-height: 120px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  background: var(--c-surface);
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--radius-sm);
+}
+
+.prop-check-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--c-text);
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ALERTS / BADGES
+═══════════════════════════════════════════════════════════ */
+.prop-warning {
+  font-size: 11.5px;
+  color: #d97706;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  margin-bottom: 6px;
+}
+
+.prop-badge-info {
+  font-size: 11px;
+  color: var(--c-muted);
+  padding: 4px 8px;
+  background: var(--c-surface);
+  border-left: 3px solid var(--c-primary);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  margin-bottom: 6px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   OPTION LISTS
+═══════════════════════════════════════════════════════════ */
+.prop-option-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.prop-select-all {
+  padding: 4px 0;
+}
+
+.prop-option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-sm);
+}
+
+.prop-option-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.prop-radio-icon {
+  font-size: 15px;
+  color: var(--c-muted);
+  flex-shrink: 0;
+}
+
+.prop-radio-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TAGS / SUGGESTIONS
+═══════════════════════════════════════════════════════════ */
+.prop-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+
+.prop-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--c-primary-bg);
+  color: var(--c-primary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.prop-tag-remove {
+  border: none;
+  background: transparent;
+  color: var(--c-primary);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+  line-height: 1;
+}
+
+.prop-suggestions {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  background: #fff;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--radius-sm);
+  max-height: 150px;
+  overflow-y: auto;
+  box-shadow: var(--shadow-sm);
+}
+
+  .prop-suggestions li {
+    padding: 6px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--c-text);
+    transition: background var(--t);
   }
 
-  .field-header-back:hover {
-    background-color: #eff6ff;
-    border-color: #bfdbfe;
+    .prop-suggestions li:hover {
+      background: var(--c-primary-bg);
+      color: var(--c-primary);
+    }
+
+/* ═══════════════════════════════════════════════════════════
+   LAYOUT HELPERS
+═══════════════════════════════════════════════════════════ */
+.prop-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════════════════════════ */
+.btn-outline-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--c-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--t), color var(--t), background var(--t);
+}
+
+  .btn-outline-sm:hover {
+    border-color: var(--c-primary);
+    color: var(--c-primary);
+    background: var(--c-primary-bg);
   }
 
+  .btn-outline-sm mat-icon {
+    font-size: 15px;
+  }
 
+.btn-icon-danger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--c-faint);
+  cursor: pointer;
+  transition: border-color var(--t), color var(--t), background var(--t);
+}
 
+  .btn-icon-danger:hover {
+    border-color: var(--c-danger);
+    color: var(--c-danger);
+    background: #fef2f2;
+  }
+
+  .btn-icon-danger mat-icon {
+    font-size: 15px;
+  }
+
+/* ═══════════════════════════════════════════════════════════
+   CONDITION BUILDER
+═══════════════════════════════════════════════════════════ */
 .condition-builder {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 8px;
-}
-
-.condition-card {
-/*  padding: 10px 12px;*/
-  border-radius: 6px;
-/*  background-color: #f9fafb;
-  border: 1px solid #e2e8f0;*/
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.condition-row-full {
-  width: 100%;
-}
-
-.condition-row-inline {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
   gap: 8px;
 }
 
-.condition-value {
-  flex: 1;
-}
-
-.condition-actions-inline {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* Connector between conditions (AND/OR) */
 .condition-connector {
   display: flex;
   align-items: center;
-  justify-content: center;
-  margin: 6px 0;
+  gap: 6px;
+  padding: 0 4px;
 }
 
-.condition-connector-line {
+.connector-line {
   flex: 1;
   height: 1px;
-  background: #e0e0e0;
+  background: var(--c-border);
 }
 
-.condition-connector-operator {
-  margin: 0 8px;
-  min-width: 140px;
+.connector-op {
+  min-width: 80px;
 }
 
+.condition-card {
+  background: var(--c-surface);
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--radius);
+  padding: 10px 10px 6px;
+  box-shadow: var(--shadow-xs);
+}
 
-.caselevel-wrap {
+.condition-value-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px 16px;
-  align-items: center;
+  align-items: flex-end;
+  gap: 6px;
 }
 
-  .caselevel-wrap .form-check {
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
+.condition-value-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.condition-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-bottom: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LOOKUP MAP
+═══════════════════════════════════════════════════════════ */
+.lookup-map-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.lookup-map-arrow {
+  font-size: 14px;
+  color: var(--c-faint);
+  flex-shrink: 0;
+  font-weight: 700;
+}
+
+.mat-icon {
+  height: auto !important;
+  width: auto !important;
+}

@@ -1,569 +1,553 @@
-<div class="card shadow-sm mb-4 bg-white rounded" *ngIf="selectedField">
-  <div class="field-header">
-    <div class="field-header-left">
-      <i class="bi bi-sliders field-header-icon"></i>
-      <span class="field-header-title">Field Properties</span>
-    </div>
+<div class="props-panel" *ngIf="selectedField">
 
-    <!-- Right-side rounded “back / reset” button -->
-    <button type="button" class="field-header-back" title="Back">
-      <i class="bi bi-arrow-counterclockwise"></i>
+  <!-- ── Panel header ── -->
+  <div class="props-header">
+    <div class="props-header-left">
+      <span class="props-header-icon">
+        <mat-icon>tune</mat-icon>
+      </span>
+      <div>
+        <div class="props-header-title">Field Properties</div>
+        <div class="props-header-sub">{{ selectedField.displayName || selectedField.label || 'Unnamed' }}</div>
+      </div>
+    </div>
+    <button class="props-reset-btn" type="button" title="Deselect field" (click)="setActiveTab('basic')">
+      <mat-icon>refresh</mat-icon>
     </button>
   </div>
 
-  <div class="card-body" style="padding:5px;">
-    <div class="card-body" style="padding:5px;" *ngIf="selectedField">
-      <!-- Tabs -->
-      <div class="field-tabs mb-2">
-        <button type="button"
-                class="field-tab"
-                [class.active]="activeTab === 'basic'"
-                (click)="setActiveTab('basic')">
-          <span>Basic</span>
-        </button>
+  <!-- ── Tabs ── -->
+  <div class="props-tabs">
+    <button type="button" class="props-tab" [class.active]="activeTab === 'basic'" (click)="setActiveTab('basic')">
+      <mat-icon>settings</mat-icon> Basic
+    </button>
+    <button type="button" class="props-tab" [class.active]="activeTab === 'conditional'" (click)="setActiveTab('conditional')">
+      <mat-icon>account_tree</mat-icon> Conditions
+    </button>
+    <button type="button" class="props-tab" [class.active]="activeTab === 'advanced'" (click)="setActiveTab('advanced')">
+      <mat-icon>build</mat-icon> Advanced
+    </button>
+  </div>
 
-        <button type="button"
-                class="field-tab"
-                [class.active]="activeTab === 'conditional'"
-                (click)="setActiveTab('conditional')">
-          <span>Conditional</span>
-        </button>
+  <div class="props-body">
 
-        <button type="button"
-                class="field-tab"
-                [class.active]="activeTab === 'advanced'"
-                (click)="setActiveTab('advanced')">
-          <span>Advanced</span>
-        </button>
+    <!-- ═══════════════════════════════════════════
+         BASIC TAB
+    ═══════════════════════════════════════════ -->
+    <div *ngIf="activeTab === 'basic'">
+
+      <!-- Section name (only shown when editing a section/subsection) -->
+      <div *ngIf="selectedSection" class="prop-group">
+        <div class="prop-outline">
+          <label class="prop-label">Section Name</label>
+          <input type="text" class="prop-input"
+                 [(ngModel)]="selectedSection.sectionName"
+                 (change)="emitSectionUpdate()" />
+        </div>
       </div>
 
-      <!-- ================= BASIC TAB ================= -->
-      <div class="content-section" *ngIf="activeTab === 'basic'">
-        <!-- everything you already had stays here -->
-        <!-- Section Name -->
-        <div *ngIf="selectedSection">
-          <div style="padding:5px;"></div>
-          <div class="mb-3 form-outline">
-            <label class="form-label">Section Name</label>
-            <input type="text" class="form-control"
-                   [(ngModel)]="selectedSection.sectionName"
-                   (change)="emitSectionUpdate()">
-          </div>
-        </div>
-        <!-- Field Label (read only) -->
-        <div *ngIf="selectedField.type !== 'button'" class="mb-3">
-          <span class="info-label">Field Label: </span>
-          <span class="info-value">{{ selectedField.label }}</span>
-        </div>
+      <!-- Field label (read-only) -->
+      <div *ngIf="selectedField.type !== 'button'" class="prop-group prop-info-row">
+        <span class="prop-info-label">Field ID</span>
+        <span class="prop-info-value prop-id-chip">{{ selectedField.label }}</span>
+      </div>
 
-        <!-- Display Name -->
-        <div *ngIf="selectedField.type !== 'button'" class="mb-3 form-outline" style="padding-bottom:15px;">
-          <label class="form-label">Display Name</label>
-          <input type="text" class="form-control"
+      <!-- Display Name -->
+      <div *ngIf="selectedField.type !== 'button'" class="prop-group">
+        <div class="prop-outline">
+          <label class="prop-label">Display Name</label>
+          <input type="text" class="prop-input"
                  [(ngModel)]="selectedField.displayName"
-                 (change)="emitUpdate()">
+                 (change)="emitUpdate()" />
         </div>
+      </div>
 
-        <!-- Field Type (ui-smart-dropdown) -->
-        <div class="mb-3 form-outline" style="padding-bottom:10px;">
-          <ui-smart-dropdown label="Field Type"
-                             [(ngModel)]="selectedField.type"
-                             [options]="fieldTypeOptions"
-                             placeholder=""
-                             (valueChange)="emitUpdate()">
-          </ui-smart-dropdown>
+      <!-- Field Type -->
+      <div class="prop-group">
+        <ui-smart-dropdown label="Field Type"
+                           [(ngModel)]="selectedField.type"
+                           [options]="fieldTypeOptions"
+                           placeholder=""
+                           (valueChange)="emitUpdate()">
+        </ui-smart-dropdown>
+      </div>
+
+      <!-- Case Level (AG only) -->
+      <div class="prop-group" *ngIf="module === 'AG'">
+        <label class="prop-section-label">Case Level</label>
+        <div *ngIf="caseLevelWarning" class="prop-warning">{{ caseLevelWarning }}</div>
+        <div class="prop-checkbox-grid">
+          <label *ngFor="let opt of caseLevelOptions" class="prop-check-item">
+            <input type="checkbox" class="prop-checkbox"
+                   [checked]="selectedField.level?.includes(opt.id)"
+                   (change)="toggleCaseLevel(opt, $event)" />
+            <span>{{ opt.label }}</span>
+          </label>
         </div>
+      </div>
 
-        <div class="mb-3 form-outline"
-             *ngIf="module === 'AG'"
-             style="padding-bottom:10px;">
-          <label class="form-label">Case Level</label>
-
-          <!-- alert message (only when user tries to uncheck last one) -->
-          <div *ngIf="caseLevelWarning" class="alert alert-warning py-1 px-2 mb-2">
-            {{ caseLevelWarning }}
-          </div>
-
-          <!-- side-by-side, auto-wrap -->
-          <div class="border rounded p-2 d-flex flex-wrap gap-3 align-items-center">
-            <label *ngFor="let opt of caseLevelOptions"
-                   class="form-check form-check-inline m-0 d-flex align-items-center">
-              <input type="checkbox"
-                     class="form-check-input me-2"
-                     [checked]="selectedField.level?.includes(opt.id)"
-                     (change)="toggleCaseLevel(opt, $event)">
-              <span class="form-check-label">{{ opt.label }}</span>
-            </label>
-          </div>
-        </div>
-        <!--<div class="mt-2" *ngIf="module === 'AG' && selectedField?.required">
-          <label class="form-label mb-1">Case Level</label>
-
-          <div class="caselevel-wrap">
-            <label class="form-check" *ngFor="let opt of caseLevelOptions">
-              <input class="form-check-input"
-                     type="checkbox"
-                     [checked]="(selectedField.level || []).includes(opt.id)"
-                     (change)="toggleCaseLevel(opt, $event)" />
-              <span class="form-check-label">{{ opt.label }}</span>
-            </label>
-          </div>
-
-          <div class="text-danger small mt-1" *ngIf="caseLevelWarning">
-            {{ caseLevelWarning }}
-          </div>
-        </div>-->
-        <!-- Is Editable -->
-        <div class="form-check mb-3">
-          <input type="checkbox"
-                 class="form-check-input"
+      <!-- Is Editable -->
+      <div class="prop-group">
+        <label class="prop-toggle-row">
+          <input type="checkbox" class="prop-checkbox"
                  [(ngModel)]="selectedField.isEnabled"
-                 (change)="emitUpdate()">
-          <label class="form-check-label">Is Editable</label>
+                 (change)="emitUpdate()" />
+          <span class="prop-toggle-label">Is Editable</span>
+        </label>
+      </div>
+
+      <!-- Date / Time options -->
+      <div *ngIf="selectedField.type === 'datetime-local'" class="prop-group">
+        <div class="prop-outline">
+          <label class="prop-label">Default Value</label>
+          <ui-datetime-picker
+            [(ngModel)]="selectedField.defaultValue"
+            placeholderDate="Select date"
+            placeholderTime="Select time">
+          </ui-datetime-picker>
         </div>
-
-        <!-- Default Value + Date Only (for datetime-local) -->
-        <div *ngIf="selectedField.type === 'datetime-local'" class="mb-3 form-outline">
-          <!--<label class="form-label">Default Value (D, D+1, D+2)</label>
-          <input type="text"
-                 class="form-control"
-                 [(ngModel)]="selectedField.defaultValue"
-                 (change)="emitUpdate()"
-                 placeholder="Enter default (e.g., D, D+1)">-->
-
-          <div class="form-outline position-relative">
-            <label class="floating-label">
-              Default Value (D, D+1, D+2)
-            </label>
-            <ui-datetime-picker formControlName="selectedDateTime"
-                                [(ngModel)]="selectedField.defaultValue"
-                                placeholderDate="Select date"
-                                placeholderTime="Select time">
-            </ui-datetime-picker>
-          </div>
-        </div>
-
-
-
-        <!--<div *ngIf="selectedField.type === 'datetime-local'" class="mb-3 form-outline">
-        <label class="form-label">Default Value (D, D+1, D-1)</label>-->
-        <!-- Smart DateTime picker -->
-        <!--<app-uismartdatetime class="w-100"
-                             [mode]="'datetime'"
-                             [showTimezone]="true"
-                             [enableDShortcuts]="true"
-                             [commit]="'blur'"
-                             [timezone]="selectedField.defaultTimeZone || 'America/New_York'"
-                             (utcValueChange)="onDefaultDateTimeChanged($event)"
-                             (blur)="emitUpdate()">
-        </app-uismartdatetime>-->
-        <!-- Optional: keep the D shortcut text field so user can type D+1 explicitly -->
-        <!--<div class="mt-2">
-            <input type="text"
-                   class="form-control"
-                   [(ngModel)]="selectedField.defaultValue"
-                   (blur)="emitUpdate()"
-                   placeholder="Type shortcut e.g. D, D+1, D-1">
-          </div>
-        </div>-->
-
-
-        <div *ngIf="selectedField.type === 'datetime-local'" class="form-check mb-3">
-          <input type="checkbox"
-                 class="form-check-input"
+        <label class="prop-toggle-row" style="margin-top:8px;">
+          <input type="checkbox" class="prop-checkbox"
                  [(ngModel)]="selectedField.dateOnly"
                  (change)="emitUpdate()" />
-          <label class="form-check-label">Only Date (No Time)</label>
-        </div>
+          <span class="prop-toggle-label">Date Only (No Time)</span>
+        </label>
+      </div>
 
-        <!-- Required -->
-        <div class="form-check mb-3">
-          <input type="checkbox"
-                 class="form-check-input"
+      <!-- Required -->
+      <div class="prop-group">
+        <label class="prop-toggle-row">
+          <input type="checkbox" class="prop-checkbox"
                  [(ngModel)]="selectedField.required"
-                 (change)="emitUpdate()">
-          <label class="form-check-label">Required</label>
-        </div>
+                 (change)="onRequiredChanged()" />
+          <span class="prop-toggle-label">Required</span>
+        </label>
+      </div>
 
-        <!-- Auth Status (only when required) -->
-        <div class="mb-3 form-outline"
-             *ngIf="selectedField.required"
-             style="padding-bottom:15px;">
-          <label class="form-label">
-            {{ module === 'UM' ? 'Auth Status' : 'Case Status' }}
+      <!-- Auth / Case Status (when required) -->
+      <div class="prop-group" *ngIf="selectedField.required">
+        <label class="prop-section-label">
+          {{ module === 'UM' ? 'Auth Status' : 'Case Status' }}
+        </label>
+        <div class="prop-checkbox-scroll">
+          <label *ngFor="let status of statusOptions" class="prop-check-item">
+            <input type="checkbox" class="prop-checkbox"
+                   [value]="status"
+                   [checked]="selectedField.authStatus?.includes(status)"
+                   (change)="toggleAuthStatus(status, $event)" />
+            <span>{{ status }}</span>
           </label>
-          <div class="border rounded p-2">
-            <div *ngFor="let status of statusOptions" class="form-check">
-              <input type="checkbox"
-                     class="form-check-input"
-                     [value]="status"
-                     [checked]="selectedField.authStatus && selectedField.authStatus.includes(status)"
-                     (change)="toggleAuthStatus(status, $event)">
-              <label class="form-check-label">{{ status }}</label>
-            </div>
+        </div>
+      </div>
+
+      <!-- Required Message -->
+      <div class="prop-group" *ngIf="selectedField.required">
+        <div class="prop-outline">
+          <label class="prop-label">Required Message</label>
+          <input type="text" class="prop-input"
+                 [(ngModel)]="selectedField.requiredMsg"
+                 (change)="emitUpdate()"
+                 placeholder="e.g. This field is required" />
+        </div>
+      </div>
+
+      <!-- ── Select / Dropdown options ── -->
+      <ng-container *ngIf="selectedField.type === 'select'">
+        <div class="prop-group">
+          <div class="prop-outline">
+            <label class="prop-label">Datasource</label>
+            <input type="text" class="prop-input"
+                   [(ngModel)]="selectedField.datasource"
+                   (blur)="checkAndTriggerDatasourceChange()"
+                   (keydown.enter)="checkAndTriggerDatasourceChange()"
+                   placeholder="API datasource name" />
           </div>
         </div>
 
-
-        <!--Required Message Input (if required is checked)-->
-        <div *ngIf="selectedField.required" class="mb-3 form-outline" style="padding-bottom:15px;">
-          <label class="form-label">Required Message</label>
-          <input type="text" class="form-control" [(ngModel)]="selectedField.requiredMsg" (change)="emitUpdate()" placeholder="Enter required message">
-        </div>
-        <!--Datasource Input (only for select fields)-->
-        <div *ngIf="selectedField.type === 'select'" class="mb-3 form-outline">
-          <label class="form-label">Datasource</label>
-          <input type="text" class="form-control"
-                 [(ngModel)]="selectedField.datasource"
-                 (blur)="checkAndTriggerDatasourceChange()"
-                 (keydown.enter)="checkAndTriggerDatasourceChange()"
-                 placeholder="Enter datasource name">
-        </div>
-        <!--Dropdown with default selection-->
-        <div *ngIf="selectedField.type === 'select' && selectedField.datasource" class="mb-3">
-          <label class="form-label">Select Options (with default selection)</label>
-          <!--Custom Multi-Select with Checkboxes
-          Dynamic Options with Radio Buttons for Default Selection-->
-          <div class="border rounded p-2" style="max-height: 250px; overflow-y: auto;">
-            <!--Select All Option-->
-            <div class="form-check">
-              <input type="checkbox" class="form-check-input"
+        <div class="prop-group" *ngIf="selectedField.datasource && dropdownOptions.length">
+          <label class="prop-section-label">Options (set default)</label>
+          <div class="prop-option-list">
+            <label class="prop-check-item prop-select-all">
+              <input type="checkbox" class="prop-checkbox"
                      [checked]="isAllSelected()" [indeterminate]="isIndeterminate()"
-                     (change)="toggleSelectAll()">
-              <label class="form-check-label fw-bold">Select All</label>
-            </div>
-            <!--Dynamic Options List-->
-            <div *ngFor="let option of dropdownOptions" class="form-check d-flex justify-content-between align-items-center">
-              <!--Checkbox for Selection-->
-              <div>
-                <input type="checkbox" class="form-check-input me-2"
+                     (change)="toggleSelectAll()" />
+              <strong>Select All</strong>
+            </label>
+            <div *ngFor="let option of dropdownOptions" class="prop-option-row">
+              <label class="prop-check-item">
+                <input type="checkbox" class="prop-checkbox"
                        [value]="option.id"
                        [checked]="selectedField.selectedOptions?.includes(option.id)"
-                       (change)="onCheckboxChange(option.id, $event)">
-                <label class="form-check-label">{{ option.value }}</label>
-              </div>
-              <!--Radio Button for Default Selection-->
-              <input type="radio" name="defaultOption" class="form-check-input"
+                       (change)="onCheckboxChange(option.id, $event)" />
+                <span>{{ option.value }}</span>
+              </label>
+              <input type="radio" name="defaultOption" class="prop-radio"
                      [checked]="selectedField.defaultValue === option.id"
-                     (click)="setDefault(option.id)">
+                     (click)="setDefault(option.id)"
+                     title="Set as default" />
             </div>
-            <!--Clear Default Selection Button-->
-            <button class="btn btn-secondary btn-sm mt-2" (click)="clearDefaultSelection()">
-              Clear Default Selection
+            <button class="btn-outline-sm" (click)="clearDefaultSelection()">Clear Default</button>
+          </div>
+        </div>
+
+        <div class="prop-group">
+          <label class="prop-section-label">Manual Options</label>
+          <div *ngFor="let option of selectedField.options; let i = index" class="prop-option-edit-row">
+            <input class="prop-input" [(ngModel)]="selectedField.options![i]" (input)="debouncedEmitUpdate()"
+                   placeholder="Option text" />
+            <button class="btn-icon-danger" type="button" (click)="removeOption(i)" title="Remove">
+              <mat-icon>close</mat-icon>
             </button>
           </div>
+          <button class="btn-outline-sm" (click)="addOption()">
+            <mat-icon>add</mat-icon> Add Option
+          </button>
         </div>
-        <!--Options for "select" field type-->
-        <div *ngIf="selectedField.type === 'select'">
-          <h5 class="mb-2">Options</h5>
-          <div *ngFor="let option of selectedField.options; let i = index" class="d-flex align-items-center mb-2">
-            <input class="form-control me-2" [(ngModel)]="selectedField.options![i]" (input)="debouncedEmitUpdate()">
-            <button class="btn btn-danger btn-sm" (click)="removeOption(i)">
-              <i class="bi bi-trash"></i>
+      </ng-container>
+
+      <!-- ── Multi-Select (multicheck) options ── -->
+      <ng-container *ngIf="selectedField.type === 'multicheck'">
+        <div class="prop-group">
+          <label class="prop-section-label">Checkbox Options</label>
+          <div class="prop-badge-info">Users can select multiple values.</div>
+          <div *ngFor="let option of selectedField.options; let i = index" class="prop-option-edit-row">
+            <input class="prop-input" [(ngModel)]="selectedField.options![i]" (input)="debouncedEmitUpdate()"
+                   placeholder="Option text" />
+            <button class="btn-icon-danger" type="button" (click)="removeOption(i)" title="Remove">
+              <mat-icon>close</mat-icon>
             </button>
           </div>
-          <button class="btn btn-success btn-sm" (click)="addOption()">+ Add Option</button>
-        </div>
-        <!--Button Text Input (only for button fields)-->
-        <div *ngIf="selectedField.type === 'button'" class="mb-3 form-outline">
-          <label class="form-label">Button Text</label>
-          <input type="text" class="form-control" [(ngModel)]="selectedField.buttonText" (change)="emitUpdate()" placeholder="Enter button text">
-        </div>
-        <!--ICD10 Multi-Select Autocomplete-->
-        <div *ngIf="selectedField?.id === 'icd10Code' || selectedField?.id === 'serviceCode'" class="mb-3 form-outline">
-          <label class="form-label">
-            {{ selectedField.id === 'icd10Code' ? 'ICD10 Code' : 'Service Codes' }}
-          </label>
-          <!--Selected Tags-->
-          <div class="border p-2 rounded mb-2" style="min-height: 40px;">
-            <span *ngFor="let code of selectedField.selectedOptions" class="badge bg-primary me-1">
-              {{ code }}
-              <button type="button" class="btn-close btn-close-white btn-sm ms-1"
-                      (click)="removeCode(code)"></button>
-            </span>
-          </div>
-          <!--Input box-->
-          <input type="text"
-                 [(ngModel)]="searchText"
-                 class="form-control"
-                 placeholder="Type to search"
-                 (input)="filterCodes()"
-                 (keydown.enter)="addCodeFromText()" />
-          <!--Suggestions-->
-          <ul class="list-group mt-1" *ngIf="filteredCodes.length && searchText">
-            <li class="list-group-item list-group-item-action"
-                *ngFor="let option of filteredCodes"
-                (click)="selectCode(option)">
-              {{ option.label }}
-            </li>
-          </ul>
+          <button class="btn-outline-sm" (click)="addOption()">
+            <mat-icon>add</mat-icon> Add Option
+          </button>
         </div>
 
-      </div>
-
-      <!-- ================= CONDITIONAL TAB ================= -->
-      <div class="content-section" *ngIf="activeTab === 'conditional'">
-        <div class="section-panel">
-          <div class="section-panel-header">Visibility Rules</div>
-
-          <div class="condition-builder">
-
-            <ng-container *ngFor="let cond of conditions; let i = index">
-              <!-- AND / OR connector (for all except first condition) -->
-              <div class="condition-connector" *ngIf="i > 0">
-                <div class="condition-connector-line"></div>
-
-                <div class="condition-connector-operator">
-                  <ui-smart-dropdown label="Operator"
-                                     [(ngModel)]="cond.operatorWithPrev"
-                                     [options]="conditionOperatorOptions"
-                                     placeholder=""
-                                     (valueChange)="onConditionValueChanged(cond, $event)">
-                  </ui-smart-dropdown>
-                </div>
-
-                <div class="condition-connector-line"></div>
-              </div>
-
-              <!-- Condition card -->
-              <div class="condition-card" style="padding-bottom:10px;">
-                <!-- Row 1: Show When -->
-                <div class="condition-row-full">
-                  <ui-smart-dropdown label="Show When"
-                                     [(ngModel)]="cond.showWhen"
-                                     [options]="showWhenOptions"
-                                     placeholder=""
-                                     (valueChange)="onConditionValueChanged(cond, $event)">
-                  </ui-smart-dropdown>
-                </div>
-
-                <!-- Row 2: Reference Field -->
-                <div class="condition-row-full">
-                  <ui-smart-dropdown label="Reference Field"
-                                     [(ngModel)]="cond.referenceFieldId"
-                                     [options]="referenceFieldOptions"
-                                     placeholder="Select field"
-                                     [disabled]="cond.showWhen === 'always'"
-                                     (valueChange)="onReferenceFieldChanged(cond, $event)">
-                  </ui-smart-dropdown>
-                </div>
-
-                <!-- Row 3: Value + Add/Remove -->
-                <div class="condition-row-inline">
-                  <div class="mb-3 form-outline">
-
-                    <!-- SELECT -->
-                    <ui-smart-dropdown *ngIf="getConditionValueKind(cond) === 'select'"
-                                       label="Value"
-                                       [(ngModel)]="cond.value"
-                                       [options]="getConditionValueOptions(cond)"
-                                       placeholder="Select value"
-                                       [disabled]="cond.showWhen === 'always' || !cond.referenceFieldId"
-                                       (valueChange)="onConditionValueChanged(cond, $event)">
-                    </ui-smart-dropdown>
-
-                    <!-- DATETIME -->
-                    <ng-container *ngIf="getConditionValueKind(cond) === 'datetime'">
-                      <label class="form-label">Value</label>
-                      <input type="datetime-local"
-                             class="form-control"
-                             [(ngModel)]="cond.value"
-                             (ngModelChange)="onConditionChanged()"
-                             [disabled]="cond.showWhen === 'always' || !cond.referenceFieldId"
-                             placeholder="Value">
-                    </ng-container>
-
-                    <!-- DATE -->
-                    <ng-container *ngIf="getConditionValueKind(cond) === 'date'">
-                      <label class="form-label">Value</label>
-                      <input type="date"
-                             class="form-control"
-                             [(ngModel)]="cond.value"
-                             (ngModelChange)="onConditionChanged()"
-                             [disabled]="cond.showWhen === 'always' || !cond.referenceFieldId">
-                    </ng-container>
-
-                    <!-- NUMBER -->
-                    <ng-container *ngIf="getConditionValueKind(cond) === 'number'">
-                      <label class="form-label">Value</label>
-                      <input type="number"
-                             class="form-control"
-                             [(ngModel)]="cond.value"
-                             (ngModelChange)="onConditionChanged()"
-                             [disabled]="cond.showWhen === 'always' || !cond.referenceFieldId"
-                             placeholder="Value">
-                    </ng-container>
-
-                    <!-- TEXT (default) -->
-                    <ng-container *ngIf="getConditionValueKind(cond) === 'text'">
-                      <label class="form-label">Value</label>
-                      <input type="text"
-                             class="form-control"
-                             [(ngModel)]="cond.value"
-                             (ngModelChange)="onConditionChanged()"
-                             [disabled]="cond.showWhen === 'always' || !cond.referenceFieldId"
-                             placeholder="Value">
-                    </ng-container>
-
-                  </div>
-
-                  <div class="condition-actions-inline">
-                    <!-- Add: only on last condition -->
-                    <button *ngIf="i === conditions.length - 1"
-                            type="button"
-                            [disabled]="cond.showWhen === 'always'"
-                            class="btn btn-outline-primary btn-sm me-2"
-                            (click)="addCondition(i)">
-                      <i class="bi bi-plus-circle"></i> Add
-                    </button>
-
-                    <!-- Remove: show if more than one condition -->
-                    <button *ngIf="conditions.length > 1"
-                            type="button"
-                            [disabled]="cond.showWhen === 'always'"
-                            class="btn btn-outline-danger btn-sm"
-                            (click)="removeCondition(i)">
-                      <i class="bi bi-trash"></i>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </ng-container>
-
+        <div class="prop-group">
+          <div class="prop-outline">
+            <label class="prop-label">Datasource (optional)</label>
+            <input type="text" class="prop-input"
+                   [(ngModel)]="selectedField.datasource"
+                   (blur)="checkAndTriggerDatasourceChange()"
+                   placeholder="API datasource name" />
           </div>
         </div>
-      </div>
+      </ng-container>
 
-
-      <!-- ================= CONDITIONAL TAB ================= -->
-      <!-- ================= ADVANCED TAB ================= -->
-      <div class="content-section" *ngIf="activeTab === 'advanced'">
-        <!-- Integration Settings -->
-        <div class="section-panel">
-          <div class="section-panel-header">Integration Settings</div>
-
-          <div class="mb-3 form-outline">
-            <label class="form-label">API Endpoint</label>
-            <input type="text"
-                   class="form-control"
-                   placeholder="Enter API endpoint"
-                   [(ngModel)]="selectedField.apiEndpoint"
-                   (change)="emitUpdate()">
+      <!-- ── Radio Group options ── -->
+      <ng-container *ngIf="selectedField.type === 'radio'">
+        <div class="prop-group">
+          <label class="prop-section-label">Radio Options</label>
+          <div class="prop-badge-info">Only one value can be selected.</div>
+          <div *ngFor="let option of selectedField.options; let i = index" class="prop-option-edit-row">
+            <span class="prop-radio-icon">○</span>
+            <input class="prop-input" [(ngModel)]="selectedField.options![i]" (input)="debouncedEmitUpdate()"
+                   placeholder="Option text" />
+            <button class="btn-icon-danger" type="button" (click)="removeOption(i)" title="Remove">
+              <mat-icon>close</mat-icon>
+            </button>
           </div>
+          <button class="btn-outline-sm" (click)="addOption()">
+            <mat-icon>add</mat-icon> Add Option
+          </button>
+        </div>
 
-          <div class="form-check mb-2">
-            <input type="checkbox"
-                   class="form-check-input"
-                   id="includeExportChk"
-                   [(ngModel)]="selectedField.includeInExport"
-                   (change)="emitUpdate()">
-            <label class="form-check-label" for="includeExportChk">
-              Include in Export
+        <div class="prop-group" *ngIf="selectedField.options?.length">
+          <label class="prop-section-label">Default Selection</label>
+          <div class="prop-radio-list">
+            <label *ngFor="let opt of selectedField.options" class="prop-check-item">
+              <input type="radio" name="radioDefault" class="prop-radio"
+                     [value]="opt"
+                     [checked]="selectedField.defaultValue === opt"
+                     (change)="setDefault(opt)" />
+              <span>{{ opt }}</span>
             </label>
           </div>
+          <button class="btn-outline-sm" (click)="clearDefaultSelection()">Clear Default</button>
         </div>
+      </ng-container>
 
-        <!-- Security -->
-
-        <div class="mb-3">
-          <ui-smart-dropdown label="Field Permissions"
-                             [(ngModel)]="selectedField.fieldPermission"
-                             [options]="fieldPermissionOptions"
-                             placeholder="Select permission"
-                             (valueChange)="emitUpdate()">
-          </ui-smart-dropdown>
+      <!-- ── Button text ── -->
+      <div class="prop-group" *ngIf="selectedField.type === 'button'">
+        <div class="prop-outline">
+          <label class="prop-label">Button Text</label>
+          <input type="text" class="prop-input"
+                 [(ngModel)]="selectedField.buttonText"
+                 (change)="emitUpdate()"
+                 placeholder="e.g. Search Provider" />
         </div>
+      </div>
 
-        <div class="section-panel" *ngIf="selectedField?.type === 'search'">
-          <div class="section-panel-header">Lookup / Autocomplete</div>
+      <!-- ── ICD / Service code multi-select ── -->
+      <div class="prop-group" *ngIf="selectedField?.id === 'icd10Code' || selectedField?.id === 'serviceCode'">
+        <label class="prop-section-label">
+          {{ selectedField.id === 'icd10Code' ? 'ICD10 Codes' : 'Service Codes' }}
+        </label>
+        <div class="prop-tag-list" *ngIf="selectedField.selectedOptions?.length">
+          <span *ngFor="let code of selectedField.selectedOptions" class="prop-tag">
+            {{ code }}
+            <button type="button" class="prop-tag-remove" (click)="removeCode(code)">×</button>
+          </span>
+        </div>
+        <input type="text" [(ngModel)]="searchText" class="prop-input"
+               placeholder="Type to search…"
+               (input)="filterCodes()"
+               (keydown.enter)="addCodeFromText()" />
+        <ul class="prop-suggestions" *ngIf="filteredCodes.length && searchText">
+          <li *ngFor="let opt of filteredCodes" (click)="selectCode(opt)">{{ opt.label }}</li>
+        </ul>
+      </div>
 
-          <div class="form-check mb-2">
-            <input class="form-check-input"
-                   type="checkbox"
-                   [(ngModel)]="selectedField.lookup.enabled"
-                   (change)="emitUpdate()">
-            <label class="form-check-label">Enable autocomplete</label>
+    </div><!-- /basic tab -->
+
+
+    <!-- ═══════════════════════════════════════════
+         CONDITIONAL TAB
+    ═══════════════════════════════════════════ -->
+    <div *ngIf="activeTab === 'conditional'">
+      <div class="prop-section-header">Visibility Rules</div>
+      <div class="condition-builder">
+
+        <ng-container *ngFor="let cond of conditions; let i = index">
+
+          <!-- AND / OR connector (for conditions after first) -->
+          <div class="condition-connector" *ngIf="i > 0">
+            <div class="connector-line"></div>
+            <div class="connector-op">
+              <ui-smart-dropdown label="Operator"
+                                 [(ngModel)]="cond.operatorWithPrev"
+                                 [options]="conditionOperatorOptions"
+                                 placeholder=""
+                                 (valueChange)="onConditionValueChanged(cond, $event)">
+              </ui-smart-dropdown>
+            </div>
+            <div class="connector-line"></div>
           </div>
 
-          <div *ngIf="selectedField.lookup.enabled">
-            <div class="mb-3">
-              <ui-smart-dropdown label="Lookup Entity"
-                                 [(ngModel)]="selectedField.lookup.entity"
-                                 [options]="lookupEntityOptions"
-                                 (valueChange)="emitUpdate()">
+          <!-- Condition card -->
+          <div class="condition-card">
+
+            <!-- Show When -->
+            <div class="prop-group">
+              <ui-smart-dropdown label="Show When"
+                                 [(ngModel)]="cond.showWhen"
+                                 [options]="showWhenOptions"
+                                 placeholder=""
+                                 (valueChange)="onConditionValueChanged(cond, $event)">
               </ui-smart-dropdown>
             </div>
 
-            <div class="mb-3 form-outline">
-              <label class="form-label">Datasource</label>
-              <input type="text" class="form-control"
-                     [(ngModel)]="selectedField.lookup.datasource"
-                     (change)="emitUpdate()"
-                     placeholder="e.g., providersearch / membersearch / icd10">
+            <!-- Reference Field -->
+            <div class="prop-group">
+              <ui-smart-dropdown label="Reference Field"
+                                 [(ngModel)]="cond.referenceFieldId"
+                                 [options]="referenceFieldOptions"
+                                 placeholder="Select field"
+                                 [disabled]="cond.showWhen === 'always'"
+                                 (valueChange)="onReferenceFieldChanged(cond, $event)">
+              </ui-smart-dropdown>
             </div>
 
-            <div class="row g-2">
-              <div class="col-md-6">
-                <label class="form-label">Min Characters</label>
-                <input type="number" class="form-control"
-                       [(ngModel)]="selectedField.lookup.minChars"
-                       (change)="emitUpdate()">
+            <!-- Value row -->
+            <div class="condition-value-row">
+              <div class="condition-value-field">
+
+                <ui-smart-dropdown *ngIf="getConditionValueKind(cond) === 'select'"
+                                   label="Value"
+                                   [(ngModel)]="cond.value"
+                                   [options]="getConditionValueOptions(cond)"
+                                   placeholder="Select value"
+                                   [disabled]="cond.showWhen === 'always' || !cond.referenceFieldId"
+                                   (valueChange)="onConditionValueChanged(cond, $event)">
+                </ui-smart-dropdown>
+
+                <div class="prop-outline" *ngIf="getConditionValueKind(cond) === 'datetime'">
+                  <label class="prop-label">Value</label>
+                  <input type="datetime-local" class="prop-input"
+                         [(ngModel)]="cond.value"
+                         (ngModelChange)="onConditionChanged()"
+                         [disabled]="cond.showWhen === 'always' || !cond.referenceFieldId" />
+                </div>
+
+                <div class="prop-outline" *ngIf="getConditionValueKind(cond) === 'date'">
+                  <label class="prop-label">Value</label>
+                  <input type="date" class="prop-input"
+                         [(ngModel)]="cond.value"
+                         (ngModelChange)="onConditionChanged()"
+                         [disabled]="cond.showWhen === 'always' || !cond.referenceFieldId" />
+                </div>
+
+                <div class="prop-outline" *ngIf="getConditionValueKind(cond) === 'number'">
+                  <label class="prop-label">Value</label>
+                  <input type="number" class="prop-input"
+                         [(ngModel)]="cond.value"
+                         (ngModelChange)="onConditionChanged()"
+                         [disabled]="cond.showWhen === 'always' || !cond.referenceFieldId" />
+                </div>
+
+                <div class="prop-outline" *ngIf="getConditionValueKind(cond) === 'text'">
+                  <label class="prop-label">Value</label>
+                  <input type="text" class="prop-input"
+                         [(ngModel)]="cond.value"
+                         (ngModelChange)="onConditionChanged()"
+                         [disabled]="cond.showWhen === 'always' || !cond.referenceFieldId"
+                         placeholder="Match value" />
+                </div>
+
               </div>
-              <div class="col-md-6">
-                <label class="form-label">Debounce (ms)</label>
-                <input type="number" class="form-control"
-                       [(ngModel)]="selectedField.lookup.debounceMs"
-                       (change)="emitUpdate()">
-              </div>
-            </div>
 
-            <div class="mb-3 form-outline mt-2">
-              <label class="form-label">Display Template</label>
-              <input type="text" class="form-control"
-                     [(ngModel)]="selectedField.lookup.displayTemplate"
-                     (change)="emitUpdate()"
-                     [attr.placeholder]="'{{lastName}}, {{firstName}} (NPI: {{npi}})'" />
-            </div>
-
-            <div class="mb-3 form-outline">
-              <label class="form-label">Value Field</label>
-              <input type="text" class="form-control"
-                     [(ngModel)]="selectedField.lookup.valueField"
-                     (change)="emitUpdate()"
-                     placeholder="e.g., memberId / providerId / code">
-            </div>
-
-            <div class="mt-3">
-              <div class="fw-semibold mb-2">Fill Mapping (populate other fields)</div>
-
-              <div class="lookup-map-row"
-                   *ngFor="let m of selectedField.lookup.fill; let i = index">
-                <input class="form-control"
-                       [(ngModel)]="m.targetFieldId"
-                       (change)="emitUpdate()"
-                       placeholder="Target Field ID (e.g., providerPhone)">
-
-                <input class="form-control"
-                       [(ngModel)]="m.sourcePath"
-                       (change)="emitUpdate()"
-                       placeholder="Source Path (e.g., phone or address.zip)">
-
-                <button type="button" class="btn btn-outline-danger"
-                        (click)="removeLookupFillRow(i)">
-                  ✕
+              <div class="condition-actions">
+                <button *ngIf="i === conditions.length - 1"
+                        type="button"
+                        [disabled]="cond.showWhen === 'always'"
+                        class="btn-outline-sm"
+                        (click)="addCondition(i)">
+                  <mat-icon>add</mat-icon>
+                </button>
+                <button *ngIf="conditions.length > 1"
+                        type="button"
+                        class="btn-icon-danger"
+                        (click)="removeCondition(i)">
+                  <mat-icon>delete_outline</mat-icon>
                 </button>
               </div>
-
-              <button type="button" class="btn btn-outline-primary mt-2"
-                      (click)="addLookupFillRow()">
-                + Add Mapping
-              </button>
             </div>
-          </div>
+
+          </div><!-- /condition-card -->
+        </ng-container>
+
+      </div><!-- /condition-builder -->
+    </div><!-- /conditional tab -->
+
+
+    <!-- ═══════════════════════════════════════════
+         ADVANCED TAB
+    ═══════════════════════════════════════════ -->
+    <div *ngIf="activeTab === 'advanced'">
+
+      <!-- Integration -->
+      <div class="prop-section-header">Integration</div>
+
+      <div class="prop-group">
+        <div class="prop-outline">
+          <label class="prop-label">API Endpoint</label>
+          <input type="text" class="prop-input"
+                 placeholder="https://api.example.com/data"
+                 [(ngModel)]="selectedField.apiEndpoint"
+                 (change)="emitUpdate()" />
+        </div>
+      </div>
+
+      <div class="prop-group">
+        <label class="prop-toggle-row">
+          <input type="checkbox" class="prop-checkbox"
+                 id="includeExportChk"
+                 [(ngModel)]="selectedField.includeInExport"
+                 (change)="emitUpdate()" />
+          <span class="prop-toggle-label">Include in Export</span>
+        </label>
+      </div>
+
+      <!-- Security -->
+      <div class="prop-section-header">Security</div>
+      <div class="prop-group">
+        <ui-smart-dropdown label="Field Permissions"
+                           [(ngModel)]="selectedField.fieldPermission"
+                           [options]="fieldPermissionOptions"
+                           placeholder="Select permission"
+                           (valueChange)="emitUpdate()">
+        </ui-smart-dropdown>
+      </div>
+
+      <!-- Lookup / Autocomplete (search fields only) -->
+      <ng-container *ngIf="selectedField?.type === 'search'">
+        <div class="prop-section-header">Lookup / Autocomplete</div>
+
+        <div class="prop-group">
+          <label class="prop-toggle-row">
+            <input class="prop-checkbox" type="checkbox"
+                   [(ngModel)]="selectedField.lookup.enabled"
+                   (change)="emitUpdate()" />
+            <span class="prop-toggle-label">Enable Autocomplete</span>
+          </label>
         </div>
 
-      </div>
-    </div>
+        <ng-container *ngIf="selectedField.lookup.enabled">
+          <div class="prop-group">
+            <ui-smart-dropdown label="Lookup Entity"
+                               [(ngModel)]="selectedField.lookup.entity"
+                               [options]="lookupEntityOptions"
+                               (valueChange)="emitUpdate()">
+            </ui-smart-dropdown>
+          </div>
 
-  </div>
-</div>
+          <div class="prop-group">
+            <div class="prop-outline">
+              <label class="prop-label">Datasource</label>
+              <input type="text" class="prop-input"
+                     [(ngModel)]="selectedField.lookup.datasource"
+                     (change)="emitUpdate()"
+                     placeholder="providersearch / membersearch / icd10" />
+            </div>
+          </div>
+
+          <div class="prop-group prop-two-col">
+            <div class="prop-outline">
+              <label class="prop-label">Min Characters</label>
+              <input type="number" class="prop-input"
+                     [(ngModel)]="selectedField.lookup.minChars"
+                     (change)="emitUpdate()" />
+            </div>
+            <div class="prop-outline">
+              <label class="prop-label">Debounce (ms)</label>
+              <input type="number" class="prop-input"
+                     [(ngModel)]="selectedField.lookup.debounceMs"
+                     (change)="emitUpdate()" />
+            </div>
+          </div>
+
+          <div class="prop-group">
+            <div class="prop-outline">
+              <label class="prop-label">Display Template</label>
+              <input type="text" class="prop-input"
+                     [(ngModel)]="selectedField.lookup.displayTemplate"
+                     (change)="emitUpdate()"
+                     placeholder="{lastName}, {firstName} (NPI: {npi})" />
+            </div>
+          </div>
+
+          <div class="prop-group">
+            <div class="prop-outline">
+              <label class="prop-label">Value Field</label>
+              <input type="text" class="prop-input"
+                     [(ngModel)]="selectedField.lookup.valueField"
+                     (change)="emitUpdate()"
+                     placeholder="memberId / providerId / code" />
+            </div>
+          </div>
+
+          <div class="prop-group">
+            <div class="prop-section-label">Fill Mapping</div>
+            <div class="prop-badge-info">When an item is selected, populate other fields.</div>
+
+            <div *ngFor="let m of selectedField.lookup.fill; let i = index" class="lookup-map-row">
+              <input class="prop-input" [(ngModel)]="m.targetFieldId" (change)="emitUpdate()"
+                     placeholder="Target Field ID" />
+              <span class="lookup-map-arrow">→</span>
+              <input class="prop-input" [(ngModel)]="m.sourcePath" (change)="emitUpdate()"
+                     placeholder="Source Path" />
+              <button type="button" class="btn-icon-danger" (click)="removeLookupFillRow(i)">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+
+            <button type="button" class="btn-outline-sm" (click)="addLookupFillRow()">
+              <mat-icon>add</mat-icon> Add Mapping
+            </button>
+          </div>
+        </ng-container>
+      </ng-container>
+
+    </div><!-- /advanced tab -->
+
+  </div><!-- /props-body -->
+</div><!-- /props-panel -->

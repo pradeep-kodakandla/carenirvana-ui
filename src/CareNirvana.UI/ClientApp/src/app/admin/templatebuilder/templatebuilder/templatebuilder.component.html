@@ -1,50 +1,44 @@
-<div style="padding-top:10px;overflow-x:hidden;" class="table-container" *ngIf="!isVisible">
-  <div class="d-flex justify-content-between align-items-center" style="width: 100%; padding-bottom:5px;">
-    <div class="search-section" [class.active]="isFocused">
-
-      <input type="text" placeholder="🔍 Search Template..." (keyup)="applyFilter($event)" (focus)="onFocus()"
-             (blur)="onBlur()" class="search-input" />
+<!-- ══════════════════════════════════════════════════════════════════
+     TEMPLATE LIST VIEW
+══════════════════════════════════════════════════════════════════ -->
+<div class="table-container" *ngIf="!isVisible">
+  <div class="table-toolbar">
+    <div class="search-box" [class.active]="isFocused">
+      <mat-icon class="search-icon">search</mat-icon>
+      <input type="text" placeholder="Search templates…" (keyup)="applyFilter($event)"
+             (focus)="onFocus()" (blur)="onBlur()" class="search-input" />
     </div>
-    <div>
-      <button mat-icon-button color="primary" (click)="openForm('add')" matTooltip="Add Template">
-        <mat-icon>add</mat-icon>
+    <div class="toolbar-actions-row">
+      <button mat-icon-button color="primary" (click)="openForm('add')" matTooltip="New Template">
+        <mat-icon>add_circle_outline</mat-icon>
       </button>
-      <button mat-icon-button color="primary" (click)="openSettingsDialog()" matTooltip="Page Settings">
-        <mat-icon>settings</mat-icon>
+      <button mat-icon-button color="primary" (click)="openSettingsDialog()" matTooltip="Column Settings">
+        <mat-icon>tune</mat-icon>
       </button>
     </div>
   </div>
+
   <table class="responsive-table" mat-table [dataSource]="dataSource" multiTemplateDataRows matSort>
-    <!-- Id Column -->
     <ng-container matColumnDef="Id">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Template ID</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>ID</th>
       <td mat-cell *matCellDef="let element" class="center-column">{{ element.id }}</td>
     </ng-container>
-    <!-- Template Name Column -->
     <ng-container matColumnDef="TemplateName">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Template Name</th>
-      <td mat-cell *matCellDef="let element">
-        <span>{{ element.templateName }}</span>
-      </td>
+      <td mat-cell *matCellDef="let element">{{ element.templateName }}</td>
     </ng-container>
-
     <ng-container matColumnDef="authClass" *ngIf="module === 'UM'">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Auth Case</th>
-      <td mat-cell *matCellDef="let element">
-        <span>{{ element.authClass }}</span>
-      </td>
+      <td mat-cell *matCellDef="let element">{{ getAuthClassName(element.authclassid) }}</td>
     </ng-container>
-    <!-- Created By Column -->
     <ng-container matColumnDef="CreatedBy">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Created By</th>
-      <td mat-cell *matCellDef="let element"> {{ element.createdByUser }} </td>
+      <td mat-cell *matCellDef="let element">{{ element.createdByUser }}</td>
     </ng-container>
-    <!-- Created On Column -->
     <ng-container matColumnDef="CreatedOn">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Created On</th>
-      <td mat-cell *matCellDef="let element"> {{ element.createdOn | date: 'MM/dd/yyyy HH:mm' }} </td>
+      <td mat-cell *matCellDef="let element">{{ element.createdOn | date: 'MM/dd/yyyy HH:mm' }}</td>
     </ng-container>
-    <!-- Optional Columns -->
     <ng-container matColumnDef="updatedBy" *ngIf="visibleColumns.includes('updatedBy')">
       <th mat-header-cell *matHeaderCellDef>Updated By</th>
       <td mat-cell *matCellDef="let element">{{ element.updatedBy }}</td>
@@ -61,127 +55,204 @@
       <th mat-header-cell *matHeaderCellDef>Deleted On</th>
       <td mat-cell *matCellDef="let element">{{ element.deletedOn | date: 'MM/dd/yyyy HH:mm' }}</td>
     </ng-container>
-    <!-- Actions Column -->
     <ng-container matColumnDef="actions">
-      <th mat-header-cell *matHeaderCellDef> Actions </th>
+      <th mat-header-cell *matHeaderCellDef>Actions</th>
       <td mat-cell *matCellDef="let element">
-        <button mat-icon-button (click)="openForm('edit', element)" [disabled]="editingRowId === element.id" matTooltip="Edit">
-          <mat-icon style="color: #007BFF">edit</mat-icon>
+        <button mat-icon-button (click)="openForm('edit', element)" matTooltip="Edit">
+          <mat-icon class="action-icon edit">edit</mat-icon>
         </button>
-        <button mat-icon-button (click)="confirmDelete(element)" [disabled]="editingRowId === element.id" matTooltip="Delete">
-          <mat-icon style="color: #007BFF">delete</mat-icon>
+        <button mat-icon-button (click)="confirmDelete(element)" matTooltip="Delete">
+          <mat-icon class="action-icon delete">delete_outline</mat-icon>
         </button>
       </td>
     </ng-container>
-    <!-- Header and Rows -->
     <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="data-row"></tr>
   </table>
-  <!-- Paginator -->
   <mat-paginator [pageSizeOptions]="[10, 15, 20]" showFirstLastButtons></mat-paginator>
 </div>
 
+
+<!-- ══════════════════════════════════════════════════════════════════
+     BUILDER VIEW
+══════════════════════════════════════════════════════════════════ -->
 <div class="builder-container" *ngIf="isVisible">
 
+  <!-- ──────────────────────────────────────────────────────────────
+       SHARED FIELD PREVIEW TEMPLATE
+       Used by all drop lists (Provider / regular / subsection).
+       Context: { field, sectionPath }
+  ────────────────────────────────────────────────────────────────── -->
+  <ng-template #fieldPreviewInner let-field="field" let-sectionPath="sectionPath">
+    <div class="fpi-body">
+      <!-- Field type badge -->
+      <span class="fpi-badge" [attr.data-type]="field.type">{{ field.type }}</span>
 
-  <!-- Left Column: Available Fields -->
-  <!-- Left Column: Available / Unavailable blocks with new UI -->
+      <!-- Label row -->
+      <div class="fpi-label" *ngIf="field.type !== 'button'">
+        {{ field.displayName || field.label }}
+        <span *ngIf="field.required" class="fpi-required">*</span>
+        <span *ngIf="!field.isEnabled" class="fpi-disabled-tag">read-only</span>
+      </div>
+
+      <!-- Control preview -->
+      <ng-container [ngSwitch]="field.type">
+
+        <!-- Search -->
+        <div *ngSwitchCase="'search'" class="fpi-search">
+          <mat-icon class="fpi-search-icon">search</mat-icon>
+          <span class="fpi-search-placeholder">{{ field.displayName || field.label }}</span>
+          <mat-icon class="fpi-info-icon" *ngIf="field.info" [title]="field.info">info_outline</mat-icon>
+        </div>
+
+        <!-- Dropdown / Select -->
+        <div *ngSwitchCase="'select'" class="fpi-input fpi-select-preview">
+          <span class="fpi-select-text">{{ field.options?.[0] || 'Select…' }}</span>
+          <mat-icon class="fpi-chevron">expand_more</mat-icon>
+        </div>
+
+        <!-- Multi-Select / Multicheck -->
+        <div *ngSwitchCase="'multicheck'" class="fpi-multicheck-preview">
+          <div *ngFor="let opt of (field.options?.slice(0,3) || ['Option 1','Option 2','Option 3'])"
+               class="fpi-check-item">
+            <span class="fpi-checkbox-icon">☐</span> {{ opt }}
+          </div>
+          <span *ngIf="field.options?.length > 3" class="fpi-more-badge">+{{ field.options.length - 3 }} more</span>
+        </div>
+
+        <!-- Radio Group -->
+        <div *ngSwitchCase="'radio'" class="fpi-radio-preview">
+          <div *ngFor="let opt of (field.options?.slice(0,3) || ['Option A','Option B'])"
+               class="fpi-radio-item">
+            <span class="fpi-radio-circle">○</span> {{ opt }}
+          </div>
+        </div>
+
+        <!-- Checkbox (single boolean) -->
+        <div *ngSwitchCase="'checkbox'" class="fpi-checkbox-single">
+          <span class="fpi-checkbox-icon">☐</span>
+          <span>{{ field.displayName || field.label }}</span>
+        </div>
+
+        <!-- Textarea -->
+        <div *ngSwitchCase="'textarea'" class="fpi-input fpi-textarea-preview">
+          <span class="fpi-placeholder">{{ field.displayName || field.label }}…</span>
+        </div>
+
+        <!-- Button -->
+        <button *ngSwitchCase="'button'" class="fpi-button-preview" disabled>
+          {{ field.buttonText || field.label }}
+        </button>
+
+        <!-- Default: text / number / datetime -->
+        <div *ngSwitchDefault class="fpi-input">
+          <span class="fpi-placeholder">{{ field.displayName || field.label }}</span>
+        </div>
+
+      </ng-container>
+    </div>
+
+    <!-- Delete action -->
+    <button class="fpi-delete" (click)="moveFieldToAvailable(field, sectionPath, $event)"
+            title="Remove field" type="button">
+      <mat-icon>close</mat-icon>
+    </button>
+  </ng-template>
+
+
+  <!-- ══════════════════════════════════════════════
+       LEFT COLUMN – Field Palette
+  ══════════════════════════════════════════════ -->
   <div class="left-column">
 
     <!-- Available Fields -->
     <div class="left-panel-section">
       <div class="left-panel-header" (click)="toggleLeftPanelGroup('available')">
-        <div class="left-panel-header-main">
-          <div class="left-panel-header-icon">
-            <mat-icon>apps</mat-icon>
-          </div>
-          <div class="left-panel-header-text">
-            <div class="left-panel-title">Available Fields</div>
-            <div class="left-panel-subtitle">
-              Drag & drop fields into template
-            </div>
+        <div class="lph-main">
+          <span class="lph-icon available"><mat-icon>widgets</mat-icon></span>
+          <div class="lph-text">
+            <div class="lph-title">Field Types</div>
+            <div class="lph-sub">Drag into any section</div>
           </div>
         </div>
-        <div class="left-panel-right">
-          <span class="left-panel-count-pill">
-            {{ availableFields.length || 0 }}
-          </span>
-          <mat-icon class="left-panel-expand-icon">
-            {{ leftPanelGroups.available ? 'expand_less' : 'expand_more' }}
-          </mat-icon>
+        <div class="lph-right">
+          <span class="lph-pill">{{ availableFields.length }}</span>
+          <mat-icon class="lph-chevron">{{ leftPanelGroups.available ? 'expand_less' : 'expand_more' }}</mat-icon>
         </div>
       </div>
-
       <div class="left-panel-body" *ngIf="leftPanelGroups.available">
-        <div cdkDropList
-             id="available"
+        <div cdkDropList id="available"
              [cdkDropListData]="availableFields"
              [cdkDropListConnectedTo]="allDropLists"
              (cdkDropListDropped)="drop($event, 'available')"
-             class="drop-list left-panel-list">
+             class="drop-list palette-list">
           <div *ngFor="let field of availableFields"
-               cdkDrag
-               [cdkDragData]="field"
-               class="field-item left-panel-item"
+               cdkDrag [cdkDragData]="field"
+               class="palette-item"
                [class.selected]="field === selectedField"
                (click)="selectField(field, 'available')">
-
-            <div class="left-panel-item-icon">
-              <mat-icon>drag_indicator</mat-icon>
+            <span class="palette-item-icon" [attr.data-type]="field.type">
+              <mat-icon>{{ getFieldIcon(field.type) }}</mat-icon>
+            </span>
+            <div class="palette-item-text">
+              <div class="palette-item-label">{{ field.label }}</div>
+              <div class="palette-item-type">{{ field.type }}</div>
             </div>
-
-            <div class="left-panel-item-text">
-              <div class="left-panel-item-title">
-                {{ field.label }}
-              </div>
-              <div class="left-panel-item-subtitle">
-                {{ field.type }}
-              </div>
-            </div>
+            <mat-icon class="palette-drag-hint">drag_indicator</mat-icon>
           </div>
         </div>
       </div>
     </div>
 
-
-    <!-- Predefined Subsections -->
+    <!-- Predefined Subsections + Empty Subsection -->
     <div class="left-panel-section">
       <div class="left-panel-header" (click)="toggleLeftPanelGroup('predefinedSubsections')">
-        <div class="left-panel-header-main">
-          <div class="left-panel-header-icon sections">
-            <mat-icon>view_module</mat-icon>
-          </div>
-          <div class="left-panel-header-text">
-            <div class="left-panel-header-title">Predefined Subsections</div>
-            <div class="left-panel-header-subtitle">Drag into any section</div>
+        <div class="lph-main">
+          <span class="lph-icon subsection"><mat-icon>view_module</mat-icon></span>
+          <div class="lph-text">
+            <div class="lph-title">Subsection Templates</div>
+            <div class="lph-sub">Drag into any section</div>
           </div>
         </div>
-        <div class="left-panel-header-right">
-          <mat-icon class="chevron">{{ leftPanelGroups.predefinedSubsections ? 'expand_less' : 'expand_more' }}</mat-icon>
+        <div class="lph-right">
+          <mat-icon class="lph-chevron">{{ leftPanelGroups.predefinedSubsections ? 'expand_less' : 'expand_more' }}</mat-icon>
         </div>
       </div>
-
       <div class="left-panel-body" *ngIf="leftPanelGroups.predefinedSubsections">
-        <div cdkDropList
-             [id]="subsectionTemplatesDropId"
+        <div cdkDropList [id]="subsectionTemplatesDropId"
              [cdkDropListData]="predefinedSubsections"
              [cdkDropListConnectedTo]="subsectionDropTargets"
              [cdkDropListEnterPredicate]="denyDropPredicate"
              [cdkDropListSortingDisabled]="true"
-             class="drop-list left-panel-list">
+             class="drop-list palette-list">
+
+          <!-- Empty subsection tile -->
+          <div cdkDrag
+               [cdkDragData]="{ kind: 'emptySubsection' }"
+               (cdkDragStarted)="onSubsectionTemplateDragStart()"
+               (cdkDragEnded)="onSubsectionTemplateDragEnd()"
+               class="palette-item palette-item--empty-sub">
+            <span class="palette-item-icon subsection"><mat-icon>add_box</mat-icon></span>
+            <div class="palette-item-text">
+              <div class="palette-item-label">Empty Subsection</div>
+              <div class="palette-item-type">Blank repeatable group</div>
+            </div>
+            <mat-icon class="palette-drag-hint">drag_indicator</mat-icon>
+          </div>
+
+          <!-- Predefined subsection tiles -->
           <div *ngFor="let s of predefinedSubsections"
                cdkDrag
                (cdkDragStarted)="onSubsectionTemplateDragStart()"
                (cdkDragEnded)="onSubsectionTemplateDragEnd()"
                [cdkDragData]="{ kind: 'subsectionTemplate', templateKey: s.key }"
-               class="field-item left-panel-item">
-            <div class="left-panel-item-icon sections">
-              <mat-icon>{{ s.icon }}</mat-icon>
+               class="palette-item">
+            <span class="palette-item-icon subsection"><mat-icon>{{ s.icon }}</mat-icon></span>
+            <div class="palette-item-text">
+              <div class="palette-item-label">{{ s.title }}</div>
+              <div class="palette-item-type">{{ s.subtitle }}</div>
             </div>
-            <div class="left-panel-item-text">
-              <div class="left-panel-item-title">{{ s.title }}</div>
-              <div class="left-panel-item-subtitle">{{ s.subtitle }}</div>
-            </div>
+            <mat-icon class="palette-drag-hint">drag_indicator</mat-icon>
           </div>
         </div>
       </div>
@@ -190,260 +261,226 @@
     <!-- Unavailable Sections -->
     <div class="left-panel-section">
       <div class="left-panel-header" (click)="toggleLeftPanelGroup('unavailSections')">
-        <div class="left-panel-header-main">
-          <div class="left-panel-header-icon sections">
-            <mat-icon>view_week</mat-icon>
-          </div>
-          <div class="left-panel-header-text">
-            <div class="left-panel-title">Section Templates</div>
-            <div class="left-panel-subtitle">
-              Drag sections into the template canvas
-            </div>
+        <div class="lph-main">
+          <span class="lph-icon sections"><mat-icon>view_week</mat-icon></span>
+          <div class="lph-text">
+            <div class="lph-title">Section Templates</div>
+            <div class="lph-sub">Drag to restore a section</div>
           </div>
         </div>
-        <div class="left-panel-right">
-          <span class="left-panel-count-pill">
-            {{ unavailableSections.length || 0 }}
-          </span>
-          <mat-icon class="left-panel-expand-icon">
-            {{ leftPanelGroups.unavailSections ? 'expand_less' : 'expand_more' }}
-          </mat-icon>
+        <div class="lph-right">
+          <span class="lph-pill">{{ unavailableSections.length }}</span>
+          <mat-icon class="lph-chevron">{{ leftPanelGroups.unavailSections ? 'expand_less' : 'expand_more' }}</mat-icon>
         </div>
       </div>
-
       <div class="left-panel-body" *ngIf="leftPanelGroups.unavailSections">
-
-        <!-- Existing section templates list (unchanged drag data = string) -->
-        <div cdkDropList
-             id="unavailable-sections"
+        <div cdkDropList id="unavailable-sections"
              [cdkDropListData]="unavailableSections"
              [cdkDropListConnectedTo]="['section-drop']"
              (cdkDropListDropped)="dropSection($event)"
-             class="drop-list left-panel-list">
-          <div cdkDrag
-               [cdkDragData]="{ kind: 'emptySection' }"
-               class="field-item left-panel-item empty-section-tile">
-            <div class="left-panel-item-icon sections">
-              <mat-icon>add_box</mat-icon>
+             class="drop-list palette-list">
+
+          <!-- Empty section tile (always present) -->
+          <div cdkDrag [cdkDragData]="{ kind: 'emptySection' }" class="palette-item palette-item--empty">
+            <span class="palette-item-icon sections"><mat-icon>add_box</mat-icon></span>
+            <div class="palette-item-text">
+              <div class="palette-item-label">New Empty Section</div>
+              <div class="palette-item-type">Blank section canvas</div>
             </div>
-            <div class="left-panel-item-text">
-              <div class="left-panel-item-title">
-                Empty Section
-              </div>
-              <div class="left-panel-item-subtitle">
-                Drag to create a blank section
-              </div>
-            </div>
+            <mat-icon class="palette-drag-hint">drag_indicator</mat-icon>
           </div>
 
           <div *ngFor="let section of unavailableSections"
-               cdkDrag
-               [cdkDragData]="section"
-               class="field-item left-panel-item">
-            <div class="left-panel-item-icon sections">
-              <mat-icon>folder</mat-icon>
+               cdkDrag [cdkDragData]="section" class="palette-item">
+            <span class="palette-item-icon sections"><mat-icon>folder_open</mat-icon></span>
+            <div class="palette-item-text">
+              <div class="palette-item-label">{{ section }}</div>
+              <div class="palette-item-type">Removed section</div>
             </div>
-            <div class="left-panel-item-text">
-              <div class="left-panel-item-title">
-                {{ section }}
-              </div>
-              <div class="left-panel-item-subtitle">
-                Section template
-              </div>
-            </div>
+            <mat-icon class="palette-drag-hint">drag_indicator</mat-icon>
           </div>
         </div>
       </div>
-
-
     </div>
 
-    <!-- Unavailable Fields (grouped) -->
+    <!-- Unavailable Fields -->
     <div class="left-panel-section" *ngIf="objectKeys(unavailableFieldsGrouped).length > 0">
       <div class="left-panel-header" (click)="toggleLeftPanelGroup('unavailFields')">
-        <div class="left-panel-header-main">
-          <div class="left-panel-header-icon standards">
-            <mat-icon>tune</mat-icon>
-          </div>
-          <div class="left-panel-header-text">
-            <div class="left-panel-title">Standard Fields</div>
-            <div class="left-panel-subtitle">
-              Additional fields by section
-            </div>
+        <div class="lph-main">
+          <span class="lph-icon standards"><mat-icon>tune</mat-icon></span>
+          <div class="lph-text">
+            <div class="lph-title">Standard Fields</div>
+            <div class="lph-sub">Removed fields by section</div>
           </div>
         </div>
-        <div class="left-panel-right">
-          <span class="left-panel-count-pill">
-            {{ totalUnavailableFieldCount }}
-          </span>
-          <mat-icon class="left-panel-expand-icon">
-            {{ leftPanelGroups.unavailFields ? 'expand_less' : 'expand_more' }}
-          </mat-icon>
+        <div class="lph-right">
+          <span class="lph-pill">{{ totalUnavailableFieldCount }}</span>
+          <mat-icon class="lph-chevron">{{ leftPanelGroups.unavailFields ? 'expand_less' : 'expand_more' }}</mat-icon>
         </div>
       </div>
-
       <div class="left-panel-body" *ngIf="leftPanelGroups.unavailFields">
-        <div *ngFor="let sectionName of objectKeys(unavailableFieldsGrouped)" class="left-panel-subsection">
-          <div class="left-panel-subsection-title">
-            {{ sectionName }}
-          </div>
-
+        <div *ngFor="let sectionName of objectKeys(unavailableFieldsGrouped)"
+             class="palette-group">
+          <div class="palette-group-header">{{ sectionName }}</div>
           <div cdkDropList
                [cdkDropListData]="unavailableFieldsGrouped[sectionName]"
                [cdkDropListConnectedTo]="allDropLists"
                (cdkDropListDropped)="drop($event, 'unavailable')"
-               class="drop-list left-panel-list">
+               class="drop-list palette-list">
             <div *ngFor="let field of unavailableFieldsGrouped[sectionName]"
-                 cdkDrag
-                 [cdkDragData]="field"
-                 class="field-item left-panel-item"
+                 cdkDrag [cdkDragData]="field"
+                 class="palette-item"
                  [class.selected]="field === selectedField"
                  (click)="selectField(field, 'unavailable')">
-
-              <div class="left-panel-item-icon standards">
-                <mat-icon>view_list</mat-icon>
+              <span class="palette-item-icon standards"><mat-icon>view_list</mat-icon></span>
+              <div class="palette-item-text">
+                <div class="palette-item-label">{{ field.displayName }}</div>
+                <div class="palette-item-type">{{ field.type }}</div>
               </div>
-
-              <div class="left-panel-item-text">
-                <div class="left-panel-item-title">
-                  {{ field.displayName }}
-                </div>
-                <div class="left-panel-item-subtitle">
-                  {{ field.type }}
-                </div>
-              </div>
+              <mat-icon class="palette-drag-hint">drag_indicator</mat-icon>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-  </div>
+  </div><!-- /left-column -->
 
-  <!-- Middle Column: Dynamic Template Builder -->
+
+  <!-- ══════════════════════════════════════════════
+       MIDDLE COLUMN – Canvas
+  ══════════════════════════════════════════════ -->
   <div class="middle-column">
-    <div class="accordion middle-toolbar">
-      <div class="form-outline">
+
+    <!-- Toolbar -->
+    <div class="canvas-toolbar">
+      <div class="toolbar-field form-outline">
         <label class="form-label">Template Name</label>
-        <input style="height: 35px; border-radius: 4px; width: 100%;"
-               [class.border-red]="showTemplateNameError"
-               [(ngModel)]="newTemplateName"
-               (input)="onTemplateNameInput()"
-               placeholder="Enter template name"
-               required
-               [disabled]="formMode === 'edit'" />
-        <span *ngIf="showTemplateNameError" style="color: red; font-size: 12px;">Template Name is required</span>
+        <input class="toolbar-input" [class.input-error]="showTemplateNameError"
+               [(ngModel)]="newTemplateName" (input)="onTemplateNameInput()"
+               placeholder="Enter template name" [disabled]="formMode === 'edit'" />
+        <span *ngIf="showTemplateNameError" class="error-hint">Template Name is required</span>
       </div>
 
-      <div class="position-relative toolbar-select" *ngIf="module === 'UM'">
-        <select class="form-select" id="authClass" name="Auth Case"
-                [(ngModel)]="selectedClassId"
-                (change)="onAuthClassChange()"
-                appShowLabel
-                [disabled]="formMode === 'edit'">
-          <option *ngFor="let class of authClass" [value]="class.id">
-            {{ class.authClass }}
-          </option>
+      <div class="toolbar-field" *ngIf="module === 'UM'">
+        <label class="form-label">Auth Class</label>
+        <select class="toolbar-select" [(ngModel)]="selectedClassId"
+                (change)="onAuthClassChange()" [disabled]="formMode === 'edit'">
+          <option *ngFor="let cls of authClass" [value]="cls.id">{{ cls.authClass }}</option>
         </select>
       </div>
 
-      <div class="position-relative toolbar-select">
-        <select class="form-select" id="authType" name="Clone From"
-                [(ngModel)]="selectedTemplateId"
-                (change)="onTemplateChange()"
-                appShowLabel
-                [disabled]="formMode === 'edit'">
-          <option *ngFor="let template of authTemplates" [value]="template.id">
-            {{ template.templateName }}
-          </option>
+      <div class="toolbar-field">
+        <label class="form-label">Clone Template</label>
+        <select class="toolbar-select" [(ngModel)]="selectedTemplateId"
+                (change)="onTemplateChange()" [disabled]="formMode === 'edit'">
+          <option *ngFor="let template of authTemplates" [value]="template.id">{{ template.templateName }}</option>
         </select>
       </div>
 
-      <button mat-icon-button
-              color="accent"
-              (click)="openValidationDialog()"
-              matTooltip="Manage Validations">
+      <button mat-icon-button color="accent" (click)="openValidationDialog()" matTooltip="Manage Validations"
+              class="toolbar-icon-btn">
         <mat-icon>rule</mat-icon>
       </button>
 
-      <div class="toolbar-actions"
-           *ngIf="masterTemplate.sections && masterTemplate.sections.length">
-        <button mat-raised-button class="provider-button" (click)="saveTemplate()">Save</button>
-        <button mat-raised-button class="provider-button" (click)="cancel()">Cancel</button>
+      <div class="toolbar-save-group" *ngIf="masterTemplate.sections?.length">
+        <button class="btn-save" (click)="saveTemplate()">
+          <mat-icon>save</mat-icon> Save
+        </button>
+        <button class="btn-cancel" (click)="cancel()">Cancel</button>
       </div>
     </div>
 
-
-    <!-- Drop target for whole sections -->
-    <div cdkDropList
-         id="section-drop"
+    <!-- Section drop zone (for restoring removed sections) -->
+    <div cdkDropList id="section-drop"
          [cdkDropListData]="masterTemplate.sections || []"
          [cdkDropListConnectedTo]="['unavailable-sections']"
-         (cdkDropListDropped)="dropSection($event)">
-      <!--<p class="text-muted m-0">Drop section here to add</p>-->
+         (cdkDropListDropped)="dropSection($event)"
+         class="section-drop-target">
     </div>
 
+    <!-- Canvas -->
+    <div class="canvas" *ngIf="masterTemplate.sections?.length">
+      <div class="section-card" *ngFor="let section of masterTemplate.sections"
+           [class.expanded]="activeSections[section.sectionName]">
 
-    <!-- Render dynamic sections from masterTemplate.sections -->
-    <div class="accordion master-template-content" *ngIf="masterTemplate.sections && masterTemplate.sections.length">
-      <div class="accordion-item" *ngFor="let section of masterTemplate.sections" [class.active]="activeSections[section.sectionName]">
-        <!--<div class="accordion-header" (click)="toggleSection(section.sectionName); selectSection(section)">
-          <span class="section-title">{{ section.sectionName }}</span>
-          <button class="delete-section" (click)="deleteAccordionSection(section.sectionName, $event)" matTooltip="Delete Section">
-            x
-          </button>
-        </div>-->
-        <div class="accordion-header">
-          <!-- Left: icon + title + field count pill -->
-          <div class="accordion-header-left"
-               (click)="toggleSection(section.sectionName); selectSection(section)">
-            <!--<span class="accordion-header-icon">
-              <mat-icon>view_list</mat-icon>
-            </span>-->
-            <span class="accordion-header-title">
-              {{ section.sectionName }}
-            </span>
-            <span class="accordion-header-pill">
-              ({{ getSectionFieldCount(section) }} fields)
-            </span>
+        <!-- Section header -->
+        <div class="section-header">
+          <div class="section-header-left" (click)="toggleSection(section.sectionName); selectSection(section)">
+            <mat-icon class="section-chevron">
+              {{ activeSections[section.sectionName] ? 'expand_less' : 'expand_more' }}
+            </mat-icon>
+            <span class="section-title">{{ section.sectionName }}</span>
+            <span class="section-field-pill">{{ getSectionFieldCount(section) }}</span>
           </div>
-
-          <!-- Right: actions -->
-          <div class="accordion-header-right">
-
-
-            <button mat-icon-button
-                    class="accordion-header-btn section-move-btn"
-                    matTooltip="Move section up"
+          <div class="section-header-right">
+            <button mat-icon-button class="sec-btn" matTooltip="Move up"
                     (click)="moveMainSection(section.sectionName, 'up', $event)">
               <mat-icon>keyboard_arrow_up</mat-icon>
             </button>
-
-            <button mat-icon-button
-                    class="accordion-header-btn section-move-btn"
-                    matTooltip="Move section down"
+            <button mat-icon-button class="sec-btn" matTooltip="Move down"
                     (click)="moveMainSection(section.sectionName, 'down', $event)">
               <mat-icon>keyboard_arrow_down</mat-icon>
             </button>
-            <button mat-icon-button
-                    class="subsection-move-btn"
-                    matTooltip="Delete Subsection"
-                    style="color:red"
+            <button mat-icon-button class="sec-btn sec-btn--delete" matTooltip="Remove section"
                     (click)="deleteAccordionSection(section.sectionName, $event)">
               <mat-icon>close</mat-icon>
             </button>
-
-
           </div>
         </div>
-        <div class="accordion-body">
-          <!-- For Additional Details, render subsections if they exist -->
-          <!-- Main section fields (always) -->
-          <ng-container *ngTemplateOutlet="normalSection"></ng-container>
 
-          <!-- Predefined subsection drop zone (hidden unless dragging) -->
-          <div class="subsection-dropzone"
-               [class.subsection-dropzone--active]="isDraggingSubsectionTemplate"
+        <!-- Section body -->
+        <div class="section-body" *ngIf="activeSections[section.sectionName]">
+
+          <!-- Main section field drop list -->
+          <div cdkDropList
+               [id]="section.sectionName"
+               [cdkDropListData]="section.sectionName === 'Provider Details' ? getProviderDropFields(section) : section.fields"
+               [cdkDropListConnectedTo]="allDropLists"
+               (cdkDropListDropped)="drop($event, section.sectionName)"
+               class="field-drop-zone"
+               cdkDropListOrientation="mixed">
+
+            <!-- Provider Details: show buttons separately above the grid -->
+            <ng-container *ngIf="section.sectionName === 'Provider Details'">
+              <div class="provider-button-row">
+                <div *ngFor="let btn of getFieldsByType(section.fields, 'button')"
+                     class="provider-chip"
+                     [class.selected]="btn === selectedField"
+                     (click)="selectField(btn, section.sectionName)">
+                  <span>{{ btn.buttonText || btn.label }}</span>
+                  <button class="chip-delete" type="button"
+                          (click)="deleteField(btn, section.sectionName, $event); $event.stopPropagation()">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </div>
+              </div>
+            </ng-container>
+
+            <div *ngFor="let field of (section.sectionName === 'Provider Details' ? getProviderDropFields(section) : section.fields)"
+                 cdkDrag [cdkDragData]="field"
+                 class="field-chip"
+                 [class.selected]="field === selectedField"
+                 [class.active]="field.isActive"
+                 (click)="selectField(field, section.sectionName)"
+                 (cdkDragStarted)="onDragStarted(field, section.sectionName)"
+                 (cdkDragEnded)="onDragEnded(field, section.sectionName)">
+              <div class="field-chip-handle" cdkDragHandle (click)="$event.stopPropagation()">
+                <mat-icon>drag_indicator</mat-icon>
+              </div>
+              <ng-container *ngTemplateOutlet="fieldPreviewInner; context: { field: field, sectionPath: section.sectionName }">
+              </ng-container>
+            </div>
+
+            <!-- Empty state -->
+            <div class="drop-empty-hint" *ngIf="!(section.sectionName === 'Provider Details' ? getProviderDropFields(section) : section.fields)?.length">
+              <mat-icon>drag_indicator</mat-icon> Drop fields here
+            </div>
+          </div>
+
+          <!-- Subsection drop zone — always in DOM for CDK; shown via CSS only while dragging -->
+          <div class="subsection-dropzone subsection-dropzone--active"
+               [class.subsection-dropzone--visible]="isDraggingSubsectionTemplate"
                cdkDropList
                [id]="getSubsectionZoneId(section.sectionName)"
                [cdkDropListData]="subsectionDropDummy"
@@ -451,481 +488,144 @@
                [cdkDropListEnterPredicate]="subsectionEnterPredicate"
                (cdkDropListDropped)="dropPredefinedSubsection($event, section.sectionName)"
                [cdkDropListSortingDisabled]="true">
-            <div class="subsection-dropzone-hint" *ngIf="isDraggingSubsectionTemplate">
-              <mat-icon>add_circle</mat-icon>
-              Drag <b>Provider</b>, <b>Member</b>, or <b>ICD</b> here to add a repeatable subsection
+            <div class="subsection-dropzone-hint">
+              <mat-icon>add_circle_outline</mat-icon>
+              Drop subsection here
             </div>
           </div>
 
-
-          <!-- Subsections (auto-detected from JSON) -->
+          <!-- Subsections -->
           <ng-container *ngIf="section.subsections">
-            <div class="sub-accordion">
-              <ng-container *ngTemplateOutlet="renderSubsections; context: { subsections: section.subsections, parentPath: section.sectionName }"></ng-container>
-            </div>
-
-            <ng-template #renderSubsections let-subsections="subsections" let-parentPath="parentPath">
-              <div class="subsection-wrap" [class.nested]="parentPath?.includes('.')">
-                <div class="subsection-group" *ngFor="let subSection of getSortedSubsections(subsections)">
-
-                  <div class="subsection-float-label"
-                       (click)="selectSubSectionByPath(getSubPath(parentPath, subSection), subSection, $event)"
-                       [class.selected]="selectedSubSectionPath === getSubPath(parentPath, subSection)">
-                    {{ subSection.sectionName }}
-                  </div>
-
-                  <div class="subsection-actions">
-                    <button mat-icon-button
-                            class="subsection-move-btn"
-                            matTooltip="Move up"
-                            (click)="moveSubSectionByPath(parentPath, getSubKey(subSection), 'up', $event)">
-                      <mat-icon>keyboard_arrow_up</mat-icon>
-                    </button>
-                    <button mat-icon-button
-                            class="subsection-move-btn"
-                            matTooltip="Move down"
-                            (click)="moveSubSectionByPath(parentPath, getSubKey(subSection), 'down', $event)">
-                      <mat-icon>keyboard_arrow_down</mat-icon>
-                    </button>
-                    <button mat-icon-button
-                            class="subsection-move-btn"
-                            matTooltip="Delete Subsection"
-                            style="color:red"
-                            (click)="deleteSubSectionByPath(parentPath, getSubKey(subSection), $event)">
-                      <mat-icon>close</mat-icon>
-                    </button>
-                  </div>
-
-                  <!-- Predefined subsection drop zone INSIDE this subsection -->
-                  <div class="subsection-dropzone"
-                       [class.subsection-dropzone--active]="isDraggingSubsectionTemplate"
-                       cdkDropList
-                       [id]="getSubsectionZoneId(getSubPath(parentPath, subSection))"
-                       [cdkDropListData]="subsectionDropDummy"
-                       [cdkDropListConnectedTo]="[subsectionTemplatesDropId]"
-                       [cdkDropListEnterPredicate]="subsectionEnterPredicate"
-                       (cdkDropListDropped)="dropPredefinedSubsection($event, getSubPath(parentPath, subSection))"
-                       [cdkDropListSortingDisabled]="true">
-                    <div class="subsection-dropzone-hint" *ngIf="isDraggingSubsectionTemplate">
-                      <mat-icon>add_circle</mat-icon>
-                      Drop predefined subsection here
-                    </div>
-                  </div>
-
-                  <!-- Fields -->
-                  <div cdkDropList
-                       [id]="getSubPath(parentPath, subSection)"
-                       [cdkDropListData]="subSection.fields"
-                       [cdkDropListConnectedTo]="allDropLists"
-                       (cdkDropListDropped)="drop($event, getSubPath(parentPath, subSection))"
-                       class="drop-list middle-grid-drop"
-                       cdkDropListOrientation="mixed">
-
-                    <!-- keep your existing field rendering exactly as-is -->
-                    <div *ngFor="let field of subSection.fields; let i = index"
-                         cdkDrag
-                         [cdkDragData]="field"
-                         class="field-drag-item"
-                         [class.has-repeat-controls]="subSection.repeat?.enabled && subSection.repeat?.showControls && i === (subSection.fields.length - 1)"
-                         [class.selected]="field === selectedField"
-                         [class.active]="field.isActive"
-                         (click)="selectField(field, getSubPath(parentPath, subSection))">
-
-
-
-                      <div class="repeat-inline-controls"
-                           *ngIf="subSection.repeat?.enabled && subSection.repeat?.showControls && i === (subSection.fields.length - 1)"
-                           (click)="$event.stopPropagation()">
-                        <button mat-icon-button
-                                class="repeat-inline-btn"
-                                matTooltip="Add another"
-                                (click)="incRepeatDefaultCount(parentPath, getSubKey(subSection), $event)">
-                          <mat-icon>add</mat-icon>
-                        </button>
-                        <button mat-icon-button
-                                class="repeat-inline-btn"
-                                matTooltip="Remove one"
-                                [disabled]="getRepeatDefaultCount(subSection) <= getRepeatMin(subSection)"
-                                (click)="decRepeatDefaultCount(parentPath, getSubKey(subSection), $event)">
-                          <mat-icon>remove</mat-icon>
-                        </button>
-                        <span class="repeat-inline-count">{{ getRepeatDefaultCount(subSection) }}</span>
-                      </div>
-                      <ng-container *ngIf="field.type !== 'checkbox'; else checkboxSubField">
-                        <ng-container *ngIf="field.layout === 'row'; else normalSubField">
-                          <div class="field-item row-container" style="display: flex; gap: 10px; align-items: center;">
-                            <div *ngFor="let subField of (field.fields || [])" style="display: flex; gap: 10px; align-items: center;">
-                              <ng-container *ngIf="subField.type !== 'checkbox'; else checkboxRowSubField">
-                                <div class="form-outline">
-                                  <label class="form-label" *ngIf="subField.type !== 'search'">{{ subField.displayName }}</label>
-                                  <ng-container [ngSwitch]="subField.type">
-                                    <div *ngSwitchCase="'search'" class="tb-search-control tb-search-control-compact">
-                                      <mat-icon class="tb-search-icon">search</mat-icon>
-                                      <input type="text" class="tb-search-input" [placeholder]="subField.displayName" />
-                                      <mat-icon class="tb-search-info" title="Info">info</mat-icon>
-                                    </div>
-                                    <input *ngSwitchDefault [type]="getInputType(subField.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="subField.displayName" />
-                                  </ng-container>
-                                </div>
-                                <button mat-icon-button style="padding:0px;width:auto;" class="delete-icon" (click)="moveFieldToAvailable(field, getSubPath(parentPath, subSection), $event)">
-                                  <span title="Delete" aria-label="Delete" role="button" tabindex="0">
-                                    <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
-                                      <path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"></path>
-                                    </svg>
-                                  </span>
-                                </button>
-                              </ng-container>
-                              <ng-template #checkboxRowSubField>
-                                <div class="form-outline">
-                                  <ng-container [ngSwitch]="subField.type">
-                                    <div *ngSwitchCase="'search'" class="tb-search-control tb-search-control-compact">
-                                      <mat-icon class="tb-search-icon">search</mat-icon>
-                                      <input type="text" class="tb-search-input" [placeholder]="subField.displayName" />
-                                      <mat-icon class="tb-search-info" title="Info">info</mat-icon>
-                                    </div>
-                                    <input *ngSwitchDefault [type]="getInputType(subField.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="subField.displayName" />
-                                  </ng-container>
-                                </div>
-                              </ng-template>
-                            </div>
-                          </div>
-                        </ng-container>
-
-                        <ng-template #normalSubField>
-                          <div class="field-item">
-                            <div class="form-outline">
-                              <label class="form-label" *ngIf="field.type !== 'search'">
-                                {{ field.displayName }}
-                                <span *ngIf="field.required" style="color: red;">*</span>
-                              </label>
-
-                              <ng-container *ngIf="field.type === 'select'; else normalField">
-                                <select class="custom-dropdown" [(ngModel)]="field.defaultValue">
-                                  <option *ngFor="let option of field.options" [value]="option">
-                                    {{ option }}
-                                  </option>
-                                </select>
-                                <span class="custom-dropdown-arrow">▼</span>
-                              </ng-container>
-
-                              <ng-template #normalField>
-                                <ng-container [ngSwitch]="field.type">
-                                  <div *ngSwitchCase="'search'" class="tb-search-control">
-                                    <mat-icon class="tb-search-icon">search</mat-icon>
-                                    <input type="text" class="tb-search-input" [placeholder]="field.displayName" />
-                                    <mat-icon class="tb-search-info" title="Info">info</mat-icon>
-                                  </div>
-                                  <input *ngSwitchDefault [type]="getInputType(field.type)" class="custom-input" [placeholder]="field.displayName" />
-                                </ng-container>
-                              </ng-template>
-                            </div>
-
-                            <button mat-icon-button class="delete-icon" style="padding: 0px; width: auto;"
-                                    (click)="moveFieldToAvailable(field, getSubPath(parentPath, subSection), $event)">
-                              <span title="Delete" aria-label="Delete" role="button" tabindex="0">
-                                <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
-                                  <path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"></path>
-                                </svg>
-                              </span>
-                            </button>
-                          </div>
-                        </ng-template>
-                      </ng-container>
-
-                      <ng-template #checkboxSubField>
-                        <div class="field-item">
-                          <div class="form-outline">
-                            <input [type]="getInputType(field.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="field.displayName" />
-                          </div>
-                        </div>
-                      </ng-template>
-
-                    </div>
-                  </div>
-
-                  <!-- Nested subsections -->
-                  <ng-container *ngIf="subSection.subsections">
-                    <ng-container *ngTemplateOutlet="renderSubsections; context: { subsections: subSection.subsections, parentPath: getSubPath(parentPath, subSection) }"></ng-container>
-                  </ng-container>
-
-                </div>
-              </div>
-            </ng-template>
+            <ng-container *ngTemplateOutlet="renderSubsections; context: { subsections: section.subsections, parentPath: section.sectionName, fieldTpl: fieldPreviewInner }">
+            </ng-container>
           </ng-container>
 
-          <ng-template #normalSection>
-            <!-- Special handling for Provider Details -->
-            <ng-container *ngIf="section.sectionName === 'Provider Details'; else otherSection">
-              <!--<div class="provider-buttons-container" style="margin-bottom: 10px;">
-                <div *ngFor="let field of getFieldsByType(section.fields, 'button')" class="button-field-wrapper" style="display: inline-block; margin-right: 10px; position: relative;">
-                  <button mat-raised-button class="provider-button" (click)="selectField(field, section.sectionName); $event.stopPropagation()">
-                    {{ field.buttonText }}
-                  </button>
-                  <button mat-icon-button class="delete-button" style="position: absolute; top: -8px; right: -8px;" (click)="deleteField(field, section.sectionName, $event)">
-                    <mat-icon>close</mat-icon>
-                  </button>
-                </div>
-              </div>-->
-              <div class="provider-buttons">
-                <div *ngFor="let field of getFieldsByType(section.fields, 'button')"
-                     class="provider-chip"
-                     [class.selected]="field === selectedField">
+        </div><!-- /section-body -->
+      </div><!-- /section-card -->
+    </div><!-- /canvas -->
 
-                  <button mat-raised-button
-                          class="provider-button"
-                          [matTooltip]="field.buttonText"
-                          (click)="selectField(field, section.sectionName); $event.stopPropagation()">
-                    {{ field.buttonText }}
-                  </button>
+    <!-- Empty canvas state -->
+    <div class="canvas-empty" *ngIf="!masterTemplate.sections?.length">
+      <mat-icon>layers</mat-icon>
+      <p>Select a template to clone or drag an <strong>Empty Section</strong> to begin building.</p>
+    </div>
 
-                  <button mat-icon-button
-                          class="provider-delete delete-icon"
-                          aria-label="Delete button field"
-                          matTooltip="Delete"
-                          (click)="deleteField(field, section.sectionName, $event); $event.stopPropagation()">
-                    <span title="Delete" aria-label="Delete" role="button" tabindex="0">
-                      <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
-                        <path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"></path>
-                      </svg>
-                    </span>
-                  </button>
-
-                </div>
-              </div>
+  </div><!-- /middle-column -->
 
 
-              <div cdkDropList
-                   [id]="section.sectionName"
-                   [cdkDropListData]="getProviderDropFields(section)"
-                   [cdkDropListConnectedTo]="allDropLists"
-                   (cdkDropListDropped)="drop($event, section.sectionName)"
-                   class="drop-list middle-grid-drop" cdkDropListOrientation="mixed">
-                <div *ngFor="let field of getProviderDropFields(section)"
-                     cdkDrag
-                     [cdkDragData]="field"
-                     class="field-drag-item"
-                     [class.selected]="field === selectedField"
-                     [class.active]="field.isActive"
-                     (click)="selectField(field, section.sectionName)">
-                  <!--<div class="field-drag-handle" cdkDragHandle (click)="$event.stopPropagation()">
-                    <mat-icon>drag_indicator</mat-icon>
-                  </div>-->
-                  <ng-container *ngIf="field.type !== 'checkbox'; else checkboxField">
-                    <ng-container *ngIf="field.layout === 'row'; else normalField">
-                      <div class="field-item row-container" style="display: flex; gap: 10px; align-items: center;">
-                        <div *ngFor="let subField of (field.fields || [])">
-                          <ng-container *ngIf="subField.type !== 'checkbox'; else checkboxRowSubField">
-                            <div class="form-outline">
-                              <label class="form-label" *ngIf="subField.type !== 'search'">{{ subField.displayName }}</label>
-                              <ng-container [ngSwitch]="subField.type">
-                                <div *ngSwitchCase="'search'" class="tb-search-control tb-search-control-compact">
-                                  <mat-icon class="tb-search-icon">search</mat-icon>
-                                  <input type="text" class="tb-search-input" [placeholder]="subField.displayName" />
-                                  <mat-icon class="tb-search-info" title="Info">info</mat-icon>
-                                </div>
-                                <input *ngSwitchDefault [type]="getInputType(subField.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="subField.displayName" />
-                              </ng-container>
-                            </div>
-                            <button mat-icon-button style="padding:0px;width:auto;" class="delete-icon" (click)="moveFieldToAvailable(field, section.sectionName, $event)">
-                              <span title="Delete" aria-label="Delete" role="button" tabindex="0">
-                                <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
-                                  <path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"></path>
-                                </svg>
-                              </span>
-                            </button>
-                          </ng-container>
-                          <ng-template #checkboxRowSubField>
-                            <div class="form-outline">
-                              <ng-container [ngSwitch]="subField.type">
-                                <div *ngSwitchCase="'search'" class="tb-search-control tb-search-control-compact">
-                                  <mat-icon class="tb-search-icon">search</mat-icon>
-                                  <input type="text" class="tb-search-input" [placeholder]="subField.displayName" />
-                                  <mat-icon class="tb-search-info" title="Info">info</mat-icon>
-                                </div>
-                                <input *ngSwitchDefault [type]="getInputType(subField.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="subField.displayName" />
-                              </ng-container>
-                            </div>
-                          </ng-template>
-                        </div>
-                      </div>
-                    </ng-container>
-                    <ng-template #normalField>
-                      <div class="field-item">
-                        <div class="form-outline">
-                          <label class="form-label" *ngIf="field.type !== 'search'">
-                            {{ field.displayName }}
-                            <span *ngIf="field.required" style="color: red;"> * </span>
-                          </label>
-                          <!-- Check field type -->
-                          <ng-container *ngIf="field.type === 'select'; else normalField">
-                            <select class="custom-dropdown" [(ngModel)]="field.defaultValue">
-                              <option *ngFor="let option of field.options" [value]="option">
-                                {{ option }}
-                              </option>
-                            </select>
-                            <span class="custom-dropdown-arrow">▼</span>
-                          </ng-container>
+  <!-- ══════════════════════════════════════════════
+       RIGHT COLUMN – Properties Panel (shown only when a field/subsection is selected)
+  ══════════════════════════════════════════════ -->
+  <div class="right-column" *ngIf="selectedField || selectedSubSectionObject">
+    <app-templatebuilderproperties
+      [selectedField]="selectedField || selectedSubSectionObject"
+      [selectedSection]="$any(selectedSectionObject)"
+      (fieldUpdated)="updateField($event)"
+      (sectionUpdated)="updateSection($event)"
+      [module]="module"
+      [masterTemplate]="$any(masterTemplate)">
+    </app-templatebuilderproperties>
+  </div>
 
-                          <ng-template #normalField>
-                            <ng-container [ngSwitch]="field.type">
-                              <div *ngSwitchCase="'search'" class="tb-search-control">
-                                <mat-icon class="tb-search-icon">search</mat-icon>
-                                <input type="text" class="tb-search-input" [placeholder]="field.displayName" />
-                                <mat-icon class="tb-search-info" title="Info">info</mat-icon>
-                              </div>
-                              <input *ngSwitchDefault [type]="getInputType(field.type)" class="custom-input" [placeholder]="field.displayName" />
-                            </ng-container>
-                          </ng-template>
-                        </div>
-                        <button mat-icon-button style="padding:0px;width:auto;" class="delete-icon" (click)="moveFieldToAvailable(field, section.sectionName, $event)">
-                          <span title="Delete" aria-label="Delete" role="button" tabindex="0">
-                            <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
-                              <path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"></path>
-                            </svg>
-                          </span>
-                        </button>
-                      </div>
-                    </ng-template>
-                  </ng-container>
-                  <ng-template #checkboxField>
-                    <div class="field-item">
-                      <div class="form-outline">
-                        <input [type]="getInputType(field.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="field.displayName" />
-                      </div>
-                    </div>
-                  </ng-template>
-                </div>
-              </div>
-            </ng-container>
-          </ng-template>
-          <ng-template #otherSection>
-            <div cdkDropList
-                 [id]="section.sectionName"
-                 [cdkDropListData]="section.fields"
-                 [cdkDropListConnectedTo]="allDropLists"
-                 (cdkDropListDropped)="drop($event, section.sectionName)"
-                 class="drop-list middle-grid-drop" cdkDropListOrientation="mixed">
-              <div *ngFor="let field of section.fields"
-                   cdkDrag
-                   [cdkDragData]="field"
-                   class="field-item field-drag-item"
-                   [class.selected]="field === selectedField"
-                   [class.active]="field.isActive"
-                   (click)="selectField(field, section.sectionName)">
-                <!--<div class="field-drag-handle" cdkDragHandle (click)="$event.stopPropagation()">
-                  <mat-icon>drag_indicator</mat-icon>
-                </div>-->
-                <ng-container *ngIf="field.type !== 'checkbox'; else checkboxField2">
-                  <ng-container *ngIf="field.layout === 'row'; else normalField2">
-                    <div class="field-item row-container" style="display: flex; gap: 10px; align-items: center;">
-                      <div *ngFor="let subField of (field.fields || [])" style="display: flex; gap: 10px; align-items: center;">
-                        <ng-container *ngIf="subField.type !== 'checkbox'; else checkboxRowSubField2">
-                          <div class="form-outline">
+</div><!-- /builder-container -->
 
-                            <label class="form-label">
-                              {{ subField.displayName }}
-                              <span *ngIf="subField.required" style="color: red;">*</span>
-                            </label>
-                            <ng-container [ngSwitch]="subField.type">
-                              <div *ngSwitchCase="'search'" class="tb-search-control tb-search-control-compact">
-                                <mat-icon class="tb-search-icon">search</mat-icon>
-                                <input type="text" class="tb-search-input" [placeholder]="subField.displayName" />
-                                <mat-icon class="tb-search-info" title="Info">info</mat-icon>
-                              </div>
-                              <input *ngSwitchDefault [type]="getInputType(subField.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="subField.displayName" />
-                            </ng-container>
-                          </div>
-                          <button mat-icon-button style="padding:0px;width:auto;" class="delete-icon" (click)="moveFieldToAvailable(field, section.sectionName, $event)">
-                            <span title="Delete" aria-label="Delete" role="button" tabindex="0">
-                              <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
-                                <path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"></path>
-                              </svg>
-                            </span>
-                          </button>
-                        </ng-container>
-                        <ng-template #checkboxRowSubField2>
-                          <div class="form-outline">
-                            <ng-container [ngSwitch]="subField.type">
-                              <div *ngSwitchCase="'search'" class="tb-search-control tb-search-control-compact">
-                                <mat-icon class="tb-search-icon">search</mat-icon>
-                                <input type="text" class="tb-search-input" [placeholder]="subField.displayName" />
-                                <mat-icon class="tb-search-info" title="Info">info</mat-icon>
-                              </div>
-                              <input *ngSwitchDefault [type]="getInputType(subField.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="subField.displayName" />
-                            </ng-container>
-                          </div>
-                        </ng-template>
-                      </div>
-                    </div>
-                  </ng-container>
-                  <ng-template #normalField2>
-                    <div class="field-item">
-                      <div class="form-outline">
 
-                        <label class="form-label" *ngIf="field.type !== 'search'">
-                          {{ field.displayName }}
-                          <span *ngIf="field.required" style="color: red;">*</span>
-                        </label>
-                        <!-- Check field type -->
-                        <ng-container *ngIf="field.type === 'select'; else normalField">
-                          <select class="custom-dropdown" [(ngModel)]="field.defaultValue">
-                            <option *ngFor="let option of field.options" [value]="option">
-                              {{ option }}
-                            </option>
-                          </select>
-                          <span class="custom-dropdown-arrow">▼</span>
-                        </ng-container>
+<!-- ══════════════════════════════════════════════
+     RECURSIVE SUBSECTION TEMPLATE
+══════════════════════════════════════════════ -->
+<ng-template #renderSubsections let-subsections="subsections" let-parentPath="parentPath" let-fieldTpl="fieldTpl">
+  <div class="subsection-wrap">
+    <div class="subsection-block" *ngFor="let subSection of getSortedSubsections(subsections)">
 
-                        <ng-template #normalField>
-                          <ng-container [ngSwitch]="field.type">
-                            <div *ngSwitchCase="'search'" class="tb-search-control">
-                              <mat-icon class="tb-search-icon">search</mat-icon>
-                              <input type="text" class="tb-search-input" [placeholder]="field.displayName" />
-                              <mat-icon class="tb-search-info" title="Info">info</mat-icon>
-                            </div>
-                            <input *ngSwitchDefault [type]="getInputType(field.type)" class="custom-input" [placeholder]="field.displayName" />
-                          </ng-container>
-                        </ng-template>
-                      </div>
-                      <button mat-icon-button class="delete-icon" style="padding: 0px; width: auto;" (click)="moveFieldToAvailable(field, section.sectionName, $event)">
-                        <span title="Delete" aria-label="Delete" role="button" tabindex="0">
-                          <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
-                            <path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"></path>
-                          </svg>
-                        </span>
-                      </button>
-                    </div>
-                  </ng-template>
-                </ng-container>
-                <ng-template #checkboxField2>
-                  <div class="field-item">
-                    <div class="form-outline">
-                      <input [type]="getInputType(field.type)" style="height: 35px; border-radius: 4px; width: 100%;" [placeholder]="field.displayName" />
-                    </div>
-                  </div>
-                </ng-template>
-              </div>
-            </div>
-          </ng-template>
-
+      <!-- Subsection header -->
+      <div class="subsection-header"
+           (click)="selectSubSectionByPath(getSubPath(parentPath, subSection), subSection, $event)"
+           [class.selected]="selectedSubSectionPath === getSubPath(parentPath, subSection)">
+        <div class="subsection-header-left">
+          <mat-icon class="subsection-icon">view_stream</mat-icon>
+          <span class="subsection-title">{{ subSection.sectionName }}</span>
+          <span class="subsection-repeat-badge" *ngIf="subSection.repeat?.enabled">
+            <mat-icon>repeat</mat-icon>{{ getRepeatDefaultCount(subSection) }}
+          </span>
+        </div>
+        <div class="subsection-header-right">
+          <button mat-icon-button class="sub-btn" matTooltip="Move up"
+                  (click)="moveSubSectionByPath(parentPath, getSubKey(subSection), 'up', $event)">
+            <mat-icon>keyboard_arrow_up</mat-icon>
+          </button>
+          <button mat-icon-button class="sub-btn" matTooltip="Move down"
+                  (click)="moveSubSectionByPath(parentPath, getSubKey(subSection), 'down', $event)">
+            <mat-icon>keyboard_arrow_down</mat-icon>
+          </button>
+          <ng-container *ngIf="subSection.repeat?.enabled && subSection.repeat?.showControls">
+            <button mat-icon-button class="sub-btn" matTooltip="Add instance"
+                    (click)="incRepeatDefaultCount(parentPath, getSubKey(subSection), $event)">
+              <mat-icon>add</mat-icon>
+            </button>
+            <button mat-icon-button class="sub-btn"
+                    [disabled]="getRepeatDefaultCount(subSection) <= getRepeatMin(subSection)"
+                    matTooltip="Remove instance"
+                    (click)="decRepeatDefaultCount(parentPath, getSubKey(subSection), $event)">
+              <mat-icon>remove</mat-icon>
+            </button>
+          </ng-container>
+          <button mat-icon-button class="sub-btn sub-btn--delete" matTooltip="Delete subsection"
+                  (click)="deleteSubSectionByPath(parentPath, getSubKey(subSection), $event)">
+            <mat-icon>close</mat-icon>
+          </button>
         </div>
       </div>
+
+      <!-- Nested predefined/empty subsection drop zone — always in DOM for CDK; shown via CSS only while dragging -->
+      <div class="subsection-dropzone subsection-dropzone--nested subsection-dropzone--active"
+           [class.subsection-dropzone--visible]="isDraggingSubsectionTemplate"
+           cdkDropList
+           [id]="getSubsectionZoneId(getSubPath(parentPath, subSection))"
+           [cdkDropListData]="subsectionDropDummy"
+           [cdkDropListConnectedTo]="[subsectionTemplatesDropId]"
+           [cdkDropListEnterPredicate]="subsectionEnterPredicate"
+           (cdkDropListDropped)="dropPredefinedSubsection($event, getSubPath(parentPath, subSection))"
+           [cdkDropListSortingDisabled]="true">
+        <div class="subsection-dropzone-hint">
+          <mat-icon>add_circle_outline</mat-icon> Drop nested subsection here
+        </div>
+      </div>
+
+      <!-- Field drop list -->
+      <div cdkDropList
+           [id]="getSubPath(parentPath, subSection)"
+           [cdkDropListData]="subSection.fields"
+           [cdkDropListConnectedTo]="allDropLists"
+           (cdkDropListDropped)="drop($event, getSubPath(parentPath, subSection))"
+           class="field-drop-zone field-drop-zone--sub"
+           cdkDropListOrientation="mixed">
+
+        <div *ngFor="let field of subSection.fields"
+             cdkDrag [cdkDragData]="field"
+             class="field-chip"
+             [class.selected]="field === selectedField"
+             [class.active]="field.isActive"
+             (click)="selectField(field, getSubPath(parentPath, subSection))"
+             (cdkDragStarted)="onDragStarted(field, getSubPath(parentPath, subSection))"
+             (cdkDragEnded)="onDragEnded(field, getSubPath(parentPath, subSection))">
+          <div class="field-chip-handle" cdkDragHandle (click)="$event.stopPropagation()">
+            <mat-icon>drag_indicator</mat-icon>
+          </div>
+          <ng-container *ngTemplateOutlet="fieldTpl; context: { field: field, sectionPath: getSubPath(parentPath, subSection) }">
+          </ng-container>
+        </div>
+
+        <div class="drop-empty-hint" *ngIf="!subSection.fields?.length">
+          <mat-icon>drag_indicator</mat-icon> Drop fields here
+        </div>
+      </div>
+
+      <!-- Nested subsections (recursive) -->
+      <ng-container *ngIf="subSection.subsections">
+        <ng-container *ngTemplateOutlet="renderSubsections; context: { subsections: subSection.subsections, parentPath: getSubPath(parentPath, subSection), fieldTpl: fieldTpl }">
+        </ng-container>
+      </ng-container>
+
     </div>
-    <!-- Save Template Button with Fixed Position -->
-
-
   </div>
-  <!-- Right Column: Field Properties -->
-  <div class="right-column">
-    <ng-container *ngIf="selectedField || selectedSubSectionObject">
-      <app-templatebuilderproperties [selectedField]="selectedField || selectedSubSectionObject"
-                                     [selectedSection]="$any(selectedSectionObject)"
-                                     (fieldUpdated)="updateField($event)"
-                                     (sectionUpdated)="updateSection($event)"
-                                     [module]="module"
-                                     [masterTemplate]="$any(masterTemplate)">
-      </app-templatebuilderproperties>
-    </ng-container>
-
-  </div>
-</div>
+</ng-template>
