@@ -1,5 +1,5 @@
 import {
-  Component, ViewChild, OnInit, EventEmitter, Output,
+  Component, ViewChild, OnInit, EventEmitter, Output, HostListener,
   Input, OnChanges, SimpleChanges, ChangeDetectorRef
 } from '@angular/core';
 import { CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
@@ -167,6 +167,27 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
   activeSubSections: { [key: string]: boolean } = {};
   isFocused = false;
   isVisible = false;
+
+  // ─── Unsaved changes guard ────────────────────────────────────────────────
+  isDirty               = false;
+  private _templateLoaded      = false;
+  private _lastLoadedTemplateId = 0;
+
+  /** Controls the navigation-guard dialog (leave / switch template / switch row). */
+  showUnsavedDialog     = false;
+  unsavedDialogContext: 'leave' | 'switchTemplate' | 'newTemplate' | 'switchRow' = 'leave';
+  private _pendingNavAction: (() => void) | null = null;
+
+  /** Controls the generic destructive-action confirmation dialog. */
+  showConfirmDialog     = false;
+  confirmDialogConfig   = {
+    title:        '',
+    message:      '',
+    detail:       '',
+    primaryLabel: 'Confirm',
+    primaryClass: 'danger' as 'danger' | 'warning',
+  };
+  private _pendingConfirmAction: (() => void) | null = null;
 
   private readonly PROVIDER_SECTION_NAME = 'Provider Details';
   private providerNonButtonFieldsCache = new Map<string, TemplateField[]>();
@@ -471,7 +492,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
     this.displayedColumns = cols;
   }
 
-  /** FIX: rebuilds from setupColumns() so module is respected after settings dialog. */
   updateDisplayedColumns(): void {
     const optional = ['updatedBy', 'updatedOn', 'deletedBy', 'deletedOn'];
     this.setupColumns();
@@ -480,7 +500,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
 
   // ─── Normalization ────────────────────────────────────────────────────────
 
-  /** FIX: accepts optional target — eliminates the masterTemplate swap hack. */
   private normalizeTemplateStructure(template?: { sections?: any[] }): void {
     const tmpl = template ?? this.masterTemplate;
     if (!tmpl?.sections || !Array.isArray(tmpl.sections)) return;
@@ -521,9 +540,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
     tmpl.sections.forEach((s: any) => { if (s?.sectionName) normalizeNode(s); });
   }
 
-  /** FIX: rebuilds entire set — removes the manual allDropLists.push() calls
-   *  that caused duplicates after onTemplateChange.
-   *  Also pre-populates subsectionDropTargets so CDK knows zone IDs before drag starts. */
   private rebuildAllDropLists(): void {
     const all        = new Set<string>(['available', 'unavailable']);
     const subTargets = new Set<string>();
@@ -532,8 +548,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
       const walk = (container: any, path: string): void => {
         if (!container || !path) return;
         all.add(path);
-        // Always register subsection zone IDs — zones are now always in the DOM (hidden via CSS),
-        // so CDK can resolve them even before a drag starts.
         subTargets.add(this.getSubsectionZoneId(path));
         const subs = container.subsections;
         if (subs && typeof subs === 'object' && !Array.isArray(subs)) {
@@ -544,7 +558,7 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
     }
 
     this.allDropLists          = Array.from(all);
-    this.subsectionDropTargets = Array.from(subTargets);   // populated eagerly, not on drag start
+    this.subsectionDropTargets = Array.from(subTargets);
   }
 
   // ─── Path helpers ─────────────────────────────────────────────────────────
@@ -560,7 +574,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
     return parentPath ? `${parentPath}.${this.getSubKey(sub)}` : this.getSubKey(sub);
   }
 
-  /** Walk an arbitrary-depth dot path into the template. */
   private resolveContainerByPath(path: string): any | null {
     if (!path || !this.masterTemplate?.sections) return null;
     const parts = path.split('.').filter(Boolean);
@@ -612,6 +625,63 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
   objectKeys(obj: any): string[] { return obj ? Object.keys(obj) : []; }
   originalOrderComparator(_a: KeyValue<string, any>, _b: KeyValue<string, any>): number { return 0; }
 
+  // ─── Subsection type helpers ──────────────────────────────────────────────
+  //  Used by the canvas to render context-aware shells that match authdetails.
+
+  /**
+   * Returns a stable type key for a subsection based on its subsectionKey / baseKey.
+   * Handles suffixed duplicates like 'icd_2', 'provider_3' by splitting on '_'.
+   */
+  getSubsectionType(sub: any): string {
+    const raw = (sub?.subsectionKey || sub?.baseKey || '').toString().toLowerCase();
+    // Strip numeric suffix so 'provider_2' → 'provider'
+    const base = raw.replace(/_\d+$/, '');
+    const typeMap: Record<string, string> = {
+      icd:            'icd',
+      provider:       'provider',
+      procedure:      'procedure',
+      medication:     'medication',
+      transportation: 'transportation',
+      member:         'member',
+      staff:          'staff',
+      authorization:  'authorization',
+      claim:          'claim',
+    };
+    return typeMap[base] ?? 'default';
+  }
+
+  /** Human-readable label shown as a badge on the subsection header. */
+  getSubsectionTypeLabel(sub: any): string {
+    const labels: Record<string, string> = {
+      icd:            'ICD / Diagnosis',
+      provider:       'Provider Card',
+      procedure:      'Service Code',
+      medication:     'Medication',
+      transportation: 'Transportation',
+      member:         'Member',
+      staff:          'Staff',
+      authorization:  'Authorization',
+      claim:          'Claim',
+    };
+    return labels[this.getSubsectionType(sub)] ?? '';
+  }
+
+  /** Material icon for the subsection header. */
+  getSubsectionIcon(sub: any): string {
+    const icons: Record<string, string> = {
+      icd:            'assignment',
+      provider:       'local_hospital',
+      procedure:      'medical_services',
+      medication:     'medication',
+      transportation: 'directions_car',
+      member:         'person',
+      staff:          'badge',
+      authorization:  'verified',
+      claim:          'receipt_long',
+    };
+    return icons[this.getSubsectionType(sub)] ?? 'view_stream';
+  }
+
   // ─── Left panel ──────────────────────────────────────────────────────────
 
   toggleLeftPanelGroup(key: keyof typeof this.leftPanelGroups): void {
@@ -653,7 +723,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
     });
   }
 
-
   getAuthClassName(authclassid: number | string): string {
     const found = this.authClass.find(c => Number(c.id) === Number(authclassid));
     return found ? found.authClass : '—';
@@ -684,51 +753,89 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
 
   // ─── Form management ─────────────────────────────────────────────────────
 
+  /** Public entry point — checks dirty state before opening. */
+  requestOpenForm(mode: 'add' | 'edit', element: any = null): void {
+    const ctx = mode === 'edit' ? 'switchRow' : 'newTemplate';
+    this.guardedNavigate(ctx, () => this.openForm(mode, element));
+  }
+
   openForm(mode: 'add' | 'edit' | 'view', element: any = null): void {
     this.formMode = mode;
     this.isVisible = true;
     this.menuCollapse.emit();
-    this.selectedField = null;
-    this.selectedSectionObject = null;
-    this.selectedSection = '';
 
     if (mode === 'edit' && element) {
-      this.newTemplateName = element.templateName;
-      this.selectedTemplateId = element.id;   // move up — both modules need this before onTemplateChange()
+      this.newTemplateName    = element.templateName;
+      this.selectedTemplateId = element.id;
+      this.selectedClassId    = element.authclassid;
 
-      if (this.module === 'UM') {
-        // UM: use authclassid (e.g. 1) to load the correct auth class dropdown + template list
-        this.selectedClassId = Number(element.authclassid);
-      }
-      // AG: selectedClassId stays 0 — getTemplates for AG doesn't filter by class
+      // Reset dirty state before loading a new template
+      this.isDirty          = false;
+      this._templateLoaded  = false;
+      // Reset ALL canvas state from any previous Add/Edit session
+      this.masterTemplate           = {};
+      this.originalMasterTemplate   = {};
+      this.activeSections           = {};
+      this.activeSubSections        = {};
+      this.selectedField            = null;
+      this.selectedSubSectionObject = null;
+      this.selectedSubSectionPath   = '';
+      this.selectedSectionObject    = null;
+      this.unavailableSections      = [];
+      this.unavailableFieldsList    = [];
+      this.unavailableFieldsGrouped = {};
+      this.providerNonButtonFieldsCache.clear();
 
+      // Load template list (clone dropdown) AND canvas content
       this.authService.getTemplates(this.module, this.selectedClassId).subscribe({
-        next: (data: any[]) => {
-          this.authTemplates = [{ Id: 0, TemplateName: 'Select Auth Type' }, ...data];
-          this.onTemplateChange();   // selectedTemplateId is already set above
-        },
-        error: () => { this.authTemplates = [{ Id: 0, TemplateName: 'Select Auth Type' }]; }
+        next: (templates: any[]) => { this.authTemplates = templates; },
+        error: ()                 => { this.authTemplates = []; }
       });
+      this.onTemplateChange();   // loads the actual JSON into the canvas
 
       this.selectedEntry = { ...element };
     } else if (mode === 'add') {
-      this.newTemplateName = '';
-      this.selectedTemplateId = 0;
-      this.selectedClassId = 0;
-      this.masterTemplate = {};
+      this.newTemplateName          = '';
+      this.selectedTemplateId       = 0;
+      this.selectedClassId          = 0;
+      this.isDirty          = false;
+      this._templateLoaded  = false;
+      this.masterTemplate           = {};
+      this.originalMasterTemplate   = {};
+      this.activeSections           = {};
+      this.activeSubSections        = {};
+      this.selectedField            = null;
+      this.selectedSubSectionObject = null;
+      this.selectedSubSectionPath   = '';
+      this.selectedSectionObject    = null;
+      this.unavailableSections      = [];
+      this.unavailableFieldsList    = [];
+      this.unavailableFieldsGrouped = {};
+      this.providerNonButtonFieldsCache.clear();
       this.selectedEntry = {};
     } else if (mode === 'view') {
       this.selectedEntry = { ...element };
     }
   }
 
-  cancel(): void { this.isVisible = false; }
+  cancel(): void {
+    this.guardedNavigate('leave', () => {
+      this.isVisible     = false;
+      this._templateLoaded = false;
+      this.isDirty       = false;
+    });
+  }
   confirmDelete(_element: any = null): void {}
   onFocus():  void { this.isFocused = true;  }
   onBlur():   void { this.isFocused = false; }
-  onTemplateNameInput(): void { if (this.newTemplateName?.trim()) this.showTemplateNameError = false; }
+  onTemplateNameInput(): void { if (this.newTemplateName?.trim()) this.showTemplateNameError = false; if (this._templateLoaded) this.isDirty = true; }
 
-  // ─── Template loading — FIX: forkJoin, no nested subscriptions ──────────
+  // ─── Template loading ─────────────────────────────────────────────────────
+
+  /** Called from the Clone Template dropdown — guards unsaved changes first. */
+  onCloneTemplateChange(): void {
+    this.guardedNavigate('switchTemplate', () => this.onTemplateChange());
+  }
 
   onTemplateChange(): void {
     if (!this.selectedTemplateId || this.selectedTemplateId <= 0) {
@@ -743,12 +850,11 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
       original: this.authService.getTemplate(this.module, originalId).pipe(catchError(() => of([])))
     }).subscribe(({ current, original }) => {
 
-      // Current template
       try {
         if (current?.[0]?.jsonContent) {
           this.masterTemplate = JSON.parse(current[0].jsonContent);
-          this.normalizeTemplateStructure();              // uses this.masterTemplate
-          this.rebuildAllDropLists();                     // FIX: replaces all manual pushes
+          this.normalizeTemplateStructure();
+          this.rebuildAllDropLists();
           this.providerNonButtonFieldsCache.clear();
 
           if (Array.isArray(this.masterTemplate.sections)) {
@@ -767,7 +873,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
         this.masterTemplate = {};
       }
 
-      // Original template — FIX: pass as parameter, no swap
       try {
         if (original?.[0]?.jsonContent) {
           this.originalMasterTemplate = JSON.parse(original[0].jsonContent);
@@ -785,7 +890,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
         this.compareWithMasterTemplate(this.originalMasterTemplate.sections, this.masterTemplate.sections);
       }
 
-      // Palette — now includes multicheck, radio, checkbox
       this.availableFields = [
         { label: 'Text Field',  displayName: 'Text Field',  type: 'text',           id: 'newText' },
         { label: 'Number',      displayName: 'Number',      type: 'number',         id: 'newNumber' },
@@ -798,18 +902,25 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
       ];
       this.defaultFieldIds = this.availableFields.map(f => f.id);
 
+      // Run change detection BEFORE marking loaded so the detection call
+      // itself cannot trigger the dirty flag (forceAngularChangeDetection
+      // only sets isDirty when _templateLoaded is already true).
       this.forceAngularChangeDetection();
+
+      // Mark template as cleanly loaded — must come AFTER forceAngularChangeDetection
+      this._lastLoadedTemplateId = this.selectedTemplateId;
+      this._templateLoaded       = true;
+      this.isDirty               = false;
     });
   }
 
-  // ─── Template comparison — FIX: now handles subsection fields ────────────
+  // ─── Template comparison ──────────────────────────────────────────────────
 
   compareWithMasterTemplate(master: TemplateSectionModel[], selected: TemplateSectionModel[]): void {
     this.unavailableSections     = [];
     this.unavailableFieldsList   = [];
     this.unavailableFieldsGrouped = {};
 
-    // Build map: path → Set<fieldId> from selected
     const selectedMap = new Map<string, Set<string>>();
     const buildMap = (container: any, path: string): void => {
       const ids = new Set<string>();
@@ -889,32 +1000,42 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
     this.forceAngularChangeDetection();
   }
 
-  /** FIX: shadow variable removed — inner const renamed to deletedSectionName. */
   deleteAccordionSection(sectionName: string, event: Event): void {
     event.stopPropagation();
-    if (!confirm('Are you sure you want to delete this section?')) return;
-
-    if (Array.isArray(this.masterTemplate.sections)) {
-      const index = this.masterTemplate.sections.findIndex(s => s.sectionName === sectionName);
-      if (index > -1) {
-        const deletedSectionName = this.masterTemplate.sections[index].sectionName;
-        this.unavailableSections.push(deletedSectionName);
-        this.masterTemplate.sections.splice(index, 1);
+    this.showConfirm({
+      title:        'Remove Section',
+      message:      `Remove "${sectionName}" from this template?`,
+      detail:       'The section will be moved to the Section Templates panel and can be restored at any time.',
+      primaryLabel: 'Remove Section',
+    }, () => {
+      if (Array.isArray(this.masterTemplate.sections)) {
+        const index = this.masterTemplate.sections.findIndex(s => s.sectionName === sectionName);
+        if (index > -1) {
+          this.unavailableSections.push(this.masterTemplate.sections[index].sectionName);
+          this.masterTemplate.sections.splice(index, 1);
+        }
       }
-    }
-    delete this.activeSections[sectionName];
-    this.rebuildAllDropLists();
-    this.forceAngularChangeDetection();
+      delete this.activeSections[sectionName];
+      this.rebuildAllDropLists();
+      this.forceAngularChangeDetection();
+    });
   }
 
   deleteSubSectionByPath(parentPath: string, subKey: string, event: Event): void {
     event.stopPropagation();
-    const parent = this.resolveContainerByPath(parentPath);
-    if (!parent?.subsections?.[subKey]) return;
-    delete parent.subsections[subKey];
-    this.normalizeTemplateStructure();
-    this.rebuildAllDropLists();
-    this.forceAngularChangeDetection();
+    this.showConfirm({
+      title:        'Remove Subsection',
+      message:      'Remove this subsection and all its configured fields?',
+      detail:       'Fields inside this subsection will not be recoverable from the panel. You may need to re-add them manually.',
+      primaryLabel: 'Remove Subsection',
+    }, () => {
+      const parent = this.resolveContainerByPath(parentPath);
+      if (!parent?.subsections?.[subKey]) return;
+      delete parent.subsections[subKey];
+      this.normalizeTemplateStructure();
+      this.rebuildAllDropLists();
+      this.forceAngularChangeDetection();
+    });
   }
 
   updateSection(updatedSection: TemplateSectionModel): void {
@@ -941,14 +1062,13 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
     this.selectedSectionObject = this.masterTemplate.sections?.find((s: any) => s.sectionName === mainName) ?? null;
   }
 
-  /** FIX: removed double-assignment of selectedSectionObject. */
   selectSubSection(section: any, subSection: any, event?: Event): void {
     event?.stopPropagation();
     if (this.selectedField) this.selectedField.isActive = false;
     this.selectedField            = null;
     this.selectedSubSectionObject = subSection;
     this.selectedSubSectionPath   = `${section.sectionName}.${subSection.subsectionKey || subSection.sectionName}`;
-    this.selectedSectionObject    = section;  // keep parent section reference only
+    this.selectedSectionObject    = section;
   }
 
   saveSelectedSubSection(): void {
@@ -982,15 +1102,17 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
 
   // ─── Field selection & update ─────────────────────────────────────────────
 
-  /** FIX: removed setTimeout — synchronous now. */
   selectField(field: TemplateField, section: string): void {
     if (section === 'available') return;
     if (this.selectedField && this.selectedField.id !== field.id) this.selectedField.isActive = false;
     this.selectedField = null;
     this.selectedSection = '';
     this.selectedSectionObject = null;
+    this.selectedSubSectionObject = null;
+    this.selectedSubSectionPath   = '';
     if (!field.displayName) field.displayName = field.label;
-    this.selectedField = field;
+    this.selectedField   = field;
+    this.selectedSection = section;
     field.isActive = true;
     this.forceAngularChangeDetection();
   }
@@ -1061,7 +1183,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
 
   // ─── Field removal ────────────────────────────────────────────────────────
 
-  /** FIX: uses resolveFieldsArray to handle subsection paths correctly. */
   deleteField(field: TemplateField, sectionName: string, event: Event): void {
     event.stopPropagation();
     if (sectionName === 'available') {
@@ -1077,7 +1198,18 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
     this.forceAngularChangeDetection();
   }
 
-  /** FIX: uses resolveContainerByPath for arbitrary-depth paths. */
+  /** Shows the confirm dialog before removing a field chip from the canvas. */
+  confirmRemoveField(field: TemplateField, sectionName: string, event: Event): void {
+    event.stopPropagation();
+    const name = field.displayName || field.label || 'this field';
+    this.showConfirm({
+      title:        'Remove Field',
+      message:      `Remove "${name}" from the template?`,
+      detail:       'The field will be moved to the Standard Fields panel on the left and can be dragged back at any time.',
+      primaryLabel: 'Remove Field',
+    }, () => this.moveFieldToAvailable(field, sectionName, new Event('click')));
+  }
+
   moveFieldToAvailable(field: TemplateField, sectionName: string, event: Event): void {
     event.stopPropagation();
     const container = this.resolveContainerByPath(sectionName);
@@ -1144,16 +1276,12 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
 
   denyDropPredicate = (_drag: any, _drop: any): boolean => false;
 
-  /** FIX: accepts emptySubsection kind in addition to subsectionTemplate. */
   subsectionEnterPredicate = (drag: any, _drop: any): boolean => {
     const kind = drag?.data?.kind;
     return kind === 'subsectionTemplate' || kind === 'emptySubsection';
   };
 
   onSubsectionTemplateDragStart(): void {
-    // Zones are always in the DOM; just flip the CSS-visibility flag.
-    // subsectionDropTargets is already populated by rebuildAllDropLists(),
-    // so CDK knows about every zone before this drag even begins.
     this.isDraggingSubsectionTemplate = true;
     this.cdr.detectChanges();
   }
@@ -1201,6 +1329,7 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
           this.addFieldToSection(fieldToSelect, sectionName);
         }
         this.selectedField = fieldToSelect;
+        this.selectedSection = sectionName;
         fieldToSelect.isEnabled = fieldToSelect.isEnabled ?? true;
       } else if (event.container.id === 'available' && !this.defaultFieldIds.includes(dragged.id)) {
         transferArrayItem(event.previousContainer.data, event.container.data, event.previousIndex, event.currentIndex);
@@ -1208,6 +1337,7 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
       } else {
         transferArrayItem(event.previousContainer.data, event.container.data, event.previousIndex, event.currentIndex);
         this.selectedField = event.container.data[event.currentIndex];
+        this.selectedSection = sectionName;
         this.addFieldToSection(this.selectedField, sectionName);
       }
     }
@@ -1238,7 +1368,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
   dropSection(event: CdkDragDrop<any[]>): void {
     const data = event.item.data;
 
-    // Empty section tile
     if (data && typeof data === 'object' && data.kind === 'emptySection') {
       const sections  = this.masterTemplate.sections || [];
       const maxOrder  = sections.length ? Math.max(...sections.map(s => s.order ?? 0)) : 0;
@@ -1247,12 +1376,11 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
       this.masterTemplate.sections = [...sections, newSection];
       this.activeSections[name]    = true;
       this.selectedSectionObject   = newSection;
-      this.rebuildAllDropLists();   // FIX: use rebuildAllDropLists instead of manual push
+      this.rebuildAllDropLists();
       this.forceAngularChangeDetection();
       return;
     }
 
-    // Restore existing section from unavailable list
     const sectionName: string = data as string;
     const toRestore = this.originalMasterTemplate.sections?.find(s => s.sectionName === sectionName);
     if (!toRestore) return;
@@ -1267,11 +1395,10 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
     if (this.unavailableFieldsGrouped[sectionName]) delete this.unavailableFieldsGrouped[sectionName];
     this.unavailableFieldsList = this.unavailableFieldsList.filter(f => f.sectionName !== sectionName);
 
-    this.rebuildAllDropLists();   // FIX: use rebuildAllDropLists
+    this.rebuildAllDropLists();
     this.forceAngularChangeDetection();
   }
 
-  /** FIX: handles emptySubsection kind in addition to subsectionTemplate. */
   dropPredefinedSubsection(event: CdkDragDrop<any>, containerPath: string): void {
     const data = event?.item?.data;
     if (!data) return;
@@ -1280,7 +1407,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
     if (!container) return;
     if (!container.subsections) container.subsections = {};
 
-    // Empty subsection
     if (data.kind === 'emptySubsection') {
       const key = this.generateUniqueSubsectionKey(container, 'subsection');
       container.subsections[key] = {
@@ -1354,7 +1480,7 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
       module:       this.module,
       EnrollmentHierarchyId: 1
     }).subscribe({
-      next:  () => { this.isVisible = false; this.loadData(); this.snackBar.open('Template saved!', 'Close', { duration: 5000, panelClass: ['success-snackbar'] }); },
+      next:  () => { this.isDirty = false; this._templateLoaded = false; this.isVisible = false; this.loadData(); this.snackBar.open('Template saved!', 'Close', { duration: 5000, panelClass: ['success-snackbar'] }); },
       error: (err: any) => console.error('Save error:', err)
     });
   }
@@ -1418,10 +1544,105 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
       .afterClosed().subscribe(result => { if (result) { this.visibleColumns = result; this.updateDisplayedColumns(); } });
   }
 
-  // ─── Change detection — FIX: synchronous, no setTimeout ──────────────────
+  // ─── Unsaved-changes guard ───────────────────────────────────────────────────
+
+  @HostListener('window:beforeunload', ['$event'])
+  onBeforeUnload(event: BeforeUnloadEvent): void {
+    if (this.isDirty && this.isVisible) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  }
+
+  /**
+   * If there are unsaved changes, shows the navigation-guard dialog and defers `action`.
+   * Otherwise executes `action` immediately.
+   */
+  guardedNavigate(context: typeof this.unsavedDialogContext, action: () => void): void {
+    if (!this.isDirty || !this._templateLoaded) { action(); return; }
+    this.unsavedDialogContext = context;
+    this._pendingNavAction    = action;
+    this.showUnsavedDialog    = true;
+  }
+
+  /** User clicked "Stay & Continue Editing" — close dialog, restore dropdown if needed. */
+  dismissUnsavedDialog(): void {
+    this.showUnsavedDialog = false;
+    this._pendingNavAction = null;
+    if (this.unsavedDialogContext === 'switchTemplate') {
+      this.selectedTemplateId = this._lastLoadedTemplateId;
+      this.cdr.detectChanges();
+    }
+  }
+
+  /** User clicked "Discard Changes" — clear dirty state and execute the deferred action. */
+  confirmDiscard(): void {
+    this.isDirty         = false;
+    this._templateLoaded = false;
+    this.showUnsavedDialog = false;
+    const action = this._pendingNavAction;
+    this._pendingNavAction = null;
+    action?.();
+  }
+
+  /** User clicked "Save & Continue" — save first, then execute the deferred action. */
+  saveAndLeave(): void {
+    if (!this.newTemplateName?.trim()) { this.showTemplateNameError = true; this.showUnsavedDialog = false; return; }
+    this.showTemplateNameError = false;
+    this.showUnsavedDialog = false;
+    const action = this._pendingNavAction;
+    this._pendingNavAction = null;
+
+    this.masterTemplate.sections?.forEach(sec => {
+      sec.fields?.forEach((f, i) => (f.order = i));
+      if (sec.subsections) Object.values(sec.subsections).forEach(sub => sub.fields?.forEach((f, i) => (f.order = i)));
+    });
+    this.normalizeVisibilityForSave(this.masterTemplate);
+
+    this.authService.saveAuthTemplate({
+      TemplateName: this.newTemplateName,
+      JsonContent:  JSON.stringify(this.masterTemplate),
+      CreatedOn:    new Date().toISOString(),
+      CreatedBy:    1,
+      authclassid:  this.selectedClassId,
+      Id:           this.formMode === 'edit' ? this.selectedTemplateId : 0,
+      module:       this.module,
+      EnrollmentHierarchyId: 1
+    }).subscribe({
+      next:  () => {
+        this.isDirty = false; this._templateLoaded = false;
+        this.snackBar.open('Template saved!', 'Close', { duration: 4000, panelClass: ['success-snackbar'] });
+        action?.();
+      },
+      error: () => this.snackBar.open('Save failed. Please try again.', 'Close', { duration: 4000 })
+    });
+  }
+
+  // ─── Confirm dialog (destructive in-canvas actions) ─────────────────────────
+
+  showConfirm(cfg: { title: string; message: string; detail?: string; primaryLabel: string; primaryClass?: 'danger' | 'warning' }, action: () => void): void {
+    this.confirmDialogConfig = { primaryClass: 'danger', detail: '', ...cfg };
+    this._pendingConfirmAction = action;
+    this.showConfirmDialog = true;
+  }
+
+  onConfirmPrimary(): void {
+    this.showConfirmDialog = false;
+    const action = this._pendingConfirmAction;
+    this._pendingConfirmAction = null;
+    action?.();
+  }
+
+  onConfirmDismiss(): void {
+    this.showConfirmDialog = false;
+    this._pendingConfirmAction = null;
+  }
+
+  // ─── Change detection ─────────────────────────────────────────────────────
 
   forceAngularChangeDetection(): void {
     this.masterTemplate = { ...this.masterTemplate };
+    if (this._templateLoaded) this.isDirty = true;
     this.cdr.detectChanges();
   }
 
@@ -1441,7 +1662,6 @@ export class TemplatebuilderComponent implements OnInit, OnChanges {
         const count = (seen.get(id) ?? 0) + 1;
         seen.set(id, count);
         if (count > 1) {
-          // FIX: keep incrementing until we find an unused key
           let newId = `${id}_${count}`, n = count;
           while (seen.has(newId)) newId = `${id}_${++n}`;
           renameMap.set(id, newId);

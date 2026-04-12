@@ -9,7 +9,7 @@
              (focus)="onFocus()" (blur)="onBlur()" class="search-input" />
     </div>
     <div class="toolbar-actions-row">
-      <button mat-icon-button color="primary" (click)="openForm('add')" matTooltip="New Template">
+      <button mat-icon-button color="primary" (click)="requestOpenForm('add')" matTooltip="New Template">
         <mat-icon>add_circle_outline</mat-icon>
       </button>
       <button mat-icon-button color="primary" (click)="openSettingsDialog()" matTooltip="Column Settings">
@@ -58,7 +58,7 @@
     <ng-container matColumnDef="actions">
       <th mat-header-cell *matHeaderCellDef>Actions</th>
       <td mat-cell *matCellDef="let element">
-        <button mat-icon-button (click)="openForm('edit', element)" matTooltip="Edit">
+        <button mat-icon-button (click)="requestOpenForm('edit', element)" matTooltip="Edit">
           <mat-icon class="action-icon edit">edit</mat-icon>
         </button>
         <button mat-icon-button (click)="confirmDelete(element)" matTooltip="Delete">
@@ -85,75 +85,61 @@
   ────────────────────────────────────────────────────────────────── -->
   <ng-template #fieldPreviewInner let-field="field" let-sectionPath="sectionPath">
     <div class="fpi-body">
-      <!-- Field type badge -->
-      <span class="fpi-badge" [attr.data-type]="field.type">{{ field.type }}</span>
 
-      <!-- Label row -->
-      <div class="fpi-label" *ngIf="field.type !== 'button'">
-        {{ field.displayName || field.label }}
-        <span *ngIf="field.required" class="fpi-required">*</span>
+      <!-- ROW 1: badge + label inline (collapsed from 2 rows into 1) -->
+      <div class="fpi-row1" *ngIf="field.type !== 'button'">
+        <span class="fpi-badge" [attr.data-type]="field.type">{{ field.type }}</span>
+        <span class="fpi-label">
+          {{ field.displayName || field.label }}
+          <span *ngIf="field.required" class="fpi-required">*</span>
+        </span>
         <span *ngIf="!field.isEnabled" class="fpi-disabled-tag">read-only</span>
       </div>
 
-      <!-- Control preview -->
+      <!-- ROW 2: control preview -->
       <ng-container [ngSwitch]="field.type">
 
-        <!-- Search -->
         <div *ngSwitchCase="'search'" class="fpi-search">
           <mat-icon class="fpi-search-icon">search</mat-icon>
-          <span class="fpi-search-placeholder">{{ field.displayName || field.label }}</span>
+          <span class="fpi-search-placeholder">Search…</span>
           <mat-icon class="fpi-info-icon" *ngIf="field.info" [title]="field.info">info_outline</mat-icon>
         </div>
 
-        <!-- Dropdown / Select -->
         <div *ngSwitchCase="'select'" class="fpi-input fpi-select-preview">
-          <span class="fpi-select-text">{{ field.options?.[0] || 'Select…' }}</span>
+          <span class="fpi-select-text">Select…</span>
           <mat-icon class="fpi-chevron">expand_more</mat-icon>
         </div>
 
-        <!-- Multi-Select / Multicheck -->
-        <div *ngSwitchCase="'multicheck'" class="fpi-multicheck-preview">
-          <div *ngFor="let opt of (field.options?.slice(0,3) || ['Option 1','Option 2','Option 3'])"
-               class="fpi-check-item">
-            <span class="fpi-checkbox-icon">☐</span> {{ opt }}
-          </div>
-          <span *ngIf="field.options?.length > 3" class="fpi-more-badge">+{{ field.options.length - 3 }} more</span>
+        <div *ngSwitchCase="'multicheck'" class="fpi-input">
+          <span class="fpi-placeholder">☐ Multi-select options</span>
         </div>
 
-        <!-- Radio Group -->
-        <div *ngSwitchCase="'radio'" class="fpi-radio-preview">
-          <div *ngFor="let opt of (field.options?.slice(0,3) || ['Option A','Option B'])"
-               class="fpi-radio-item">
-            <span class="fpi-radio-circle">○</span> {{ opt }}
-          </div>
+        <div *ngSwitchCase="'radio'" class="fpi-input">
+          <span class="fpi-placeholder">○ Radio options</span>
         </div>
 
-        <!-- Checkbox (single boolean) -->
         <div *ngSwitchCase="'checkbox'" class="fpi-checkbox-single">
           <span class="fpi-checkbox-icon">☐</span>
-          <span>{{ field.displayName || field.label }}</span>
+          <span class="fpi-placeholder">{{ field.displayName || field.label }}</span>
         </div>
 
-        <!-- Textarea -->
         <div *ngSwitchCase="'textarea'" class="fpi-input fpi-textarea-preview">
-          <span class="fpi-placeholder">{{ field.displayName || field.label }}…</span>
+          <span class="fpi-placeholder">Long text…</span>
         </div>
 
-        <!-- Button -->
         <button *ngSwitchCase="'button'" class="fpi-button-preview" disabled>
           {{ field.buttonText || field.label }}
         </button>
 
-        <!-- Default: text / number / datetime -->
         <div *ngSwitchDefault class="fpi-input">
-          <span class="fpi-placeholder">{{ field.displayName || field.label }}</span>
+          <span class="fpi-placeholder">—</span>
         </div>
 
       </ng-container>
     </div>
 
     <!-- Delete action -->
-    <button class="fpi-delete" (click)="moveFieldToAvailable(field, sectionPath, $event)"
+    <button class="fpi-delete" (click)="confirmRemoveField(field, sectionPath, $event)"
             title="Remove field" type="button">
       <mat-icon>close</mat-icon>
     </button>
@@ -373,7 +359,7 @@
       <div class="toolbar-field">
         <label class="form-label">Clone Template</label>
         <select class="toolbar-select" [(ngModel)]="selectedTemplateId"
-                (change)="onTemplateChange()" [disabled]="formMode === 'edit'">
+                (change)="onCloneTemplateChange()" [disabled]="formMode === 'edit'">
           <option *ngFor="let template of authTemplates" [value]="template.id">{{ template.templateName }}</option>
         </select>
       </div>
@@ -384,7 +370,7 @@
       </button>
 
       <div class="toolbar-save-group" *ngIf="masterTemplate.sections?.length">
-        <button class="btn-save" (click)="saveTemplate()">
+        <button class="btn-save" [class.dirty]="isDirty" (click)="saveTemplate()" [title]="isDirty ? 'Unsaved changes' : 'Save template'">
           <mat-icon>save</mat-icon> Save
         </button>
         <button class="btn-cancel" (click)="cancel()">Cancel</button>
@@ -514,7 +500,7 @@
 
 
   <!-- ══════════════════════════════════════════════
-       RIGHT COLUMN – Properties Panel (shown only when a field/subsection is selected)
+       RIGHT COLUMN – Properties Panel
   ══════════════════════════════════════════════ -->
   <div class="right-column" *ngIf="selectedField || selectedSubSectionObject">
     <app-templatebuilderproperties
@@ -529,6 +515,90 @@
 
 </div><!-- /builder-container -->
 
+<!-- ══════════════════════════════════════════════════════════════════
+     UNSAVED CHANGES DIALOG
+     Shown when the user attempts to leave / switch template with
+     modifications that have not been saved yet.
+══════════════════════════════════════════════════════════════════ -->
+<div class="tb-overlay" *ngIf="showUnsavedDialog" (click)="dismissUnsavedDialog()">
+  <div class="tb-dialog" (click)="$event.stopPropagation()">
+
+    <div class="tb-dialog-icon tb-dialog-icon--warning">
+      <mat-icon>drive_file_rename_outline</mat-icon>
+    </div>
+
+    <div class="tb-dialog-title">You Have Unsaved Changes</div>
+
+    <div class="tb-dialog-msg">
+      <ng-container [ngSwitch]="unsavedDialogContext">
+        <span *ngSwitchCase="'leave'">
+          You're about to leave <strong>{{ newTemplateName || 'this template' }}</strong> with unsaved modifications.
+          Leaving now will permanently discard everything changed in this session.
+        </span>
+        <span *ngSwitchCase="'switchTemplate'">
+          Switching to a different template will discard all unsaved changes to
+          <strong>{{ newTemplateName || 'the current template' }}</strong>.
+        </span>
+        <span *ngSwitchCase="'newTemplate'">
+          Creating a new template will discard all unsaved changes to
+          <strong>{{ newTemplateName || 'the current template' }}</strong>.
+        </span>
+        <span *ngSwitchCase="'switchRow'">
+          You have unsaved changes to <strong>{{ newTemplateName || 'the current template' }}</strong>.
+          Opening another template will discard all pending modifications.
+        </span>
+      </ng-container>
+    </div>
+
+    <div class="tb-dialog-detail">
+      To keep your work, click <strong>Stay &amp; Edit</strong> and then save the template.
+    </div>
+
+    <div class="tb-dialog-actions">
+      <button class="tb-btn tb-btn--secondary" (click)="dismissUnsavedDialog()">
+        <mat-icon>edit_note</mat-icon>
+        Stay &amp; Edit
+      </button>
+      <button class="tb-btn tb-btn--save" (click)="saveAndLeave()">
+        <mat-icon>save</mat-icon>
+        Save &amp; Continue
+      </button>
+      <button class="tb-btn tb-btn--danger" (click)="confirmDiscard()">
+        <mat-icon>delete_forever</mat-icon>
+        Discard Changes
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     DESTRUCTIVE ACTION CONFIRMATION DIALOG
+     Shown for section / subsection deletion.
+══════════════════════════════════════════════════════════════════ -->
+<div class="tb-overlay" *ngIf="showConfirmDialog" (click)="onConfirmDismiss()">
+  <div class="tb-dialog" (click)="$event.stopPropagation()">
+
+    <div class="tb-dialog-icon tb-dialog-icon--danger">
+      <mat-icon>warning_amber</mat-icon>
+    </div>
+
+    <div class="tb-dialog-title">{{ confirmDialogConfig.title }}</div>
+    <div class="tb-dialog-msg">{{ confirmDialogConfig.message }}</div>
+    <div class="tb-dialog-detail" *ngIf="confirmDialogConfig.detail">
+      {{ confirmDialogConfig.detail }}
+    </div>
+
+    <div class="tb-dialog-actions">
+      <button class="tb-btn tb-btn--secondary" (click)="onConfirmDismiss()">
+        <mat-icon>close</mat-icon> Cancel
+      </button>
+      <button class="tb-btn tb-btn--{{ confirmDialogConfig.primaryClass }}" (click)="onConfirmPrimary()">
+        <mat-icon>delete</mat-icon> {{ confirmDialogConfig.primaryLabel }}
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- ══════════════════════════════════════════════
      RECURSIVE SUBSECTION TEMPLATE
@@ -542,8 +612,14 @@
            (click)="selectSubSectionByPath(getSubPath(parentPath, subSection), subSection, $event)"
            [class.selected]="selectedSubSectionPath === getSubPath(parentPath, subSection)">
         <div class="subsection-header-left">
-          <mat-icon class="subsection-icon">view_stream</mat-icon>
+          <!-- Dynamic icon based on subsection type -->
+          <mat-icon class="subsection-icon">{{ getSubsectionIcon(subSection) }}</mat-icon>
           <span class="subsection-title">{{ subSection.sectionName }}</span>
+          <!-- Type badge for special subsections: ICD, Provider, Procedure, Medication, etc. -->
+          <span class="sub-type-badge sub-type-badge--{{ getSubsectionType(subSection) }}"
+                *ngIf="getSubsectionType(subSection) !== 'default'">
+            {{ getSubsectionTypeLabel(subSection) }}
+          </span>
           <span class="subsection-repeat-badge" *ngIf="subSection.repeat?.enabled">
             <mat-icon>repeat</mat-icon>{{ getRepeatDefaultCount(subSection) }}
           </span>
@@ -576,7 +652,7 @@
         </div>
       </div>
 
-      <!-- Nested predefined/empty subsection drop zone — always in DOM for CDK; shown via CSS only while dragging -->
+      <!-- Nested subsection drop zone — always in DOM for CDK; shown via CSS only while dragging -->
       <div class="subsection-dropzone subsection-dropzone--nested subsection-dropzone--active"
            [class.subsection-dropzone--visible]="isDraggingSubsectionTemplate"
            cdkDropList
@@ -591,34 +667,240 @@
         </div>
       </div>
 
-      <!-- Field drop list -->
-      <div cdkDropList
-           [id]="getSubPath(parentPath, subSection)"
-           [cdkDropListData]="subSection.fields"
-           [cdkDropListConnectedTo]="allDropLists"
-           (cdkDropListDropped)="drop($event, getSubPath(parentPath, subSection))"
-           class="field-drop-zone field-drop-zone--sub"
-           cdkDropListOrientation="mixed">
+      <!-- ═══════════════════════════════════════════════════
+           CONTEXT-AWARE FIELD DROP ZONE
+           Renders a styled preview shell matching authdetails
+           card layouts for ICD, Provider, Procedure, Medication,
+           Transportation — all other subsections use the plain chip list.
+      ═══════════════════════════════════════════════════ -->
+      <ng-container [ngSwitch]="getSubsectionType(subSection)">
 
-        <div *ngFor="let field of subSection.fields"
-             cdkDrag [cdkDragData]="field"
-             class="field-chip"
-             [class.selected]="field === selectedField"
-             [class.active]="field.isActive"
-             (click)="selectField(field, getSubPath(parentPath, subSection))"
-             (cdkDragStarted)="onDragStarted(field, getSubPath(parentPath, subSection))"
-             (cdkDragEnded)="onDragEnded(field, getSubPath(parentPath, subSection))">
-          <div class="field-chip-handle" cdkDragHandle (click)="$event.stopPropagation()">
-            <mat-icon>drag_indicator</mat-icon>
+        <!-- ─── ICD / Diagnosis ─────────────────────────── -->
+        <ng-container *ngSwitchCase="'icd'">
+          <div class="preview-shell preview-shell--icd">
+            <!-- Mock identity row matching authdetails dc-row style -->
+            <div class="psh-mock psh-mock--icd">
+              <span class="psh-icd-code">A00.0</span>
+              <span class="psh-sep">·</span>
+              <span class="psh-icd-desc">ICD Code · Description</span>
+              <span class="psh-primary-badge psh-primary-badge--active">Primary</span>
+              <span class="psh-actions-mock"><mat-icon>edit</mat-icon><mat-icon>delete</mat-icon></span>
+            </div>
+            <!-- CDK drop list — inside the shell, all drag mechanics intact -->
+            <div cdkDropList
+                 [id]="getSubPath(parentPath, subSection)"
+                 [cdkDropListData]="subSection.fields"
+                 [cdkDropListConnectedTo]="allDropLists"
+                 (cdkDropListDropped)="drop($event, getSubPath(parentPath, subSection))"
+                 class="field-drop-zone field-drop-zone--sub field-drop-zone--typed"
+                 cdkDropListOrientation="mixed">
+              <div *ngFor="let field of subSection.fields"
+                   cdkDrag [cdkDragData]="field"
+                   class="field-chip"
+                   [class.selected]="field === selectedField"
+                   [class.active]="field.isActive"
+                   (click)="selectField(field, getSubPath(parentPath, subSection))"
+                   (cdkDragStarted)="onDragStarted(field, getSubPath(parentPath, subSection))"
+                   (cdkDragEnded)="onDragEnded(field, getSubPath(parentPath, subSection))">
+                <div class="field-chip-handle" cdkDragHandle (click)="$event.stopPropagation()">
+                  <mat-icon>drag_indicator</mat-icon>
+                </div>
+                <ng-container *ngTemplateOutlet="fieldTpl; context: { field: field, sectionPath: getSubPath(parentPath, subSection) }">
+                </ng-container>
+              </div>
+              <div class="drop-empty-hint" *ngIf="!subSection.fields?.length">
+                <mat-icon>drag_indicator</mat-icon> Drop fields here
+              </div>
+            </div>
           </div>
-          <ng-container *ngTemplateOutlet="fieldTpl; context: { field: field, sectionPath: getSubPath(parentPath, subSection) }">
-          </ng-container>
-        </div>
+        </ng-container>
 
-        <div class="drop-empty-hint" *ngIf="!subSection.fields?.length">
-          <mat-icon>drag_indicator</mat-icon> Drop fields here
-        </div>
-      </div>
+        <!-- ─── Provider ────────────────────────────────── -->
+        <ng-container *ngSwitchCase="'provider'">
+          <div class="preview-shell preview-shell--provider">
+            <!-- Mock provider card matching authdetails pc-card style -->
+            <div class="psh-mock psh-mock--provider">
+              <div class="psh-prov-role">Provider Role</div>
+              <div class="psh-prov-row">
+                <span class="psh-prov-name">Provider Name, Credentials</span>
+                <span class="psh-net-badge psh-net-badge--in">In-Network</span>
+              </div>
+              <div class="psh-prov-detail">NPI · Organization · City, ST</div>
+            </div>
+            <div cdkDropList
+                 [id]="getSubPath(parentPath, subSection)"
+                 [cdkDropListData]="subSection.fields"
+                 [cdkDropListConnectedTo]="allDropLists"
+                 (cdkDropListDropped)="drop($event, getSubPath(parentPath, subSection))"
+                 class="field-drop-zone field-drop-zone--sub field-drop-zone--typed"
+                 cdkDropListOrientation="mixed">
+              <div *ngFor="let field of subSection.fields"
+                   cdkDrag [cdkDragData]="field"
+                   class="field-chip"
+                   [class.selected]="field === selectedField"
+                   [class.active]="field.isActive"
+                   (click)="selectField(field, getSubPath(parentPath, subSection))"
+                   (cdkDragStarted)="onDragStarted(field, getSubPath(parentPath, subSection))"
+                   (cdkDragEnded)="onDragEnded(field, getSubPath(parentPath, subSection))">
+                <div class="field-chip-handle" cdkDragHandle (click)="$event.stopPropagation()">
+                  <mat-icon>drag_indicator</mat-icon>
+                </div>
+                <ng-container *ngTemplateOutlet="fieldTpl; context: { field: field, sectionPath: getSubPath(parentPath, subSection) }">
+                </ng-container>
+              </div>
+              <div class="drop-empty-hint" *ngIf="!subSection.fields?.length">
+                <mat-icon>drag_indicator</mat-icon> Drop fields here
+              </div>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- ─── Procedure / Service Code ────────────────── -->
+        <ng-container *ngSwitchCase="'procedure'">
+          <div class="preview-shell preview-shell--procedure">
+            <!-- Mock service card matching authdetails sc-card style -->
+            <div class="psh-mock psh-mock--service">
+              <span class="psh-sc-code">99213</span>
+              <span class="psh-sep">·</span>
+              <span class="psh-sc-desc">Procedure Code · Description</span>
+              <span class="psh-actions-mock"><mat-icon>edit</mat-icon><mat-icon>delete</mat-icon></span>
+            </div>
+            <div cdkDropList
+                 [id]="getSubPath(parentPath, subSection)"
+                 [cdkDropListData]="subSection.fields"
+                 [cdkDropListConnectedTo]="allDropLists"
+                 (cdkDropListDropped)="drop($event, getSubPath(parentPath, subSection))"
+                 class="field-drop-zone field-drop-zone--sub field-drop-zone--typed"
+                 cdkDropListOrientation="mixed">
+              <div *ngFor="let field of subSection.fields"
+                   cdkDrag [cdkDragData]="field"
+                   class="field-chip"
+                   [class.selected]="field === selectedField"
+                   [class.active]="field.isActive"
+                   (click)="selectField(field, getSubPath(parentPath, subSection))"
+                   (cdkDragStarted)="onDragStarted(field, getSubPath(parentPath, subSection))"
+                   (cdkDragEnded)="onDragEnded(field, getSubPath(parentPath, subSection))">
+                <div class="field-chip-handle" cdkDragHandle (click)="$event.stopPropagation()">
+                  <mat-icon>drag_indicator</mat-icon>
+                </div>
+                <ng-container *ngTemplateOutlet="fieldTpl; context: { field: field, sectionPath: getSubPath(parentPath, subSection) }">
+                </ng-container>
+              </div>
+              <div class="drop-empty-hint" *ngIf="!subSection.fields?.length">
+                <mat-icon>drag_indicator</mat-icon> Drop fields here
+              </div>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- ─── Medication ──────────────────────────────── -->
+        <ng-container *ngSwitchCase="'medication'">
+          <div class="preview-shell preview-shell--medication">
+            <!-- Mock medication card matching authdetails mc-card style -->
+            <div class="psh-mock psh-mock--service">
+              <span class="psh-sc-code">NDC 00000</span>
+              <span class="psh-sep">·</span>
+              <span class="psh-sc-desc">Drug Name · Dosage · Frequency</span>
+              <span class="psh-actions-mock"><mat-icon>edit</mat-icon><mat-icon>delete</mat-icon></span>
+            </div>
+            <div cdkDropList
+                 [id]="getSubPath(parentPath, subSection)"
+                 [cdkDropListData]="subSection.fields"
+                 [cdkDropListConnectedTo]="allDropLists"
+                 (cdkDropListDropped)="drop($event, getSubPath(parentPath, subSection))"
+                 class="field-drop-zone field-drop-zone--sub field-drop-zone--typed"
+                 cdkDropListOrientation="mixed">
+              <div *ngFor="let field of subSection.fields"
+                   cdkDrag [cdkDragData]="field"
+                   class="field-chip"
+                   [class.selected]="field === selectedField"
+                   [class.active]="field.isActive"
+                   (click)="selectField(field, getSubPath(parentPath, subSection))"
+                   (cdkDragStarted)="onDragStarted(field, getSubPath(parentPath, subSection))"
+                   (cdkDragEnded)="onDragEnded(field, getSubPath(parentPath, subSection))">
+                <div class="field-chip-handle" cdkDragHandle (click)="$event.stopPropagation()">
+                  <mat-icon>drag_indicator</mat-icon>
+                </div>
+                <ng-container *ngTemplateOutlet="fieldTpl; context: { field: field, sectionPath: getSubPath(parentPath, subSection) }">
+                </ng-container>
+              </div>
+              <div class="drop-empty-hint" *ngIf="!subSection.fields?.length">
+                <mat-icon>drag_indicator</mat-icon> Drop fields here
+              </div>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- ─── Transportation ──────────────────────────── -->
+        <ng-container *ngSwitchCase="'transportation'">
+          <div class="preview-shell preview-shell--transportation">
+            <!-- Mock transportation card matching authdetails tr-ride-group style -->
+            <div class="psh-mock psh-mock--transport">
+              <mat-icon class="psh-transport-icon">directions_car</mat-icon>
+              <div class="psh-transport-body">
+                <div class="psh-transport-title">Ride #1</div>
+                <div class="psh-transport-detail">Legs · Transport codes</div>
+              </div>
+            </div>
+            <div cdkDropList
+                 [id]="getSubPath(parentPath, subSection)"
+                 [cdkDropListData]="subSection.fields"
+                 [cdkDropListConnectedTo]="allDropLists"
+                 (cdkDropListDropped)="drop($event, getSubPath(parentPath, subSection))"
+                 class="field-drop-zone field-drop-zone--sub field-drop-zone--typed"
+                 cdkDropListOrientation="mixed">
+              <div *ngFor="let field of subSection.fields"
+                   cdkDrag [cdkDragData]="field"
+                   class="field-chip"
+                   [class.selected]="field === selectedField"
+                   [class.active]="field.isActive"
+                   (click)="selectField(field, getSubPath(parentPath, subSection))"
+                   (cdkDragStarted)="onDragStarted(field, getSubPath(parentPath, subSection))"
+                   (cdkDragEnded)="onDragEnded(field, getSubPath(parentPath, subSection))">
+                <div class="field-chip-handle" cdkDragHandle (click)="$event.stopPropagation()">
+                  <mat-icon>drag_indicator</mat-icon>
+                </div>
+                <ng-container *ngTemplateOutlet="fieldTpl; context: { field: field, sectionPath: getSubPath(parentPath, subSection) }">
+                </ng-container>
+              </div>
+              <div class="drop-empty-hint" *ngIf="!subSection.fields?.length">
+                <mat-icon>drag_indicator</mat-icon> Drop fields here
+              </div>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- ─── Default (generic subsection — no special shell) ── -->
+        <ng-container *ngSwitchDefault>
+          <div cdkDropList
+               [id]="getSubPath(parentPath, subSection)"
+               [cdkDropListData]="subSection.fields"
+               [cdkDropListConnectedTo]="allDropLists"
+               (cdkDropListDropped)="drop($event, getSubPath(parentPath, subSection))"
+               class="field-drop-zone field-drop-zone--sub"
+               cdkDropListOrientation="mixed">
+            <div *ngFor="let field of subSection.fields"
+                 cdkDrag [cdkDragData]="field"
+                 class="field-chip"
+                 [class.selected]="field === selectedField"
+                 [class.active]="field.isActive"
+                 (click)="selectField(field, getSubPath(parentPath, subSection))"
+                 (cdkDragStarted)="onDragStarted(field, getSubPath(parentPath, subSection))"
+                 (cdkDragEnded)="onDragEnded(field, getSubPath(parentPath, subSection))">
+              <div class="field-chip-handle" cdkDragHandle (click)="$event.stopPropagation()">
+                <mat-icon>drag_indicator</mat-icon>
+              </div>
+              <ng-container *ngTemplateOutlet="fieldTpl; context: { field: field, sectionPath: getSubPath(parentPath, subSection) }">
+              </ng-container>
+            </div>
+            <div class="drop-empty-hint" *ngIf="!subSection.fields?.length">
+              <mat-icon>drag_indicator</mat-icon> Drop fields here
+            </div>
+          </div>
+        </ng-container>
+
+      </ng-container>
+      <!-- /context-aware field drop zone -->
 
       <!-- Nested subsections (recursive) -->
       <ng-container *ngIf="subSection.subsections">

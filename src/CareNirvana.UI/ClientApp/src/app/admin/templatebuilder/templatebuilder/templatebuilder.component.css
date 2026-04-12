@@ -40,7 +40,7 @@
 .search-box {
   flex: 1; display: flex; align-items: center; gap: 8px;
   background: var(--c-surface); border: 1.5px solid var(--c-border);
-  border-radius: var(--radius-sm); padding: 6px 12px;
+  border-radius: var(--radius-sm); padding: 0px 12px;
   transition: border-color var(--t), box-shadow var(--t);
 }
 .search-box.active {
@@ -139,7 +139,7 @@
 .palette-item-icon mat-icon { font-size: 15px; }
 
 /* Type colours */
-.palette-item-icon[data-type="text"]           { background:#dbeafe; color:#1e40af; }
+/*.palette-item-icon[data-type="text"]           { background:#dbeafe; color:#1e40af; }
 .palette-item-icon[data-type="number"]         { background:#d1fae5; color:#065f46; }
 .palette-item-icon[data-type="datetime-local"] { background:#fef3c7; color:#92400e; }
 .palette-item-icon[data-type="select"]         { background:#e0e7ff; color:#3730a3; }
@@ -152,7 +152,63 @@
 .palette-item-icon.available  { background:#dbeafe; color:var(--c-primary); }
 .palette-item-icon.subsection { background:#ede9fe; color:var(--c-purple); }
 .palette-item-icon.sections   { background:#e0f7fa; color:var(--c-cyan); }
-.palette-item-icon.standards  { background:#ecfdf5; color:var(--c-green); }
+.palette-item-icon.standards  { background:#ecfdf5; color:var(--c-green); }*/
+
+  .palette-item-icon[data-type="text"] {
+    color: #1e40af;
+  }
+
+  .palette-item-icon[data-type="number"] {
+    color: #065f46;
+  }
+
+  .palette-item-icon[data-type="datetime-local"] {
+    color: #92400e;
+  }
+
+  .palette-item-icon[data-type="select"] {
+    color: #3730a3;
+  }
+
+  .palette-item-icon[data-type="multicheck"] {
+    color: #6b21a8;
+  }
+
+  .palette-item-icon[data-type="radio"] {
+    color: #9d174d;
+  }
+
+  .palette-item-icon[data-type="checkbox"] {
+    color: #065f46;
+  }
+
+  .palette-item-icon[data-type="textarea"] {
+    color: #92400e;
+  }
+
+  .palette-item-icon[data-type="search"] {
+    color: #0369a1;
+  }
+
+  .palette-item-icon[data-type="button"] {
+    color: #713f12;
+  }
+
+  .palette-item-icon.available {
+    color: var(--c-primary);
+  }
+
+  .palette-item-icon.subsection {
+    color: var(--c-purple);
+  }
+
+  .palette-item-icon.sections {
+    color: var(--c-cyan);
+  }
+
+  .palette-item-icon.standards {
+    color: var(--c-green);
+  }
 
 .palette-item-text { flex: 1; min-width: 0; }
 .palette-item-label { font-size: 12.5px; font-weight: 600; color: var(--c-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -271,9 +327,9 @@
 /* ─── Field drop zone ─── */
 .field-drop-zone {
   min-height: 64px; height: auto; display: flex; flex-wrap: wrap; gap: 8px;
-  padding: 8px;
+  /*padding: 8px;
   background: var(--c-surface-2);
-  border: 1.5px dashed var(--c-border); border-radius: var(--radius-sm);
+  border: 1.5px dashed var(--c-border); border-radius: var(--radius-sm);*/
   transition: border-color var(--t), background var(--t);
   align-content: flex-start;
 }
@@ -548,3 +604,388 @@
 
 /* Toolbar field group that uses outline-input styling */
 .form-outline { position: relative; display: flex; flex-direction: column; gap: 3px; }
+
+
+
+/* ═══════════════════════════════════════════════════════════
+   FIELD CHIP — 2-ROW LAYOUT
+   Row 1: [type-badge] Label *  (inline)
+   Row 2: control preview
+═══════════════════════════════════════════════════════════ */
+
+/* Row 1 wrapper: badge + label on the same line */
+.fpi-row1 {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  overflow: hidden;
+}
+.fpi-row1 .fpi-label {
+  /* inline label — no block-level stacking */
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text);
+  margin: 0;        /* cancel any top margin from old solo-row style */
+}
+/* Reset body padding slightly for the 2-row chip */
+.field-chip .fpi-body {
+  gap: 4px;
+  padding: 6px 6px 6px 8px;
+}
+/* Badge stays compact inline */
+.field-chip .fpi-badge {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+/* Control preview row — slightly shorter than before */
+.field-chip .fpi-input,
+.field-chip .fpi-search { height: 20px; padding: 0 6px; font-size: 10px; }
+.field-chip .fpi-textarea-preview { height: 20px; }
+.field-chip .fpi-checkbox-single  { font-size: 10px; gap: 4px; }
+.field-chip .fpi-checkbox-icon    { font-size: 11px; }
+.field-chip .fpi-search-icon,
+.field-chip .fpi-chevron,
+.field-chip .fpi-info-icon        { font-size: 12px; }
+
+
+/* ═══════════════════════════════════════════════════════════
+   SUBSECTION TYPE BADGES — subtle, single-tone
+   A small pill on the subsection header that names the type.
+═══════════════════════════════════════════════════════════ */
+.sub-type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: var(--c-surface-2);
+  color: var(--c-muted);
+  border: 1px solid var(--c-border);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   PREVIEW SHELLS — professional, minimal
+   Matches authdetails card structure without color overload.
+   One neutral container; only the 3px left accent strip varies.
+═══════════════════════════════════════════════════════════ */
+
+.preview-shell {
+  background: #fff;
+  border: 1px solid var(--c-border);
+  border-radius: 0 0 8px 8px;
+  overflow: visible;
+}
+
+/* ─ Mock identity row (sits at top of each shell) ─ */
+.psh-mock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: var(--c-surface);
+  border-bottom: 1px solid var(--c-border);
+  font-size: 12px;
+  border-left: 3px solid var(--c-border);  /* overridden per type */
+}
+
+/* Separator dot */
+.psh-sep { color: #cbd5e1; font-weight: 600; font-size: 10px; }
+
+/* Muted edit/delete icon row */
+.psh-actions-mock {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  opacity: .25;
+  flex-shrink: 0;
+}
+.psh-actions-mock mat-icon { font-size: 15px; width: 15px; height: 15px; color: #64748b; }
+
+
+/* ── ICD ─────────────────────────────────────────── */
+.psh-mock--icd          { border-left-color: #7c3aed; }
+.psh-icd-code {
+  font-size: 12px; font-weight: 700; color: #1d4ed8;
+  letter-spacing: .4px; white-space: nowrap; flex-shrink: 0;
+}
+.psh-icd-desc {
+  font-size: 11px; color: #475569; flex: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.psh-primary-badge {
+  display: inline-flex; align-items: center;
+  padding: 1px 8px; border-radius: 999px;
+  border: 1px solid #d1d5db;
+  font-size: 10px; font-weight: 600;
+  color: #94a3b8; white-space: nowrap; flex-shrink: 0;
+}
+.psh-primary-badge--active { border-color: #7c3aed; color: #7c3aed; background: #f5f3ff; }
+
+
+/* ── Provider ─────────────────────────────────────── */
+.psh-mock--provider {
+  flex-direction: column; align-items: flex-start; gap: 3px;
+  border-left-color: #2563eb;
+}
+.psh-prov-role {
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .5px; color: #94a3b8;
+}
+.psh-prov-row  { display: flex; align-items: center; gap: 8px; }
+.psh-prov-name { font-size: 12px; font-weight: 600; color: #1d4ed8; }
+.psh-net-badge {
+  display: inline-flex; align-items: center;
+  padding: 1px 7px; border-radius: 999px;
+  font-size: 10px; font-weight: 600;
+}
+.psh-net-badge--in  { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+.psh-net-badge--out { background: #fefce8; color: #854d0e; border: 1px solid #fde68a; }
+.psh-prov-detail    { font-size: 10px; color: #94a3b8; }
+
+
+/* ── Service Code / Procedure ─────────────────────── */
+.psh-mock--service      { border-left-color: #0ea5e9; }
+.psh-sc-code {
+  font-size: 12px; font-weight: 700; color: #1d4ed8;
+  letter-spacing: .4px; white-space: nowrap; flex-shrink: 0;
+}
+.psh-sc-desc {
+  font-size: 11px; color: #475569; font-weight: 500; flex: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Medication — same layout as service, different accent */
+.preview-shell--medication .psh-mock--service { border-left-color: #f59e0b; }
+
+
+/* ── Transportation ──────────────────────────────── */
+.psh-mock--transport {
+  flex-direction: row; align-items: center; gap: 8px;
+  border-left-color: #0d9488;
+}
+.psh-transport-icon  { font-size: 18px; width: 18px; height: 18px; color: #0d9488; flex-shrink: 0; }
+.psh-transport-body  { display: flex; flex-direction: column; gap: 1px; }
+.psh-transport-title { font-size: 12px; font-weight: 600; color: #115e59; }
+.psh-transport-detail{ font-size: 10px; color: #94a3b8; }
+
+
+/* ── Drop zone inside shell ────────────────────────── */
+.field-drop-zone--typed {
+  border: none;
+  border-top: 1px dashed var(--c-border);
+  border-radius: 0 0 8px 8px;
+  background: var(--c-surface-2);
+  min-height: 52px;
+}
+.field-drop-zone--typed.cdk-drop-list-receiving,
+.field-drop-zone--typed:has(.cdk-drag-placeholder) {
+  border-top-color: var(--c-primary);
+  background: var(--c-primary-bg);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   GUARD & CONFIRM DIALOGS
+   Two-layer system: navigation-guard (unsaved changes) +
+   destructive-action confirmation (section / subsection delete).
+   Intentionally self-contained — no Material Dialog dependency.
+═══════════════════════════════════════════════════════════ */
+
+/* ── Backdrop overlay ── */
+.tb-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(15, 23, 42, .5);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: tb-fade-in 160ms ease;
+}
+@keyframes tb-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Dialog card ── */
+.tb-dialog {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 36px 32px 28px;
+  width: 100%;
+  max-width: 480px;
+  margin: 20px;
+  box-shadow:
+    0 4px 6px rgba(0,0,0,.05),
+    0 20px 60px rgba(0,0,0,.16);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0;
+  animation: tb-slide-up 220ms cubic-bezier(.34, 1.46, .64, 1);
+}
+@keyframes tb-slide-up {
+  from { transform: translateY(20px) scale(.97); opacity: 0; }
+  to   { transform: none;                        opacity: 1; }
+}
+
+/* ── Icon circle ── */
+.tb-dialog-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+.tb-dialog-icon mat-icon {
+  font-size: 28px;
+  width: 28px;
+  height: 28px;
+}
+.tb-dialog-icon--warning { background: #fef3c7; color: #b45309; }
+.tb-dialog-icon--danger  { background: #fee2e2; color: #dc2626; }
+.tb-dialog-icon--info    { background: #dbeafe; color: #1d4ed8; }
+
+/* ── Text content ── */
+.tb-dialog-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 10px;
+  line-height: 1.3;
+}
+.tb-dialog-msg {
+  font-size: 13.5px;
+  color: #475569;
+  line-height: 1.65;
+  margin-bottom: 8px;
+  max-width: 380px;
+}
+.tb-dialog-detail {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.6;
+  margin-bottom: 0;
+  max-width: 360px;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  margin-top: 4px;
+}
+
+/* ── Action buttons row ── */
+.tb-dialog-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+}
+
+.tb-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 18px;
+  border-radius: 8px;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+  flex-shrink: 0;
+}
+.tb-btn:hover  { transform: translateY(-1px); }
+.tb-btn:active { transform: translateY(0);    }
+
+.tb-btn mat-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+/* Secondary / neutral */
+.tb-btn--secondary {
+  background: #fff;
+  border: 1.5px solid #e2e8f0;
+  color: #475569;
+}
+.tb-btn--secondary:hover {
+  border-color: #94a3b8;
+  color: #1e293b;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+
+/* Save (blue) */
+.tb-btn--save {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, .25);
+}
+.tb-btn--save:hover {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, .30);
+}
+
+/* Danger (red) */
+.tb-btn--danger {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, .22);
+}
+.tb-btn--danger:hover {
+  background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, .28);
+}
+
+/* Warning (amber) */
+.tb-btn--warning {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, .22);
+}
+.tb-btn--warning:hover {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, .28);
+}
+
+/* ── Dirty indicator in canvas toolbar ── */
+/* Small orange dot on the Save button when there are unsaved changes */
+.btn-save.dirty {
+  position: relative;
+}
+.btn-save.dirty::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f59e0b;
+  border: 1.5px solid #fff;
+}
