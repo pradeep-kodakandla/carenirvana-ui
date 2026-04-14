@@ -1983,6 +1983,9 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
         (r: any) => this.mapDatasourceRowToOption(ds, r) as any,
         ['UM', 'Admin', 'Provider']
       )
+        // ✅ FIX: takeUntil prevents stale subscriptions from firing after tab rebuilds
+        //        and overwriting correctly-set options with outdated data.
+        .pipe(catchError(() => of([])), takeUntil(this.tabDestroy$), takeUntil(this.destroy$))
         .subscribe((opts) => {
           const safe = (opts ?? []) as any[];
 
@@ -2006,6 +2009,14 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
           // After status-related options load, refresh tab labels so IDs become display names
           if (dsNorm.includes('decisionstatus')) {
             this.updateTabStatuses();
+          }
+
+          // ✅ FIX: After async options arrive (first load / cache miss), re-apply the
+          //        Decision Status → Status Code filter. Without this, the filter ran
+          //        earlier with an empty option list, cleared the saved value, and never
+          //        re-ran once the real options became available.
+          if (dsNorm.includes('decisionstatus') || dsNorm.includes('decisionstatuscode')) {
+            this.applyStatusCodeFilterNow();
           }
         });
 
@@ -2098,6 +2109,13 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
         return;
       }
 
+      // ✅ FIX: If statusCode options haven't loaded from the datasource yet, bail out
+      //        without clearing the saved value. applyStatusCodeFilterNow() will be
+      //        called again once the async options arrive and populate the cache.
+      if (full.length === 0) {
+        return;
+      }
+
       // Non-pended status: if decisionDateTime is empty, set it immediately for display.
       if (decisionDtCtrl) {
         const cur = String(decisionDtCtrl.value ?? '').trim();
@@ -2151,12 +2169,17 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
 
       this.optionsByControlName[statusCodeField.controlName] = [...resolvedOpts];
 
-      // If current selection is not in allowed list, clear it
+      // ✅ FIX: use resolvedOpts (what we actually set into optionsByControlName) for the
+      //        value-presence check, not the pre-resolve finalOpts. Also fall back to the
+      //        full list before clearing so a filter that's too aggressive doesn't wipe a valid value.
       const current = this.extractPrimitive(this.unwrapValue(codeCtrl.value)) ?? this.unwrapValue(codeCtrl.value);
       const currentKey = String(current ?? '').trim();
       if (currentKey) {
-        const ok = finalOpts.some((o: any) => String((o as any)?.value ?? this.extractPrimitive((o as any)?.raw) ?? '').trim() === currentKey);
-        if (!ok) codeCtrl.setValue(null, { emitEvent: false });
+        const okInResolved = resolvedOpts.some((o: any) => String((o as any)?.value ?? this.extractPrimitive((o as any)?.raw) ?? '').trim() === currentKey);
+        const okInFull    = !okInResolved && full.some((o: any) => String((o as any)?.value ?? '').trim() === currentKey);
+        if (!okInResolved && !okInFull) {
+          codeCtrl.setValue(null, { emitEvent: false });
+        }
       }
     };
 
@@ -2165,6 +2188,123 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
     statusCtrl.valueChanges
       .pipe(takeUntil(this.tabDestroy$), takeUntil(this.destroy$))
       .subscribe(() => applyFilter());
+  }
+
+  /**
+   * ✅ PERMANENT FIX — Re-applies the Decision Status → Status Code filter using
+   * whatever options are currently in the cache/optionsByControlName map.
+   *
+   * Called after async option loads complete so the filter runs with a real option
+   * list even when the datasource wasn't cached at the time wireDecisionStatusCodeDependency()
+   * first executed.  Does NOT add a new valueChanges subscription — that is wired
+   * once by wireDecisionStatusCodeDependency and is kept alive for the full tab lifetime.
+   */
+  private applyStatusCodeFilterNow(): void {
+    if (!this.activeState || !this.form) return;
+
+    const ddSection = this.activeState.sections.find(s => s.sectionName === 'Decision Details');
+    if (!ddSection) return;
+
+    const statusField     = ddSection.fields.find(f => String(f.id).toLowerCase() === 'decisionstatus');
+    const statusCodeField = ddSection.fields.find(f => String(f.id).toLowerCase() === 'decisionstatuscode');
+    if (!statusField || !statusCodeField) return;
+
+    const statusCtrl = this.form.get(statusField.controlName);
+    const codeCtrl   = this.form.get(statusCodeField.controlName);
+    if (!statusCtrl || !codeCtrl) return;
+
+    // Get the full statusCode option list from the cache (preferred) or optionsByControlName
+    const ds   = String((statusCodeField as any).datasource ?? '').trim();
+    const full = (ds
+      ? (this.dropdownCache.get(ds) ?? [])
+      : (this.optionsByControlName[statusCodeField.controlName] ?? [])
+    ) as SmartOpt[];
+
+    // Nothing to do yet — options still loading
+    if (full.length === 0) return;
+
+    const rawStatus = this.extractPrimitive(this.unwrapValue(statusCtrl.value)) ?? this.unwrapValue(statusCtrl.value);
+    const statusKey = String(rawStatus ?? '').trim();
+
+    // If pended: wipe statusCode options and value (same as applyFilter does)
+    if (this.isPendedStatus(statusKey)) {
+      this.optionsByControlName[statusCodeField.controlName] = [];
+      if (codeCtrl.value) codeCtrl.setValue(null, { emitEvent: false });
+      return;
+    }
+
+    // Filter by the parent status id/code stored on each option's raw object
+    const filtered = full.filter((o: any) => {
+      const raw: any = (o as any)?.raw ?? o;
+      const cand =
+        raw?.decisionStatus    ??
+        raw?.decisionStatusId  ??
+        raw?.statusId          ??
+        raw?.status            ??
+        raw?.parentId          ??
+        raw?.groupId           ??
+        null;
+      if (cand === null || cand === undefined || String(cand).trim() === '') return true;
+      return String(cand).trim() === statusKey;
+    });
+
+    const finalOpts = filtered.length ? filtered : full;
+
+    // Re-resolve any labels that are still bare numeric IDs
+    const resolvedOpts = finalOpts.map((o: any) => {
+      const lbl = String((o as any)?.label ?? '').trim();
+      if (lbl && /^\d+$/.test(lbl)) {
+        const raw: any = (o as any)?.raw;
+        const val = String((o as any)?.value ?? '').trim();
+        const betterLabel =
+          (raw ? (
+            raw?.decisionStatusCodeName ?? raw?.decisionStatusName   ??
+            raw?.decisionStatusCode     ?? raw?.decisionStatusReasonName ??
+            raw?.reasonDescription      ?? raw?.description ?? raw?.displayName ??
+            raw?.reason ?? raw?.name    ?? raw?.label ?? raw?.text ?? raw?.title ??
+            this.pickDisplayField(raw)
+          ) : null) ??
+          this.decisionStatusCodeLabelFromValue(val) ??
+          this.decisionStatusCodeLabelFromValue(lbl);
+        if (betterLabel && String(betterLabel).trim() && !/^\d+$/.test(String(betterLabel).trim())) {
+          return { ...o, label: String(betterLabel).trim(), text: String(betterLabel).trim() };
+        }
+      }
+      return o;
+    });
+
+    this.optionsByControlName[statusCodeField.controlName] = [...resolvedOpts];
+
+    // Reconcile the current value against the resolved option list.
+    // Also attempt to recover a saved value that was previously cleared by the
+    // early applyFilter call (when options hadn't loaded yet).
+    const savedVal = this.extractPrimitive(this.unwrapValue(codeCtrl.value)) ?? this.unwrapValue(codeCtrl.value);
+    const savedKey = String(savedVal ?? '').trim();
+
+    if (savedKey) {
+      // Confirm it exists in the resolved list
+      const ok = resolvedOpts.some((o: any) => String((o as any)?.value ?? '').trim() === savedKey);
+      if (!ok) {
+        // Check full list before clearing — filter may have been too strict
+        const okFull = full.some((o: any) => String((o as any)?.value ?? '').trim() === savedKey);
+        if (!okFull) codeCtrl.setValue(null, { emitEvent: false });
+      }
+    } else {
+      // Value was null (possibly cleared by early applyFilter). Try to re-read the
+      // saved value from the backend item data so the field repopulates correctly.
+      if (this.activeState) {
+        const procNo = this.activeState.tab.procedureNo;
+        const { data } = this.findItemForSectionAndProcedure('Decision Details', procNo);
+        const savedCode = this.extractPrimitive(data?.['decisionStatusCode']) ?? data?.['decisionStatusCode'];
+        const savedCodeStr = String(savedCode ?? '').trim();
+        if (savedCodeStr) {
+          const match = resolvedOpts.find((o: any) => String((o as any)?.value ?? '').trim() === savedCodeStr);
+          if (match) {
+            codeCtrl.setValue((match as any).value, { emitEvent: false });
+          }
+        }
+      }
+    }
   }
 
   private filterBySelectedOptions(field: DecisionFieldVm, options: UiSmartOption[]): UiSmartOption[] {

@@ -1052,6 +1052,10 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
             this.rehydrateContactTracking();
             this.rehydrateServiceData();
             this.rehydrateMedicationData();
+            // Back-fill serviceAppr / serviceDenied / used from decisionDetails.
+            // applyDecisionReverseSync only fires during live Decision-step saves;
+            // this call ensures the values are present on every page load too.
+            this.syncDecisionValuesToServiceControls();
           }
 
           // Smart Check prefill: if user arrived from Smart Check, fill ICD + Procedure codes (new auth only)
@@ -2177,6 +2181,12 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     this.rehydrateMedicationData();
     this.setupServiceReqAutoCalc();
     this.setupTransportationDateWatcher();
+    // Normalize any provider search controls that may hold stale objects
+    // (snapshot may have been taken before normalization ran on first load).
+    this.normalizeProviderSearchControls();
+    // Re-apply decision → service back-fill in case the snapshot contained
+    // null serviceAppr/serviceDenied values that were later resolved.
+    this.syncDecisionValuesToServiceControls();
   }
 
   private shiftRepeatSnapshotDown(snapshot: any, meta: RepeatRegistryMeta, removeIndex: number, totalCount: number): any {
@@ -2806,15 +2816,19 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       }
 
       if (entity === 'providers') {
-        const display = (
+        const org = String(item.organizationName ?? item.organizationname ?? '').trim();
+        const firstName = String(item.firstName ?? item.firstname ?? '').trim();
+        const lastName  = String(item.lastName  ?? item.lastname  ?? '').trim();
+        const nameParts = org || [firstName, lastName].filter(Boolean).join(' ');
+        const rawDisplay = (
           item.providerName ??
-          item.organizationname ??
-          item.organizationName ??
           item.name ??
-          [item.lastName ?? item.lastname ?? '', item.firstName ?? item.firstname ?? ''].filter(Boolean).join(', ')
+          nameParts
         );
-        const npi = item.npi ?? item.NPI ?? '';
-        return npi ? `${display} (NPI: ${npi})` : String(display ?? '');
+        // Collapse leading/trailing/double spaces from API-supplied name fields
+        const display = String(rawDisplay ?? '').trim().replace(/\s{2,}/g, ' ');
+        const npi = String(item.npi ?? item.NPI ?? '').trim();
+        return npi ? `${display} (NPI: ${npi})` : display;
       }
 
       if (entity === 'staff') {
@@ -2844,6 +2858,32 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     return fn;
   }
 
+
+  /**
+   * Converts a raw provider API object into the same display string that
+   * getLookupDisplayWith produces for entity === 'providers'.
+   * Used to normalize provider{n}_providerSearch values: the form control
+   * and jsonData must always hold a display string, never a raw object.
+   * Centralizing here ensures save() and patchAuthorizationToForm() are consistent.
+   */
+  private providerObjectToDisplayString(item: any): string {
+    if (!item || typeof item !== 'object') return String(item ?? '').trim();
+    const nameParts = [
+      item.lastName ?? item.lastname ?? '',
+      item.firstName ?? item.firstname ?? ''
+    ].filter(Boolean);
+    const display = (
+      item.providerName ??
+      item.organizationName ??
+      item.organizationname ??
+      item.name ??
+      (nameParts.length ? nameParts.join(', ') : '')
+    );
+    const npi = item.npi ?? item.NPI ?? '';
+    return npi
+      ? `${String(display ?? '').trim()} (NPI: ${npi})`
+      : String(display ?? '').trim();
+  }
 
   getLookupTrackBy(f: any): (item: any) => any {
     const key = (f?.controlName || f?.id || Math.random().toString()).toString();
@@ -3025,10 +3065,19 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   }
 
   private applyLookupTemplate(tpl: string, item: any): string {
-    return String(tpl).replace(/\{\{\s*([^}]+)\s*\}\}/g, (_m: string, p1: string) => {
+    const result = String(tpl).replace(/\{\{\s*([^}]+)\s*\}\}/g, (_m: string, p1: string) => {
       const v = this.pickPath(item, String(p1).trim());
       return v == null ? '' : String(v);
     });
+
+    // Remove empty parenthetical suffixes left by missing field values,
+    // e.g. "John Martinez (ID: )" → "John Martinez"
+    // Handles: (Label: ), (Label:), bare ()
+    return result
+      .replace(/\s*\([^)]*:\s*\)/g, '')   // "(Label: )" or "(Label:)"
+      .replace(/\s*\(\s*\)/g, '')          // bare "()"
+      .trim()
+      .replace(/\s{2,}/g, ' ');            // collapse interior double-spaces
   }
 
   private async seedDecisionAfterSave(authDetailId: number, mergedAuthData: any, userId: number, authTypeIdFallback?: number, authApprove?: string): Promise<void> {
@@ -3462,6 +3511,22 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     const existingObj = this.safeParseJson(this.pendingAuth?.jsonData) ?? {};
     const stepObj = this.form.getRawValue();
     const merged: any = { ...(existingObj ?? {}), ...(stepObj ?? {}) };
+
+    // ── Strip decision-step-owned arrays ──────────────────────────────────
+    // decisionDetails, decisionNotes, and memberProviderDecisionInfo are
+    // managed exclusively by seedDecisionAfterSave via their own DB tables.
+    // Re-persisting them here in jsonData creates a duplicate copy that
+    // diverges from the canonical records and causes duplicates on reload.
+    delete merged['decisionDetails'];
+    delete merged['decisionNotes'];
+    delete merged['memberProviderDecisionInfo'];
+
+    // ── Normalize provider search fields in payload ───────────────────────
+    // Ensure no provider search control persists a full object into jsonData.
+    // Only a display string should ever be stored; the full object lives in
+    // providerDataByInstance (memory only) and the individual fill controls
+    // (providerNPI, providerFirstName, etc.) hold the canonical field data.
+    this.normalizeProviderSearchInPayload(merged);
 
     // Persist multi-row AIR table into jsonData
     this.mergeAdditionalAirRowsIntoPayload(merged);
@@ -4430,6 +4495,11 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     if (obj && typeof obj === 'object') {
       this.form.patchValue(obj, { emitEvent: false });
       this.form.updateValueAndValidity({ emitEvent: false });
+      // After blind patchValue, any providerSearch key that stored a full object
+      // will have set the control to that object. Normalize those controls to a
+      // display string so the UI renders correctly and getRawValue() never
+      // captures a provider object into jsonData again.
+      this.normalizeProviderSearchControls();
       return;
     }
 
@@ -4450,6 +4520,106 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     }
 
     this.form.updateValueAndValidity({ emitEvent: false });
+    this.normalizeProviderSearchControls();
+  }
+
+
+  // ============================================================
+  // Provider Search Normalization helpers
+  //
+  // Problem: the providerSearch form control can end up holding
+  // a full provider object rather than a plain display string.
+  // This happens because patchValue() blindly applies whatever
+  // is in jsonData — and old saves sometimes stored the full
+  // lookup result object in the providerSearch key.
+  //
+  // Contract:
+  //   • providerSearch control  → display string only (never an object)
+  //   • providerDataByInstance  → full provider object (memory, not persisted)
+  //   • individual fill fields  → canonical persisted data (providerNPI, etc.)
+  // ============================================================
+
+  /**
+   * Converts a raw provider value (string or object) into a clean display
+   * string of the form "FirstName LastName (NPI: xxxxxxx)".
+   * Trims all extra spaces so double-space / leading-space artefacts vanish.
+   */
+  private extractProviderDisplayString(value: any): string {
+    if (!value) return '';
+    if (typeof value !== 'object') return String(value).trim();
+
+    const org = String(value.organizationName ?? value.organizationname ?? '').trim();
+    const firstName = String(value.firstName ?? value.firstname ?? '').trim();
+    const lastName  = String(value.lastName  ?? value.lastname  ?? '').trim();
+
+    const nameParts = org
+      ? org
+      : [firstName, lastName].filter(Boolean).join(' ');
+
+    const name = (value.fullName ?? value.providerName ?? nameParts ?? '').toString().trim()
+                  // collapse any interior double-spaces that crept in
+                  .replace(/\s{2,}/g, ' ');
+
+    const npi = String(value.npi ?? value.NPI ?? '').trim();
+    return npi ? `${name} (NPI: ${npi})` : name;
+  }
+
+  /**
+   * Walks all rendered provider search fields.
+   * For any control whose value is still a full object (left over from an old
+   * patchValue call), this method:
+   *  1. Stores the object in providerDataByInstance + lookupSelectedByControl
+   *     so the provider card renders correctly.
+   *  2. Replaces the control value with a clean display string so
+   *     getRawValue() never writes a provider object into jsonData.
+   */
+  private normalizeProviderSearchControls(): void {
+    if (!this.renderSections?.length || !this.form) return;
+
+    const processTarget = (target: any) => {
+      if (!this.isProviderRepeatGroup(target)) return;
+      for (const inst of (target.instances || [])) {
+        const sf = this.getProvSearchField(inst);
+        if (!sf?.controlName) continue;
+        const ctrl = this.form.get(sf.controlName);
+        if (!ctrl) continue;
+        const val = ctrl.value;
+        if (!val || typeof val !== 'object') continue;
+
+        // Cache full object in memory stores
+        this.providerDataByInstance[sf.controlName] = val;
+        this.lookupSelectedByControl[sf.controlName] = val;
+
+        // Replace control value with display string (silent — no dirty/emit)
+        const display = this.extractProviderDisplayString(val);
+        ctrl.setValue(display, { emitEvent: false });
+      }
+    };
+
+    for (const sec of this.renderSections) {
+      if (sec.repeat?.enabled) processTarget(sec);
+      for (const sub of (sec.subsections || [])) {
+        if (sub.repeat?.enabled) processTarget(sub);
+      }
+    }
+  }
+
+  /**
+   * Strips full provider objects from the save payload.
+   * Any key whose name ends with "providerSearch" (case-insensitive) and
+   * whose value is an object is replaced with the equivalent display string.
+   * This is the save-time safety net: even if a stale object slips through
+   * form controls, it will never be written to jsonData as an object.
+   */
+  private normalizeProviderSearchInPayload(merged: any): void {
+    if (!merged || typeof merged !== 'object') return;
+    for (const key of Object.keys(merged)) {
+      if (!/providerSearch$/i.test(key)) continue;
+      const val = merged[key];
+      if (val && typeof val === 'object') {
+        merged[key] = this.extractProviderDisplayString(val);
+      }
+    }
   }
 
   private resetAuthScreenState(): void {
@@ -4983,6 +5153,19 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         // Already has data (from lookup selection)
         if (this.providerDataByInstance[sf.controlName]) continue;
 
+        // ── Fast path: search control still holds a full provider object ──
+        // This happens when old jsonData stored the object in the providerSearch
+        // key. Extract the display string for the control and store the object
+        // in providerDataByInstance so the card renders without a re-fetch.
+        const searchVal = searchCtrl.value;
+        if (searchVal && typeof searchVal === 'object') {
+          this.providerDataByInstance[sf.controlName] = searchVal;
+          this.lookupSelectedByControl[sf.controlName] = searchVal;
+          const displayStr = this.extractProviderDisplayString(searchVal);
+          searchCtrl.setValue(displayStr, { emitEvent: false });
+          continue;
+        }
+
         // Rebuild from body field values
         const data: any = {};
         const bodyFields = this.getProvBodyFields(inst);
@@ -5013,7 +5196,6 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
         // Also check the search control display value as fullName fallback
         if (!data.fullName && !data.firstName) {
-          const searchVal = searchCtrl.value;
           if (typeof searchVal === 'string' && searchVal.trim()) {
             data.fullName = searchVal.trim();
           }
@@ -8598,6 +8780,76 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   // ============================================================
 
   /**
+   * On-load back-fill: reads decisionDetails returned by the API in jsonData
+   * and patches the corresponding source-section form controls so they are
+   * populated even when applyDecisionReverseSync was never called in this
+   * session (i.e. on every page reload of an existing auth).
+   *
+   * Only fills controls that are currently null / empty — it never overwrites
+   * a value that was already written by applyDecisionReverseSync or by the
+   * form patch itself.
+   *
+   * decisionDetails lives in the DB records returned by the API.  We still
+   * strip it from the outgoing save payload (Fix 1) so it is not duplicated
+   * there, but the API response will keep supplying it from the canonical
+   * decision tables on every load.
+   */
+  private syncDecisionValuesToServiceControls(): void {
+    if (!this.form || !this.pendingAuth) return;
+
+    const jsonData = this.safeParseJson((this.pendingAuth as any).jsonData) ?? {};
+    const decisionDetails: any[] = Array.isArray(jsonData['decisionDetails'])
+      ? jsonData['decisionDetails']
+      : [];
+
+    for (const item of decisionDetails) {
+      const data = item?.data;
+      if (!data) continue;
+
+      const procedureNo = Number(data.procedureNo ?? 0);
+      if (!procedureNo || procedureNo >= 1000) continue; // service range only (1–999)
+
+      const prefix = `procedure${procedureNo}_`;
+
+      const apprCtrl   = this.form.get(prefix + 'serviceAppr');
+      const deniedCtrl = this.form.get(prefix + 'serviceDenied');
+      const usedCtrl   = this.form.get(prefix + 'used');
+
+      // approved
+      if (apprCtrl) {
+        const cur = apprCtrl.value;
+        if (cur === null || cur === undefined || cur === '') {
+          const appr = data.approved ?? null;
+          if (appr !== null && appr !== undefined) {
+            apprCtrl.setValue(appr, { emitEvent: false });
+          }
+        }
+      }
+
+      // denied — treat 0 as a valid value (not "empty"), so check strictly
+      if (deniedCtrl) {
+        const cur = deniedCtrl.value;
+        if (cur === null || cur === undefined || cur === '') {
+          const denied = data.denied ?? null;
+          if (denied !== null && denied !== undefined) {
+            deniedCtrl.setValue(denied, { emitEvent: false });
+          }
+        }
+      }
+
+      // used — empty string from Decision means "0 used"; convert to 0 for clarity
+      if (usedCtrl) {
+        const cur = usedCtrl.value;
+        if (cur === null || cur === undefined || cur === '') {
+          const raw  = data.used;
+          const used = (raw === '' || raw === null || raw === undefined) ? 0 : raw;
+          usedCtrl.setValue(used, { emitEvent: false });
+        }
+      }
+    }
+  }
+
+  /**
    * Patches the form controls of the source section (Service, Medication,
    * or Transportation) with the latest approved/denied values from Decision.
    *
@@ -8635,11 +8887,17 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       if (requested !== undefined && requested !== null) {
         this._patchFormControlSilently(prefix + 'serviceReq', requested);
       }
+      // Sync used units from Decision payload back to Service source control.
+      // Empty string from Decision means "0 used"; normalise to 0 for clarity.
+      if (decisionPayload?.used !== undefined && decisionPayload?.used !== null) {
+        const usedVal = decisionPayload.used === '' ? 0 : decisionPayload.used;
+        this._patchFormControlSilently(prefix + 'used', usedVal);
+      }
       // Reflect reviewType change from Decision back to Service if provided
       if (decisionPayload?.reviewType != null) {
         this._patchFormControlSilently(prefix + 'reviewType', decisionPayload.reviewType);
       }
-      console.log(`[AuthDetails] Reverse sync: Service ${procedureNo}, approved=${approved}, denied=${denied}`);
+      console.log(`[AuthDetails] Reverse sync: Service ${procedureNo}, approved=${approved}, denied=${denied}, used=${decisionPayload?.used}`);
     }
 
     // ── Keep pendingAuth.jsonData consistent ────────────────────────────
