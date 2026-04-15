@@ -1,37 +1,60 @@
 <!-- ─── Context Menu (shared by card + table) ─── -->
-<mat-menu #menu="matMenu">
-  <button mat-menu-item>
-    <mat-icon>add</mat-icon>
-    <span>Add Activity</span>
-  </button>
-  <button mat-menu-item>
-    <mat-icon>edit_note</mat-icon>
-    <span>Add Notes</span>
-  </button>
-  <button mat-menu-item>
-    <mat-icon>assignment</mat-icon>
-    <span>Run Assessment</span>
-  </button>
-  <button mat-menu-item>
-    <mat-icon>description</mat-icon>
-    <span>Add Documents</span>
-  </button>
-  <button mat-menu-item>
-    <mat-icon>outgoing_mail</mat-icon>
-    <span>Send Letter</span>
-  </button>
-  <button mat-menu-item>
-    <mat-icon>content_copy</mat-icon>
-    <span>Clone Auth</span>
-  </button>
-  <button mat-menu-item>
-    <mat-icon>person_remove</mat-icon>
-    <span>Transfer</span>
-  </button>
-  <button mat-menu-item>
-    <mat-icon>summarize</mat-icon>
-    <span>Auth Summary</span>
-  </button>
+<!-- Pass { row } via matMenuTriggerData so each item receives the row object -->
+<mat-menu #menu="matMenu" panelClass="row-menu-panel">
+  <ng-template matMenuContent let-row="row">
+
+    <!-- Add Activity -->
+    <button mat-menu-item class="row-menu-item row-menu-item--primary"
+            (click)="openActivity(row)">
+      <span class="row-menu-icon"><mat-icon>add</mat-icon></span>
+      <span class="row-menu-label">Add Activity</span>
+    </button>
+
+    <!-- Add Notes -->
+    <button mat-menu-item class="row-menu-item"
+            (click)="openNotes(row, 'add')">
+      <span class="row-menu-icon"><mat-icon>edit_note</mat-icon></span>
+      <span class="row-menu-label">Add Notes</span>
+    </button>
+
+    <!-- Run Assessment (not yet wired) -->
+    <button mat-menu-item class="row-menu-item">
+      <span class="row-menu-icon"><mat-icon>assignment</mat-icon></span>
+      <span class="row-menu-label">Run Assessment</span>
+    </button>
+
+    <!-- Add Documents -->
+    <button mat-menu-item class="row-menu-item"
+            (click)="openDocuments(row, 'add')">
+      <span class="row-menu-icon"><mat-icon>description</mat-icon></span>
+      <span class="row-menu-label">Add Documents</span>
+    </button>
+
+    <!-- Send Letter (not yet wired) -->
+    <button mat-menu-item class="row-menu-item">
+      <span class="row-menu-icon"><mat-icon>outgoing_mail</mat-icon></span>
+      <span class="row-menu-label">Send Letter</span>
+    </button>
+
+    <!-- Clone Auth (not yet wired) -->
+    <button mat-menu-item class="row-menu-item">
+      <span class="row-menu-icon"><mat-icon>content_copy</mat-icon></span>
+      <span class="row-menu-label">Clone Auth</span>
+    </button>
+
+    <!-- Transfer (not yet wired) -->
+    <button mat-menu-item class="row-menu-item">
+      <span class="row-menu-icon"><mat-icon>person_remove</mat-icon></span>
+      <span class="row-menu-label">Transfer</span>
+    </button>
+
+    <!-- Auth Summary (not yet wired) -->
+    <button mat-menu-item class="row-menu-item">
+      <span class="row-menu-icon"><mat-icon>summarize</mat-icon></span>
+      <span class="row-menu-label">Auth Summary</span>
+    </button>
+
+  </ng-template>
 </mat-menu>
 
 
@@ -156,7 +179,11 @@
             </span>
           </div>
 
-          <button mat-icon-button class="mad-card-menu" [matMenuTriggerFor]="menu">
+          <!-- ✅ Row data passed via matMenuTriggerData -->
+          <button mat-icon-button class="mad-card-menu"
+                  [matMenuTriggerFor]="menu"
+                  [matMenuTriggerData]="{ row: row }"
+                  (click)="$event.stopPropagation()">
             <mat-icon>more_vert</mat-icon>
           </button>
         </div>
@@ -347,7 +374,7 @@
         <div class="mad-card-footer">
           <a class="mad-view-details-link"
              (click)="openDetailPanel(row.authNumber); $event.stopPropagation()"
-             [class.mad-view-details-link--active]="selectedAuthNumber === row.authNumber && detailPanelOpen"
+             [class.mad-view-details-link--active]="selectedAuthNumber === row.authNumber && detailPanelOpen && panelMode === 'details'"
              matTooltip="View authorization details in side panel">
             <mat-icon class="mad-view-details-icon">open_in_new</mat-icon>
             View Details
@@ -368,7 +395,11 @@
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef class="mad-th mad-th--actions"></th>
           <td mat-cell *matCellDef="let row" class="mad-td mad-td--actions">
-            <button mat-icon-button class="mad-table-menu" [matMenuTriggerFor]="menu">
+            <!-- ✅ Row data passed via matMenuTriggerData -->
+            <button mat-icon-button class="mad-table-menu row-menu-trigger-icon"
+                    [matMenuTriggerFor]="menu"
+                    [matMenuTriggerData]="{ row: row }"
+                    (click)="$event.stopPropagation()">
               <mat-icon>more_vert</mat-icon>
             </button>
           </td>
@@ -497,7 +528,7 @@
           <td mat-cell *matCellDef="let row" class="mad-td mad-td--view-details">
             <a class="mad-view-details-link mad-view-details-link--table"
                (click)="openDetailPanel(row.authNumber); $event.stopPropagation()"
-               [class.mad-view-details-link--active]="selectedAuthNumber === row.authNumber && detailPanelOpen"
+               [class.mad-view-details-link--active]="selectedAuthNumber === row.authNumber && detailPanelOpen && panelMode === 'details'"
                matTooltip="View authorization details">
               <mat-icon class="mad-view-details-icon">open_in_new</mat-icon>
               Details
@@ -541,7 +572,7 @@
 
 
   <!-- ═══════════════════════════════════════════════════════
-       RIGHT PANEL — Authorization Details (slide-in)
+       RIGHT PANEL — dual-mode: Auth Details OR Action panel
        ═══════════════════════════════════════════════════════ -->
   <div class="mad-right-panel"
        [class.mad-right-panel--open]="detailPanelOpen"
@@ -551,14 +582,34 @@
     <div class="mad-rpanel-header">
       <div class="mad-rpanel-title-block">
         <span class="mad-rpanel-icon">
-          <span class="material-icons-outlined" style="font-size:14px">verified_user</span>
+          <span class="material-icons-outlined" style="font-size:14px">
+            {{ panelMode === 'action' ? getActionIcon() : 'verified_user' }}
+          </span>
         </span>
         <div>
-          <div class="mad-rpanel-title">Authorization Details</div>
-          <div class="mad-rpanel-subtitle">Auth # {{ selectedAuthNumber }}</div>
+          <!-- Title: action label in action mode, "Authorization Details" in detail mode -->
+          <div class="mad-rpanel-title">
+            {{ panelMode === 'action' ? selectedActionLabel : 'Authorization Details' }}
+          </div>
+          <!-- Subtitle: auth number always visible -->
+          <div class="mad-rpanel-subtitle">
+            Auth # {{ selectedAuthNumber }}
+            <span *ngIf="panelMode === 'action' && panelSubtitle" class="mad-rpanel-subtitle-extra">
+              · {{ panelSubtitle }}
+            </span>
+          </div>
         </div>
       </div>
+
       <div class="mad-rpanel-actions">
+        <!-- In action mode: shortcut to switch back to Details view -->
+        <button class="mad-rpanel-btn"
+                *ngIf="panelMode === 'action'"
+                (click)="switchToDetailsPanel()"
+                title="View auth details">
+          <span class="material-icons-outlined">verified_user</span>
+        </button>
+
         <button class="mad-rpanel-btn" (click)="toggleDetailPanelExpand()"
                 [title]="detailPanelExpanded ? 'Collapse panel' : 'Expand panel'">
           <span class="material-icons-outlined">{{ detailPanelExpanded ? 'chevron_right' : 'chevron_left' }}</span>
@@ -569,15 +620,66 @@
       </div>
     </div>
 
-    <!-- Panel Body — Authorization Details Component -->
+    <!-- Panel Body — switches between Auth Details and action components -->
     <div class="mad-rpanel-body">
+
+      <!-- ── MODE: Authorization Details ── -->
       <app-authorization-details
-        *ngIf="selectedAuthNumber"
+        *ngIf="panelMode === 'details' && selectedAuthNumber"
         [authNumber]="selectedAuthNumber"
         [embedded]="true"
         (closed)="closeDetailPanel()"
         (edit)="onAuthClick($event)">
       </app-authorization-details>
+
+      <!--
+        ── MODE: Action components ──────────────────────────────────────────
+        IMPORTANT: conditions here only use selectedPanel (NOT panelMode &&).
+        This exactly mirrors assignedauths, which uses *ngIf="selectedPanel === 'notes'"
+        with NO compound condition. Adding panelMode to the && can cause Angular to
+        evaluate the compound in a different micro-task, creating the component before
+        inputs are fully resolved.
+        selectedPanel is always null when panelMode === 'details', so these are
+        mutually exclusive with app-authorization-details without needing panelMode.
+        ────────────────────────────────────────────────────────────────────── -->
+
+      <!-- Notes -->
+      <app-authnotes
+        *ngIf="selectedPanel === 'notes'"
+        [authDetailId]="selectedAuthDetailId ?? undefined"
+        [authNumber]="selectedAuthNumber || (selectedRow?.AuthNumber || selectedRow?.authNumber)"
+        [mode]="notesViewMode"
+        [singlePane]="true"
+        [authTemplateId]="selectedAuthTemplateId ?? undefined"
+        (requestViewAll)="onNotesRequestViewAll()"
+        (requestAddOnly)="onNotesRequestAddOnly()">
+      </app-authnotes>
+
+      <!-- Documents -->
+      <app-authdocuments
+        *ngIf="selectedPanel === 'documents'"
+        [authDetailId]="selectedAuthDetailId ?? null"
+        [authNumber]="selectedAuthNumber || (selectedRow?.AuthNumber || selectedRow?.authNumber)"
+        [authTemplateId]="selectedAuthTemplateId ?? null"
+        [singlePane]="true"
+        [startAdd]="startAddDocuments"
+        [mode]="documentsViewMode"
+        [inputMode]="documentsViewMode"
+        (requestViewAll)="onDocumentsRequestViewAll()"
+        (requestAddOnly)="onDocumentsRequestAddOnly()">
+      </app-authdocuments>
+
+      <!-- Activity -->
+      <app-authactivity
+        *ngIf="selectedPanel === 'activity'"
+        [authDetailId]="selectedAuthDetailId ?? null"
+        [singlePane]="true"
+        [startAdd]="startAddActivity"
+        [inputMode]="activityViewMode"
+        (requestViewAll)="onActivityRequestViewAll()"
+        (requestAddOnly)="onActivityRequestAddOnly()">
+      </app-authactivity>
+
     </div>
 
   </div><!-- /mad-right-panel -->

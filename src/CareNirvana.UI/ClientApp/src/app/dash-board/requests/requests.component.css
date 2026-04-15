@@ -4,11 +4,10 @@
 
 /* ── Shell ── */
 .req-shell {
-  font-family: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", system-ui, -apple-system, sans-serif;
   padding: 5px;
   min-height: 100%;
   color: #0f172a;
-  font-size: 13px;
+  
 }
 
 /* ══════════════════════════════════════════════════════
@@ -35,7 +34,6 @@
   border: 1px solid #e1e5ea;
   border-radius: 10px;
   outline: none;
-  font-size: 13px;
   font-family: inherit;
   color: #0f172a;
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -175,6 +173,12 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.sub-id {
+  color: #6b7280;
+  font-size: 12px;
+  margin-top: 2px;
 }
 
 /* ── Module pills ── */
@@ -495,7 +499,6 @@
   letter-spacing: 0.05em;
   padding: 3px 8px;
   border-radius: 6px;
-  font-family: "JetBrains Mono", "Fira Code", "SF Mono", Consolas, monospace;
 }
 
   .mod-badge.mod-um {
@@ -540,7 +543,6 @@
 .member-cell__id {
   font-size: 11px;
   color: #94a3b8;
-  font-family: "JetBrains Mono", "Fira Code", "SF Mono", Consolas, monospace;
 }
 
 /* ── Auth link ── */
@@ -549,103 +551,71 @@
   font-weight: 500;
   font-size: 12px;
   text-decoration: none;
-  font-family: "JetBrains Mono", "Fira Code", "SF Mono", Consolas, monospace;
 }
 
   .auth-link:hover {
     text-decoration: underline;
   }
 
-/* ── Due date badge ── */
-.due-badge {
+/* ── Due date — risk-chip compact (identical to assignedauths) ── */
+.risk-chip {
   display: inline-flex;
-  flex-direction: column;
-  padding: 4px 10px;
-  border-radius: 8px;
-  border: 1px solid;
+  gap: 8px;
+  color: var(--fg, #1f2937);
+  font-weight: 600;
+  font-size: 0.875rem;
+  line-height: 1;
+  white-space: nowrap;
 }
 
-.due-badge__date {
+.risk-chip.compact {
+  flex-direction: column;   /* date on top, "In Xd" below */
+  font-size: 12px;
+  gap: 3px;
+  min-width: 90px;
+}
+
+.date-value {
   font-size: 12px;
   font-weight: 600;
 }
 
-.due-badge__label {
-  font-size: 10px;
+.days-left {
+  font-size: 11px;
   font-weight: 500;
-  margin-top: 1px;
   opacity: 0.85;
 }
 
-.due-badge.due-red {
-  background: #fef2f2;
-  border-color: #fecaca;
-  color: #dc2626;
-}
+/* Color modifiers — applied by getDueDateClass() */
+.risk-chip.due-red   { color: #991b1b; }
+.risk-chip.due-amber,
+.risk-chip.due-orange { color: #92400e; }
+.risk-chip.due-green  { color: #065f46; }
+.risk-chip.due-unknown { color: #94a3b8; }
 
-.due-badge.due-amber {
-  background: #fffbeb;
-  border-color: #fde68a;
-  color: #d97706;
-}
-
-.due-badge.due-green {
-  background: #ecfdf5;
-  border-color: #a7f3d0;
-  color: #059669;
-}
-
-.due-badge.due-unknown {
-  background: #f1f5f9;
-  border-color: #e2e8f0;
-  color: #94a3b8;
-}
-
-/* ── Status chip ── */
-.status-chip {
+/* ── Status badge — class-based, mirrors assignedauths style ── */
+.status-badge {
   display: inline-block;
   font-size: 11px;
   font-weight: 600;
   padding: 3px 10px;
-  border-radius: 99px;
+  border-radius: 9999px;
   white-space: nowrap;
-  /* Default: gray */
+  border: 1px solid transparent;
   background: #f1f5f9;
   color: #475569;
 }
 
-  .status-chip[data-status="pending"] {
-    background: #fef3c7;
-    color: #92400e;
-  }
+.status-badge.status-open        { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+.status-badge.status-pending     { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+.status-badge.status-in-progress { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
+.status-badge.status-new         { background: #e0e7ff; color: #3730a3; border-color: #c7d2fe; }
+.status-badge.status-escalated   { background: #fce7f3; color: #9d174d; border-color: #f9a8d4; }
+.status-badge.status-completed,
+.status-badge.status-closed      { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+.status-badge.status-default     { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
 
-  .status-chip[data-status="in progress"] {
-    background: #dbeafe;
-    color: #1e40af;
-  }
-
-  .status-chip[data-status="open"] {
-    background: #f1f5f9;
-    color: #475569;
-  }
-
-  .status-chip[data-status="new"] {
-    background: #e0e7ff;
-    color: #3730a3;
-  }
-
-  .status-chip[data-status="escalated"] {
-    background: #fce7f3;
-    color: #9d174d;
-  }
-
-  .status-chip[data-status="completed"],
-  .status-chip[data-status="closed"] {
-    background: #ecfdf5;
-    color: #047857;
-  }
-
-/* ── Action buttons ── */
+/* ── Action buttons — always visible, no hover-fade ── */
 .actions-cell {
   text-align: right !important;
   white-space: nowrap;
@@ -654,12 +624,7 @@
 .action-group {
   display: inline-flex;
   gap: 2px;
-  opacity: 0.35;
-  transition: opacity 0.15s ease;
-}
-
-.data-row:hover .action-group {
-  opacity: 1;
+  /* removed opacity:0.35 — icons are always fully visible */
 }
 
 .action-btn {

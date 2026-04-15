@@ -667,6 +667,18 @@ export class RequestsComponent implements OnInit, AfterViewInit {
     return `${f} ${l}`.trim();
   }
 
+  getStatusClass(status: string): string {
+    const s = (status ?? '').toString().trim().toLowerCase();
+    if (s === 'open')                               return 'status-open';
+    if (s === 'pending')                            return 'status-pending';
+    if (s === 'in progress' || s === 'inprogress')  return 'status-in-progress';
+    if (s === 'new')                                return 'status-new';
+    if (s === 'escalated')                          return 'status-escalated';
+    if (s === 'completed' || s === 'done')          return 'status-completed';
+    if (s === 'closed')                             return 'status-closed';
+    return 'status-default';
+  }
+
   getDueDateClass(dateVal: any): string {
     const d = this.toDate(dateVal);
     if (!d) return 'due-unknown';
@@ -691,19 +703,21 @@ export class RequestsComponent implements OnInit, AfterViewInit {
     return `In ${diff}d`;
   }
 
-  onMemberClick(memberId: string, memberName: string): void {
+  onMemberClick(memberId: string, memberName: string, memberDetailsId: string): void {
     const tabLabel = `Member: ${memberName}`;
     const tabRoute = `/member-info/${memberId}`;
-
     const existingTab = this.headerService.getTabs().find(tab => tab.route === tabRoute);
 
     if (existingTab) {
       this.headerService.selectTab(tabRoute);
+      const mdId = existingTab.memberDetailsId ?? null;
+      if (mdId) sessionStorage.setItem('selectedMemberDetailsId', mdId);
       this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
         this.router.navigate([tabRoute]);
       });
     } else {
       this.headerService.addTab(tabLabel, tabRoute, memberId);
+      sessionStorage.setItem('selectedMemberDetailsId', memberDetailsId);
       this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
         this.router.navigate([tabRoute]);
       });

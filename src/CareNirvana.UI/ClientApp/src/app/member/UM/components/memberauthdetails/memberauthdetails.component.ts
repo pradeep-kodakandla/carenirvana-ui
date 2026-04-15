@@ -87,11 +87,36 @@ export class MemberauthdetailsComponent implements OnInit {
   statusCountList: { status: string; count: number; slug: string }[] = [];
 
   // ════════════════════════════════════════════════
-  //  RIGHT PANEL — Authorization Details (slide-in)
+  //  RIGHT PANEL — shared open/close/expand state
   // ════════════════════════════════════════════════
   detailPanelOpen = false;
   detailPanelExpanded = false;
   selectedAuthNumber = '';
+
+  /** Full row reference — kept so templates can fall back like assignedauths does */
+  selectedRow: MemberAuthGridRow | null = null;
+
+  /**
+   * Controls which content is shown inside the right panel:
+   *  'details' → app-authorization-details (opened via "View Details" / Details link)
+   *  'action'  → notes / documents / activity (opened via row action menu)
+   */
+  panelMode: 'details' | 'action' = 'details';
+
+  // ════════════════════════════════════════════════
+  //  ACTION PANEL — state (mirrors assignedauths)
+  // ════════════════════════════════════════════════
+  selectedPanel: string | null = null;
+  selectedActionLabel = '';
+  panelSubtitle = '';
+  selectedAuthDetailId: number | null = null;
+  selectedAuthTemplateId: number | null = null;
+
+  notesViewMode: 'add' | 'full' = 'add';
+  documentsViewMode: 'add' | 'full' = 'add';
+  activityViewMode: 'add' | 'full' = 'add';
+  startAddActivity = false;
+  startAddDocuments = false;
 
   /** Tracks which cards have their decisions expanded (by authNumber) */
   expandedDecisions = new Set<string>();
@@ -101,29 +126,29 @@ export class MemberauthdetailsComponent implements OnInit {
 
   /** Color map for dynamic status dots */
   private statusColorMap: Record<string, string> = {
-    approved:             '#22C55E',
+    approved: '#22C55E',
     'partially-approved': '#10B981',
-    partial:              '#10B981',
-    pending:              '#8B5CF6',
-    pended:               '#8B5CF6',
-    'in-progress':        '#3B82F6',
-    inprogress:           '#3B82F6',
-    open:                 '#0EA5E9',
-    submitted:            '#06B6D4',
-    'under-review':       '#6366F1',
-    underreview:          '#6366F1',
-    denied:               '#EF4444',
-    cancelled:            '#64748B',
-    canceled:             '#64748B',
-    withdrawn:            '#78716C',
-    closed:               '#6B7280',
-    close:                '#6B7280',
-    voided:               '#475569',
-    void:                 '#475569',
-    modified:             '#F59E0B',
-    expired:              '#F43F5E',
-    'on-hold':            '#F97316',
-    onhold:               '#F97316',
+    partial: '#10B981',
+    pending: '#8B5CF6',
+    pended: '#8B5CF6',
+    'in-progress': '#3B82F6',
+    inprogress: '#3B82F6',
+    open: '#0EA5E9',
+    submitted: '#06B6D4',
+    'under-review': '#6366F1',
+    underreview: '#6366F1',
+    denied: '#EF4444',
+    cancelled: '#64748B',
+    canceled: '#64748B',
+    withdrawn: '#78716C',
+    closed: '#6B7280',
+    close: '#6B7280',
+    voided: '#475569',
+    void: '#475569',
+    modified: '#F59E0B',
+    expired: '#F43F5E',
+    'on-hold': '#F97316',
+    onhold: '#F97316',
   };
 
   displayedColumns: string[] = [
@@ -131,7 +156,7 @@ export class MemberauthdetailsComponent implements OnInit {
     'authNumber',
     'authTypeText',
     'authStatusText',
-    'overallDecision',    // ← new column
+    'overallDecision',
     'authDueDate',
     'nextReviewDate',
     'treatmentType',
@@ -297,23 +322,42 @@ export class MemberauthdetailsComponent implements OnInit {
   }
 
   // ════════════════════════════════════════════════
-  //  RIGHT PANEL — Open / Close / Toggle Expand
+  //  RIGHT PANEL — Open / Close / Expand / Switch
   // ════════════════════════════════════════════════
 
+  /** Opens the panel in "details" mode (View Details link / Details button) */
   openDetailPanel(authNumber: string): void {
-    if (this.detailPanelOpen && this.selectedAuthNumber === authNumber) {
+    // Toggle off if same auth + already in details mode
+    if (this.detailPanelOpen && this.selectedAuthNumber === authNumber && this.panelMode === 'details') {
       this.closeDetailPanel();
       return;
     }
 
     this.selectedAuthNumber = authNumber;
+    this.panelMode = 'details';
+    this.selectedPanel = null;
     this.detailPanelOpen = true;
     this.detailPanelExpanded = true;
+  }
+
+  /** Switches an already-open action panel back to details view for the same auth */
+  switchToDetailsPanel(): void {
+    this.panelMode = 'details';
+    this.selectedPanel = null;
+    this.selectedActionLabel = '';
+    this.panelSubtitle = '';
   }
 
   closeDetailPanel(): void {
     this.detailPanelOpen = false;
     this.detailPanelExpanded = false;
+    this.panelMode = 'details';
+    this.selectedPanel = null;
+    this.selectedActionLabel = '';
+    this.panelSubtitle = '';
+    this.selectedAuthDetailId = null;
+    this.selectedAuthTemplateId = null;
+    this.selectedRow = null;
 
     setTimeout(() => {
       if (!this.detailPanelOpen) {
@@ -324,6 +368,125 @@ export class MemberauthdetailsComponent implements OnInit {
 
   toggleDetailPanelExpand(): void {
     this.detailPanelExpanded = !this.detailPanelExpanded;
+  }
+
+  // ════════════════════════════════════════════════
+  //  ACTION PANEL — Open helpers (menu actions)
+  // ════════════════════════════════════════════════
+
+  openActivity(row: MemberAuthGridRow): void {
+    this.selectedRow = row ?? null;
+    this.selectedPanel = 'activity';
+    this.panelMode = 'action';
+    this.selectedActionLabel = 'Add Activity';
+
+    this.selectedAuthDetailId = Number(row?.authDetailId ?? 0);
+    this.selectedAuthNumber = String(row?.AuthNumber ?? row?.authNumber ?? '');
+    this.selectedAuthTemplateId = Number(row?.authTypeId ?? row?.AuthTypeId ?? row?.authTypeid ?? 0);
+    this.activityViewMode = 'add';
+    this.startAddActivity = false;
+    this.panelSubtitle = 'Auth # ' + this.selectedAuthNumber;
+
+    this.detailPanelOpen = true;
+    this.detailPanelExpanded = true;
+
+    console.log('[MAD] openActivity – row:', row,
+      'authDetailId:', this.selectedAuthDetailId,
+      'authNumber:', this.selectedAuthNumber);
+  }
+
+  openNotes(row: MemberAuthGridRow, mode: 'add' | 'full' = 'add'): void {
+    this.selectedRow = row ?? null;
+    this.selectedPanel = 'notes';
+    this.panelMode = 'action';
+    this.selectedActionLabel = mode === 'full' ? 'Notes' : 'Add Notes';
+
+    // Use same extraction pattern as assignedauths: PascalCase first, then camelCase
+    this.selectedAuthDetailId = Number(row?.authDetailId ?? 0);
+    this.selectedAuthNumber = String(row?.AuthNumber ?? row?.authNumber ?? '');
+    this.selectedAuthTemplateId = Number(row?.authTypeId ?? row?.AuthTypeId ?? row?.authTypeid ?? 0);
+    this.notesViewMode = mode;
+    this.panelSubtitle = 'Auth # ' + this.selectedAuthNumber;
+
+    this.detailPanelOpen = true;
+    this.detailPanelExpanded = true;
+
+    console.log('[MAD] openNotes – row:', row,
+      'authDetailId:', this.selectedAuthDetailId,
+      'authNumber:', this.selectedAuthNumber);
+  }
+
+
+
+  openDocuments(row: MemberAuthGridRow, mode: 'add' | 'full' = 'add'): void {
+    this.selectedRow = row ?? null;
+    this.selectedPanel = 'documents';
+    this.panelMode = 'action';
+    this.selectedActionLabel = mode === 'full' ? 'Documents' : 'Add Documents';
+
+    this.selectedAuthDetailId = Number(row?.authDetailId ?? 0);
+    this.selectedAuthNumber = String(row?.AuthNumber ?? row?.authNumber ?? '');
+    this.selectedAuthTemplateId = Number(row?.authTypeId ?? row?.AuthTypeId ?? row?.authTypeid ?? 0);
+    this.documentsViewMode = mode;
+    this.startAddDocuments = false;
+    this.panelSubtitle = 'Auth # ' + this.selectedAuthNumber;
+
+    this.detailPanelOpen = true;
+    this.detailPanelExpanded = true;
+
+    console.log('[MAD] openDocuments – row:', row,
+      'authDetailId:', this.selectedAuthDetailId,
+      'authNumber:', this.selectedAuthNumber);
+  }
+
+  // ════════════════════════════════════════════════
+  //  ACTION PANEL — mode-change callbacks (child → parent)
+  // ════════════════════════════════════════════════
+
+  onNotesRequestViewAll(): void {
+    this.notesViewMode = 'full';
+    this.selectedActionLabel = 'Notes';
+  }
+
+  onNotesRequestAddOnly(): void {
+    this.notesViewMode = 'add';
+    this.selectedActionLabel = 'Add Notes';
+  }
+
+  onDocumentsRequestViewAll(): void {
+    this.documentsViewMode = 'full';
+    this.startAddDocuments = false;
+    this.selectedActionLabel = 'Documents';
+  }
+
+  onDocumentsRequestAddOnly(): void {
+    this.documentsViewMode = 'add';
+    this.startAddDocuments = true;
+    this.selectedActionLabel = 'Add Documents';
+    Promise.resolve().then(() => (this.startAddDocuments = false));
+  }
+
+  onActivityRequestViewAll(): void {
+    this.activityViewMode = 'full';
+  }
+
+  onActivityRequestAddOnly(): void {
+    this.activityViewMode = 'add';
+    this.startAddActivity = true;
+    Promise.resolve().then(() => (this.startAddActivity = false));
+  }
+
+  // ════════════════════════════════════════════════
+  //  ACTION PANEL — icon helper (used in template)
+  // ════════════════════════════════════════════════
+
+  getActionIcon(): string {
+    switch (this.selectedPanel) {
+      case 'notes': return 'edit_note';
+      case 'documents': return 'description';
+      case 'activity': return 'add_task';
+      default: return 'more_horiz';
+    }
   }
 
   // ════════════════════════════════════════════════

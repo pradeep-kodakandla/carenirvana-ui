@@ -259,25 +259,47 @@
   border-radius: 14px;
   padding: 16px 18px;
   background: #fff;
-  border: 1px solid #E5E7EB;
+  border: 1.5px solid #E5E7EB;
   box-shadow: 0 2px 8px rgba(16, 24, 40, 0.05);
   display: flex;
   flex-direction: column;
-  transition: all 0.2s ease;
+  /* Only transition hover properties — NOT border/background so selected state is instant */
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
   cursor: default;
+  position: relative;   /* required for ::before accent stripe */
+  overflow: hidden;
 }
 
-.mad-auth-card:hover {
+.mad-auth-card:hover:not(.mad-auth-card--selected) {
   border-color: #99c9ff;
   box-shadow: 0 8px 24px rgba(16, 24, 40, 0.1);
   transform: translateY(-2px);
 }
 
-/* Selected card (when its detail panel is open) */
+/* ── Selected card — INSTANT, prominent ──────────────────────────
+   No transition so the highlight appears the moment Angular applies
+   the class, not 200 ms later.
+   ─────────────────────────────────────────────────────────────── */
 .mad-auth-card--selected {
-  border-color: #6366F1 !important;
-  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.15) !important;
-  background: #FAFAFF;
+  transition: none !important;           /* instant appearance   */
+  border-color: #4f46e5 !important;
+  background: #f0efff !important;        /* clearly distinct     */
+  box-shadow:
+    0 0 0 3px rgba(79, 70, 229, 0.18),   /* outer focus ring     */
+    0 6px 22px rgba(79, 70, 229, 0.18) !important;
+  transform: none !important;            /* cancel hover lift    */
+}
+
+/* Left accent stripe — strongest immediate affordance */
+.mad-auth-card--selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, #818cf8 0%, #4f46e5 100%);
+  border-radius: 14px 0 0 14px;
 }
 
 .mad-auth-card--compact {
@@ -1122,10 +1144,25 @@
   background: #FAFBFC;
 }
 
-/* Selected table row */
+/* ── Selected table row — INSTANT, no transition ── */
 .mad-table-row--selected {
-  background: #F5F3FF !important;
-  border-left: 3px solid #6366F1;
+  background: #f0efff !important;
+  transition: none !important;
+}
+
+.mad-table-row--selected td.mat-mdc-cell {
+  background: #f0efff !important;
+  border-top: 2px solid #4f46e5 !important;
+  border-bottom: 2px solid #4f46e5 !important;
+  transition: none !important;
+}
+
+.mad-table-row--selected td.mat-mdc-cell:first-child {
+  border-left: 4px solid #4f46e5 !important;
+}
+
+.mad-table-row--selected:hover td.mat-mdc-cell {
+  background: #eae9ff !important;
 }
 
 .mad-table-menu {

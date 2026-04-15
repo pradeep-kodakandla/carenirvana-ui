@@ -1,52 +1,65 @@
 <mat-drawer-container class="sidenav-container" autosize>
   <mat-drawer-content mode="side" opened>
 
-    <div class="dashboard-container">
-      <div class="rounded-box"
-           *ngFor="let widget of dashboardWidgets; let i = index"
-           [ngClass]="{ 'selected': defaultWidget === widget.key }"
-           (click)="handleWidgetClick(i + 1, widget.key)">
-        <div class="d-flex justify-content-between align-items-center div-secondary">
-          <div style="padding-left:10px;">
-            <h1>{{ getCountForWidget(widget.key) }}</h1> <!-- Replace 0 with actual dynamic count if needed -->
-          </div>
-          <div style="text-align:center;">
-            {{ widget.customLabel }}
-          </div>
-          <div style="padding-right:10px;">
-            <mat-icon style="color: #007BFF;vertical-align:middle;">{{ getIconForWidget(widget.key) }}</mat-icon>
+    <!-- ═══════════════════════════════════════════════════════════════
+         WIDGET STRIP  —  single scrollable row, never wraps
+         ═══════════════════════════════════════════════════════════════ -->
+    <div class="widget-strip-wrapper">
+
+      <!-- Left scroll arrow -->
+      <button class="strip-arrow strip-arrow--left"
+              *ngIf="canScrollLeft"
+              (click)="scrollWidgets('left')"
+              aria-label="Scroll left">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+
+      <!-- Scrollable row of tiles -->
+      <div class="widget-strip"
+           #widgetStrip
+           (scroll)="onStripScroll(widgetStrip)">
+
+        <!-- Dynamic widgets from role config -->
+        <div class="widget-tile"
+             *ngFor="let widget of dashboardWidgets; let i = index"
+             [ngClass]="{ 'selected': defaultWidget === widget.key }"
+             (click)="handleWidgetClick(i + 1, widget.key)">
+
+          <div class="tile-count">{{ getCountForWidget(widget.key) }}</div>
+          <div class="tile-footer">
+            <span class="tile-label">{{ widget.customLabel }}</span>
+            <mat-icon class="tile-icon">{{ getIconForWidget(widget.key) }}</mat-icon>
           </div>
         </div>
-        <!--<mat-divider class="divider" [class.selected-divider]="defaultWidget === widget.key"></mat-divider>-->
+
+        <!-- Static Insights tile -->
+        <div class="widget-tile"
+             [ngClass]="{ 'selected': defaultWidget === 'insights' }"
+             (click)="handleWidgetClick(dashboardWidgets.length + 1, 'insights')">
+
+          <div class="tile-count tile-count--icon">
+            <mat-icon class="tile-big-icon">insights</mat-icon>
+          </div>
+          <div class="tile-footer">
+            <span class="tile-label">Insights</span>
+            <mat-icon class="tile-icon">insights</mat-icon>
+          </div>
+        </div>
 
       </div>
 
-      <!-- Static Insights Widget -->
-      <div class="rounded-box"
-           [ngClass]="{ 'selected': defaultWidget === 'insights' }"
-           (click)="handleWidgetClick(dashboardWidgets.length + 1, 'insights')">
-        <div class="d-flex justify-content-between align-items-center div-secondary">
-          <div style="padding-left:10px;">
-            <h1><mat-icon style="color: #007BFF;font-size:28px;width:28px;height:28px;">insights</mat-icon></h1>
-          </div>
-          <div style="text-align:center;">
-            Insights
-          </div>
-          <div style="padding-right:10px;">
-            <mat-icon style="color: #007BFF;vertical-align:middle;">insights</mat-icon>
-          </div>
-        </div>
-      </div>
+      <!-- Right scroll arrow -->
+      <button class="strip-arrow strip-arrow--right"
+              *ngIf="canScrollRight"
+              (click)="scrollWidgets('right')"
+              aria-label="Scroll right">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+
     </div>
+    <!-- /widget-strip-wrapper -->
 
-    <!--<caseChevronStepper *ngIf="showCaseStepper"
-                        [steps]="caseSteps"
-                        [activeStepId]="activeCaseStepId">
-    </caseChevronStepper>
-
-    <ng-template #dynamicContainer></ng-template>-->
     <div #dynamicContainer></div>
 
   </mat-drawer-content>
-
 </mat-drawer-container>

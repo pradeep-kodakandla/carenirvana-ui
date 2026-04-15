@@ -85,6 +85,25 @@
           <path d="M3 5h18v2l-7 7v5l-4 2v-7L3 7z"></path>
         </svg>
       </button>
+
+      <!-- Open / All status toggle -->
+      <div class="status-toggle-group">
+        <button type="button"
+                class="status-toggle-btn"
+                [class.active]="statusViewFilter === 'open'"
+                (click)="setStatusFilter('open')"
+                title="Show only Open authorizations">
+          Open
+        </button>
+        <button type="button"
+                class="status-toggle-btn"
+                [class.active]="statusViewFilter === 'all'"
+                (click)="setStatusFilter('all')"
+                title="Show all authorizations">
+          All
+        </button>
+      </div>
+
       <button matTooltip="Click to add a new authorization" class="btn btn-primary ms-2">
         Add Authorization
       </button>

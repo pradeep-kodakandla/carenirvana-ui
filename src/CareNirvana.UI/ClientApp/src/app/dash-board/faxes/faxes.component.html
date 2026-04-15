@@ -1153,3 +1153,51 @@
 
   </div>
 </div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     DISCARD CHANGES DIALOG  (auth form unsaved-changes guard)
+     Shown when user clicks "Back to Details" or "Close Preview (×)" while
+     the Create Authorization form has unsaved modifications.
+     ═══════════════════════════════════════════════════════════════════ -->
+<div class="tb-overlay" *ngIf="showDiscardDialog" (click)="dismissDiscardDialog()">
+  <div class="tb-dialog" (click)="$event.stopPropagation()">
+
+    <div class="tb-dialog-icon tb-dialog-icon--warning">
+      <mat-icon>drive_file_rename_outline</mat-icon>
+    </div>
+
+    <div class="tb-dialog-title">You Have Unsaved Changes</div>
+
+    <div class="tb-dialog-msg">
+      <ng-container [ngSwitch]="discardDialogContext">
+        <span *ngSwitchCase="'backToDetails'">
+          You're about to leave the <strong>Create Authorization</strong> form
+          with unsaved modifications. Going back now will permanently discard
+          everything entered in this session.
+        </span>
+        <span *ngSwitchCase="'closePreview'">
+          Closing this preview will discard all unsaved changes to the
+          <strong>Create Authorization</strong> form. This action cannot be undone.
+        </span>
+      </ng-container>
+    </div>
+
+    <div class="tb-dialog-detail">
+      To keep your work, click <strong>Stay &amp; Edit</strong> and complete
+      or save the authorization first.
+    </div>
+
+    <div class="tb-dialog-actions">
+      <button class="tb-btn tb-btn--secondary" (click)="dismissDiscardDialog()">
+        <mat-icon>edit_note</mat-icon>
+        Stay &amp; Edit
+      </button>
+      <button class="tb-btn tb-btn--danger" (click)="confirmDiscardChanges()">
+        <mat-icon>delete_forever</mat-icon>
+        Discard Changes
+      </button>
+    </div>
+
+  </div>
+</div>

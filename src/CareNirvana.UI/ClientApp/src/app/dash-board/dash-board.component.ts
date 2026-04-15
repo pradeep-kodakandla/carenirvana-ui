@@ -1,4 +1,4 @@
-import { Component, ViewChild, ViewContainerRef, ComponentFactoryResolver } from '@angular/core';
+import { Component, ViewChild, ViewContainerRef, ComponentFactoryResolver, ElementRef, AfterViewInit, HostListener } from '@angular/core';
 import { MycaseloadComponent } from './mycaseload/mycaseload.component';
 import { AssignedauthsComponent } from './assignedauths/assignedauths.component';
 import { RequestsComponent } from './requests/requests.component';
@@ -39,13 +39,18 @@ interface DashboardCounts {
   templateUrl: './dash-board.component.html',
   styleUrl: './dash-board.component.css',
 })
-export class DashBoardComponent {
+export class DashBoardComponent implements AfterViewInit {
 
   roleConfig: PermissionConfig = {};
 
   dashboardWidgets: any[] = [];
   defaultWidget: string = '';
   dashboardCounts?: DashboardCounts;
+
+  // ── Widget strip scroll state ────────────────────────────────────────
+  canScrollLeft  = false;
+  canScrollRight = false;
+  @ViewChild('widgetStrip') widgetStripRef!: ElementRef<HTMLElement>;
 
   // Mapping of widget keys to DashboardCounts properties
   private widgetToProp: Record<string, keyof DashboardCounts> = {
@@ -75,6 +80,54 @@ export class DashBoardComponent {
     this.selectDiv(index);
     this.onSelect(key);
     this.defaultWidget = key;
+    // Scroll the clicked tile into view within the strip
+    setTimeout(() => {
+      const strip = this.widgetStripRef?.nativeElement;
+      const tile  = strip?.children[index - 1] as HTMLElement;
+      if (strip && tile) {
+        const tileLeft   = tile.offsetLeft;
+        const tileRight  = tileLeft + tile.offsetWidth;
+        const stripLeft  = strip.scrollLeft;
+        const stripRight = stripLeft + strip.clientWidth;
+        if (tileLeft < stripLeft) {
+          strip.scrollTo({ left: tileLeft - 8, behavior: 'smooth' });
+        } else if (tileRight > stripRight) {
+          strip.scrollTo({ left: tileRight - strip.clientWidth + 8, behavior: 'smooth' });
+        }
+      }
+    }, 50);
+  }
+
+  ngAfterViewInit(): void {
+    this.updateScrollState();
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.updateScrollState();
+  }
+
+  /** Called from the strip's (scroll) event binding in the template */
+  onStripScroll(el: HTMLElement): void {
+    this.canScrollLeft  = el.scrollLeft > 0;
+    this.canScrollRight = el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
+  }
+
+  /** Scroll the strip left or right by one tile's width (~200px) */
+  scrollWidgets(dir: 'left' | 'right'): void {
+    const el = this.widgetStripRef?.nativeElement;
+    if (!el) return;
+    el.scrollBy({ left: dir === 'left' ? -210 : 210, behavior: 'smooth' });
+  }
+
+  /** Recalculate whether arrows should be visible */
+  private updateScrollState(): void {
+    setTimeout(() => {
+      const el = this.widgetStripRef?.nativeElement;
+      if (!el) return;
+      this.canScrollLeft  = el.scrollLeft > 0;
+      this.canScrollRight = el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
+    }, 160);
   }
 
   ngOnInit(): void {
@@ -120,6 +173,8 @@ export class DashBoardComponent {
           this.selectDiv(index + 1); // highlight the selected box
           this.onSelect(this.defaultWidget); // load the component
         }
+        // Update arrow visibility after Angular renders the new tiles
+        this.updateScrollState();
       } else {
         this.dashboardWidgets = [];
         this.defaultWidget = '';

@@ -218,6 +218,11 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   @ViewChild('iframeA') iframeA?: ElementRef<HTMLIFrameElement>;
   @ViewChild('iframeB') iframeB?: ElementRef<HTMLIFrameElement>;
 
+  // ── Discard Changes Dialog ───────────────────────────────────────────
+  showDiscardDialog = false;
+  discardDialogContext: 'backToDetails' | 'closePreview' = 'backToDetails';
+  private _pendingDiscardAction: (() => void) | null = null;
+
   /** Which iframe is currently visible: 'A' or 'B' */
   pdfActiveFrame: 'A' | 'B' = 'A';
   /** Which iframe is waiting to finish loading (null = nothing pending) */
@@ -354,12 +359,9 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       .subscribe({
         next: (res: FaxFileListResponse) => {
           const rawItems = this.getItems(res);
-          console.log("data", rawItems);
           // 🔁 normalize every row to camelCase FaxFile
           const rows = rawItems.map(this.normalizeFax);
-          console.log("Raw faxes", rows);
           this.faxesRaw = rows; // ✅ always work with normalized rows
-          console.log("Normalized faxes", this.faxesRaw);
           this.total = this.getTotal(res);
           this.buildFaxHierarchy();
           //this.dataSource.data = rows;
@@ -584,38 +586,53 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   }
 
   closePreview(): void {
-    // Cancel any in-flight fetch / extraction
-    this._faxFetchSub?.unsubscribe();
-    this._faxFetchSub = null;
-    this._extractionGen++;
+    const doClose = () => {
+      // Cancel any in-flight fetch / extraction
+      this._faxFetchSub?.unsubscribe();
+      this._faxFetchSub = null;
+      this._extractionGen++;
 
-    this.showPreview = false;
-    this.selectedFax = undefined;
-    this.previewUrl = null;
-    this.currentFaxBytes = null;
-    this.currentFaxOriginalName = null;
-    this.priorAuth = null;
-    this.aiSummary = null;
-    this.aiParsedSummary = null; this.aiParsedFlags = [];
-    this.aiClinicalMatch = null; this.aiRecommendation = null; this.aiRecommendationType = 'info';
-    this.aiSummaryError = null;
-    this.aiSummaryLoading = false;
-    this.linkedAuthMeta = null;
-    this.progress = 0;
-    this.error = '';
-    this.currentIndex = -1;
-    this.splitMode = false;
-    this.splitCompleted = false;
-    this.hlKey = null;
-    this.hlValue = null;
-    this.hlMatchCount = 0;
-    this.hlStatus = 'idle';
-    this._rawPreviewUrl = null;
-    this._pdfTextItems = [];
-    this._pdfTextExtracted = false;
-    this.pdfActiveFrame = 'A';
-    this._pendingFrame = null;
-    if (this._highlightedBlobUrl) { URL.revokeObjectURL(this._highlightedBlobUrl); this._highlightedBlobUrl = null; }
+      // Reset auth form state so a subsequent openPreview always starts fresh
+      this.showAuthForm = false;
+      this.currentFaxPrefill = null;
+
+      this.showPreview = false;
+      this.selectedFax = undefined;
+      this.previewUrl = null;
+      this.currentFaxBytes = null;
+      this.currentFaxOriginalName = null;
+      this.priorAuth = null;
+      this.aiSummary = null;
+      this.aiParsedSummary = null; this.aiParsedFlags = [];
+      this.aiClinicalMatch = null; this.aiRecommendation = null; this.aiRecommendationType = 'info';
+      this.aiSummaryError = null;
+      this.aiSummaryLoading = false;
+      this.linkedAuthMeta = null;
+      this.progress = 0;
+      this.error = '';
+      this.currentIndex = -1;
+      this.splitMode = false;
+      this.splitCompleted = false;
+      this.hlKey = null;
+      this.hlValue = null;
+      this.hlMatchCount = 0;
+      this.hlStatus = 'idle';
+      this._rawPreviewUrl = null;
+      this._pdfTextItems = [];
+      this._pdfTextExtracted = false;
+      this.pdfActiveFrame = 'A';
+      this._pendingFrame = null;
+      if (this._highlightedBlobUrl) { URL.revokeObjectURL(this._highlightedBlobUrl); this._highlightedBlobUrl = null; }
+    };
+
+    // If the auth form is open and has unsaved changes, show the styled discard dialog
+    if (this.showAuthForm && this.authDetailsRef?.authHasUnsavedChanges?.()) {
+      this.discardDialogContext = 'closePreview';
+      this._pendingDiscardAction = doClose;
+      this.showDiscardDialog = true;
+    } else {
+      doClose();
+    }
   }
 
   // -------- Upload + Insert --------
@@ -733,9 +750,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
     // --- inherit fields when saving a split child (or keep defaults)
     const inherit = opts?.inheritFrom;
-    console.log("Opts", opts);
     const priority: 1 | 2 | 3 = (inherit?.priority as 1 | 2 | 3) ?? 2;
-
 
     let detectedMemberIdRaw: any =
       inherit?.memberId ??
@@ -1015,9 +1030,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
           if (myGen !== this._extractionGen) return;
         }
 
-        // ★ Log the actual OCR text so we can debug extraction issues
-        console.log('AZ CMDP OCR pageText:', pageText);
-
         // Try the dedicated extractor, strip undefined values
         const az = extractArizonaFromText(pageText);
         const azClean = {
@@ -1050,8 +1062,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         //   It uses the combined text from ALL pages as the source of truth.
         this.postProcessArizonaCmdp(pa, allText);
       }
-
-      console.log('Extracted Prior Auth:', pa);
 
       // ── Final stale guard: don't overwrite if user navigated away ──
       if (myGen !== this._extractionGen) return;
@@ -1423,9 +1433,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     if (pa.dx?.description && (!pa.dx.codes || pa.dx.codes.length === 0)) {
       pa.dx.codes = [pa.dx.description.split(/[\s,]+/)[0]];
     }
-
-    console.log('AZ CMDP post-process: npiHits=', npiHits, 'startDate=', startDate, 'endDate=', endDate, 'hcpcs=', hcpcsHits);
-    console.log('AZ CMDP post-processed pa:', pa);
   }
 
   private async computeSha256Hex(file: File): Promise<string> {
@@ -1594,7 +1601,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         lib.GlobalWorkerOptions.workerSrc =
           `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
         this._pdfjsLib = lib;
-        console.log('[FieldHighlight] pdf.js loaded from CDN, version:', PDFJS_VERSION);
         resolve(lib);
       };
       script.onerror = () => reject(new Error('Failed to load pdf.js from CDN'));
@@ -1628,8 +1634,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     this.hlStatus = 'processing';
     this.hlMatchCount = 0;
 
-    console.log(`[FieldHighlight] Highlighting "${str}" (category: ${category})`);
-
     // Must have PDF bytes to draw highlights
     if (!this.currentFaxBytes) {
       console.warn('[FieldHighlight] No currentFaxBytes available');
@@ -1644,14 +1648,11 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
       // Step 2: Extract text positions (cached after first call per PDF)
       if (!this._pdfTextExtracted) {
-        console.log('[FieldHighlight] Extracting text positions from PDF...');
         await this.extractPdfTextPositions(pdfjsLib, this.currentFaxBytes);
-        console.log(`[FieldHighlight] Extracted ${this._pdfTextItems.length} text items`);
       }
 
       // Step 3: Find matching text items for this field value
       const matches = this.findMatchingTextItems(str);
-      console.log(`[FieldHighlight] Found ${matches.length} matches for "${str}"`);
 
       if (matches.length === 0) {
         this.hlIsProcessing = false;
@@ -1673,7 +1674,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
       this.hlMatchCount = matches.length;
       this.hlStatus = 'found';
-      console.log(`[FieldHighlight] ✅ Drew ${matches.length} highlight(s) on PDF`);
 
     } catch (err) {
       console.error('[FieldHighlight] Error:', err);
@@ -1988,7 +1988,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
     try {
       const inputData = this.buildPaDataText(paData);
-      console.log('[AISummary] Sending to faxsummary:', inputData);
       const value = 'test';
 
       // Call backend — must send as JSON with correct Content-Type.
@@ -2002,7 +2001,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       }
 
       this.parseAiSections(summary);
-      console.log('[AISummary] ✅ Summary received and parsed');
 
     } catch (err: any) {
       console.error('[AISummary] Error:', err);
@@ -2573,7 +2571,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
 
   onMemberClick(memberId: string, memberName: string, memberDetailsId: string): void {
-    console.log('Member clicked:', memberId, memberName, memberDetailsId);
     const tabLabel = `Member: ${memberName}`;
     const tabRoute = `/member-info/${memberId}`;
 
@@ -2693,10 +2690,28 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
   cancelAuthForm(): void {
     if (this.authDetailsRef?.authHasUnsavedChanges?.()) {
-      if (!confirm('You have unsaved changes. Discard and go back?')) return;
+      this.discardDialogContext = 'backToDetails';
+      this._pendingDiscardAction = () => {
+        this.showAuthForm = false;
+        this.currentFaxPrefill = null;
+      };
+      this.showDiscardDialog = true;
+    } else {
+      this.showAuthForm = false;
+      this.currentFaxPrefill = null;
     }
-    this.showAuthForm = false;
-    this.currentFaxPrefill = null;
+  }
+
+  dismissDiscardDialog(): void {
+    this.showDiscardDialog = false;
+    this._pendingDiscardAction = null;
+  }
+
+  confirmDiscardChanges(): void {
+    this.showDiscardDialog = false;
+    const action = this._pendingDiscardAction;
+    this._pendingDiscardAction = null;
+    action?.();
   }
 
   onAuthSaved(event: { authNumber: string; authId: number }): void {
@@ -2812,7 +2827,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         });
       }
     } else {
-      console.log('Auth clicked:', authNumber, authId, '— no member context');
       this.toast(`Authorization ${authNumber} (ID: ${authId})`, false);
     }
   }

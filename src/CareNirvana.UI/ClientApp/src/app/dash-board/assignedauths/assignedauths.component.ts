@@ -33,6 +33,10 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
   startAddDocuments: boolean = false;
 
   selectedDue = new Set<'OVERDUE' | 'TODAY' | 'FUTURE'>();
+
+  /** 'open' shows only Open-status auths (default); 'all' shows everything */
+  statusViewFilter: 'open' | 'all' = 'open';
+
   // Column ids (keep your existing column ids the same)
   displayedColumns: string[] = [
 
@@ -166,6 +170,12 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
   /** Top bar buttons */
   toggleFilters(): void { this.showFilters = !this.showFilters; }
 
+  /** Open / All status view toggle */
+  setStatusFilter(val: 'open' | 'all'): void {
+    this.statusViewFilter = val;
+    this.recomputeAll();
+  }
+
   resetFilters(): void {
     this.filtersForm.reset({
       authType: '',
@@ -210,15 +220,18 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
 
   /** ===== Recompute pipeline ===== */
   private recomputeAll(): void {
-    this.computeDueCounts();
+    // Step 1: apply the Open / All status view filter first
+    let base = this.getStatusFilteredData();
 
-    let base = [...this.rawData];
+    // Step 2: recount chips on the status-filtered set (using same date logic as the filter)
+    this.computeDueCounts(base);
 
+    // Step 3: due-date chip filter
     if (this.selectedDue && this.selectedDue.size > 0) {
       const today = new Date();
 
       base = base.filter(r => {
-        const d = this.toDate(this.getComputedAuthDueDate(r));// r?.authDueDate);
+        const d = this.toDate(this.getComputedAuthDueDate(r));
         if (!d) return false;
 
         const cmp = this.compareDateOnly(d, today); // <0 overdue, 0 today, >0 future
@@ -230,9 +243,6 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
 
         return match;
       });
-    } else {
-      base = base;
-      // base = [];            // or show NONE (uncomment if you prefer)
     }
 
     // Advanced filters
@@ -296,11 +306,24 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
     if (this.paginator) this.paginator.firstPage();
   }
 
-  /** Counts for chips on the full raw set */
-  private computeDueCounts(): void {
+  /** Returns the subset of rawData that matches the current statusViewFilter. */
+  private getStatusFilteredData(): any[] {
+    if (this.statusViewFilter === 'all') return [...this.rawData];
+    return this.rawData.filter(r => {
+      const status = (
+        r?.AuthStatusValue ?? r?.authStatusValue ??
+        r?.AuthStatus     ?? r?.authStatus       ?? ''
+      ).toString().trim().toLowerCase();
+      return status === 'open';
+    });
+  }
+
+  /** Counts for the due-date chips — operates on the already status-filtered set
+   *  and uses the same getComputedAuthDueDate() logic as the row filter. */
+  private computeDueCounts(statusFilteredBase: any[]): void {
     const today = new Date();
-    const counts = this.rawData.reduce((acc, r) => {
-      const d = this.toDate(r?.authDueDate);
+    const counts = statusFilteredBase.reduce((acc, r) => {
+      const d = this.toDate(this.getComputedAuthDueDate(r));
       if (!d) return acc;
       const cmp = this.compareDateOnly(d, today);
       if (cmp < 0) acc.overdue++;
@@ -309,7 +332,7 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
       return acc;
     }, { overdue: 0, today: 0, future: 0 });
 
-    this.overdueCount = counts.overdue;
+    this.overdueCount  = counts.overdue;
     this.dueTodayCount = counts.today;
     this.dueFutureCount = counts.future;
   }

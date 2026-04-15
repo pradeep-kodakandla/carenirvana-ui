@@ -638,3 +638,41 @@ tr.row-target td.mat-mdc-cell {
   font-weight: 600;
 }
 
+
+
+/* ── Open / All status-view toggle ─────────────────────────────────── */
+.status-toggle-group {
+  display: inline-flex;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.status-toggle-btn {
+  padding: 0 14px;
+  height: 40px;
+  background: #fff;
+  border: none;
+  border-right: 1px solid #d1d5db;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 140ms ease, color 140ms ease;
+  line-height: 1;
+}
+
+.status-toggle-btn:last-child {
+  border-right: none;
+}
+
+.status-toggle-btn:hover {
+  background: #f3f4f6;
+}
+
+.status-toggle-btn.active {
+  background: #1b72e8;
+  color: #fff;
+}
