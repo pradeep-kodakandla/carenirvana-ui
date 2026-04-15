@@ -131,6 +131,212 @@
 
 
 <!-- ═══════════════════════════════════════════════════════════════════
+     PIPELINE — Floating status pill (shows when popup is minimised)
+     Clicking it re-opens the popup.
+     ═══════════════════════════════════════════════════════════════════ -->
+<div class="pipeline-pill"
+     *ngIf="visiblePipelines.length > 0 && !showPipelinePopup"
+     (click)="reopenPipelinePopup()"
+     title="Click to view authorization processing progress">
+  <span class="pipeline-pill-spinner" *ngIf="!allPipelinesComplete"></span>
+  <span class="material-icons pipeline-pill-done" *ngIf="allPipelinesComplete">verified</span>
+  <span class="pipeline-pill-label">
+    {{ allPipelinesComplete ? 'Processing complete' : 'Processing authorization…' }}
+  </span>
+  <span class="pipeline-pill-count">{{ visiblePipelines.length }}</span>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     PIPELINE — Progress popup modal
+     Auto-opens on upload. Steps animate in real time.
+     ═══════════════════════════════════════════════════════════════════ -->
+<div class="pipeline-backdrop"
+     *ngIf="showPipelinePopup && visiblePipelines.length > 0"
+     (click)="allPipelinesComplete ? closePipelinePopup() : null"
+     role="dialog" aria-modal="true" aria-label="Authorization Processing">
+
+  <div class="pipeline-modal" (click)="$event.stopPropagation()">
+
+    <!-- ── Modal header ──────────────────────────────────────────── -->
+    <div class="pipeline-modal-header">
+      <div class="pipeline-modal-title-row">
+        <span class="material-icons pipeline-modal-icon">auto_awesome</span>
+        <span class="pipeline-modal-title">Intelligent Authorization Processing</span>
+        <span class="pipeline-modal-badge">{{ visiblePipelines.length }}</span>
+      </div>
+      <div class="pipeline-modal-header-actions">
+        <!-- Minimise (always available) -->
+        <button class="pipeline-modal-action-btn"
+                (click)="minimisePipelinePopup()"
+                title="Minimise — processing continues in the background">
+          <span class="material-icons">remove</span>
+        </button>
+        <!-- Close (only when all pipelines have finished) -->
+        <button class="pipeline-modal-action-btn"
+                [class.pipeline-modal-close-active]="allPipelinesComplete"
+                [disabled]="!allPipelinesComplete"
+                (click)="closePipelinePopup()"
+                [title]="allPipelinesComplete ? 'Close' : 'Please wait — processing in progress'">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Modal body — one card per pipeline ────────────────────── -->
+    <div class="pipeline-modal-body">
+
+      <div class="aap-card"
+           *ngFor="let pipeline of visiblePipelines; trackBy: trackByPipelineId"
+           [class.aap-card-success]="pipeline.outcome === 'auto-approved'"
+           [class.aap-card-review]="pipeline.outcome === 'requires-review' || pipeline.outcome === 'no-rules-match'"
+           [class.aap-card-warn]="pipeline.outcome === 'no-member-match'"
+           [class.aap-card-error]="pipeline.outcome === 'error'">
+
+        <!-- Card header -->
+        <div class="aap-card-header">
+          <div class="aap-card-title-row">
+            <span class="material-icons aap-outcome-icon"                *ngIf="pipeline.outcome === 'auto-approved'">verified</span>
+            <span class="material-icons aap-outcome-icon aap-icon-review" *ngIf="pipeline.outcome === 'requires-review' || pipeline.outcome === 'no-rules-match'">rate_review</span>
+            <span class="material-icons aap-outcome-icon aap-icon-warn"   *ngIf="pipeline.outcome === 'no-member-match'">person_search</span>
+            <span class="material-icons aap-outcome-icon aap-icon-error"  *ngIf="pipeline.outcome === 'error'">error_outline</span>
+            <span class="aap-spinner" *ngIf="!pipeline.outcome"></span>
+            <div class="aap-card-file-info">
+              <span class="aap-card-filename">{{ pipeline.fileName }}</span>
+              <span class="aap-card-started">Initiated {{ pipeline.startedAt | date:'h:mm:ss a' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step tracker -->
+        <div class="aap-steps">
+          <div class="aap-step"
+               *ngFor="let step of pipeline.steps; let last = last"
+               [class.aap-step-pending]="step.status === 'pending'"
+               [class.aap-step-running]="step.status === 'running'"
+               [class.aap-step-success]="step.status === 'success'"
+               [class.aap-step-skipped]="step.status === 'skipped'"
+               [class.aap-step-error]="step.status === 'error'">
+            <div class="aap-step-connector" *ngIf="!last"></div>
+            <div class="aap-step-indicator">
+              <span class="aap-step-dot"  *ngIf="step.status === 'pending'"></span>
+              <span class="aap-step-ring" *ngIf="step.status === 'running'"></span>
+              <span class="material-icons aap-step-check" *ngIf="step.status === 'success'">check_circle</span>
+              <span class="material-icons aap-step-skip"  *ngIf="step.status === 'skipped'">remove_circle_outline</span>
+              <span class="material-icons aap-step-err"   *ngIf="step.status === 'error'">cancel</span>
+            </div>
+            <div class="aap-step-text">
+              <span class="aap-step-label">{{ step.label }}</span>
+              <span class="aap-step-detail">{{ step.detail }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Outcome banner — auto-approved -->
+        <div class="aap-outcome-banner aap-banner-approved" *ngIf="pipeline.outcome === 'auto-approved'">
+          <span class="material-icons aap-banner-icon">verified</span>
+          <div class="aap-banner-body">
+            <span class="aap-banner-title">Authorization Created &amp; Processed Successfully</span>
+            <span class="aap-banner-msg">
+              Authorization <strong>{{ pipeline.authNumber }}</strong> has been automatically
+              generated, reviewed against clinical decision rules, and closed with a full
+              approval decision — no manual intervention required.
+            </span>
+            <div class="aap-banner-details">
+              <div class="aap-detail-item">
+                <span class="aap-detail-label">Authorization #</span>
+                <span class="aap-detail-value">{{ pipeline.authNumber }}</span>
+              </div>
+              <div class="aap-detail-item">
+                <span class="aap-detail-label">Auth Status</span>
+                <span class="aap-detail-value">Closed</span>
+              </div>
+              <div class="aap-detail-item">
+                <span class="aap-detail-label">Status Reason</span>
+                <span class="aap-detail-value">Decisioned</span>
+              </div>
+              <div class="aap-detail-item">
+                <span class="aap-detail-label">Decision</span>
+                <span class="aap-detail-value">Approved</span>
+              </div>
+              <div class="aap-detail-item">
+                <span class="aap-detail-label">Decision Code</span>
+                <span class="aap-detail-value">Auto Approved</span>
+              </div>
+              <div class="aap-detail-item">
+                <span class="aap-detail-label">Fax Record</span>
+                <span class="aap-detail-value">Processed</span>
+              </div>
+            </div>
+            <div class="aap-processed-pill">
+              <span class="material-icons">task_alt</span>
+              Fax moved to Processed — visible in the Processed tab
+            </div>
+          </div>
+        </div>
+
+        <!-- Outcome banner — requires review -->
+        <div class="aap-outcome-banner aap-banner-review"
+             *ngIf="pipeline.outcome === 'requires-review' || pipeline.outcome === 'no-rules-match'">
+          <span class="material-icons aap-banner-icon">rate_review</span>
+          <div class="aap-banner-body">
+            <span class="aap-banner-title">Clinical Review Required</span>
+            <span class="aap-banner-msg">{{ pipeline.errorMessage }}</span>
+          </div>
+        </div>
+
+        <!-- Outcome banner — member unresolved -->
+        <div class="aap-outcome-banner aap-banner-warn" *ngIf="pipeline.outcome === 'no-member-match'">
+          <span class="material-icons aap-banner-icon">person_search</span>
+          <div class="aap-banner-body">
+            <span class="aap-banner-title">Member Identity Unresolved</span>
+            <span class="aap-banner-msg">{{ pipeline.errorMessage }}</span>
+          </div>
+        </div>
+
+        <!-- Outcome banner — error -->
+        <div class="aap-outcome-banner aap-banner-error" *ngIf="pipeline.outcome === 'error'">
+          <span class="material-icons aap-banner-icon">error_outline</span>
+          <div class="aap-banner-body">
+            <span class="aap-banner-title">Processing Exception</span>
+            <span class="aap-banner-msg">{{ pipeline.errorMessage }}</span>
+          </div>
+        </div>
+
+      </div><!-- /aap-card -->
+    </div><!-- /pipeline-modal-body -->
+
+    <!-- ── Modal footer — shown when all pipelines are complete ──── -->
+    <div class="pipeline-modal-footer" *ngIf="allPipelinesComplete">
+
+      <ng-container *ngIf="visiblePipelines[0]?.outcome === 'auto-approved'">
+        <button class="pipeline-footer-btn pipeline-footer-btn--processed"
+                (click)="selectStatusChip('processed'); closePipelinePopup()">
+          <span class="material-icons">folder_open</span>
+          View Processed Faxes
+        </button>
+
+        <button class="pipeline-footer-btn pipeline-footer-btn--view"
+                *ngIf="visiblePipelines[0]?.authNumber"
+                (click)="viewAutoAuth(visiblePipelines[0]); closePipelinePopup()">
+          <span class="material-icons">open_in_new</span>
+          Open Auth {{ visiblePipelines[0]?.authNumber }}
+        </button>
+      </ng-container>
+
+      <button class="pipeline-footer-btn pipeline-footer-btn--close"
+              (click)="closePipelinePopup()">
+        <span class="material-icons">check</span>
+        Done
+      </button>
+
+    </div><!-- /pipeline-modal-footer -->
+
+  </div><!-- /pipeline-modal -->
+</div><!-- /pipeline-backdrop -->
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
      TABLE VIEW (when preview is closed)
      ═══════════════════════════════════════════════════════════════════ -->
 <div class="table-wrapper" *ngIf="!showPreview">
@@ -431,7 +637,7 @@
         <app-authdetails #authDetailsRef
           [faxPrefill]="currentFaxPrefill"
           (authSaved)="onAuthSaved($any($event))"
-          (authCancelled)="cancelAuthForm()">
+          (authCancelled)="onAutoAuthCancelled()">
         </app-authdetails>
       </div>
     </ng-container>
@@ -1152,6 +1358,31 @@
     </ng-template>
 
   </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     PIPELINE AUTO-SAVE — Hidden AuthDetails instance
+     ───────────────────────────────────────────────────────────────────
+     Rendered off-screen when the pipeline is running Step 4.
+     The component is FULLY instantiated (ngOnInit, ngOnChanges, template
+     load, OCR prefill, autoSave save()) but the user never sees it.
+     Only the pipeline progress panel above is visible.
+
+     Isolation from the manual Generate Auth flow is complete:
+       • isAutoSavePipelineActive / pipelineFaxPrefill  → this hidden instance
+       • showAuthForm / currentFaxPrefill               → the visible middle pane
+     The two instances never conflict.
+     ═══════════════════════════════════════════════════════════════════ -->
+<div style="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;"
+     aria-hidden="true"
+     *ngIf="isAutoSavePipelineActive && pipelineFaxPrefill">
+  <app-authdetails
+    #pipelineAuthRef
+    [faxPrefill]="pipelineFaxPrefill"
+    (authSaved)="onAuthSaved($any($event))"
+    (authCancelled)="onAutoAuthCancelled()">
+  </app-authdetails>
 </div>
 
 

@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// FILE: src/app/shared/interfaces/fax-auth-prefill.interface.ts
+// FILE: src/app/dash-board/faxes/fax-auth-prefill.interface.ts
 // ─────────────────────────────────────────────────────────────────────────────
 /**
  * Carries OCR-extracted data from a Fax document into the AuthDetails component
@@ -31,6 +31,21 @@ export interface FaxAuthPrefill {
   // ── Smart Auth Check result ─────────────────────────────────────────────
   /** Raw AuthApprove value from rules engine (e.g. 'Yes','No') — enables auto-approve in AuthDetails */
   authApprove?: string;
+
+  // ── Auto-Save (pipeline mode) ───────────────────────────────────────────
+  /**
+   * When true, AuthdetailsComponent calls save() automatically after all
+   * template fields have been prefilled.  Used by the Intelligent
+   * Auto-Authorization Pipeline so no user interaction is needed.
+   *
+   * Bypasses form-required validation, template validation dialogs, and
+   * duplicate-check dialogs — appropriate only when the rules engine has
+   * already approved the request (authApprove === 'Yes').
+   *
+   * The component still performs the full save: generates authNumber,
+   * builds jsonData, seeds Decision rows, and emits authSaved.
+   */
+  autoSave?: boolean;
 
   // ── Diagnosis ───────────────────────────────────────────────────────────
   diagnosisCodes?: string[];           // ["A00.1"]

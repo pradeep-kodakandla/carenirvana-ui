@@ -549,6 +549,24 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     return this.faxPrefill?.mode === 'fax';
   }
 
+  /**
+   * True when the Intelligent Auto-Authorization Pipeline has requested a silent
+   * unattended save (faxPrefill.autoSave === true).
+   *
+   * In this mode the three interactive guards in save() are bypassed:
+   *   • form.invalid check  — required fields may not all be filled by OCR data
+   *   • template-validation dialog — no human present to respond
+   *   • duplicate-check dialog — pipeline assumes uniqueness check already done
+   *
+   * Every other part of the save path executes normally, including:
+   *   authNumber generation, jsonData serialisation, resolveAutoApproveAuthStatusValues,
+   *   seedDecisionAfterSave, and authSaved emit.
+   */
+  private get isAutoSaveMode(): boolean {
+    return (this.pendingFaxPrefill as any)?.autoSave === true
+        || (this.faxPrefill       as any)?.autoSave === true;
+  }
+
   /** Returns true if the given control was populated from fax OCR data. */
   isFaxPrefilled(controlName: string): boolean {
     return this.faxPrefilledControls.has(controlName);
@@ -3443,7 +3461,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
     this.form.markAllAsTouched();
 
-    if (this.form.invalid) {
+    if (this.form.invalid && !this.isAutoSaveMode) {
       // Collect labels of all invalid required fields
       const missingFields = this.collectInvalidFieldLabels();
       const message = missingFields.length > 0
@@ -3463,7 +3481,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     // Template validation (rules from getTemplateValidation), displayed per section like AuthorizationComponent
     const { failedErrors, failedWarnings, allMessages } = this.runTemplateValidation();
 
-    if (allMessages.length > 0) {
+    if (allMessages.length > 0 && !this.isAutoSaveMode) {
       const allowContinue = failedErrors.length === 0;
 
       const dialogRef = this.dialog.open(ValidationErrorDialogComponent, {
@@ -3486,7 +3504,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     // ── Duplicate authorization check (async — calls backend API) ──
     // Only run on authorization creation (before authNumber is generated);
     // skip on update since the authorization already exists.
-    if (!this.hasExistingAuthNumberInRoute()) {
+    if (!this.hasExistingAuthNumberInRoute() && !this.isAutoSaveMode) {
       const dupResult = await this.runDuplicateChecks();
       if (dupResult === 'blocked') return;
     }
@@ -8621,6 +8639,40 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     this._faxPrefillInProgress = false;
     this.faxPrefillApplied = true;
     this.pendingFaxPrefill = null;
+
+    // ── AUTO-SAVE (Intelligent Authorization Pipeline) ───────────────────────
+    // When the pipeline sets autoSave: true on the prefill, the component calls
+    // save() automatically after all template fields and dropdowns have settled.
+    //
+    // The 900 ms delay covers:
+    //   • prefetchDropdownOptions() async fetches (~300–500 ms on slow connections)
+    //   • setupVisibilityWatcher() hiding/disabling required-but-hidden fields
+    //   • The two form.patchValue nudges (150 ms + 400 ms) settling
+    //   • _captureCleanSnapshot() 600 ms timer starting
+    //
+    // The pipeline UI shows a spinning Step 4 card during this window.
+    if ((pf as any).autoSave === true) {
+      setTimeout(async () => {
+        try {
+          await this.save();
+          // On success: save() emits authSaved → faxes.component.onAuthSaved()
+          // completes pipeline Steps 4 and 5.
+        } catch (err: any) {
+          if (err?.validation) {
+            // form.invalid was true even after bypassing the guard — extremely rare,
+            // only possible if a non-hidden required control has no default and no prefill.
+            console.warn('[AutoSave] Validation prevented auto-save:', err.message);
+          } else {
+            console.error('[AutoSave] Unexpected error during auto-save:', err);
+          }
+          // Signal the pipeline that auto-save failed.
+          // faxes.component.onAutoAuthCancelled() handles the UI update.
+          if (!this.isSaving) {
+            this.authCancelled.emit();
+          }
+        }
+      }, 900);
+    }
   }
 
   private async applyFaxProviderPrefill(pf: FaxAuthPrefill): Promise<void> {

@@ -17,6 +17,7 @@ import { SmartCheckResultDialogComponent, SmartCheckDialogAction, SmartCheckDial
 import { RulesengineService, ExecuteTriggerResponse } from 'src/app/service/rulesengine.service';
 import { HeaderService } from 'src/app/service/header.service';
 import { AuthDetailApiService } from 'src/app/service/authdetailapi.service';
+import { MemberSummary } from 'src/app/service/dashboard.service.service';
 import { Router } from '@angular/router';
 import { FaxAuthPrefill } from './fax-auth-prefill.interface';
 import { AuthdetailsComponent } from 'src/app/member/UM/steps/authdetails/authdetails.component';
@@ -75,6 +76,39 @@ export interface FaxFileListResponse {
   totalPages: number;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Auto-Authorization Pipeline types
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type PipelineStepStatus = 'pending' | 'running' | 'success' | 'skipped' | 'error';
+
+export interface PipelineStep {
+  key: string;
+  label: string;
+  detail: string;
+  status: PipelineStepStatus;
+}
+
+export type PipelineOutcome =
+  | 'auto-approved'    // Auth created automatically — fax moved to Processed
+  | 'requires-review'  // Rules engine returned AuthApprove ≠ Yes → user must review
+  | 'no-member-match'  // Member could not be resolved from extracted data
+  | 'no-rules-match'   // Rules engine returned NO_MATCH / unmatched
+  | 'error';           // Unexpected failure at any step
+
+export interface AutoAuthPipeline {
+  id: string;
+  faxId: number | null;
+  fileName: string;
+  steps: PipelineStep[];
+  outcome: PipelineOutcome | null;
+  authNumber: string | null;
+  authId: number | null;
+  errorMessage: string;
+  dismissed: boolean;
+  startedAt: Date;
+}
+
 @Component({
   selector: 'app-faxes',
   templateUrl: './faxes.component.html',
@@ -125,7 +159,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   isProcessing = false;
   error: string | null = null;
   progress = 0;
-  //error = signal<string | null>(null);
   priorAuth: PriorAuth | null = null;
 
   // ── AI Summary (auto-generated on preview) ────────────────────────
@@ -145,13 +178,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   isLoadingDetails: boolean = false;
   currentIndex: number = -1;
 
-  /** Monotonic counter — incremented every time a new extraction starts.
-   *  Each async onFileChosen captures its own snapshot; if a newer extraction
-   *  has started by the time it finishes, the stale result is discarded. */
   private _extractionGen = 0;
-
-  /** Subscription for the current getFaxFileById call so we can cancel the
-   *  previous one when navigating to a new fax. */
   private _faxFetchSub: { unsubscribe(): void } | null = null;
 
   splitFirstPageCount: number | null = 1;
@@ -159,7 +186,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   splitMode = false;
   splitCompleted = false;
 
-  // ── Field Highlight (pdf-lib draws on PDF, no external deps) ────────
+  // ── Field Highlight ────────────────────────────────────────────────
   hlKey: string | null = null;
   hlLabel: string | null = null;
   hlValue: string | null = null;
@@ -170,39 +197,33 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   private _rawPreviewUrl: string | null = null;
   private _highlightedBlobUrl: string | null = null;
 
-  /** Cached text items from pdf.js getTextContent — extracted once per PDF */
   private _pdfTextItems: Array<{
     str: string; pageIndex: number;
     x: number; y: number; w: number; h: number;
   }> = [];
   private _pdfTextExtracted = false;
-  private _pdfjsLib: any = null; // dynamically loaded pdf.js
-  private _ocrByPage: Array<{ page: number; text: string }> = []; // cached from OCR extraction
+  private _pdfjsLib: any = null;
+  private _ocrByPage: Array<{ page: number; text: string }> = [];
 
-  /** Category → rgb color for highlight rectangles */
   private readonly HL_COLORS: Record<string, { r: number; g: number; b: number }> = {
-    patient: { r: 0.15, g: 0.39, b: 0.92 },
-    review: { r: 0.49, g: 0.23, b: 0.93 },
-    service: { r: 0.85, g: 0.47, b: 0.02 },
-    provider: { r: 0.02, g: 0.59, b: 0.41 },
+    patient:    { r: 0.15, g: 0.39, b: 0.92 },
+    review:     { r: 0.49, g: 0.23, b: 0.93 },
+    service:    { r: 0.85, g: 0.47, b: 0.02 },
+    provider:   { r: 0.02, g: 0.59, b: 0.41 },
     submission: { r: 0.39, g: 0.40, b: 0.95 },
   };
 
   loadedMemberId: number | null = null;
 
   faxesRaw: FaxFile[] = [];
-  groupedFaxes: FaxFile[] = []; // what we bind to the table
-
-
-  // backing list from API (getfaxfiles)
+  groupedFaxes: FaxFile[] = [];
   allFaxes: any[] = [];
 
-  // workbasket chips (fax-only)
   faxWorkBaskets: { id: number; name: string; count: number }[] = [];
   selectedWorkBasket: string | null = null;
   totalFaxCount = 0;
 
-  // ── Linked Auth metadata (parsed from metaJson when auth already exists) ──
+  // ── Linked Auth metadata ────────────────────────────────────────────
   linkedAuthMeta: {
     linkedAuthNumber: string;
     linkedAuthId: number;
@@ -223,10 +244,79 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   discardDialogContext: 'backToDetails' | 'closePreview' = 'backToDetails';
   private _pendingDiscardAction: (() => void) | null = null;
 
-  /** Which iframe is currently visible: 'A' or 'B' */
   pdfActiveFrame: 'A' | 'B' = 'A';
-  /** Which iframe is waiting to finish loading (null = nothing pending) */
   private _pendingFrame: 'A' | 'B' | null = null;
+
+  // ── Auto-Authorization Pipeline ─────────────────────────────────────
+  autoAuthPipelines: AutoAuthPipeline[] = [];
+
+  /**
+   * Holds the pipeline currently driving a silent auto-save.
+   * Cleared in onAuthSaved() / onAutoAuthCancelled() after Steps 4 and 5.
+   */
+  private _activeAutoAuthPipeline: AutoAuthPipeline | null = null;
+
+  /**
+   * Controls the hidden pipeline <app-authdetails> instance.
+   * true  → Angular renders the component in a display:none container so it
+   *         can initialise, load the template, prefill fields, and call save()
+   *         entirely without any visible UI change for the user.
+   * false → component is destroyed (not in DOM).
+   *
+   * Deliberately separate from showAuthForm so the manual Generate Auth panel
+   * is completely unaffected by the pipeline.
+   */
+  isAutoSavePipelineActive = false;
+
+  /**
+   * Prefill data sent exclusively to the hidden pipeline instance.
+   * Separate from currentFaxPrefill (used by the manual auth form).
+   */
+  pipelineFaxPrefill: FaxAuthPrefill | null = null;
+
+  /** ViewChild for the hidden pipeline auth instance. */
+  @ViewChild('pipelineAuthRef') pipelineAuthRef?: AuthdetailsComponent;
+
+  /**
+   * Controls the pipeline progress popup dialog.
+   * Set to true when the first pipeline is created; user closes it explicitly
+   * via closePipelinePopup() once all pipelines have a non-null outcome.
+   */
+  showPipelinePopup = false;
+
+  /** True when all visible pipelines have reached a terminal outcome. */
+  get allPipelinesComplete(): boolean {
+    const visible = this.visiblePipelines;
+    return visible.length > 0 && visible.every(p => p.outcome !== null);
+  }
+
+  closePipelinePopup(): void {
+    if (!this.allPipelinesComplete) return; // block while still running
+    this.showPipelinePopup = false;
+    this.dismissAllCompletedPipelines();
+  }
+
+  /** Minimise the popup without dismissing pipelines (user can re-open via notification). */
+  minimisePipelinePopup(): void {
+    this.showPipelinePopup = false;
+  }
+
+  /** Re-open the popup (e.g. if user minimised while steps were running). */
+  reopenPipelinePopup(): void {
+    if (this.visiblePipelines.length > 0) this.showPipelinePopup = true;
+  }
+
+  get visiblePipelines(): AutoAuthPipeline[] {
+    return this.autoAuthPipelines.filter(p => !p.dismissed);
+  }
+
+  get hasCompletedPipelines(): boolean {
+    return this.visiblePipelines.some(p => p.outcome !== null);
+  }
+
+  trackByPipelineId(_: number, p: AutoAuthPipeline): string {
+    return p.id;
+  }
 
   constructor(private pdfOcr: PdfOcrService, private destroyRef: DestroyRef,
     private api: DashboardServiceService, private sanitizer: DomSanitizer,
@@ -236,8 +326,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     private router: Router,
     private snackBar: MatSnackBar,
     private http: HttpClient) {
-    // snackBar is intentionally kept injected for compatibility with older call-sites,
-    // but we now show messages inline below the search bar.
     void this.snackBar;
   }
 
@@ -262,14 +350,10 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   }
 
   private toast(message: string, isError = false): void {
-    // Keep existing call-sites intact, but render the message below the search bar instead of a toast/snackbar.
     this.showInlineMessage(message, isError ? 'error' : 'success', 4000);
   }
 
-  // helper: pick the most likely Texas page, falling back to last page
-
   private pickTexasPage(byPage: { page: number; text: string }[]): number {
-    // look for tokens that only appear on the filled form page
     const signals = [
       /Planned Service or Procedure Code/i,
       /Member or Medicaid ID/i,
@@ -283,11 +367,9 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       score: signals.reduce((a, re) => a + (re.test(p.text) ? 1 : 0), 0)
     })).sort((a, b) => b.score - a.score);
 
-    // best score, else prefer last page (Texas form is often on page 2)
     return (scored[0]?.score ?? 0) > 0 ? scored[0].page : (byPage[byPage.length - 1]?.page || 1);
   }
 
-  // helper: pick the most likely Arizona CMDP page
   private pickArizonaPage(byPage: { page: number; text: string }[]): number {
     const signals = [
       /CSO-1179A/i,
@@ -311,7 +393,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     this.currentUserId = Number(sessionStorage.getItem('loggedInUserid')) || 1;
     this.api.getuserworkgroups(Number(sessionStorage.getItem('loggedInUserid'))).subscribe({
       next: (res: any[]) => {
-
         this.faxWorkBaskets = (res || [])
           .filter(wg => wg.isFax === true)
           .map(wg => ({
@@ -320,7 +401,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
             count: 0
           }));
         this.workBasketOptions = this.faxWorkBaskets.map(wb => ({
-          value: wb.name,   // we store workBasket as its name in the fax row
+          value: wb.name,
           label: wb.name
         }));
         this.updateFaxCounts();
@@ -337,16 +418,15 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     this.dataSource.sort = this.sort;
     this.dataSource.paginator = this.paginator;
 
-    // Custom sorting data accessor for columns that don't map 1:1 to property names
     this.dataSource.sortingDataAccessor = (item: FaxFile, sortHeaderId: string): string | number => {
       switch (sortHeaderId) {
-        case 'fileName': return (item.fileName || '').toLowerCase();
+        case 'fileName':   return (item.fileName || '').toLowerCase();
         case 'receivedAt': return item.receivedAt ? new Date(item.receivedAt).getTime() : 0;
-        case 'member': return (item.memberName || '').toLowerCase();
+        case 'member':     return (item.memberName || '').toLowerCase();
         case 'workBasket': return (item.workBasket || '').toLowerCase();
-        case 'priority': return item.priority ?? 2;
-        case 'status': return (item.status || '').toLowerCase();
-        default: return '';
+        case 'priority':   return item.priority ?? 2;
+        case 'status':     return (item.status || '').toLowerCase();
+        default:           return '';
       }
     };
   }
@@ -359,18 +439,15 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       .subscribe({
         next: (res: FaxFileListResponse) => {
           const rawItems = this.getItems(res);
-          // 🔁 normalize every row to camelCase FaxFile
           const rows = rawItems.map(this.normalizeFax);
-          this.faxesRaw = rows; // ✅ always work with normalized rows
+          this.faxesRaw = rows;
           this.total = this.getTotal(res);
           this.buildFaxHierarchy();
-          //this.dataSource.data = rows;
 
-          // keep selection in sync if visible in page (compare against normalized rows)
           if (this.selectedFax) {
             const found = rows.find(x => x.faxId === this.selectedFax!.faxId);
             if (!found) this.selectedFax = undefined;
-            else this.selectedFax = found; // refresh with latest copy
+            else this.selectedFax = found;
           }
         },
         error: _ => {
@@ -379,7 +456,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
           this.dataSource.data = [];
           this.total = 0;
           this.allFaxes = [];
-
           this.updateFaxCounts();
         }
       });
@@ -388,7 +464,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   private buildFaxHierarchy(): void {
     const byId = new Map<number, FaxFile>();
 
-    // Initialize helper flags and map, but only when we have a real id
     (this.faxesRaw || []).forEach(f => {
       f.children = [];
       f.hasChildren = false;
@@ -405,19 +480,16 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     (this.faxesRaw || []).forEach(f => {
       const parentId = f.parentFaxId ?? null;
 
-      // If parentFaxId has a valid parent in list -> attach as child
       if (parentId && parentId > 0 && byId.has(parentId)) {
         const parent = byId.get(parentId)!;
         parent.children!.push(f);
         parent.hasChildren = true;
         f.isChild = true;
       } else {
-        // Either parentFaxId is null/0 OR parent not found -> treat as root
         roots.push(f);
       }
     });
 
-    // Flatten for mat-table: parent followed by its children
     const flat: FaxFile[] = [];
     roots.forEach(p => {
       flat.push(p);
@@ -428,49 +500,43 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
     this.groupedFaxes = flat;
     this.dataSource.data = this.groupedFaxes;
-
-    // Keep an unfiltered reference for chip counts & workbasket filtering
     this.allFaxes = this.groupedFaxes || [];
-    // total comes from API paging response; keep as-is
-
     this.applyWorkBasketFilter();
     this.updateFaxCounts();
   }
 
-  // Put this helper in your component (or a utils file)
   private normalizeFax = (r: any): FaxFile => ({
-    faxId: r.faxId ?? r.FaxId,
-    fileName: r.fileName ?? r.FileName,
-    receivedAt: r.receivedAt ?? r.ReceivedAt,
-    pageCount: r.pageCount ?? r.PageCount,
-    memberId: r.memberId ?? r.MemberId ?? null,
-    memberName: r.memberName ?? r.MemberName ?? null,
+    faxId:         r.faxId         ?? r.FaxId,
+    fileName:      r.fileName      ?? r.FileName,
+    receivedAt:    r.receivedAt    ?? r.ReceivedAt,
+    pageCount:     r.pageCount     ?? r.PageCount,
+    memberId:      r.memberId      ?? r.MemberId      ?? null,
+    memberName:    r.memberName    ?? r.MemberName    ?? null,
     memberDetailsId: r.memberDetailsId ?? r.MemberDetailsId ?? null,
-    workBasket: r.workBasket ?? r.WorkBasket ?? null,
-    priority: r.priority ?? r.Priority ?? 2,
-    status: r.status ?? r.Status ?? 'New',
-    url: r.url ?? r.Url ?? null,
-    originalName: r.originalName ?? r.OriginalName ?? null,
-    contentType: r.contentType ?? r.ContentType ?? null,
-    sizeBytes: r.sizeBytes ?? r.SizeBytes ?? null,
-    sha256Hex: r.sha256Hex ?? r.Sha256Hex ?? null,
-    fileBytes: r.fileBytes ?? r.FileBytes ?? null,
-    uploadedBy: r.uploadedBy ?? r.UploadedBy ?? null,
-    uploadedAt: r.uploadedAt ?? r.UploadedAt ?? null,
+    workBasket:    r.workBasket    ?? r.WorkBasket    ?? null,
+    priority:      r.priority      ?? r.Priority      ?? 2,
+    status:        r.status        ?? r.Status        ?? 'New',
+    url:           r.url           ?? r.Url           ?? null,
+    originalName:  r.originalName  ?? r.OriginalName  ?? null,
+    contentType:   r.contentType   ?? r.ContentType   ?? null,
+    sizeBytes:     r.sizeBytes     ?? r.SizeBytes     ?? null,
+    sha256Hex:     r.sha256Hex     ?? r.Sha256Hex     ?? null,
+    fileBytes:     r.fileBytes     ?? r.FileBytes     ?? null,
+    uploadedBy:    r.uploadedBy    ?? r.UploadedBy    ?? null,
+    uploadedAt:    r.uploadedAt    ?? r.UploadedAt    ?? null,
     processStatus: r.processStatus ?? r.ProcessStatus ?? 'Pending',
-    metaJson: r.metaJson ?? r.MetaJson ?? null,
-    ocrText: r.ocrText ?? r.OcrText ?? null,
-    ocrJsonPath: r.ocrJsonPath ?? r.OcrJsonPath ?? null,
-    createdBy: r.createdBy ?? r.CreatedBy ?? null,
-    createdOn: r.createdOn ?? r.CreatedOn ?? null,
-    updatedOn: r.updatedOn ?? r.UpdatedOn ?? null,
-    updatedBy: r.updatedBy ?? r.UpdatedBy ?? null,
-    parentFaxId: r.parentFaxId ?? r.ParentFaxId ?? null,
-    deletedOn: r.deletedOn ?? r.DeletedOn ?? null,
-    deletedBy: r.deletedBy ?? r.DeletedBy ?? null
+    metaJson:      r.metaJson      ?? r.MetaJson      ?? null,
+    ocrText:       r.ocrText       ?? r.OcrText       ?? null,
+    ocrJsonPath:   r.ocrJsonPath   ?? r.OcrJsonPath   ?? null,
+    createdBy:     r.createdBy     ?? r.CreatedBy     ?? null,
+    createdOn:     r.createdOn     ?? r.CreatedOn     ?? null,
+    updatedOn:     r.updatedOn     ?? r.UpdatedOn     ?? null,
+    updatedBy:     r.updatedBy     ?? r.UpdatedBy     ?? null,
+    parentFaxId:   r.parentFaxId   ?? r.ParentFaxId   ?? null,
+    deletedOn:     r.deletedOn     ?? r.DeletedOn     ?? null,
+    deletedBy:     r.deletedBy     ?? r.DeletedBy     ?? null
   });
 
-  // If the list object itself might be camel/Pascal, normalize those too:
   private getItems = (res: any) => (res?.items ?? res?.Items ?? []) as any[];
   private getTotal = (res: any) => (res?.total ?? res?.Total ?? 0);
 
@@ -487,16 +553,12 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   // -------- Preview --------
   openPreview(row: any): void {
     this.selectedFax = row;
-
-    // Parse linked auth metadata — if auth already linked, skip Smart Auth Check
     this.linkedAuthMeta = this.parseLinkedAuthMeta(row.metaJson ?? row.MetaJson ?? null);
 
-    // 🔹 Cancel any in-flight fetch / extraction from the previous fax
     this._faxFetchSub?.unsubscribe();
     this._faxFetchSub = null;
-    this._extractionGen++;            // invalidate any running onFileChosen
+    this._extractionGen++;
 
-    // 🔹 Start details loader & clear stale data
     this.isLoadingDetails = true;
     this.priorAuth = null;
     this.aiSummary = null;
@@ -517,68 +579,51 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     this._pendingFrame = null;
     if (this._highlightedBlobUrl) { URL.revokeObjectURL(this._highlightedBlobUrl); this._highlightedBlobUrl = null; }
 
-    // Show the split view immediately
     this.showPreview = true;
 
     const data = this.dataSource?.data || [];
     const idx = data.findIndex(d => d.faxId === row.faxId);
-
-    // if we find the fax in the list, use that index, otherwise default to 0
     this.currentIndex = idx >= 0 ? idx : 0;
 
     this._faxFetchSub = this.api.getFaxFileById(row.faxId).subscribe({
       next: (res: any) => {
-        const fileBytes = res.fileBytes ?? res.FileBytes ?? null;
+        const fileBytes   = res.fileBytes ?? res.FileBytes ?? null;
         const contentType = res.contentType ?? res.ContentType ?? 'application/pdf';
-        const fileUrl = res.url ?? res.Url ?? null;
+        const fileUrl     = res.url ?? res.Url ?? null;
 
-        // If backend returns base64 data, pass it to your existing handler
         const base64 = fileBytes;
         if (base64) {
-          // NOTE: if onFileChosen triggers OCR/extraction, keep the loader on.
-          // Be sure to set `this.isLoadingDetails = false` when you set `this.priorAuth`.
-          const uniqueName =
-            row.fileName ||
-            row.originalName ||
-            `fax-${row.faxId}.pdf`;
-
+          const uniqueName = row.fileName || row.originalName || `fax-${row.faxId}.pdf`;
           this.onFileChosen(undefined, base64, uniqueName);
-          //this.onFileChosen(undefined, base64, row.OriginalName ?? 'preview.pdf');
         }
 
         if (fileBytes) {
           const u8 = this.base64ToUint8Array(fileBytes);
-          // ✅ Keep bytes around so we can split without re-fetching
           this.currentFaxBytes = u8;
           this.currentFaxContentType = contentType;
           this.currentFaxOriginalName = row.fileName ?? 'preview.pdf';
           const objUrl = this.makePdfBlobUrl(u8, contentType);
           this._rawPreviewUrl = objUrl;
           this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(objUrl);
-          // Load into active iframe after Angular renders the container
           setTimeout(() => this.loadIntoActiveFrame(objUrl), 0);
-          return; // Keep loader running until priorAuth is set elsewhere.
+          return;
         }
 
-        // Fallback: stream from server
         if (fileUrl) {
           this._rawPreviewUrl = fileUrl;
           this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fileUrl);
           this.currentFaxBytes = null;
           this.currentFaxContentType = contentType;
           this.currentFaxOriginalName = row.fileName ?? 'preview.pdf';
-          // Load into active iframe after Angular renders the container
           setTimeout(() => this.loadIntoActiveFrame(fileUrl), 0);
-          return; // Keep loader running until priorAuth is set elsewhere.
+          return;
         }
 
-        // If nothing usable came back, clear preview and stop loader
         this.previewUrl = null;
         this.isLoadingDetails = false;
       },
       error: (err) => {
         console.error('Error fetching fax file:', err);
-        // Stop loader on failure
         this.isLoadingDetails = false;
         this.previewUrl = null;
       }
@@ -587,12 +632,10 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
   closePreview(): void {
     const doClose = () => {
-      // Cancel any in-flight fetch / extraction
       this._faxFetchSub?.unsubscribe();
       this._faxFetchSub = null;
       this._extractionGen++;
 
-      // Reset auth form state so a subsequent openPreview always starts fresh
       this.showAuthForm = false;
       this.currentFaxPrefill = null;
 
@@ -625,7 +668,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       if (this._highlightedBlobUrl) { URL.revokeObjectURL(this._highlightedBlobUrl); this._highlightedBlobUrl = null; }
     };
 
-    // If the auth form is open and has unsaved changes, show the styled discard dialog
     if (this.showAuthForm && this.authDetailsRef?.authHasUnsavedChanges?.()) {
       this.discardDialogContext = 'closePreview';
       this._pendingDiscardAction = doClose;
@@ -659,15 +701,12 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
   private async tryExtractMemberIdFromPdf(file: File): Promise<string | number | null> {
     try {
-      // Run extraction without updating the UI progress bar.
       const res: any = await this.pdfOcr.extract(file, () => void 0);
 
-      // First pass: generic extractor over the whole text
       const pa = extractPriorAuth(res?.text ?? '');
       const direct = pa?.patient?.memberId ?? null;
       if (direct) return direct;
 
-      // Texas forms sometimes need the filled form page parsed specifically
       const allText: string = String(res?.text ?? '');
       const isTexas = /TEXAS STANDARD PRIOR AUTHORIZATION|NOFR001/i.test(allText);
 
@@ -687,7 +726,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         }
       }
 
-      // Arizona CMDP forms
       const isArizona = /CSO-1179A|CMDP|COMPREHENSIVE MEDICAL AND DENTAL PROGRAM/i.test(allText);
       if (isArizona && byPage.length) {
         const formPage = this.pickArizonaPage(byPage);
@@ -697,7 +735,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
           const azMember = az?.patient?.memberId ?? null;
           if (azMember) return azMember;
 
-          // Fallback: extract CMDP ID directly from text
           const cmdpMatch = pageText.match(/CMDP\s+ID\s+NO\.?\s*[\s\n\r]+(\S+)/i);
           if (cmdpMatch?.[1]) return cmdpMatch[1].trim();
         }
@@ -710,14 +747,18 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     }
   }
 
-
-
   async saveFileData(
     e?: Event | null,
     fileOverride?: File,
-    opts?: { parentFaxId?: number | null; inheritFrom?: FaxFile; metaJson?: string; suppressToast?: boolean; suppressReload?: boolean; successMessage?: string }
+    opts?: {
+      parentFaxId?: number | null;
+      inheritFrom?: FaxFile;
+      metaJson?: string;
+      suppressToast?: boolean;
+      suppressReload?: boolean;
+      successMessage?: string;
+    }
   ): Promise<void> {
-    // if split provided a file, use that
     let file: File | undefined;
 
     if (fileOverride) {
@@ -725,18 +766,13 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     } else if (e) {
       const input = e.target as HTMLInputElement;
       file = input.files?.[0];
-      if (input) {
-        input.value = ''; // allow re-selecting same file
-      }
+      if (input) input.value = '';
     }
 
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
-    // --- derive file fields
-    const contentType = file.type || 'application/pdf';
-    const sizeBytes = file.size;
+    const contentType  = file.type || 'application/pdf';
+    const sizeBytes    = file.size;
     const originalName = file.name;
     const [sha256Hex, fileDataBase64, pageCount] = await Promise.all([
       this.computeSha256Hex(file),
@@ -748,7 +784,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       ? fileDataBase64.split('base64,')[1]
       : fileDataBase64;
 
-    // --- inherit fields when saving a split child (or keep defaults)
     const inherit = opts?.inheritFrom;
     const priority: 1 | 2 | 3 = (inherit?.priority as 1 | 2 | 3) ?? 2;
 
@@ -757,50 +792,41 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       (this.priorAuth as any)?.patient?.memberId ??
       null;
 
-    // When uploading a new fax via <input type="file">, we haven't populated `priorAuth` yet.
-    // Extract memberId from the PDF itself so the save payload can include it.
-    if (detectedMemberIdRaw === null || detectedMemberIdRaw === undefined || String(detectedMemberIdRaw).trim() === '') {
+    if (
+      detectedMemberIdRaw === null ||
+      detectedMemberIdRaw === undefined ||
+      String(detectedMemberIdRaw).trim() === ''
+    ) {
       detectedMemberIdRaw = await this.tryExtractMemberIdFromPdf(file);
     }
 
-
     const memberId: number | null =
-      detectedMemberIdRaw !== null && detectedMemberIdRaw !== undefined && String(detectedMemberIdRaw).trim() !== ''
+      detectedMemberIdRaw !== null &&
+      detectedMemberIdRaw !== undefined &&
+      String(detectedMemberIdRaw).trim() !== ''
         ? (Number(detectedMemberIdRaw) as any)
         : null;
 
-    // guard against NaN
     const memberIdToSend: number | null =
       memberId !== null && Number.isFinite(memberId) ? memberId : null;
 
-
     const workBasket: string = ('2' ?? '2') as any;
-
-    // --- status/audit/meta
-    const nowIso = new Date().toISOString();
+    const nowIso      = new Date().toISOString();
     const uploadedBy: number | null = this.currentUserId ?? null;
-    const createdBy: number | null = this.currentUserId ?? null;
-    const fileName = originalName; // display name in DB
-
+    const createdBy: number | null  = this.currentUserId ?? null;
     const parentFaxId: number | null = (opts?.parentFaxId ?? null) as any;
-    const metaJson: string =
-      opts?.metaJson ?? JSON.stringify({ source: "UI:Faxes" });
+    const metaJson: string = opts?.metaJson ?? JSON.stringify({ source: 'UI:Faxes' });
 
-
-
-    // --- payload for insertFaxFile (JSON)
     const payload: (ApiFaxFile & { parentFaxId?: number | null; metaJson?: string }) = {
       fileName: originalName,
-      url: undefined,                 // let API set the actual saved path (or send ''/null)
+      url: undefined,
       originalName,
       contentType,
       sizeBytes,
       sha256Hex,
-
       receivedAt: nowIso,
       uploadedBy,
       uploadedAt: nowIso,
-
       pageCount,
       memberId: memberIdToSend as any,
       workBasket,
@@ -816,12 +842,15 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       fileBytes
     };
 
-    // call your API
-    this.uploading = true;
-    this.uploadPercent = 0; // (optional, kept for UI consistency)
+    this.uploading     = true;
+    this.uploadPercent = 0;
 
     try {
-      await firstValueFrom(this.api.insertFaxFile(payload as any));
+      // ── Insert the fax record ─────────────────────────────────────────
+      const inserted: any = await firstValueFrom(this.api.insertFaxFile(payload as any));
+
+      // insertFaxFile returns { newId: number } — matches DashboardServiceService signature
+      const newFaxId: number | null = inserted?.newId ?? null;
 
       if (!opts?.suppressToast) {
         const msg =
@@ -833,31 +862,582 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       }
 
       if (!opts?.suppressReload) {
-        this.reload?.(); // refresh grid/cards
+        this.reload?.();
       }
+
+      // ── ✨ Trigger the Auto-Authorization Pipeline for real user uploads ──
+      // Skip split children — they inherit their parent's authorization workflow.
+      const isTopLevelUpload = !parentFaxId && !fileOverride;
+      if (isTopLevelUpload && newFaxId) {
+        this.triggerAutoAuthorizationPipeline(file, newFaxId).catch((err: any) => {
+          console.error('[AutoAuth] Unhandled pipeline error', err);
+        });
+      }
+
     } catch (err) {
       console.error('insertFaxFile failed', err);
       if (!opts?.suppressToast) {
         this.toast(`Failed to save: ${originalName}`, true);
       }
     } finally {
-      this.uploading = false;
+      this.uploading     = false;
       this.uploadPercent = 0;
     }
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Auto-Authorization Pipeline
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Builds a fresh pipeline state object with all steps initialised to 'pending'.
+   */
+  private buildPipeline(faxId: number | null, fileName: string): AutoAuthPipeline {
+    return {
+      id: `pipeline-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      faxId,
+      fileName,
+      steps: [
+        {
+          key: 'extract',
+          label: 'Extracting Document Data',
+          detail: 'Running optical character recognition on the uploaded fax',
+          status: 'pending',
+        },
+        {
+          key: 'member',
+          label: 'Verifying Member Identity',
+          detail: 'Matching extracted identifiers against the member registry',
+          status: 'pending',
+        },
+        {
+          key: 'rules',
+          label: 'Evaluating Clinical Decision Rules',
+          detail: 'Submitting service codes to the authorization rules engine',
+          status: 'pending',
+        },
+        {
+          key: 'auth',
+          label: 'Provisioning Authorization',
+          detail: 'Creating a closed authorization with auto-approval decision',
+          status: 'pending',
+        },
+        {
+          key: 'finalize',
+          label: 'Finalizing Record',
+          detail: 'Linking authorization to fax and updating processing status',
+          status: 'pending',
+        },
+      ],
+      outcome:      null,
+      authNumber:   null,
+      authId:       null,
+      errorMessage: '',
+      dismissed:    false,
+      startedAt:    new Date(),
+    };
+  }
+
+  /** Updates a single step's status and optionally its detail text. */
+  private setStep(
+    pipeline: AutoAuthPipeline,
+    key: string,
+    status: PipelineStepStatus,
+    detail?: string
+  ): void {
+    const step = pipeline.steps.find(s => s.key === key);
+    if (!step) return;
+    step.status = status;
+    if (detail !== undefined) step.detail = detail;
+    // Trigger Angular change detection on the array reference
+    this.autoAuthPipelines = [...this.autoAuthPipelines];
+  }
+
+  /**
+   * Marks all steps AFTER startKey as 'skipped'.
+   * Called whenever the pipeline terminates early.
+   */
+  private skipRemainingSteps(pipeline: AutoAuthPipeline, afterKey: string): void {
+    const idx = pipeline.steps.findIndex(s => s.key === afterKey);
+    if (idx < 0) return;
+    for (let i = idx + 1; i < pipeline.steps.length; i++) {
+      pipeline.steps[i].status = 'skipped';
+      pipeline.steps[i].detail = 'Step skipped — pipeline terminated at an earlier stage';
+    }
+    this.autoAuthPipelines = [...this.autoAuthPipelines];
+  }
+
+  /**
+   * Runs the OCR extractors against a File object, mirrors the logic in
+   * onFileChosen() so the pipeline stays consistent with the preview pane.
+   */
+  private async runExtractors(file: File): Promise<PriorAuth> {
+    const res = await this.pdfOcr.extract(file, () => void 0);
+    const allText: string = res?.text ?? '';
+    const byPage: Array<{ page: number; text: string }> =
+      (res.byPage ?? []).map((p: any, i: number) => ({
+        page: Number(p?.page ?? (i + 1)),
+        text: String(p?.text ?? '')
+      }));
+
+    let pa = extractPriorAuth(allText);
+
+    const isTexas   = /TEXAS STANDARD PRIOR AUTHORIZATION|NOFR001/i.test(allText);
+    const isArizona = /CSO-1179A|CMDP|COMPREHENSIVE MEDICAL AND DENTAL PROGRAM/i.test(allText);
+    const missingCore =
+      !(pa.patient?.name) ||
+      !(pa.patient?.memberId) ||
+      !(pa.services?.[0]?.code) ||
+      !(pa.review?.type);
+
+    if (isTexas && missingCore && byPage.length) {
+      const formPage = this.pickTexasPage(byPage);
+      const pageText = byPage.find(p => p.page === formPage)?.text?.trim() ?? '';
+      if (pageText) {
+        const tx = extractTexasFromText(pageText);
+        pa = {
+          ...pa,
+          source:             { template: 'Texas TDI NOFR001', confidence: 0.95 },
+          submission:         { ...(pa.submission ?? {}),         ...this.stripEmpty(tx.submission) },
+          patient:            { ...(pa.patient ?? {}),            ...this.stripEmpty(tx.patient) },
+          providerRequesting: { ...(pa.providerRequesting ?? {}), ...this.stripEmpty(tx.providerRequesting) },
+          providerServicing:  { ...(pa.providerServicing ?? {}),  ...this.stripEmpty(tx.providerServicing) },
+          review:             { ...(pa.review ?? {}),             ...this.stripEmpty(tx.review) },
+          services:           tx.services?.length ? tx.services : pa.services,
+        };
+      }
+    }
+
+    if (isArizona && byPage.length) {
+      const formPage = this.pickArizonaPage(byPage);
+      const pageText = byPage.find(p => p.page === formPage)?.text?.trim() ?? '';
+      if (pageText) {
+        const az      = extractArizonaFromText(pageText);
+        const azClean = {
+          patient:            this.stripEmpty(az?.patient),
+          providerRequesting: this.stripEmpty(az?.providerRequesting),
+          providerServicing:  this.stripEmpty(az?.providerServicing),
+          review:             this.stripEmpty(az?.review),
+          services:           az?.services?.filter((s: any) => s?.code || s?.description) ?? [],
+          dx:                 this.stripEmpty(az?.dx),
+          setting:            this.stripEmpty(az?.setting),
+          submission:         this.stripEmpty(az?.submission),
+        };
+        pa = {
+          ...pa,
+          source:             { template: 'AZ CMDP CSO-1179A', confidence: 0.95 },
+          patient:            { ...this.stripEmpty(pa.patient),            ...azClean.patient },
+          providerRequesting: { ...this.stripEmpty(pa.providerRequesting), ...azClean.providerRequesting },
+          providerServicing:  { ...this.stripEmpty(pa.providerServicing),  ...azClean.providerServicing },
+          review:             { ...this.stripEmpty(pa.review),             ...azClean.review },
+          services:           azClean.services.length ? azClean.services : pa.services,
+          dx:                 { ...this.stripEmpty(pa.dx),                 ...azClean.dx },
+          setting:            { ...this.stripEmpty(pa.setting),            ...azClean.setting },
+          submission:         { ...this.stripEmpty(pa.submission),         ...azClean.submission },
+        };
+        this.postProcessArizonaCmdp(pa, allText);
+      }
+    }
+
+    return pa;
+  }
+
+  /**
+   * Main orchestration method — triggers the Intelligent Auto-Authorization Pipeline.
+   *
+   *   Extract → Match Member → Rules Engine → Create Auth (if approved) → Finalize
+   *
+   * Runs entirely in the background; all steps are async and update the shared
+   * `autoAuthPipelines` array which drives the progress panel in the template.
+   */
+  private async triggerAutoAuthorizationPipeline(file: File, faxId: number): Promise<void> {
+    const pipeline = this.buildPipeline(faxId, file.name);
+    this.autoAuthPipelines = [...this.autoAuthPipelines, pipeline];
+    this.showPipelinePopup = true;   // auto-open the popup as soon as processing starts
+
+    // ─── STEP 1: OCR Extraction ─────────────────────────────────────────────
+    this.setStep(pipeline, 'extract', 'running',
+      'Analyzing document structure and extracting text…');
+
+    let pa: PriorAuth;
+
+    try {
+      pa = await this.runExtractors(file);
+      if (!pa) throw new Error('Extraction returned no structured data.');
+      this.setStep(pipeline, 'extract', 'success',
+        'Document data extracted successfully');
+    } catch (err: any) {
+      this.setStep(pipeline, 'extract', 'error',
+        `Extraction failed: ${err?.message ?? 'Unknown error'}`);
+      pipeline.outcome      = 'error';
+      pipeline.errorMessage = 'Document extraction could not be completed. Please review the fax manually.';
+      this.skipRemainingSteps(pipeline, 'extract');
+      return;
+    }
+
+    // ─── STEP 2: Member Match ───────────────────────────────────────────────
+    this.setStep(pipeline, 'member', 'running',
+      'Querying member registry with extracted identifiers…');
+
+    let memberDetailsId: number | null = null;
+    let resolvedMemberId: number | null = null;
+
+    try {
+      const extractedMemberId =
+        (pa as any)?.patient?.memberId ?? null;
+
+      if (!extractedMemberId) {
+        throw new Error('No member identifier could be extracted from the document.');
+      }
+
+      // Use searchMembers (the actual API method) to resolve the member by extracted memberId.
+      // searchMembers returns MemberSummary[] — take the first exact match.
+      let member: MemberSummary | null = null;
+      try {
+        const results = await firstValueFrom(
+          this.api.searchMembers({ memberId: String(extractedMemberId), pageSize: 1 })
+        );
+        member = results?.[0] ?? null;
+      } catch {
+        // searchMembers failed — fall back to raw extracted id without memberDetailsId
+      }
+
+      resolvedMemberId = member?.memberDetailsId
+        ? Number(member.memberId ?? extractedMemberId)
+        : Number(extractedMemberId);
+      memberDetailsId  = member?.memberDetailsId ?? null;
+
+      if (!resolvedMemberId || !Number.isFinite(resolvedMemberId)) {
+        throw new Error('Member could not be uniquely identified.');
+      }
+
+      const memberDisplayName = member
+        ? `${member.firstName ?? ''} ${member.lastName ?? ''}`.trim() || `ID ${resolvedMemberId}`
+        : `ID ${resolvedMemberId}`;
+
+      this.setStep(pipeline, 'member', 'success',
+        `Member verified: ${memberDisplayName}`);
+    } catch (err: any) {
+      this.setStep(pipeline, 'member', 'error',
+        err?.message ?? 'Member identity could not be verified');
+      pipeline.outcome      = 'no-member-match';
+      pipeline.errorMessage =
+        'The member referenced in this fax could not be matched in the registry. ' +
+        'Please assign a member manually and use the Generate Auth workflow.';
+      this.skipRemainingSteps(pipeline, 'member');
+      return;
+    }
+
+    // ─── STEP 3: Rules Engine ───────────────────────────────────────────────
+    this.setStep(pipeline, 'rules', 'running',
+      'Submitting service codes to the clinical decision engine…');
+
+    let authApprove: string | null  = null;
+    let rulesMatched                = false;
+
+    try {
+      const firstSvc    = (pa as any).services?.[0];
+      const serviceCode = (firstSvc?.code ?? '').trim() || 'A9600';
+      const fromDate    = this.toMdyOrFallback(firstSvc?.startDate, '1/1/2026');
+      const toDate      = this.toMdyOrFallback(firstSvc?.endDate,   '1/1/2027');
+
+      const res: ExecuteTriggerResponse = await firstValueFrom(
+        this.rulesengineService.executeTrigger('SMART_AUTH_CHECK.BUTTON_CLICK', {
+          serviceCode,
+          procedure: { fromDate, toDate },
+        })
+      );
+
+      const outputs: Record<string, any> = (res as any)?.outputs ?? {};
+      const authApproveRaw =
+        this.getOutput(outputs, 'dt.result.AuthApprove') ||
+        this.getOutput(outputs, 'result2');
+
+      rulesMatched = !!(res as any)?.matched &&
+        String((res as any)?.status ?? '').toUpperCase() !== 'NO_MATCH';
+      authApprove  = rulesMatched ? (authApproveRaw || null) : null;
+
+      if (!rulesMatched) {
+        this.setStep(pipeline, 'rules', 'skipped',
+          'No matching clinical policy found for this service code — manual review required');
+        pipeline.outcome      = 'no-rules-match';
+        pipeline.errorMessage =
+          'The rules engine did not find a matching policy for the extracted service code. ' +
+          'This fax requires manual authorization review.';
+        this.skipRemainingSteps(pipeline, 'rules');
+        return;
+      }
+
+      if (!this.isYes(authApprove)) {
+        this.setStep(pipeline, 'rules', 'success',
+          `Decision: Authorization Required — Approve Decision: ${authApprove ?? 'No'}`);
+        pipeline.outcome      = 'requires-review';
+        pipeline.errorMessage =
+          'The rules engine indicates this authorization requires clinical review. ' +
+          'Please open the fax and use the Generate Auth workflow to proceed.';
+        this.skipRemainingSteps(pipeline, 'rules');
+        return;
+      }
+
+      this.setStep(pipeline, 'rules', 'success',
+        `Decision: Auto Approved — service code ${serviceCode} cleared by clinical policy`);
+    } catch (err: any) {
+      this.setStep(pipeline, 'rules', 'error',
+        `Rules engine error: ${err?.message ?? 'Unknown error'}`);
+      pipeline.outcome      = 'error';
+      pipeline.errorMessage = 'The clinical rules engine returned an unexpected error. Please retry.';
+      this.skipRemainingSteps(pipeline, 'rules');
+      return;
+    }
+
+    // ─── STEP 4: Trigger silent auto-save via hidden AuthdetailsComponent ─────
+    //
+    // The auth form panel (showAuthForm) is NOT shown to the user here.
+    // Instead, a separate <app-authdetails #pipelineAuthRef> instance lives in
+    // a display:none container in the template, controlled by isAutoSavePipelineActive.
+    //
+    // Setting isAutoSavePipelineActive = true causes Angular to instantiate that
+    // hidden component with [faxPrefill]="pipelineFaxPrefill".  The component runs
+    // its full lifecycle: loads enrollment, auth class, template JSON, prefills all
+    // OCR fields — then after 900 ms calls save() automatically (autoSave: true).
+    //
+    // This means the user sees ONLY the pipeline progress panel, nothing else.
+    // If they click the fax filename during this time, the normal preview opens
+    // independently — the hidden component is completely separate.
+    this.setStep(pipeline, 'auth', 'running',
+      'Preparing authorization data — initiating auto-save…');
+
+    // Register the pipeline so onAuthSaved() can close out Steps 4 and 5.
+    this._activeAutoAuthPipeline = pipeline;
+
+    // Populate the hidden component's prefill (separate from currentFaxPrefill).
+    this.pipelineFaxPrefill = this.buildAutoAuthPrefill(
+      pa, resolvedMemberId, memberDetailsId, faxId, authApprove ?? 'Yes'
+    );
+
+    // Render the hidden component — ngOnInit fires → initFromFaxPrefill() → save().
+    this.isAutoSavePipelineActive = true;
+
+    // Steps 4 and 5 complete asynchronously in onAuthSaved() / onAutoAuthCancelled().
+  }
+  // ── END triggerAutoAuthorizationPipeline ────────────────────────────────────
+
+  // ── Pipeline public methods ──────────────────────────────────────────────
+
+  /** Dismiss a single completed pipeline card. */
+  dismissPipeline(pipelineId: string): void {
+    const p = this.autoAuthPipelines.find(x => x.id === pipelineId);
+    if (p) {
+      p.dismissed = true;
+      this.autoAuthPipelines = [...this.autoAuthPipelines];
+    }
+  }
+
+  /** Dismiss all completed (non-null outcome) pipeline cards in one action. */
+  dismissAllCompletedPipelines(): void {
+    this.autoAuthPipelines.forEach(p => {
+      if (p.outcome !== null) p.dismissed = true;
+    });
+    this.autoAuthPipelines = [...this.autoAuthPipelines];
+  }
+
+  /**
+   * Navigate to the auto-created authorization record —
+   * mirrors the existing onAuthClick() pattern using headerService tabs.
+   */
+  viewAutoAuth(pipeline: AutoAuthPipeline): void {
+    if (!pipeline.authId || !pipeline.authNumber) return;
+
+    const fax = this.faxesRaw.find(f => f.faxId === pipeline.faxId);
+    const memberId        = fax?.memberId;
+    const memberDetailsId = fax?.memberDetailsId;
+
+    if (memberId && memberDetailsId) {
+      const tabRoute = `/member-info/${memberId}`;
+      sessionStorage.setItem('selectedAuthId',          String(pipeline.authId));
+      sessionStorage.setItem('selectedAuthNumber',      pipeline.authNumber);
+      sessionStorage.setItem('selectedMemberDetailsId', String(memberDetailsId));
+
+      const existingTab = this.headerService.getTabs().find((t: any) => t.route === tabRoute);
+      if (existingTab) {
+        this.headerService.selectTab(tabRoute);
+        this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+          this.router.navigate([tabRoute]);
+        });
+      } else {
+        this.headerService.addTab(
+          `Auth: ${pipeline.authNumber}`, tabRoute,
+          String(memberId), String(memberDetailsId)
+        );
+        this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+          this.router.navigate([tabRoute]);
+        });
+      }
+    } else {
+      // Fallback: switch to Processed tab so the user can locate the record
+      this.selectStatusChip('processed');
+      this.showInlineMessage(
+        `Authorization ${pipeline.authNumber} is now visible in the Processed tab.`,
+        'success',
+        6000
+      );
+    }
+  }
+
+  /**
+   * Builds a FaxAuthPrefill from OCR-extracted PriorAuth data for the pipeline.
+   * Mirrors openAuthForm() and adds autoSave: true so AuthdetailsComponent
+   * calls its own save() automatically once the template is prefilled.
+   *
+   * Setting authApprove: 'Yes' triggers the existing auto-approve path inside
+   * save(), which:
+   *   • resolves Auth Status "Close" + Auth Status Reason "Decisioned" from
+   *     the live template dropdown datasources
+   *   • seeds Decision Status: Approved / Decision Status Code: Auto Approved
+   *     via seedDecisionAfterSave()
+   *   • stamps authClosedDatetime
+   */
+  private buildAutoAuthPrefill(
+    pa: any,
+    memberId: number,
+    memberDetailsId: number | null,
+    faxId: number,
+    authApprove: string
+  ): FaxAuthPrefill {
+    let authClassName = 'Inpatient';
+    if (pa.setting?.outpatient && !pa.setting?.inpatient) {
+      authClassName = 'Outpatient';
+    }
+
+    const parseAddress = (addr: string | undefined) => {
+      if (!addr) return {};
+      const parts = addr.split(',').map((s: string) => s.trim());
+      return {
+        address: parts[0] || '',
+        city:    parts[1] || '',
+        state:   parts[2] || '',
+        zip:     parts[3] || ''
+      };
+    };
+
+    const reqAddr = parseAddress(pa.providerRequesting?.address);
+    const svcAddr = parseAddress(pa.providerServicing?.address);
+
+    return {
+      mode:            'fax',
+      memberId:        memberId,
+      memberDetailsId: memberDetailsId ?? 0,
+      faxId:           faxId,
+
+      // autoSave: true causes AuthdetailsComponent to call save() automatically
+      // 900 ms after applyFaxPrefillToTemplateFields() completes.
+      autoSave:        true,
+
+      // authApprove: 'Yes' activates the auto-approve path in save(), which sets
+      // Auth Status = Closed, Auth Status Reason = Decisioned, and seeds
+      // Decision Status: Approved / Decision Status Code: Auto Approved.
+      authApprove:     authApprove,
+
+      authClassName:   authClassName,
+      authTypeName:    'Observation Stay',
+
+      diagnosisCodes: (pa.dx?.codes?.length ? pa.dx.codes : null)
+        ?? (pa.services ?? []).map((s: any) => s.diagnosisCode).filter(Boolean),
+
+      services: (pa.services ?? []).map((s: any) => ({
+        code:        s.code,
+        description: s.description,
+        startDate:   s.startDate,
+        endDate:     s.endDate,
+        quantity:    s.quantity ?? 1,
+      })),
+
+      requestingProvider: pa.providerRequesting ? {
+        name:      pa.providerRequesting.name,
+        firstName: pa.providerRequesting.firstName,
+        lastName:  pa.providerRequesting.lastName,
+        npi:       pa.providerRequesting.npi,
+        phone:     pa.providerRequesting.phone,
+        fax:       pa.providerRequesting.fax,
+        ...reqAddr,
+      } : undefined,
+
+      servicingProvider: pa.providerServicing ? {
+        name:      pa.providerServicing.name || pa.providerServicing.facility,
+        firstName: pa.providerServicing.firstName,
+        lastName:  pa.providerServicing.lastName,
+        npi:       pa.providerServicing.npi,
+        phone:     pa.providerServicing.phone,
+        fax:       pa.providerServicing.fax,
+        ...svcAddr,
+      } : undefined,
+
+      requestDatetime: pa.submission?.date,
+      notes:           pa.notes,
+      priorAuth:       pa,
+    };
+  }
+
+  /**
+   * Called when AuthdetailsComponent emits authCancelled.
+   *
+   * Case A — pipeline auto-save failed (_activeAutoAuthPipeline is set):
+   *   Tears down the hidden component, updates Step 4 to 'error', leaves the
+   *   fax in the Open queue so the user can complete it manually via Generate Auth.
+   *
+   * Case B — user manually cancelled the visible auth form (no pipeline):
+   *   Closes the form panel with an unsaved-changes guard if needed.
+   */
+  onAutoAuthCancelled(): void {
+    const pipeline = this._activeAutoAuthPipeline;
+    this._activeAutoAuthPipeline = null;
+
+    if (pipeline) {
+      // ── Case A: pipeline auto-save failure ────────────────────────────────
+      // Tear down the hidden pipeline instance; leave showAuthForm untouched.
+      this.isAutoSavePipelineActive = false;
+      this.pipelineFaxPrefill       = null;
+
+      this.setStep(
+        pipeline, 'auth', 'error',
+        'Auto-save could not be completed — please use the Generate Auth button to proceed manually'
+      );
+      pipeline.outcome      = 'error';
+      pipeline.errorMessage =
+        'The authorization could not be created automatically. ' +
+        'This fax remains in the Open queue — click it and use the Generate Auth button ' +
+        'to complete the authorization with the pre-populated OCR data.';
+      this.skipRemainingSteps(pipeline, 'auth');
+      this.autoAuthPipelines = [...this.autoAuthPipelines];
+      return;
+    }
+
+    // ── Case B: manual cancel (no pipeline) ───────────────────────────────
+    if (this.authDetailsRef?.authHasUnsavedChanges?.()) {
+      this.discardDialogContext  = 'backToDetails';
+      this._pendingDiscardAction = () => {
+        this.showAuthForm      = false;
+        this.currentFaxPrefill = null;
+      };
+      this.showDiscardDialog = true;
+    } else {
+      this.showAuthForm      = false;
+      this.currentFaxPrefill = null;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // (All original methods below — unchanged)
+  // ═══════════════════════════════════════════════════════════════════════════
 
   private coerceMemberIdForApi(raw: any): number | string | null {
     if (raw === null || raw === undefined) return null;
     const s = String(raw).trim();
     if (!s) return null;
-
-    // If it's purely digits, send as number.
     if (/^\d+$/.test(s)) {
       const n = Number(s);
       return Number.isFinite(n) ? n : s;
     }
-
-    // Otherwise send the trimmed string.
     return s;
   }
 
@@ -865,7 +1445,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   async saveUpdate(): Promise<void> {
     if (!this.selectedFax) return;
 
-    const nowIso = new Date().toISOString();
+    const nowIso    = new Date().toISOString();
     const updatedBy = this.selectedFax.updatedBy ?? this.currentUserId ?? 1;
 
     const detectedMemberIdRaw: any =
@@ -874,24 +1454,25 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       null;
 
     const memberIdParsed: number | null =
-      detectedMemberIdRaw !== null && detectedMemberIdRaw !== undefined && String(detectedMemberIdRaw).trim() !== ''
+      detectedMemberIdRaw !== null &&
+      detectedMemberIdRaw !== undefined &&
+      String(detectedMemberIdRaw).trim() !== ''
         ? (Number(detectedMemberIdRaw) as any)
         : null;
 
     const memberIdToSend: number | null =
       memberIdParsed !== null && Number.isFinite(memberIdParsed) ? memberIdParsed : null;
 
-    // NOTE: ApiFaxFile doesn't include soft-delete fields in typings here, but backend supports them.
     const toSave: any = {
-      faxId: this.selectedFax.faxId,
-      workBasket: "2", // TODO: wire real workbasket value if needed
-      fileName: this.selectedFax.fileName,
-      priority: this.selectedFax.priority,
-      status: this.selectedFax.status,
-      updatedOn: nowIso,
+      faxId:      this.selectedFax.faxId,
+      workBasket: '2',
+      fileName:   this.selectedFax.fileName,
+      priority:   this.selectedFax.priority,
+      status:     this.selectedFax.status,
+      updatedOn:  nowIso,
       updatedBy,
-      deletedOn: this.selectedFax.deletedOn ?? null,
-      deletedBy: this.selectedFax.deletedBy ?? null
+      deletedOn:  this.selectedFax.deletedOn  ?? null,
+      deletedBy:  this.selectedFax.deletedBy  ?? null
     };
 
     this.saving = true;
@@ -919,8 +1500,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     return 'pri-normal';
   }
 
-
-  /* ── Status helper for table cell chip ── */
   getStatusChipClass(status: string): string {
     switch ((status || '').toLowerCase()) {
       case 'new':        return 'chip-status-new';
@@ -932,38 +1511,28 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       default:           return 'chip-soft';
     }
   }
-  // quick search
+
   quickSearchTerm = '';
-
-
 
   onQuickSearch(ev: Event): void {
     const v = (ev.target as HTMLInputElement).value ?? '';
     this.quickSearchTerm = v.trim().toLowerCase();
   }
 
-
   async onFileChosen(evt?: Event, fileBytesBase64?: string, fileName = 'preview.pdf') {
-
-    // Capture the current extraction generation — if a newer extraction starts
-    // while this one is running, we'll detect it and discard stale results.
     const myGen = ++this._extractionGen;
 
     let file: File | null = null;
 
     if (fileBytesBase64) {
-      // Convert base64 → Uint8Array → File
       const pure = fileBytesBase64.includes('base64,')
         ? fileBytesBase64.split('base64,')[1]
         : fileBytesBase64;
-      const bin = atob(pure);
+      const bin   = atob(pure);
       const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) {
-        bytes[i] = bin.charCodeAt(i);
-      }
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
       file = new File([bytes], fileName, { type: 'application/pdf' });
     } else if (evt) {
-      // From <input type="file">
       file = (evt.target as HTMLInputElement).files?.[0] ?? null;
     }
 
@@ -974,7 +1543,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     try {
       const res = await this.pdfOcr.extract(file, p => this.progress = Math.round(p.progress * 100));
 
-      // ── Stale guard: if user navigated away, discard this result ──
       if (myGen !== this._extractionGen) return;
 
       let pa = extractPriorAuth(res.text);
@@ -986,93 +1554,72 @@ export class FaxesComponent implements OnInit, AfterViewInit {
           text: String(p?.text ?? '')
         }));
 
-      // Cache per-page text for field highlighting
       this._ocrByPage = byPage;
 
-      const isTexas = /TEXAS STANDARD PRIOR AUTHORIZATION|NOFR001/i.test(allText);
+      const isTexas   = /TEXAS STANDARD PRIOR AUTHORIZATION|NOFR001/i.test(allText);
       const isArizona = /CSO-1179A|CMDP|COMPREHENSIVE MEDICAL AND DENTAL PROGRAM/i.test(allText);
-
       const missingCore =
-        !(pa.patient?.name) || !(pa.patient?.memberId) || !(pa.services?.[0]?.code) || !(pa.review?.type);
+        !(pa.patient?.name) || !(pa.patient?.memberId) ||
+        !(pa.services?.[0]?.code) || !(pa.review?.type);
 
-      // ── Texas-specific extraction ──
       if (isTexas && missingCore) {
         const formPage = this.pickTexasPage(byPage);
-
         let pageText = byPage.find(p => p.page === formPage)?.text?.trim() ?? '';
-
         if (!pageText) {
           pageText = await this.pdfOcr.ocrPageText(file, 2);
           if (myGen !== this._extractionGen) return;
         }
-
         const tx = extractTexasFromText(pageText);
         pa = {
           ...pa,
-          source: { template: 'Texas TDI NOFR001', confidence: 0.95 },
-          submission: { ...(pa.submission ?? {}), ...this.stripEmpty(tx.submission) },
-          patient: { ...(pa.patient ?? {}), ...this.stripEmpty(tx.patient) },
+          source:             { template: 'Texas TDI NOFR001', confidence: 0.95 },
+          submission:         { ...(pa.submission ?? {}),         ...this.stripEmpty(tx.submission) },
+          patient:            { ...(pa.patient ?? {}),            ...this.stripEmpty(tx.patient) },
           providerRequesting: { ...(pa.providerRequesting ?? {}), ...this.stripEmpty(tx.providerRequesting) },
-          providerServicing: { ...(pa.providerServicing ?? {}), ...this.stripEmpty(tx.providerServicing) },
-          review: { ...(pa.review ?? {}), ...this.stripEmpty(tx.review) },
-          services: (tx.services?.length ? tx.services : pa.services) ?? []
+          providerServicing:  { ...(pa.providerServicing ?? {}),  ...this.stripEmpty(tx.providerServicing) },
+          review:             { ...(pa.review ?? {}),             ...this.stripEmpty(tx.review) },
+          services:           (tx.services?.length ? tx.services : pa.services) ?? []
         };
       }
 
-      // ── Arizona CMDP-specific extraction ──
       if (isArizona && (!isTexas || missingCore)) {
         const formPage = this.pickArizonaPage(byPage);
-
         let pageText = byPage.find(p => p.page === formPage)?.text?.trim() ?? '';
-
         if (!pageText) {
           pageText = await this.pdfOcr.ocrPageText(file, 1);
           if (myGen !== this._extractionGen) return;
         }
-
-        // Try the dedicated extractor, strip undefined values
-        const az = extractArizonaFromText(pageText);
+        const az      = extractArizonaFromText(pageText);
         const azClean = {
-          patient: this.stripEmpty(az?.patient),
+          patient:            this.stripEmpty(az?.patient),
           providerRequesting: this.stripEmpty(az?.providerRequesting),
-          providerServicing: this.stripEmpty(az?.providerServicing),
-          review: this.stripEmpty(az?.review),
-          services: az?.services?.filter((s: any) => s?.code || s?.description) ?? [],
-          dx: this.stripEmpty(az?.dx),
-          setting: this.stripEmpty(az?.setting),
-          submission: this.stripEmpty(az?.submission)
+          providerServicing:  this.stripEmpty(az?.providerServicing),
+          review:             this.stripEmpty(az?.review),
+          services:           az?.services?.filter((s: any) => s?.code || s?.description) ?? [],
+          dx:                 this.stripEmpty(az?.dx),
+          setting:            this.stripEmpty(az?.setting),
+          submission:         this.stripEmpty(az?.submission)
         };
-
-        // Merge: generic pa (lowest) → azClean overlays
         pa = {
           ...pa,
-          source: { template: 'AZ CMDP CSO-1179A', confidence: 0.95 },
-          patient: { ...this.stripEmpty(pa.patient), ...azClean.patient },
+          source:             { template: 'AZ CMDP CSO-1179A', confidence: 0.95 },
+          patient:            { ...this.stripEmpty(pa.patient),            ...azClean.patient },
           providerRequesting: { ...this.stripEmpty(pa.providerRequesting), ...azClean.providerRequesting },
-          providerServicing: { ...this.stripEmpty(pa.providerServicing), ...azClean.providerServicing },
-          review: { ...this.stripEmpty(pa.review), ...azClean.review },
-          services: (azClean.services.length ? azClean.services : pa.services) ?? [],
-          dx: { ...this.stripEmpty(pa.dx), ...azClean.dx },
-          setting: { ...this.stripEmpty(pa.setting), ...azClean.setting },
-          submission: { ...this.stripEmpty(pa.submission), ...azClean.submission }
+          providerServicing:  { ...this.stripEmpty(pa.providerServicing),  ...azClean.providerServicing },
+          review:             { ...this.stripEmpty(pa.review),             ...azClean.review },
+          services:           (azClean.services.length ? azClean.services : pa.services) ?? [],
+          dx:                 { ...this.stripEmpty(pa.dx),                 ...azClean.dx },
+          setting:            { ...this.stripEmpty(pa.setting),            ...azClean.setting },
+          submission:         { ...this.stripEmpty(pa.submission),         ...azClean.submission }
         };
-
-        // ★ Post-process: fix known-bad values by scanning the FULL OCR text directly.
-        //   This doesn't depend on line structure or extractor accuracy.
-        //   It uses the combined text from ALL pages as the source of truth.
         this.postProcessArizonaCmdp(pa, allText);
       }
 
-      // ── Final stale guard: don't overwrite if user navigated away ──
       if (myGen !== this._extractionGen) return;
 
-      this.priorAuth = pa;
+      this.priorAuth        = pa;
       this.isLoadingDetails = false;
 
-      // ── Auto-generate AI summary ──
-      //this.generateAiSummary(pa);
-
-      // Only run Smart Auth Check if no auth is already linked
       if (!this.linkedAuthMeta) {
         this.runSmartAuthCheckFromExtracted(pa);
       } else {
@@ -1080,8 +1627,8 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       }
 
     } catch (e: any) {
-      if (myGen !== this._extractionGen) return;  // stale — don't touch state
-      this.error = e?.message || 'Failed to parse PDF';
+      if (myGen !== this._extractionGen) return;
+      this.error    = e?.message || 'Failed to parse PDF';
       this.priorAuth = null;
     } finally {
       if (myGen === this._extractionGen) {
@@ -1089,31 +1636,30 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       }
     }
   }
+
   smartAuthCheckInProgress = false;
-  smartAuthCheckCompleted = false;
+  smartAuthCheckCompleted  = false;
   smartAuthCheckMatched: boolean | null = null;
-  smartAuthCheckAuthRequired: boolean | null = null; // true/false when matched; null when NO_MATCH/unmatched
-  smartAuthCheckAuthApprove: string | null = null; // raw AuthApprove value from rules engine (e.g. 'Yes', 'No')
+  smartAuthCheckAuthRequired: boolean | null = null;
+  smartAuthCheckAuthApprove: string | null   = null;
   smartAuthCheckError = '';
 
   private resetSmartAuthCheckState(): void {
-    this.smartAuthCheckInProgress = false;
-    this.smartAuthCheckCompleted = false;
-    this.smartAuthCheckMatched = null;
+    this.smartAuthCheckInProgress  = false;
+    this.smartAuthCheckCompleted   = false;
+    this.smartAuthCheckMatched     = null;
     this.smartAuthCheckAuthRequired = null;
     this.smartAuthCheckAuthApprove = null;
-    this.smartAuthCheckError = '';
+    this.smartAuthCheckError       = '';
   }
 
   private runSmartAuthCheckFromExtracted(pa: PriorAuth): void {
-    // reset state for every new file
     this.resetSmartAuthCheckState();
 
-    const firstSvc = pa.services?.[0];
-
+    const firstSvc    = pa.services?.[0];
     const serviceCode = (firstSvc?.code ?? '').trim() || 'A9600';
-    const fromDate = this.toMdyOrFallback(firstSvc?.startDate, '1/1/2026');
-    const toDate = this.toMdyOrFallback(firstSvc?.endDate, '1/1/2027');
+    const fromDate    = this.toMdyOrFallback(firstSvc?.startDate, '1/1/2026');
+    const toDate      = this.toMdyOrFallback(firstSvc?.endDate,   '1/1/2027');
 
     const triggerKeySmart = 'SMART_AUTH_CHECK.BUTTON_CLICK';
     const smartFacts: any = {
@@ -1134,26 +1680,26 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
           const authRequiredRaw =
             this.getOutput(outputs, 'dt.result.AuthRequired') ||
-            this.getOutput(outputs, 'result1'); // fallback
+            this.getOutput(outputs, 'result1');
 
           const authApproveRaw =
             this.getOutput(outputs, 'dt.result.AuthApprove') ||
-            this.getOutput(outputs, 'result2'); // fallback
+            this.getOutput(outputs, 'result2');
 
           const matched =
             !!(res as any)?.matched &&
             String((res as any)?.status ?? '').toUpperCase() !== 'NO_MATCH';
 
-          this.smartAuthCheckMatched = matched;
+          this.smartAuthCheckMatched      = matched;
           this.smartAuthCheckAuthRequired = matched ? this.isYes(authRequiredRaw) : null;
-          this.smartAuthCheckAuthApprove = matched ? (authApproveRaw || null) : null;
-          this.smartAuthCheckCompleted = true;
+          this.smartAuthCheckAuthApprove  = matched ? (authApproveRaw || null) : null;
+          this.smartAuthCheckCompleted    = true;
         },
         error: (e: any) => {
           console.error('SMART_AUTH_CHECK trigger failed', e);
-          this.smartAuthCheckError = 'Smart Auth Check could not be completed.';
-          this.smartAuthCheckCompleted = false;
-          this.smartAuthCheckMatched = null;
+          this.smartAuthCheckError        = 'Smart Auth Check could not be completed.';
+          this.smartAuthCheckCompleted    = false;
+          this.smartAuthCheckMatched      = null;
           this.smartAuthCheckAuthRequired = null;
         }
       });
@@ -1167,24 +1713,14 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       const y = value.getFullYear();
       return `${m}/${d}/${y}`;
     }
-
     const s = String(value).trim();
     if (!s) return fallback;
-
-    // Already in M/D/YYYY (or MM/DD/YYYY) format
     if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)) return s;
-
-    // Convert YYYY-MM-DD (or YYYY-MM-DDTHH:mm...) -> M/D/YYYY
     const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
     if (m) {
-      const y = Number(m[1]);
-      const mo = Number(m[2]);
-      const d = Number(m[3]);
+      const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
       if (!isNaN(y) && !isNaN(mo) && !isNaN(d)) return `${mo}/${d}/${y}`;
     }
-
-    // If user typed relative date tokens (D, D+1, etc) or any other format, pass through as-is.
-    // Backend may still be able to interpret it; otherwise the rule may no-match.
     return s;
   }
 
@@ -1199,34 +1735,18 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     return s === 'y' || s === 'yes' || s === 'true' || s === '1';
   }
 
-  /**
-   * Strips undefined, null, and empty-string values from a shallow object.
-   * Prevents spread-merge from overwriting good values with empty ones
-   * when a form-specific extractor returns explicit undefined keys.
-   */
   private stripEmpty<T extends Record<string, any>>(obj: T | undefined | null): Partial<T> {
     if (!obj) return {} as Partial<T>;
     const out: any = {};
     for (const [k, v] of Object.entries(obj)) {
-      if (v !== undefined && v !== null && v !== '') {
-        out[k] = v;
-      }
+      if (v !== undefined && v !== null && v !== '') out[k] = v;
     }
     return out;
   }
 
-  /**
-   * Post-process an already-extracted PriorAuth for AZ CMDP CSO-1179A forms.
-   * Instead of building a full extraction from scratch (which fails when OCR
-   * text structure varies), this method FIXES specific known-bad values
-   * by scanning the raw OCR text with loose patterns.
-   *
-   * Mutates `pa` in place.
-   */
   private postProcessArizonaCmdp(pa: PriorAuth, ocrText: string): void {
     const t = ocrText;
 
-    // ── Helper: collapse OCR stutter-spaces ("Mat t hew" → "Matthew") ──
     const cleanName = (raw: string): string => {
       let prev = '', curr = raw;
       while (curr !== prev) {
@@ -1236,31 +1756,19 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       return curr.replace(/\s{2,}/g, ' ').trim();
     };
 
-    // ── Fix provider names: collapse OCR stutter-spaces ──
-    if (pa.providerRequesting?.name) {
-      pa.providerRequesting.name = cleanName(pa.providerRequesting.name);
-    }
-    if (pa.providerServicing?.name) {
-      pa.providerServicing.name = cleanName(pa.providerServicing.name);
-    }
-    if (pa.patient?.name) {
-      pa.patient.name = cleanName(pa.patient.name);
-    }
+    if (pa.providerRequesting?.name) pa.providerRequesting.name = cleanName(pa.providerRequesting.name);
+    if (pa.providerServicing?.name)  pa.providerServicing.name  = cleanName(pa.providerServicing.name);
+    if (pa.patient?.name)            pa.patient.name            = cleanName(pa.patient.name);
 
-    // ── Fix NPI: find ALL 7-10 digit numbers near "NPI NO." in the text ──
-    // OCR often inserts spaces within digit sequences ("10000000 2" → "100000002").
-    // We ALWAYS override because existing values are known to be truncated for AZ forms.
     const npiHits: string[] = [];
     let m: RegExpExecArray | null;
 
-    // Strategy 1: NPI NO. followed by digits (possibly with spaces) on same line
     const npiPattern1 = /NPI\s+NO\.?\s*[:\s]*([\d][\d\s]{6,12})/gi;
     while ((m = npiPattern1.exec(t)) !== null) {
       const digits = m[1].replace(/\s/g, '');
       if (digits.length >= 7 && digits.length <= 10) npiHits.push(digits);
     }
 
-    // Strategy 2: NPI NO. on one line, digits (possibly space-separated) on next line
     if (npiHits.length === 0) {
       const npiPattern2 = /NPI\s+NO\.?\s*[\n\r]+([\d][\d\s]{6,12})/gi;
       while ((m = npiPattern2.exec(t)) !== null) {
@@ -1269,7 +1777,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       }
     }
 
-    // Strategy 3: broadest — NPI NO. within 50 chars of a digit sequence
     if (npiHits.length === 0) {
       const npiPattern3 = /NPI\s+NO\.?[\s\S]{0,50}?([\d][\d\s]{6,12})/gi;
       while ((m = npiPattern3.exec(t)) !== null) {
@@ -1279,33 +1786,25 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     }
 
     if (npiHits.length > 0) {
-      // ALWAYS override — the extractor often truncates NPI values.
-      // First NPI in text = referring physician; second = servicing provider.
       if (!pa.providerRequesting) pa.providerRequesting = {};
       pa.providerRequesting.npi = npiHits[0];
-
       if (npiHits.length > 1) {
         if (!pa.providerServicing) pa.providerServicing = {};
         pa.providerServicing.npi = npiHits[1];
       }
     }
 
-    // ── Fix address: strip form label boilerplate ──
     if (pa.providerRequesting?.address) {
       pa.providerRequesting.address = pa.providerRequesting.address
         .replace(/\(?\s*No\.?,?\s*Street,?\s*City,?\s*State,?\s*ZIP\s*\)?\s*/gi, '')
-        .replace(/\s{2,}/g, ' ')
-        .trim();
+        .replace(/\s{2,}/g, ' ').trim();
     }
     if (pa.providerServicing?.address) {
       pa.providerServicing.address = pa.providerServicing.address
         .replace(/\(?\s*No\.?,?\s*Street,?\s*City,?\s*State,?\s*ZIP\s*\)?\s*/gi, '')
-        .replace(/\s{2,}/g, ' ')
-        .trim();
+        .replace(/\s{2,}/g, ' ').trim();
     }
 
-    // ── Fix service code: find HCPCS pattern (letter + 4 digits, e.g. A9604) ──
-    // The generic extractor often grabs the P.O. Box number (29202) by mistake
     const hcpcsPattern = /\b([A-Z]\d{4})\b/g;
     const hcpcsHits: string[] = [];
     while ((m = hcpcsPattern.exec(t)) !== null) {
@@ -1313,106 +1812,62 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       if (/^[A-Z]\d{4}$/.test(val)) hcpcsHits.push(val);
     }
 
-    // Looser fallback: OCR may insert a space in the code ("A 9604" or "A96 04")
     if (hcpcsHits.length === 0) {
       const looseHcpcs = /\b([A-Z])\s?(\d)\s?(\d)\s?(\d)\s?(\d)\b/g;
       while ((m = looseHcpcs.exec(t)) !== null) {
         const code = m[1] + m[2] + m[3] + m[4] + m[5];
-        // Skip false positives that look like form IDs or zip codes
         if (!/^[A-Z]0{4}$/.test(code)) hcpcsHits.push(code);
       }
     }
 
-    // Also grab the description from the HCPCS line if possible
-    const hcpcsLineMatch = t.match(
-      /\b([A-Z]\d{4})\s+([A-Z][A-Z\s\-\/]+?)(?:\s+\$[\d,.]+|$)/im
-    );
+    const hcpcsLineMatch = t.match(/\b([A-Z]\d{4})\s+([A-Z][A-Z\s\-\/]+?)(?:\s+\$[\d,.]+|$)/im);
 
-    // ── Fix service dates: find date patterns near form date labels ──
-    // OCR may insert spaces around slashes: "3/ 1/26" or "3 /1/ 26"
-    // Use a loose pattern that allows optional spaces around /
-    const dateLoose = /(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{2,4})/;
+    const dateLoose  = /(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{2,4})/;
     const extractDate = (text: string): string | undefined => {
       const dm = text.match(dateLoose);
-      return dm ? `${dm[1]}/${dm[2]}/${dm[3]}` : undefined;  // normalize spaces away
+      return dm ? `${dm[1]}/${dm[2]}/${dm[3]}` : undefined;
     };
 
-    // Search for dates near BEGIN/END labels with generous window
     const beginChunk = t.match(/DATE\s+SERVICE\s+TO\s+BEGIN([\s\S]{0,80})/i);
-    const endChunk = t.match(/\bTO\s+END\b([\s\S]{0,80})/i);
+    const endChunk   = t.match(/\bTO\s+END\b([\s\S]{0,80})/i);
 
-    const finalStart = beginChunk ? extractDate(beginChunk[1]) : undefined;
-    const finalEnd = endChunk ? extractDate(endChunk[1]) : undefined;
-
-    // Broadest fallback: join all text and try
-    const finalStart2 = !finalStart ? extractDate((t.match(/BEGIN[\s\S]{0,50}/i) || [''])[0]) : undefined;
-    const finalEnd2 = !finalEnd ? extractDate((t.match(/TO\s+END[\s\S]{0,100}/i) || [''])[0]) : undefined;
+    const finalStart  = beginChunk ? extractDate(beginChunk[1]) : undefined;
+    const finalEnd    = endChunk   ? extractDate(endChunk[1])   : undefined;
+    const finalStart2 = !finalStart ? extractDate((t.match(/BEGIN[\s\S]{0,50}/i)    || [''])[0]) : undefined;
+    const finalEnd2   = !finalEnd   ? extractDate((t.match(/TO\s+END[\s\S]{0,100}/i) || [''])[0]) : undefined;
 
     const startDate = finalStart || finalStart2;
-    const endDate = finalEnd || finalEnd2;
+    const endDate   = finalEnd   || finalEnd2;
 
-    // ── Fix servicing provider: find name after "PROVIDER'S NAME" ──
-    // Use a very loose apostrophe pattern: any single character between R and S
-    const servicingMatch = t.match(
-      /PROVIDER.?S\s+NAME\s*\([^)]*\)\s*[\n\r]+\s*([A-Z][a-z]+(?:,\s*[A-Z][a-z]+)?)/i
-    );
+    const servicingMatch  = t.match(/PROVIDER.?S\s+NAME\s*\([^)]*\)\s*[\n\r]+\s*([A-Z][a-z]+(?:,\s*[A-Z][a-z]+)?)/i);
+    const servicingMatch2 = t.match(/AHCCCS\s+REGISTERED[\s\S]*?PROVIDER.?S\s+NAME[^)]*\)\s*[\s\n\r]*([A-Z][a-zA-Z]+,?\s*[A-Z]?[a-zA-Z]*)/i);
+    const servicingAddrMatch = t.match(/PROVIDER.?S\s+ADDRESS\s*\([^)]*\)\s*[\n\r]+\s*(.+?)(?:\s*[\n\r]|$)/i);
 
-    // Also try: the name might be on the same line or with different formatting
-    const servicingMatch2 = t.match(
-      /AHCCCS\s+REGISTERED[\s\S]*?PROVIDER.?S\s+NAME[^)]*\)\s*[\s\n\r]*([A-Z][a-zA-Z]+,?\s*[A-Z]?[a-zA-Z]*)/i
-    );
-
-    // ── Fix servicing provider address ──
-    const servicingAddrMatch = t.match(
-      /PROVIDER.?S\s+ADDRESS\s*\([^)]*\)\s*[\n\r]+\s*(.+?)(?:\s*[\n\r]|$)/i
-    );
-
-    // ── Apply fixes to services ──
     const svc = pa.services?.[0];
     if (svc) {
-      // Fix service code — ALWAYS override if current code doesn't look like HCPCS (letter+4digits)
-      if (hcpcsHits.length > 0 && (!svc.code || !/^[A-Z]\d{4}$/.test(svc.code))) {
-        svc.code = hcpcsHits[0];
-      }
-      // Fix description — fill if missing
-      if (hcpcsLineMatch?.[2] && !svc.description) {
-        svc.description = hcpcsLineMatch[2].trim();
-      }
-      // Fix dates — ALWAYS override if we found dates near the form labels
-      // Existing values are often undefined or wrong for AZ forms
-      if (startDate) {
-        svc.startDate = startDate;
-      }
-      if (endDate) {
-        svc.endDate = endDate;
-      }
-      // Fix diagnosisCode from dx if missing
-      if (!svc.diagnosisCode && pa.dx?.codes?.[0]) {
-        svc.diagnosisCode = pa.dx.codes[0];
-      }
+      if (hcpcsHits.length > 0 && (!svc.code || !/^[A-Z]\d{4}$/.test(svc.code))) svc.code = hcpcsHits[0];
+      if (hcpcsLineMatch?.[2] && !svc.description) svc.description = hcpcsLineMatch[2].trim();
+      if (startDate) svc.startDate = startDate;
+      if (endDate)   svc.endDate   = endDate;
+      if (!svc.diagnosisCode && pa.dx?.codes?.[0]) svc.diagnosisCode = pa.dx.codes[0];
     } else if (hcpcsHits.length > 0 || startDate || endDate) {
-      // No services from extractors — build one from scratch
       if (!pa.services) pa.services = [];
       pa.services.push({
-        code: hcpcsHits[0] ?? '',
-        description: hcpcsLineMatch?.[2]?.trim() ?? '',
-        startDate: startDate ?? '',
-        endDate: endDate ?? '',
-        diagnosisCode: pa.dx?.codes?.[0] ?? '',
-        diagnosisDescription: pa.dx?.description ?? ''
+        code:                 hcpcsHits[0]         ?? '',
+        description:          hcpcsLineMatch?.[2]?.trim() ?? '',
+        startDate:            startDate             ?? '',
+        endDate:              endDate               ?? '',
+        diagnosisCode:        pa.dx?.codes?.[0]    ?? '',
+        diagnosisDescription: pa.dx?.description   ?? ''
       });
     }
 
-    // ── Apply servicing provider fix ──
     const svcProvName = (servicingMatch?.[1] ?? servicingMatch2?.[1] ?? '').trim();
     if (svcProvName && svcProvName.length > 1) {
       if (!pa.providerServicing) pa.providerServicing = {};
-      if (!pa.providerServicing.name) {
-        pa.providerServicing.name = cleanName(svcProvName);
-      }
+      if (!pa.providerServicing.name) pa.providerServicing.name = cleanName(svcProvName);
     }
 
-    // ── Apply servicing address fix ──
     if (servicingAddrMatch?.[1]) {
       const addr = servicingAddrMatch[1]
         .replace(/\(?\s*No\.?,?\s*Street,?\s*City,?\s*State,?\s*ZIP\s*\)?\s*/gi, '')
@@ -1423,13 +1878,11 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       }
     }
 
-    // ── Fix review type ──
     if (/EMERGENCY\s+URGENT/i.test(t)) {
       if (!pa.review) pa.review = {};
       pa.review.type = 'Urgent';
     }
 
-    // ── Fix dx codes array ──
     if (pa.dx?.description && (!pa.dx.codes || pa.dx.codes.length === 0)) {
       pa.dx.codes = [pa.dx.description.split(/[\s,]+/)[0]];
     }
@@ -1437,25 +1890,24 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
   private async computeSha256Hex(file: File): Promise<string> {
     const buffer = await file.arrayBuffer();
-    const hash = await crypto.subtle.digest('SHA-256', buffer);
-    const bytes = Array.from(new Uint8Array(hash));
+    const hash   = await crypto.subtle.digest('SHA-256', buffer);
+    const bytes  = Array.from(new Uint8Array(hash));
     return bytes.map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
   private readFileAsBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
-      const fr = new FileReader();
-      fr.onload = () => {
-        const res = fr.result as string; // "data:application/pdf;base64,AAA..."
+      const fr    = new FileReader();
+      fr.onload   = () => {
+        const res    = fr.result as string;
         const base64 = res.split(',')[1] || '';
         resolve(base64);
       };
-      fr.onerror = reject;
+      fr.onerror  = reject;
       fr.readAsDataURL(file);
     });
   }
 
-  // 3) Helper: make ISO safely
   private toIso(d: Date | string | null | undefined): string | null {
     if (!d) return null;
     const dt = typeof d === 'string' ? new Date(d) : d;
@@ -1463,11 +1915,10 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   }
 
   private base64ToUint8Array(b64: string): Uint8Array {
-    // ensure it's raw base64 (no data:...;base64, prefix)
-    const pure = b64.includes('base64,') ? b64.split('base64,')[1] : b64;
+    const pure   = b64.includes('base64,') ? b64.split('base64,')[1] : b64;
     const binary = atob(pure);
-    const len = binary.length;
-    const bytes = new Uint8Array(len);
+    const len    = binary.length;
+    const bytes  = new Uint8Array(len);
     for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
     return bytes;
   }
@@ -1478,73 +1929,43 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   }
 
   showNext(): void {
-    const data = this.dataSource?.data || [];
+    const data  = this.dataSource?.data || [];
     const total = data.length;
-
-    if (!total) {
-      return;
-    }
-
-    if (this.currentIndex < 0) {
-      this.currentIndex = 0;
-    } else if (this.currentIndex < total - 1) {
-      this.currentIndex++;
-    } else {
-      // Already at last record
-      return;
-    }
-
+    if (!total) return;
+    if (this.currentIndex < 0) this.currentIndex = 0;
+    else if (this.currentIndex < total - 1) this.currentIndex++;
+    else return;
     const next = data[this.currentIndex];
-    if (next) {
-      this.openPreview(next);
-    }
+    if (next) this.openPreview(next);
   }
 
   showPrevious(): void {
-    const data = this.dataSource?.data || [];
+    const data  = this.dataSource?.data || [];
     const total = data.length;
-
-    if (!total) {
-      return;
-    }
-
-    if (this.currentIndex <= 0) {
-      this.currentIndex = 0;
-    } else {
-      this.currentIndex--;
-    }
-
+    if (!total) return;
+    if (this.currentIndex <= 0) this.currentIndex = 0;
+    else this.currentIndex--;
     const prev = data[this.currentIndex];
-    if (prev) {
-      this.openPreview(prev);
-    }
+    if (prev) this.openPreview(prev);
   }
 
-
-  // holds the currently loaded PDF bytes for preview/splitting
   private currentFaxBytes: Uint8Array | null = null;
   private currentFaxContentType: string = 'application/pdf';
   private currentFaxOriginalName: string | null = null;
 
   private async getSelectedFaxPdfBytesOrThrow(): Promise<Uint8Array> {
-    // Prefer already-loaded bytes (set during openPreview)
-    if (this.currentFaxBytes && this.currentFaxBytes.length) {
-      return this.currentFaxBytes;
-    }
+    if (this.currentFaxBytes && this.currentFaxBytes.length) return this.currentFaxBytes;
 
     const faxId = this.selectedFax?.faxId;
-    if (!faxId) {
-      throw new Error('No fax selected.');
-    }
+    if (!faxId) throw new Error('No fax selected.');
 
-    // Fetch the fax again and extract bytes
-    const res: any = await firstValueFrom(this.api.getFaxFileById(faxId));
-    const fileBytes = res?.fileBytes ?? res?.FileBytes ?? null;
-    const contentType = res?.contentType ?? res?.ContentType ?? 'application/pdf';
-    const fileUrl = res?.url ?? res?.Url ?? null;
+    const res: any       = await firstValueFrom(this.api.getFaxFileById(faxId));
+    const fileBytes      = res?.fileBytes ?? res?.FileBytes ?? null;
+    const contentType    = res?.contentType ?? res?.ContentType ?? 'application/pdf';
+    const fileUrl        = res?.url ?? res?.Url ?? null;
 
-    this.currentFaxContentType = contentType;
-    this.currentFaxOriginalName = this.selectedFax?.fileName ?? 'preview.pdf';
+    this.currentFaxContentType   = contentType;
+    this.currentFaxOriginalName  = this.selectedFax?.fileName ?? 'preview.pdf';
 
     if (fileBytes) {
       const u8 = this.base64ToUint8Array(fileBytes);
@@ -1562,7 +1983,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     throw new Error('No PDF bytes available for this fax.');
   }
 
-
   toggleSplitMode(): void {
     this.splitMode = !this.splitMode;
     if (this.splitMode) {
@@ -1572,29 +1992,18 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     }
   }
 
-  // ============================================================
-  // Field Highlight — draws directly on PDF via pdf-lib
-  // Uses pdf.js (loaded from CDN) for text position extraction
-  // ============================================================
+  // ── Field Highlight ──────────────────────────────────────────────────────
 
-  /**
-   * Dynamically load pdf.js from CDN (avoids Angular import issues).
-   * Resolves to window.pdfjsLib — safe to call multiple times.
-   */
   private loadPdfJs(): Promise<any> {
-    // Already loaded
     if (this._pdfjsLib) return Promise.resolve(this._pdfjsLib);
-
-    // Check if globally available (e.g. from another part of the app)
     if ((window as any).pdfjsLib) {
       this._pdfjsLib = (window as any).pdfjsLib;
       return Promise.resolve(this._pdfjsLib);
     }
-
     return new Promise((resolve, reject) => {
       const PDFJS_VERSION = '3.11.174';
       const script = document.createElement('script');
-      script.src = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.min.js`;
+      script.src   = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.min.js`;
       script.onload = () => {
         const lib = (window as any).pdfjsLib;
         if (!lib) { reject(new Error('pdfjsLib not found on window after script load')); return; }
@@ -1608,72 +2017,52 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     });
   }
 
-  /**
-   * Called when user clicks an extracted field on the left pane.
-   * 1. Loads pdf.js dynamically (one-time)
-   * 2. Extracts text positions from PDF (cached after first call)
-   * 3. Finds matching text items
-   * 4. Uses pdf-lib to draw colored highlight rectangles on the PDF
-   * 5. Reloads iframe with highlighted PDF
-   */
   async highlightField(category: string, label: string, value: any, key: string): Promise<void> {
     const str = value != null ? String(value).trim() : null;
 
-    // Toggle off if re-clicking same field
     if (this.hlKey === key) { this.clearHighlight(); return; }
-
-    // Skip empty values
     if (!str || str === '—' || str === '-') { this.clearHighlight(); return; }
 
-    // Set UI state immediately
-    this.hlKey = key;
-    this.hlLabel = label;
-    this.hlValue = str;
-    this.hlCategory = category;
+    this.hlKey        = key;
+    this.hlLabel      = label;
+    this.hlValue      = str;
+    this.hlCategory   = category;
     this.hlIsProcessing = true;
-    this.hlStatus = 'processing';
+    this.hlStatus     = 'processing';
     this.hlMatchCount = 0;
 
-    // Must have PDF bytes to draw highlights
     if (!this.currentFaxBytes) {
       console.warn('[FieldHighlight] No currentFaxBytes available');
       this.hlIsProcessing = false;
-      this.hlStatus = 'not-found';
+      this.hlStatus       = 'not-found';
       return;
     }
 
     try {
-      // Step 1: Load pdf.js (from CDN, cached after first load)
       const pdfjsLib = await this.loadPdfJs();
 
-      // Step 2: Extract text positions (cached after first call per PDF)
       if (!this._pdfTextExtracted) {
         await this.extractPdfTextPositions(pdfjsLib, this.currentFaxBytes);
       }
 
-      // Step 3: Find matching text items for this field value
       const matches = this.findMatchingTextItems(str);
 
       if (matches.length === 0) {
         this.hlIsProcessing = false;
-        this.hlStatus = 'not-found';
+        this.hlStatus       = 'not-found';
         return;
       }
 
-      // Step 4: Draw highlight rectangles on PDF using pdf-lib
-      const color = this.HL_COLORS[category] || this.HL_COLORS['patient'];
+      const color            = this.HL_COLORS[category] || this.HL_COLORS['patient'];
       const highlightedBytes = await this.drawHighlightsOnPdf(this.currentFaxBytes, matches, color);
 
-      // Step 5: Create new blob URL → load into standby iframe (no blink)
-      if (this._highlightedBlobUrl) {
-        URL.revokeObjectURL(this._highlightedBlobUrl);
-      }
-      const blob = new Blob([highlightedBytes], { type: 'application/pdf' });
-      this._highlightedBlobUrl = URL.createObjectURL(blob);
+      if (this._highlightedBlobUrl) URL.revokeObjectURL(this._highlightedBlobUrl);
+      const blob                 = new Blob([highlightedBytes], { type: 'application/pdf' });
+      this._highlightedBlobUrl   = URL.createObjectURL(blob);
       this.swapToUrl(this._highlightedBlobUrl);
 
       this.hlMatchCount = matches.length;
-      this.hlStatus = 'found';
+      this.hlStatus     = 'found';
 
     } catch (err) {
       console.error('[FieldHighlight] Error:', err);
@@ -1683,133 +2072,82 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     }
   }
 
-  /** Clears highlight and restores original (unhighlighted) PDF */
   clearHighlight(): void {
-    this.hlKey = null;
-    this.hlLabel = null;
-    this.hlValue = null;
-    this.hlCategory = 'patient';
+    this.hlKey        = null;
+    this.hlLabel      = null;
+    this.hlValue      = null;
+    this.hlCategory   = 'patient';
     this.hlIsProcessing = false;
     this.hlMatchCount = 0;
-    this.hlStatus = 'idle';
+    this.hlStatus     = 'idle';
 
-    // Revoke highlighted blob and swap back to original (no blink)
     if (this._highlightedBlobUrl) {
-      // Defer revoke until after swap completes so standby frame isn't blanked
-      const oldUrl = this._highlightedBlobUrl;
+      const oldUrl            = this._highlightedBlobUrl;
       this._highlightedBlobUrl = null;
       setTimeout(() => URL.revokeObjectURL(oldUrl), 500);
     }
-    if (this._rawPreviewUrl) {
-      this.swapToUrl(this._rawPreviewUrl);
-    }
+    if (this._rawPreviewUrl) this.swapToUrl(this._rawPreviewUrl);
   }
 
-  /** Copy highlighted value to clipboard */
   copyHighlightValue(): void {
     if (this.hlValue) {
       navigator.clipboard.writeText(this.hlValue).then(() => this.toast('Value copied to clipboard'));
     }
   }
 
-  // ── Double-buffered iframe helpers (prevent blink on PDF swap) ──────
-
-  /**
-   * Load a URL directly into the currently active iframe.
-   * Used for initial PDF load (no content to blink from).
-   */
   private loadIntoActiveFrame(url: string): void {
     const iframe = this.pdfActiveFrame === 'A' ? this.iframeA : this.iframeB;
-    if (iframe?.nativeElement) {
-      iframe.nativeElement.src = url;
-    }
+    if (iframe?.nativeElement) iframe.nativeElement.src = url;
   }
 
-  /**
-   * Load a URL into the standby (hidden) iframe.
-   * When it finishes loading, onIframeLoaded() will swap it to foreground.
-   * The old content stays visible the entire time → zero blink.
-   */
   private swapToUrl(url: string): void {
-    const standby: 'A' | 'B' = this.pdfActiveFrame === 'A' ? 'B' : 'A';
-    this._pendingFrame = standby;
-    const iframe = standby === 'A' ? this.iframeA : this.iframeB;
-    if (iframe?.nativeElement) {
-      iframe.nativeElement.src = url;
-    }
+    const standby: 'A' | 'B'  = this.pdfActiveFrame === 'A' ? 'B' : 'A';
+    this._pendingFrame         = standby;
+    const iframe               = standby === 'A' ? this.iframeA : this.iframeB;
+    if (iframe?.nativeElement) iframe.nativeElement.src = url;
   }
 
-  /**
-   * Called by (load) event on either iframe.
-   * If this is the pending frame, promote it to active (foreground).
-   */
   onIframeLoaded(frame: 'A' | 'B'): void {
     if (frame === this._pendingFrame) {
       this.pdfActiveFrame = frame;
-      this._pendingFrame = null;
+      this._pendingFrame  = null;
     }
   }
 
-  // ── PDF text position extraction (via pdf.js getTextContent) ────────
-
-  /**
-   * Uses pdf.js to extract every text item with bounding-box from every page.
-   * Results cached in _pdfTextItems so we only run this once per PDF.
-   */
   private async extractPdfTextPositions(pdfjsLib: any, pdfBytes: Uint8Array): Promise<void> {
     this._pdfTextItems = [];
 
     const loadingTask = pdfjsLib.getDocument({ data: pdfBytes.slice() });
-    const pdf = await loadingTask.promise;
+    const pdf         = await loadingTask.promise;
 
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      const page = await pdf.getPage(pageNum);
-      const viewport = page.getViewport({ scale: 1.0 });
+      const page        = await pdf.getPage(pageNum);
+      const viewport    = page.getViewport({ scale: 1.0 });
       const textContent = await page.getTextContent();
 
       for (const item of textContent.items) {
         if (!item.str || !item.str.trim()) continue;
-
-        // item.transform = [scaleX, skewX, skewY, scaleY, translateX, translateY]
-        const tx = item.transform;
+        const tx       = item.transform;
         const fontSize = Math.abs(tx[3]) || 12;
-        const x = tx[4];
-        const y = tx[5];
-
-        // item.width from pdf.js is the text width in PDF units
-        const w = item.width || (item.str.length * fontSize * 0.6);
-
-        this._pdfTextItems.push({
-          str: item.str,
-          pageIndex: pageNum - 1,
-          x: x,
-          y: y,
-          w: w,
-          h: fontSize,
-        });
+        const x        = tx[4];
+        const y        = tx[5];
+        const w        = item.width || (item.str.length * fontSize * 0.6);
+        this._pdfTextItems.push({ str: item.str, pageIndex: pageNum - 1, x, y, w, h: fontSize });
       }
-
       page.cleanup();
     }
-
     pdf.destroy();
     this._pdfTextExtracted = true;
   }
 
-  // ── Text matching ──────────────────────────────────────────────────
-
-  /**
-   * Searches _pdfTextItems for items matching the given field value.
-   * Uses 3 strategies: exact → word → stripped-format matching.
-   */
   private findMatchingTextItems(searchValue: string): Array<{
     pageIndex: number; x: number; y: number; w: number; h: number;
   }> {
     if (!this._pdfTextItems.length || !searchValue) return [];
 
-    const needle = searchValue.toLowerCase().trim();
+    const needle  = searchValue.toLowerCase().trim();
     const results: Array<{ pageIndex: number; x: number; y: number; w: number; h: number }> = [];
-    const added = new Set<string>();
+    const added   = new Set<string>();
 
     const addItem = (item: typeof this._pdfTextItems[0]) => {
       const k = `${item.pageIndex}:${Math.round(item.x)}:${Math.round(item.y)}`;
@@ -1818,62 +2156,44 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       results.push({ pageIndex: item.pageIndex, x: item.x, y: item.y, w: item.w, h: item.h });
     };
 
-    // Strategy 1: exact — text item contains the full search value
     for (const item of this._pdfTextItems) {
-      if (item.str.toLowerCase().includes(needle)) {
-        addItem(item);
-      }
+      if (item.str.toLowerCase().includes(needle)) addItem(item);
     }
 
-    // Strategy 2: word match — split value into words, match any
     if (results.length === 0) {
       const words = needle.split(/[\s,]+/).filter(w => w.length >= 2);
       for (const item of this._pdfTextItems) {
         const lower = item.str.toLowerCase();
         for (const word of words) {
-          if (lower.includes(word)) {
-            addItem(item);
-            break;
-          }
+          if (lower.includes(word)) { addItem(item); break; }
         }
       }
     }
 
-    // Strategy 3: stripped — remove formatting chars, match codes/IDs/phones
     if (results.length === 0) {
       const stripped = needle.replace(/[\s\-().\/]/g, '');
       if (stripped.length >= 3) {
         for (const item of this._pdfTextItems) {
           const itemStripped = item.str.replace(/[\s\-().\/]/g, '').toLowerCase();
-          if (itemStripped.includes(stripped) || stripped.includes(itemStripped)) {
-            addItem(item);
-          }
+          if (itemStripped.includes(stripped) || stripped.includes(itemStripped)) addItem(item);
         }
       }
     }
 
-    // Strategy 4: adjacent text items — value may span multiple items
     if (results.length === 0) {
-      // Concatenate adjacent items on same line and search
       const byPage = new Map<number, typeof this._pdfTextItems>();
       for (const item of this._pdfTextItems) {
         if (!byPage.has(item.pageIndex)) byPage.set(item.pageIndex, []);
         byPage.get(item.pageIndex)!.push(item);
       }
-
       for (const [pageIdx, items] of byPage) {
-        // Sort by Y (descending) then X (ascending) to get reading order
         const sorted = [...items].sort((a, b) => {
           const dy = b.y - a.y;
           return Math.abs(dy) < 3 ? a.x - b.x : dy;
         });
-
         for (let i = 0; i < sorted.length - 1; i++) {
           const combined = (sorted[i].str + ' ' + sorted[i + 1].str).toLowerCase();
-          if (combined.includes(needle)) {
-            addItem(sorted[i]);
-            addItem(sorted[i + 1]);
-          }
+          if (combined.includes(needle)) { addItem(sorted[i]); addItem(sorted[i + 1]); }
         }
       }
     }
@@ -1881,50 +2201,33 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     return results;
   }
 
-  // ── Draw highlights on PDF via pdf-lib ─────────────────────────────
-
-  /**
-   * Takes original PDF bytes, draws semi-transparent colored rectangles
-   * at each matched text position, returns modified PDF bytes.
-   */
   private async drawHighlightsOnPdf(
     originalBytes: Uint8Array,
     positions: Array<{ pageIndex: number; x: number; y: number; w: number; h: number }>,
     color: { r: number; g: number; b: number }
   ): Promise<Uint8Array> {
     const pdfDoc = await PDFDocument.load(originalBytes, { ignoreEncryption: true });
-    const pages = pdfDoc.getPages();
-
-    const pad = 2;
+    const pages  = pdfDoc.getPages();
+    const pad    = 2;
 
     for (const pos of positions) {
       const page = pages[pos.pageIndex];
       if (!page) continue;
-
-      // Semi-transparent highlight fill
       page.drawRectangle({
-        x: pos.x - pad,
-        y: pos.y - pad,
-        width: pos.w + pad * 2,
-        height: pos.h + pad * 2,
+        x: pos.x - pad, y: pos.y - pad,
+        width: pos.w + pad * 2, height: pos.h + pad * 2,
         color: rgb(color.r, color.g, color.b),
         opacity: 0.25,
         borderColor: rgb(color.r, color.g, color.b),
-        borderWidth: 1.5,
-        borderOpacity: 0.8,
+        borderWidth: 1.5, borderOpacity: 0.8,
       });
-
-      // Bold underline for extra visibility
       page.drawRectangle({
-        x: pos.x - pad,
-        y: pos.y - pad - 2,
-        width: pos.w + pad * 2,
-        height: 3,
+        x: pos.x - pad, y: pos.y - pad - 2,
+        width: pos.w + pad * 2, height: 3,
         color: rgb(color.r, color.g, color.b),
         opacity: 0.65,
       });
     }
-
     return await pdfDoc.save();
   }
 
@@ -1947,10 +2250,8 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   countIdentifiedServiceFields(pa: any): number {
     let c = 0;
     for (const s of pa?.services ?? []) {
-      if (s.code) c++;
-      if (s.description) c++;
-      if (s.startDate) c++;
-      if (s.endDate) c++;
+      if (s.code) c++; if (s.description) c++;
+      if (s.startDate) c++; if (s.endDate) c++;
       if (s.diagnosisCode || s.diagnosisDescription) c++;
     }
     if (pa?.dx?.codes?.length) c++;
@@ -1966,188 +2267,76 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     return c;
   }
 
-  // ============================================================
-  // AI Summary — calls authDetailApi.getFaxSummary()
-  // Auto-triggered when priorAuth is set after extraction
-  // ============================================================
+  // ── AI Summary ──────────────────────────────────────────────────────────
 
-  /**
-   * Generates AI summary by calling the backend getFaxSummary endpoint.
-   * Called automatically when a fax preview is opened and data is extracted,
-   * or manually via the Regenerate button.
-   */
   async generateAiSummary(pa?: PriorAuth): Promise<void> {
     const paData = pa || this.priorAuth;
     if (!paData || this.aiSummaryLoading) return;
 
     this.aiSummaryLoading = true;
-    this.aiSummaryError = null;
-    this.aiSummary = null;
-    this.aiParsedSummary = null; this.aiParsedFlags = [];
-    this.aiClinicalMatch = null; this.aiRecommendation = null; this.aiRecommendationType = 'info';
+    this.aiSummaryError   = null;
+    this.aiSummary        = null;
+    this.aiParsedSummary  = null; this.aiParsedFlags = [];
+    this.aiClinicalMatch  = null; this.aiRecommendation = null; this.aiRecommendationType = 'info';
 
     try {
       const inputData = this.buildPaDataText(paData);
-      const value = 'test';
+      const value     = 'test';
 
-      // Call backend — must send as JSON with correct Content-Type.
-      // C# [FromBody] string expects the body to be a JSON-encoded string: "value"
       const summary: string = await firstValueFrom(
         this.authDetailApi.getFaxSummary(inputData, value)
       ) as string;
 
-      if (!summary) {
-        throw new Error('Empty response from AI summary service');
-      }
-
+      if (!summary) throw new Error('Empty response from AI summary service');
       this.parseAiSections(summary);
-
     } catch (err: any) {
       console.error('[AISummary] Error:', err);
-      this.aiSummaryError = err?.error?.title
-        || err?.error?.message
-        || err?.message
-        || 'Failed to generate summary. Please try again.';
+      this.aiSummaryError =
+        err?.error?.title || err?.error?.message || err?.message ||
+        'Failed to generate summary. Please try again.';
     } finally {
       this.aiSummaryLoading = false;
     }
   }
 
-  /**
-   * Extracts only "Clinical Criteria Match" and "AI Recommendation"
-   * paragraphs from the full AI response. Derives recommendation type
-   * (approve / deny / pend / info) from the recommendation text.
-   */
-  //private parseAiSections(fullText: string): void {
-  //  const text = fullText.replace(/\\n/g, '\n');
-
-  //  const extractSection = (label: string): string | null => {
-  //    const patterns = [
-  //      new RegExp(`\\*\\*${label}:\\*\\*\\s*`, 'i'),
-  //      new RegExp(`(?:^|\\n)${label}:\\s*`, 'i'),
-  //    ];
-  //    for (const re of patterns) {
-  //      const match = re.exec(text);
-  //      if (match) {
-  //        const start = match.index + match[0].length;
-  //        const nextSection = text.substring(start).search(/\*\*[A-Z][^*]+:\*\*/);
-  //        const end = nextSection >= 0 ? start + nextSection : text.length;
-  //        return text.substring(start, end).trim();
-  //      }
-  //    }
-  //    return null;
-  //  };
-
-  //  this.aiClinicalMatch = extractSection('Clinical Criteria Match');
-  //  this.aiRecommendation = extractSection('AI Recommendation');
-
-  //  // Derive recommendation type from text
-  //  if (this.aiRecommendation) {
-  //    const lower = this.aiRecommendation.toLowerCase();
-  //    if (lower.includes('should be denied') || lower.includes('denial') || lower.includes('suggesting denial')) {
-  //      this.aiRecommendationType = 'deny';
-  //    } else if (lower.includes('appropriate for approval') || lower.includes('recommend approval')) {
-  //      this.aiRecommendationType = 'approve';
-  //    } else if (lower.includes('pended') || lower.includes('additional documentation') || lower.includes('clinical review')) {
-  //      this.aiRecommendationType = 'pend';
-  //    } else {
-  //      this.aiRecommendationType = 'info';
-  //    }
-  //  }
-  //}
-
   private parseAiSections(fullText: string): void {
-    // Normalize escaped newlines and carriage returns
     const text = fullText
-      .replace(/\\r\\n/g, '\n')
-      .replace(/\\r/g, '\n')
-      .replace(/\\n/g, '\n')
-      .replace(/\r\n/g, '\n')
-      .replace(/\r/g, '\n')
-      .trim();
+      .replace(/\\r\\n/g, '\n').replace(/\\r/g, '\n').replace(/\\n/g, '\n')
+      .replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
 
     this.aiSummary = text || null;
 
-    // ── Parse SECTION 1: Clinical Summary ──
-    // Look for content between SECTION 1 header and SECTION 2 header
     const section1Regex = /(?:SECTION\s*1|PA Clinical Summary)[^\n]*\n([\s\S]*?)(?=(?:SECTION\s*2|Critical Flags Identified)|$)/i;
-    const s1Match = section1Regex.exec(text);
+    const s1Match       = section1Regex.exec(text);
     if (s1Match) {
       this.aiParsedSummary = s1Match[1]
-        .replace(/^[-—=]+$/gm, '')  // remove separator lines
-        .replace(/##\s*/g, '')       // remove markdown headers
-        .replace(/\*\*/g, '')        // remove bold markers
-        .trim();
+        .replace(/^[-—=]+$/gm, '').replace(/##\s*/g, '').replace(/\*\*/g, '').trim();
     } else {
-      // Fallback: if no section headers, use everything before "Critical Flags"
       const flagsStart = text.search(/Critical Flags Identified/i);
       this.aiParsedSummary = flagsStart > 0
         ? text.substring(0, flagsStart).replace(/##\s*/g, '').replace(/\*\*/g, '').trim()
         : text;
     }
 
-    //// ── Parse SECTION 2: Critical Flags ──
-    //this.aiParsedFlags = [];
-    //const section2Regex = /(?:SECTION\s*2|Critical Flags Identified)[^\n]*\n([\s\S]*?)(?=\*?This summary is for|$)/i;
-    //const s2Match = section2Regex.exec(text);
-    //if (s2Match) {
-    //  const flagsBlock = s2Match[1].trim();
-
-    //  // Split by numbered items: "1." or "**1." patterns
-    //  const flagItems = flagsBlock.split(/(?=(?:\*\*)?(?:\d+)\.\s)/);
-
-    //  for (const item of flagItems) {
-    //    const trimmed = item.trim();
-    //    if (!trimmed || !/^\*?\*?\d+\./.test(trimmed)) continue;
-
-    //    // Extract title and body
-    //    // Patterns: "1. **Title:** body" or "**1. Title:** body" or "1. Title: body"
-    //    const itemMatch = trimmed.match(
-    //      /^\*?\*?\d+\.\s*\*?\*?\s*([^:*\n]+?)\s*:?\s*\*?\*?\s*\n?([\s\S]*)/
-    //    );
-
-    //    if (itemMatch) {
-    //      const title = itemMatch[1].replace(/\*\*/g, '').trim();
-    //      const body = itemMatch[2]
-    //        .replace(/\*\*/g, '')
-    //        .replace(/^\s*[-–—]\s*/gm, '• ')
-    //        .trim();
-    //      this.aiParsedFlags.push({ title, body });
-    //    }
-    //  }
-    //}
-
-    this.aiClinicalMatch = null;
-    this.aiRecommendation = null;
-    this.aiRecommendationType = 'info';
+    this.aiClinicalMatch       = null;
+    this.aiRecommendation      = null;
+    this.aiRecommendationType  = 'info';
   }
 
-  /**
-   * Builds structured PA text from extracted PriorAuth data.
-   * Matches the format expected by the backend AI summarization endpoint.
-   */
   private buildPaDataText(pa: PriorAuth): string {
     const lines: string[] = [];
-
-    // Patient / Member
     lines.push(`Member Name: ${pa.patient?.name || 'Not provided'}`);
     lines.push(`DOB: ${pa.patient?.dob || 'Not provided'}`);
     lines.push(`Member ID: ${pa.patient?.memberId || 'Not provided'}`);
     if (pa.patient?.phone) lines.push(`Phone: ${pa.patient.phone}`);
-
-    // Authorization type
     lines.push(`Authorization Type: ${pa.review?.type || 'Not provided'}`);
-
-    // Setting
     const settings: string[] = [];
-    if (pa.setting?.inpatient) settings.push('Inpatient');
+    if (pa.setting?.inpatient)  settings.push('Inpatient');
     if (pa.setting?.outpatient) settings.push('Outpatient');
     lines.push(`Setting: ${settings.length ? settings.join(', ') : 'Not provided'}`);
-
-    // Services
     if (pa.services?.length) {
       for (let i = 0; i < pa.services.length; i++) {
-        const s = pa.services[i];
+        const s     = pa.services[i];
         const parts: string[] = [];
         if (s.code) parts.push(s.code);
         if (s.description) parts.push(s.description);
@@ -2160,8 +2349,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     } else {
       lines.push('Requested Services: None extracted');
     }
-
-    // Diagnosis codes (aggregated)
     const dxParts: string[] = [];
     if (pa.services?.length) {
       for (const s of pa.services) {
@@ -2169,40 +2356,23 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       }
     }
     if (pa.dx?.codes?.length) dxParts.push(...pa.dx.codes);
-    if (dxParts.length) {
-      lines.push(`All Diagnosis Codes: ${[...new Set(dxParts)].join(', ')}`);
-    }
-
-    // Requesting / Referring Provider
-    const rp = pa.providerRequesting;
+    if (dxParts.length) lines.push(`All Diagnosis Codes: ${[...new Set(dxParts)].join(', ')}`);
+    const rp     = pa.providerRequesting;
     lines.push(`Referring Physician: ${rp?.name || 'Not provided'}${rp?.npi ? ', NPI: ' + rp.npi : ''}`);
     if (rp?.phone) lines.push(`Referring Phone: ${rp.phone}`);
-    if (rp?.fax) lines.push(`Referring Fax: ${rp.fax}`);
-
-    // Servicing Provider
-    const sp = pa.providerServicing;
+    if (rp?.fax)   lines.push(`Referring Fax: ${rp.fax}`);
+    const sp     = pa.providerServicing;
     const svcName = sp?.name || sp?.facility;
     lines.push(`Servicing Provider: ${svcName || 'Not provided'}`);
     lines.push(`Servicing Provider NPI: ${sp?.npi || 'Not provided'}`);
     if (sp?.phone) lines.push(`Servicing Provider Phone: ${sp.phone}`);
-    if (sp?.fax) lines.push(`Servicing Provider Fax: ${sp.fax}`);
-
-    // Facility
+    if (sp?.fax)   lines.push(`Servicing Provider Fax: ${sp.fax}`);
     if (sp?.facility && sp?.name) lines.push(`Facility: ${sp.facility}`);
     if (!sp?.facility && !svcName) lines.push('Facility: Not provided');
-
-    // Submission
     if (pa.submission?.issuerName) lines.push(`Issuer Name: ${pa.submission.issuerName}`);
-    if (pa.submission?.date) lines.push(`Submission Date: ${pa.submission.date}`);
-
-    // Supporting docs / notes
-    if (pa.notes) lines.push(`Supporting Docs: ${pa.notes}`);
-
-    // AHCCCS / Registration
-    if (!rp?.npi && !sp?.npi) {
-      lines.push('AHCCCS Registration: Not provided for either provider');
-    }
-
+    if (pa.submission?.date)       lines.push(`Submission Date: ${pa.submission.date}`);
+    if (pa.notes)                  lines.push(`Supporting Docs: ${pa.notes}`);
+    if (!rp?.npi && !sp?.npi) lines.push('AHCCCS Registration: Not provided for either provider');
     return lines.join('\n');
   }
 
@@ -2212,9 +2382,9 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       return;
     }
 
-    const total = this.selectedFax.pageCount;
+    const total    = this.selectedFax.pageCount;
     const firstRaw: any = this.splitFirstPageCount;
-    const first = Number.isFinite(Number(firstRaw)) ? Math.trunc(Number(firstRaw)) : 1;
+    const first    = Number.isFinite(Number(firstRaw)) ? Math.trunc(Number(firstRaw)) : 1;
 
     if (first <= 0 || first >= total) {
       this.toast(`First document pages must be between 1 and ${total - 1}.`, true);
@@ -2222,74 +2392,45 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     }
 
     this.isSplitting = true;
-    this.saving = true;
+    this.saving      = true;
 
     try {
-      // Ensure we have raw PDF bytes. Prefer cached preview bytes; otherwise fetch from API.
       let bytes = this.currentFaxBytes;
-
       if (!bytes || bytes.length === 0) {
-        const res: any = await firstValueFrom(this.api.getFaxFileById(this.selectedFax.faxId ?? 0));
-        const fileBytes = res.fileBytes ?? res.FileBytes ?? null;
-
-        if (!fileBytes) {
-          throw new Error('No PDF bytes returned from server.');
-        }
-
-        bytes = this.base64ToUint8Array(fileBytes);
-        this.currentFaxBytes = bytes;
-        this.currentFaxContentType = res.contentType ?? res.ContentType ?? 'application/pdf';
-        this.currentFaxOriginalName = this.selectedFax.fileName ?? 'document.pdf';
+        const res: any    = await firstValueFrom(this.api.getFaxFileById(this.selectedFax.faxId ?? 0));
+        const fileBytes   = res.fileBytes ?? res.FileBytes ?? null;
+        if (!fileBytes) throw new Error('No PDF bytes returned from server.');
+        bytes             = this.base64ToUint8Array(fileBytes);
+        this.currentFaxBytes         = bytes;
+        this.currentFaxContentType   = res.contentType ?? res.ContentType ?? 'application/pdf';
+        this.currentFaxOriginalName  = this.selectedFax.fileName ?? 'document.pdf';
       }
 
-      const originalPdf = await PDFDocument.load(bytes, { ignoreEncryption: true });
-      const pageCount = originalPdf.getPageCount();
-
-      // Split indices (0-based)
-      const pdf1 = await PDFDocument.create();
-      const pdf2 = await PDFDocument.create();
-
-      const part1Indices = Array.from({ length: first }, (_, i) => i);
-      const part2Indices = Array.from({ length: pageCount - first }, (_, i) => i + first);
-
-      const copied1 = await pdf1.copyPages(originalPdf, part1Indices);
+      const originalPdf   = await PDFDocument.load(bytes, { ignoreEncryption: true });
+      const pageCount     = originalPdf.getPageCount();
+      const pdf1          = await PDFDocument.create();
+      const pdf2          = await PDFDocument.create();
+      const part1Indices  = Array.from({ length: first },             (_, i) => i);
+      const part2Indices  = Array.from({ length: pageCount - first }, (_, i) => i + first);
+      const copied1       = await pdf1.copyPages(originalPdf, part1Indices);
       copied1.forEach(p => pdf1.addPage(p));
-
-      const copied2 = await pdf2.copyPages(originalPdf, part2Indices);
+      const copied2       = await pdf2.copyPages(originalPdf, part2Indices);
       copied2.forEach(p => pdf2.addPage(p));
+      const bytes1        = await pdf1.save();
+      const bytes2        = await pdf2.save();
+      const originalName  = this.currentFaxOriginalName || this.selectedFax.fileName || 'document.pdf';
+      const dot           = originalName.lastIndexOf('.');
+      const base          = dot >= 0 ? originalName.substring(0, dot) : originalName;
+      const ext           = dot >= 0 ? originalName.substring(dot) : '.pdf';
+      const file1Name     = `${base}_Split1${ext}`;
+      const file2Name     = `${base}_Split2${ext}`;
+      const file1         = new File([new Blob([bytes1], { type: 'application/pdf' })], file1Name, { type: 'application/pdf' });
+      const file2         = new File([new Blob([bytes2], { type: 'application/pdf' })], file2Name, { type: 'application/pdf' });
+      const parentFaxId   = this.selectedFax.faxId ?? null;
+      const metaJson      = JSON.stringify({ source: 'UI:Faxes', action: 'Split', parentFaxId });
 
-      const bytes1 = await pdf1.save();
-      const bytes2 = await pdf2.save();
-
-      const originalName = this.currentFaxOriginalName || this.selectedFax.fileName || 'document.pdf';
-      const dot = originalName.lastIndexOf('.');
-      const base = dot >= 0 ? originalName.substring(0, dot) : originalName;
-      const ext = dot >= 0 ? originalName.substring(dot) : '.pdf';
-
-      const file1Name = `${base}_Split1${ext}`;
-      const file2Name = `${base}_Split2${ext}`;
-
-      const file1 = new File([new Blob([bytes1], { type: 'application/pdf' })], file1Name, { type: 'application/pdf' });
-      const file2 = new File([new Blob([bytes2], { type: 'application/pdf' })], file2Name, { type: 'application/pdf' });
-
-      const parentFaxId = this.selectedFax.faxId ?? null;
-      const metaJson = JSON.stringify({ source: 'UI:Faxes', action: 'Split', parentFaxId });
-
-      // Save both split parts as children (suppress per-file toasts/reloads; we'll do one at end)
-      await this.saveFileData(null, file1, {
-        parentFaxId,
-        inheritFrom: this.selectedFax,
-        metaJson,
-        suppressToast: true,
-        suppressReload: true
-      });
-      await this.saveFileData(null, file2, {
-        parentFaxId,
-        inheritFrom: this.selectedFax,
-        metaJson,
-        suppressToast: true,
-        suppressReload: true
-      });
+      await this.saveFileData(null, file1, { parentFaxId, inheritFrom: this.selectedFax, metaJson, suppressToast: true, suppressReload: true });
+      await this.saveFileData(null, file2, { parentFaxId, inheritFrom: this.selectedFax, metaJson, suppressToast: true, suppressReload: true });
 
       this.toast(`Split saved: "${file1Name}" and "${file2Name}".`, false);
       this.splitCompleted = true;
@@ -2299,96 +2440,53 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       this.toast('Split failed. Please try again.', true);
     } finally {
       this.isSplitting = false;
-      this.saving = false;
+      this.saving      = false;
     }
   }
 
-  // FaxesComponent
-
-
-
-
   openSplitDialog(row: FaxFile): void {
-    // The row-menu "Split" should behave the same as splitting from the preview pane:
-    // 1) Open the preview for this fax
-    // 2) Initialize the split count to 1 (or max-1)
-    // 3) User can then click "Split & Save" (preview pane button)
     this.openPreview(row);
     const pc = row.pageCount ?? 0;
     this.splitFirstPageCount = pc > 1 ? 1 : null;
   }
 
-  openUpdateWorkBasketDialog(row: FaxFile): void {
-    /* open WB dialog */
-  }
+  openUpdateWorkBasketDialog(row: FaxFile): void { /* open WB dialog */ }
+  renameFax(row: FaxFile): void { /* prompt for new name + saveFileData(...) */ }
+  deleteFax(row: FaxFile): void { /* confirm + delete */ }
 
-  renameFax(row: FaxFile): void {
-    /* prompt for new name + saveFileData(...) */
-  }
-
-  deleteFax(row: FaxFile): void {
-    /* confirm + delete */
-  }
-
-
-
-  /* Update Methods */
-  // Inline edit mode for preview pane
   editMode: 'none' | 'rename' | 'workbasket' | 'deleteConfirm' = 'none';
-
-  // Dropdown options for work baskets (we'll fill from user work groups)
   workBasketOptions: { value: string; label: string }[] = [];
 
-  // Inline edit state (table-level, not preview)
-  editingFileNameFaxId: number | null = null;
+  cancelInlineEdit(): void { this.editMode = 'none'; }
+
+  editingFileNameFaxId: number | null  = null;
   editingWorkBasketFaxId: number | null = null;
-  tempFileName: string = '';
+  tempFileName: string   = '';
   tempWorkBasket: string | null = null;
 
-  // Cancel any preview-banner edit (still used for delete confirm if you want)
-  cancelInlineEdit(): void {
-    this.editMode = 'none';
-  }
-
-  // --- Rename ---
-
-  // --- Rename (inline in table) ---
-
   renameFaxInline(row: FaxFile): void {
-    // Only one editor at a time
     this.editingWorkBasketFaxId = null;
-    this.editingFileNameFaxId = row.faxId ?? null;
-    this.tempFileName = row.fileName;
+    this.editingFileNameFaxId   = row.faxId ?? null;
+    this.tempFileName           = row.fileName;
   }
 
   saveRename(row: FaxFile): void {
     const name = (this.tempFileName || '').trim();
     if (!name) return;
-
-    this.selectedFax = {
-      ...row,
-      fileName: name,
-      updatedBy: this.currentUserId ?? row.updatedBy ?? 1
-    };
-
+    this.selectedFax = { ...row, fileName: name, updatedBy: this.currentUserId ?? row.updatedBy ?? 1 };
     this.saveUpdate();
     this.editingFileNameFaxId = null;
   }
 
   cancelRename(): void {
     this.editingFileNameFaxId = null;
-    this.tempFileName = '';
+    this.tempFileName         = '';
   }
 
-
-  // --- Work Basket ---
-
   openUpdateWorkBasketInline(row: FaxFile): void {
-    this.editingFileNameFaxId = null;
+    this.editingFileNameFaxId   = null;
     this.editingWorkBasketFaxId = row.faxId ?? null;
-
-    const current = row.workBasket;
-
+    const current               = row.workBasket;
     if (current && this.workBasketOptions.some(w => w.value === current)) {
       this.tempWorkBasket = current;
     } else if (this.workBasketOptions.length) {
@@ -2400,47 +2498,28 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
   saveWorkBasket(row: FaxFile): void {
     if (!this.tempWorkBasket) return;
-
-    this.selectedFax = {
-      ...row,
-      workBasket: this.tempWorkBasket,
-      updatedBy: this.currentUserId ?? row.updatedBy ?? 1
-    };
-
+    this.selectedFax = { ...row, workBasket: this.tempWorkBasket, updatedBy: this.currentUserId ?? row.updatedBy ?? 1 };
     this.saveUpdate();
     this.editingWorkBasketFaxId = null;
   }
 
   cancelWorkBasketEdit(): void {
     this.editingWorkBasketFaxId = null;
-    this.tempWorkBasket = null;
+    this.tempWorkBasket         = null;
   }
 
-  // --- Priority toggle (1 <-> 2) ---
-
   updatePriority(row: FaxFile): void {
-    // No dialog; just toggle and save
-    this.selectedFax = {
-      ...row,
-      priority: row.priority === 1 ? 2 : 1,
-      updatedBy: this.currentUserId ?? row.updatedBy ?? 1
-    };
-
+    this.selectedFax = { ...row, priority: row.priority === 1 ? 2 : 1, updatedBy: this.currentUserId ?? row.updatedBy ?? 1 };
     this.saveUpdate();
   }
 
-  // --- Delete (inline confirmation) ---
-
   deletingFaxId: number | null = null;
   deleteMessage: string = '';
+
   openDeleteInline(row: FaxFile): void {
-    // Close other inline editors
-    this.editingFileNameFaxId = null;
+    this.editingFileNameFaxId   = null;
     this.editingWorkBasketFaxId = null;
-
-    this.deletingFaxId = row.faxId ?? null;
-
-    // Build message depending on selection
+    this.deletingFaxId          = row.faxId ?? null;
     if (row.hasChildren) {
       this.deleteMessage = `This will delete "${row.fileName}" and all its split pages. Continue?`;
     } else if ((row as any).isChild) {
@@ -2452,60 +2531,33 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
   async confirmDelete(row: FaxFile): Promise<void> {
     if (!row || !row.faxId) return;
-
-    const nowIso = new Date().toISOString();
+    const nowIso    = new Date().toISOString();
     const deletedBy = this.currentUserId ?? row.deletedBy ?? 1;
-
-    // Build target list: parent + its children if applicable
-    const targets: FaxFile[] = [];
-    if (row.hasChildren && row.children?.length) {
-      targets.push(row, ...(row.children || []));
-    } else {
-      targets.push(row);
-    }
+    const targets: FaxFile[] = row.hasChildren && row.children?.length
+      ? [row, ...(row.children || [])]
+      : [row];
 
     this.saving = true;
     try {
-      await Promise.all(
-        targets.map(t => {
-          // reuse saveUpdate plumbing by setting selectedFax per item
-          this.selectedFax = {
-            ...t,
-            status: 'Deleted',
-            deletedOn: nowIso,
-            deletedBy,
-            updatedBy: deletedBy
+      await Promise.all(targets.map(t => {
+        this.selectedFax = { ...t, status: 'Deleted', deletedOn: nowIso, deletedBy, updatedBy: deletedBy };
+        return (async () => {
+          const toSave: any = {
+            faxId: this.selectedFax!.faxId, workBasket: '2',
+            fileName: this.selectedFax!.fileName, priority: this.selectedFax!.priority,
+            status: this.selectedFax!.status, updatedOn: nowIso, updatedBy: deletedBy,
+            deletedOn: nowIso, deletedBy
           };
-          // suppress duplicate toasts/reloads
-          return (async () => {
-            const toSave: any = {
-              faxId: this.selectedFax!.faxId,
-              workBasket: "2",
-              fileName: this.selectedFax!.fileName,
-              priority: this.selectedFax!.priority,
-              status: this.selectedFax!.status,
-              updatedOn: nowIso,
-              updatedBy: deletedBy,
-              deletedOn: nowIso,
-              deletedBy
-            };
-            return firstValueFrom(this.api.updateFaxFile(toSave));
-          })();
-        })
-      );
-
-      this.toast(
-        row.hasChildren
-          ? `Deleted "${row.fileName}" and its split pages.`
-          : `Deleted "${row.fileName}".`,
-        false
-      );
+          return firstValueFrom(this.api.updateFaxFile(toSave));
+        })();
+      }));
+      this.toast(row.hasChildren ? `Deleted "${row.fileName}" and its split pages.` : `Deleted "${row.fileName}".`, false);
       this.reload();
     } catch (e) {
       console.error('Delete failed', e);
       this.toast(`Delete failed for "${row.fileName}".`, true);
     } finally {
-      this.saving = false;
+      this.saving        = false;
       this.deletingFaxId = null;
       this.deleteMessage = '';
     }
@@ -2515,47 +2567,27 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     this.deletingFaxId = null;
     this.deleteMessage = '';
   }
-  /* END Update Methods */
 
   private updateFaxCounts(): void {
     const data = this.allFaxes || [];
-    this.totalFaxCount = data.length;
-
-    this.openFaxCount = data.filter(f =>
-      (f.status || '').toLowerCase() !== 'processed' &&
-      (f.status || '').toLowerCase() !== 'deleted'
-    ).length;
-    this.processedFaxCount = data.filter(f =>
-      (f.status || '').toLowerCase() === 'processed'
-    ).length;
-
+    this.totalFaxCount     = data.length;
+    this.openFaxCount      = data.filter(f => (f.status || '').toLowerCase() !== 'processed' && (f.status || '').toLowerCase() !== 'deleted').length;
+    this.processedFaxCount = data.filter(f => (f.status || '').toLowerCase() === 'processed').length;
     this.faxWorkBaskets.forEach(wb => {
       wb.count = data.filter(f => (f.workBasket || '') === wb.name).length;
     });
   }
+
   private applyWorkBasketFilter(): void {
     let source = this.allFaxes || [];
-
-    // Apply status chip filter
     if (this.statusChipFilter === 'open') {
-      source = source.filter(f =>
-        (f.status || '').toLowerCase() !== 'processed' &&
-        (f.status || '').toLowerCase() !== 'deleted'
-      );
+      source = source.filter(f => (f.status || '').toLowerCase() !== 'processed' && (f.status || '').toLowerCase() !== 'deleted');
     } else if (this.statusChipFilter === 'processed') {
-      source = source.filter(f =>
-        (f.status || '').toLowerCase() === 'processed'
-      );
+      source = source.filter(f => (f.status || '').toLowerCase() === 'processed');
     }
-    // 'all' → no status filtering (but exclude deleted)
-
-    // Apply work-basket filter
     if (this.selectedWorkBasket) {
-      source = source.filter(
-        f => (f.workBasket || '') === this.selectedWorkBasket
-      );
+      source = source.filter(f => (f.workBasket || '') === this.selectedWorkBasket);
     }
-
     this.dataSource.data = source;
   }
 
@@ -2569,36 +2601,23 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     this.applyWorkBasketFilter();
   }
 
-
   onMemberClick(memberId: string, memberName: string, memberDetailsId: string): void {
     const tabLabel = `Member: ${memberName}`;
     const tabRoute = `/member-info/${memberId}`;
-
     const existingTab = this.headerService.getTabs().find(tab => tab.route === tabRoute);
-
-
     if (existingTab) {
       this.headerService.selectTab(tabRoute);
-
       const mdId = existingTab.memberDetailsId ?? null;
       if (mdId) sessionStorage.setItem('selectedMemberDetailsId', mdId);
-      this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
-        this.router.navigate([tabRoute]);
-      });
+      this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => this.router.navigate([tabRoute]));
     } else {
       this.headerService.addTab(tabLabel, tabRoute, memberId, memberDetailsId);
       sessionStorage.setItem('selectedMemberDetailsId', memberDetailsId);
-      this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
-        this.router.navigate([tabRoute]);
-      });
+      this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => this.router.navigate([tabRoute]));
     }
-
-
   }
 
-  // ============================================================
-  // Fax → Auth Form Methods
-  // ============================================================
+  // ── Fax → Auth Form ─────────────────────────────────────────────────────
 
   openAuthForm(): void {
     if (!this.priorAuth || !this.selectedFax) return;
@@ -2606,82 +2625,50 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     const pa = this.priorAuth;
 
     let authClassName = 'Inpatient';
-    if ((pa as any).setting?.outpatient && !(pa as any).setting?.inpatient) {
-      authClassName = 'Outpatient';
-    }
+    if ((pa as any).setting?.outpatient && !(pa as any).setting?.inpatient) authClassName = 'Outpatient';
 
-    // NOTE: pa.review?.type is the request classification ("Prior Authorization",
-    // "Concurrent Review" etc.) — this is NOT the UM template type name.
-    // Default to "Observation Stay" which is the most common template.
     const authTypeName = 'Observation Stay';
 
     const parseAddress = (addr: string | undefined) => {
       if (!addr) return {};
       const parts = addr.split(',').map(s => s.trim());
-      return {
-        address: parts[0] || '',
-        city: parts[1] || '',
-        state: parts[2] || '',
-        zip: parts[3] || ''
-      };
+      return { address: parts[0] || '', city: parts[1] || '', state: parts[2] || '', zip: parts[3] || '' };
     };
 
     const reqAddr = parseAddress((pa as any).providerRequesting?.address);
     const svcAddr = parseAddress((pa as any).providerServicing?.address);
 
     this.currentFaxPrefill = {
-      mode: 'fax',
-      memberId: this.selectedFax.memberId ?? 0,
+      mode:           'fax',
+      memberId:       this.selectedFax.memberId ?? 0,
       memberDetailsId: this.selectedFax.memberDetailsId ?? 0,
-      faxId: this.selectedFax.faxId ?? 0,
-
+      faxId:          this.selectedFax.faxId ?? 0,
       authClassName,
       authTypeName,
-
-      // Pass through the Smart Auth Check authApprove flag so AuthDetails
-      // can auto-approve when the rules engine says 'Yes'.
-      authApprove: this.smartAuthCheckAuthApprove ?? undefined,
-
+      authApprove:    this.smartAuthCheckAuthApprove ?? undefined,
       diagnosisCodes: ((pa as any).dx?.codes?.length ? (pa as any).dx.codes : null)
-        ?? ((pa as any).services || [])
-          .map((s: any) => s.diagnosisCode)
-          .filter(Boolean),
-
+        ?? ((pa as any).services || []).map((s: any) => s.diagnosisCode).filter(Boolean),
       services: ((pa as any).services ?? []).map((s: any) => ({
-        code: s.code,
-        description: s.description,
-        startDate: s.startDate,
-        endDate: s.endDate,
-        quantity: s.quantity ?? 1
+        code: s.code, description: s.description,
+        startDate: s.startDate, endDate: s.endDate, quantity: s.quantity ?? 1
       })),
-
       requestingProvider: (pa as any).providerRequesting ? {
-        name: (pa as any).providerRequesting.name,
-        firstName: (pa as any).providerRequesting.firstName,
-        lastName: (pa as any).providerRequesting.lastName,
-        npi: (pa as any).providerRequesting.npi,
-        phone: (pa as any).providerRequesting.phone,
-        fax: (pa as any).providerRequesting.fax,
-        ...reqAddr
+        name: (pa as any).providerRequesting.name, firstName: (pa as any).providerRequesting.firstName,
+        lastName: (pa as any).providerRequesting.lastName, npi: (pa as any).providerRequesting.npi,
+        phone: (pa as any).providerRequesting.phone, fax: (pa as any).providerRequesting.fax, ...reqAddr
       } : undefined,
-
       servicingProvider: (pa as any).providerServicing ? {
         name: (pa as any).providerServicing.name || (pa as any).providerServicing.facility,
-        firstName: (pa as any).providerServicing.firstName,
-        lastName: (pa as any).providerServicing.lastName,
-        npi: (pa as any).providerServicing.npi,
-        phone: (pa as any).providerServicing.phone,
-        fax: (pa as any).providerServicing.fax,
-        ...svcAddr
+        firstName: (pa as any).providerServicing.firstName, lastName: (pa as any).providerServicing.lastName,
+        npi: (pa as any).providerServicing.npi, phone: (pa as any).providerServicing.phone,
+        fax: (pa as any).providerServicing.fax, ...svcAddr
       } : undefined,
-
       requestDatetime: (pa as any).submission?.date,
-      notes: (pa as any).notes,
+      notes:   (pa as any).notes,
       priorAuth: pa
     };
 
     this.showAuthForm = true;
-
     setTimeout(() => {
       const pane = document.querySelector('.pane-middle');
       if (pane) pane.scrollTop = 0;
@@ -2689,80 +2676,135 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   }
 
   cancelAuthForm(): void {
+    // Manual cancel of the visible Generate Auth panel.
+    // Pipeline cancels are handled separately by onAutoAuthCancelled().
     if (this.authDetailsRef?.authHasUnsavedChanges?.()) {
-      this.discardDialogContext = 'backToDetails';
+      this.discardDialogContext  = 'backToDetails';
       this._pendingDiscardAction = () => {
-        this.showAuthForm = false;
+        this.showAuthForm      = false;
         this.currentFaxPrefill = null;
       };
       this.showDiscardDialog = true;
     } else {
-      this.showAuthForm = false;
+      this.showAuthForm      = false;
       this.currentFaxPrefill = null;
     }
   }
 
   dismissDiscardDialog(): void {
-    this.showDiscardDialog = false;
+    this.showDiscardDialog     = false;
     this._pendingDiscardAction = null;
   }
 
   confirmDiscardChanges(): void {
     this.showDiscardDialog = false;
-    const action = this._pendingDiscardAction;
+    const action           = this._pendingDiscardAction;
     this._pendingDiscardAction = null;
     action?.();
   }
 
   onAuthSaved(event: { authNumber: string; authId: number }): void {
-    this.showAuthForm = false;
-    this.currentFaxPrefill = null;
+    // ── Determine whether this came from the pipeline or the manual form ───────
+    const pipeline = this._activeAutoAuthPipeline;
+    this._activeAutoAuthPipeline = null;
 
-    // Immediately reflect linked state in the preview
+    if (pipeline) {
+      // Pipeline auto-save: tear down the hidden instance only.
+      // showAuthForm / currentFaxPrefill are untouched — manual flow is isolated.
+      this.isAutoSavePipelineActive = false;
+      this.pipelineFaxPrefill       = null;
+
+      this.setStep(pipeline, 'auth', 'success',
+        `Authorization ${event.authNumber} created — Status: Closed | Decision: Auto Approved`);
+      this.setStep(pipeline, 'finalize', 'running',
+        'Updating fax status and linking authorization record…');
+    } else {
+      // Manual Generate Auth flow: close the visible form panel as before.
+      this.showAuthForm      = false;
+      this.currentFaxPrefill = null;
+    }
+
+    // Reflect linked state in the preview panel when a fax is open
     const nowIso = new Date().toISOString();
     this.linkedAuthMeta = {
       linkedAuthNumber: event.authNumber,
-      linkedAuthId: event.authId,
-      linkedAt: nowIso
+      linkedAuthId:     event.authId,
+      linkedAt:         nowIso
     };
     this.resetSmartAuthCheckState();
 
-    if (this.selectedFax?.faxId) {
-      let existingMeta: any = {};
-      if (this.selectedFax.metaJson) {
-        try { existingMeta = JSON.parse(this.selectedFax.metaJson); } catch { /* ignore */ }
-      }
+    // ── Resolve which fax record to update ────────────────────────────────────
+    // CRITICAL: when the pipeline runs on upload the user has not yet clicked the
+    // fax, so selectedFax is null.  Use pipeline.faxId as the authoritative source.
+    const faxIdToUpdate: number | null =
+      this.selectedFax?.faxId ?? pipeline?.faxId ?? null;
+    const fileNameForUpdate: string =
+      this.selectedFax?.fileName ?? pipeline?.fileName ?? 'unknown';
+    const priorityForUpdate: 1 | 2 | 3 =
+      (this.selectedFax?.priority ?? 2) as 1 | 2 | 3;
 
+    // Merge existing metaJson so we never lose previous pipeline/processing metadata
+    let existingMeta: any = {};
+    if (this.selectedFax?.metaJson) {
+      try { existingMeta = JSON.parse(this.selectedFax.metaJson); } catch { /* ignore */ }
+    }
+
+    if (faxIdToUpdate) {
       const updatedMeta = {
         ...existingMeta,
         linkedAuthNumber: event.authNumber,
-        linkedAuthId: event.authId,
-        linkedAt: nowIso
+        linkedAuthId:     event.authId,
+        linkedAt:         nowIso,
+        ...(pipeline ? { autoApproved: true } : {})
       };
 
       const toSave: any = {
-        faxId: this.selectedFax.faxId,
+        faxId:      faxIdToUpdate,
         workBasket: '2',
-        fileName: this.selectedFax.fileName,
-        priority: this.selectedFax.priority,
-        status: 'Processed',
-        metaJson: JSON.stringify(updatedMeta),
-        updatedOn: nowIso,
-        updatedBy: this.currentUserId ?? 1
+        fileName:   fileNameForUpdate,
+        priority:   priorityForUpdate,
+        status:     'Processed',
+        metaJson:   JSON.stringify(updatedMeta),
+        updatedOn:  nowIso,
+        updatedBy:  this.currentUserId ?? 1
       };
 
       this.api.updateFaxFile(toSave).subscribe({
         next: () => {
-          this.toast(`Authorization ${event.authNumber} created and linked to fax.`);
+          if (pipeline) {
+            this.setStep(pipeline, 'finalize', 'success',
+              'Fax moved to Processed and authorization record linked');
+            pipeline.outcome    = 'auto-approved';
+            pipeline.authNumber = event.authNumber;
+            pipeline.authId     = event.authId;
+            this.autoAuthPipelines = [...this.autoAuthPipelines];
+          }
           this.reload();
         },
         error: (err) => {
-          console.error('Failed to link fax to auth', err);
-          this.toast(`Authorization ${event.authNumber} created but fax linking failed.`, true);
+          console.error('Failed to link fax to auth:', err);
+          if (pipeline) {
+            // Auth was created successfully — surface it even if fax update failed
+            this.setStep(pipeline, 'finalize', 'error',
+              `Status update failed — authorization ${event.authNumber} was created successfully`);
+            pipeline.outcome    = 'auto-approved';
+            pipeline.authNumber = event.authNumber;
+            pipeline.authId     = event.authId;
+            this.autoAuthPipelines = [...this.autoAuthPipelines];
+          }
+          this.toast(`Authorization ${event.authNumber} created but fax record update failed.`, true);
           this.reload();
         }
       });
     } else {
+      // No fax context at all — surface the auth number and complete
+      if (pipeline) {
+        this.setStep(pipeline, 'finalize', 'success', 'Authorization created successfully');
+        pipeline.outcome    = 'auto-approved';
+        pipeline.authNumber = event.authNumber;
+        pipeline.authId     = event.authId;
+        this.autoAuthPipelines = [...this.autoAuthPipelines];
+      }
       this.toast(`Authorization ${event.authNumber} created successfully.`);
       this.reload();
     }
@@ -2773,12 +2815,9 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     try {
       const meta = JSON.parse(row.metaJson);
       return meta?.linkedAuthNumber || null;
-    } catch {
-      return null;
-    }
+    } catch { return null; }
   }
 
-  /** Parse linked auth metadata from a fax's metaJson string. */
   private parseLinkedAuthMeta(metaJson: string | null | undefined): typeof this.linkedAuthMeta {
     if (!metaJson) return null;
     try {
@@ -2786,45 +2825,33 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       if (meta?.linkedAuthNumber) {
         return {
           linkedAuthNumber: meta.linkedAuthNumber,
-          linkedAuthId: meta.linkedAuthId ?? null,
-          linkedAt: meta.linkedAt ?? null,
-          parentFaxId: meta.parentFaxId ?? null,
+          linkedAuthId:     meta.linkedAuthId   ?? null,
+          linkedAt:         meta.linkedAt        ?? null,
+          parentFaxId:      meta.parentFaxId     ?? null,
           ...meta
         };
       }
       return null;
-    } catch {
-      return null;
-    }
+    } catch { return null; }
   }
 
-  /** Navigate to auth detail page when user clicks the auth number link. */
   onAuthClick(authNumber: string, authId: number): void {
     if (!authId) return;
-
-    const memberId = this.selectedFax?.memberId;
+    const memberId        = this.selectedFax?.memberId;
     const memberDetailsId = this.selectedFax?.memberDetailsId;
-
     if (memberId && memberDetailsId) {
       const tabLabel = `Auth: ${authNumber}`;
       const tabRoute = `/member-info/${memberId}`;
-
       const existingTab = this.headerService.getTabs().find(tab => tab.route === tabRoute);
-
-      sessionStorage.setItem('selectedAuthId', String(authId));
-      sessionStorage.setItem('selectedAuthNumber', authNumber);
+      sessionStorage.setItem('selectedAuthId',          String(authId));
+      sessionStorage.setItem('selectedAuthNumber',      authNumber);
       sessionStorage.setItem('selectedMemberDetailsId', String(memberDetailsId));
-
       if (existingTab) {
         this.headerService.selectTab(tabRoute);
-        this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
-          this.router.navigate([tabRoute]);
-        });
+        this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => this.router.navigate([tabRoute]));
       } else {
         this.headerService.addTab(tabLabel, tabRoute, String(memberId), String(memberDetailsId));
-        this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
-          this.router.navigate([tabRoute]);
-        });
+        this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => this.router.navigate([tabRoute]));
       }
     } else {
       this.toast(`Authorization ${authNumber} (ID: ${authId})`, false);
@@ -2838,5 +2865,3 @@ function cryptoRandom(): string {
   (window.crypto || (window as any).msCrypto).getRandomValues(bytes);
   return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
 }
-
-
