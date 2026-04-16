@@ -259,6 +259,43 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
    */
   private pendedDecisionStatusValue: any = null;
 
+  /**
+   * Source-of-truth map for Decision Status IDs → display labels.
+   * Used to build dropdown options directly, bypassing the async datasource entirely.
+   * This eliminates the race condition where the datasource returns primitives [1,2,3]
+   * before the cache is populated, causing numeric IDs to show in the dropdown.
+   */
+  private static readonly DECISION_STATUS_ID_MAP: Readonly<Record<string, string>> = {
+    '1': 'Approved',
+    '2': 'Pended',
+    '3': 'Denied',
+    '4': 'Void',
+    '5': 'Partial Approval',
+  };
+
+  /** Build UiSmartOption[] directly from the static map — no async call needed. */
+  private buildDecisionStatusStaticOptions(): UiSmartOption[] {
+    return Object.entries(AuthdecisionComponent.DECISION_STATUS_ID_MAP).map(([id, label]) => ({
+      value: id,
+      label,
+      text: label,
+      raw: { id, decisionStatus: label },
+    } as any));
+  }
+
+  /**
+   * Static fallback map for Decision Status IDs → labels.
+   * Used as a last resort when the async dropdown cache hasn't loaded yet,
+   * preventing raw numeric IDs (1, 2, 3…) from leaking into tab badges.
+   */
+  private static readonly DECISION_STATUS_FALLBACK: ReadonlyArray<{ id: string; decisionStatus: string }> = [
+    { id: '1', decisionStatus: 'Approved' },
+    { id: '2', decisionStatus: 'Pended' },
+    { id: '3', decisionStatus: 'Denied' },
+    { id: '4', decisionStatus: 'Void' },
+    { id: '5', decisionStatus: 'Partial Approval' },
+  ];
+
   /** Extract a service/procedure code string from common backend shapes (object or primitive). */
   private extractServiceCodeString(v: any): string {
     if (v === null || v === undefined) return '';
@@ -299,50 +336,33 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
     const statusDs = this.getDecisionStatusDatasourceFromTemplate();
     const codeDs = this.getDecisionStatusCodeDatasourceFromTemplate();
 
-    const pending: Array<{ ds: string; isStatus: boolean }> = [];
-
-    // Check status datasource
+    // ── Decision Status: seed cache from static map synchronously ──
+    // This guarantees tab badge labels (Approved/Pended/Denied…) are always
+    // available immediately, even before any async call completes.
     if (statusDs) {
-      if (this.dropdownCache.has(statusDs)) {
-        const cached = (this.dropdownCache.get(statusDs) ?? []) as any[];
-        const p = this.findPendedStatusOption(cached as any);
-        if (p) this.pendedDecisionStatusValue = (p as any).value;
-      } else {
-        pending.push({ ds: statusDs, isStatus: true });
-      }
+      const staticOpts = this.buildDecisionStatusStaticOptions();
+      this.dropdownCache.set(statusDs, staticOpts);
+      const p = this.findPendedStatusOption(staticOpts);
+      if (p) this.pendedDecisionStatusValue = (p as any).value;
     }
 
-    // Check reason datasource
-    if (codeDs && !this.dropdownCache.has(codeDs)) {
-      pending.push({ ds: codeDs, isStatus: false });
-    }
-
-    if (!pending.length) {
+    // ── Decision Status Code: still async (no static fallback needed) ──
+    if (!codeDs || this.dropdownCache.has(codeDs)) {
       done();
       return;
     }
 
-    let remaining = pending.length;
-    const onOne = () => { if (--remaining <= 0) done(); };
-
-    for (const item of pending) {
-      this.dsLookup
-        .getOptionsWithFallback(
-          item.ds,
-          (r: any) => this.mapDatasourceRowToOption(item.ds, r) as any,
-          ['UM', 'Admin', 'Provider']
-        )
-        .pipe(catchError(() => of([])), takeUntil(this.destroy$))
-        .subscribe((opts) => {
-          const safe = (opts ?? []) as any[];
-          this.dropdownCache.set(item.ds, safe as any);
-          if (item.isStatus) {
-            const pended = this.findPendedStatusOption(safe as any);
-            if (pended) this.pendedDecisionStatusValue = (pended as any).value;
-          }
-          onOne();
-        });
-    }
+    this.dsLookup
+      .getOptionsWithFallback(
+        codeDs,
+        (r: any) => this.mapDatasourceRowToOption(codeDs, r) as any,
+        ['UM', 'Admin', 'Provider']
+      )
+      .pipe(catchError(() => of([])), takeUntil(this.destroy$))
+      .subscribe((opts) => {
+        this.dropdownCache.set(codeDs, (opts ?? []) as any);
+        done();
+      });
   }
 
   /** Find the Decision Status Code datasource name from the template */
@@ -1017,6 +1037,17 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
 
       const hit = this.findOptionMatch(opts, matches);
       if (hit) return hit;
+    }
+
+    // 3) Static fallback — prevents raw numeric IDs (1, 2, 3…) from showing when
+    //    the async dropdown cache hasn't populated yet (race condition on initial render).
+    if (/^\d+$/.test(v)) {
+      const fallback = AuthdecisionComponent.DECISION_STATUS_FALLBACK.find(
+        s => s.id === v || Number(s.id) === Number(v)
+      );
+      if (fallback) {
+        return { label: fallback.decisionStatus, code: v };
+      }
     }
 
     return null;
@@ -2092,6 +2123,24 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
     }
 
     for (const [ds, fields] of byDatasource.entries()) {
+      // ── Decision Status: always use static options, never the datasource ──
+      // The datasource returns raw primitives [1,2,3,4,5] which causes labels to
+      // appear as numeric IDs. We load from DECISION_STATUS_ID_MAP synchronously
+      // and seed the cache so tab-label lookups also resolve correctly.
+      if (this.isDecisionStatusDatasource(ds)) {
+        const staticOpts = this.buildDecisionStatusStaticOptions();
+        this.dropdownCache.set(ds, staticOpts);
+        const pended = this.findPendedStatusOption(staticOpts);
+        if (pended) this.pendedDecisionStatusValue = (pended as any).value;
+        for (const f of fields) {
+          this.optionsByControlName[f.controlName] = this.filterBySelectedOptions(f, staticOpts);
+          this.reconcileSelectValue(f);
+          this.ensureDecisionStatusDefaultIfNeeded(f);
+        }
+        this.updateTabStatuses();
+        continue;
+      }
+
       const cacheHit = this.dropdownCache.get(ds);
       if (cacheHit) {
         for (const f of fields) {
@@ -3752,29 +3801,20 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
 
   private loadBulkDecisionStatusOptions(): void {
     const statusDs = this.getDecisionStatusDatasourceFromTemplate();
-    if (!statusDs) { this.bulkDecisionStatusOptions = []; return; }
 
-    const cached = this.dropdownCache.get(statusDs);
-    if (cached) {
-      const tplField = this.findDecisionStatusTemplateField();
-      this.bulkDecisionStatusOptions = tplField
-        ? this.filterBySelectedOptions(tplField as any, cached) : cached;
-      return;
+    // Always build from static map — bypasses the async datasource entirely.
+    // This prevents numeric IDs (1,2,3) from appearing when the datasource
+    // returns primitives or the cache hasn't populated yet.
+    const staticOpts = this.buildDecisionStatusStaticOptions();
+    if (statusDs) {
+      this.dropdownCache.set(statusDs, staticOpts);
     }
-
-    this.dsLookup.getOptionsWithFallback(
-      statusDs,
-      (r: any) => this.mapDatasourceRowToOption(statusDs, r) as any,
-      ['UM', 'Admin', 'Provider']
-    )
-      .pipe(catchError(() => of([])), takeUntil(this.destroy$))
-      .subscribe((opts) => {
-        const safe = (opts ?? []) as any[];
-        this.dropdownCache.set(statusDs, safe);
-        const tplField = this.findDecisionStatusTemplateField();
-        this.bulkDecisionStatusOptions = tplField
-          ? this.filterBySelectedOptions(tplField as any, safe) : safe;
-      });
+    const pended = this.findPendedStatusOption(staticOpts);
+    if (pended) this.pendedDecisionStatusValue = (pended as any).value;
+    const tplField = this.findDecisionStatusTemplateField();
+    this.bulkDecisionStatusOptions = tplField
+      ? this.filterBySelectedOptions(tplField as any, staticOpts)
+      : staticOpts;
   }
 
   /** Finds the Decision Status field definition from the template for selectedOptions filtering */
