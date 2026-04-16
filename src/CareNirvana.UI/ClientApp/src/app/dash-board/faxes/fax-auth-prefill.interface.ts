@@ -57,10 +57,12 @@ export interface FaxAuthPrefill {
   requestingProvider?: FaxAuthPrefillProvider;
   servicingProvider?: FaxAuthPrefillProvider;
 
-  // ── Auth Details (dates) ────────────────────────────────────────────────
+  // ── Auth Details (dates + request type) ────────────────────────────────
   requestDatetime?: string;            // ISO or M/D/YYYY
   expectedAdmissionDatetime?: string;
   actualAdmissionDatetime?: string;
+  /** Request Type value to prefill (e.g. 'Prospective', 'Retrospective', 'Concurrent') */
+  requestType?: string;
 
   // ── Owner ────────────────────────────────────────────────────────────────
   /**

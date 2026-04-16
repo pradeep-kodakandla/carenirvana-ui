@@ -8736,7 +8736,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     // ── 3. PROVIDER DETAILS ─────────────────────────────────────────────
     await this.applyFaxProviderPrefill(pf);
 
-    // ── 4. AUTH DETAILS SECTION (dates) ─────────────────────────────────
+    // ── 4. AUTH DETAILS SECTION (dates + request type) ──────────────────
     if (pf.requestDatetime) {
       this.setControlIfEmpty('requestDatetime', this.normalizeFaxDate(pf.requestDatetime));
     }
@@ -8745,6 +8745,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     }
     if (pf.actualAdmissionDatetime) {
       this.setControlIfEmpty('actualAdmissionDatetime', this.normalizeFaxDate(pf.actualAdmissionDatetime));
+    }
+    if (pf.requestType) {
+      this.setControlIfEmpty('requestType', pf.requestType);
     }
 
     // ── 5. Auto-expand sections that have data ──────────────────────────

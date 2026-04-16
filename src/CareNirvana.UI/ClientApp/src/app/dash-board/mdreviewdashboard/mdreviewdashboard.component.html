@@ -273,7 +273,7 @@
                 [class.expanded-row]="expandedElement === row"
                 (click)="expandedElement = expandedElement === row ? null : row">
             </tr>
-            <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="detail-row"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="detail-row" [style.display]="expandedElement === row ? '' : 'none'"></tr>
 
             <!-- Empty state -->
             <tr class="mat-row" *matNoDataRow>

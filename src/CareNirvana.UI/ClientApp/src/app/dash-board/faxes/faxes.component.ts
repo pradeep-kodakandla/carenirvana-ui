@@ -1374,7 +1374,9 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         ...svcAddr,
       } : undefined,
 
-      requestDatetime: pa.submission?.date,
+      requestDatetime: new Date().toISOString(),
+      actualAdmissionDatetime: new Date().toISOString(),
+      requestType:     'Prospective',
       notes:           pa.notes,
       priorAuth:       pa,
     };
@@ -2665,7 +2667,9 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         npi: (pa as any).providerServicing.npi, phone: (pa as any).providerServicing.phone,
         fax: (pa as any).providerServicing.fax, ...svcAddr
       } : undefined,
-      requestDatetime: (pa as any).submission?.date,
+      requestDatetime: new Date().toISOString(),
+      actualAdmissionDatetime: new Date().toISOString(),
+      requestType:     'Prospective',
       notes:       (pa as any).notes,
       // Pre-select Owner = Kelly Anderson (ID 5) for all fax-initiated auths
       ownerUserId: 5,
