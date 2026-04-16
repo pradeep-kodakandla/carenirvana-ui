@@ -137,6 +137,7 @@ export class DashBoardComponent implements AfterViewInit {
     const roleId = Number(this.getRoleIdByUserId(loggedInUserId));
     console.log('Logged in user ID:', loggedInUserId, 'mapped role ID:', roleId);
     this.showInsightsTile = [1, 2, 4].includes(roleId);
+    
     if (roleId !== null) {
       this.fetchRoleData(roleId);
     } else {
@@ -149,9 +150,9 @@ export class DashBoardComponent implements AfterViewInit {
       3: 4,
       2: 5,
       1: 4,
-      4: 7,
-      5: 6,
-      6: 5
+      5: 7,
+      6: 6,
+      7: 5
     };
 
     return userRoleMap[userId] ?? null;
