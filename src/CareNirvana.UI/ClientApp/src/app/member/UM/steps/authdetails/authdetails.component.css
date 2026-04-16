@@ -861,6 +861,10 @@ justify-content: center;
 }
 .dc-top-btn--edit:hover { background: #EFF6FF; color: #3B82F6; }
 .dc-top-btn--delete:hover { background: #FEF2F2; color: #EF4444; }
+.dc-top-btn--add { color: #3B82F6; }
+.dc-top-btn--add:hover:not(:disabled) { background: #EFF6FF; color: #2563EB; }
+.dc-top-btn--add:disabled { opacity: .4; cursor: not-allowed; }
+.mp-inline-add-btn { vertical-align: middle; }
 .dc-action-icon {
 font-size: 17px;
 width: 17px;

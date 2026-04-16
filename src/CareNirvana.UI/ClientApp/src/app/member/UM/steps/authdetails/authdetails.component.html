@@ -137,20 +137,8 @@
               <mat-icon>person_add</mat-icon> Add Provider
             </button>
           </ng-container>
-          <ng-container *ngIf="isDiagnosisSection(sec) && getDiagnosisRepeatSub(sec) as ds">
-            <button type="button" class="dc-add-btn"
-                    [disabled]="!canAddRepeat(ds)"
-                    (click)="addRepeat(ds); $event.stopPropagation()">
-              <mat-icon>add_circle</mat-icon> Add Diagnosis
-            </button>
-          </ng-container>
-          <ng-container *ngIf="isServiceSection(sec) && getServiceRepeatSub(sec) as ss">
-            <button type="button" class="sc-add-btn"
-                    [disabled]="!canAddRepeat(ss)"
-                    (click)="addRepeat(ss); $event.stopPropagation()">
-              <mat-icon>add_circle</mat-icon> Add Procedure
-            </button>
-          </ng-container>
+
+
           <ng-container *ngIf="isMedicationSection(sec) && getMedicationRepeatSub(sec) as ms">
             <button type="button" class="mc-add-btn"
                     [disabled]="!canAddRepeat(ms)"
@@ -920,7 +908,7 @@
             <ng-template #diagOrNormalSecRepeat>
               <ng-container *ngIf="isDiagnosisRepeatGroup(sec); else serviceOrNormalSecRepeat">
                 <div class="dc-list">
-                  <ng-container *ngFor="let inst of sec.instances; trackBy: trackProvIdx">
+                  <ng-container *ngFor="let inst of sec.instances; let isLast = last; trackBy: trackProvIdx">
 
                     <!-- ── SELECTED VIEW: single inline row ── -->
                     <div class="dc-row" [class.ff-fax-prefilled]="isInstanceFaxPrefilled(inst)" *ngIf="hasDiagnosisSelected(inst); else secDiagEditCard">
@@ -943,6 +931,11 @@
                         <button type="button" class="dc-top-btn dc-top-btn--delete"
                                 (click)="clearDiagnosisData(inst)">
                           <mat-icon class="dc-action-icon">delete</mat-icon>
+                        </button>
+                        <button type="button" class="dc-top-btn dc-top-btn--add"
+                                *ngIf="isLast && canAddRepeat(sec)"
+                                (click)="addRepeat(sec)" title="Add Diagnosis">
+                          <mat-icon class="dc-action-icon">add_circle</mat-icon>
                         </button>
                       </div>
                     </div>
@@ -972,6 +965,11 @@
                             <button type="button" class="dc-top-btn dc-top-btn--delete"
                                     (click)="removeRepeat(sec, inst.index)">
                               <mat-icon class="dc-action-icon">delete</mat-icon>
+                            </button>
+                            <button type="button" class="dc-top-btn dc-top-btn--add"
+                                    *ngIf="isLast && canAddRepeat(sec)"
+                                    (click)="addRepeat(sec)" title="Add Diagnosis">
+                              <mat-icon class="dc-action-icon">add_circle</mat-icon>
                             </button>
                           </div>
                         </div>
@@ -1017,7 +1015,7 @@
             <ng-template #serviceOrNormalSecRepeat>
               <ng-container *ngIf="isServiceRepeatGroup(sec); else medicationOrNormalSecRepeat">
                 <div class="sc-list">
-                  <ng-container *ngFor="let inst of sec.instances; trackBy: trackProvIdx">
+                  <ng-container *ngFor="let inst of sec.instances; let isLast = last; trackBy: trackProvIdx">
                     <div class="sc-card" [class.sc-card--filled]="hasServiceData(inst)" [class.ff-fax-prefilled]="isInstanceFaxPrefilled(inst)">
 
                       <!-- When NOT selected: show search + delete -->
@@ -1025,6 +1023,11 @@
                         <div class="sc-card-top">
                           <div class="dc-top-actions">
                             <button type="button" class="dc-top-btn dc-top-btn--delete" (click)="hasServiceData(inst) ? clearServiceData(inst) : removeRepeat(sec, inst.index)"><mat-icon class="dc-action-icon">delete</mat-icon></button>
+                            <button type="button" class="dc-top-btn dc-top-btn--add"
+                                    *ngIf="isLast && canAddRepeat(sec)"
+                                    (click)="addRepeat(sec)" title="Add Procedure">
+                              <mat-icon class="dc-action-icon">add_circle</mat-icon>
+                            </button>
                           </div>
                         </div>
                         <ng-container *ngIf="getServiceSearchField(inst) as sf">
@@ -1044,6 +1047,11 @@
                           <div class="dc-top-actions sc-identity-actions">
                             <button type="button" class="dc-top-btn dc-top-btn--edit" *ngIf="!isServiceInEditMode(inst)" (click)="editService(inst)" title="Edit"><mat-icon class="dc-action-icon">edit</mat-icon></button>
                             <button type="button" class="dc-top-btn dc-top-btn--delete" (click)="clearServiceData(inst)"><mat-icon class="dc-action-icon">delete</mat-icon></button>
+                            <button type="button" class="dc-top-btn dc-top-btn--add"
+                                    *ngIf="isLast && canAddRepeat(sec)"
+                                    (click)="addRepeat(sec)" title="Add Procedure">
+                              <mat-icon class="dc-action-icon">add_circle</mat-icon>
+                            </button>
                           </div>
                         </div>
                       </ng-container>
@@ -1355,6 +1363,11 @@
                               title="Remove row">
                         <mat-icon class="dc-action-icon">delete</mat-icon>
                       </button>
+                      <button type="button" class="dc-top-btn dc-top-btn--add mp-inline-add-btn"
+                              (click)="addAdditionalMpRow()"
+                              title="Add row">
+                        <mat-icon class="dc-action-icon">add_circle</mat-icon>
+                      </button>
                     </td>
                   </tr>
                   <tr *ngIf="!additionalMpRows.length">
@@ -1364,12 +1377,6 @@
                   </tr>
                 </tbody>
               </table>
-            </div>
-            <div class="bulk-mp-add-bar">
-              <button type="button" class="mp-add-btn" (click)="addAdditionalMpRow()">
-                <mat-icon>add_circle</mat-icon>
-                Add Notification Row
-              </button>
             </div>
           </div>
         </ng-container>
@@ -1439,6 +1446,11 @@
                               title="Remove row">
                         <mat-icon class="dc-action-icon">delete</mat-icon>
                       </button>
+                      <button type="button" class="dc-top-btn dc-top-btn--add mp-inline-add-btn"
+                              (click)="addAdditionalAirRow()"
+                              title="Add row">
+                        <mat-icon class="dc-action-icon">add_circle</mat-icon>
+                      </button>
                     </td>
                   </tr>
                   <tr *ngIf="!additionalAirRows.length">
@@ -1448,12 +1460,6 @@
                   </tr>
                 </tbody>
               </table>
-            </div>
-            <div class="bulk-mp-add-bar">
-              <button type="button" class="mp-add-btn" (click)="addAdditionalAirRow()">
-                <mat-icon>add_circle</mat-icon>
-                Add Info Request Row
-              </button>
             </div>
           </div>
         </ng-container>
@@ -1858,7 +1864,7 @@
         <ng-template #diagOrNormalSubRepeat>
           <ng-container *ngIf="isDiagnosisRepeatGroup(sub, parentSec); else additionalIcdOrServiceSubRepeat">
             <div class="dc-list">
-              <ng-container *ngFor="let inst of sub.instances; trackBy: trackProvIdx">
+              <ng-container *ngFor="let inst of sub.instances; let isLast = last; trackBy: trackProvIdx">
 
                 <!-- ── SELECTED VIEW: single inline row ── -->
                 <div class="dc-row" [class.ff-fax-prefilled]="isInstanceFaxPrefilled(inst)" *ngIf="hasDiagnosisSelected(inst); else subDiagEditCard">
@@ -1881,6 +1887,11 @@
                     <button type="button" class="dc-top-btn dc-top-btn--delete"
                             (click)="clearDiagnosisData(inst)">
                       <mat-icon class="dc-action-icon">delete</mat-icon>
+                    </button>
+                    <button type="button" class="dc-top-btn dc-top-btn--add"
+                            *ngIf="isLast && canAddRepeat(sub)"
+                            (click)="addRepeat(sub)" title="Add Diagnosis">
+                      <mat-icon class="dc-action-icon">add_circle</mat-icon>
                     </button>
                   </div>
                 </div>
@@ -1910,6 +1921,11 @@
                         <button type="button" class="dc-top-btn dc-top-btn--delete"
                                 (click)="removeRepeat(sub, inst.index)">
                           <mat-icon class="dc-action-icon">delete</mat-icon>
+                        </button>
+                        <button type="button" class="dc-top-btn dc-top-btn--add"
+                                *ngIf="isLast && canAddRepeat(sub)"
+                                (click)="addRepeat(sub)" title="Add Diagnosis">
+                          <mat-icon class="dc-action-icon">add_circle</mat-icon>
                         </button>
                       </div>
                     </div>
@@ -1954,17 +1970,12 @@
         <!-- ═══ ADDITIONAL DETAILS — ICD CARDS (separate from Diagnosis) ═══ -->
         <ng-template #additionalIcdOrServiceSubRepeat>
           <ng-container *ngIf="isAdditionalIcdRepeatGroup(sub, parentSec); else serviceOrNormalSubRepeat">
-            <!-- Inline subsection header with +Add ICD on right -->
+            <!-- Inline subsection header — no add button here -->
             <div class="addl-icd-header">
               <span class="addl-icd-title">ICD</span>
-              <button type="button" class="dc-add-btn addl-icd-add-btn"
-                      [disabled]="!canAddRepeat(sub)"
-                      (click)="addRepeat(sub)">
-                <mat-icon>add_circle</mat-icon> Add ICD
-              </button>
             </div>
             <div class="dc-list">
-              <ng-container *ngFor="let inst of sub.instances; trackBy: trackProvIdx">
+              <ng-container *ngFor="let inst of sub.instances; let isLast = last; trackBy: trackProvIdx">
                 <div class="dc-row" *ngIf="hasAdditionalIcdSelected(inst); else subAddlIcdEditCard">
                   <ng-container *ngIf="getDiagCodeTypeField(inst) as ctf">
                     <span class="dc-codetype-value">{{ getAdditionalIcdCodeType(inst) || ctf.displayName }}</span>
@@ -1978,6 +1989,11 @@
                   <div class="dc-top-actions">
                     <button type="button" class="dc-top-btn dc-top-btn--edit" (click)="editAdditionalIcd(inst)" title="Edit"><mat-icon class="dc-action-icon">edit</mat-icon></button>
                     <button type="button" class="dc-top-btn dc-top-btn--delete" (click)="clearAdditionalIcdData(inst)"><mat-icon class="dc-action-icon">delete</mat-icon></button>
+                    <button type="button" class="dc-top-btn dc-top-btn--add"
+                            *ngIf="isLast && canAddRepeat(sub)"
+                            (click)="addRepeat(sub)" title="Add ICD">
+                      <mat-icon class="dc-action-icon">add_circle</mat-icon>
+                    </button>
                   </div>
                 </div>
                 <ng-template #subAddlIcdEditCard>
@@ -1996,6 +2012,11 @@
                       </label>
                       <div class="dc-top-actions">
                         <button type="button" class="dc-top-btn dc-top-btn--delete" (click)="removeRepeat(sub, inst.index)"><mat-icon class="dc-action-icon">delete</mat-icon></button>
+                        <button type="button" class="dc-top-btn dc-top-btn--add"
+                                *ngIf="isLast && canAddRepeat(sub)"
+                                (click)="addRepeat(sub)" title="Add ICD">
+                          <mat-icon class="dc-action-icon">add_circle</mat-icon>
+                        </button>
                       </div>
                     </div>
                     <ng-container *ngIf="getDiagSearchField(inst) as sf">
@@ -2023,7 +2044,7 @@
         <ng-template #serviceOrNormalSubRepeat>
           <ng-container *ngIf="isServiceRepeatGroup(sub, parentSec); else medicationOrNormalSubRepeat">
             <div class="sc-list">
-              <ng-container *ngFor="let inst of sub.instances; trackBy: trackProvIdx">
+              <ng-container *ngFor="let inst of sub.instances; let isLast = last; trackBy: trackProvIdx">
                 <div class="sc-card" [class.sc-card--filled]="hasServiceData(inst)" [class.ff-fax-prefilled]="isInstanceFaxPrefilled(inst)">
 
                   <!-- When NOT selected: show search + delete -->
@@ -2033,6 +2054,11 @@
                         <button type="button" class="dc-top-btn dc-top-btn--delete"
                                 (click)="hasServiceData(inst) ? clearServiceData(inst) : removeRepeat(sub, inst.index)">
                           <mat-icon class="dc-action-icon">delete</mat-icon>
+                        </button>
+                        <button type="button" class="dc-top-btn dc-top-btn--add"
+                                *ngIf="isLast && canAddRepeat(sub)"
+                                (click)="addRepeat(sub)" title="Add Procedure">
+                          <mat-icon class="dc-action-icon">add_circle</mat-icon>
                         </button>
                       </div>
                     </div>
@@ -2089,6 +2115,11 @@
                         <button type="button" class="dc-top-btn dc-top-btn--delete"
                                 (click)="clearServiceData(inst)">
                           <mat-icon class="dc-action-icon">delete</mat-icon>
+                        </button>
+                        <button type="button" class="dc-top-btn dc-top-btn--add"
+                                *ngIf="isLast && canAddRepeat(sub)"
+                                (click)="addRepeat(sub)" title="Add Procedure">
+                          <mat-icon class="dc-action-icon">add_circle</mat-icon>
                         </button>
                       </div>
                     </div>

@@ -1,131 +1,235 @@
+<!-- ================================================================
+     MD REVIEW DASHBOARD — Professional HTML (v5)
+     · 100% width layout fix (no-review class on grid)
+     · Search bar stretches full width
+     · "All" chip to include Denied records
+     · Denied hidden by default
+     · No success/saved toasts on submit
+     · Unsaved changes professional modal dialog
+     ================================================================ -->
+
+<!-- ── TOAST CONTAINER (top-right, global) ── -->
+<div class="toast-container" aria-live="polite" role="status">
+  <div class="toast"
+       *ngIf="toastVisible"
+       [class.toast-success]="toastType === 'success'"
+       [class.toast-error]="toastType === 'error'"
+       [class.toast-warning]="toastType === 'warning'"
+       [class.toast-info]="toastType === 'info'"
+       [class.toast-hide]="toastHiding">
+
+    <div class="toast-icon" aria-hidden="true">
+      <ng-container [ngSwitch]="toastType">
+        <span *ngSwitchCase="'success'">✓</span>
+        <span *ngSwitchCase="'error'">✕</span>
+        <span *ngSwitchCase="'warning'">!</span>
+        <span *ngSwitchDefault>i</span>
+      </ng-container>
+    </div>
+
+    <div class="toast-body">
+      <div class="toast-title">{{ toastTitle }}</div>
+      <div class="toast-msg">{{ toastMessage }}</div>
+    </div>
+
+    <button class="toast-dismiss" type="button" (click)="dismissToast()" aria-label="Dismiss">✕</button>
+  </div>
+</div>
+
+
+<!-- ================================================================
+     UNSAVED CHANGES CONFIRMATION DIALOG
+     ================================================================ -->
+<div class="ucd-backdrop" *ngIf="showUnsavedDialog" (click)="cancelClose()" aria-modal="true" role="dialog">
+  <div class="ucd-card" (click)="$event.stopPropagation()">
+
+    <!-- Icon -->
+    <div class="ucd-icon-wrap">
+      <svg class="ucd-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
+    <!-- Content -->
+    <div class="ucd-content">
+      <h3 class="ucd-title">Unsaved Changes</h3>
+      <p class="ucd-body">
+        You have unsaved changes in the <strong>Medical Director's Decision</strong> form.
+        Closing now will permanently discard any decision status, status codes, or notes you have entered.
+      </p>
+      <p class="ucd-hint">
+        To save your progress, click <em>Stay &amp; Continue</em> and use <strong>Save &amp; Continue</strong>
+        before closing.
+      </p>
+    </div>
+
+    <!-- Actions -->
+    <div class="ucd-actions">
+      <button class="ucd-btn-stay" type="button" (click)="cancelClose()">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+        </svg>
+        Stay &amp; Continue
+      </button>
+      <button class="ucd-btn-discard" type="button" (click)="confirmClose()">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+        Discard &amp; Close
+      </button>
+    </div>
+
+  </div>
+</div>
+
+
 <div class="main-wrapper">
-  <div class="container" style="margin:0px !important;" [ngClass]="{ 'summary-on': showSummary, 'summary-off': !showSummary }">
-    <!-- LEFT COLUMN (20%) -->
+
+  <!-- ── 3-column grid: left | middle | right ──
+       no-review  → single full-width column (no review open)
+       (default)  → left mini-list + middle review pane
+       has-summary → left + middle + right summary pane
+  ── -->
+  <div class="mdr-layout"
+       [class.no-review]="!selectedAuth"
+       [class.has-summary]="showSummary && !!selectedAuth">
+
+    <!-- ══════════════════════════════════════════════════════════
+         LEFT COLUMN — full table (default) or mini-card list (review open)
+         ══════════════════════════════════════════════════════════ -->
     <div class="col-left" [ngClass]="{ 'full-width': !selectedAuth, 'minimized': !!selectedAuth }">
-      <div class="top-bar" style="display:flex;align-items:center;gap:10px;margin:8px 0;">
-        <div class="search-section" style="display:flex;align-items:center;gap:8px;flex:1;">
-          <input type="text"
-                 placeholder="🔍 Search activities…"
-                 (input)="onQuickSearch($event)"
-                 class="search-input"
-                 style="flex:1; padding:10px 12px; border:1px solid #e1e5ea; border-radius:10px; outline:none;" />
-          <button class="filter-btn"
-                  type="button"
-                  (click)="toggleFilters()"
-                  title="Filters">
-            <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M3 5h18v2l-7 7v5l-4 2v-7L3 7z"></path>
-            </svg>
+
+      <!-- ── Search & filter chips — single row ── -->
+      <div class="top-bar">
+        <input type="text"
+               class="search-input"
+               placeholder="Search activities…"
+               (input)="onQuickSearch($event)" />
+
+        <button class="filter-btn"
+                type="button"
+                (click)="toggleFilters()"
+                title="Toggle filters">
+          <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 5h18v2l-7 7v5l-4 2v-7L3 7z"/>
+          </svg>
+        </button>
+
+        <div class="chip-list" *ngIf="!selectedAuth">
+
+          <!-- All chip — shows ALL records including Denied -->
+          <button type="button" class="pill"
+                  [class.active]="isStatusSelected('ALL')"
+                  (click)="setStatusChip('ALL')">
+            <span class="dot slate"></span>All
           </button>
-        </div>
 
-        <div class="filters-col" *ngIf="!selectedAuth">
-          <div class="chip-list">
-            <button type="button" class="pill red" [class.active]="isDueSelected('OVERDUE')" (click)="setDueChip('OVERDUE')">
-              <span class="dot red"></span> Over Due
-              <span class="count">{{ overdueCount  }}</span>
-            </button>
-            <button type="button" class="pill amber" [class.active]="isDueSelected('TODAY')" (click)="setDueChip('TODAY')">
-              <span class="dot amber"></span> Due today
-              <span class="count">{{ dueTodayCount  }}</span>
-            </button>
-            <button type="button" class="pill green" [class.active]="isDueSelected('FUTURE')" (click)="setDueChip('FUTURE')">
-              <span class="dot green"></span> Due in future
-              <span class="count">{{ dueFutureCount }}</span>
-            </button>
-            <button type="button" class="pill" [class.active]="isStatusSelected('APPROVED')"
-                    (click)="setStatusChip('APPROVED')">
-              <span class="dot blue"></span> Approved
-            </button>
-          </div>
-          <div class="chip-list" style="margin-top:8px;">
-            <!--<button type="button" class="pill" [class.active]="isStatusSelected('PENDING_OR_INPROGRESS')"
-                    (click)="setStatusChip('PENDING_OR_INPROGRESS')">
-              <span class="dot amber"></span> Pending / In Progress
-            </button>-->
-
-
-          </div>
+          <button type="button" class="pill"
+                  [class.active]="isDueSelected('OVERDUE')"
+                  (click)="setDueChip('OVERDUE')">
+            <span class="dot red"></span>Overdue
+            <span class="count">{{ overdueCount }}</span>
+          </button>
+          <button type="button" class="pill"
+                  [class.active]="isDueSelected('TODAY')"
+                  (click)="setDueChip('TODAY')">
+            <span class="dot amber"></span>Due today
+            <span class="count">{{ dueTodayCount }}</span>
+          </button>
+          <button type="button" class="pill"
+                  [class.active]="isDueSelected('FUTURE')"
+                  (click)="setDueChip('FUTURE')">
+            <span class="dot green"></span>Due in future
+            <span class="count">{{ dueFutureCount }}</span>
+          </button>
+          <button type="button" class="pill"
+                  [class.active]="isStatusSelected('APPROVED')"
+                  (click)="setStatusChip('APPROVED')">
+            <span class="dot blue"></span>Approved
+          </button>
         </div>
       </div>
 
-      <div *ngIf="!selectedAuth">
-        <div class="table-wrapper">
+      <!-- ── Full activity table (no review open) ── -->
+      <div *ngIf="!selectedAuth" style="width:100%;">
+        <div class="table-wrapper" style="width:100%;">
           <table mat-table [dataSource]="dataSource" matSort
                  multiTemplateDataRows
-                 class="mat-elevation-z1 full-width-table pro-table mng-table">
+                 class="mat-elevation-z0 full-width-table mng-table">
 
             <!-- Module -->
             <ng-container matColumnDef="module">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Module</th>
               <td mat-cell *matCellDef="let row">
-                <div class="status-cell">
-                  {{ row.module || '-' }}
-                </div>
+                <span class="mod-badge" [ngClass]="getModuleColorClass(row.module)">
+                  {{ row.module || '—' }}
+                </span>
               </td>
             </ng-container>
 
-            <!-- Member (FirstName LastName + ID) -->
+            <!-- Member -->
             <ng-container matColumnDef="member">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Member</th>
               <td mat-cell *matCellDef="let m">
                 <div class="name-cell">
                   <div class="sub-name">
-                    <a href="#" (click)="onMemberClick(m.memberId, m.firstName + ' ' + m.lastName,m.memberDetailsId); $event.preventDefault()">{{ m.firstName }} {{ m.lastName }}</a>
+                    <a class="member-cell__name"
+                       href="#"
+                       (click)="onMemberClick(m.memberId, m.firstName + ' ' + m.lastName, m.memberDetailsId); $event.preventDefault()">
+                      {{ m.firstName }} {{ m.lastName }}
+                    </a>
                   </div>
-                  <div class="sub-id">ID: {{ m.memberId }}</div>
+                  <div class="member-cell__id">ID: {{ m.memberId }}</div>
                 </div>
               </td>
             </ng-container>
 
-            <!-- Auth Number -->
+            <!-- Auth # -->
             <ng-container matColumnDef="authNumber">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Auth #</th>
               <td mat-cell *matCellDef="let row">
-                <a href="#" (click)="onAuthClick(row.authNumber, row.memberId); $event.preventDefault()">
+                <a *ngIf="row.authNumber"
+                   class="auth-link"
+                   href="#"
+                   (click)="onAuthClick(row.authNumber, row.memberId); $event.preventDefault()">
                   {{ row.authNumber }}
                 </a>
+                <span *ngIf="!row.authNumber" class="text-muted">—</span>
               </td>
             </ng-container>
 
             <!-- Created On -->
             <ng-container matColumnDef="createdOn">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>Created On</th>
-              <td mat-cell *matCellDef="let row">{{ row.createdOn | date }}</td>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Created</th>
+              <td mat-cell *matCellDef="let row">{{ row.createdOn | date:'MM/dd/yy' }}</td>
             </ng-container>
 
-            <!-- Refer To (username + id) -->
+            <!-- Assigned To -->
             <ng-container matColumnDef="referredTo">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>Refer To</th>
-              <td mat-cell *matCellDef="let row">
-                <div>{{ row.userName || '-' }}</div>
-                <!--<div style="font-size:12px;color:#6b7280;">ID: {{ row.referredTo }}</div>-->
-              </td>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Assigned To</th>
+              <td mat-cell *matCellDef="let row">{{ row.userName || '—' }}</td>
             </ng-container>
 
             <!-- Activity Type -->
             <ng-container matColumnDef="activityType">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Activity Type</th>
-              <td mat-cell *matCellDef="let row">{{ row.activityType || '-' }}</td>
+              <td mat-cell *matCellDef="let row">{{ row.activityType || '—' }}</td>
             </ng-container>
 
-            <!-- Follow Up Date -->
+            <!-- Follow Up -->
             <ng-container matColumnDef="followUpDate">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>Follow Up Date</th>
-              <td mat-cell *matCellDef="let row">{{ row.followUpDateTime | date }}</td>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Follow Up</th>
+              <td mat-cell *matCellDef="let row">{{ row.followUpDateTime | date:'MM/dd/yy' }}</td>
             </ng-container>
 
-            <!-- Due Date with colors + days-left -->
+            <!-- Due Date -->
             <ng-container matColumnDef="dueDate">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Due Date</th>
               <td mat-cell *matCellDef="let row">
                 <span class="risk-chip compact" [ngClass]="getDueDateClass(row.dueDate)">
-                  <div class="date-value">
-                    {{ row.dueDate | date }}
-                  </div>
-                  <div class="days-left">
-                    {{ getDaysLeftLabel(row.dueDate) }}
-                  </div>
+                  <div class="date-value">{{ row.dueDate ? (row.dueDate | date:'MM/dd/yyyy') : '—' }}</div>
+                  <div class="days-left">{{ getDaysLeftLabel(row.dueDate) }}</div>
                 </span>
               </td>
             </ng-container>
@@ -133,208 +237,327 @@
             <!-- Status -->
             <ng-container matColumnDef="status">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
-              <td mat-cell *matCellDef="let row">{{ row.status || '-' }}</td>
-            </ng-container>
-            <ng-container matColumnDef="review">
-              <th mat-header-cell *matHeaderCellDef>Review</th>
               <td mat-cell *matCellDef="let row">
-                <button mat-stroked-button color="primary"
+                <span class="status-badge" [ngClass]="getStatusClass(row.status)">
+                  {{ row.status || '—' }}
+                </span>
+              </td>
+            </ng-container>
+
+            <!-- Action -->
+            <ng-container matColumnDef="review">
+              <th mat-header-cell *matHeaderCellDef></th>
+              <td mat-cell *matCellDef="let row" class="actions-cell">
+                <button class="btn-review-row"
+                        type="button"
                         (click)="onReviewClick(row); $event.stopPropagation()">
+                  <svg width="13" height="13" fill="none" viewBox="0 0 24 24"
+                       stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5
+                             m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                  </svg>
                   Review
                 </button>
               </td>
             </ng-container>
-            <!-- Expanded placeholder (kept for parity) -->
+
+            <!-- Expanded placeholder -->
             <ng-container matColumnDef="expandedDetail">
-              <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns.length">
-              </td>
+              <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns.length"></td>
             </ng-container>
 
-            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;"
-                class="example-element-row"
-                [class.example-expanded-row]="expandedElement === row"
+            <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+            <tr mat-row
+                *matRowDef="let row; columns: displayedColumns;"
+                class="data-row"
+                [class.expanded-row]="expandedElement === row"
                 (click)="expandedElement = expandedElement === row ? null : row">
             </tr>
-            <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="example-detail-row"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="detail-row"></tr>
 
+            <!-- Empty state -->
             <tr class="mat-row" *matNoDataRow>
-              <td class="mat-cell" [attr.colspan]="displayedColumns.length">No data</td>
+              <td class="mat-cell empty-state" [attr.colspan]="displayedColumns.length">
+                <div class="empty-state__inner">
+                  <mat-icon class="empty-state__icon">inbox</mat-icon>
+                  <div class="empty-state__title">No activities match your filters</div>
+                  <div class="empty-state__sub">Try adjusting your search or filter criteria</div>
+                </div>
+              </td>
             </tr>
           </table>
 
-          <mat-paginator [pageSizeOptions]="[10, 25, 100]" aria-label="Select page"></mat-paginator>
+          <mat-paginator [pageSizeOptions]="[10, 25, 50]"
+                         showFirstLastButtons
+                         aria-label="Select page"></mat-paginator>
         </div>
       </div>
-      <!-- CARD LIST VIEW (when reviewing) -->
+
+      <!-- ── Mini-card list (review is open) ── -->
       <div class="card-list" *ngIf="selectedAuth">
         <div class="mini-card"
              *ngFor="let row of navList; let i = index; trackBy: trackByAuth"
              [class.selected]="isSame(row, selectedAuthRaw)"
              (click)="onCardSelect(row, i)">
-          <div class="mini-card-title">
-            {{ row.AuthNumber || row.authNumber || '—' }}
 
-          </div>
+          <div class="mini-card-title">{{ row.AuthNumber || row.authNumber || '—' }}</div>
           <div class="mini-card-sub">
-            {{ (row.firstName || '') + ' ' + (row.lastName || '') }}
+            {{ (row.firstName || row.FirstName || '') + ' ' + (row.lastName || row.LastName || '') }}
           </div>
           <div class="mini-card-meta">
             <span class="chip" [ngClass]="dueChipClass(row)">{{ dueChipText(row) }}</span>
-            <span class="dim">Due: {{ getDate(row?.authDueDate || row?.dueDate) }}</span>
-            <span class="dim">Activty Type: {{ (row?.activityType || row?.activityType) }}</span>
+            <span class="dim">{{ getDate(row?.authDueDate ?? row?.dueDate) }}</span>
+          </div>
+          <div style="margin-top:4px;">
+            <span class="dim" style="font-style:italic;">{{ row?.activityType || '—' }}</span>
           </div>
         </div>
       </div>
 
+    </div><!-- /col-left -->
 
-    </div>
 
-    <!-- MIDDLE COLUMN (40%) -->
+    <!-- ══════════════════════════════════════════════════════════
+         MIDDLE COLUMN — Authorization Review pane
+         ══════════════════════════════════════════════════════════ -->
     <div class="col-middle" *ngIf="selectedAuth">
-      <div class="review-header-bar" *ngIf="selectedAuth">
-        <h2>Authorization Review</h2>
+
+      <!-- ── Header bar ── -->
+      <div class="review-header-bar">
+        <h2>
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#007bff" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          Authorization Review
+        </h2>
+
         <div class="review-controls">
-          <button (click)="onPrevious()" [disabled]="!canPrev">&lt; Previous</button>
-          <span>Review {{ (selectedIndex + 1) }} of {{ navList.length }}</span>
-          <button (click)="onNext()" [disabled]="!canNext">Next &gt;</button>
-          <button type="button" (click)="toggleSummary()">
-            {{ showSummary ? 'Hide Summary' : 'Show Summary' }}
+          <button class="btn-nav" type="button" (click)="onPrevious()" [disabled]="!canPrev">
+            ‹ Prev
+          </button>
+          <span class="nav-counter">{{ selectedIndex + 1 }} / {{ navList.length }}</span>
+          <button class="btn-nav" type="button" (click)="onNext()" [disabled]="!canNext">
+            Next ›
+          </button>
+
+          <!-- Auth Summary toggle -->
+          <button class="btn-icon-action"
+                  type="button"
+                  [class.active]="showSummary"
+                  (click)="toggleSummary()"
+                  title="Auth Summary">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            {{ showSummary ? 'Hide Summary' : 'Auth Summary' }}
+          </button>
+
+          <!-- Close — checks for unsaved changes before closing -->
+          <button class="btn-icon-action btn-close-rev"
+                  type="button"
+                  (click)="requestClose()"
+                  title="Close review">
+            ✕ Close
           </button>
         </div>
       </div>
 
-      <div class="review-header">
-        <p>Review Due Date: {{ selectedAuth.dueDate ? (selectedAuth.dueDate | date:'MM/dd/yyyy HH:mm:ss a') : 'N/A' }} | Review Priority: {{ selectedAuth.priority || 'N/A' }}</p>
-        <!--<p style="color:green;"><strong>Overall Initial Recommendation:</strong> {{ selectedAuth.recommendation }}</p>-->
-        <p class="overall-ir">
-          <strong>Overall Initial Recommendation:</strong>
+      <!-- ── Inline alert (validation / warning) ── -->
+      <div class="inline-alert"
+           *ngIf="inlineAlert"
+           [class.alert-error]="inlineAlert.type === 'error'"
+           [class.alert-warning]="inlineAlert.type === 'warning'"
+           [class.alert-info]="inlineAlert.type === 'info'">
+        <span class="alert-icon">
+          {{ inlineAlert.type === 'error' ? '✕' : inlineAlert.type === 'warning' ? '!' : 'i' }}
+        </span>
+        <span class="alert-msg">{{ inlineAlert.message }}</span>
+        <button class="alert-dismiss" type="button" (click)="dismissInlineAlert()">✕</button>
+      </div>
+
+      <!-- ── Review meta strip ── -->
+      <div class="review-meta-strip">
+        <span class="meta-pill">
+          <span class="meta-lbl">Due</span>
+          <span class="meta-val">{{ selectedAuth.dueDate ? (selectedAuth.dueDate | date:'MM/dd/yyyy') : 'N/A' }}</span>
+        </span>
+        <span class="meta-pill">
+          <span class="meta-lbl">Priority</span>
+          <span class="meta-val">{{ selectedAuth.priority || 'N/A' }}</span>
+        </span>
+        <span class="overall-ir">
+          <span style="font-size:12px;font-weight:600;color:#64748B;">Overall Rec:</span>
           <span class="md-badge" [ngClass]="getOverallIrClass()">
             {{ overallInitialRecommendation || 'Not Reviewed' }}
           </span>
-        </p>
+        </span>
       </div>
 
-      <div class="review-content">
-        <h6 class="section-title" style="display:flex;align-items:center;gap:10px;">
-          <span>Clinical Context & Instructions: </span>
-          <span *ngIf="firstServiceLineComment as c"
-                style="font-weight:700;color:black;">
-            {{ c }}
+      <!-- ── Section: Clinical Context ── -->
+      <div class="section-card">
+        <div class="section-header">
+          <span class="section-icon">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
           </span>
-        </h6>
-        <h6>Clinical Documents</h6>
-        <div class="clinical-documents">
-          <div class="field">
-            <label>Member ID:</label>
-            <span>{{ selectedAuth.memberId }}</span>
-          </div>
-
-          <div class="field">
-            <label>Member Name:</label>
-            <span>{{ selectedAuth.memberName }}</span>
-          </div>
-          <div class="field">
-            <label>Auth #:</label>
-            <span>{{ selectedAuth.authNumber }}</span>
-          </div>
-          <!--<div class="field">
-            <label>Auth Type:</label>
-            <span>{{ selectedAuth.authType }}</span>
-          </div>-->
-          <div class="field">
-            <label>Facility:</label>
-            <span>{{ selectedAuth.facility }}</span>
-          </div>
-          <div class="field">
-            <label>Network Status:</label>
-            <span>{{ selectedAuth.networkStatus }}</span>
+          <div class="section-title">Clinical Context</div>
+          <div class="section-meta" *ngIf="firstServiceLineComment as c">
+            <span style="font-size:12px;font-weight:600;color:#475569;">{{ c }}</span>
           </div>
         </div>
 
+        <div class="clinical-grid">
+          <div class="clinical-pair">
+            <span class="c-label">Member ID</span>
+            <span class="c-value">{{ selectedAuth.memberId || '—' }}</span>
+          </div>
+          <div class="clinical-pair">
+            <span class="c-label">Member Name</span>
+            <span class="c-value">{{ selectedAuth.memberName || '—' }}</span>
+          </div>
+          <div class="clinical-pair">
+            <span class="c-label">Auth #</span>
+            <span class="c-value">{{ selectedAuth.authNumber || '—' }}</span>
+          </div>
+          <div class="clinical-pair">
+            <span class="c-label">Facility</span>
+            <span class="c-value">{{ selectedAuth.facility || '—' }}</span>
+          </div>
+          <div class="clinical-pair">
+            <span class="c-label">Network Status</span>
+            <span class="c-value">{{ selectedAuth.networkStatus || '—' }}</span>
+          </div>
+        </div>
+      </div>
 
-        <!-- Service Lines (AUTH-LIKE REVIEW TABLE) -->
-        <div class="lines-header" style="margin-top:12px;">
-          <div class="lines-title">Service Lines</div>
-          <div class="lines-actions">
-            <label class="muted" style="display:flex; align-items:center; gap:8px; margin:0;">
-              <input #selectAllReview type="checkbox"
+      <!-- ── Section: Service Lines ── -->
+      <div class="section-card">
+        <div class="section-header">
+          <span class="section-icon">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+            </svg>
+          </span>
+          <div class="section-title">Service Lines</div>
+          <div class="section-meta">
+            <label class="select-all-label"
+                   *ngIf="selectedAuth?.lines?.length && !serviceLinesLoading">
+              <input type="checkbox"
+                     #selectAllReview
+                     [disabled]="serviceLinesLoading"
                      (change)="toggleSelectAllReviewLines(selectAllReview.checked)" />
               Select all
             </label>
           </div>
         </div>
 
-        <div class="table-responsive" *ngIf="selectedAuth?.lines?.length; else noLines">
-          <table class="table mdr-table">
+        <!-- Loading -->
+        <div class="lines-loading" *ngIf="serviceLinesLoading">
+          <div class="spinner-sm"></div>
+          Loading service lines…
+        </div>
+
+        <!-- Lines table -->
+        <div class="table-responsive"
+             *ngIf="!serviceLinesLoading && selectedAuth?.lines?.length; else noLines">
+          <table class="mdr-table">
             <thead>
               <tr>
-                <th style="width:40px;"></th>
+                <th style="width:36px;"></th>
                 <th>Service Code</th>
                 <th>Description</th>
                 <th>From</th>
                 <th>To</th>
-                <th>Req</th>
-                <th>Appr</th>
-                <th>Den</th>
-                <th>Initial Recommendation</th>
-                <th>MD Review Status</th>
+                <th class="num">Req</th>
+                <th class="num">Appr</th>
+                <th class="num">Den</th>
+                <th>Initial Rec.</th>
+                <th>MD Status</th>
               </tr>
             </thead>
-
             <tbody>
-              <tr *ngFor="let l of selectedAuth.lines; trackBy: trackByLineId">
+              <tr *ngFor="let l of selectedAuth.lines; trackBy: trackByLineId"
+                  [class.row-selected]="l.selected">
                 <td>
                   <input type="checkbox"
+                         style="accent-color:#007bff;"
                          [checked]="!!l.selected"
                          (change)="onToggleReviewLine(l, $any($event.target).checked)" />
                 </td>
-                <td>{{ l.serviceCode }}</td>
+                <td style="font-weight:700;">{{ l.serviceCode }}</td>
                 <td>{{ l.serviceDescription }}</td>
-                <td>{{ l.fromDate | date:'MM/dd/yyyy' }}</td>
-                <td>{{ l.toDate | date:'MM/dd/yyyy' }}</td>
-                <td class="num">{{ l.requested ?? '-' }}</td>
-                <td class="num">{{ l.approved ?? '-' }}</td>
-                <td class="num">{{ l.denied ?? '-' }}</td>
-                <td>{{ l.initialRecommendation || '-' }}</td>
-                <td><span class="pill">{{ l.status || '-' }}</span></td>
+                <td style="color:#64748B;">{{ l.fromDate | date:'MM/dd/yy' }}</td>
+                <td style="color:#64748B;">{{ l.toDate | date:'MM/dd/yy' }}</td>
+                <td class="num">{{ l.requested ?? '—' }}</td>
+                <td class="num">{{ l.approved ?? '—' }}</td>
+                <td class="num">{{ l.denied ?? '—' }}</td>
+                <td>{{ l.initialRecommendation || '—' }}</td>
+                <td>
+                  <span class="md-badge" [ngClass]="mdDecisionClass(l.mdDecision)">
+                    {{ l.mdDecision || 'Not Reviewed' }}
+                  </span>
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
 
         <ng-template #noLines>
-          <div class="muted">No service lines found.</div>
+          <div class="empty-state" *ngIf="!serviceLinesLoading">
+            <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="#94A3B8" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h7"/>
+            </svg>
+            <p>No service lines</p>
+            <span>No lines were found for this activity</span>
+          </div>
         </ng-template>
+      </div>
 
-        <!-- Medical Director's Decision (AUTH-LIKE) -->
-        <div class="lines-title" style="margin-top:18px;">Medical Director's Decision</div>
-        <hr />
+      <!-- ── Section: Medical Director's Decision ── -->
+      <div class="section-card">
+        <div class="section-header">
+          <span class="section-icon">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+            </svg>
+          </span>
+          <div class="section-title">Medical Director's Decision</div>
+        </div>
 
         <div class="decision-grid">
 
+          <!-- Decision Status -->
           <div class="ff-field">
-            <div class="ff-outline">
-              <div class="ff-float-label">Decision Status <span class="req">*</span></div>
+            <div class="ff-outline" [class.ff-invalid]="decisionSubmitted && !overallDecisionStatus">
+              <div class="ff-float-label">
+                Decision Status <span class="req-star">*</span>
+              </div>
               <div class="ff-body">
                 <ui-smart-dropdown class="ff-ui"
                                    label=""
-                                   placeholder="Select"
+                                   placeholder="Select status…"
                                    [options]="decisionStatusOptions"
                                    [(ngModel)]="overallDecisionStatus"
-                                   (ngModelChange)="onDecisionStatusChanged()">
+                                   (ngModelChange)="onDecisionStatusChanged(); dismissInlineAlert()">
                 </ui-smart-dropdown>
               </div>
             </div>
+            <span class="ff-error-msg"
+                  *ngIf="decisionSubmitted && !overallDecisionStatus">
+              Decision Status is required.
+            </span>
           </div>
 
+          <!-- Decision Status Code -->
           <div class="ff-field">
             <div class="ff-outline">
               <div class="ff-float-label">Decision Status Code</div>
               <div class="ff-body">
                 <ui-smart-dropdown class="ff-ui"
                                    label=""
-                                   placeholder="Select"
+                                   placeholder="Select code…"
                                    [options]="decisionStatusCodeOptions"
                                    [(ngModel)]="overallDecisionStatusCode">
                 </ui-smart-dropdown>
@@ -342,20 +565,22 @@
             </div>
           </div>
 
-          <div class="ff-field" style="display:flex; align-items:center;">
-            <label class="muted" style="display:flex; align-items:center; gap:8px; margin:0;">
-              <input type="checkbox" [(ngModel)]="requestMoreInformation" />
-              Request more information
-            </label>
+          <!-- Request more info checkbox -->
+          <div class="ff-field" style="justify-content:center;">
+            <div class="ff-checkbox-row">
+              <input id="rmi-chk" type="checkbox" [(ngModel)]="requestMoreInformation" />
+              <label for="rmi-chk">Request more information</label>
+            </div>
           </div>
 
+          <!-- Comments (full-width) -->
           <div class="ff-field field-wide">
             <div class="ff-outline">
-              <div class="ff-float-label">Comments and Recommendations</div>
-              <div class="ff-body">
-                <textarea class="ff-input ff-textarea"
-                          rows="6"
-                          placeholder=""
+              <div class="ff-float-label">Comments &amp; Recommendations</div>
+              <div class="ff-body" style="align-items:flex-start;">
+                <textarea class="ff-input"
+                          rows="4"
+                          placeholder="Enter clinical rationale, notes, or recommendations…"
                           [(ngModel)]="mdNotesText"></textarea>
               </div>
             </div>
@@ -363,55 +588,72 @@
 
         </div>
 
+        <!-- Footer actions -->
         <div class="footer-row">
-          <button class="btn primary"
+          <button class="btn-submit"
                   type="button"
                   (click)="submitDecision()"
                   [disabled]="!hasSelectedReviewLines()">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+            </svg>
             Submit Decision
           </button>
 
-          <button class="btn"
+          <button class="btn-secondary"
                   type="button"
                   (click)="saveAndContinue()"
                   [disabled]="!hasSelectedReviewLines()">
             Save &amp; Continue
           </button>
 
-          <button class="btn danger"
+          <!-- Close — checks unsaved changes before closing -->
+          <button class="btn-danger"
                   type="button"
-                  (click)="closeReview()">
+                  (click)="requestClose()">
             Close
           </button>
         </div>
 
+      </div><!-- /decision section-card -->
+
+    </div><!-- /col-middle -->
+
+
+    <!-- ══════════════════════════════════════════════════════════
+         RIGHT COLUMN — Auth Summary inline panel
+         ══════════════════════════════════════════════════════════ -->
+    <div class="col-right" *ngIf="selectedAuth && showSummary">
+
+      <!-- Sticky header -->
+      <div class="right-panel-header">
+        <h3 class="right-panel-title">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
+               stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          Auth Summary
+          <span class="right-panel-auth-no" *ngIf="selectedAuth?.authNumber">
+            — {{ selectedAuth.authNumber }}
+          </span>
+        </h3>
+        <button class="right-panel-close"
+                type="button"
+                (click)="toggleSummary()"
+                aria-label="Close summary panel">✕</button>
       </div>
-    </div>
 
+      <!-- Scrollable body — authorization-details component -->
+      <div class="right-panel-body">
+        <app-authorization-details
+          [authNumber]="selectedAuth.authNumber"
+          [embedded]="true"
+          (closed)="toggleSummary()">
+        </app-authorization-details>
+      </div>
 
-    <!-- RIGHT COLUMN (40%) -->
-    <div class="col-summary" *ngIf="selectedAuth && showSummary">
-      <h3>Auth Summary</h3>
-      <p><strong>Member ID:</strong> {{ selectedAuthData.memberId }}</p>
-      <p><strong>Member Name:</strong> {{ selectedAuthData.memberName }}</p>
-      <p><strong>Auth #:</strong> {{ selectedAuthData.authNumber }}</p>
-      <p><strong>Auth Type:</strong> {{ selectedAuthData.authType }}</p>
-      <p><strong>Facility:</strong> {{ selectedAuthData.facility }}</p>
-      <p><strong>Request Date:</strong> {{ selectedAuthData.requestDate }}</p>
-      <p><strong>Expected Admission:</strong> {{ selectedAuthData.expectedAdmissionDatetime }}</p>
-      <p><strong>Expected Discharge:</strong> {{ selectedAuthData.expectedDischargeDatetime }}</p>
+    </div><!-- /col-right -->
 
-      <h4>Diagnosis</h4>
-      <ul>
-        <li *ngFor="let dx of selectedAuthData.diagnosisDetails">{{ dx.icd10Code }} - {{ dx.icd10Description }}</li>
-      </ul>
-
-      <h4>Notes</h4>
-      <ul>
-        <li *ngFor="let note of selectedAuthData.authorizationNotes">
-          <strong>{{ note.authorizationNoteTypeLabel }}:</strong> {{ note.authorizationNotes }}
-        </li>
-      </ul>
-    </div>
-  </div>
-</div>
+  </div><!-- /mdr-layout -->
+</div><!-- /main-wrapper -->

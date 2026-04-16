@@ -154,7 +154,7 @@
               <label class="floating-label">Work Group</label>
               <ui-multi-check-dropdown formControlName="workGroups"
                                        [options]="workGroupOptions"
-                                       [defaultSelect]="true"
+                                       [defaultSelect]="false"
                                        [showChips]="false"
                                        placeholder="Select work groups">
               </ui-multi-check-dropdown>
@@ -164,7 +164,7 @@
               <label class="floating-label">Work Basket</label>
               <ui-multi-check-dropdown formControlName="workBasket"
                                        [options]="workBasketOptions"
-                                       [defaultSelect]="true"
+                                       [defaultSelect]="false"
                                        [showChips]="false"
                                        placeholder="Select work basket">
               </ui-multi-check-dropdown>
@@ -182,7 +182,7 @@
               </ui-multi-check-dropdown>
             </div>-->
 
-            <div class="form-outline full-width" style="grid-column: span 2;">
+            <div class="form-outline full-width">
               <label class="floating-label">Comments <span class="text-danger">*</span></label>
               <textarea class="form-control"
                         formControlName="comments"

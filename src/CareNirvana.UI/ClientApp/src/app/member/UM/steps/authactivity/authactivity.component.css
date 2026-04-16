@@ -47,7 +47,7 @@
 
 .form-grid {
   row-gap: 0 !important;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   display: grid;
   column-gap: 16px;
 }
@@ -302,7 +302,16 @@ textarea {
 .form-outline {
   position: relative;
   border: 1px solid #cfd4dc;
+  border-radius: 4px;
   margin-bottom: 1.5rem;
+}
+
+/* Textarea already has .form-control border — suppress it inside .form-outline to avoid double border */
+.form-outline textarea.form-control {
+  border: none;
+  outline: none;
+  box-shadow: none;
+  width: 100%;
 }
 
 .floating-label {
@@ -384,6 +393,11 @@ textarea {
   column-gap: 16px;
 }
 
+/* Comments textarea spans all columns on wide layouts */
+.form-outline.full-width {
+  grid-column: 1 / -1;
+}
+
 /* umauthactivity.component.css */
 
 /* Only affect the red star inside the floating label */
@@ -408,4 +422,39 @@ label .text-danger {
   padding-left: 0;
   padding-right: 0;
   border-right: 0;
+}
+
+/* ── Responsive breakpoints ───────────────────────────── */
+
+/* Small screens (<768px): 1 column, stack everything */
+@media (max-width: 767px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Comments full-width span collapses to single column */
+  .form-outline.full-width,
+  [style*="grid-column: span 2"] {
+    grid-column: span 1 !important;
+  }
+
+  /* Stack left/right panes vertically */
+  .activity-container {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .activity-left,
+  .activity-right {
+    width: 100%;
+    border-right: none;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .activity-left {
+    border-bottom: 2px solid #eee;
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+  }
 }

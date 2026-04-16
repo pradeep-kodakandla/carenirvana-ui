@@ -449,6 +449,94 @@
    FIXES: sizing + layout polish
    =========================== */
 
+/* ── Global Initial Recommendation bar (above Create service-lines table) ── */
+.authmdreview .global-ir-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  background: #f0f7ff;
+  border: 1.5px solid #bfdbfe;
+  border-radius: 10px;
+}
+
+.authmdreview .global-ir-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #1d4ed8;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.authmdreview .global-ir-dropdown {
+  flex: 1;
+  min-width: 200px;
+  max-width: 320px;
+}
+
+/* ── Selected row highlight ── */
+.authmdreview table.mdr-table tbody tr.row-selected {
+  background: #eff6ff;
+}
+
+/* ── Inline editable number inputs (Approved / Denied columns) ── */
+.authmdreview .inline-num-input {
+  width: 64px;
+  text-align: right;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 3px 6px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: #1e293b;
+  background: #fff;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+  /* Remove browser spin arrows for a cleaner look */
+  -moz-appearance: textfield;
+}
+.authmdreview .inline-num-input::-webkit-outer-spin-button,
+.authmdreview .inline-num-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.authmdreview .inline-num-input:focus {
+  border-color: #1d4ed8;
+  box-shadow: 0 0 0 3px rgba(29,78,216,.12);
+}
+
+/* ── Inline IR cell ── */
+.authmdreview .ir-cell {
+  min-width: 160px;
+  padding: 4px 8px !important;
+}
+
+/* Native <select> inside table cells — immune to overflow:auto clipping */
+.authmdreview .ir-select {
+  display: block;
+  width: 100%;
+  min-width: 148px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 13px;
+  color: #1e293b;
+  cursor: pointer;
+  outline: none;
+  appearance: auto;           /* keep the OS-native arrow */
+  transition: border-color .15s, box-shadow .15s;
+}
+.authmdreview .ir-select:focus {
+  border-color: #1d4ed8;
+  box-shadow: 0 0 0 3px rgba(29,78,216,.12);
+}
+.authmdreview .ir-select:hover {
+  border-color: #93c5fd;
+}
+
 /* Base sizing (prevents "tiny" look inside this component) */
 .authmdreview {
   font-size: 14px;

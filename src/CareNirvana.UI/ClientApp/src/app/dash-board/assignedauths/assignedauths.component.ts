@@ -593,4 +593,24 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
     return s !== '-' && s.toLowerCase().startsWith('exped'); // handles "Expedited", "EXPEDITED"
   }
 
+  openAuthSummary(row: any): void {
+    this.selectedRow = row ?? null;
+    this.selectedPanel = 'authSummary';
+    this.selectedActionLabel = 'Auth Summary';
+    this.panelSubtitle =
+      (row?.MemberName ?? row?.memberName ?? '').toString() +
+      ' (ID: ' + (row?.memberId ?? '') + ')' +
+      ' (Auth #: ' + (row?.authNumber ?? '') + ')';
+
+    this.selectedAuthDetailId = this.extractAuthDetailId(row);
+    this.selectedAuthNumber = (row?.AuthNumber ?? row?.authNumber ?? null)
+      ? String(row?.AuthNumber ?? row?.authNumber)
+      : null;
+    this.selectedAuthTemplateId = (row?.authtemplateId ?? row?.templateId ?? null)
+      ? Number(row?.authtemplateId ?? row?.templateId)
+      : null;
+
+    this.showNotesPanel = true;
+  }
+
 }

@@ -1189,6 +1189,22 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
     return 'badge';
   }
 
+  /**
+   * Maps the auth-level currentStatus (from the Decision step) to a CSS class
+   * used by the Auth Status pill in the Create service-lines table.
+   */
+  getAuthStatusClass(status: string | null | undefined): string {
+    const s = (status ?? '').trim().toLowerCase();
+    if (!s)                                                      return 'auth-status-default';
+    if (s.includes('approved') || s.includes('approve'))        return 'auth-status-approved';
+    if (s.includes('denied')   || s.includes('deny'))           return 'auth-status-denied';
+    if (s.includes('pend'))                                      return 'auth-status-pended';
+    if (s.includes('partial'))                                   return 'auth-status-partial';
+    if (s.includes('void'))                                      return 'auth-status-void';
+    if (s.includes('progress') || s.includes('review'))         return 'auth-status-inprogress';
+    return 'auth-status-default';
+  }
+
   isMdInProgress(line: { serviceCode?: string } | null | undefined): boolean {
     const s = this.getMdStatusForLine(line).toLowerCase();
     return s.includes('in progress');

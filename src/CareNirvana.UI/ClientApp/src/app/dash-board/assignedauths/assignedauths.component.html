@@ -57,11 +57,11 @@
     </button>
 
     <button mat-menu-item class="row-menu-item"
-            (click)="openNotes(row); trigger.closeMenu()">
+            (click)="openAuthSummary(row); trigger.closeMenu()">
       <span class="row-menu-icon">
         <mat-icon>summarize</mat-icon>
       </span>
-      <span class="row-menu-label">Auth Summary </span>
+      <span class="row-menu-label">Auth Summary</span>
     </button>
 
   </ng-template>
@@ -387,6 +387,12 @@
                           (requestViewAll)="onActivityRequestViewAll()"
                           (requestAddOnly)="onActivityRequestAddOnly()">
         </app-authactivity>
+
+        <app-authorization-details *ngIf="selectedPanel === 'authSummary'"
+                                   [authNumber]="selectedAuthNumber ?? ''"
+                                   [embedded]="true"
+                                   (closed)="closeRightPanel()">
+        </app-authorization-details>
 
         <div *ngIf="selectedPanel !== 'notes' && selectedPanel !== 'documents' && selectedPanel !== 'activity'" class="panel-placeholder">
           Select an action to view details.
