@@ -42,13 +42,13 @@ interface DashboardCounts {
 export class DashBoardComponent implements AfterViewInit {
 
   roleConfig: PermissionConfig = {};
-
+  showInsightsTile: boolean = false;
   dashboardWidgets: any[] = [];
   defaultWidget: string = '';
   dashboardCounts?: DashboardCounts;
 
   // ── Widget strip scroll state ────────────────────────────────────────
-  canScrollLeft  = false;
+  canScrollLeft = false;
   canScrollRight = false;
   @ViewChild('widgetStrip') widgetStripRef!: ElementRef<HTMLElement>;
 
@@ -83,11 +83,11 @@ export class DashBoardComponent implements AfterViewInit {
     // Scroll the clicked tile into view within the strip
     setTimeout(() => {
       const strip = this.widgetStripRef?.nativeElement;
-      const tile  = strip?.children[index - 1] as HTMLElement;
+      const tile = strip?.children[index - 1] as HTMLElement;
       if (strip && tile) {
-        const tileLeft   = tile.offsetLeft;
-        const tileRight  = tileLeft + tile.offsetWidth;
-        const stripLeft  = strip.scrollLeft;
+        const tileLeft = tile.offsetLeft;
+        const tileRight = tileLeft + tile.offsetWidth;
+        const stripLeft = strip.scrollLeft;
         const stripRight = stripLeft + strip.clientWidth;
         if (tileLeft < stripLeft) {
           strip.scrollTo({ left: tileLeft - 8, behavior: 'smooth' });
@@ -109,7 +109,7 @@ export class DashBoardComponent implements AfterViewInit {
 
   /** Called from the strip's (scroll) event binding in the template */
   onStripScroll(el: HTMLElement): void {
-    this.canScrollLeft  = el.scrollLeft > 0;
+    this.canScrollLeft = el.scrollLeft > 0;
     this.canScrollRight = el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
   }
 
@@ -125,15 +125,36 @@ export class DashBoardComponent implements AfterViewInit {
     setTimeout(() => {
       const el = this.widgetStripRef?.nativeElement;
       if (!el) return;
-      this.canScrollLeft  = el.scrollLeft > 0;
+      this.canScrollLeft = el.scrollLeft > 0;
       this.canScrollRight = el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
     }, 160);
   }
 
   ngOnInit(): void {
-    // Replace with your actual source (from API/session storage etc.)
     this.loadCounts();
-    this.fetchRoleData(4);
+
+    const loggedInUserId = Number(sessionStorage.getItem('loggedInUserid'));
+    const roleId = Number(this.getRoleIdByUserId(loggedInUserId));
+    console.log('Logged in user ID:', loggedInUserId, 'mapped role ID:', roleId);
+    this.showInsightsTile = [1, 2, 4].includes(roleId);
+    if (roleId !== null) {
+      this.fetchRoleData(roleId);
+    } else {
+      console.warn('No roleId mapping found for loggedInUserid:', loggedInUserId);
+    }
+  }
+
+  private getRoleIdByUserId(userId: number): number | null {
+    const userRoleMap: { [key: number]: number } = {
+      3: 4,
+      2: 5,
+      1: 4,
+      4: 7,
+      5: 6,
+      6: 5
+    };
+
+    return userRoleMap[userId] ?? null;
   }
 
   private loadCounts(): void {
@@ -163,6 +184,8 @@ export class DashBoardComponent implements AfterViewInit {
         : rawPermissions;
 
       this.roleConfig = parsed;
+
+      console.log('Parsed Role Config:', this.roleConfig);
 
       if (parsed.dashboardWidgets?.widgets?.length) {
         this.dashboardWidgets = parsed.dashboardWidgets.widgets.filter((w: any) => w.enabled);

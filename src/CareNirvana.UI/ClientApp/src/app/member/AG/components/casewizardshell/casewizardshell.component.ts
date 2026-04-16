@@ -30,6 +30,8 @@ import { CasenotesComponent } from 'src/app/member/AG/steps/casenotes/casenotes.
 import { CasedocumentsComponent } from 'src/app/member/AG/steps/casedocuments/casedocuments.component';
 import { CasecloseComponent } from 'src/app/member/AG/steps/caseclose/caseclose.component';
 import { CaseUnsavedChangesAwareService } from 'src/app/member/AG/guards/services/caseunsavedchangesaware.service';
+import { MatDialog } from '@angular/material/dialog';
+import { CaseConfirmLeaveDialogComponent, CaseConfirmLeaveDialogData } from 'src/app/member/AG/components/case-confirm-leave-dialog/case-confirm-leave-dialog.component';
 
 export interface CaseStep {
   id: string;
@@ -230,7 +232,8 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     private caseApi: CasedetailService,
     private state: CaseWizardStoreService,
     private dsLookup: DatasourceLookupService,
-    private userService: AuthenticateService
+    private userService: AuthenticateService,
+    private dialog: MatDialog
     // TODO: inject your AI suggestion service here
     // private aiService: CaseAiService
   ) { }
@@ -1135,8 +1138,8 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
   //  UI ACTIONS (existing)
   // ═══════════════════════════════════
 
-  selectLevel(levelId: number): void {
-    if (!this.canNavigateAway()) return;
+  async selectLevel(levelId: number): Promise<void> {
+    if (!await this.canNavigateAway()) return;
     this.state.setActiveLevel(levelId);
 
     // ✅ Only the latest level is editable; all others are read-only
@@ -1160,11 +1163,11 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     if (agg) this.loadAiPanelData(agg, levelId);
   }
 
-  onStepSelected(step: any): void {
+  async onStepSelected(step: any): Promise<void> {
     const stepId = typeof step === 'string' ? step : (step?.id ?? step?.route);
     if (!stepId || stepId === this.activeStepId) return;
 
-    if (!this.canNavigateAway()) return;
+    if (!await this.canNavigateAway()) return;
 
     // ✅ Check if current step has errors and update tracking
     const currentHasErrors = this.validateCurrentStep();
@@ -1400,11 +1403,38 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     }));
   }
 
-  private canNavigateAway(): boolean {
+  private async canNavigateAway(): Promise<boolean> {
     const inst: any = this.currentStepRef?.instance;
+
+    // Preferred: delegate to the component's own styled MatDialog
+    if (typeof inst?.canLeaveStep === 'function') {
+      return inst.canLeaveStep();
+    }
+
+    // Fallback: component only exposes hasUnsavedChanges — open the dialog ourselves
     const hasUnsaved = !!inst?.hasUnsavedChanges?.();
     if (!hasUnsaved) return true;
-    return confirm('You have unsaved changes. Do you want to continue?');
+
+    const ref = this.dialog.open<CaseConfirmLeaveDialogComponent, CaseConfirmLeaveDialogData, boolean>(
+      CaseConfirmLeaveDialogComponent,
+      {
+        panelClass:    'leave-dialog-panel',
+        backdropClass: 'leave-dialog-backdrop',
+        disableClose:  true,
+        data: {
+          title:       'Unsaved Changes',
+          message:     'You have unsaved changes on this page. Switching now will discard your modifications.',
+          cancelText:  'Stay & Continue Editing',
+          confirmText: 'Discard & Switch',
+        },
+      }
+    );
+
+    const confirmed = await ref.afterClosed().toPromise();
+    if (confirmed && typeof inst?.form?.markAsPristine === 'function') {
+      inst.form.markAsPristine();
+    }
+    return !!confirmed;
   }
 
   // ═══════════════════════════════════

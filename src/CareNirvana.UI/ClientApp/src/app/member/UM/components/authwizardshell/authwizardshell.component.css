@@ -168,13 +168,6 @@
   white-space: nowrap;
 }
 
-.aw-status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
 /* ── Priority badges ── */
 .aw-priority-badge {
   display: inline-flex;
@@ -332,13 +325,6 @@
   flex-wrap: nowrap;
   overflow: hidden;
   margin-top: 1px;
-}
-
-.aw-ds-total {
-  font-size: 11px;
-  font-weight: 700;
-  color: #374151;
-  white-space: nowrap;
 }
 
 .aw-ds-dot {
@@ -927,23 +913,54 @@
 }
 
 /* ── View-Only body overlay ── */
+/* ── View-Only: scrollable, readable, no interactions ── */
 .aw-body--view-only .wizardBody {
   position: relative;
-  pointer-events: none;
-  opacity: 0.72;
+  /* pointer-events MUST stay on the container so the browser can receive
+     scroll wheel / touch-scroll events. Interactions are blocked below
+     at the element level instead. */
+  overflow: auto;
   user-select: text;
+  /* Subtle tint to indicate read-only mode, but content stays legible. */
+  opacity: 0.95;
 }
 
-/* Allow scroll but block interactions */
-.aw-body--view-only .wizardBody::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 5;
-  cursor: not-allowed;
+/* Block every interactive element individually so nothing can be clicked,
+   typed into, or activated — while the scrollable container stays
+   fully pointer-accessible. */
+.aw-body--view-only .wizardBody input,
+.aw-body--view-only .wizardBody textarea,
+.aw-body--view-only .wizardBody select,
+.aw-body--view-only .wizardBody button,
+.aw-body--view-only .wizardBody [role="combobox"],
+.aw-body--view-only .wizardBody [role="listbox"],
+.aw-body--view-only .wizardBody [role="option"],
+.aw-body--view-only .wizardBody [role="switch"],
+.aw-body--view-only .wizardBody [role="checkbox"],
+.aw-body--view-only .wizardBody [contenteditable],
+.aw-body--view-only .wizardBody label,
+.aw-body--view-only .wizardBody .ff-outline,
+.aw-body--view-only .wizardBody .ui-smart-dropdown,
+.aw-body--view-only .wizardBody ui-smart-dropdown,
+.aw-body--view-only .wizardBody .ng-select,
+.aw-body--view-only .wizardBody .ng-select-container {
+  pointer-events: none !important;
+  cursor: default !important;
+}
+
+/* Inputs/textareas: fully readable, clearly non-editable */
+.aw-body--view-only .wizardBody input,
+.aw-body--view-only .wizardBody textarea,
+.aw-body--view-only .wizardBody select {
+  background-color: #f8fafc !important;
+  color: #1e293b !important;
+  border-color: #e2e8f0 !important;
+  cursor: default !important;
+}
+
+/* Buttons: visually muted but still legible */
+.aw-body--view-only .wizardBody button {
+  opacity: 0.45;
 }
 
 /* Mute the Save button when closed */

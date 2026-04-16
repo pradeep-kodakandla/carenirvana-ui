@@ -810,3 +810,101 @@
   background:#D97706;
   border-color:#D97706;
 }
+
+/* ===== Copy button — content header ===== */
+.btn-copy-line {
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  border-radius:999px;
+  font-weight:600;
+  font-size:13px;
+  padding:6px 16px;
+  white-space:nowrap;
+  background:#fff;
+  border:1.5px solid #D8DEE4;
+  color:#475569;
+  cursor:pointer;
+  transition:background .15s, border-color .15s;
+}
+.btn-copy-line:hover:not(:disabled) {
+  background:#F8FAFC;
+  border-color:#94A3B8;
+}
+.btn-copy-line:disabled {
+  opacity:.5;
+  cursor:not-allowed;
+}
+
+/* ===== Copy button — bulk table action cell ===== */
+.bcol-action {
+  width:80px;
+  text-align:center;
+}
+
+.btn-bulk-copy {
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1.5px solid #D8DEE4;
+  background:#fff;
+  color:#475569;
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+  white-space:nowrap;
+  transition:background .15s, border-color .15s;
+}
+.btn-bulk-copy:hover:not(:disabled) {
+  background:#F0F9FF;
+  border-color:#7DD3FC;
+  color:#0369A1;
+}
+.btn-bulk-copy:disabled {
+  opacity:.45;
+  cursor:not-allowed;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   VIEW-ONLY MODE  (injected by AuthWizardShell when auth is Closed)
+═══════════════════════════════════════════════════════════ */
+.decision--view-only {
+  user-select: text;
+}
+
+/* Block all interactive elements — scroll container untouched */
+.decision--view-only input,
+.decision--view-only textarea,
+.decision--view-only select,
+.decision--view-only button,
+.decision--view-only [role="combobox"],
+.decision--view-only [role="listbox"],
+.decision--view-only [role="option"],
+.decision--view-only [role="switch"],
+.decision--view-only [role="checkbox"],
+.decision--view-only [contenteditable],
+.decision--view-only label,
+.decision--view-only .ff-outline,
+.decision--view-only .ui-smart-dropdown,
+.decision--view-only ui-smart-dropdown,
+.decision--view-only .ng-select,
+.decision--view-only .ng-select-container {
+  pointer-events: none !important;
+  cursor: default !important;
+}
+
+/* Inputs stay readable but clearly non-editable */
+.decision--view-only input,
+.decision--view-only textarea,
+.decision--view-only select {
+  background-color: #f8fafc !important;
+  color: #1e293b !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Action buttons — muted but visible */
+.decision--view-only button {
+  opacity: 0.4 !important;
+}

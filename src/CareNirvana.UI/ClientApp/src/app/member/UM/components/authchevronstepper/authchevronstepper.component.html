@@ -6,16 +6,16 @@
      (click)="clickStep(s)"
      [attr.aria-current]="s.id === activeStepId ? 'step' : null">
 
-    <span class="stepIcon material-icons-outlined" aria-hidden="true">
+    <!--<span class="stepIcon material-icons-outlined" aria-hidden="true">
       {{ iconFor(s) }}
-    </span>
+    </span>-->
 
     <span class="stepLabel">{{ s.label }}</span>
 
     <!-- Optional badge: set s.badge in parent if you want counts -->
-    <span class="stepBadge" *ngIf="$any(s).badge !== undefined && $any(s).badge !== null">
+    <!--<span class="stepBadge" *ngIf="$any(s).badge !== undefined && $any(s).badge !== null">
       {{ $any(s).badge }}
-    </span>
+    </span>-->
 
   </a>
 </nav>

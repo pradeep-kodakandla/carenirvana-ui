@@ -227,12 +227,16 @@
             <ng-container *ngFor="let inst of sec.instances; trackBy: trackByRepeatInst">
               <div class="ff-repeat-group">
 
-                <!-- Repeat header WITH +/- buttons inline -->
+                <!-- Repeat header WITH +/delete buttons inline -->
                 <div class="ff-repeat-header">
                   <div class="ff-repeat-title">{{ sec.repeat?.instanceLabel }} #{{ inst.index }}</div>
                   <div class="ff-repeat-actions" *ngIf="sec.repeat?.showControls">
-                    <button type="button" class="ff-repeat-btn" [disabled]="!canAddRepeat(sec)" (click)="addRepeat(sec)" title="Add">+</button>
-                    <button type="button" class="ff-repeat-btn danger" [disabled]="!canRemoveRepeat(sec)" (click)="removeRepeat(sec, inst.index)" title="Remove">−</button>
+                    <button type="button" class="ff-repeat-btn" [disabled]="!canAddRepeat(sec)" (click)="addRepeat(sec)" title="Add another {{ sec.repeat?.instanceLabel }}">
+                      <mat-icon style="font-size:16px;width:16px;height:16px;line-height:16px;">add</mat-icon>
+                    </button>
+                    <button type="button" class="ff-repeat-btn danger" [disabled]="!canRemoveRepeat(sec)" (click)="removeRepeat(sec, inst.index)" title="Delete this {{ sec.repeat?.instanceLabel }}">
+                      <mat-icon style="font-size:16px;width:16px;height:16px;line-height:16px;">delete_outline</mat-icon>
+                    </button>
                   </div>
                 </div>
 
@@ -782,12 +786,16 @@
           <ng-container *ngFor="let inst of sub.instances; trackBy: trackByRepeatInst">
             <div class="ff-repeat-group">
 
-              <!-- Compact header: title + inline +/- buttons -->
+              <!-- Compact header: title + inline +/delete buttons -->
               <div class="ff-repeat-header">
                 <div class="ff-repeat-title">{{ sub.repeat?.instanceLabel }} #{{ inst.index }}</div>
                 <div class="ff-repeat-actions" *ngIf="sub.repeat?.showControls">
-                  <button type="button" class="ff-repeat-btn" [disabled]="!canAddRepeat(sub)" (click)="addRepeat(sub)" title="Add">+</button>
-                  <button type="button" class="ff-repeat-btn danger" [disabled]="!canRemoveRepeat(sub)" (click)="removeRepeat(sub, inst.index)" title="Remove">−</button>
+                  <button type="button" class="ff-repeat-btn" [disabled]="!canAddRepeat(sub)" (click)="addRepeat(sub)" title="Add another {{ sub.repeat?.instanceLabel }}">
+                    <mat-icon style="font-size:16px;width:16px;height:16px;line-height:16px;">add</mat-icon>
+                  </button>
+                  <button type="button" class="ff-repeat-btn danger" [disabled]="!canRemoveRepeat(sub)" (click)="removeRepeat(sub, inst.index)" title="Delete this {{ sub.repeat?.instanceLabel }}">
+                    <mat-icon style="font-size:16px;width:16px;height:16px;line-height:16px;">delete_outline</mat-icon>
+                  </button>
                 </div>
               </div>
 
@@ -1093,6 +1101,32 @@
   </ng-template>
 
 </form>
+
+<!-- ═══════════════════════════════════════════════
+     UNSAVED CHANGES WARNING DIALOG
+     Shown when user tries to leave step with dirty form
+     ═══════════════════════════════════════════════ -->
+<div class="unsaved-overlay" *ngIf="showUnsavedWarning" (click)="dismissUnsavedWarning()">
+  <div class="unsaved-dialog" (click)="$event.stopPropagation()">
+    <div class="unsaved-dialog-icon">
+      <svg width="28" height="28" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+      </svg>
+    </div>
+    <div class="unsaved-dialog-title">Unsaved Changes</div>
+    <div class="unsaved-dialog-message">
+      You have unsaved changes on this page. Switching now will discard your modifications.
+    </div>
+    <div class="unsaved-dialog-actions">
+      <button class="btn btn-outline-secondary btn-sm" (click)="dismissUnsavedWarning()">
+        Stay &amp; Continue Editing
+      </button>
+      <button class="btn btn-warning btn-sm" (click)="confirmLeaveStep()">
+        Discard &amp; Switch
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- ═══════════════════════════════════════════════
      ENROLLMENT EDIT WARNING DIALOG

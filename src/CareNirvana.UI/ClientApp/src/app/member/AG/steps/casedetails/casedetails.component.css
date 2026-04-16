@@ -215,6 +215,12 @@
   color: #6B7280; user-select: none;
   transition: all 0.15s ease;
 }
+.ff-repeat-btn mat-icon,
+.ff-repeat-btn .material-icons,
+.ff-repeat-btn .material-icons-outlined {
+  font-size: 16px; width: 16px; height: 16px;
+  line-height: 16px; display: block;
+}
 .ff-repeat-btn:hover { border-color: #9CA3AF; background: #F9FAFB; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
 .ff-repeat-btn:active { transform: translateY(1px); }
 .ff-repeat-btn:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; }
@@ -1338,4 +1344,138 @@
 @keyframes incidentLinkFadeIn {
   from { opacity: 0; transform: translateX(-5px); }
   to   { opacity: 1; transform: translateX(0); }
+}
+
+
+/* ═══════════════════════════════════════════════
+   UNSAVED CHANGES / ENROLLMENT EDIT WARNING OVERLAY
+   Matches auth-details unsaved-overlay design exactly
+   ═══════════════════════════════════════════════ */
+.unsaved-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(15, 23, 42, .45);
+  backdrop-filter: blur(2px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: unsavedFadeIn .15s ease;
+}
+@keyframes unsavedFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.unsaved-dialog {
+  background: #fff;
+  border-radius: 16px;
+  padding: 28px 32px 24px;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0,0,0,.18), 0 4px 16px rgba(0,0,0,.08);
+  text-align: center;
+  animation: unsavedSlideIn .2s ease;
+}
+@keyframes unsavedSlideIn {
+  from { transform: translateY(12px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.unsaved-dialog-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #FEF3C7;
+  color: #D97706;
+  margin-bottom: 14px;
+}
+.unsaved-dialog-icon--info {
+  background: #DBEAFE;
+  color: #2563EB;
+}
+
+.unsaved-dialog-title {
+  font-weight: 800;
+  font-size: 17px;
+  color: #1E293B;
+  margin-bottom: 8px;
+  line-height: 24px;
+}
+
+.unsaved-dialog-message {
+  font-size: 13.5px;
+  color: #64748B;
+  line-height: 21px;
+  margin-bottom: 22px;
+}
+
+.unsaved-dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.unsaved-dialog-actions .btn {
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 22px;
+  white-space: nowrap;
+}
+.unsaved-dialog-actions .btn-outline-secondary {
+  border-color: #D8DEE4;
+  color: #475569;
+}
+.unsaved-dialog-actions .btn-outline-secondary:hover {
+  background: #F8FAFC;
+  border-color: #94A3B8;
+}
+.unsaved-dialog-actions .btn-warning {
+  background: #F59E0B;
+  border-color: #F59E0B;
+  color: #fff;
+}
+.unsaved-dialog-actions .btn-warning:hover {
+  background: #D97706;
+  border-color: #D97706;
+}
+.unsaved-dialog-actions .btn-primary-custom {
+  background: #3B82F6;
+  border-color: #3B82F6;
+  color: #fff;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 22px;
+}
+.unsaved-dialog-actions .btn-primary-custom:hover {
+  background: #2563EB;
+  border-color: #2563EB;
+}
+
+/* ── Enrollment Edit button (matches auth) ── */
+.enr-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #2563EB;
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  cursor: pointer;
+  letter-spacing: .2px;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.enr-edit-btn:hover {
+  background: #DBEAFE;
+  border-color: #93C5FD;
+  color: #1D4ED8;
 }

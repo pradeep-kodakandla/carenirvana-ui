@@ -1,4 +1,4 @@
-<div class="activity-container" [class.activity-container--single-pane]="singlePane">
+<div class="activity-container" [class.activity-container--single-pane]="singlePane" [class.activity--view-only]="isViewOnly">
   <!-- Left Side - Timeline -->
   <div class="activity-left" *ngIf="!isAddOnly && (!singlePane || !isEditing)">
     <!-- Top Search + Action Bar -->

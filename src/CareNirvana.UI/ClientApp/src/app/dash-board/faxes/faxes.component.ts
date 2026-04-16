@@ -1252,28 +1252,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     const memberId        = fax?.memberId;
     const memberDetailsId = fax?.memberDetailsId;
 
-    if (memberId && memberDetailsId) {
-      const tabRoute = `/member-info/${memberId}`;
-      sessionStorage.setItem('selectedAuthId',          String(pipeline.authId));
-      sessionStorage.setItem('selectedAuthNumber',      pipeline.authNumber);
-      sessionStorage.setItem('selectedMemberDetailsId', String(memberDetailsId));
-
-      const existingTab = this.headerService.getTabs().find((t: any) => t.route === tabRoute);
-      if (existingTab) {
-        this.headerService.selectTab(tabRoute);
-        this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
-          this.router.navigate([tabRoute]);
-        });
-      } else {
-        this.headerService.addTab(
-          `Auth: ${pipeline.authNumber}`, tabRoute,
-          String(memberId), String(memberDetailsId)
-        );
-        this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
-          this.router.navigate([tabRoute]);
-        });
-      }
-    } else {
+    if (!memberId || !memberDetailsId) {
       // Fallback: switch to Processed tab so the user can locate the record
       this.selectStatusChip('processed');
       this.showInlineMessage(
@@ -1281,7 +1260,30 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         'success',
         6000
       );
+      return;
     }
+
+    const memId    = String(memberId);
+    const memDetId = String(memberDetailsId);
+    const authNo   = String(pipeline.authNumber);
+
+    const urlTree = this.router.createUrlTree([
+      '/member-info',
+      memId,
+      'auth',
+      authNo,
+      'details'
+    ]);
+    const tabRoute = this.router.serializeUrl(urlTree);
+    const tabLabel = `Auth # ${authNo}`;
+
+    const existingTab = this.headerService.getTabs().find((t: any) => t.route === tabRoute);
+    if (existingTab) {
+      this.headerService.selectTab(tabRoute);
+    } else {
+      this.headerService.addTab(tabLabel, tabRoute, memId, memDetId);
+    }
+    this.router.navigateByUrl(tabRoute);
   }
 
   /**
@@ -2664,8 +2666,10 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         fax: (pa as any).providerServicing.fax, ...svcAddr
       } : undefined,
       requestDatetime: (pa as any).submission?.date,
-      notes:   (pa as any).notes,
-      priorAuth: pa
+      notes:       (pa as any).notes,
+      // Pre-select Owner = Kelly Anderson (ID 5) for all fax-initiated auths
+      ownerUserId: 5,
+      priorAuth:   pa
     };
 
     this.showAuthForm = true;
@@ -2839,23 +2843,32 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     if (!authId) return;
     const memberId        = this.selectedFax?.memberId;
     const memberDetailsId = this.selectedFax?.memberDetailsId;
-    if (memberId && memberDetailsId) {
-      const tabLabel = `Auth: ${authNumber}`;
-      const tabRoute = `/member-info/${memberId}`;
-      const existingTab = this.headerService.getTabs().find(tab => tab.route === tabRoute);
-      sessionStorage.setItem('selectedAuthId',          String(authId));
-      sessionStorage.setItem('selectedAuthNumber',      authNumber);
-      sessionStorage.setItem('selectedMemberDetailsId', String(memberDetailsId));
-      if (existingTab) {
-        this.headerService.selectTab(tabRoute);
-        this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => this.router.navigate([tabRoute]));
-      } else {
-        this.headerService.addTab(tabLabel, tabRoute, String(memberId), String(memberDetailsId));
-        this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => this.router.navigate([tabRoute]));
-      }
-    } else {
+    if (!memberId || !memberDetailsId) {
       this.toast(`Authorization ${authNumber} (ID: ${authId})`, false);
+      return;
     }
+
+    const memId    = String(memberId);
+    const memDetId = String(memberDetailsId);
+    const authNo   = String(authNumber);
+
+    const urlTree = this.router.createUrlTree([
+      '/member-info',
+      memId,
+      'auth',
+      authNo,
+      'details'
+    ]);
+    const tabRoute = this.router.serializeUrl(urlTree);
+    const tabLabel = `Auth # ${authNo}`;
+
+    const existingTab = this.headerService.getTabs().find(t => t.route === tabRoute);
+    if (existingTab) {
+      this.headerService.selectTab(tabRoute);
+    } else {
+      this.headerService.addTab(tabLabel, tabRoute, memId, memDetId);
+    }
+    this.router.navigateByUrl(tabRoute);
   }
 
 }

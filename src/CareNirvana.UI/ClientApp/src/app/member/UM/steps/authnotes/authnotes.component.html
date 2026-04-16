@@ -1,7 +1,8 @@
 
 <div class="notes-container"
      [class.notes-container--add-only]="isAddOnly"
-     [class.notes-container--single-pane]="singlePane && !isAddOnly">
+     [class.notes-container--single-pane]="singlePane && !isAddOnly"
+     [class.notes--view-only]="isViewOnly">
   <!-- Left Side - Notes Timeline/List (AuthActivity style) -->
   <div class="notes-left" *ngIf="!isAddOnly && !(singlePane && (showEditor || selectedNoteId))">
     <!--<div class="notes-titlebar">

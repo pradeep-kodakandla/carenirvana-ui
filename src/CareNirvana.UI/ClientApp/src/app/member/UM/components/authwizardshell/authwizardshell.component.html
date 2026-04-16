@@ -43,7 +43,6 @@
             <span *ngIf="header.authStatusLabel"
                   class="aw-status-badge"
                   [ngClass]="'aw-auth-status--' + header.authStatusCode">
-              <span class="aw-status-dot"></span>
               {{ header.authStatusLabel }}
             </span>
             <span *ngIf="!header.authStatusLabel" class="aw-field-value">—</span>
@@ -60,7 +59,6 @@
             <span class="aw-field-label">Overall Decision</span>
             <span class="aw-status-badge"
                   [ngClass]="'aw-decision--' + header.overallDecisionCode">
-              <span class="aw-status-dot"></span>
               {{ header.overallDecision || 'Pending' }}
             </span>
           </div>
@@ -84,19 +82,10 @@
           <div class="aw-header-field">
             <span class="aw-field-label">Decision Summary</span>
             <div class="aw-decision-summary" *ngIf="header.decisionSummary.total > 0; else noDecisions">
-              <span class="aw-ds-total"># {{ header.decisionSummary.total }} Total</span>
-              <span *ngIf="header.decisionSummary.approved" class="aw-ds-dot aw-ds-dot--approved">
-                ● {{ header.decisionSummary.approved }}
-              </span>
-              <span *ngIf="header.decisionSummary.partial" class="aw-ds-dot aw-ds-dot--partial">
-                ● {{ header.decisionSummary.partial }}
-              </span>
-              <span *ngIf="header.decisionSummary.denied" class="aw-ds-dot aw-ds-dot--denied">
-                ● {{ header.decisionSummary.denied }}
-              </span>
-              <span *ngIf="header.decisionSummary.pending" class="aw-ds-dot aw-ds-dot--pending">
-                ● {{ header.decisionSummary.pending }}
-              </span>
+              <span *ngIf="header.decisionSummary.approved" class="aw-ds-dot aw-ds-dot--approved">Approved</span>
+              <span *ngIf="header.decisionSummary.partial" class="aw-ds-dot aw-ds-dot--partial">Partial</span>
+              <span *ngIf="header.decisionSummary.denied" class="aw-ds-dot aw-ds-dot--denied">Denied</span>
+              <span *ngIf="header.decisionSummary.pending" class="aw-ds-dot aw-ds-dot--pending">Pending</span>
             </div>
             <ng-template #noDecisions>
               <span class="aw-field-value">—</span>

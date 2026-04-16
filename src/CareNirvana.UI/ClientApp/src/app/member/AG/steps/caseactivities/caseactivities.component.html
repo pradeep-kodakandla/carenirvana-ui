@@ -7,187 +7,164 @@
        'activity-container--editor-only': singlePaneOnEdit && mode === 'embed' && showEditor
      }">
 
-  <!-- LEFT: List (hidden in embed mode, and hidden while editing in single-pane style) -->
+  <!-- LEFT: List panel -->
   <div class="activity-left" *ngIf="mode !== 'embed' && (!singlePaneOnEdit || !showEditor)">
 
-    <!-- Header bar (matches AuthActivity left header vibe) -->
+    <!-- Top bar: Search + Sort + Add -->
     <div class="left-controls">
-      <!--<div class="left-title">
-        <div class="h6 mb-0">Case Activities</div>
-        <small class="text-muted" *ngIf="resolved">Level: {{ resolved.caseLevelId }}</small>
-      </div>-->
+      <input type="text"
+             placeholder="🔍 Search activities..."
+             [(ngModel)]="searchTerm"
+             (input)="applySearch()"
+             class="search-input"
+             [disabled]="loading" />
 
       <div class="right-actions">
+        <div class="sort-wrapper" (mouseenter)="showSort = true" (mouseleave)="showSort = false">
+          <button class="sort-icon" type="button" aria-label="Sort">⇅</button>
+          <div class="sort-menu" *ngIf="showSort">
+            <div class="sort-option" (click)="applySort('created_desc')">Due Date (Newest)</div>
+            <div class="sort-option" (click)="applySort('created_asc')">Due Date (Oldest)</div>
+            <div class="sort-option" (click)="applySort('type_asc')">Activity Type (A–Z)</div>
+            <div class="sort-option" (click)="applySort('type_desc')">Activity Type (Z–A)</div>
+            <div class="sort-option" (click)="applySort('priority_high')">Priority (High first)</div>
+            <div class="sort-option" (click)="applySort('priority_low')">Priority (Low first)</div>
+            <div class="sort-option" (click)="applySort('status_asc')">Status (A–Z)</div>
+          </div>
+        </div>
         <button class="add-btn" (click)="onAddClick()" [disabled]="loading || saving || readOnly">
           ➕ Add Activity
         </button>
       </div>
     </div>
 
-    <div class="alert alert-danger py-2" *ngIf="errorMsg">
-      {{ errorMsg }}
-    </div>
+    <div class="alert alert-danger py-2" *ngIf="errorMsg">{{ errorMsg }}</div>
+    <div *ngIf="loading" class="py-3 px-2">Loading...</div>
 
-    <div *ngIf="loading" class="py-3">
-      Loading...
-    </div>
-
-    <!-- Empty -->
     <div *ngIf="!loading && (!activities || activities.length === 0)" class="text-muted py-3 px-2">
-      No activities found. Please click "Add Activity" to create one.
+      No activities found. Click "Add Activity" to create one.
     </div>
 
-    <!-- Activity cards (styled like AuthActivity timeline items) -->
-    <div class="timeline-list" *ngIf="activities && activities.length > 0">
-      <div *ngFor="let a of activities; trackBy: trackByActivity" class="timeline-item"
-           [ngClass]="{ 'selected': (selectedActivityId != null && selectedActivityId === (a.caseActivityId != null ? +a.caseActivityId : -1)) }">
-
+    <!-- Activity cards -->
+    <div class="timeline-list" *ngIf="!loading && filteredActivities && filteredActivities.length > 0; else noFilteredActivities">
+      <article class="timeline-item"
+               *ngFor="let a of filteredActivities; trackBy: trackByActivity"
+               [ngClass]="{ 'selected': (selectedActivityId != null && selectedActivityId === (a.caseActivityId != null ? +a.caseActivityId : -1)) }">
 
         <div class="timeline-content" (click)="onEdit(a)">
           <div class="timeline-header">
-            <div class="timeline-title">
-              Activity Type: {{ getActivityTypeLabel(a) }}
-              <span *ngIf="a.requestStatus === 'ACCEPTED'">✅</span>
-              <span *ngIf="a.requestStatus !== 'ACCEPTED'">⏳</span>
-            </div>
+            <div class="timeline-title">{{ getActivityTypeLabel(a) || 'Activity' }}</div>
 
-            <div class="timeline-priority"
-                 [ngClass]="getPriorityClassFromLabel(getPriorityLabel(a))">
-              Priority: {{ getPriorityLabel(a) }}
-            </div>
-
-            <!-- Actions (keep your existing handlers/guards) -->
-            <span class="activity-actions">
-              <button class="btn btn-sm btn-outline-success me-1"
-                      type="button"
-                      *ngIf="canActOn(a)"
-                      (click)="accept(a)"
-                      [disabled]="saving || readOnly">
-                Accept
-              </button>
-
-              <button class="btn btn-sm btn-outline-danger me-2"
-                      type="button"
-                      *ngIf="canActOn(a)"
-                      (click)="reject(a)"
-                      [disabled]="saving || readOnly">
-                Reject
-              </button>
-
-              <button class="icon-btn" type="button" title="Edit" (click)="onEdit(a)" [disabled]="saving || readOnly">✏️</button>
-              <button class="icon-btn" type="button" title="Delete" (click)="onDelete(a)" [disabled]="saving || readOnly">🗑️</button>
+            <span class="timeline-priority" [ngClass]="getPriorityClassFromLabel(getPriorityLabel(a))">
+              {{ getPriorityLabel(a) || 'Normal' }}
             </span>
+
+            <div class="timeline-actions" (click)="$event.stopPropagation()">
+              <button class="btn btn-sm btn-outline-success" type="button"
+                      *ngIf="canActOn(a)" (click)="accept(a)" [disabled]="saving || readOnly">Accept</button>
+              <button class="btn btn-sm btn-outline-danger" type="button"
+                      *ngIf="canActOn(a)" (click)="reject(a)" [disabled]="saving || readOnly">Reject</button>
+              <button class="icon-btn" type="button" title="Edit"
+                      (click)="onEdit(a)" [disabled]="saving || readOnly">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>
+              </button>
+              <button class="icon-btn danger" type="button" title="Delete"
+                      (click)="onDelete(a)" [disabled]="saving || readOnly">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+              </button>
+            </div>
           </div>
 
           <div class="timeline-summary">
-            <span class="pill pill-primary">Status · {{ a.requestStatus }}</span>
-            <span class="pill" *ngIf="a.dueDate">Due · {{ a.dueDate | date:'short' }}</span>
-            <span class="pill" *ngIf="a.referTo">Assigned To · {{ getAssignedToLabel(a) }}</span>
+            <span class="pill pill-primary">Status · {{ a.requestStatus || '—' }}</span>
+            <span class="pill" *ngIf="a.dueDate">Due · {{ a.dueDate | date:'shortDate' }}</span>
+            <span class="pill" *ngIf="a.referTo">Assigned · {{ getAssignedToLabel(a) }}</span>
           </div>
 
-          <div class="resp-body">
-            {{ a.comment || '' }}
-          </div>
+          <div class="note-snippet" *ngIf="a.comment">{{ a.comment }}</div>
         </div>
-      </div>
+      </article>
     </div>
+
+    <ng-template #noFilteredActivities>
+      <div *ngIf="!loading && activities && activities.length > 0" class="text-muted py-3 px-2">
+        No matching activities.
+      </div>
+    </ng-template>
 
   </div>
 
-  <!-- RIGHT: Editor (shown in embed mode always, or when showEditor=true) -->
+  <!-- RIGHT: Editor panel -->
   <div class="activity-right" *ngIf="mode === 'embed' || showEditor">
 
-    <!-- Embed header (dashboard add-only) -->
     <div class="embed-activity-header" *ngIf="mode === 'embed'">
       <div class="embed-actions">
-        <button type="button"
-                class="btn btn-sm btn-link"
-                (click)="viewAll.emit()">
+        <button type="button" class="btn btn-sm btn-link" (click)="viewAll.emit()">
           View all activities ({{ activities.length || 0 }})
         </button>
       </div>
     </div>
 
-    <!-- Editor -->
-    <div class="auth-form" *ngIf="showEditor">
-
+    <!-- Editor form -->
+    <div class="section-card" *ngIf="showEditor">
       <form [formGroup]="form">
-        <div class="form-grid">
+        <div class="grid">
 
           <ng-container *ngFor="let f of activityEditorFields; trackBy: trackByField">
             <ng-container *ngIf="form.get(f.controlName) as ctrl">
 
               <!-- CHECKBOX -->
               <ng-container *ngIf="f.type === 'checkbox'; else outlinedTpl">
-                <div class="form-outline ff-checkbox-row"
-                     [class.is-invalid]="ctrl.touched && ctrl.invalid">
-                  <label class="floating-label">
-                    {{ f.displayName }}
-                    <span class="text-danger" *ngIf="isRequired(ctrl, f)">*</span>
-                  </label>
-
-                  <div class="ff-checkbox-inner">
-                    <input type="checkbox"
-                           class="form-check-input"
-                           [formControlName]="f.controlName" />
-                    <span class="text-muted"> </span>
+                <div class="ff-field">
+                  <div class="ff-checkbox">
+                    <input type="checkbox" class="form-check-input" [formControlName]="f.controlName" />
+                    <label class="form-check-label">
+                      {{ f.displayName }}<span class="req-star" *ngIf="isRequired(ctrl, f)">*</span>
+                    </label>
                   </div>
-                </div>
-
-                <div class="invalid-feedback d-block" *ngIf="ctrl.touched && ctrl.invalid">
-                  {{ f.requiredMsg || (f.displayName + ' is required') }}
+                  <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
+                    {{ f.requiredMsg || (f.displayName + ' is required') }}
+                  </div>
                 </div>
               </ng-container>
 
-              <!-- OUTLINED (text/select/textarea/datetime/search) -->
+              <!-- OUTLINED fields -->
               <ng-template #outlinedTpl>
-                <div class="form-outline dropdown-container"
-                     [class.is-invalid]="ctrl.touched && ctrl.invalid"
-                     [class.full-width]="f.type === 'textarea' || f.type === 'search'">
-
-                  <label class="floating-label">
-                    {{ f.displayName }}
-                    <span class="text-danger" *ngIf="isRequired(ctrl, f)">*</span>
-                  </label>
-
-                  <ng-container [ngSwitch]="f.type">
-
-                    <!-- Dropdown -->
-                    <ng-container *ngSwitchCase="'select'">
-                      <ui-smart-dropdown class="ff-ui"
-                                         label=""
-                                         placeholder="Select..."
-                                         [options]="getDropdownOptions(f.controlName)"
-                                         [formControlName]="f.controlName">
-                      </ui-smart-dropdown>
-                    </ng-container>
-
-                    <!-- Datetime -->
-                    <ng-container *ngSwitchCase="'datetime-local'">
-                      <ui-datetime-picker class="ff-ui"
-                                          placeholderDate="mm/dd/yyyy"
-                                          placeholderDateTime="mm/dd/yyyy --:--"
-                                          [formControlName]="f.controlName">
-                      </ui-datetime-picker>
-                    </ng-container>
-
-                    <!-- Textarea -->
-                    <ng-container *ngSwitchCase="'textarea'">
-                      <textarea class="form-control"
-                                rows="3"
-                                [formControlName]="f.controlName"></textarea>
-                    </ng-container>
-
-                    <!-- Default text -->
-                    <ng-container *ngSwitchDefault>
-                      <input class="form-control" type="text" [formControlName]="f.controlName" />
-                    </ng-container>
-
-                  </ng-container>
-                </div>
-
-                <div class="invalid-feedback d-block" *ngIf="ctrl.touched && ctrl.invalid">
-                  {{ f.requiredMsg || (f.displayName + ' is required') }}
+                <div class="ff-field" [class.ff-span-all]="f.type === 'textarea' || f.type === 'search'">
+                  <div class="ff-outline"
+                       [class.ff-disabled]="ctrl.disabled"
+                       [class.ff-invalid]="ctrl.touched && ctrl.invalid">
+                    <div class="ff-float-label">
+                      {{ f.displayName }}<span class="req-star" *ngIf="isRequired(ctrl, f)">*</span>
+                    </div>
+                    <div class="ff-body">
+                      <ng-container [ngSwitch]="f.type">
+                        <ng-container *ngSwitchCase="'select'">
+                          <ui-smart-dropdown class="ff-ui" label="" placeholder="Select..."
+                                             [options]="getDropdownOptions(f.controlName)"
+                                             [formControlName]="f.controlName">
+                          </ui-smart-dropdown>
+                        </ng-container>
+                        <ng-container *ngSwitchCase="'datetime-local'">
+                          <ui-datetime-picker class="ff-ui"
+                                              placeholderDate="mm/dd/yyyy"
+                                              placeholderDateTime="mm/dd/yyyy --:--"
+                                              [formControlName]="f.controlName">
+                          </ui-datetime-picker>
+                        </ng-container>
+                        <ng-container *ngSwitchCase="'textarea'">
+                          <textarea class="ff-input ff-textarea" rows="4"
+                                    [formControlName]="f.controlName"></textarea>
+                        </ng-container>
+                        <ng-container *ngSwitchDefault>
+                          <input class="ff-input" type="text" [formControlName]="f.controlName" />
+                        </ng-container>
+                      </ng-container>
+                    </div>
+                  </div>
+                  <div class="ff-error" *ngIf="ctrl.touched && ctrl.invalid">
+                    {{ f.requiredMsg || (f.displayName + ' is required') }}
+                  </div>
                 </div>
               </ng-template>
 
@@ -196,43 +173,39 @@
 
         </div>
 
-        <div class="button-group">
-          <button type="button" (click)="onSave()" [disabled]="saving || readOnly">Save</button>
-          <button type="button" (click)="closeEditor()">Cancel</button>
+        <div class="case-savebar">
+          <button type="button" class="btn btn-outline-secondary me-2" (click)="closeEditor()">Cancel</button>
+          <button type="button" class="btn btn-primary" [disabled]="saving || readOnly" (click)="onSave()">
+            {{ saving ? 'Saving…' : 'Save' }}
+          </button>
         </div>
       </form>
     </div>
 
-
-
+    <!-- Summary panel (no editor open) -->
+    <ng-container *ngIf="!showEditor">
+      <div class="ai-summary">
+        <h3>📊 Activities Summary</h3>
+        <div class="summary-grid">
+          <p><strong>Total:</strong> {{ activities.length || 0 }}</p>
+          <p><strong>Accepted:</strong> {{ getCompletedCount() }}</p>
+          <p><strong>Pending:</strong> {{ getPendingCount() }}</p>
+          <p><strong>High Priority:</strong> {{ getPriorityCount('High') }}</p>
+          <p><strong>Medium Priority:</strong> {{ getPriorityCount('Medium') }}</p>
+          <p><strong>Low Priority:</strong> {{ getPriorityCount('Low') }}</p>
+        </div>
+        <p class="text-muted mb-0" *ngIf="mode !== 'embed'">
+          Select an activity on the left to edit, or click "Add Activity".
+        </p>
+        <ng-container *ngIf="mode === 'embed'">
+          <p class="text-muted mb-3">Create a new case activity from the dashboard.</p>
+          <button class="add-btn" (click)="onAddClick()" [disabled]="loading || saving || readOnly">
+            ➕ Add Activity
+          </button>
+        </ng-container>
+      </div>
+    </ng-container>
 
   </div>
-  <!-- In embed mode, if editor isn't open yet, show a CTA -->
-  <ng-template #aiSummary>
-    <div class="ai-summary">
-      <h3>📊 Activities Summary</h3>
 
-      <div class="summary-grid">
-        <p><strong>Total Activities:</strong> {{ activities.length || 0 }}</p>
-        <p><strong>Completed:</strong> {{ getCompletedCount() }}</p>
-        <p><strong>Pending:</strong> {{ getPendingCount() }}</p>
-        <p><strong>High Priority:</strong> {{ getPriorityCount('High') }}</p>
-        <p><strong>Medium Priority:</strong> {{ getPriorityCount('Medium') }}</p>
-        <p><strong>Low Priority:</strong> {{ getPriorityCount('Low') }}</p>
-      </div>
-
-      <ng-container *ngIf="mode === 'embed'; else fullModeText">
-        <p class="text-muted mb-3">Create a new case activity from the dashboard.</p>
-        <button class="add-btn" (click)="onAddClick()" [disabled]="loading || saving || readOnly">
-          ➕ Add Activity
-        </button>
-      </ng-container>
-
-      <ng-template #fullModeText>
-        <p class="text-muted mb-0">
-          Select an activity from the left to edit, or add a new one.
-        </p>
-      </ng-template>
-    </div>
-  </ng-template>
 </div>

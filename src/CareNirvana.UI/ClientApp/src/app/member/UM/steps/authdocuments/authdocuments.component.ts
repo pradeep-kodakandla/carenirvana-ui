@@ -72,6 +72,15 @@ editorOnlyLayout: boolean = false;
   saving = false;
   errorMsg = '';
 
+  // ── View-Only Mode (injected by AuthWizardShell when auth is Closed) ──
+  private _isViewOnly = false;
+  get isViewOnly(): boolean { return this._isViewOnly; }
+  set isViewOnly(value: boolean) {
+    const was = this._isViewOnly;
+    this._isViewOnly = value;
+    if (was && !value && this.form) { this.form.enable({ emitEvent: false }); }
+  }
+
   template?: TemplateSectionResponse;
 
   fields: AnyField[] = [];

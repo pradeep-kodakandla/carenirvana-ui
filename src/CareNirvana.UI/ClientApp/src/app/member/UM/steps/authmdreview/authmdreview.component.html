@@ -295,64 +295,116 @@
   <ng-template #reviewMode>
     <div class="mdr-shell">
 
-      <!-- ── Left panel: activity list ──────────────────────── -->
-      <div class="mdr-left card">
-        <div class="card-body">
+      <!-- ══════════════════════════════════════════
+           LEFT PANEL — activity list
+           ══════════════════════════════════════════ -->
+      <aside class="mdr-left">
 
-          <div class="left-header">
-            <p class="left-title">MD Review Activities</p>
-            <button class="btn primary"
-                    type="button"
-                    style="white-space:nowrap;"
-                    (click)="onCreateNewFromList()">
-              + Create New
-            </button>
+        <!-- Panel header -->
+        <div class="lp-header">
+          <div class="lp-header__title">
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
+                 stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7
+                       a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2
+                       M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+            MD Review Activities
           </div>
-
-          <!-- Loading -->
-          <div *ngIf="isLoadingActivities" class="muted pad">
-            Loading activities…
-          </div>
-
-          <!-- Empty -->
-          <div *ngIf="!isLoadingActivities && !filteredActivities.length" class="muted pad">
-            No MD Review activities found.
-          </div>
-
-          <!-- Activity cards -->
-          <div class="activity-list"
-               *ngIf="!isLoadingActivities && filteredActivities.length">
-            <button type="button"
-                    class="activity-item"
-                    *ngFor="let a of filteredActivities; trackBy: trackByActivityId"
-                    [class.active]="a.activityId === selectedActivityId"
-                    (click)="onSelectActivity(a)">
-
-              <div class="row1">
-                <div class="row1-left">
-                  <div class="activity-type">{{ a.activityType || 'Unknown Activity' }}</div>
-                  <div class="activity-id muted">#{{ a.activityId }}</div>
-                </div>
-                <span class="pill" [ngClass]="getMdReviewPillClass(a.mdReviewStatus)">
-                  {{ a.mdReviewStatus || '—' }}
-                </span>
-              </div>
-
-              <div class="row2 muted">
-                <span>Created: {{ a.createdOn ? (a.createdOn | date:'MM/dd/yyyy') : '—' }}</span>
-                <span>Due: {{ a.dueDateTime ? (a.dueDateTime | date:'MM/dd/yyyy') : '—' }}</span>
-              </div>
-
-              <div class="row3 muted">
-                <span>Priority: {{ a.priority ?? '—' }}</span>
-                <span>Lines: {{ a.serviceLineCount ?? '—' }}</span>
-              </div>
-
-            </button>
-          </div>
-
+          <button class="lp-new-btn"
+                  type="button"
+                  (click)="onCreateNewFromList()">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24"
+                 stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+            </svg>
+            New Activity
+          </button>
         </div>
-      </div><!-- /mdr-left -->
+
+        <!-- Count badge -->
+        <div class="lp-count" *ngIf="!isLoadingActivities && filteredActivities.length">
+          {{ filteredActivities.length }} activit{{ filteredActivities.length === 1 ? 'y' : 'ies' }}
+        </div>
+
+        <!-- Loading skeleton -->
+        <div *ngIf="isLoadingActivities" class="lp-loading">
+          <div class="lp-skeleton" *ngFor="let s of [1,2,3]"></div>
+        </div>
+
+        <!-- Empty state -->
+        <div *ngIf="!isLoadingActivities && !filteredActivities.length" class="lp-empty">
+          <svg width="32" height="32" fill="none" viewBox="0 0 24 24"
+               stroke="#cbd5e1" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7
+                     a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2
+                     M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+          </svg>
+          <span>No activities found</span>
+        </div>
+
+        <!-- Activity cards -->
+        <div class="lp-list"
+             *ngIf="!isLoadingActivities && filteredActivities.length">
+          <button type="button"
+                  class="lp-card"
+                  *ngFor="let a of filteredActivities; trackBy: trackByActivityId"
+                  [class.lp-card--active]="a.activityId === selectedActivityId"
+                  [ngClass]="getLpCardStatusClass(a.mdReviewStatus)"
+                  (click)="onSelectActivity(a)">
+
+            <!-- Top row: type + status pill -->
+            <div class="lp-card__top">
+              <span class="lp-card__type">{{ a.activityType || 'MD Review' }}</span>
+              <span class="lp-status-pill" [ngClass]="getLpStatusPillClass(a.mdReviewStatus)">
+                {{ a.mdReviewStatus || 'Pending' }}
+              </span>
+            </div>
+
+            <!-- Middle row: ID + assigned -->
+            <div class="lp-card__mid">
+              <span class="lp-card__id">#{{ a.activityId }}</span>
+              <span class="lp-card__assigned" *ngIf="a.assignedToName">
+                <svg width="11" height="11" fill="none" viewBox="0 0 24 24"
+                     stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                </svg>
+                {{ a.assignedToName }}
+              </span>
+            </div>
+
+            <!-- Bottom row: dates + priority + lines -->
+            <div class="lp-card__meta">
+              <span *ngIf="a.dueDateTime">
+                <svg width="11" height="11" fill="none" viewBox="0 0 24 24"
+                     stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                Due {{ a.dueDateTime | date:'MM/dd/yy' }}
+              </span>
+              <span *ngIf="a.priority">
+                <svg width="11" height="11" fill="none" viewBox="0 0 24 24"
+                     stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M3 4h13M3 8h9m-9 4h6m4 0l4-4 4 4m-4-4v12"/>
+                </svg>
+                {{ a.priority }}
+              </span>
+              <span *ngIf="a.serviceLineCount != null">
+                {{ a.serviceLineCount }} line{{ a.serviceLineCount === 1 ? '' : 's' }}
+              </span>
+            </div>
+
+          </button>
+        </div>
+
+      </aside><!-- /mdr-left -->
 
 
       <!-- ── Right panel: selected activity detail ──────────── -->
@@ -498,8 +550,11 @@
                     <td class="num">{{ l.denied ?? '—' }}</td>
                     <td>{{ l.initialRecommendation || '—' }}</td>
                     <td>
-                      <span class="pill" [ngClass]="getMdReviewPillClass(l.status)">
-                        {{ l.status || '—' }}
+                      <!-- Show mdDecision (e.g. "Approve", "Deny") which matches what the
+                           left-panel card shows as mdReviewStatus.
+                           Fall back to l.status only when mdDecision is absent. -->
+                      <span class="pill" [ngClass]="getMdReviewPillClass(l.mdDecision || l.status)">
+                        {{ l.mdDecision || l.status || '—' }}
                       </span>
                     </td>
                   </tr>
@@ -514,6 +569,32 @@
             </ng-template>
 
             <!-- ── Medical Director's Decision ───────────────── -->
+
+            <!-- ══ APPROVED: read-only notice, no form shown ══ -->
+            <div *ngIf="isSelectedActivityApproved" class="approved-notice">
+              <div class="approved-notice__icon">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24"
+                     stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4
+                        M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0
+                        3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138
+                        3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438
+                        3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138
+                        3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0
+                        3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138
+                        3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438
+                        3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+                </svg>
+              </div>
+              <div class="approved-notice__text">
+                <strong>This activity has already been approved.</strong>
+                <span>No further action is required. The MD decision has been recorded.</span>
+              </div>
+            </div>
+
+            <!-- ══ NOT APPROVED: show decision form + actions ══ -->
+            <ng-container *ngIf="!isSelectedActivityApproved">
+
             <div style="margin-top:20px;">
               <div class="lines-title">Medical Director's Decision</div>
               <hr style="border:none;border-top:1px solid #e5e7eb;margin:8px 0 14px;" />
@@ -600,6 +681,8 @@
                 Close
               </button>
             </div>
+
+            </ng-container><!-- /not approved -->
 
           </div><!-- /card -->
 

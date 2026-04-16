@@ -319,6 +319,10 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
   enrollmentFilter: 'active' | 'inactive' = 'active';
   showEnrollmentEditWarning = false;
 
+  // ── Unsaved-changes overlay (styled dialog, mirrors AuthDetails) ──
+  showUnsavedWarning = false;
+  private _leaveResolver: ((canLeave: boolean) => void) | null = null;
+
   /** True when this is an existing (edit-mode) case. */
   get isExistingCase(): boolean { return this.wizardMode === 'edit'; }
 
@@ -378,6 +382,22 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
   /** Metadata per repeatKey, rebuilt each render-model build */
   private repeatRegistry: Record<string, RepeatRegistryMeta> = {};
 
+  /**
+   * Subsection titles that must always behave as repeatable groups,
+   * even when the template JSON does not declare repeat config.
+   * Matched case-insensitively.
+   */
+  private readonly MANUAL_REPEAT_SECTIONS = new Set([
+    'extension details',
+    'additional information',
+    'participant information'
+  ]);
+
+  /** Returns true when a subsection title belongs to the always-repeatable set. */
+  private isManualRepeatSubsection(title: string): boolean {
+    return this.MANUAL_REPEAT_SECTIONS.has((title ?? '').toLowerCase().trim());
+  }
+
   /** Persisted json used to infer repeat counts for the current level during model build */
   private persistedForBuild: any | null = null;
 
@@ -402,6 +422,40 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
   caseHasUnsavedChanges(): boolean {
     return this.form?.dirty ?? false;
+  }
+
+  /**
+   * Called by the wizard shell / CanDeactivate guard before navigating away.
+   * Returns a Promise<boolean>: true = allow leave, false = stay.
+   * Shows the styled unsaved-changes overlay instead of window.confirm().
+   */
+  canLeaveStep(): Promise<boolean> {
+    if (!this.caseHasUnsavedChanges()) {
+      return Promise.resolve(true);
+    }
+    this.showUnsavedWarning = true;
+    return new Promise<boolean>((resolve) => {
+      this._leaveResolver = resolve;
+    });
+  }
+
+  /** User chose to stay and keep editing — dismiss the overlay. */
+  dismissUnsavedWarning(): void {
+    this.showUnsavedWarning = false;
+    if (this._leaveResolver) {
+      this._leaveResolver(false);
+      this._leaveResolver = null;
+    }
+  }
+
+  /** User confirmed they want to discard changes and leave. */
+  confirmLeaveStep(): void {
+    this.showUnsavedWarning = false;
+    this.form?.markAsPristine();
+    if (this._leaveResolver) {
+      this._leaveResolver(true);
+      this._leaveResolver = null;
+    }
   }
 
   isCaseTypeLocked(): boolean {
@@ -878,7 +932,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
         // CREATE header + first detail
         action = 'addLevel';
         successMsg = 'Case saved successfully.';
-        (this as any).showSavedMessage?.('Case saved successfully');
+        (this as any).showSavedMessage?.('Case saved successfully.');
         if (!caseNumber) throw new Error('caseNumber is required to create a new case.');
 
         const caseType = String(this.templateId) || "0";// this.getValueByFieldId('caseType') ?? '';
@@ -936,7 +990,6 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
       // Re-apply persisted identity into the form and re-sync enable/disable state so newly shown fields are editable.
       this.applyPersistedIdentityToForm();
       this.syncFormControlVisibility();
-      this.notify.success(successMsg);
       this.form.markAsPristine();
 
 
@@ -1370,7 +1423,21 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     const prefix = parentPrefix + this.safe(key) + '_';
     const pathKey = `${parentPathKey}/${this.safe(key)}`;
 
-    const subRepeat = this.normalizeRepeat((rawSub as any).repeat, title);
+    let subRepeat = this.normalizeRepeat((rawSub as any).repeat, title);
+
+    // Force repeat for the three named subsections even when the template JSON
+    // does not declare a repeat block (Extension Details, Additional Information,
+    // Participant Information).
+    if (!subRepeat && this.isManualRepeatSubsection(title)) {
+      subRepeat = {
+        enabled: true,
+        defaultCount: 1,
+        min: 1,
+        max: 20,
+        showControls: true,
+        instanceLabel: title
+      };
+    }
 
     // Base (non-repeat) subsection fields
     const baseFields: RenderField[] = (rawSub.fields ?? [])
@@ -3464,9 +3531,15 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
   /**
    * Returns true when a section or subsection title relates to
    * Authorization or Claims — controls where the incident link is shown.
+   *
+   * NOTE: "External Authorization" is intentionally excluded — the link
+   * should only appear on the standard Authorization section, not on
+   * External Authorization.
    */
   isIncidentRelatedSection(item: any): boolean {
-    const title = (item?.title ?? item?.sectionName ?? item?.displayName ?? '').toLowerCase();
+    const title = (item?.title ?? item?.sectionName ?? item?.displayName ?? '').toLowerCase().trim();
+    // Exclude any section whose title begins with or explicitly contains "external"
+    if (title.startsWith('external') || title.includes('external authorization')) return false;
     return title.includes('authorization') || title.includes('claim');
   }
 

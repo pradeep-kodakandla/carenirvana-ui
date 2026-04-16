@@ -109,10 +109,10 @@ export class AuthDecisionSeedService {
     let resolvedStatusCodeValue: any = null;
 
     if (isAutoApproved) {
-      const { approvedValue, medNecessityMetValue } =
+      const { approvedValue, autoApprovedValue } =
         await this.resolveApprovedDecisionValues(authTemplateId);
       resolvedStatusValue     = approvedValue;
-      resolvedStatusCodeValue = medNecessityMetValue;
+      resolvedStatusCodeValue = autoApprovedValue;
     } else {
       resolvedStatusValue = await this.resolvePendedDecisionStatusValue(authTemplateId);
     }
@@ -722,46 +722,85 @@ export class AuthDecisionSeedService {
     return pended ? (pended as any).value : null;
   }
 
+  // Fallback IDs used when runtime datasource resolution fails.
+  // Decision Status:      1 = "Approved"
+  // Decision Status Code: 4 = "Auto Approved"
+  private readonly FALLBACK_DECISION_STATUS_APPROVED      = 1;
+  private readonly FALLBACK_DECISION_STATUS_CODE_AUTO_APP = 4;
+
   private async resolveApprovedDecisionValues(
     authTemplateId: number
-  ): Promise<{ approvedValue: any; medNecessityMetValue: any }> {
-    const tmpl = await firstValueFrom(
-      this.api.getDecisionTemplate(authTemplateId).pipe(catchError(() => of(null)))
-    );
-    const sections = this.extractTemplateSections(tmpl);
+  ): Promise<{ approvedValue: any; autoApprovedValue: any }> {
+    // Start with known fallback IDs — ensures values are always written even if
+    // the template API or datasource lookup fails at runtime.
+    let approvedValue: any     = this.FALLBACK_DECISION_STATUS_APPROVED;
+    let autoApprovedValue: any = this.FALLBACK_DECISION_STATUS_CODE_AUTO_APP;
 
-    const statusDs     = this.findFieldDatasource(sections, 'decisionstatus');
-    const statusCodeDs = this.findFieldDatasource(sections, 'decisionstatuscode');
+    try {
+      const tmpl = await firstValueFrom(
+        this.api.getDecisionTemplate(authTemplateId).pipe(catchError(() => of(null)))
+      );
+      const sections = this.extractTemplateSections(tmpl);
 
-    let approvedValue: any       = null;
-    let medNecessityMetValue: any = null;
+      const statusDs     = this.findFieldDatasource(sections, 'decisionstatus');
+      const statusCodeDs = this.findFieldDatasource(sections, 'decisionstatuscode');
 
-    if (statusDs) {
-      const opts = await this.loadDatasourceOptions(statusDs);
-      const approved = opts.find(o => String((o as any)?.label ?? '').trim().toLowerCase().startsWith('approv'));
-      if (approved) approvedValue = (approved as any).value;
+      if (statusDs) {
+        const opts = await this.loadDatasourceOptions(statusDs);
+        // Match "Approved" (Decision Status)
+        const approved = opts.find(o => {
+          const lbl = String((o as any)?.label ?? '').trim().toLowerCase();
+          return lbl.startsWith('approv') || lbl === 'approved';
+        });
+        if (approved) approvedValue = (approved as any).value;
+      }
+
+      if (statusCodeDs) {
+        const codeOpts = await this.loadDatasourceOptions(statusCodeDs);
+        // Match "Auto Approved" (Decision Status Code)
+        const autoApproved = codeOpts.find(o => {
+          const lbl = String((o as any)?.label ?? '').trim().toLowerCase();
+          return lbl.includes('auto approv');
+        });
+        if (autoApproved) autoApprovedValue = (autoApproved as any).value;
+      }
+    } catch (e) {
+      console.warn('[DecisionSeed] resolveApprovedDecisionValues: datasource lookup failed, using fallback IDs', e);
     }
 
-    if (statusCodeDs) {
-      const codeOpts = await this.loadDatasourceOptions(statusCodeDs);
-      const medNec = codeOpts.find(o => {
-        const lbl = String((o as any)?.label ?? '').trim().toLowerCase();
-        return lbl.includes('medical necessity met') || lbl.includes('medical necessity');
-      });
-      if (medNec) medNecessityMetValue = (medNec as any).value;
-    }
-
-    return { approvedValue, medNecessityMetValue };
+    console.log(`[DecisionSeed] resolveApprovedDecisionValues → decisionStatus=${approvedValue}, decisionStatusCode=${autoApprovedValue}`);
+    return { approvedValue, autoApprovedValue };
   }
 
   private extractTemplateSections(tmpl: any): any[] {
-    const raw = (tmpl as any)?.sections ?? (tmpl as any)?.Sections ?? [];
-    return Array.isArray(raw) ? raw : [];
+    const raw = (tmpl as any)?.sections
+      ?? (tmpl as any)?.Sections
+      ?? (tmpl as any)?.sectionGroups
+      ?? (tmpl as any)?.SectionGroups
+      ?? [];
+    const all: any[] = Array.isArray(raw) ? raw : [];
+    const DECISION_SECTIONS = new Set([
+      'decision details',
+      'member provider decision info',
+      'decision notes'
+    ]);
+    const filtered = all.filter(s => {
+      const name = String(s?.sectionName ?? s?.SectionName ?? s?.name ?? '').trim().toLowerCase();
+      return DECISION_SECTIONS.has(name);
+    });
+    return filtered.length ? filtered : all;
   }
 
   private findFieldDatasource(sections: any[], fieldIdLower: string): string | null {
     for (const sec of sections) {
-      const fields: any[] = sec?.fields ?? sec?.Fields ?? [];
+      // Mirror authdecision component getSectionFields() — check all four property names
+      const fields: any[] = (
+        sec?.fields ??
+        sec?.Fields ??
+        sec?.sectionFields ??
+        sec?.SectionFields ??
+        []
+      );
       const hit = fields.find(f => String(f?.id ?? f?.fieldId ?? '').trim().toLowerCase() === fieldIdLower);
       if (hit) {
         const ds = String(hit?.datasource ?? hit?.Datasource ?? '').trim();

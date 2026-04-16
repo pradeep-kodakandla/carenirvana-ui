@@ -1062,6 +1062,8 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
 
     // Remove the closed banner and enable editing
     this.isAuthClosed = false;
+    // Re-build steps so all steps drop their disabled flag immediately
+    this.buildSteps();
     queueMicrotask(() => this.pushContextIntoCurrentStep());
 
     // Update the header status locally so the UI reflects "Open" immediately
@@ -1368,12 +1370,12 @@ export class AuthwizardshellComponent implements OnInit, AfterViewInit, OnDestro
     const bc = this.badgeCounts;
 
     const base: AuthWizardStep[] = [
-      { id: 'details', label: 'Auth Details', route: 'details' },
-      { id: 'decision', label: 'Decisions', route: 'decision', badge: bc.decision || undefined },
+      { id: 'details',    label: 'Auth Details', route: 'details' },
+      { id: 'decision',   label: 'Decisions',    route: 'decision',   badge: bc.decision   || undefined },
       ...(this.showMdReview ? [{ id: 'mdReview', label: 'MD Review', route: 'mdReview', badge: bc.mdReview || undefined } as AuthWizardStep] : []),
-      { id: 'activities', label: 'Activities', route: 'activities', badge: bc.activities || undefined },
-      { id: 'notes', label: 'Notes', route: 'notes', badge: bc.notes || undefined },
-      { id: 'documents', label: 'Documents', route: 'documents', badge: bc.documents || undefined }
+      { id: 'activities', label: 'Activities',   route: 'activities', badge: bc.activities || undefined },
+      { id: 'notes',      label: 'Notes',        route: 'notes',      badge: bc.notes      || undefined },
+      { id: 'documents',  label: 'Documents',    route: 'documents',  badge: bc.documents  || undefined }
     ];
 
     // show Smart Check only for NEW auth (authNumber = 0)

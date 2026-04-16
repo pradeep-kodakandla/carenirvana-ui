@@ -6,7 +6,8 @@
 
 <div class="decision-details-layout"
      *ngIf="!loading && tabs.length"
-     [class.bulk-mode-active]="bulkEditMode">
+     [class.bulk-mode-active]="bulkEditMode"
+     [class.decision--view-only]="isViewOnly">
 
   <!-- ===== LEFT: Tab Rail ===== -->
   <div class="tabs-container" [class.tabs-dimmed]="bulkEditMode">
@@ -65,11 +66,21 @@
         <span class="new-line-badge" *ngIf="isNewUnsavedLine()">New — Unsaved</span>
         <button class="btn btn-outline-secondary btn-sm btn-add-new"
                 (click)="addDecisionLine()"
-                [disabled]="saving || addingLine">
+                [disabled]="saving || addingLine || copyingLine">
           <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" style="margin-right:4px;vertical-align:-2px">
             <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
           </svg>
           {{ addingLine ? 'Adding…' : 'Add New' }}
+        </button>
+        <button class="btn btn-outline-secondary btn-sm btn-copy-line"
+                (click)="copyDecisionLine()"
+                [disabled]="saving || addingLine || copyingLine"
+                title="Copy this decision line to a new line">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" style="margin-right:4px;vertical-align:-2px">
+            <path d="M8 3a1 1 0 000 2h4a1 1 0 000-2H8z"/>
+            <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/>
+          </svg>
+          {{ copyingLine ? 'Copying…' : 'Copy' }}
         </button>
         <button class="btn btn-outline-secondary btn-sm"
                 (click)="openBulkEdit()"
@@ -424,6 +435,7 @@
               <th class="bcol-unit">Req.</th>
               <th class="bcol-unit bcol-editable-hdr">Appr.</th>
               <th class="bcol-unit bcol-editable-hdr">Denied</th>
+              <th class="bcol-action"></th>
             </tr>
           </thead>
           <tbody>
@@ -456,6 +468,18 @@
                        [(ngModel)]="row.denied"
                        [disabled]="!row.checked"
                        min="0" placeholder="0" />
+              </td>
+              <td class="bcol-action">
+                <button class="btn-bulk-copy"
+                        (click)="copyDecisionLine(row.procedureNo)"
+                        [disabled]="copyingLine || addingLine"
+                        title="Copy this decision line to a new line">
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M8 3a1 1 0 000 2h4a1 1 0 000-2H8z"/>
+                    <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/>
+                  </svg>
+                  Copy
+                </button>
               </td>
             </tr>
           </tbody>

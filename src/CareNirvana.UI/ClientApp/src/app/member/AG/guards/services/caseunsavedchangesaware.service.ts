@@ -1,3 +1,4 @@
 export interface CaseUnsavedChangesAwareService {
-    caseHasUnsavedChanges(): boolean;
+  caseHasUnsavedChanges(): boolean;
+  canLeaveStep?(): Promise<boolean>;
 }

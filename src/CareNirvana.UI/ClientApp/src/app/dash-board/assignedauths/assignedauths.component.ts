@@ -312,9 +312,9 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
     return this.rawData.filter(r => {
       const status = (
         r?.AuthStatusValue ?? r?.authStatusValue ??
-        r?.AuthStatus     ?? r?.authStatus       ?? ''
+        r?.AuthStatus ?? r?.authStatus ?? ''
       ).toString().trim().toLowerCase();
-      return status === 'open';
+      return status === 'open' || status === 'reopen' || status === 'reopened';
     });
   }
 
@@ -525,10 +525,10 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
       return;
     }
 
-    // âœ… normalize for new
+    // normalize for new
     const authNo = isNew ? '0' : String(authNumber);
 
-    // âœ… choose correct step
+    // choose correct step
     const stepRoute = isNew ? 'smartcheck' : 'details';
 
     const urlTree = this.router.createUrlTree([

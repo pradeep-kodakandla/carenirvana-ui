@@ -138,6 +138,23 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
   saving = false;
   errorMsg = '';
 
+  // ── View-Only Mode (injected by AuthWizardShell when auth is Closed) ──
+  private _isViewOnly = false;
+  get isViewOnly(): boolean { return this._isViewOnly; }
+  set isViewOnly(value: boolean) {
+    const was = this._isViewOnly;
+    this._isViewOnly = value;
+    if (value) {
+      // Disable both the tab form and the bulk shared form while view-only
+      if (this.form)            { this.form.disable({ emitEvent: false }); }
+      if (this.bulkSharedForm)  { this.bulkSharedForm.disable({ emitEvent: false }); }
+    } else if (was) {
+      // Re-enable on reopen
+      if (this.form)            { this.form.enable({ emitEvent: false }); }
+      if (this.bulkSharedForm)  { this.bulkSharedForm.enable({ emitEvent: false }); }
+    }
+  }
+
   authDetailId: number | null = null;
   authTemplateId: number | null = null;
 
@@ -194,6 +211,9 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
 
   /** Tracks whether an add-line operation is in progress */
   addingLine = false;
+
+  /** Tracks whether a copy-line operation is in progress */
+  copyingLine = false;
 
   /** Guards against re-entrant reload during add-new-line refresh */
   private refreshingForNewLine = false;
@@ -477,6 +497,86 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
           // Refresh items, select the new tab
           // (shell callbacks are NOT fired here — they would trigger re-entrant
           //  setContext→reload which causes flicker. They fire on save instead.)
+          this.refreshAndSelectProcedure(nextProcNo);
+        }
+      });
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  COPY DECISION LINE
+  //  Duplicates any decision line (defaults to the active tab)
+  //  into a new procedure number and selects it for editing.
+  // ═══════════════════════════════════════════════════════════
+
+  copyDecisionLine(sourceProcNo?: number): void {
+    const procNo = sourceProcNo ?? this.activeState?.tab?.procedureNo ?? null;
+    if (this.copyingLine || !this.authDetailId || !this.authTemplateId || procNo === null) return;
+
+    // If copying the active (unsaved) tab, warn about unsaved changes first
+    if (!sourceProcNo && this.isFormDirty()) {
+      this.pendingAddNew = true;
+      this.pendingTabId = null;
+      this.showUnsavedWarning = true;
+      return;
+    }
+
+    // Compute the next procedure number
+    const existingNums = this.tabs.map(t => t.procedureNo);
+    const maxExisting = existingNums.length ? Math.max(...existingNums) : 0;
+    const nextProcNo = maxExisting + 1;
+
+    const userId = Number(sessionStorage.getItem('loggedInUserid') || 0);
+    const authDetailId = this.authDetailId;
+    const nowIso = new Date().toISOString();
+
+    // Clone source Decision Details, override identity/timestamp/status fields
+    const sourceData = { ...this.getExistingDecisionDetails(procNo) };
+    const payload: any = {
+      ...sourceData,
+      procedureNo: nextProcNo,
+      decisionNumber: String(nextProcNo),
+      createdDateTime: this.authCreatedOn ?? nowIso,
+      updatedDateTime: nowIso,
+      decisionDateTime: null,
+      // Reset status to Pended on the copied line — user must set explicitly
+      decisionStatus: this.pendedDecisionStatusValue ?? sourceData.decisionStatus,
+      decisionStatusLabel: null,
+      decisionStatusCode: null,
+      decisionStatusCodeLabel: null,
+    };
+
+    // Convert empty strings to null
+    for (const k of Object.keys(payload)) {
+      if (payload[k] === '') payload[k] = null;
+    }
+
+    this.copyingLine = true;
+    this.errorMsg = '';
+
+    this.api.createItem(authDetailId, 'Decision Details', { data: payload } as any, userId)
+      .pipe(
+        catchError((e) => {
+          console.error('Failed to copy decision line:', e);
+          this.errorMsg = 'Failed to copy decision line. Please try again.';
+          this.toastSvc.error('Failed to copy decision line.');
+          return of(null);
+        }),
+        finalize(() => (this.copyingLine = false)),
+        takeUntil(this.destroy$)
+      )
+      .subscribe({
+        next: (res: any) => {
+          if (res === null) return;
+
+          this.newLineIds.add(nextProcNo);
+          this.seedAuthDataKeysForNewLine(nextProcNo);
+
+          this.toastSvc.success(`Decision Line #${nextProcNo} copied from #${procNo}.`);
+
+          this.formSnapshot = '';
+          this.selectedTabId = null;
+          this.pendingSelectProcedureNo = nextProcNo;
+
           this.refreshAndSelectProcedure(nextProcNo);
         }
       });
@@ -1048,27 +1148,36 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
         const obj: any = raw;
         statusText = obj?.decisionStatusName ?? obj?.decisionStatus ?? obj?.statusName ?? obj?.name ?? obj?.label ?? obj?.text ?? statusText;
         statusCode = this.asDisplayString(obj?.code ?? obj?.value ?? obj?.id) || statusCode;
+        // If object resolution still ended up numeric, try saved label
+        if (/^\d+$/.test(statusText)) {
+          const savedLbl = typeof data?.decisionStatusLabel === 'string' ? data.decisionStatusLabel.trim() : '';
+          if (savedLbl && !/^\d+$/.test(savedLbl)) statusText = savedLbl;
+        }
       } else {
         const prim = this.asDisplayString(raw);
         if (prim) {
-          // Try cache/options lookup
+          // 1) Try cache/options lookup first
           const looked = this.lookupDecisionStatusLabel(prim);
-          if (looked) {
+          if (looked && !/^\d+$/.test(looked.label)) {
             statusText = looked.label;
             statusCode = looked.code;
           } else {
-            statusText = prim;
-            statusCode = prim;
+            // 2) Cache miss or label still numeric — prefer the persisted label saved
+            //    alongside the value on every save (decisionStatusLabel field).
+            //    This works even before async dropdown options have loaded.
+            const savedLbl = typeof data?.decisionStatusLabel === 'string' ? data.decisionStatusLabel.trim() : '';
+            if (savedLbl && !/^\d+$/.test(savedLbl)) {
+              statusText = savedLbl;
+              statusCode = prim;
+            } else if (looked) {
+              // lookup succeeded but label was numeric — still use it
+              statusText = looked.label;
+              statusCode = looked.code;
+            } else {
+              statusText = prim;
+              statusCode = prim;
+            }
           }
-        }
-      }
-
-      // Also check for saved label text (from our enhanced payload)
-      if (data?.decisionStatusLabel && typeof data.decisionStatusLabel === 'string') {
-        const saved = data.decisionStatusLabel.trim();
-        // Only use saved label if current resolution looks like an ID
-        if (saved && /^\d+$/.test(statusText)) {
-          statusText = saved;
         }
       }
 
@@ -1085,23 +1194,29 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
         reasonText = obj?.decisionStatusCodeName ?? obj?.decisionStatusName ?? obj?.decisionStatusCode ??
           obj?.reasonDescription ?? obj?.description ??
           obj?.name ?? obj?.label ?? obj?.text ?? '';
+        // If object resolution still ended up numeric, try saved label
+        if (/^\d+$/.test(reasonText)) {
+          const savedLbl = typeof data?.decisionStatusCodeLabel === 'string' ? data.decisionStatusCodeLabel.trim() : '';
+          if (savedLbl && !/^\d+$/.test(savedLbl)) reasonText = savedLbl;
+        }
       } else {
         const reasonPrim = this.asDisplayString(reasonRaw);
         if (reasonPrim) {
+          // 1) Try cache/options lookup first
           const looked = this.lookupDecisionStatusCodeLabel(reasonPrim);
-          if (looked) {
+          if (looked && !/^\d+$/.test(looked.label)) {
             reasonText = looked.label;
           } else {
-            reasonText = reasonPrim;
+            // 2) Prefer persisted label saved alongside the value
+            const savedLbl = typeof data?.decisionStatusCodeLabel === 'string' ? data.decisionStatusCodeLabel.trim() : '';
+            if (savedLbl && !/^\d+$/.test(savedLbl)) {
+              reasonText = savedLbl;
+            } else if (looked) {
+              reasonText = looked.label;
+            } else {
+              reasonText = reasonPrim;
+            }
           }
-        }
-      }
-
-      // Also check for saved reason label
-      if (data?.decisionStatusCodeLabel && typeof data.decisionStatusCodeLabel === 'string') {
-        const saved = data.decisionStatusCodeLabel.trim();
-        if (saved && /^\d+$/.test(reasonText)) {
-          reasonText = saved;
         }
       }
 
@@ -1175,6 +1290,15 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
         subtitle: line2
       };
     });
+
+    // Keep bulk rows in sync so the bulk table also shows resolved labels (not numeric IDs)
+    if (this.bulkEditMode && this.bulkRows.length) {
+      for (const row of this.bulkRows) {
+        const status = this.computeTabStatus(row.procedureNo);
+        row.currentStatusText = status.label;
+        row.currentStatusClass = status.statusClass;
+      }
+    }
   }
 
 

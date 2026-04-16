@@ -331,7 +331,7 @@ export class MdreviewdashboardComponent {
 
         this.selectedAuth.lines       = normalized;
         this.selectedAuth.serviceLines = normalized;
-
+        console.log(`Loaded ${normalized.length} service lines for activity ${activityId}`, normalized);
         this.firstServiceLineComment = normalized.find(l => !!l.comment)?.comment ?? null;
         this.computeOverallInitialRecommendation(normalized);
         this.serviceLinesLoading = false;
@@ -358,7 +358,8 @@ export class MdreviewdashboardComponent {
       next: rows => {
         // Store ALL rows — filtering is done dynamically in recomputeAll()
         this.allActivities = Array.isArray(rows) ? rows : [];
-        this.rawData       = this.allActivities;
+        this.rawData = this.allActivities;
+        console.log('Loaded activities', this.allActivities);
         this.recomputeAll();
       },
       error: () => {
@@ -828,21 +829,34 @@ export class MdreviewdashboardComponent {
     }
   }
 
-  onAuthClick(authNumber: string = '', memId: string = ''): void {
+  onAuthClick(authNumber: string = '', memId: string = '', memDetailsId: string = ''): void {
     this.addClicked.emit(authNumber);
     this.memberService.setIsCollapse(true);
 
-    const memberId  = memId ?? Number(this.route.parent?.snapshot.paramMap.get('id'));
-    const tabRoute  = `/member-info/${memberId}/member-auth/${authNumber}`;
-    const tabLabel  = `Auth No ${authNumber}`;
-    const existingTab = this.headerService.getTabs().find(t => t.route === tabRoute);
+    const memberId = memId || this.route.parent?.snapshot.paramMap.get('id') || '';
+    if (!memberId) {
+      console.error('Invalid memberId for auth tab route');
+      return;
+    }
 
+    const authNo   = String(authNumber);
+    const urlTree  = this.router.createUrlTree([
+      '/member-info',
+      memberId,
+      'auth',
+      authNo,
+      'details'
+    ]);
+    const tabRoute = this.router.serializeUrl(urlTree);
+    const tabLabel = `Auth # ${authNo}`;
+
+    const existingTab = this.headerService.getTabs().find(t => t.route === tabRoute);
     if (existingTab) {
       this.headerService.selectTab(tabRoute);
     } else {
-      this.headerService.addTab(tabLabel, tabRoute, String(memberId));
+      this.headerService.addTab(tabLabel, tabRoute, String(memberId), memDetailsId);
     }
-    this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => this.router.navigate([tabRoute]));
+    this.router.navigateByUrl(tabRoute);
   }
 
   // ================================================================
@@ -865,15 +879,17 @@ export class MdreviewdashboardComponent {
 
   private mapRowToSelected(row: Row) {
     return {
-      memberId:       row.MemberId      ?? row.memberId,
-      memberName:    `${row.FirstName   ?? row.firstName   ?? ''} ${row.LastName ?? row.lastName ?? ''}`.trim(),
-      authNumber:     row.AuthNumber    ?? row.authNumber,
-      authType:       row.AuthType      ?? row.authType     ?? '-',
-      dueDate:        row.AuthDueDate   ?? row.authDueDate  ?? row.DueDate ?? row.dueDate ?? null,
-      priority:       row.AuthPriority  ?? row.authPriority ?? row.Priority ?? row.priority ?? '-',
-      recommendation: row.InitialRecommendation ?? row.initialRecommendation ?? '-',
-      facility:       row.Facility      ?? row.facility     ?? '-',
-      networkStatus:  row.NetworkStatus ?? row.networkStatus ?? '-',
+      memberId:         row.MemberId        ?? row.memberId,
+      memberDetailsId:  row.MemberDetailsId ?? row.memberDetailsId ?? row.MemberId ?? row.memberId,
+      memberName:      `${row.FirstName     ?? row.firstName ?? ''} ${row.LastName ?? row.lastName ?? ''}`.trim(),
+      authNumber:       row.AuthNumber      ?? row.authNumber,
+      authType:         row.AuthType        ?? row.authType     ?? '-',
+      dueDate:          row.AuthDueDate     ?? row.authDueDate  ?? row.DueDate ?? row.dueDate ?? null,
+      priority:         row.AuthPriority    ?? row.authPriority ?? row.Priority ?? row.priority ?? '-',
+      recommendation:   row.InitialRecommendation ?? row.initialRecommendation ?? '-',
+      facility:         row.Facility        ?? row.facility     ?? '-',
+      networkStatus:    row.NetworkStatus   ?? row.networkStatus ?? '-',
+      comments:         row.Comments        ?? row.comments     ?? '',
       lines: []
     };
   }

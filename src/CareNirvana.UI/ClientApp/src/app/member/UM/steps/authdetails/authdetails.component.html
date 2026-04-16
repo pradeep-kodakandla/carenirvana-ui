@@ -999,10 +999,10 @@
                             </div>
                           </ng-container>
                         </ng-container>
-                        <div class="dc-empty-state" *ngIf="!isDiagnosisInEditMode(inst)">
+                        <!--<div class="dc-empty-state" *ngIf="!isDiagnosisInEditMode(inst)">
                           <mat-icon class="dc-empty-icon">search</mat-icon>
                           <span>Search for an ICD code</span>
-                        </div>
+                        </div>-->
                       </div>
                     </ng-template>
 
@@ -1046,6 +1046,9 @@
                           <span class="sc-desc">{{ getServiceDescription(inst) }}</span>
                           <div class="dc-top-actions sc-identity-actions">
                             <button type="button" class="dc-top-btn dc-top-btn--edit" *ngIf="!isServiceInEditMode(inst)" (click)="editService(inst)" title="Edit"><mat-icon class="dc-action-icon">edit</mat-icon></button>
+                            <button type="button" class="dc-top-btn dc-top-btn--copy" *ngIf="!isServiceInEditMode(inst)" (click)="copyService(inst, sec)" title="Copy service line">
+                              <mat-icon class="dc-action-icon">content_copy</mat-icon>
+                            </button>
                             <button type="button" class="dc-top-btn dc-top-btn--delete" (click)="clearServiceData(inst)"><mat-icon class="dc-action-icon">delete</mat-icon></button>
                             <button type="button" class="dc-top-btn dc-top-btn--add"
                                     *ngIf="isLast && canAddRepeat(sec)"
@@ -1302,7 +1305,6 @@
                     <th class="mpcol-type">Type</th>
                     <th class="mpcol-notif">Notification Type</th>
                     <th class="mpcol-date">Notification Date</th>
-                    <th class="mpcol-attempt">Attempt</th>
                     <th class="mpcol-action"></th>
                   </tr>
                 </thead>
@@ -1350,13 +1352,7 @@
                         </div>
                       </div>
                     </td>
-                    <td class="mpcol-attempt">
-                      <input type="number" class="mp-inline-number"
-                             [(ngModel)]="mpRow.notificationAttempt"
-                             [ngModelOptions]="{standalone: true}"
-                             min="0" placeholder="0" />
-                    </td>
-                    <td class="mpcol-action">
+                    <td class="mpcol-action mpcol-action--inline">
                       <button type="button" class="mp-remove-btn"
                               *ngIf="additionalMpRows.length > 1"
                               (click)="removeAdditionalMpRow(ri)"
@@ -1371,7 +1367,7 @@
                     </td>
                   </tr>
                   <tr *ngIf="!additionalMpRows.length">
-                    <td colspan="6" style="text-align:center;color:#94A3B8;padding:20px;font-size:13px">
+                    <td colspan="5" style="text-align:center;color:#94A3B8;padding:20px;font-size:13px">
                       No notification records. Click below to add one.
                     </td>
                   </tr>
@@ -1439,7 +1435,7 @@
                              [(ngModel)]="airRow.complete"
                              [ngModelOptions]="{standalone: true}" />
                     </td>
-                    <td class="mpcol-action">
+                    <td class="mpcol-action mpcol-action--inline">
                       <button type="button" class="mp-remove-btn"
                               *ngIf="additionalAirRows.length > 1"
                               (click)="removeAdditionalAirRow(ri)"
@@ -2029,10 +2025,10 @@
                         </div>
                       </ng-container>
                     </ng-container>
-                    <div class="dc-empty-state" *ngIf="!isAdditionalIcdInEditMode(inst)">
+                    <!--<div class="dc-empty-state" *ngIf="!isAdditionalIcdInEditMode(inst)">
                       <mat-icon class="dc-empty-icon">search</mat-icon>
                       <span>Search for an ICD code</span>
-                    </div>
+                    </div>-->
                   </div>
                 </ng-template>
               </ng-container>
@@ -2111,6 +2107,11 @@
                                 *ngIf="!isServiceInEditMode(inst)"
                                 (click)="editService(inst)" title="Edit">
                           <mat-icon class="dc-action-icon">edit</mat-icon>
+                        </button>
+                        <button type="button" class="dc-top-btn dc-top-btn--copy"
+                                *ngIf="!isServiceInEditMode(inst)"
+                                (click)="copyService(inst, sub)" title="Copy service line">
+                          <mat-icon class="dc-action-icon">content_copy</mat-icon>
                         </button>
                         <button type="button" class="dc-top-btn dc-top-btn--delete"
                                 (click)="clearServiceData(inst)">

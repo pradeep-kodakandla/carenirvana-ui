@@ -34,6 +34,7 @@
 
         <!-- Static Insights tile -->
         <div class="widget-tile"
+             *ngIf="showInsightsTile"
              [ngClass]="{ 'selected': defaultWidget === 'insights' }"
              (click)="handleWidgetClick(dashboardWidgets.length + 1, 'insights')">
 

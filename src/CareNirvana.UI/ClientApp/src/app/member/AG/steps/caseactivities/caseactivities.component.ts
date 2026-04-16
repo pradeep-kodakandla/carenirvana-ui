@@ -20,6 +20,15 @@ import {
   CaseActivityTemplateResponse
 } from 'src/app/service/casedetail.service';
 
+type SortMode =
+  | 'created_desc'
+  | 'created_asc'
+  | 'type_asc'
+  | 'type_desc'
+  | 'priority_high'
+  | 'priority_low'
+  | 'status_asc';
+
 // Optional: if you already have a "get case by number" API somewhere, wire it here.
 // If not, keep only caseHeaderId/memberDetailsId/caseTemplateId inputs.
 type ActivityContext = {
@@ -111,6 +120,12 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
   // selection highlight (AuthActivity-like)
   selectedActivityId: number | null = null;
   selectedIndex: number | null = null;
+
+  // ── Search / sort / filter (mirrors CaseNotes) ──
+  searchTerm = '';
+  showSort = false;
+  sortMode: SortMode = 'created_desc';
+  filteredActivities: CaseActivityRowDto[] = [];
   form: FormGroup = this.fb.group({});
 
   activityEditorFields: AnyField[] = [];
@@ -485,6 +500,7 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
     this.errorMsg = '';
     this.resolved = undefined;
     this.activities = [];
+    this.filteredActivities = [];
     this.template = undefined;
     this.dropdownOptions = {};
     this.activityEditorFields = [];
@@ -623,7 +639,10 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
           }
         }),
         map(({ activities }) => activities ?? []),
-        tap((activities) => (this.activities = activities)),
+        tap((activities) => {
+          this.activities = activities;
+          this.refreshList();
+        }),
         catchError((e) => {
           this.errorMsg = this.normalizeError(e);
           return of([]);
@@ -1193,6 +1212,84 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
     }
   }
 
+  // ── Search / sort / filter (mirrors CaseNotes) ──────────────────────
 
+  refreshList(): void {
+    const list = Array.isArray(this.activities) ? [...this.activities] : [];
+    const term = (this.searchTerm || '').trim().toLowerCase();
+
+    let out = term
+      ? list.filter(a => {
+          const type   = (this.getActivityTypeLabel(a) ?? '').toLowerCase();
+          const status = (a.requestStatus ?? '').toLowerCase();
+          const prio   = (this.getPriorityLabel(a) ?? '').toLowerCase();
+          const comment = (a.comment ?? '').toLowerCase();
+          return type.includes(term) || status.includes(term) || prio.includes(term) || comment.includes(term);
+        })
+      : list;
+
+    const dueDateVal = (a: CaseActivityRowDto) => {
+      const v = a.dueDate;
+      if (!v) return 0;
+      const t = new Date(v).getTime();
+      return Number.isFinite(t) ? t : 0;
+    };
+
+    const priorityOrder = (a: CaseActivityRowDto) => {
+      switch ((this.getPriorityLabel(a) ?? '').toLowerCase()) {
+        case 'high':   return 1;
+        case 'medium': return 2;
+        case 'low':    return 3;
+        default:       return 4;
+      }
+    };
+
+    switch (this.sortMode) {
+      case 'created_asc':
+        out.sort((a, b) => dueDateVal(a) - dueDateVal(b));
+        break;
+      case 'created_desc':
+        out.sort((a, b) => dueDateVal(b) - dueDateVal(a));
+        break;
+      case 'type_asc':
+        out.sort((a, b) => (this.getActivityTypeLabel(a) || '').localeCompare(this.getActivityTypeLabel(b) || ''));
+        break;
+      case 'type_desc':
+        out.sort((a, b) => (this.getActivityTypeLabel(b) || '').localeCompare(this.getActivityTypeLabel(a) || ''));
+        break;
+      case 'priority_high':
+        out.sort((a, b) => priorityOrder(a) - priorityOrder(b));
+        break;
+      case 'priority_low':
+        out.sort((a, b) => priorityOrder(b) - priorityOrder(a));
+        break;
+      case 'status_asc':
+        out.sort((a, b) => (a.requestStatus ?? '').localeCompare(b.requestStatus ?? ''));
+        break;
+    }
+
+    this.filteredActivities = out;
+  }
+
+  applySearch(): void {
+    this.refreshList();
+  }
+
+  applySort(mode: SortMode): void {
+    this.sortMode = mode;
+    this.showSort = false;
+    this.refreshList();
+  }
+
+  // ── Unsaved-changes guard: styled MatDialog (same pattern as CaseDetails) ──
+  canLeaveStep(): Promise<boolean> {
+    if (!this.caseHasUnsavedChanges()) return Promise.resolve(true);
+    // The shell's canNavigateAway() will open CaseConfirmLeaveDialogComponent
+    // via MatDialog when this returns true from hasUnsavedChanges().
+    // Implement full MatDialog flow here if this step is ever directly navigated.
+    return Promise.resolve(
+      window.confirm('You have unsaved changes. Switching now will discard your modifications.')
+    );
+  }
 
 }

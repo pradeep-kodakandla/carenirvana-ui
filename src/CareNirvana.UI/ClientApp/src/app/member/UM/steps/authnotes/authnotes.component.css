@@ -833,3 +833,48 @@
     padding-right: 0;
     border-right: 0;
   }
+
+/* ═══════════════════════════════════════════════
+   VIEW-ONLY MODE  (injected by AuthWizardShell)
+═══════════════════════════════════════════════ */
+.notes--view-only {
+  user-select: text;
+}
+
+/* Block all interactive elements — leave scroll intact */
+.notes--view-only input,
+.notes--view-only textarea,
+.notes--view-only select,
+.notes--view-only button,
+.notes--view-only [role="combobox"],
+.notes--view-only [role="listbox"],
+.notes--view-only [role="option"],
+.notes--view-only [role="switch"],
+.notes--view-only [role="checkbox"],
+.notes--view-only [contenteditable],
+.notes--view-only label,
+.notes--view-only .ff-outline,
+.notes--view-only .ui-smart-dropdown,
+.notes--view-only ui-smart-dropdown,
+.notes--view-only .ng-select,
+.notes--view-only .ng-select-container {
+  pointer-events: none !important;
+  cursor: default !important;
+}
+
+/* Make inputs visibly read-only but still readable */
+.notes--view-only input,
+.notes--view-only textarea,
+.notes--view-only select {
+  background-color: #f8fafc !important;
+  color: #1e293b !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Mute buttons — still visible but clearly inactive */
+.notes--view-only button,
+.notes--view-only .add-btn,
+.notes--view-only .icon-btn,
+.notes--view-only .sort-icon {
+  opacity: 0.4 !important;
+}

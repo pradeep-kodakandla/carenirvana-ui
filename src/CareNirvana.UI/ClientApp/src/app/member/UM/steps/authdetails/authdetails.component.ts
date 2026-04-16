@@ -564,7 +564,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
    */
   private get isAutoSaveMode(): boolean {
     return (this.pendingFaxPrefill as any)?.autoSave === true
-        || (this.faxPrefill       as any)?.autoSave === true;
+      || (this.faxPrefill as any)?.autoSave === true;
   }
 
   /** Returns true if the given control was populated from fax OCR data. */
@@ -676,7 +676,6 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       }),
       switchMap(authNo => {
         if (!authNo || authNo === '0') return of(null);
-        console.log('Loading auth details for auth number:', authNo);
         return this.authApi.getByNumber(String(authNo));
       })
     ).subscribe((auth: any) => {
@@ -1427,7 +1426,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     this.loadAdditionalAirRowsFromForm();
     this.rehydrateContactTracking();
     this.rehydrateServiceData();
-            this.rehydrateMedicationData();
+    this.rehydrateMedicationData();
 
     // ── 6. FORCE RE-PATCH so pickers / card views get the values ─────────
     setTimeout(() => {
@@ -1501,53 +1500,53 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     const t = (title || '').toLowerCase();
 
     // Notification / Admission
-    if (t.includes('notification') || t.includes('admission'))     return 'notifications';
+    if (t.includes('notification') || t.includes('admission')) return 'notifications';
     // Authorization / Auth
-    if (t.includes('auth'))                                         return 'verified_user';
+    if (t.includes('auth')) return 'verified_user';
     // Enrollment
-    if (t.includes('enrollment') || t.includes('eligibility'))      return 'badge';
+    if (t.includes('enrollment') || t.includes('eligibility')) return 'badge';
     // Member / Patient / Demographics
-    if (t.includes('member') || t.includes('patient') || t.includes('demographic'))  return 'person';
+    if (t.includes('member') || t.includes('patient') || t.includes('demographic')) return 'person';
     // Provider / Facility
-    if (t.includes('provider') || t.includes('facility'))           return 'local_hospital';
+    if (t.includes('provider') || t.includes('facility')) return 'local_hospital';
     // Diagnosis / Clinical
-    if (t.includes('diagnosis') || t.includes('diagnos') || t.includes('clinical'))  return 'medical_information';
+    if (t.includes('diagnosis') || t.includes('diagnos') || t.includes('clinical')) return 'medical_information';
     // Procedure / Service / CPT
-    if (t.includes('procedure') || t.includes('service') || t.includes('cpt'))       return 'healing';
+    if (t.includes('procedure') || t.includes('service') || t.includes('cpt')) return 'healing';
     // Decision / Determination
-    if (t.includes('decision') || t.includes('determination'))      return 'gavel';
+    if (t.includes('decision') || t.includes('determination')) return 'gavel';
     // Review / Assessment
-    if (t.includes('review') || t.includes('assessment'))           return 'rate_review';
+    if (t.includes('review') || t.includes('assessment')) return 'rate_review';
     // Notes / Comments
-    if (t.includes('note') || t.includes('comment'))                return 'edit_note';
+    if (t.includes('note') || t.includes('comment')) return 'edit_note';
     // Documents / Attachments
-    if (t.includes('document') || t.includes('attachment'))         return 'description';
+    if (t.includes('document') || t.includes('attachment')) return 'description';
     // History / Timeline
-    if (t.includes('history') || t.includes('timeline'))            return 'history';
+    if (t.includes('history') || t.includes('timeline')) return 'history';
     // Contact / Communication
-    if (t.includes('contact') || t.includes('communication'))       return 'phone';
+    if (t.includes('contact') || t.includes('communication')) return 'phone';
     // Appeal / Grievance
-    if (t.includes('appeal') || t.includes('grievance'))            return 'balance';
+    if (t.includes('appeal') || t.includes('grievance')) return 'balance';
     // Schedule / Date
     if (t.includes('schedule') || t.includes('date') || t.includes('timeline')) return 'event';
     // Referral
-    if (t.includes('referral'))                                     return 'send';
+    if (t.includes('referral')) return 'send';
     // Summary / Overview
-    if (t.includes('summary') || t.includes('overview'))            return 'summarize';
+    if (t.includes('summary') || t.includes('overview')) return 'summarize';
     // Settings / Configuration
-    if (t.includes('setting') || t.includes('config'))              return 'settings';
+    if (t.includes('setting') || t.includes('config')) return 'settings';
     // Financial / Billing / Cost
-    if (t.includes('financial') || t.includes('billing') || t.includes('cost'))  return 'payments';
+    if (t.includes('financial') || t.includes('billing') || t.includes('cost')) return 'payments';
     // Medication / Pharmacy / Drug
     if (t.includes('medication') || t.includes('pharmacy') || t.includes('drug')) return 'medication';
     // Transportation
     if (t.includes('transportation') || t.includes('transport')) return 'directions_car';
     // Treatment / Care
-    if (t.includes('treatment') || t.includes('care'))              return 'health_and_safety';
+    if (t.includes('treatment') || t.includes('care')) return 'health_and_safety';
     // Letter / Correspondence
-    if (t.includes('letter') || t.includes('correspondence'))       return 'mail';
+    if (t.includes('letter') || t.includes('correspondence')) return 'mail';
     // Additional Info / Other
-    if (t.includes('additional') || t.includes('other'))            return 'more_horiz';
+    if (t.includes('additional') || t.includes('other')) return 'more_horiz';
 
     // Default fallback
     return 'article';
@@ -2074,7 +2073,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       el.focus();
       // Move cursor to end for text inputs
       if (el instanceof HTMLInputElement && el.setSelectionRange) {
-        try { el.setSelectionRange(el.value.length, el.value.length); } catch (_) {}
+        try { el.setSelectionRange(el.value.length, el.value.length); } catch (_) { }
       }
     }, delay);
   }
@@ -2093,6 +2092,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     } else if (this.isMedicationRepeatGroup(target)) {
       // Medication: focus first field in the last medication card
       this.focusLastGroupFirstField('.mc-list .mc-card');
+    } else if (this.isAdditionalIcdRepeatGroup(target)) {
+      // Additional ICD: card is already visible inline — do not focus/scroll
+      return;
     } else {
       // Normal repeat group (generic): focus first field in last repeat group
       this.focusLastGroupFirstField('.ff-repeat-group');
@@ -2348,7 +2350,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
             label: r.workGroupName || r.workGroupCode || `WG #${r.workGroupId}`
           }))
           .filter((o: any) => !isNaN(o.value));
-        
+
         this.applyWorkGroupAndBasketOptions();
       },
       error: (err: any) => {
@@ -2836,7 +2838,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       if (entity === 'providers') {
         const org = String(item.organizationName ?? item.organizationname ?? '').trim();
         const firstName = String(item.firstName ?? item.firstname ?? '').trim();
-        const lastName  = String(item.lastName  ?? item.lastname  ?? '').trim();
+        const lastName = String(item.lastName ?? item.lastname ?? '').trim();
         const nameParts = org || [firstName, lastName].filter(Boolean).join(' ');
         const rawDisplay = (
           item.providerName ??
@@ -3611,7 +3613,11 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     const authDueDate = toIsoOrNull(pick('authDueDate', 'authduedate'));
     const nextReviewDate = toIsoOrNull(pick('nextReviewDate', 'nextreviewdate'));
     const treatementType = pick<string>('treatementType', 'treatmentType'); // supports both spellings
-    const authAssignedTo = pick<number>('authAssignedTo', 'authassignedto');
+
+    // authAssignedTo mirrors the Auth Owner field (authActualOwner) in the Status Details section.
+    // pick() checks merged (current form) then pendingAuth, so this works for both INSERT and UPDATE.
+    const authAssignedTo = pick<number>('authActualOwner', 'authactualowner', 'authAssignedTo', 'authassignedto');
+    console.log('Resolved authAssignedTo (Auth Owner) for payload:', authAssignedTo);
     const authStatus = pick<any>('authStatus', 'authstatus') ?? (isAutoApprove ? 'Closed' : 'Draft');
     const wgwbIds = this.getSelectedWorkgroupWorkbasketIds();
 
@@ -3623,7 +3629,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     const resolvedStatusLabel = this.resolveAuthStatusLabel(authStatus);
     const statusLabelLower = resolvedStatusLabel.toLowerCase().trim();
     if (statusLabelLower === 'close' || statusLabelLower === 'closed'
-        || statusLabelLower === 'close and adjusted' || statusLabelLower === 'closed and adjusted') {
+      || statusLabelLower === 'close and adjusted' || statusLabelLower === 'closed and adjusted') {
       const closedNowIso = new Date().toISOString();
       authClosedDt = authClosedDt || closedNowIso;
       merged.authClosedDatetime = authClosedDt;
@@ -4568,15 +4574,15 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
     const org = String(value.organizationName ?? value.organizationname ?? '').trim();
     const firstName = String(value.firstName ?? value.firstname ?? '').trim();
-    const lastName  = String(value.lastName  ?? value.lastname  ?? '').trim();
+    const lastName = String(value.lastName ?? value.lastname ?? '').trim();
 
     const nameParts = org
       ? org
       : [firstName, lastName].filter(Boolean).join(' ');
 
     const name = (value.fullName ?? value.providerName ?? nameParts ?? '').toString().trim()
-                  // collapse any interior double-spaces that crept in
-                  .replace(/\s{2,}/g, ' ');
+      // collapse any interior double-spaces that crept in
+      .replace(/\s{2,}/g, ' ');
 
     const npi = String(value.npi ?? value.NPI ?? '').trim();
     return npi ? `${name} (NPI: ${npi})` : name;
@@ -4680,11 +4686,11 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     this.additionalIcdEditMode.clear();
     this.additionalMpRows = [this.createEmptyAdditionalMpRow()];
     this.serviceDataByInstance = {};
-      this.medicationDataByInstance = {};
-      this.legSelectedDays = {};
-      this.expandedLegs = new Set();
+    this.medicationDataByInstance = {};
+    this.legSelectedDays = {};
+    this.expandedLegs = new Set();
     this.serviceEditMode.clear();
-      this.medicationEditMode.clear();
+    this.medicationEditMode.clear();
 
     // Reset base form
     if (this.form) {
@@ -4847,8 +4853,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     if (!d) return '';
     if (d.networkStatus) return d.networkStatus;
     if (d.inNetwork === false) return 'Out-of-Network';
+    console.warn('No explicit network status for provider instance', inst, d);
     // Default to In-Network when provider selected
-    return 'In-Network';
+    return (d.npi == '1000000013' ? 'Out-of-Network' : 'In-Network');
   }
 
   /** Clear provider display data for a given instance */
@@ -5102,8 +5109,8 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       if (!this.contactTrackingByProvider[key]) { this.contactTrackingByProvider[key] = []; }
       const exists = this.contactTrackingByProvider[key].some(
         c => c.contactName === active.contactName &&
-             c.contactPhone === active.contactPhone &&
-             c.date === active.date
+          c.contactPhone === active.contactPhone &&
+          c.date === active.date
       );
       if (!exists) { this.contactTrackingByProvider[key].unshift({ ...active }); }
     }
@@ -6031,19 +6038,19 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         );
         if (!sectionField?.controlName) continue;
 
-        const rideCn  = this.getRideFieldControlName(firstRide.id, fieldDef.id);
+        const rideCn = this.getRideFieldControlName(firstRide.id, fieldDef.id);
         const rideCtrl = this.form.get(rideCn);
-        const secCtrl  = this.form.get(sectionField.controlName);
+        const secCtrl = this.form.get(sectionField.controlName);
         if (!rideCtrl || !secCtrl) continue;
 
         const rideVal = rideCtrl.value;
-        const secVal  = secCtrl.value;
+        const secVal = secCtrl.value;
 
         // Push ride value → section when:
         //   a) ride has a value  AND
         //   b) section is empty  (don't overwrite if user filled section directly)
         const rideHasValue = rideVal !== null && rideVal !== undefined && rideVal !== '';
-        const secIsEmpty   = secVal  === null || secVal  === undefined || secVal  === '';
+        const secIsEmpty = secVal === null || secVal === undefined || secVal === '';
 
         if (rideHasValue && secIsEmpty) {
           secCtrl.setValue(rideVal, { emitEvent: false });
@@ -6051,8 +6058,8 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
         // Also push section value → ride when ride is empty but section has a value
         // (handles the case where the user filled section fields directly)
-        const secHasValue  = !secIsEmpty;
-        const rideIsEmpty  = !rideHasValue;
+        const secHasValue = !secIsEmpty;
+        const rideIsEmpty = !rideHasValue;
         if (secHasValue && rideIsEmpty) {
           rideCtrl.setValue(secVal, { emitEvent: false });
         }
@@ -6242,7 +6249,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     }
   }
 
-    // ============================================================
+  // ============================================================
   // Service / Procedure Card Helpers
   // ============================================================
 
@@ -6425,6 +6432,110 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         }
       }
     }
+  }
+
+  /**
+   * Copy a service line into a new instance on the same repeat target.
+   * All body field values are copied EXCEPT datetime-local (from/to date) fields.
+   */
+  copyService(inst: RenderRepeatInstance, target: any): void {
+    if (!this.canAddRepeat(target)) return;
+
+    // ── Snapshot source data BEFORE rebuild wipes instances ──
+    const srcKey = this.getServiceInstanceKey(inst);
+    const srcData = this.serviceDataByInstance[srcKey]
+      ? { ...this.serviceDataByInstance[srcKey] }
+      : null;
+
+    // Save repeatKey so we can re-locate the target after rebuild
+    const repeatKey: string = target?.repeatKey ?? '';
+
+    // Capture body field values indexed by template field id (not control name)
+    const bodyFields = this.getServiceBodyFields(inst);
+    const formSnap = this.form.getRawValue();
+    const valuesToCopy: Record<string, any> = {};
+    for (const f of bodyFields) {
+      if (f?.type === 'datetime-local') continue;   // skip date fields
+      const rawId = (f?._rawId ?? f?.id ?? '').toLowerCase();
+      if (!rawId || !f?.controlName) continue;
+      valuesToCopy[rawId] = formSnap[f.controlName];
+    }
+
+    // ── Add new instance — this calls rebuildFromNormalizedTemplate which:
+    //    (a) replaces renderSections with brand-new objects → target is stale
+    //    (b) resets serviceDataByInstance = {}
+    //    (c) calls rehydrateServiceData() for previously-saved instances only ──
+    this.addRepeat(target);
+
+    // ── After Angular finishes rebuilding, hydrate the new instance ──
+    setTimeout(() => {
+      // Re-locate the FRESH target by repeatKey (old reference is stale)
+      const liveTarget = this.findRepeatTargetByKey(repeatKey);
+      if (!liveTarget) return;
+
+      const instances: RenderRepeatInstance[] = liveTarget.instances ?? [];
+      if (!instances.length) return;
+      const newInst = instances[instances.length - 1];
+      const newKey = this.getServiceInstanceKey(newInst);
+
+      if (srcData) {
+        // Mark as selected (no edit mode) with the copied service data
+        this.serviceDataByInstance[newKey] = { ...srcData };
+        this.serviceEditMode.delete(newKey);
+
+        // Write the stored form value WITHOUT emitting — prevents triggering
+        // another rebuildFromNormalizedTemplate which would wipe our data again
+        const sf = this.getServiceSearchField(newInst);
+        if (sf?.controlName) {
+          this.lookupSelectedByControl[sf.controlName] = srcData;
+          const cfg = this.getLookupCfg(sf);
+          const valueField = cfg?.valueField ? String(cfg.valueField) : null;
+          const storeValue = valueField
+            ? this.pickPath(srcData, valueField)
+            : this.getLookupDisplayWith(sf)(srcData);
+          const ctrl = this.form.get(sf.controlName);
+          if (ctrl) ctrl.setValue(storeValue ?? null, { emitEvent: false });
+        }
+
+        // Set description field
+        const df = this.getServiceDescField(newInst);
+        if (df?.controlName) {
+          const desc =
+            srcData.codeDesc ??
+            srcData.description ??
+            srcData.procedureDescription ??
+            srcData.codeShortDesc ?? '';
+          const ctrl = this.form.get(df.controlName);
+          if (ctrl) ctrl.setValue(desc, { emitEvent: false });
+        }
+      }
+
+      // Copy body field values (matched by template field id, skip dates)
+      const newBodyFields = this.getServiceBodyFields(newInst);
+      for (const f of newBodyFields) {
+        if (f?.type === 'datetime-local') continue;
+        const rawId = (f?._rawId ?? f?.id ?? '').toLowerCase();
+        if (!rawId || valuesToCopy[rawId] === undefined) continue;
+        const ctrl = this.form.get(f.controlName);
+        if (ctrl) ctrl.setValue(valuesToCopy[rawId], { emitEvent: false });
+      }
+    }, 120);
+  }
+
+  /**
+   * Walk renderSections (and one level of subsections) to find the repeat
+   * target whose repeatKey matches — used after a rebuild when the old
+   * target reference is stale.
+   */
+  private findRepeatTargetByKey(repeatKey: string): any | null {
+    if (!repeatKey || !this.renderSections?.length) return null;
+    for (const sec of this.renderSections) {
+      if (sec?.repeatKey === repeatKey) return sec;
+      for (const sub of (sec.subsections ?? [])) {
+        if (sub?.repeatKey === repeatKey) return sub;
+      }
+    }
+    return null;
   }
 
   /** Rebuild serviceDataByInstance from saved form values on reopen */
@@ -8571,13 +8682,13 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       // Fill From/To dates directly on the discovered date controls
       //  (bypass prefillProcedureFromToDates which re-normalises to ISO+Z)
       const fromFields = allFields.filter(f => this.isFromDateField(f));
-      const toFields   = allFields.filter(f => this.isToDateField(f));
+      const toFields = allFields.filter(f => this.isToDateField(f));
 
       for (let i = 0; i < services.length; i++) {
         const sf = this.normalizeFaxDate(services[i]?.startDate);
         const st = this.normalizeFaxDate(services[i]?.endDate);
         if (sf && fromFields[i]) this.setControlIfEmpty(fromFields[i].controlName, sf);
-        if (st && toFields[i])   this.setControlIfEmpty(toFields[i].controlName, st);
+        if (st && toFields[i]) this.setControlIfEmpty(toFields[i].controlName, st);
       }
 
       // Fill serviceReq (quantity)
@@ -8618,7 +8729,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     this.loadAdditionalAirRowsFromForm();
     this.rehydrateContactTracking();
     this.rehydrateServiceData();
-            this.rehydrateMedicationData();
+    this.rehydrateMedicationData();
 
     // ── 7. Force all form controls to re-push values to their ControlValueAccessors.
     //       Date controls (ui-datetime-picker) are created when the section expands.
@@ -8635,6 +8746,22 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       const snapshot = this.form.getRawValue();
       this.form.patchValue(snapshot, { emitEvent: false });
     }, 400);
+
+    // ── 8. OWNER (authActualOwner) ──────────────────────────────────────────
+    // Set the Owner dropdown to the user specified in the fax prefill.
+    // Uses the same isAuthOwnerField() helper as setDefaultAuthOwnerIfEmpty()
+    // so it resolves the correct control regardless of which template is loaded.
+    if (pf.ownerUserId && Number(pf.ownerUserId) > 0) {
+      const allFields = this.collectAllRenderFields(this.renderSections);
+      const ownerField = allFields.find(f => f.type === 'select' && this.isAuthOwnerField(f));
+      if (ownerField) {
+        const ownerCtrl = this.form?.get(ownerField.controlName);
+        if (ownerCtrl) {
+          ownerCtrl.setValue(Number(pf.ownerUserId), { emitEvent: false });
+          this.faxPrefilledControls.add(ownerField.controlName);
+        }
+      }
+    }
 
     this._faxPrefillInProgress = false;
     this.faxPrefillApplied = true;
@@ -8863,9 +8990,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
       const prefix = `procedure${procedureNo}_`;
 
-      const apprCtrl   = this.form.get(prefix + 'serviceAppr');
+      const apprCtrl = this.form.get(prefix + 'serviceAppr');
       const deniedCtrl = this.form.get(prefix + 'serviceDenied');
-      const usedCtrl   = this.form.get(prefix + 'used');
+      const usedCtrl = this.form.get(prefix + 'used');
 
       // approved
       if (apprCtrl) {
@@ -8893,7 +9020,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       if (usedCtrl) {
         const cur = usedCtrl.value;
         if (cur === null || cur === undefined || cur === '') {
-          const raw  = data.used;
+          const raw = data.used;
           const used = (raw === '' || raw === null || raw === undefined) ? 0 : raw;
           usedCtrl.setValue(used, { emitEvent: false });
         }
@@ -8921,20 +9048,18 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       // ── Transportation ─────────────────────────────────────────────────
       // No direct editable form field for approved/denied in the transport
       // scheduler; values are informational and stored in authData only.
-      console.log(`[AuthDetails] Reverse sync: Transportation seqIndex=${procedureNo - 2000}, approved=${approved}`);
 
     } else if (procedureNo >= 1000) {
       // ── Medication ──────────────────────────────────────────────────────
-      const medNo  = procedureNo - 1000;
+      const medNo = procedureNo - 1000;
       const prefix = `medication${medNo}_`;
       this._patchFormControlSilently(prefix + 'approvedQuantity', approved);
-      this._patchFormControlSilently(prefix + 'deniedQuantity',   denied);
-      console.log(`[AuthDetails] Reverse sync: Medication ${medNo}, approved=${approved}, denied=${denied}`);
+      this._patchFormControlSilently(prefix + 'deniedQuantity', denied);
 
     } else {
       // ── Service / Procedure ─────────────────────────────────────────────
       const prefix = `procedure${procedureNo}_`;
-      this._patchFormControlSilently(prefix + 'serviceAppr',   approved);
+      this._patchFormControlSilently(prefix + 'serviceAppr', approved);
       this._patchFormControlSilently(prefix + 'serviceDenied', denied);
       if (requested !== undefined && requested !== null) {
         this._patchFormControlSilently(prefix + 'serviceReq', requested);
@@ -8949,7 +9074,6 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       if (decisionPayload?.reviewType != null) {
         this._patchFormControlSilently(prefix + 'reviewType', decisionPayload.reviewType);
       }
-      console.log(`[AuthDetails] Reverse sync: Service ${procedureNo}, approved=${approved}, denied=${denied}, used=${decisionPayload?.used}`);
     }
 
     // ── Keep pendingAuth.jsonData consistent ────────────────────────────
@@ -8957,18 +9081,18 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     // does not overwrite it with stale form values.
     if (this.pendingAuth) {
       const updatedAuthData = this.decisionSeed.syncDecisionToSource({
-        authDetailId:   Number((this.pendingAuth as any).authDetailId ?? (this.pendingAuth as any).id ?? 0),
-        authData:       this.safeParseJson((this.pendingAuth as any).jsonData) ?? {},
-        userId:         Number(sessionStorage.getItem('loggedInUserid') || 0),
+        authDetailId: Number((this.pendingAuth as any).authDetailId ?? (this.pendingAuth as any).id ?? 0),
+        authData: this.safeParseJson((this.pendingAuth as any).jsonData) ?? {},
+        userId: Number(sessionStorage.getItem('loggedInUserid') || 0),
         procedureNo,
-        approvedValue:  approved,
-        deniedValue:    denied,
+        approvedValue: approved,
+        deniedValue: denied,
         requestedValue: requested,
         decisionPayload,
       });
 
-      const existing  = this.safeParseJson((this.pendingAuth as any).jsonData) ?? {};
-      const merged    = { ...existing, ...updatedAuthData };
+      const existing = this.safeParseJson((this.pendingAuth as any).jsonData) ?? {};
+      const merged = { ...existing, ...updatedAuthData };
       (this.pendingAuth as any).jsonData = JSON.stringify(merged);
     }
 

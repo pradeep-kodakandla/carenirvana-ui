@@ -1,4 +1,4 @@
-<div class="docs-container">
+<div class="docs-container" [class.docs--view-only]="isViewOnly">
   <!-- Left: List -->
   <div class="docs-left" *ngIf="showLeftPane" [style.flex]="singlePane ? '1 1 100%' : null">
     <!--<div class="docs-titlebar">

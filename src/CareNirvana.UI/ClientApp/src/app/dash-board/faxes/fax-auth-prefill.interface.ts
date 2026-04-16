@@ -62,6 +62,13 @@ export interface FaxAuthPrefill {
   expectedAdmissionDatetime?: string;
   actualAdmissionDatetime?: string;
 
+  // ── Owner ────────────────────────────────────────────────────────────────
+  /**
+   * User ID to pre-select in the Owner (authActualOwner) dropdown.
+   * Set to 5 (Kelly Anderson) for all fax-initiated auths.
+   */
+  ownerUserId?: number;
+
   // ── Notes / raw pass-through ────────────────────────────────────────────
   notes?: string;
   /** Full PriorAuth object for reference / any extra fields */

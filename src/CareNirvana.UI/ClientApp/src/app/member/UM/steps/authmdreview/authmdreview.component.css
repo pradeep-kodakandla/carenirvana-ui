@@ -219,93 +219,254 @@
 
 
 /* ============================================================
-   Additions for MD Review split view + activity list + pills
-   (keeps existing field styles unchanged)
+   SPLIT LAYOUT
    ============================================================ */
-
-/* Split layout (left list + right details) */
 .authmdreview .mdr-shell {
   display: flex;
-  gap: 12px;
+  gap: 0;
   width: 100%;
   min-width: 0;
+  align-items: stretch;
 }
 
+/* ============================================================
+   LEFT PANEL — professional redesign
+   ============================================================ */
 .authmdreview .mdr-left {
-  width: 400px;
+  width: 300px;
   min-width: 260px;
-  max-width: 420px;
-  border-right: 1px solid #eee;
-  min-height: 200px;
+  max-width: 300px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-right: 1px solid #e2e8f0;
+  border-radius: 10px 0 0 10px;
+  overflow: hidden;
 }
 
 .authmdreview .mdr-right {
   flex: 1;
   min-width: 0;
+  border: 1px solid #e2e8f0;
+  border-left: none;
+  border-radius: 0 10px 10px 0;
+  background: #fff;
 }
 
-/* Left panel header/search */
-.authmdreview .left-header {
+/* ── Panel header ── */
+.authmdreview .lp-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.authmdreview .left-search {
-  margin-bottom: 10px;
-}
-
-/* Activity list items */
-.authmdreview .activity-list {
-  overflow: auto;
-  max-height: 520px;
-  padding-right: 4px;
-}
-
-.authmdreview .activity-item {
-  border: 1px solid #e6e6e6;
-  border-radius: 8px;
+  gap: 8px;
+  padding: 14px 14px 10px;
+  border-bottom: 2px solid #007bff;
   background: #fff;
-  padding: 10px;
-  margin-bottom: 8px;
-  cursor: pointer;
+  flex-shrink: 0;
 }
 
-  .authmdreview .activity-item:hover {
-    border-color: #aeb6c2;
-  }
+.authmdreview .lp-header__title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: .1px;
+}
 
-  .authmdreview .activity-item.active {
-    border: 2px solid #007bff;
-    background-color: #e9f5ff;
-  }
+.authmdreview .lp-header__title svg {
+  color: #007bff;
+  flex-shrink: 0;
+}
 
-  .authmdreview .activity-item:focus-visible {
-    outline: 2px solid #007bff;
-    outline-offset: 2px;
-  }
+/* ── New Activity button ── */
+.authmdreview .lp-new-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 7px;
+  border: none;
+  background: #007bff;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s, box-shadow .15s;
+  flex-shrink: 0;
+}
+.authmdreview .lp-new-btn:hover {
+  background: #0062cc;
+  box-shadow: 0 2px 8px rgba(0,123,255,.28);
+}
+.authmdreview .lp-new-btn svg {
+  flex-shrink: 0;
+}
 
+/* ── Count badge ── */
+.authmdreview .lp-count {
+  padding: 6px 14px 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  flex-shrink: 0;
+}
 
-  .authmdreview .activity-item .row1 {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
+/* ── Loading skeletons ── */
+.authmdreview .lp-loading {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.authmdreview .lp-skeleton {
+  height: 70px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: lpShimmer 1.4s ease infinite;
+}
+@keyframes lpShimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
 
-  .authmdreview .activity-item .row2,
-  .authmdreview .activity-item .row3 {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-top: 4px;
-    font-size: 12px;
-  }
+/* ── Empty state ── */
+.authmdreview .lp-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px 16px;
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 500;
+}
 
-/* Pill status (template uses pill class; map to existing badge look) */
+/* ── Scrollable card list ── */
+.authmdreview .lp-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.authmdreview .lp-list::-webkit-scrollbar { width: 4px; }
+.authmdreview .lp-list::-webkit-scrollbar-track { background: transparent; }
+.authmdreview .lp-list::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
+
+/* ── Activity card ── */
+.authmdreview .lp-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: #fff;
+  border: 1.5px solid #e2e8f0;
+  border-left: 4px solid #e2e8f0;   /* colored by status modifier below */
+  border-radius: 9px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color .18s, box-shadow .18s, background .18s;
+  font: inherit;
+}
+.authmdreview .lp-card:hover {
+  background: #f8fafc;
+  border-color: #93c5fd;
+  box-shadow: 0 2px 10px rgba(37,99,235,.07);
+}
+.authmdreview .lp-card--active {
+  background: #eff6ff !important;
+  border-color: #007bff !important;
+  box-shadow: 0 0 0 2px rgba(0,123,255,.12);
+}
+
+/* Status-tinted left border */
+.authmdreview .lp-card--approved  { border-left-color: #22c55e; }
+.authmdreview .lp-card--denied    { border-left-color: #ef4444; }
+.authmdreview .lp-card--inprogress{ border-left-color: #f59e0b; }
+.authmdreview .lp-card--pending   { border-left-color: #94a3b8; }
+
+/* Card rows */
+.authmdreview .lp-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+.authmdreview .lp-card__type {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+.authmdreview .lp-card__mid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.authmdreview .lp-card__id {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+}
+.authmdreview .lp-card__assigned {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 110px;
+}
+.authmdreview .lp-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 11px;
+  color: #64748b;
+}
+.authmdreview .lp-card__meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+/* ── Status pills inside the new cards ── */
+.authmdreview .lp-status-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  flex-shrink: 0;
+}
+.authmdreview .lps-approved   { background:#dcfce7; color:#166534; border-color:#86efac; }
+.authmdreview .lps-denied     { background:#fee2e2; color:#991b1b; border-color:#fecaca; }
+.authmdreview .lps-inprogress { background:#fef3c7; color:#92400e; border-color:#fcd34d; }
+.authmdreview .lps-pending    { background:#f1f5f9; color:#475569; border-color:#e2e8f0; }
+
+/* ── Keep old pill classes for review-mode table ── */
 .authmdreview .pill {
   display: inline-block;
   padding: 2px 10px;
@@ -315,24 +476,9 @@
   background: #f5f5f5;
   color: #333;
 }
-
-.authmdreview .pill-warn {
-  border-color: #f0ad4e;
-  background: #fff3cd;
-  color: #8a6d3b;
-}
-
-.authmdreview .pill-ok {
-  border-color: #5cb85c;
-  background: #eaf7ea;
-  color: #2e6b2e;
-}
-
-.authmdreview .pill-danger {
-  border-color: #d9534f;
-  background: #fdecea;
-  color: #8a1f1c;
-}
+.authmdreview .pill-warn   { border-color: #f0ad4e; background: #fff3cd; color: #8a6d3b; }
+.authmdreview .pill-ok     { border-color: #5cb85c; background: #eaf7ea; color: #2e6b2e; }
+.authmdreview .pill-danger { border-color: #d9534f; background: #fdecea; color: #8a1f1c; }
 
 /* Review header blocks */
 .authmdreview .review-header {
@@ -352,26 +498,21 @@
 }
 
 @media (max-width: 1024px) {
-  .authmdreview .mdr-shell {
-    flex-direction: column;
-  }
-
+  .authmdreview .mdr-shell { flex-direction: column; }
   .authmdreview .mdr-left {
-    width: 100%;
-    max-width: none;
-    padding-right: 0;
-    border-right: 0;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 12px;
+    width: 100% !important;
+    max-width: none !important;
+    border-right: none !important;
+    border-radius: 10px 10px 0 0 !important;
+    border-bottom: 1px solid #e2e8f0;
   }
-
-  .authmdreview .activity-list {
-    max-height: 260px;
+  .authmdreview .mdr-right {
+    border-radius: 0 0 10px 10px !important;
+    border-left: 1px solid #e2e8f0 !important;
+    border-top: none;
   }
-
-  .authmdreview .decision-grid {
-    grid-template-columns: 1fr;
-  }
+  .authmdreview .lp-list { max-height: 260px; }
+  .authmdreview .decision-grid { grid-template-columns: 1fr; }
 }
 
 /* Footer button row alignment (for decision section actions) */
@@ -413,38 +554,6 @@
   text-decoration: none;
 }
 
-
-
-/* Left panel list item: match authactivity timeline feel */
-.authmdreview .activity-item {
-  box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.05);
-  text-align: left;
-}
-
-  .authmdreview .activity-item .row1-left {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-  }
-
-  .authmdreview .activity-item .activity-type {
-    font-weight: 700;
-    color: #333;
-    font-size: 13px;
-    line-height: 16px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .authmdreview .activity-item .activity-id {
-    font-size: 12px;
-  }
-
-  .authmdreview .activity-item .row2 span,
-  .authmdreview .activity-item .row3 span {
-    white-space: nowrap;
-  }
 /* ===========================
    FIXES: sizing + layout polish
    =========================== */
@@ -506,7 +615,47 @@
   box-shadow: 0 0 0 3px rgba(29,78,216,.12);
 }
 
-/* ── Inline IR cell ── */
+/* ── Approved activity notice (replaces decision form when already approved) ── */
+.authmdreview .approved-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 14px 18px;
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: 10px;
+}
+
+.authmdreview .approved-notice__icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #dcfce7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #16a34a;
+}
+
+.authmdreview .approved-notice__text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.authmdreview .approved-notice__text strong {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #166534;
+}
+
+.authmdreview .approved-notice__text span {
+  font-size: 12.5px;
+  color: #4ade80;
+  color: #15803d;
+}
 .authmdreview .ir-cell {
   min-width: 160px;
   padding: 4px 8px !important;
@@ -555,41 +704,12 @@
     padding: 10px 2px;
   }
 
-  /* Make activity "tabs" fill the left panel and be comfortably clickable */
-  .authmdreview .activity-item {
-    display: block;
-    width: 100%;
-    text-align: left;
-    font: inherit;
-    padding: 12px;
-  }
-
-    .authmdreview .activity-item .activity-type {
-      font-size: 14px;
-      line-height: 18px;
-    }
-
-    .authmdreview .activity-item .row2,
-    .authmdreview .activity-item .row3 {
-      font-size: 13px;
-    }
-
-  /* Make the split view feel less cramped and avoid the left panel collapsing */
-  .authmdreview .mdr-left {
-    /* Use clamp instead of a hard width so it doesn't look tiny on wide screens */
-    width: auto;
-    flex: 0 0 clamp(340px, 28vw, 460px);
-    min-width: 200px;
-    max-width: 320px;
-    border-right: 1px solid #d0d7de;
-  }
-
-  /* Keep the right side flexible */
+  /* Make the split view right side flexible */
   .authmdreview .mdr-right {
     min-width: 0;
   }
 
-  /* Search input (currently commented in HTML, but keep it consistent) */
+  /* Search input */
   .authmdreview .input {
     width: 100%;
     height: 36px;

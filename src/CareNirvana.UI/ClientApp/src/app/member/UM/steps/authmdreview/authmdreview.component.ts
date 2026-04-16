@@ -1,4 +1,4 @@
-import { Component, OnDestroy } from '@angular/core';
+import { Component, OnDestroy, ChangeDetectorRef, NgZone } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Subject, of, forkJoin } from 'rxjs';
@@ -191,7 +191,9 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
     private crudService: CrudService,
     private authenticateService: AuthenticateService,
     private activityService: AuthService,
-    private authApi: AuthDetailApiService
+    private authApi: AuthDetailApiService,
+    private cdr: ChangeDetectorRef,
+    private ngZone: NgZone
   ) {
     // Create form (keep your existing fields)
     this.mdrForm = this.fb.group({
@@ -362,10 +364,19 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
   }
 
 
-  /** Cancel create and return to Auth Activity view */
+  /** Cancel create and return to review mode, auto-selecting the first activity. */
   cancelCreate(): void {
-    // Adjust the route if your app uses a different path for the activity view
     this.viewMode = 'review';
+
+    // Auto-select the first activity so the right panel is populated immediately
+    // (keeps the previously selected one if it still exists in the list)
+    const keepSelected = this.activities.find(a => a.activityId === this.selectedActivityId);
+    const toSelect = keepSelected ?? this.activities[0] ?? null;
+    if (toSelect) {
+      this.onSelectActivity(toSelect);
+    }
+
+    this.ngZone.run(() => { this.cdr.detectChanges(); });
   }
 
   onCreateNewFromList(): void {
@@ -375,6 +386,14 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
 
     // keep existing serviceLines loaded; default select all
     this.selectAllLines(true);
+
+    // Force a full change-detection pass so all ui-smart-dropdown / ui-datetime-picker
+    // components render their initial values immediately after the *ngIf template swap.
+    // Without this, child components that rely on Input() option lists can appear blank
+    // until the next user interaction triggers a CD cycle.
+    this.ngZone.run(() => {
+      this.cdr.detectChanges();
+    });
   }
 
   onSelectActivity(row: MdReviewActivitySummary): void {
@@ -1690,18 +1709,43 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
     return Number(l.decisionLineId ?? 0);
   }
 
+  /** Left-panel card border-color class based on mdReviewStatus */
+  getLpCardStatusClass(status?: string | null): string {
+    const s = (status ?? '').toLowerCase();
+    if (s.includes('approved') || s.includes('completed')) return 'lp-card--approved';
+    if (s.includes('denied'))                               return 'lp-card--denied';
+    if (s.includes('progress'))                             return 'lp-card--inprogress';
+    if (s.includes('pending'))                              return 'lp-card--pending';
+    return '';
+  }
+
+  /** Left-panel status pill color class */
+  getLpStatusPillClass(status?: string | null): string {
+    const s = (status ?? '').toLowerCase();
+    if (s.includes('approved') || s.includes('completed')) return 'lps-approved';
+    if (s.includes('denied'))                               return 'lps-denied';
+    if (s.includes('progress'))                             return 'lps-inprogress';
+    return 'lps-pending';
+  }
+
   /** Left list pill color mapping for mdReviewStatus */
   getMdReviewPillClass(status?: string | null): string {
     const s = (status ?? '').toLowerCase();
-
     if (!s) return '';
     if (s.includes('denied')) return 'pill-danger';
     if (s.includes('approved') || s.includes('completed')) return 'pill-ok';
     if (s.includes('progress')) return 'pill-warn';
     if (s.includes('pending')) return 'pill-warn';
-
     return '';
   }
+
+  /** True when the currently selected activity's mdReviewStatus is Approved. */
+  get isSelectedActivityApproved(): boolean {
+    const s = (this.selectedActivity?.mdReviewStatus ?? '').toString().trim().toLowerCase();
+    return s.includes('approved');
+  }
+
+  /** Left-panel pill class for mdReviewStatus */
 
   authHasUnsavedChanges(): boolean {
     return this.mdrForm?.dirty ?? false;

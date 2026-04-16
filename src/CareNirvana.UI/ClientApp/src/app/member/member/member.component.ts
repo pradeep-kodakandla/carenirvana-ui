@@ -45,13 +45,28 @@ export class MemberComponent {
   ) {}
 
   ngOnInit(): void {
-    this.fetchRoleData(4);
+    const loggedInUserId = Number(sessionStorage.getItem('loggedInUserid'));
+    const roleId = Number(this.getRoleIdByUserId(loggedInUserId));
+
+    this.fetchRoleData(roleId);
     this.route.parent?.paramMap.subscribe(params => {
       this.memberId = Number(params.get('id')!);
       this.restoreTabState();
     });
   }
 
+  private getRoleIdByUserId(userId: number): number | null {
+    const userRoleMap: { [key: number]: number } = {
+      3: 4,
+      2: 5,
+      1: 4,
+      4: 7,
+      5: 6,
+      6: 5
+    };
+
+    return userRoleMap[userId] ?? null;
+  }
   // ─── Tab state persistence ──────────────────────────────────────────────────
 
   private tabStateKey(): string {

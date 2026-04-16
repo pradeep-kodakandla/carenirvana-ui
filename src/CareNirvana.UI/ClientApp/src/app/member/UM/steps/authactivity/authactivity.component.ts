@@ -77,6 +77,25 @@ export class AuthactivityComponent implements OnChanges, Authunsavedchangesaware
   private lastLoadedAuthDetailId: number | null = null;
   canAdd = true;
   canEdit = true;
+
+  // ── View-Only Mode (injected by AuthWizardShell when auth is Closed) ──
+  private _isViewOnly = false;
+  get isViewOnly(): boolean { return this._isViewOnly; }
+  set isViewOnly(value: boolean) {
+    const was = this._isViewOnly;
+    this._isViewOnly = value;
+    if (value) {
+      // Lock action flags so no add/edit is possible while view-only
+      this.canAdd  = false;
+      this.canEdit = false;
+      if (this.activityForm) { this.activityForm.disable({ emitEvent: false }); }
+    } else if (was) {
+      // Restore on reopen
+      this.canAdd  = true;
+      this.canEdit = true;
+      if (this.activityForm) { this.activityForm.enable({ emitEvent: false }); }
+    }
+  }
   canView = true;
 
 
