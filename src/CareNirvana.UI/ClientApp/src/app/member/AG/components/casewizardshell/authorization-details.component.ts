@@ -348,6 +348,28 @@ interface UmMasterData {
   [section: string]: any[];
 }
 
+/* ──────────────────────────────────────────────
+   Static Auth Type fallback map (id → name)
+   Used when UM master lookup does not resolve
+   ────────────────────────────────────────────── */
+const AUTH_TYPE_MAP: Record<number, string> = {
+  2:  'Master',
+  3:  'WithAuthCase',
+  4:  'Hospice',
+  5:  'Master-Copy',
+  6:  'New Section template',
+  7:  'NICU',
+  8:  'Acute Hospitalization',
+  9:  'Observation Stay',
+  11: 'Test Master',
+  12: 'DME',
+  13: 'PT/OT/ST/Other Therapies',
+  14: 'Radiological Services',
+  15: 'Pharmacy',
+  16: 'Transportation',
+  17: 'Medical/Surgical'
+};
+
 @Component({
   selector: 'app-authorization-details',
   templateUrl: './authorization-details.component.html',
@@ -566,7 +588,12 @@ export class AuthorizationDetailsComponent implements OnInit, OnChanges {
     // Resolve labels from UM master data
     const status = this.lookupLabel('authstatus', data.authStatus, 'authStatus') || `Status ${data.authStatus}`;
     const statusReason = this.lookupLabel('authstatusreason', data.authStatusReason, 'authStatusReason') || data.authStatusReason || '';
-    const authType = this.lookupLabel('authtemplate', data.authTypeId, 'authType') || `Type ${data.authTypeId}`;
+    const authType = this.lookupLabel('authtemplate', data.authTypeId, 'authType')
+      || this.lookupLabel('authtype', data.authTypeId, 'authType')
+      || this.lookupLabel('authtype', data.authTypeId, 'authTypeName')
+      || this.lookupLabel('authtype', data.authTypeId, 'name')
+      || AUTH_TYPE_MAP[data.authTypeId as number]
+      || `Type ${data.authTypeId}`;
     const authClass = this.lookupLabel('authclass', data.authClassId, 'authClass') || `Class ${data.authClassId}`;
     const urgency = this.lookupLabel('requestpriority', data.requestPriority, 'requestPriority') || data.requestPriority || '';
     const admissionType = this.lookupLabel('admissiontype', data.admissionType, 'admissionType') || data.admissionType || '';

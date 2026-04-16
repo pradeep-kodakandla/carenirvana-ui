@@ -5,6 +5,7 @@ import { Subject, of, forkJoin } from 'rxjs';
 import { catchError, takeUntil } from 'rxjs/operators';
 
 import { CrudService } from 'src/app/service/crud.service';
+import { DashboardServiceService, UpdateActivityLinesRequest } from 'src/app/service/dashboard.service.service';
 import { AuthenticateService } from 'src/app/service/authentication.service';
 import { AuthService } from 'src/app/service/auth.service';
 import { AuthDetailApiService } from 'src/app/service/authdetailapi.service';
@@ -175,6 +176,20 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
   decisionStatusCodeOptions: UiSmartOption[] = [{ value: '', label: 'Select' }];
   private decisionStatusCodeRaw: any[] = [];
 
+  // ── Toast notification ───────────────────────────────────────────
+  toastVisible = false;
+  toastHiding  = false;
+  toastType: 'success' | 'error' | 'warning' | 'info' = 'success';
+  toastTitle   = '';
+  toastMessage = '';
+  private toastTimer?: ReturnType<typeof setTimeout>;
+
+  // ── Inline alert ─────────────────────────────────────────────────
+  inlineAlert: { message: string; type: 'error' | 'warning' | 'info' } | null = null;
+
+  // ── Decision form validation flag ────────────────────────────────
+  decisionSubmitted = false;
+
 
   lineStatusOptions: UiSmartOption[] = [
     { value: 'Pending', label: 'Pending' },
@@ -189,6 +204,7 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
     private router: Router,
     private fb: FormBuilder,
     private crudService: CrudService,
+    private dashboardService: DashboardServiceService,
     private authenticateService: AuthenticateService,
     private activityService: AuthService,
     private authApi: AuthDetailApiService,
@@ -413,6 +429,8 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
       this.mdNotesText = '';
       this.overallDecisionStatus = '';
       this.overallInitialRecommendationReview = '';
+      this.decisionSubmitted = false;
+      this.inlineAlert       = null;
 
       this.patchDetailHeaderForm(this.selectedActivity);
       return;
@@ -454,6 +472,8 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
           this.mdNotesText = '';
           this.overallDecisionStatus = '';
           this.overallInitialRecommendationReview = '';
+          this.decisionSubmitted = false;
+          this.inlineAlert       = null;
 
 
           // show initial recommendation in header list if missing
@@ -487,6 +507,8 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
           this.mdNotesText = '';
           this.overallDecisionStatus = '';
           this.overallInitialRecommendationReview = '';
+          this.decisionSubmitted = false;
+          this.inlineAlert       = null;
 
           this.patchDetailHeaderForm(this.selectedActivity);
         });
@@ -515,19 +537,19 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
 
   submitCreate(): void {
     if (!this.authDetailId) {
-      alert('AuthDetailId is missing in context.');
+      this.showToast('Missing Context', 'AuthDetailId is missing. Please reload the form.', 'error');
       return;
     }
 
     if (this.mdrForm.invalid) {
       this.mdrForm.markAllAsTouched();
-      alert('Please fill all required fields.');
+      this.showToast('Validation Error', 'Please fill all required fields.', 'error');
       return;
     }
 
     const selected = (this.serviceLines ?? []).filter(l => !!l.selected);
     if (!selected.length) {
-      alert('Select at least one service line to create an MD Review activity.');
+      this.showToast('No Lines Selected', 'Select at least one service line to create an MD Review activity.', 'warning');
       return;
     }
 
@@ -596,7 +618,7 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
 
     const svc: any = this.activityService as any;
     if (typeof svc.createMdReviewActivity !== 'function') {
-      alert('createMdReviewActivity API is not available in AuthService.');
+      this.showToast('Not Available', 'createMdReviewActivity API is not available in AuthService.', 'error');
       return;
     }
 
@@ -609,7 +631,7 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
         error: (err: any) => {
           console.error(err);
           // backend returns: "Payload or Activity cannot be null." if shape is wrong
-          alert(err?.error ?? 'Failed to save MD Review activity.');
+          this.showToast('Save Failed', err?.error ?? 'Failed to save MD Review activity.', 'error', 6000);
         }
       });
   }
@@ -635,7 +657,7 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
     if (typeof svc.updateMdReviewActivity !== 'function') {
       // If you don’t have parent update yet, keep header edits local
       // and guide user to implement endpoint.
-      alert('updateMdReviewActivity API not found. Implement it to save header edits (recommendation, due date, notes, etc.).');
+      this.showToast('Not Available', 'updateMdReviewActivity API not found.', 'error');
       return;
     }
 
@@ -659,7 +681,7 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
         },
         error: (err: any) => {
           console.error(err);
-          alert('Failed to update MD Review header.');
+          this.showToast('Update Failed', 'Failed to update MD Review header.', 'error', 6000);
         }
       });
   }
@@ -744,7 +766,7 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
       return;
     }
 
-    alert('No update API found. Add updateMdReviewLine(activityId, lineId, payload) in AuthService.');
+    this.showToast('Not Available', 'No update API found. Add updateMdReviewLine(activityId, lineId, payload) in AuthService.', 'error');
   }
 
   saveAllDirtyLines(): void {
@@ -794,7 +816,7 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
 
     const lines = this.getSelectedLines();
     if (!lines.length) {
-      alert('Select at least one service line.');
+      this.showInlineAlert('Please select at least one service line.', 'warning');
       return;
     }
 
@@ -813,25 +835,69 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
     selectedDirty.forEach(l => this.saveLine(l));
   }
 
+  // ================================================================
+  // TOAST NOTIFICATIONS
+  // ================================================================
+
+  showToast(
+    title: string,
+    message: string,
+    type: 'success' | 'error' | 'warning' | 'info' = 'success',
+    duration = 4000
+  ): void {
+    this.toastTitle   = title;
+    this.toastMessage = message;
+    this.toastType    = type;
+    this.toastVisible = true;
+    this.toastHiding  = false;
+    clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => this.dismissToast(), duration);
+  }
+
+  dismissToast(): void {
+    this.toastHiding = true;
+    setTimeout(() => {
+      this.toastVisible = false;
+      this.toastHiding  = false;
+    }, 200);
+  }
+
+  showInlineAlert(message: string, type: 'error' | 'warning' | 'info' = 'error'): void {
+    this.inlineAlert = { message, type };
+  }
+
+  dismissInlineAlert(): void {
+    this.inlineAlert = null;
+  }
+
   // ----------------------------
   // Dashboard-like actions: Accept / Reject / Save & Continue
   // ----------------------------
 
 
   submitDecision(): void {
+    this.decisionSubmitted = true;
+    this.dismissInlineAlert();
+
     if (!this.selectedActivity) return;
 
     const lines = this.getSelectedLines();
     if (!lines.length) {
-      alert('Select at least one service line.');
+      this.showInlineAlert('Please select at least one service line before submitting.', 'warning');
+      return;
+    }
+
+    if (!this.overallDecisionStatus) {
+      this.showInlineAlert('Decision Status is required. Please select a value before submitting.', 'error');
       return;
     }
 
     const statusLabel =
       this.getOptionLabel(this.decisionStatusOptions, this.overallDecisionStatus) ||
       String(this.overallDecisionStatus ?? '');
+
     if (!statusLabel || statusLabel === 'Select') {
-      alert('Select Decision Status.');
+      this.showInlineAlert('Please select a valid Decision Status.', 'error');
       return;
     }
 
@@ -839,26 +905,59 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
       this.getOptionLabel(this.decisionStatusCodeOptions, this.overallDecisionStatusCode) ||
       String(this.overallDecisionStatusCode ?? '');
 
-    const note = (this.mdNotesText ?? '').trim();
-    const reqMore = !!this.requestMoreInformation;
+    const note     = (this.mdNotesText ?? '').trim();
+    const reqMore  = !!this.requestMoreInformation;
 
     const composedNotes = [
       codeLabel ? `Decision Status Code: ${codeLabel}` : '',
-      reqMore ? 'Request more information' : '',
-      note ? note : ''
+      reqMore   ? 'Request more information' : '',
+      note      ? note : ''
     ].filter(Boolean).join(', ');
 
+    const lineIds = lines.map(l => l.lineId).filter(x => x != null);
+
+    const payload: UpdateActivityLinesRequest = {
+      lineIds,
+      status:           'Completed',
+      mdDecision:       statusLabel,
+      mdNotes:          composedNotes,
+      reviewedByUserId: this.numOrNull(sessionStorage.getItem('loggedInUserid')) ?? 1
+    };
+
+    // Optimistic UI: reflect decision immediately
     lines.forEach(l => {
-      // Completed submit
       l.mdDecision = statusLabel;
-      l.status = 'Completed';
-      if (composedNotes) {
-        l.mdNotes = composedNotes;
-      }
-      this.markLineDirty(l);
+      l.status     = 'Completed';
     });
 
-    this.saveSelectedDirtyLines();
+    this.dashboardService.updateActivityLines(payload)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.showToast('Decision Submitted', `Decision "${statusLabel}" has been submitted successfully.`, 'success');
+          // Reset decision form
+          this.decisionSubmitted         = false;
+          this.overallDecisionStatus     = '';
+          this.overallDecisionStatusCode = '';
+          this.mdNotesText               = '';
+          this.requestMoreInformation    = false;
+          // Refresh list and detail
+          this.loadMdReviewActivities();
+          if (this.selectedActivityId) {
+            this.fetchMdReviewActivityDetail(this.selectedActivityId);
+          }
+        },
+        error: (err: any) => {
+          console.error('Submit decision failed', err);
+          // Roll back optimistic update
+          lines.forEach(l => {
+            l.mdDecision = null;
+            l.status     = null;
+          });
+          const msg = err?.error?.message ?? err?.message ?? 'An unexpected error occurred. Please try again.';
+          this.showToast('Submit Failed', msg, 'error', 6000);
+        }
+      });
   }
 
   approveRequest(): void {
@@ -866,7 +965,7 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
 
     const lines = this.getSelectedLines();
     if (!lines.length) {
-      alert('Select at least one service line.');
+      this.showInlineAlert('Please select at least one service line.', 'warning');
       return;
     }
 
@@ -887,7 +986,7 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
 
     const lines = this.getSelectedLines();
     if (!lines.length) {
-      alert('Select at least one service line.');
+      this.showInlineAlert('Please select at least one service line.', 'warning');
       return;
     }
 
@@ -904,11 +1003,13 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
   }
 
   saveAndContinue(): void {
+    this.dismissInlineAlert();
+
     if (!this.selectedActivity) return;
 
-    const selectedLines = (this.selectedActivity.lines ?? []).filter(l => !!(l as any).selected);
+    const selectedLines = this.getSelectedLines();
     if (!selectedLines.length) {
-      alert('Select at least one service line.');
+      this.showInlineAlert('Please select at least one service line to save.', 'warning');
       return;
     }
 
@@ -920,36 +1021,66 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
       this.getOptionLabel(this.decisionStatusCodeOptions, this.overallDecisionStatusCode) ||
       String(this.overallDecisionStatusCode ?? '');
 
-    const note = (this.mdNotesText ?? '').trim();
+    const note    = (this.mdNotesText ?? '').trim();
     const reqMore = !!this.requestMoreInformation;
 
     const composedNotes = [
       codeLabel ? `Decision Status Code: ${codeLabel}` : '',
-      reqMore ? 'Request more information' : '',
-      note ? note : ''
+      reqMore   ? 'Request more information' : '',
+      note      ? note : ''
     ].filter(Boolean).join(', ');
 
-    selectedLines.forEach(l => {
-      if ((l.status ?? '') === 'Completed') return;
-      if (statusLabel && statusLabel !== 'Select') {
-        l.mdDecision = statusLabel;
-        l.status = 'InProgress';
-        if (composedNotes) {
-          l.mdNotes = composedNotes;
-        }
-        this.markLineDirty(l);
-      }
+    // Only update lines not already Completed
+    const eligibleLines = selectedLines.filter(l => (l.status ?? '') !== 'Completed');
+    if (!eligibleLines.length) {
+      this.showInlineAlert('All selected lines are already completed.', 'info');
+      return;
+    }
+
+    const lineIds = eligibleLines.map(l => l.lineId).filter(x => x != null);
+
+    const svcPayload: UpdateActivityLinesRequest = {
+      lineIds,
+      status:           'InProgress',
+      mdDecision:       statusLabel && statusLabel !== 'Select' ? statusLabel : '',
+      mdNotes:          composedNotes,
+      reviewedByUserId: this.numOrNull(sessionStorage.getItem('loggedInUserid')) ?? 1
+    };
+
+    // Optimistic UI
+    eligibleLines.forEach(l => {
+      l.status = 'InProgress';
+      if (svcPayload.mdDecision) l.mdDecision = svcPayload.mdDecision;
     });
 
-    this.saveSelectedDirtyLines();
+    this.dashboardService.updateActivityLines(svcPayload)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.showToast('Progress Saved', 'Service lines have been saved. You can continue editing.', 'info');
+          this.loadMdReviewActivities();
+          if (this.selectedActivityId) {
+            this.fetchMdReviewActivityDetail(this.selectedActivityId);
+          }
+        },
+        error: (err: any) => {
+          console.error('Save & Continue failed', err);
+          // Roll back
+          eligibleLines.forEach(l => { l.status = null; });
+          const msg = err?.error?.message ?? err?.message ?? 'An unexpected error occurred. Please try again.';
+          this.showToast('Save Failed', msg, 'error', 6000);
+        }
+      });
   }
 
   closeReview(): void {
-    this.selectedActivityId = null;
-    this.selectedActivity = null;
-    this.mdNotesText = '';
+    this.selectedActivityId   = null;
+    this.selectedActivity     = null;
+    this.mdNotesText          = '';
     this.overallDecisionStatus = '';
     this.overallInitialRecommendationReview = '';
+    this.decisionSubmitted    = false;
+    this.inlineAlert          = null;
     this.viewMode = this.hasActivities ? 'review' : 'create';
   }
 

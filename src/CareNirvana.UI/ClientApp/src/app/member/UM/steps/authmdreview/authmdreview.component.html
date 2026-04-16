@@ -1,3 +1,28 @@
+<!-- ── TOAST CONTAINER ── -->
+<div class="toast-container" aria-live="polite" role="status">
+  <div class="toast"
+       *ngIf="toastVisible"
+       [class.toast-success]="toastType === 'success'"
+       [class.toast-error]="toastType === 'error'"
+       [class.toast-warning]="toastType === 'warning'"
+       [class.toast-info]="toastType === 'info'"
+       [class.toast-hide]="toastHiding">
+    <div class="toast-icon" aria-hidden="true">
+      <ng-container [ngSwitch]="toastType">
+        <span *ngSwitchCase="'success'">✓</span>
+        <span *ngSwitchCase="'error'">✕</span>
+        <span *ngSwitchCase="'warning'">!</span>
+        <span *ngSwitchDefault>i</span>
+      </ng-container>
+    </div>
+    <div class="toast-body">
+      <div class="toast-title">{{ toastTitle }}</div>
+      <div class="toast-msg">{{ toastMessage }}</div>
+    </div>
+    <button class="toast-dismiss" type="button" (click)="dismissToast()" aria-label="Dismiss">✕</button>
+  </div>
+</div>
+
 <div class="authmdreview">
 
   <!-- ═══════════════════════════════════════════════
@@ -435,6 +460,22 @@
               </p>
             </div>
 
+            <!-- ── Inline alert ── -->
+            <div class="inline-alert"
+                 *ngIf="inlineAlert"
+                 [class.alert-error]="inlineAlert.type === 'error'"
+                 [class.alert-warning]="inlineAlert.type === 'warning'"
+                 [class.alert-info]="inlineAlert.type === 'info'"
+                 style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:6px;margin:8px 0;font-size:13px;">
+              <span style="font-weight:700;">
+                {{ inlineAlert.type === 'error' ? '✕' : inlineAlert.type === 'warning' ? '!' : 'i' }}
+              </span>
+              <span style="flex:1;">{{ inlineAlert.message }}</span>
+              <button type="button"
+                      (click)="dismissInlineAlert()"
+                      style="background:none;border:none;cursor:pointer;font-size:14px;opacity:0.7;">✕</button>
+            </div>
+
             <!-- ── Edit Activity Header (update due date / notes / status) ── -->
             <details style="margin:10px 0;background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;">
               <summary style="cursor:pointer;font-weight:600;font-size:13px;color:#374151;list-style:none;display:flex;align-items:center;gap:6px;">
@@ -604,7 +645,7 @@
 
               <!-- Decision Status -->
               <div class="ff-field">
-                <div class="ff-outline">
+                <div class="ff-outline" [class.ff-invalid]="decisionSubmitted && !overallDecisionStatus">
                   <div class="ff-float-label">
                     Decision Status <span class="req">*</span>
                   </div>
@@ -614,10 +655,13 @@
                                        placeholder="Select"
                                        [options]="decisionStatusOptions"
                                        [(ngModel)]="overallDecisionStatus"
-                                       (ngModelChange)="onDecisionStatusChanged()">
+                                       (ngModelChange)="onDecisionStatusChanged(); dismissInlineAlert()">
                     </ui-smart-dropdown>
                   </div>
                 </div>
+                <span class="ff-error-msg" *ngIf="decisionSubmitted && !overallDecisionStatus">
+                  Decision Status is required.
+                </span>
               </div>
 
               <!-- Decision Status Code -->

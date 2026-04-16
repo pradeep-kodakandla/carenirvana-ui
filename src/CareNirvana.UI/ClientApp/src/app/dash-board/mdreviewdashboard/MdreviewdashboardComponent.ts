@@ -658,6 +658,11 @@ export class MdreviewdashboardComponent {
     return (lines as any[]).some(l => !!l.selected);
   }
 
+  areAllReviewLinesSelected(): boolean {
+    const lines = this.selectedAuth?.lines ?? [];
+    return (lines as any[]).length > 0 && (lines as any[]).every(l => !!l.selected);
+  }
+
   private getSelectedLines(): any[] {
     return (this.selectedAuth?.lines ?? []).filter((l: any) => !!l.selected);
   }
@@ -732,9 +737,34 @@ export class MdreviewdashboardComponent {
     return `In ${diff}d`;
   }
 
+  /**
+   * Converts raw API mdDecision values to user-friendly labels.
+   * "NotReviewed" / "Not Reviewed" / empty → "Yet to review"
+   */
+  displayMdDecision(v: string | null | undefined): string {
+    const s = (v ?? '').toString().trim().toLowerCase();
+    if (!s || s === 'notreviewed' || s === 'not reviewed' || s === 'not_reviewed') {
+      return 'Yet to review';
+    }
+    return v!.trim();
+  }
+
+  /**
+   * e.g. "Approve" → "Approved", "Deny" → "Denied"
+   */
+  displayInitialRecommendation(v: string | null | undefined): string {
+    if (!v) return '—';
+    const s = v.trim().toLowerCase();
+    if (s === 'approve')                              return 'Approved';
+    if (s === 'deny')                                 return 'Denied';
+    if (s === 'partial' || s === 'partialapprove' || s === 'partiallyapprove') return 'Partially Approved';
+    if (s === 'pend' || s === 'pending')              return 'Pending';
+    return v.trim();
+  }
+
   mdDecisionClass(decision: string | null | undefined): string {
     const v = (decision ?? '').toString().trim().toLowerCase();
-    if (v === '' || v === 'not reviewed' || v === 'notreviewed') return 'md-notreviewed';
+    if (v === '' || v === 'not reviewed' || v === 'notreviewed' || v === 'yet to review') return 'md-notreviewed';
     if (v === 'pending')                                          return 'md-pending';
     if (v === 'approved' || v === 'partially approved' || v === 'partiallyapproved') return 'md-approved';
     if (v === 'denied'   || v === 'rejected')                    return 'md-denied';
@@ -929,7 +959,7 @@ export class MdreviewdashboardComponent {
                             r?.DecisionStatus     ?? r?.decisionStatus      ?? '',
       comment:              r?.Comments           ?? r?.Comment             ?? r?.comment ?? '',
       InitialRecommendation:r?.InitialRecommendation ?? r?.initialRecommendation ?? '',
-      selected: false
+      selected: true
     }));
   }
 
