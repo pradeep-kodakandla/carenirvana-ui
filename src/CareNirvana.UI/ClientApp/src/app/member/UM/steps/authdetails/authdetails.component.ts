@@ -257,9 +257,14 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   private destroy$ = new Subject<void>();
   private templateDestroy$ = new Subject<void>();
   private visibilitySyncInProgress = false;
-  // When we change only the authNumber segment (0 -> generated) after the first SAVE,
-  // we don't want to wipe the already-built template UI and briefly show the "initial" screen.
-  private skipNextResetOnNav = false;
+  // After the first SAVE we navigate from /auth/0/details to /auth/<number>/details.
+  // Store the exact target URL so only that specific NavigationEnd is exempted from
+  // resetting the template — a plain boolean was consumed by any stray NavigationEnd.
+  private skipNextResetOnNavUrl: string | null = null;
+
+  // Holds the record fetched by getById() during CREATE so the NavigationEnd pipe
+  // can re-use it instead of making a redundant getByNumber() round-trip.
+  private _freshlyCreatedAuth: any | null = null;
 
   // ── Snapshot-based dirty tracking ──
   // Angular's form.dirty flag is unreliable because programmatic setValue/markAsDirty
@@ -667,15 +672,28 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       distinctUntilChanged(),
       tap(authNo => {
         this.authNumber = String(authNo);
-        if (this.skipNextResetOnNav) {
-          // Keep the current template rendering intact; we'll still refresh data via getByNumber below.
-          this.skipNextResetOnNav = false;
+        const targetUrl = this.skipNextResetOnNavUrl;
+        const currentUrl = this.router.url;
+        if (targetUrl && currentUrl === targetUrl) {
+          // NavigationEnd landed on the expected post-save URL — preserve the
+          // already-rendered template.  Clear the guard so any further navigation
+          // (e.g. a redirect or child-route update) resets state normally.
+          this.skipNextResetOnNavUrl = null;
         } else {
+          this.skipNextResetOnNavUrl = null;
           this.resetAuthScreenState();
         }
       }),
       switchMap(authNo => {
         if (!authNo || authNo === '0') return of(null);
+        // Re-use the record already fetched by getById() during CREATE to avoid a
+        // redundant network round-trip and a second template-rebuild cycle.
+        if (this._freshlyCreatedAuth &&
+            String((this._freshlyCreatedAuth as any).authNumber) === String(authNo)) {
+          const cached = this._freshlyCreatedAuth;
+          this._freshlyCreatedAuth = null;
+          return of(cached);
+        }
         return this.authApi.getByNumber(String(authNo));
       })
     ).subscribe((auth: any) => {
@@ -3711,45 +3729,46 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
         const newId = await firstValueFrom(this.authApi.create(payload, userId));
 
-        if (newId) {
-          const fresh = await firstValueFrom(this.authApi.getById(Number(newId), false));
-          this.pendingAuth = fresh as any;
-
-          // Seed Decision Details rows (idempotent) right after create
-          //const createdAuthDetailId = Number(
-          //  (fresh as any)?.authDetailId ?? (fresh as any)?.AuthDetailId ?? (fresh as any)?.id ?? 0
-          //);
-          const createdAuthDetailId = Number((this.pendingAuth as any)?.authDetailId ?? (this.pendingAuth as any)?.id ?? 0);
-
-          payload.authDueDate = computedAuthDueIso || toIsoOrNull(pick('authDueDate', 'authduedate'));
-
-          // IMPORTANT: update shell context so header + decision step can load
-          this.shell?.setContext({
-            authNumber: String(this.authNumber),     // updates shell header
-            isNewAuth: false,                        // removes NEW-only behavior
-            authDetailId: createdAuthDetailId,       // required for Decision step
-            authTemplateId: Number(this.templateId ?? authTypeId ?? 0),
-            authClassId,
-            authTypeId,
-            memberDetailsId: this.memberDetailsId,
-            memberEnrollmentId
-          });
-
-          // force re-hydrate header immediately (so Auth # updates without waiting on navigation)
-          this.shell?.refreshHeader();
-
-          await this.seedDecisionAfterSave(createdAuthDetailId, merged, userId, authTypeId, effectiveAuthApprove);
-
-          const newAuthNumber = (fresh as any)?.authNumber;
-          if (newAuthNumber) this.authNumber = String(newAuthNumber);
-
-          // keep shell + header in sync in case API returns a different authNumber than the locally-generated one
-          this.shell?.setContext({ authNumber: String(this.authNumber) });
-
-          // ── Lock enrollment + class/type now that auth is created ──
-          this.lockEnrollmentAndClassType();
+        // Fix 1: Guard against a falsy ID returned without throwing.
+        // Without this the code below would build a URL for a record that does not
+        // exist in the database, corrupt the header tab, and navigate to a ghost route.
+        if (!newId) {
+          console.error('Auth create returned no ID — aborting post-save navigation.');
+          throw new Error('Auth create returned no ID');
         }
 
+        const fresh = await firstValueFrom(this.authApi.getById(Number(newId), false));
+        this.pendingAuth = fresh as any;
+
+        const createdAuthDetailId = Number((this.pendingAuth as any)?.authDetailId ?? (this.pendingAuth as any)?.id ?? 0);
+
+        payload.authDueDate = computedAuthDueIso || toIsoOrNull(pick('authDueDate', 'authduedate'));
+
+        // IMPORTANT: update shell context so header + decision step can load
+        this.shell?.setContext({
+          authNumber: String(this.authNumber),     // updates shell header
+          isNewAuth: false,                        // removes NEW-only behavior
+          authDetailId: createdAuthDetailId,       // required for Decision step
+          authTemplateId: Number(this.templateId ?? authTypeId ?? 0),
+          authClassId,
+          authTypeId,
+          memberDetailsId: this.memberDetailsId,
+          memberEnrollmentId
+        });
+
+        await this.seedDecisionAfterSave(createdAuthDetailId, merged, userId, authTypeId, effectiveAuthApprove);
+
+        // Fix 3: Correct authNumber from API response BEFORE calling refreshHeader so
+        // the header never briefly displays the locally-generated placeholder number.
+        const newAuthNumber = (fresh as any)?.authNumber;
+        if (newAuthNumber) this.authNumber = String(newAuthNumber);
+
+        // Single refreshHeader call — after the authNumber is confirmed final.
+        this.shell?.setContext({ authNumber: String(this.authNumber) });
+        this.shell?.refreshHeader();
+
+        // ── Lock enrollment + class/type now that auth is created ──
+        this.lockEnrollmentAndClassType();
 
         // Fax mode — emit instead of navigating
         if (this.isFaxMode) {
@@ -3759,9 +3778,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
           this.authSaved.emit({ authNumber: String(this.authNumber), authId: faxAuthId });
           return;
         }
-        // Resolve memberId reliably (don’t depend only on tab metadata)
+
+        // Resolve memberId reliably (don't depend only on tab metadata)
         const memberId = this.headerService.getMemberId(this.headerService.getSelectedTab() || '') || '';
-        //const currentRoute = `/auth/0/details/${memberId}`;
 
         const urlTree = this.router.createUrlTree(
           ['/member-info', memberId, 'auth', this.authNumber, 'details']
@@ -3777,14 +3796,25 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
           memberId: String(memberId),
         });
 
-        this.skipNextResetOnNav = true;
+        // Fix 4: Cache the already-fetched record so the NavigationEnd pipe can reuse it
+        // instead of making a redundant getByNumber() round-trip that would trigger a
+        // second template rebuild and a visible re-render.
+        this._freshlyCreatedAuth = fresh;
 
-        this.headerService.selectTab(newRoute);
-
+        // Fix 2: Snapshot and pristine-mark BEFORE selectTab.  selectTab triggers a
+        // NavigationEnd which calls bindAuthorization and schedules a new
+        // _captureCleanSnapshot timer.  Calling _resetCleanSnapshot AFTER selectTab
+        // races against that timer and captures a stale, partially re-patched form
+        // state as the clean baseline, breaking dirty tracking.
         this.form.markAsPristine();
         this._resetCleanSnapshot();
 
+        // Fix 5: Store the exact target URL instead of a plain boolean so that only
+        // navigation to this specific route suppresses the template reset — any stray
+        // NavigationEnd (redirect, child-route update, etc.) still resets normally.
+        this.skipNextResetOnNavUrl = newRoute;
 
+        this.headerService.selectTab(newRoute);
       }
     } catch (e: any) {
       // shows actual ModelState error response for 400
