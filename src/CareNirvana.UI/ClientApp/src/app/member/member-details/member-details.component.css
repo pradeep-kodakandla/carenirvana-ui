@@ -120,6 +120,7 @@ mat-tab-group {
 
   .tab-close:hover {
     color: #d32f2f;
+    color: #d32f2f;
   }
 
 /* Tabs Content */
@@ -183,7 +184,7 @@ mat-tab-group {
 
   /* Applied AFTER collapse animation finishes — changes color */
   .sidebar.collapsed-ready {
-    background: linear-gradient(90deg, #0062cc, #007bff);
+    background: #004ba0;/*linear-gradient(90deg, #0062cc, #007bff);*/
     border-right: none;
   }
 
@@ -265,7 +266,7 @@ mat-tab-group {
   width: 100%;
   height: 40px;
   padding: 0 5px;
-  background: linear-gradient(90deg, #0062cc, #007bff); /* modern gradient */
+  background: #004ba0;/*linear-gradient(90deg, #0062cc, #007bff);*/ /* modern gradient */
   border-bottom: 1px solid #0056b3;
   box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.15), 0 2px 4px rgba(0, 0, 0, 0.08);
 }

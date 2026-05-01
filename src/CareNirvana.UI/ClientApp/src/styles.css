@@ -108,9 +108,10 @@ body {
 .div-primary {
   color: #fff;
   /*background-color: #007BFF;*/
-  background: linear-gradient(90deg, #0062cc, #007bff);
-/*  border-color: #1861ac;
-*/}
+  background: #004ba0;/*linear-gradient(90deg, #0062cc, #007bff);*/
+  /*  border-color: #1861ac;
+*/
+}
 
 
 /* Table Styles */

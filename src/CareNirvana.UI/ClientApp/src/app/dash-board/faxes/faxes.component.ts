@@ -7,7 +7,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { finalize, firstValueFrom } from 'rxjs';
 import { DashboardServiceService, FaxFile as ApiFaxFile } from 'src/app/service/dashboard.service.service';
 import { PdfOcrService, OcrResult } from 'src/app/service/pdfocr.service';
-import { extractPriorAuth, extractTexasFromText, extractArizonaFromText } from 'src/app/service/priorauth.extractor';
+import { extractPriorAuth, extractTexasFromText, extractArizonaFromText, extractNhsFromFields, isNevada } from 'src/app/service/priorauth.extractor';
 import { PriorAuth } from 'src/app/service/priorauth.schema';
 import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -703,7 +703,13 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     try {
       const res: any = await this.pdfOcr.extract(file, () => void 0);
 
-      const pa = extractPriorAuth(res?.text ?? '');
+      // ── NHS fast path: AcroForm field values are 100% reliable when present ──
+      if (isNevada(res?.text ?? '') && res?.formFields && Object.keys(res.formFields).length) {
+        const nhs = extractNhsFromFields(res.formFields);
+        if (nhs?.patient?.memberId) return nhs.patient.memberId;
+      }
+
+      const pa = extractPriorAuth(res?.text ?? '', res?.formFields ?? {});
       const direct = pa?.patient?.memberId ?? null;
       if (direct) return direct;
 
@@ -980,7 +986,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         text: String(p?.text ?? '')
       }));
 
-    let pa = extractPriorAuth(allText);
+    let pa = extractPriorAuth(allText, res?.formFields ?? {});
 
     const isTexas   = /TEXAS STANDARD PRIOR AUTHORIZATION|NOFR001/i.test(allText);
     const isArizona = /CSO-1179A|CMDP|COMPREHENSIVE MEDICAL AND DENTAL PROGRAM/i.test(allText);
@@ -1037,6 +1043,28 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         };
         this.postProcessArizonaCmdp(pa, allText);
       }
+    }
+
+    // ── NHS (Nevada Health Solutions) — AcroForm fillable PDF ──────────────
+    // Data lives in PDF form fields, not OCR text. Field values come from
+    // pdf.js getFieldObjects() and are 100% reliable when present.
+    if (isNevada(allText) && res?.formFields && Object.keys(res.formFields).length) {
+      const nhs = extractNhsFromFields(res.formFields);
+      pa = {
+        ...pa,
+        source:             { template: 'NHS Nevada Health Solutions', confidence: 0.99 },
+        patient:            { ...this.stripEmpty(pa.patient),            ...this.stripEmpty(nhs.patient) },
+        subscriber:         { ...this.stripEmpty(pa.subscriber),         ...this.stripEmpty(nhs.subscriber) },
+        providerRequesting: { ...this.stripEmpty(pa.providerRequesting), ...this.stripEmpty(nhs.providerRequesting) },
+        providerServicing:  { ...this.stripEmpty(pa.providerServicing),  ...this.stripEmpty(nhs.providerServicing) },
+        pcp:                { ...this.stripEmpty(pa.pcp),                ...this.stripEmpty(nhs.pcp) },
+        submission:         { ...this.stripEmpty(pa.submission),         ...this.stripEmpty(nhs.submission) },
+        review:             { ...this.stripEmpty(pa.review),             ...this.stripEmpty(nhs.review) },
+        setting:            { ...this.stripEmpty(pa.setting),            ...this.stripEmpty(nhs.setting) },
+        services:           (nhs.services?.length ? nhs.services : pa.services) ?? [],
+        dx:                 { ...this.stripEmpty(pa.dx),                 ...this.stripEmpty(nhs.dx) },
+        notes:              nhs.notes ?? pa.notes,
+      };
     }
 
     return pa;
@@ -1549,7 +1577,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
       if (myGen !== this._extractionGen) return;
 
-      let pa = extractPriorAuth(res.text);
+      let pa = extractPriorAuth(res.text, res?.formFields ?? {});
 
       const allText: string = res.text ?? '';
       const byPage: Array<{ page: number; text: string }> =
@@ -1617,6 +1645,28 @@ export class FaxesComponent implements OnInit, AfterViewInit {
           submission:         { ...this.stripEmpty(pa.submission),         ...azClean.submission }
         };
         this.postProcessArizonaCmdp(pa, allText);
+      }
+
+      // ── NHS (Nevada Health Solutions) — AcroForm fillable PDF ───────────
+      // Data lives in PDF form fields, not OCR text. Field values come from
+      // pdf.js getFieldObjects() and are 100% reliable when present.
+      if (isNevada(allText) && res?.formFields && Object.keys(res.formFields).length) {
+        const nhs = extractNhsFromFields(res.formFields);
+        pa = {
+          ...pa,
+          source:             { template: 'NHS Nevada Health Solutions', confidence: 0.99 },
+          patient:            { ...this.stripEmpty(pa.patient),            ...this.stripEmpty(nhs.patient) },
+          subscriber:         { ...this.stripEmpty(pa.subscriber),         ...this.stripEmpty(nhs.subscriber) },
+          providerRequesting: { ...this.stripEmpty(pa.providerRequesting), ...this.stripEmpty(nhs.providerRequesting) },
+          providerServicing:  { ...this.stripEmpty(pa.providerServicing),  ...this.stripEmpty(nhs.providerServicing) },
+          pcp:                { ...this.stripEmpty(pa.pcp),                ...this.stripEmpty(nhs.pcp) },
+          submission:         { ...this.stripEmpty(pa.submission),         ...this.stripEmpty(nhs.submission) },
+          review:             { ...this.stripEmpty(pa.review),             ...this.stripEmpty(nhs.review) },
+          setting:            { ...this.stripEmpty(pa.setting),            ...this.stripEmpty(nhs.setting) },
+          services:           (nhs.services?.length ? nhs.services : pa.services) ?? [],
+          dx:                 { ...this.stripEmpty(pa.dx),                 ...this.stripEmpty(nhs.dx) },
+          notes:              nhs.notes ?? pa.notes,
+        };
       }
 
       if (myGen !== this._extractionGen) return;
@@ -2138,6 +2188,59 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         const w        = item.width || (item.str.length * fontSize * 0.6);
         this._pdfTextItems.push({ str: item.str, pageIndex: pageNum - 1, x, y, w, h: fontSize });
       }
+
+      // ── AcroForm Widget annotations ──────────────────────────────────────
+      // For fillable PDFs (e.g. NHS forms) the user-typed values do NOT appear
+      // in getTextContent(). They live in form-field widget annotations, each
+      // with its own rect [x1, y1, x2, y2] in PDF user-space (origin bottom-
+      // left — same coords already used by drawHighlightsOnPdf via pdf-lib).
+      try {
+        const annots = await page.getAnnotations();
+        for (const a of (annots || [])) {
+          if (!a || a.subtype !== 'Widget') continue;
+          // Pick the field's current value first, falling back to default.
+          let val: any = a.fieldValue;
+          if (val == null || val === '') val = a.defaultFieldValue;
+          if (val == null) continue;
+          // Some checkbox/radio widgets surface "/Off" or "Off" — skip those,
+          // they aren't user-visible text and would create false matches.
+          const str = String(Array.isArray(val) ? val.join(' ') : val).trim();
+          if (!str || /^\/?Off$/i.test(str)) continue;
+
+          const rect: number[] | undefined = a.rect;
+          if (!rect || rect.length < 4) continue;
+          const x  = Math.min(rect[0], rect[2]);
+          const y0 = Math.min(rect[1], rect[3]);
+          const w  = Math.abs(rect[2] - rect[0]);
+          const h  = Math.abs(rect[3] - rect[1]);
+
+          this._pdfTextItems.push({
+            str,
+            pageIndex: pageNum - 1,
+            x, y: y0, w, h,
+          });
+
+          // For composite fields like "Amelia Cook / 10083" or
+          // "5256 Medical Plaza, San Antonio, TX 72165 USA" the user may click
+          // a partial value on the left (just "Amelia Cook" or just the city).
+          // Index each space- or "/"-separated token under the same rect so
+          // partial-string clicks still resolve to this rectangle.
+          const parts = str.split(/\s*\/\s*|\s{2,}|,\s+/).map(s => s.trim()).filter(s => s.length >= 2);
+          for (const part of parts) {
+            if (part === str) continue;
+            this._pdfTextItems.push({
+              str: part,
+              pageIndex: pageNum - 1,
+              x, y: y0, w, h,
+            });
+          }
+        }
+      } catch (e) {
+        // Non-fillable PDFs (or pdf.js without annotation support) land here —
+        // safe to ignore and fall through to text-content-only matching.
+        console.debug('[FieldHighlight] getAnnotations failed (non-fillable PDF?)', e);
+      }
+
       page.cleanup();
     }
     pdf.destroy();

@@ -744,9 +744,10 @@
                   No matching rule found for the extracted inputs.
                 </span>
 
-                <!-- Create Auth button — inline when auth IS required -->
+                <!-- Create Auth button — visible when auth IS required OR when no rule matched.
+                     Hidden when a rule explicitly returns "auth NOT required". -->
                 <button class="banner-create-auth-btn"
-                        *ngIf="smartAuthCheckAuthRequired === true && selectedFax?.memberDetailsId"
+                        *ngIf="(smartAuthCheckAuthRequired === true || smartAuthCheckAuthRequired === null) && selectedFax?.memberDetailsId"
                         matTooltip="Create a new authorization pre-populated with extracted fax data"
                         (click)="openAuthForm()"
                         [disabled]="!pa.patient?.memberId || !selectedFax?.memberDetailsId">

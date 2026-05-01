@@ -13,7 +13,6 @@
 </mat-menu>
 
 <div class="navbar div-primary">
-
   <!-- ═══════════════════════ LEFT: Logo + Tabs ═══════════════════════ -->
   <div class="left">
 
@@ -23,9 +22,9 @@
     </button>
 
     <button mat-icon-button (click)="goToPage('dashboard')">
-      <img src="assets/icons/CareNirvanaLogo.png" class="home-icon" alt="Care Nirvana Logo" />
+      <img src="assets/icons/CareNirvanaLogo.png" class="home-icon" alt="Evoke UM / AG Logo" />
     </button>
-    <h4 style="margin-top: 8px !important; padding-right:10px">Care Nirvana</h4>
+    <h4 style="margin-top: 8px !important; padding-right:10px">Evoke UM / AG</h4>
 
     <!-- Dynamic tabs -->
     <ul class="nav nav-tabs" style="border-bottom:none;">
@@ -208,9 +207,9 @@
       </mat-menu>
 
       <!-- Mail badge (static, no popover yet) -->
-      <button mat-icon-button>
+      <!--<button mat-icon-button>
         <mat-icon class="mat-badge" aria-hidden="false" style="color:white;" matBadge="15">mail</mat-icon>
-      </button>
+      </button>-->
 
       <!-- ── Alerts ─────────────────────────────────────────────────── -->
       <!--
@@ -222,7 +221,7 @@
               #alertsTrigger="matMenuTrigger"
               [matMenuTriggerFor]="alertsMenu"
               (click)="openMessagesMenu(alertsTrigger)">
-        <mat-icon style="color:white;" aria-hidden="false" matBadge="20">notifications</mat-icon>
+        <mat-icon style="color:white;" aria-hidden="false" matBadge="5">notifications</mat-icon>
       </button>
 
       <mat-menu #alertsMenu="matMenu"
