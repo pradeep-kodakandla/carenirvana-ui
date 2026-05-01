@@ -12,6 +12,13 @@ export interface OcrByPage {
 export interface OcrResult {
   text: string;
   byPage: OcrByPage[];
+  /**
+   * Raw AcroForm field values keyed by field name. Populated only when the PDF
+   * contains a fillable form (e.g. Nevada Health Solutions). Empty object
+   * otherwise. Use this in preference to OCR text whenever it is non-empty —
+   * field values come straight from the PDF and are not subject to OCR error.
+   */
+  formFields: Record<string, string>;
 }
 
 export interface OcrWord {
@@ -39,18 +46,45 @@ export class PdfOcrService {
 
   /** Public: extract best-effort text from a PDF (text layer first, then OCR fallback) */
   async extract(file: File, onProgress?: ProgressFn): Promise<OcrResult> {
+    // Always try AcroForm fields first — they are 100% reliable when present.
+    // We do this regardless of whether we end up OCR'ing, because some forms
+    // have BOTH a printed template AND fillable fields.
+    const formFields = await this.tryExtractFormFields(file);
+
     const textResult = await this.tryPdfText(file, onProgress);
     const combined = textResult.byPage.map(p => p.text).join('\\n\\n');
     const needsOcr = combined.trim().length < 200;
 
     if (!needsOcr) {
       const normalized = this.normalize(combined);
-      return { text: normalized, byPage: textResult.byPage.map(p => ({ ...p, text: this.normalize(p.text) })) };
+      return {
+        text: normalized,
+        byPage: textResult.byPage.map(p => ({ ...p, text: this.normalize(p.text) })),
+        formFields,
+      };
     }
 
     const ocrResult = await this.ocrAllPages(file, onProgress);
     const normalized = this.normalize(ocrResult.byPage.map(p => p.text).join('\\n\\n'));
-    return { text: normalized, byPage: ocrResult.byPage.map(p => ({ ...p, text: this.normalize(p.text) })) };
+    return {
+      text: normalized,
+      byPage: ocrResult.byPage.map(p => ({ ...p, text: this.normalize(p.text) })),
+      formFields,
+    };
+  }
+
+  /**
+   * Public: extract AcroForm field values from a fillable PDF.
+   * Returns an empty object if the PDF has no form fields, the call fails, or
+   * the document is not a fillable form. Never throws.
+   *
+   * Field values are normalized:
+   *   - text fields  → trimmed string ('' if empty)
+   *   - checkboxes   → 'Yes' if checked, 'Off' if not
+   *   - radios       → the selected export value
+   */
+  async extractFormFields(file: File): Promise<Record<string, string>> {
+    return this.tryExtractFormFields(file);
   }
 
   // ---------------- Internals ----------------
@@ -63,6 +97,54 @@ export class PdfOcrService {
       .replace(/-\\n(?=\\w)/g, '')
       .replace(/\\n{3,}/g, '\\n\\n')
       .trim();
+  }
+
+  /**
+   * Walks the PDF's AcroForm dictionary via pdf.js getFieldObjects() and returns
+   * a flat name → value map. Defensive: returns {} on any error.
+   */
+  private async tryExtractFormFields(file: File): Promise<Record<string, string>> {
+    try {
+      const data = await file.arrayBuffer();
+      const pdf: PDFDocumentProxy = await getDocument({ data }).promise;
+
+      // getFieldObjects is available in pdfjs-dist for AcroForm PDFs.
+      // Returns: Promise<Record<string, FieldObject[]> | null>
+      const fieldObjs: Record<string, any[]> | null =
+        typeof (pdf as any).getFieldObjects === 'function'
+          ? await (pdf as any).getFieldObjects()
+          : null;
+
+      if (!fieldObjs) return {};
+
+      const out: Record<string, string> = {};
+      for (const [name, arr] of Object.entries(fieldObjs)) {
+        if (!Array.isArray(arr) || arr.length === 0) continue;
+        // Take the first entry — multiple entries usually mean repeated annotations
+        // for the same logical field (e.g. multi-page) and share the same value.
+        const f: any = arr[0];
+
+        // pdf.js exposes value either as `value` (current) or `defaultValue`
+        let v: any = f?.value ?? f?.defaultValue ?? '';
+
+        // Normalize Name objects from pdf.js (e.g. /Yes, /Off come through as strings)
+        if (v == null) v = '';
+        if (typeof v !== 'string') v = String(v);
+        v = v.replace(/^\/+/, '').trim();
+
+        // Some checkbox "off" states come through as empty string — normalize to 'Off'
+        if (f?.type === 'checkbox' || f?.type === 'radiobutton') {
+          if (!v || v.toLowerCase() === 'off') v = 'Off';
+        }
+
+        out[name] = v;
+      }
+      return out;
+    } catch (err) {
+      // Most non-fillable PDFs will land here — that's expected, not an error.
+      console.debug('[PdfOcrService] extractFormFields: no AcroForm or read failed', err);
+      return {};
+    }
   }
 
   private async ensureTessWorker(): Promise<any> {

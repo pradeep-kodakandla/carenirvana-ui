@@ -240,6 +240,8 @@ const genericExtractor: Extractor = (text) => {
 const isTexas = (t: string) => /TEXAS STANDARD PRIOR AUTHORIZATION REQUEST FORM/i.test(t);
 const isArizona = (t: string) => /PRIOR AUTHORIZATION FOR MEDICAL\/SURGICAL SERVICES/i.test(t);
 const isGeorgia = (t: string) => /Georgia Medical Prior Authorization Request Form/i.test(t);
+export const isNevada = (t: string) =>
+  /NEVADA HEALTH SOLUTIONS/i.test(t) || /NHS Fax \(702\) 691-?5614/i.test(t);
 
 // === Replace your current texasAdapter with this version ===
 const texasAdapter: Extractor = (raw) => {
@@ -621,11 +623,14 @@ const georgiaAdapter: Extractor = (raw) => {
 
 
 
-export function extractPriorAuth(text: string): PriorAuth {
+export function extractPriorAuth(text: string, formFields: Record<string, string> = {}): PriorAuth {
   let out: Partial<PriorAuth> = genericExtractor(text);
   if (isTexas(text)) out = { ...out, ...texasAdapter(text) };
   if (isArizona(text)) out = { ...out, ...arizonaAdapter(text) };
   if (isGeorgia(text)) out = { ...out, ...georgiaAdapter(text) };
+  if (isNevada(text) && formFields && Object.keys(formFields).length) {
+    out = { ...out, ...extractNhsFromFields(formFields) };
+  }
   if (out.dx?.codes) out.dx.codes = Array.from(new Set(out.dx.codes.map(x => x.replace(/[^A-Za-z0-9.\-]/g, ''))));
   return out as PriorAuth;
 }
@@ -1085,3 +1090,189 @@ export function extractArizonaFromText(pageText: string): Partial<PriorAuth> {
   return out;
 }
 
+
+
+// ============================================================================
+// Nevada Health Solutions (NHS) — AcroForm fillable PDF adapter
+// ----------------------------------------------------------------------------
+// NHS PDFs are fillable forms; their data lives in PDF form fields rather than
+// in the rendered text layer. PdfOcrService.extractFormFields() pulls these
+// values via pdf.js getFieldObjects() and hands them to this adapter.
+//
+// Field names captured directly from the NHS template:
+//   primary_insurance_yes / primary_insurance_no    (checkbox)
+//   primary_insurance_name                          (text)
+//   patient_name_member_id                          ("Name / 12345")
+//   cardholder_name_member_id                       ("Name / 12345")
+//   patient_dob                                     ("MM/DD/YYYY")
+//   patient_address_phone                           ("Address / phone")
+//   patient_mobile_phone                            (text)
+//   requesting_provider_name_address                ("Name / Address")
+//   requesting_provider_tel / _fax / _npi / _tax_id
+//   contact_person_name / contact_telephone_extension / contact_fax_no
+//   pcp_name_address / pcp_tel / pcp_fax
+//   pending_ref_no / no_fax_pages
+//   date_of_request                                 ("MM/DD/YYYY")
+//   inpatient_checkbox / observation_checkbox / outpatient_checkbox
+//   procedure_date                                  ("MM/DD/YYYY")
+//   no_of_treatments                                ("1")
+//   service_requested_yes / service_requested_no    (checkbox)
+//   diagnosis_icd                                   ("R07.9")
+//   procedure_treatment_cpt                         ("99219")
+//   servicing_provider_name_address                 ("Name / Address")
+//   place_of_service
+//   same_as_requesting_provider                     (checkbox)
+//   servicing_provider_npi / servicing_provider_tax_id
+// ============================================================================
+
+type NhsFields = Record<string, string>;
+
+const nhsField = (fields: NhsFields, key: string): string | undefined => {
+  const v = fields[key];
+  if (v == null) return undefined;
+  const t = String(v).trim();
+  return t.length ? t : undefined;
+};
+
+const nhsChecked = (fields: NhsFields, key: string): boolean => {
+  const v = (fields[key] || '').toLowerCase();
+  return v === 'yes' || v === 'on' || v === 'true' || v === '1';
+};
+
+/**
+ * Splits "Name / 12345" or "Address line / phone" — returns [left, right].
+ * Uses the LAST " / " as separator since addresses can themselves contain commas
+ * and other punctuation that we want to preserve in the left half.
+ */
+const nhsSplitSlash = (s?: string): [string | undefined, string | undefined] => {
+  if (!s) return [undefined, undefined];
+  const idx = s.lastIndexOf(' / ');
+  if (idx < 0) return [s.trim() || undefined, undefined];
+  const left = s.slice(0, idx).trim();
+  const right = s.slice(idx + 3).trim();
+  return [left || undefined, right || undefined];
+};
+
+/**
+ * Maps an NHS AcroForm field map → PriorAuth schema. Safe to call with an
+ * empty/partial field map; missing fields produce `undefined` values rather
+ * than throwing.
+ */
+export function extractNhsFromFields(fields: NhsFields): Partial<PriorAuth> {
+  const out: Partial<PriorAuth> = {
+    source: { template: 'NHS Nevada Health Solutions', confidence: 0.99 },
+    patient: {},
+    subscriber: {},
+    providerRequesting: {},
+    providerServicing: {},
+    pcp: {},
+    submission: {},
+    review: {},
+    setting: {},
+  };
+
+  // ── Patient ────────────────────────────────────────────────────────────
+  const [pName, pMemberId] = nhsSplitSlash(nhsField(fields, 'patient_name_member_id'));
+  const [pAddr,  pPhone]   = nhsSplitSlash(nhsField(fields, 'patient_address_phone'));
+  out.patient = {
+    name:     pName,
+    memberId: pMemberId,
+    dob:      nhsField(fields, 'patient_dob'),
+    address:  pAddr,
+    phone:    pPhone || nhsField(fields, 'patient_mobile_phone'),
+  };
+
+  // ── Subscriber / Card holder ───────────────────────────────────────────
+  const [subName, subId] = nhsSplitSlash(nhsField(fields, 'cardholder_name_member_id'));
+  if (subName || subId) {
+    out.subscriber = { name: subName };
+    // If patient memberId wasn't on its own field, fall back to cardholder id
+    if (!out.patient!.memberId && subId) out.patient!.memberId = subId;
+  }
+
+  // ── Requesting provider ────────────────────────────────────────────────
+  const [reqName, reqAddr] = nhsSplitSlash(nhsField(fields, 'requesting_provider_name_address'));
+  out.providerRequesting = {
+    name:         reqName,
+    address:      reqAddr,
+    phone:        nhsField(fields, 'requesting_provider_tel'),
+    fax:          nhsField(fields, 'requesting_provider_fax'),
+    npi:          nhsField(fields, 'requesting_provider_npi'),
+    contactName:  nhsField(fields, 'contact_person_name'),
+    contactPhone: nhsField(fields, 'contact_telephone_extension'),
+  };
+
+  // ── Servicing provider (with "same as requesting" handling) ────────────
+  const sameAsReq = nhsChecked(fields, 'same_as_requesting_provider');
+  const [svcName, svcAddr] = nhsSplitSlash(nhsField(fields, 'servicing_provider_name_address'));
+  out.providerServicing = {
+    name:     svcName    || (sameAsReq ? reqName : undefined),
+    address:  svcAddr    || (sameAsReq ? reqAddr : undefined),
+    npi:      nhsField(fields, 'servicing_provider_npi') || (sameAsReq ? nhsField(fields, 'requesting_provider_npi') : undefined),
+    facility: nhsField(fields, 'place_of_service'),
+    phone:    sameAsReq ? nhsField(fields, 'requesting_provider_tel') : undefined,
+    fax:      sameAsReq ? nhsField(fields, 'requesting_provider_fax') : undefined,
+  };
+
+  // ── PCP ────────────────────────────────────────────────────────────────
+  const [pcpName] = nhsSplitSlash(nhsField(fields, 'pcp_name_address'));
+  if (pcpName || nhsField(fields, 'pcp_tel') || nhsField(fields, 'pcp_fax')) {
+    out.pcp = {
+      name:  pcpName,
+      phone: nhsField(fields, 'pcp_tel'),
+      fax:   nhsField(fields, 'pcp_fax'),
+    };
+  }
+
+  // ── Submission / request meta ──────────────────────────────────────────
+  out.submission = {
+    date:           nhsField(fields, 'date_of_request'),
+    prevAuthNumber: nhsField(fields, 'pending_ref_no'),
+    issuerName:     nhsField(fields, 'primary_insurance_name'),
+  };
+
+  // ── Setting (Inpatient / Outpatient / Observation) ─────────────────────
+  out.setting = {
+    inpatient:   nhsChecked(fields, 'inpatient_checkbox')   || undefined,
+    outpatient:  nhsChecked(fields, 'outpatient_checkbox')  || undefined,
+    observation: nhsChecked(fields, 'observation_checkbox') || undefined,
+  };
+
+  // NHS doesn't have an explicit Urgent/Routine flag on this form. The note
+  // on the form says "Scheduling Issues do not meet the definition of Urgent",
+  // so default to Non-Urgent unless caller overrides downstream.
+  out.review = { type: 'Non-Urgent' };
+
+  // ── Diagnosis (ICD) ────────────────────────────────────────────────────
+  const dxRaw = nhsField(fields, 'diagnosis_icd');
+  const dxCodes = dxRaw
+    ? Array.from(dxRaw.matchAll(/\b([A-TV-Z][0-9][0-9A-Z](?:\.[0-9A-Z]{1,4})?)\b/g), m => m[1])
+    : [];
+  if (dxCodes.length) out.dx = { codes: Array.from(new Set(dxCodes)) };
+
+  // ── Service / Procedure (CPT/HCPCS) ────────────────────────────────────
+  const cptRaw = nhsField(fields, 'procedure_treatment_cpt');
+  const cptCodes = cptRaw
+    ? Array.from(cptRaw.matchAll(/\b(?:\d{5}|[A-Z]\d{4})\b/g), m => m[0])
+    : [];
+  const procDate   = nhsField(fields, 'procedure_date');
+  const treatments = nhsField(fields, 'no_of_treatments');
+
+  if (cptCodes.length || procDate || dxCodes.length) {
+    out.services = [{
+      code:           cptCodes[0],
+      description:    undefined, // NHS form doesn't include a separate description
+      startDate:      procDate,
+      endDate:        procDate,  // single procedure date — same start/end
+      diagnosisCode:  dxCodes[0],
+      placeOfService: nhsField(fields, 'place_of_service'),
+    }];
+  }
+
+  // Stash treatment count in notes since the schema doesn't model it directly
+  if (treatments && treatments !== '1') {
+    out.notes = `No. of Treatments Requested: ${treatments}`;
+  }
+
+  return out;
+}
