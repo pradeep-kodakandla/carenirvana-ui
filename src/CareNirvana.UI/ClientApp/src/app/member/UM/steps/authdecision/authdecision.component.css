@@ -908,3 +908,128 @@
 .decision--view-only button {
   opacity: 0.4 !important;
 }
+
+/* ═══════════════════════════════════════════════
+   ADD GUIDELINES — Hover dropdown beside Add New
+   Indigo accent distinguishes it from the blue "Add New" button.
+   On hover (or keyboard focus-within) reveals MCG / InterQual /
+   Internal / Other source picker.
+   ═══════════════════════════════════════════════ */
+.guideline-dropdown-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.content-header-actions .btn-add-guidelines {
+  display: inline-flex;
+  align-items: center;
+  border-color: #7C3AED;
+  color: #7C3AED;
+  background: #fff;
+}
+
+.content-header-actions .btn-add-guidelines:hover:not(:disabled),
+.guideline-dropdown-wrap:hover .btn-add-guidelines:not(:disabled),
+.guideline-dropdown-wrap:focus-within .btn-add-guidelines:not(:disabled) {
+  background: #F5F3FF;
+  border-color: #6D28D9;
+  color: #6D28D9;
+}
+
+.content-header-actions .btn-add-guidelines:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+/* Hover-revealed menu */
+.guideline-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 250px;
+  margin-top: 8px;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, .14),
+              0 4px 10px rgba(15, 23, 42, .06);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity .15s ease, transform .15s ease, visibility .15s;
+  z-index: 100;
+}
+
+/* Invisible hover bridge — keeps menu open while cursor crosses the gap */
+.guideline-menu::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 0;
+  right: 0;
+  height: 8px;
+}
+
+.guideline-dropdown-wrap:hover .guideline-menu,
+.guideline-dropdown-wrap:focus-within .guideline-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.guideline-menu-item {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 12px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  transition: background .12s ease;
+}
+
+.guideline-menu-item:hover,
+.guideline-menu-item:focus-visible {
+  background: #F8FAFC;
+  outline: none;
+}
+
+.guideline-menu-item + .guideline-menu-item {
+  margin-top: 2px;
+}
+
+.guideline-dot {
+  grid-row: 1 / span 2;
+  align-self: center;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.guideline-dot--mcg       { background: #2563EB; }  /* blue   */
+.guideline-dot--interqual { background: #EA580C; }  /* orange */
+.guideline-dot--internal  { background: #16A34A; }  /* green  */
+.guideline-dot--other     { background: #64748B; }  /* slate  */
+
+.guideline-label {
+  grid-column: 2;
+  grid-row: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0F172A;
+  line-height: 1.2;
+}
+
+.guideline-sub {
+  grid-column: 2;
+  grid-row: 2;
+  font-size: 11px;
+  color: #64748B;
+  line-height: 1.3;
+  margin-top: 2px;
+}

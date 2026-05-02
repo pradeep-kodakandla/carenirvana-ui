@@ -72,6 +72,51 @@
           </svg>
           {{ addingLine ? 'Adding…' : 'Add New' }}
         </button>
+
+        <!-- Add Guidelines — hover-revealed source picker (MCG / InterQual / Internal / Other) -->
+        <div class="guideline-dropdown-wrap">
+          <button class="btn btn-outline-secondary btn-sm btn-add-guidelines"
+                  [disabled]="saving || addingLine || copyingLine"
+                  aria-haspopup="true"
+                  aria-label="Add guidelines from source">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" style="margin-right:4px;vertical-align:-2px">
+              <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
+              <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/>
+            </svg>
+            Add Guidelines
+            <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor" style="margin-left:6px">
+              <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/>
+            </svg>
+          </button>
+
+          <div class="guideline-menu" role="menu">
+            <button class="guideline-menu-item" type="button" role="menuitem"
+                    (click)="addGuideline('MCG')">
+              <span class="guideline-dot guideline-dot--mcg"></span>
+              <span class="guideline-label">MCG</span>
+              <span class="guideline-sub">Milliman Care Guidelines</span>
+            </button>
+            <button class="guideline-menu-item" type="button" role="menuitem"
+                    (click)="addGuideline('InterQual')">
+              <span class="guideline-dot guideline-dot--interqual"></span>
+              <span class="guideline-label">InterQual</span>
+              <span class="guideline-sub">Change Healthcare</span>
+            </button>
+            <button class="guideline-menu-item" type="button" role="menuitem"
+                    (click)="addGuideline('Internal')">
+              <span class="guideline-dot guideline-dot--internal"></span>
+              <span class="guideline-label">Internal</span>
+              <span class="guideline-sub">Organization-defined</span>
+            </button>
+            <button class="guideline-menu-item" type="button" role="menuitem"
+                    (click)="addGuideline('Other')">
+              <span class="guideline-dot guideline-dot--other"></span>
+              <span class="guideline-label">Other</span>
+              <span class="guideline-sub">Custom source</span>
+            </button>
+          </div>
+        </div>
+
         <button class="btn btn-outline-secondary btn-sm btn-copy-line"
                 (click)="copyDecisionLine()"
                 [disabled]="saving || addingLine || copyingLine"
@@ -435,7 +480,6 @@
               <th class="bcol-unit">Req.</th>
               <th class="bcol-unit bcol-editable-hdr">Appr.</th>
               <th class="bcol-unit bcol-editable-hdr">Denied</th>
-              <th class="bcol-action"></th>
             </tr>
           </thead>
           <tbody>
@@ -468,18 +512,6 @@
                        [(ngModel)]="row.denied"
                        [disabled]="!row.checked"
                        min="0" placeholder="0" />
-              </td>
-              <td class="bcol-action">
-                <button class="btn-bulk-copy"
-                        (click)="copyDecisionLine(row.procedureNo)"
-                        [disabled]="copyingLine || addingLine"
-                        title="Copy this decision line to a new line">
-                  <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M8 3a1 1 0 000 2h4a1 1 0 000-2H8z"/>
-                    <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/>
-                  </svg>
-                  Copy
-                </button>
               </td>
             </tr>
           </tbody>

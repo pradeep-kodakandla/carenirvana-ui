@@ -1010,7 +1010,10 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
             }) as UiSmartOption)
             .filter(o => !!o.label && Number(o.value) > 0);
 
-          // If editing an existing auth, force-select template/type
+          // If editing an existing auth, force-select template/type.
+          // BUT: skip this when the user is in enrollmentEditMode — they have
+          // explicitly clicked "Edit" to change the Auth Class / Auth Type, so
+          // we must NOT snap the type back to the original saved value.
           const desiredTypeId = Number(
             (this.pendingAuth as any)?.authTypeId ??
             (this.pendingAuth as any)?.authTypeID ??
@@ -1020,7 +1023,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
             (this.pendingAuth as any)?.TemplateId ??
             0
           );
-          if (desiredTypeId > 0) {
+          if (desiredTypeId > 0 && !this.enrollmentEditMode) {
             this.form.get('authTypeId')?.setValue(desiredTypeId, { emitEvent: true });
             return; // don't let Smart Check prefill override edit flow
           }

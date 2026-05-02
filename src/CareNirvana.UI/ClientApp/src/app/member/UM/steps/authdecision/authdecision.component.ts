@@ -2270,16 +2270,12 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
       this.syncApprovedDeniedToRequested(ddSection, statusField, statusKey);
       const full = getFullOpts();
 
-      // Pended => clear statusCode
-      if (this.isPendedStatus(statusKey)) {
-        this.optionsByControlName[statusCodeField.controlName] = [];
-        if (codeCtrl.value) codeCtrl.setValue(null, { emitEvent: false });
+      const isPended = this.isPendedStatus(statusKey);
 
-        // If status is pended, decisionDateTime should not be set
-        if (decisionDtCtrl && decisionDtCtrl.value) {
-          decisionDtCtrl.setValue(null, { emitEvent: false });
-        }
-        return;
+      // If status is pended, decisionDateTime should not be set.
+      // (Separate UX rule — kept even though we now LET pended load its own status codes.)
+      if (isPended && decisionDtCtrl && decisionDtCtrl.value) {
+        decisionDtCtrl.setValue(null, { emitEvent: false });
       }
 
       // ✅ FIX: If statusCode options haven't loaded from the datasource yet, bail out
@@ -2290,7 +2286,7 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
       }
 
       // Non-pended status: if decisionDateTime is empty, set it immediately for display.
-      if (decisionDtCtrl) {
+      if (!isPended && decisionDtCtrl) {
         const cur = String(decisionDtCtrl.value ?? '').trim();
         if (!cur) {
           const nowIso = new Date().toISOString();
@@ -2399,12 +2395,10 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
     const rawStatus = this.extractPrimitive(this.unwrapValue(statusCtrl.value)) ?? this.unwrapValue(statusCtrl.value);
     const statusKey = String(rawStatus ?? '').trim();
 
-    // If pended: wipe statusCode options and value (same as applyFilter does)
-    if (this.isPendedStatus(statusKey)) {
-      this.optionsByControlName[statusCodeField.controlName] = [];
-      if (codeCtrl.value) codeCtrl.setValue(null, { emitEvent: false });
-      return;
-    }
+    // NOTE: Previously this short-circuited when status was Pended, wiping the
+    // statusCode list. UM admin data now maps codes to Pended (e.g. "Pending MD
+    // Review", "Awaiting Clinical Information"), so we let the filter run
+    // normally — it matches by parent decisionStatusId, including "2" (Pended).
 
     // Filter by the parent status id/code stored on each option's raw object
     const filtered = full.filter((o: any) => {
@@ -3838,11 +3832,17 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
     const rawStatus = this.extractPrimitive(this.unwrapValue(statusVal)) ?? this.unwrapValue(statusVal);
     const statusKey = String(rawStatus ?? '').trim();
 
-    if (!statusKey || this.isPendedStatus(statusKey)) {
+    // Empty status only — bail out and clear codes.
+    // (Pended is no longer a bail condition: UM admin data maps codes to Pended.)
+    if (!statusKey) {
       this.bulkDecisionStatusCodeOptions = [];
       this.bulkDecisionStatusCodeCtrl.setValue(null, { emitEvent: false });
       return;
     }
+
+    // Auto-fill Appr/Denied columns on selected rows based on the chosen status.
+    // Mirrors the single-tab syncApprovedDeniedToRequested() behavior.
+    this.syncBulkApprovedDeniedToRequested(statusKey);
 
     const codeDs = this.getDecisionStatusCodeDatasourceFromTemplate();
     if (!codeDs) { this.bulkDecisionStatusCodeOptions = []; return; }
@@ -3882,6 +3882,42 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
           this.dropdownCache.set(codeDs, (opts ?? []) as any[]);
           applyFilter();
         });
+    }
+  }
+
+  /**
+   * When the bulk Decision Status is set to Approved/Denied, auto-fill the
+   * Appr/Denied columns of every CHECKED row from its Req column.
+   *   - Approved: row.approved = row.requested, row.denied   = 0
+   *   - Denied:   row.denied   = row.requested, row.approved = 0
+   *   - Anything else (Pended, custom, empty): no row mutation.
+   * Mirrors the single-tab behavior in syncApprovedDeniedToRequested().
+   */
+  private syncBulkApprovedDeniedToRequested(statusKey: string): void {
+    if (!this.bulkRows?.length || !statusKey) return;
+
+    // Resolve the human-readable label so we can detect Approved/Denied
+    // regardless of whether the option value is an id ("1"/"3") or text.
+    const label = (this.resolveOptionLabel(this.bulkDecisionStatusOptions, statusKey) || statusKey)
+      .toString()
+      .trim()
+      .toLowerCase();
+
+    const isApproved = label.startsWith('approv');
+    const isDenied   = label.startsWith('deni') || label.startsWith('deny');
+
+    if (!isApproved && !isDenied) return;
+
+    for (const row of this.bulkRows) {
+      if (!row.checked) continue;
+      const reqVal = this.coerceNumber(row.requested);
+      if (isApproved) {
+        row.approved = reqVal;
+        row.denied   = 0;
+      } else {
+        row.denied   = reqVal;
+        row.approved = 0;
+      }
     }
   }
 
@@ -4272,5 +4308,10 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
         'Source sections will not update until next AuthDetails visit.'
       );
     }
+  }
+  addGuideline(source: 'MCG' | 'InterQual' | 'Internal' | 'Other'): void {
+    // TODO: open the source-specific guideline picker / launch the integration
+    // e.g. this.guidelinesService.launch(source, this.activeState.decisionLineId);
+    console.log('Add guideline from source:', source);
   }
 }
