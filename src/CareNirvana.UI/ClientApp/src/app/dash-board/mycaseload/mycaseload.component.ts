@@ -195,11 +195,12 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
 
     this.dataSource.filterPredicate = (data, filter) => {
       const haystack = [
-        data.FirstName,
-        data.LastName,
-        data.MemberId,
-        this.getProduct?.(data.LevelMap),
-        data.RiskLevelCode
+        data.firstName,
+        data.lastName,
+        data.memberId,
+        this.getProduct?.(data.levelMap),
+        data.riskLevelCode,
+        data.programs
       ]
         .map(x => (x ?? '').toString().toLowerCase())
         .join(' ');
@@ -236,13 +237,19 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
   }
 
   private updatePagedMembers(): void {
+    // Use the dataSource's filtered data so search + sort + sidebar filters
+    // are all reflected in the card view as well.
+    const source = this.dataSource?.filteredData?.length
+      ? this.dataSource.filteredData
+      : (this.filtered || []);
+
     if (!this.paginator) {
-      this.pagedMembers = this.filtered;
+      this.pagedMembers = source;
       return;
     }
     const start = this.paginator.pageIndex * this.paginator.pageSize;
     const end = start + this.paginator.pageSize;
-    this.pagedMembers = (this.filtered || []).slice(start, end);
+    this.pagedMembers = source.slice(start, end);
   }
 
   toggleViewMode(): void {
@@ -255,9 +262,11 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
   }
 
   onSearch(event: any): void {
-    const filterValue = event.target.value.trim().toLowerCase();
+    const filterValue = (event?.target?.value ?? '').trim().toLowerCase();
     this.dataSource.filter = filterValue;
-    this.paginator.firstPage();
+    if (this.paginator) {
+      this.paginator.firstPage();
+    }
     this.updatePagedMembers();
   }
 
@@ -385,6 +394,10 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
 
     this.filtered = arr;
     this.dataSource.data = arr;
+
+    // Re-trigger the search filter on the new data so search + sidebar filters compose.
+    // Setting .filter to its current value forces MatTableDataSource to re-evaluate.
+    this.dataSource.filter = this.dataSource.filter ?? '';
 
     // keep card view in sync with paginator
     this.updatePagedMembers();

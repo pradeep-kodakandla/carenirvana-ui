@@ -1,24 +1,53 @@
-import { Component, OnInit, AfterViewInit, ViewChild, QueryList, ViewChildren, ElementRef } from '@angular/core';
-import { EventEmitter, Output, } from '@angular/core';
+import {
+  Component, OnInit, AfterViewInit, OnDestroy,
+  ViewChild, QueryList, ViewChildren, ElementRef,
+  EventEmitter, Output, ChangeDetectorRef
+} from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
-import { Observable, of } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
+import { takeUntil, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { DashboardServiceService } from 'src/app/service/dashboard.service.service';
 import { HeaderService } from 'src/app/service/header.service';
 import { Router, ActivatedRoute } from '@angular/router';
 import { MemberService } from 'src/app/service/shared-member.service';
-import { MemberactivityService, AcceptWorkGroupActivityRequest, RejectWorkGroupActivityRequest, DeleteMemberActivityRequest } from 'src/app/service/memberactivity.service';
-import { FormsModule } from '@angular/forms';
+import {
+  MemberactivityService,
+  AcceptWorkGroupActivityRequest,
+  RejectWorkGroupActivityRequest
+} from 'src/app/service/memberactivity.service';
 interface ActivityItem {
-  activityType?: string;
-  followUpDateTime?: string | Date;
-  dueDate?: string | Date;
+  // identifiers
+  activityId?: number;
+  memberActivityWorkGroupId?: number;
+  memberId?: number | string;
+  memberDetailsId?: string;
+  authNumber?: string;
+
+  // member
   firstName?: string;
   lastName?: string;
-  memberId?: number;
+
+  // activity
+  module?: string;
+  activityType?: string;
   status?: string;
+  userName?: string;        // Refer To (display)
+  referredTo?: string;
+
+  // dates
+  createdOn?: string | Date;
+  followUpDateTime?: string | Date;
+  dueDate?: string | Date;
+
+  // assignment / state
+  rejectedUserIds?: Array<number | string>;
+
+  // precomputed by component (avoids re-running pipes/funcs every CD cycle)
+  _dueClass?: string;
+  _daysLeftLabel?: string;
 }
 
 interface CalendarDay {
@@ -26,6 +55,8 @@ interface CalendarDay {
   isCurrentMonth: boolean;
   isToday: boolean;
   activities: ActivityItem[]; // same shape as rows in dataSource
+  /** Precomputed activities-by-hour map for the time grid (key = 0..23). */
+  hourBuckets?: { [hour: number]: ActivityItem[] };
 }
 
 
@@ -59,13 +90,18 @@ type CalendarViewRange = 'day' | 'workweek' | 'week' | 'month';
   templateUrl: './myactivities.component.html',
   styleUrls: ['./myactivities.component.css']
 })
-export class MyactivitiesComponent implements OnInit, AfterViewInit {
+export class MyactivitiesComponent implements OnInit, AfterViewInit, OnDestroy {
 
+  // ===== Output =====
+  @Output() addClicked = new EventEmitter<string>();
+
+  // ===== View state =====
   selectedDue = new Set<'OVERDUE' | 'TODAY' | 'FUTURE'>();
   viewMode: 'calendar' | 'table' = 'calendar';
+
+  // ===== Calendar state =====
   weekDays: string[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   currentMonth: Date = new Date();
-  calendarDays: CalendarDay[] = [];
   calendarViewRange: CalendarViewRange = 'workweek';  // default like Outlook
   currentDate: Date = new Date();
   selectedDate: Date = new Date();
@@ -73,21 +109,20 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
   visibleCalendarDays: CalendarDay[] = [];
   activeRangeDays: CalendarDay[] = [];
 
-  // hours shown in the time grid (change to taste)
-  //hours: number[] = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+  // hours shown in the time grid (full 24h)
   hours: number[] = Array.from({ length: 24 }, (_, i) => i);
 
   rangeLabel = '';
 
-  // sample “My calendars” data – wire to your own filters later
+  // TODO: replace with real "my calendars" data once the calendar
+  // selection feature is wired to the backend.
   userCalendars = [
     { id: 1, name: 'Calendar', color: '#2563eb', selected: true },
     { id: 2, name: 'Reminders', color: '#16a34a', selected: true }
   ];
 
-  // this should already exist in your component
+  // ===== Activities / table =====
   activities: ActivityItem[] = [];
-
 
   displayedColumns: string[] = [
     'module',
@@ -102,40 +137,81 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
     'thumb'
   ];
 
-  dataSource = new MatTableDataSource<any>([]);
-  rawData: any[] = [];
+  dataSource = new MatTableDataSource<ActivityItem>([]);
+  rawData: ActivityItem[] = [];
 
-  // filter panel (keep grid empty for now)
+  // ===== Filter panel =====
   showFilters = false;
   filtersForm!: FormGroup;
 
-  // quick search
+  // ===== Quick search =====
   quickSearchTerm = '';
+  private searchSubject = new Subject<string>();
 
-  // due chips
-  dueChip: 'OVERDUE' | 'TODAY' | 'FUTURE' | null = null;
+  // ===== Due chip counts =====
   overdueCount = 0;
   dueTodayCount = 0;
   dueFutureCount = 0;
 
-  // expand placeholder (kept for parity)
-  expandedElement: any | null = null;
+  // ===== Detail drawer =====
+  selectedActivityId: number | null = null;
+  selectedFollowUpDate: Date | null = null;
+  selectedSlot: { dayKey: string; hour: number } | null = null;
 
-  selectedActivityId: number | null = null;   // you already have this
-  selectedFollowUpDate: Date | null = null;   // NEW
+  // ===== Work groups =====
+  workGroupAssignments: WorkGroupAssignment[] = [];
+  workGroups: SimpleWorkGroup[] = [];
+  selectedWorkGroupId: number | null = null;
+  selectedWorkGroupName = 'All work groups';
+  visibleUsers: SimpleUser[] = [];
+  filteredVisibleUsers: SimpleUser[] = [];
+  maxUserSelection = 1;
+  selectedUserIds: number[] = [];
+  userSearchTerm = '';
 
+  // ===== Time grid refs =====
   @ViewChild('timeGridContainer') timeGridContainer!: ElementRef<HTMLDivElement>;
-  @ViewChildren('hourRow')
-  hourRows!: QueryList<ElementRef<HTMLDivElement>>;
+  @ViewChildren('hourRow') hourRows!: QueryList<ElementRef<HTMLDivElement>>;
 
   readonly workingStartHour = 8;
   readonly workingEndHour = 17;
 
-  @ViewChild(MatPaginator) paginator!: MatPaginator;
-  @ViewChild(MatSort) sort!: MatSort;
+  // ===== Lifecycle =====
+  private destroy$ = new Subject<void>();
+
+  // ===== Paginator / sort =====
+  // The table (and therefore <mat-paginator> / matSort) lives inside
+  // *ngIf="viewMode === 'table'" and isn't in the DOM on first AfterViewInit.
+  // ViewChild setters re-fire when the table section is created, wiring
+  // them up at that moment.
+  private _paginator?: MatPaginator;
+  private _sort?: MatSort;
+
+  @ViewChild(MatPaginator)
+  set paginator(p: MatPaginator) {
+    this._paginator = p;
+    if (p) {
+      this.dataSource.paginator = p;
+    }
+  }
+  get paginator(): MatPaginator {
+    return this._paginator!;
+  }
+
+  @ViewChild(MatSort)
+  set sort(s: MatSort) {
+    this._sort = s;
+    if (s) {
+      this.dataSource.sort = s;
+    }
+  }
+  get sort(): MatSort {
+    return this._sort!;
+  }
 
   constructor(
     private fb: FormBuilder,
+    private cdr: ChangeDetectorRef,
     private activityService: DashboardServiceService,
     private headerService: HeaderService,
     private router: Router,
@@ -143,21 +219,45 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
     private route: ActivatedRoute,
     private memberActivityService: MemberactivityService) { }
 
+  /** Cached once per request — sessionStorage hits aren't free. */
+  private get loggedInUserId(): number {
+    return Number(sessionStorage.getItem('loggedInUserid'));
+  }
+
   ngOnInit(): void {
     this.filtersForm = this.fb.group({}); // empty grid per request
     this.buildMonthGrid();
     this.buildActiveRangeDays();
     this.loadData();
 
-    this.activityService.getuserworkgroups(Number(sessionStorage.getItem('loggedInUserid'))).subscribe({
-      next: (res) => {
-        this.initializeWorkGroups(res);
-        console.log('User work groups:', res);
-      },
-      error: (err) => {
-        console.error('Error fetching user work groups:', err);
-      }
-    });
+    // Debounced quick-search pipeline: feeds quickSearchTerm + recomputeAll.
+    this.searchSubject
+      .pipe(
+        debounceTime(200),
+        distinctUntilChanged(),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(term => {
+        this.quickSearchTerm = term;
+        this.recomputeAll();
+      });
+
+    this.activityService.getuserworkgroups(this.loggedInUserId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (res) => {
+          this.initializeWorkGroups(res);
+        },
+        error: (err) => {
+          console.error('Error fetching user work groups:', err);
+        }
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+    this.searchSubject.complete();
   }
 
   initializeWorkGroups(rows: WorkGroupAssignment[]): void {
@@ -184,24 +284,27 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
 
 
   ngAfterViewInit(): void {
+    // NOTE: paginator/sort are wired via the @ViewChild setters above,
+    // because the table (and therefore <mat-paginator> / matSort) lives
+    // inside *ngIf="viewMode === 'table'" and isn't in the DOM yet on
+    // first AfterViewInit.
 
-
-    this.dataSource.paginator = this.paginator;
-    this.dataSource.sort = this.sort;
-
-    // quick search across a few fields (keep payload AS-IS / PascalCase)
-    this.dataSource.filterPredicate = (row: any, filter: string) => {
+    // Quick search across the visible columns. Field names must match the
+    // row payload, which is camelCase (see HTML bindings: row.firstName,
+    // row.memberId, row.activityType, etc.).
+    this.dataSource.filterPredicate = (row: ActivityItem, filter: string) => {
       const q = (filter || '').trim().toLowerCase();
       if (!q) return true;
 
-      const name = `${row?.FirstName ?? ''} ${row?.LastName ?? ''}`.trim();
+      const name = `${row?.firstName ?? ''} ${row?.lastName ?? ''}`.trim();
       const fields = [
-        row?.Module,
+        row?.module,
         name,
-        row?.MemberId?.toString(),
-        row?.UserName,                 // Refer To (username)
-        row?.ActivityType,
-        row?.Status
+        row?.memberId?.toString(),
+        row?.authNumber,
+        row?.userName,                 // Refer To (username)
+        row?.activityType,
+        row?.status
       ];
 
       return fields.some(v => (v ?? '').toString().toLowerCase().includes(q));
@@ -210,54 +313,54 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
     setTimeout(() => this.scrollToWorkingHours());
   }
 
-  /** Wire your real service here (kept AS-IS). It should return rows with PascalCase keys:
-   * Module, FirstName, LastName, MemberId, CreatedOn, ReferredTo, UserName, ActivityType,
-   * FollowUpDateTime, DueDate, Status, (and optionally StatusId / ActivityTypeId).
+  /** Wire your real service here. It should return rows with camelCase keys:
+   * module, firstName, lastName, memberId, createdOn, referredTo, userName,
+   * activityType, followUpDateTime, dueDate, status, (and optionally statusId
+   * / activityTypeId).
    */
-  private getMyActivities$(): Observable<any[]> {
-    return this.activityService.getpendingactivitydetails(sessionStorage.getItem('loggedInUserid'));
+  /** Wire your real service here. It should return rows with camelCase keys:
+   * module, firstName, lastName, memberId, createdOn, referredTo, userName,
+   * activityType, followUpDateTime, dueDate, status, (and optionally statusId
+   * / activityTypeId).
+   */
+  private getMyActivities$(): Observable<ActivityItem[]> {
+    return this.activityService.getpendingactivitydetails(this.loggedInUserId);
   }
 
   private loadData(): void {
-    this.getMyActivities$().subscribe({
-      next: rows => {
-        console.log('My Activities rows', rows);
-        const filtered = (rows || []).filter((row: any) => {
-          const rejected = row.rejectedUserIds || [];
+    this.getMyActivities$()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: rows => {
+          const userId = this.loggedInUserId;
+          const filtered: ActivityItem[] = (rows || []).filter(row => {
+            const rejected = row?.rejectedUserIds || [];
+            // keep the row ONLY if current user is NOT in rejectedUserIds
+            return !rejected.some(id => Number(id) === userId);
+          });
 
-          // keep the row ONLY if current user is NOT in rejectedUserIds
-          return !rejected.some((id: any) => Number(id) === Number(sessionStorage.getItem('loggedInUserid')));
-        });
-        this.activities = filtered || [];
-        this.dataSource.data = this.activities;
-        this.rawData = Array.isArray(filtered) ? filtered : [];
-        this.recomputeAll();
-        this.buildMonthGrid();
-        this.buildActiveRangeDays();
+          // Precompute per-row display values so the template doesn't
+          // recreate Date objects on every change-detection cycle.
+          for (const row of filtered) {
+            row._dueClass = this.computeDueDateClass(row.dueDate);
+            row._daysLeftLabel = this.computeDaysLeftLabel(row.dueDate);
+          }
 
-      },
-      error: () => {
-        this.rawData = [];
-        this.recomputeAll();
-        this.activities = [];
-        this.dataSource.data = [];
-
-      }
-    });
-    this.loadActivityDetail(4);
-
-  }
-
-  loadActivityDetail(id: number): void {
-    this.memberActivityService.getMemberActivityDetail(id).subscribe({
-      next: detail => {
-        /*this.activityDetail = detail;*/
-        console.log('Activity detail loaded', detail);
-      },
-      error: err => {
-        console.error('Error loading activity detail', err);
-      }
-    });
+          this.activities = filtered;
+          this.rawData = filtered;
+          this.recomputeAll();           // sets dataSource.data + filter
+          this.buildMonthGrid();
+          this.buildActiveRangeDays();
+          this.cdr.markForCheck();
+        },
+        error: err => {
+          console.error('Error loading my activities', err);
+          this.activities = [];
+          this.rawData = [];
+          this.recomputeAll();
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   // UI events
@@ -265,8 +368,9 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
 
   onQuickSearch(ev: Event): void {
     const v = (ev.target as HTMLInputElement).value ?? '';
-    this.quickSearchTerm = v.trim().toLowerCase();
-    this.recomputeAll();
+    // Push through the debounced pipeline (set up in ngOnInit). Avoids
+    // re-filtering rawData on every keystroke.
+    this.searchSubject.next(v.trim().toLowerCase());
   }
 
   isDueSelected(kind: 'OVERDUE' | 'TODAY' | 'FUTURE'): boolean {
@@ -274,7 +378,6 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
   }
 
   setDueChip(kind: 'OVERDUE' | 'TODAY' | 'FUTURE'): void {
-    //this.dueChip = which;
     if (this.selectedDue.has(kind)) {
       this.selectedDue.delete(kind);
     } else {
@@ -289,31 +392,27 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
 
     let base = [...this.rawData];
 
-    if (this.selectedDue && this.selectedDue.size > 0) {
+    if (this.selectedDue.size > 0) {
       const today = new Date();
-
       base = base.filter(r => {
         const d = this.toDate(r?.dueDate);
         if (!d) return false;
 
         const cmp = this.compareDateOnly(d, today); // <0 overdue, 0 today, >0 future
 
-        let match = false;
-        if (this.selectedDue.has('OVERDUE') && cmp < 0) match = true;
-        if (this.selectedDue.has('TODAY') && cmp === 0) match = true;
-        if (this.selectedDue.has('FUTURE') && cmp > 0) match = true;
-
-        return match;
+        if (this.selectedDue.has('OVERDUE') && cmp < 0) return true;
+        if (this.selectedDue.has('TODAY') && cmp === 0) return true;
+        if (this.selectedDue.has('FUTURE') && cmp > 0) return true;
+        return false;
       });
-    } else {
-      base = base;
     }
 
-    // quick search
     this.dataSource.data = base;
     this.dataSource.filter = this.quickSearchTerm;
 
-    if (this.paginator) this.paginator.firstPage();
+    if (this._paginator) {
+      this._paginator.firstPage();
+    }
   }
 
   private computeDueCounts(): void {
@@ -347,13 +446,14 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
   }
 
   // ===== Template helpers =====
-  fullName(row: any): string {
-    const f = row?.FirstName ?? '';
-    const l = row?.LastName ?? '';
+  fullName(row: ActivityItem): string {
+    const f = row?.firstName ?? '';
+    const l = row?.lastName ?? '';
     return `${f} ${l}`.trim();
   }
 
-  getDueDateClass(dateVal: any): string {
+  /** Pure compute — used both at load time (precompute) and as a fallback. */
+  private computeDueDateClass(dateVal: any): string {
     const d = this.toDate(dateVal);
     if (!d) return 'due-unknown';
     const cmp = this.compareDateOnly(d, new Date());
@@ -362,7 +462,8 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
     return 'due-green';
   }
 
-  getDaysLeftLabel(dateVal: any): string {
+  /** Pure compute — used both at load time (precompute) and as a fallback. */
+  private computeDaysLeftLabel(dateVal: any): string {
     const d = this.toDate(dateVal);
     if (!d) return '';
     const today = new Date();
@@ -377,37 +478,47 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
     return `In ${diff}d`;
   }
 
-  onMemberClick(memberId: string, memberName: string): void {
+  /**
+   * Public template helpers. The HTML now binds to `row._dueClass` /
+   * `row._daysLeftLabel` directly (precomputed in loadData) for perf, but
+   * these wrappers stay for any caller that still passes a date.
+   */
+  getDueDateClass(dateVal: any): string {
+    return this.computeDueDateClass(dateVal);
+  }
+
+  getDaysLeftLabel(dateVal: any): string {
+    return this.computeDaysLeftLabel(dateVal);
+  }
+
+  onMemberClick(memberId: number | string, memberName: string): void {
     const tabLabel = `Member: ${memberName}`;
     const tabRoute = `/member-info/${memberId}`;
 
     const existingTab = this.headerService.getTabs().find(tab => tab.route === tabRoute);
-
     if (existingTab) {
       this.headerService.selectTab(tabRoute);
-      this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
-        this.router.navigate([tabRoute]);
-      });
     } else {
-      this.headerService.addTab(tabLabel, tabRoute, memberId);
-      this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
-        this.router.navigate([tabRoute]);
-      });
+      this.headerService.addTab(tabLabel, tabRoute, String(memberId));
     }
+
+    this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+      this.router.navigate([tabRoute]);
+    });
   }
 
-  @Output() addClicked = new EventEmitter<string>();
-
-  onAuthClick(authNumber: string = '', memId: string = '', memberDetailsId: string) {
+  onAuthClick(authNumber: string = '', memId: string | number = '', memberDetailsId: string): void {
     this.addClicked.emit(authNumber);
     this.memberService.setIsCollapse(true);
 
     if (!authNumber) authNumber = 'DRAFT';
 
-    // read member id once (prefer your own field; fall back to route)
-    const memberId = memId ?? Number(this.route.parent?.snapshot.paramMap.get('id'));
+    // Prefer the explicit member id; fall back to the route param.
+    // NOTE: `??` only fires on null/undefined — empty string sails through,
+    // so `||` is the correct operator here.
+    const memberId = memId || Number(this.route.parent?.snapshot.paramMap.get('id'));
 
-    // ✅ point tab to the CHILD route under the shell
+    // Point tab to the CHILD route under the shell
     const tabRoute = `/member-info/${memberId}/member-auth/${authNumber}`;
     const tabLabel = `Auth No ${authNumber}`;
 
@@ -417,7 +528,6 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
       this.headerService.selectTab(tabRoute);
       const mdId = existingTab.memberDetailsId ?? null;
       if (mdId) sessionStorage.setItem('selectedMemberDetailsId', mdId);
-
     } else {
       this.headerService.addTab(tabLabel, tabRoute, String(memberId));
       sessionStorage.setItem('selectedMemberDetailsId', memberDetailsId);
@@ -426,23 +536,6 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
       this.router.navigate([tabRoute]);
     });
   }
-  toggleThumb(row: any, event: MouseEvent): void {
-    event.stopPropagation(); // prevent row expansion click
-    if (row.thumb === 'up') {
-      row.thumb = 'down';
-    } else if (row.thumb === 'down') {
-      row.thumb = null;
-    } else {
-      row.thumb = 'up';
-    }
-  }
-
-  getThumbClass(row: any): string {
-    if (row.thumb === 'up') return 'thumb-up';
-    if (row.thumb === 'down') return 'thumb-down';
-    return 'thumb-neutral';
-  }
-
 
   // Calendar view methods (kept for parity; not used currently)
   setViewMode(mode: 'calendar' | 'table'): void {
@@ -507,16 +600,31 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
 
     const cursor = new Date(start);
     while (cursor <= end) {
+      const dayActivities = this.getActivitiesForDate(cursor);
       this.activeRangeDays.push({
         date: new Date(cursor),
         isCurrentMonth: cursor.getMonth() === this.currentMonth.getMonth(),
         isToday: this.isSameDate(cursor, today),
-        activities: this.getActivitiesForDate(cursor)   // 🔴 same as month
+        activities: dayActivities,
+        hourBuckets: this.bucketActivitiesByHour(dayActivities)
       });
       cursor.setDate(cursor.getDate() + 1);
     }
 
     this.updateRangeLabel(start, end);
+  }
+
+  /** Group an activity list into a 0..23 hour bucket map, computed once per day. */
+  private bucketActivitiesByHour(items: ActivityItem[]): { [hour: number]: ActivityItem[] } {
+    const buckets: { [hour: number]: ActivityItem[] } = {};
+    for (const ev of items) {
+      const src = ev.followUpDateTime || ev.dueDate;
+      if (!src) continue;
+      const d = new Date(src as any);
+      const h = d.getHours();
+      (buckets[h] = buckets[h] || []).push(ev);
+    }
+    return buckets;
   }
 
   /** Get activities whose followUpDateTime (or dueDate) is on a specific date */
@@ -665,7 +773,7 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
     } else {
       const left = s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       const right = e.toLocaleDateString('en-US', {
-        month: s.getMonth() === e.getMonth() ? 'short' : 'short',
+        month: 'short',
         day: 'numeric',
         year: s.getFullYear() === e.getFullYear() ? undefined : 'numeric'
       });
@@ -680,12 +788,8 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
   }
 
   getEventsForHour(day: CalendarDay, hour: number): ActivityItem[] {
-    return day.activities.filter(ev => {
-      if (!ev.followUpDateTime && !ev.dueDate) { return false; }
-      const src = ev.followUpDateTime || ev.dueDate;
-      const d = new Date(src as any);
-      return d.getHours() === hour;
-    });
+    // O(1) read from the precomputed map populated by buildActiveRangeDays.
+    return day.hourBuckets?.[hour] ?? [];
   }
 
 
@@ -694,52 +798,54 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
     // You can use this to filter activities by calendar later.
   }
 
-  onAccept(ev: any): void {
-    const confirmed = confirm('Are you sure want to accept the activity?');
-    if (!confirmed) {
+  onAccept(row: ActivityItem): void {
+    if (!row?.memberActivityWorkGroupId) {
+      console.warn('Cannot accept: row has no memberActivityWorkGroupId', row);
+      return;
+    }
+    // TODO: replace native confirm() with MatDialog when a confirm-dialog
+    // component is available — leaving this for now to keep behavior stable.
+    if (!confirm('Are you sure you want to accept this activity?')) {
       return;
     }
 
     const payload: AcceptWorkGroupActivityRequest = {
-      memberActivityWorkGroupId: 1,
-      userId: Number(sessionStorage.getItem('loggedInUserid')),
-      comment: 'Accepted from calendar' // optional
+      memberActivityWorkGroupId: row.memberActivityWorkGroupId,
+      userId: this.loggedInUserId,
+      comment: 'Accepted'
     };
 
-    this.memberActivityService.acceptWorkGroupActivity(payload).subscribe({
-      next: () => {
-        console.log('Work-group activity accepted:', payload);
-        // TODO: refresh list / calendar if needed
-        this.loadData();
-      },
-      error: err => {
-        console.error('Error accepting work-group activity', err);
-      }
-    });
+    this.memberActivityService.acceptWorkGroupActivity(payload)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => this.loadData(),
+        error: err => console.error('Error accepting work-group activity', err)
+      });
   }
 
-  onReject(ev: any): void {
-    const confirmed = confirm('Are you sure want to reject the activity?');
-    if (!confirmed) {
+  onReject(row: ActivityItem): void {
+    if (!row?.memberActivityWorkGroupId) {
+      console.warn('Cannot reject: row has no memberActivityWorkGroupId', row);
+      return;
+    }
+    // TODO: replace native confirm() with MatDialog (with a reason prompt)
+    // when a confirm-dialog component is available.
+    if (!confirm('Are you sure you want to reject this activity?')) {
       return;
     }
 
     const payload: RejectWorkGroupActivityRequest = {
-      memberActivityWorkGroupId: 1,
-      userId: Number(sessionStorage.getItem('loggedInUserid')),
-      comment: 'Rejected from calendar' // or prompt for reason
+      memberActivityWorkGroupId: row.memberActivityWorkGroupId,
+      userId: this.loggedInUserId,
+      comment: 'Rejected'
     };
 
-    this.memberActivityService.rejectWorkGroupActivity(payload).subscribe({
-      next: () => {
-        console.log('Work-group activity rejected:', payload);
-        // TODO: refresh list / calendar if needed
-        this.loadData();
-      },
-      error: err => {
-        console.error('Error rejecting work-group activity', err);
-      }
-    });
+    this.memberActivityService.rejectWorkGroupActivity(payload)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => this.loadData(),
+        error: err => console.error('Error rejecting work-group activity', err)
+      });
   }
 
 
@@ -748,23 +854,6 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
   }
 
   /**********Work Group************/
-
-  // raw result from API
-  workGroupAssignments: WorkGroupAssignment[] = [];
-
-  // distinct work groups to show as chips
-  workGroups: SimpleWorkGroup[] = [];
-
-  // currently selected group; null = all groups
-  selectedWorkGroupId: number | null = null;
-  selectedWorkGroupName = 'All work groups';
-
-  // users shown on the left side
-  visibleUsers: SimpleUser[] = [];
-  maxUserSelection = 1;
-  selectedUserIds: number[] = [];
-  userSearchTerm = '';
-  filteredVisibleUsers: SimpleUser[] = []
 
   private buildUsersForAssignments(assignments: WorkGroupAssignment[]): SimpleUser[] {
     const userMap = new Map<number, string>();
@@ -867,14 +956,11 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
 
 
   /**********Activity Detail Drawer************/
-  /*  selectedActivityId: number | null = null;*/
-  selectedSlot: { dayKey: string; hour: number } | null = null;
   // Called from both calendar and table View buttons
-  onViewActivity(item: any): void {
-    console.log('View activity clicked', item);
-    const id = item.activityId;
+  onViewActivity(item: ActivityItem): void {
+    const id = item?.activityId;
     if (!id) {
-      console.warn('No memberActivityId found on row/event', item);
+      console.warn('No activityId found on row/event', item);
       return;
     }
     this.selectedFollowUpDate = null;
@@ -905,13 +991,12 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit {
     this.selectedFollowUpDate = dt;        // pass to memberactivity component
   }
 
-  private getDayKey(day: any): string {
-    // if day.date is a Date
+  private getDayKey(day: CalendarDay): string {
     const d = day.date instanceof Date ? day.date : new Date(day.date);
     return d.toISOString().substring(0, 10); // 'YYYY-MM-DD'
   }
 
-  isSelectedSlot(day: any, hour: number): boolean {
+  isSelectedSlot(day: CalendarDay, hour: number): boolean {
     if (!this.selectedSlot) {
       return false;
     }

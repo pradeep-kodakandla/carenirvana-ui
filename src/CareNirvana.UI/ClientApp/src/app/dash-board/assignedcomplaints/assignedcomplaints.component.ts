@@ -139,6 +139,7 @@ export class AssignedcomplaintsComponent implements OnInit, AfterViewInit {
       const set = [
         row?.caseNumber,
         row?.caseTypeText ?? row?.caseType,
+        (row as any)?.caseCategoryText ?? (row as any)?.caseCategory,
         row?.caseStatusText ?? row?.caseStatusId,
         row?.casePriorityText ?? row?.casePriority,
         row?.memberName,

@@ -18,10 +18,11 @@
       <!-- Search + filter button -->
       <div class="search-section"
            style="display:flex;align-items:center;gap:8px;flex:1;">
-        <input type="text"
+        <input type="search"
                placeholder="🔍 Search activities…"
                (input)="onQuickSearch($event)"
                class="search-input"
+               aria-label="Search activities"
                style="flex:1; padding:10px 12px; border:1px solid #e1e5ea; border-radius:10px; outline:none;" />
         <button class="filter-btn"
                 type="button"
@@ -268,7 +269,7 @@
                   <div class="events-list">
                     <div class="event-pill"
                          *ngFor="let ev of day.activities | slice:0:3"
-                         [ngClass]="getDueDateClass(ev.dueDate)"
+                         [ngClass]="ev._dueClass"
                          (click)="onCalendarEventClick(ev, $event)">
                       <div class="event-title">
                         {{ ev.activityType || 'Activity' }}
@@ -317,7 +318,7 @@
                              [ngClass]="{ 'slot-selected': isSelectedSlot(day, h) }">
                           <div class="time-event"
                                *ngFor="let ev of getEventsForHour(day, h)"
-                               [ngClass]="getDueDateClass(ev.dueDate)"
+                               [ngClass]="ev._dueClass"
                                (click)="onCalendarEventClick(ev, $event)"
                                [matTooltip]="
                                    'Activity: ' + (ev.activityType || 'Activity') + '\n' +
@@ -344,7 +345,7 @@
                             <!-- right side: action icons -->
                             <div class="event-actions">
 
-                              <button mat-icon-button class="icon-btn acknowledge" matTooltip="Accept & Complete">
+                              <button mat-icon-button class="icon-btn acknowledge" matTooltip="Complete">
                                 <mat-icon>thumb_up</mat-icon>
                               </button>
                               <button mat-icon-button class="icon-btn view" matTooltip="Edit" (click)="onViewActivity(ev); $event.stopPropagation()">
@@ -376,12 +377,10 @@
 
         <!-- TABLE VIEW -->
         <section *ngIf="viewMode === 'table'" class="table-view-wrapper">
-          <mat-drawer-container class="sidenav-container" autosize>
-            <mat-drawer-content mode="side" opened>
-              <div class="table-wrapper">
-                <table mat-table [dataSource]="dataSource" matSort
-                       multiTemplateDataRows
-                       class="mat-elevation-z1 full-width-table pro-table mng-table">
+          <div class="table-wrapper">
+            <table mat-table [dataSource]="dataSource" matSort
+                   multiTemplateDataRows
+                   class="mat-elevation-z1 full-width-table pro-table mng-table">
 
                   <!-- Module -->
                   <ng-container matColumnDef="module">
@@ -399,10 +398,11 @@
                     <td mat-cell *matCellDef="let row">
                       <div class="name-cell">
                         <div class="sub-name">
-                          <a href="#"
-                             (click)="onMemberClick(row.memberId, (row.firstName || '') + ' ' + (row.lastName || '')); $event.preventDefault()">
+                          <button type="button"
+                                  class="link-button"
+                                  (click)="onMemberClick(row.memberId, (row.firstName || '') + ' ' + (row.lastName || ''))">
                             {{ (row.firstName || '') + ' ' + (row.lastName || '') }}
-                          </a>
+                          </button>
                         </div>
                         <div class="sub-id">ID: {{ row.memberId }}</div>
                       </div>
@@ -413,10 +413,11 @@
                   <ng-container matColumnDef="authnumber">
                     <th mat-header-cell *matHeaderCellDef mat-sort-header>Auth #</th>
                     <td mat-cell *matCellDef="let row">
-                      <a href="#"
-                         (click)="onAuthClick(row.authNumber, row.memberId, row.memberDetailsId); $event.preventDefault()">
+                      <button type="button"
+                              class="link-button"
+                              (click)="onAuthClick(row.authNumber, row.memberId, row.memberDetailsId)">
                         {{ row.authNumber }}
-                      </a>
+                      </button>
                     </td>
                   </ng-container>
 
@@ -451,12 +452,12 @@
                     <th mat-header-cell *matHeaderCellDef mat-sort-header>Due Date</th>
                     <td mat-cell *matCellDef="let row">
                       <span class="risk-chip compact"
-                            [ngClass]="getDueDateClass(row.dueDate)">
+                            [ngClass]="row._dueClass">
                         <div class="date-value">
                           {{ row.dueDate | date }}
                         </div>
                         <div class="days-left">
-                          {{ getDaysLeftLabel(row.dueDate) }}
+                          {{ row._daysLeftLabel }}
                         </div>
                       </span>
                     </td>
@@ -473,12 +474,17 @@
                     <td class="actions-cell" mat-cell
                         *matCellDef="let row">
 
-
-                      <button mat-icon-button class="icon-btn acknowledge" matTooltip="Accept & Complete">
+                      <button mat-icon-button
+                              class="icon-btn acknowledge"
+                              matTooltip="Accept & Complete"
+                              (click)="onAccept(row); $event.stopPropagation()">
                         <mat-icon>thumb_up</mat-icon>
                       </button>
-                      <button mat-icon-button class="icon-btn view" matTooltip="Edit" (click)="onViewActivity(row); $event.stopPropagation()">
-                        <mat-icon>edit</mat-icon>
+                      <button mat-icon-button
+                              class="icon-btn reject"
+                              matTooltip="Reject"
+                              (click)="onReject(row); $event.stopPropagation()">
+                        <mat-icon>thumb_down</mat-icon>
                       </button>
                       <button mat-icon-button
                               class="icon-btn view"
@@ -487,24 +493,16 @@
                         <mat-icon>visibility</mat-icon>
                       </button>
 
-
                     </td>
                   </ng-container>
 
-                  <!-- Expanded placeholder -->
-                  <ng-container matColumnDef="expandedDetail">
-                    <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns.length">
-                    </td>
-                  </ng-container>
+                  <!-- Expanded-detail row machinery was scaffolded by the
+                       Material schematic but never used. Removed. -->
 
                   <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
                   <tr mat-row *matRowDef="let row; columns: displayedColumns;"
-                      class="example-element-row"
-                      [class.example-expanded-row]="expandedElement === row"
-                      (click)="expandedElement = expandedElement === row ? null : row">
+                      class="example-element-row">
                   </tr>
-                  <tr mat-row *matRowDef="let row; columns: ['expandedDetail']"
-                      class="example-detail-row"></tr>
 
                   <tr class="mat-row" *matNoDataRow>
                     <td class="mat-cell" [attr.colspan]="displayedColumns.length">No data</td>
@@ -515,16 +513,7 @@
                 <mat-paginator [pageSizeOptions]="[10, 25, 100]"
                                aria-label="Select page">
                 </mat-paginator>
-              </div>
-            </mat-drawer-content>
-
-            <mat-drawer #drawer class="sidenav"
-                        style="width:22%;height:50%;align-content:center;"
-                        position="end"
-                        mode="side"
-                        opened="false">
-            </mat-drawer>
-          </mat-drawer-container>
+          </div>
         </section>
       </div>
       <div class="myactivities-right"

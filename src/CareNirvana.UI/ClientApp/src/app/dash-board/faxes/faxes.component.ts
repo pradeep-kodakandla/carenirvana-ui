@@ -429,6 +429,24 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         default:           return '';
       }
     };
+
+    // Quick search across visible/relevant fax fields (assignedcomplaints-style)
+    this.dataSource.filterPredicate = (row: FaxFile, filter: string) => {
+      const q = (filter || '').trim().toLowerCase();
+      if (!q) return true;
+
+      const set = [
+        row?.fileName,
+        row?.originalName,
+        row?.memberName,
+        row?.memberId?.toString(),
+        row?.workBasket,
+        row?.status,
+        row?.processStatus
+      ];
+
+      return set.some(v => (v ?? '').toString().toLowerCase().includes(q));
+    };
   }
 
   reload(): void {
@@ -1547,8 +1565,10 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   quickSearchTerm = '';
 
   onQuickSearch(ev: Event): void {
-    const v = (ev.target as HTMLInputElement).value ?? '';
-    this.quickSearchTerm = v.trim().toLowerCase();
+    const v = (ev.target as HTMLInputElement)?.value ?? '';
+    this.quickSearchTerm = v;
+    this.dataSource.filter = (v || '').trim().toLowerCase();
+    if (this.dataSource.paginator) this.dataSource.paginator.firstPage();
   }
 
   async onFileChosen(evt?: Event, fileBytesBase64?: string, fileName = 'preview.pdf') {

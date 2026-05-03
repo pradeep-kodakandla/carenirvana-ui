@@ -4,7 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { MemberService } from 'src/app/service/shared-member.service';
 
 // ─── Tabs that force the left sidebar into collapsed mode ───────────────────
-const COLLAPSE_TABS = new Set(['Authorization', 'Complaints']);
+const COLLAPSE_TABS = new Set(['']);// new Set(['Authorization', 'Complaints']);
 
 interface DashboardWidget {
   key: string;

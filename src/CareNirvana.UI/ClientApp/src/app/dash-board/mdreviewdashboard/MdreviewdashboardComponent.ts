@@ -135,7 +135,10 @@ export class MdreviewdashboardComponent {
       const fields = [
         row?.Module       ?? row?.module,
         name,
+        firstName,
+        lastName,
         (row?.MemberId    ?? row?.memberId)?.toString(),
+        (row?.AuthNumber  ?? row?.authNumber)?.toString(),
         row?.UserName     ?? row?.userName,
         row?.ActivityType ?? row?.activityType,
         row?.Status       ?? row?.status

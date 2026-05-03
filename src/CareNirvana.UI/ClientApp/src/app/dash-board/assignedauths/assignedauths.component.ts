@@ -104,18 +104,18 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
     this.dataSource.paginator = this.paginator;
     this.dataSource.sort = this.sort;
 
-    // quick search across selected PascalCase fields
+    // quick search across selected fields (supports both camelCase and PascalCase payloads)
     this.dataSource.filterPredicate = (row: any, filter: string) => {
       const q = (filter || '').trim().toLowerCase();
       if (!q) return true;
       const set = [
-        row?.AuthNumber,
-        row?.TemplateName,
-        row?.AuthStatusValue ?? row?.AuthStatus,
-        row?.RequestPriorityValue ?? row?.AuthPriority,
-        row?.MemberName,
-        row?.MemberId?.toString(),
-        row?.TreatmentTypeValue ?? row?.TreatmentType
+        row?.authNumber ?? row?.AuthNumber,
+        row?.templateName ?? row?.TemplateName,
+        row?.authStatusValue ?? row?.AuthStatusValue ?? row?.authStatus ?? row?.AuthStatus,
+        row?.requestPriorityValue ?? row?.RequestPriorityValue ?? row?.authPriority ?? row?.AuthPriority,
+        row?.memberName ?? row?.MemberName,
+        (row?.memberId ?? row?.MemberId)?.toString(),
+        row?.treatmentTypeValue ?? row?.TreatmentTypeValue ?? row?.treatmentType ?? row?.TreatmentType
       ];
       return set.some(v => (v ?? '').toString().toLowerCase().includes(q));
     };
@@ -250,24 +250,24 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
 
     if (f.authType) {
       const q = ('' + f.authType).toLowerCase();
-      base = base.filter(r => (r?.TemplateName ?? '').toString().toLowerCase().includes(q));
+      base = base.filter(r => (r?.templateName ?? r?.TemplateName ?? '').toString().toLowerCase().includes(q));
     }
 
     if (f.treatmentType) {
       const q = ('' + f.treatmentType).toLowerCase();
-      base = base.filter(r => (r?.TreatmentTypeValue ?? r?.TreatmentType ?? '')
+      base = base.filter(r => (r?.treatmentTypeValue ?? r?.TreatmentTypeValue ?? r?.treatmentType ?? r?.TreatmentType ?? '')
         .toString().toLowerCase().includes(q));
     }
 
     if (f.authPriority) {
       const q = ('' + f.authPriority).toLowerCase();
-      base = base.filter(r => (r?.RequestPriorityValue ?? r?.AuthPriority ?? '')
+      base = base.filter(r => (r?.requestPriorityValue ?? r?.RequestPriorityValue ?? r?.authPriority ?? r?.AuthPriority ?? '')
         .toString().toLowerCase().includes(q));
     }
 
     if (f.authStatus) {
       const q = ('' + f.authStatus).toLowerCase();
-      base = base.filter(r => (r?.AuthStatusValue ?? r?.AuthStatus ?? '')
+      base = base.filter(r => (r?.authStatusValue ?? r?.AuthStatusValue ?? r?.authStatus ?? r?.AuthStatus ?? '')
         .toString().toLowerCase().includes(q));
     }
 
@@ -276,7 +276,7 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
       const from = f.createdFrom ? this.startOfDay(this.toDate(f.createdFrom)) : null;
       const to = f.createdTo ? this.endOfDay(this.toDate(f.createdTo)) : null;
       base = base.filter(r => {
-        const dt = this.toDate(r?.CreatedOn);
+        const dt = this.toDate(r?.createdOn ?? r?.CreatedOn);
         if (!dt) return false;
         if (from && dt < from) return false;
         if (to && dt > to) return false;
@@ -289,7 +289,7 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
       const from = f.authDueFrom ? this.startOfDay(this.toDate(f.authDueFrom)) : null;
       const to = f.authDueTo ? this.endOfDay(this.toDate(f.authDueTo)) : null;
       base = base.filter(r => {
-        const dt = this.toDate(r?.AuthDueDate);
+        const dt = this.toDate(r?.authDueDate ?? r?.AuthDueDate);
         if (!dt) return false;
         if (from && dt < from) return false;
         if (to && dt > to) return false;

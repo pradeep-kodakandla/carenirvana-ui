@@ -3,7 +3,12 @@ table {
   width: 100%;
 }
 
-.mdc-button {
+/*
+ * .mdc-button override (legacy from when buttons were laid out inline).
+ * Scoped with `.mng-table` so this no longer leaks into Material buttons
+ * elsewhere in the component (e.g., paginator, drawer, tooltip).
+ */
+.mng-table .mdc-button {
   display: inline;
 }
 
@@ -12,25 +17,48 @@ table {
   width: 100%;
 }
 
-tr.example-detail-row {
-  height: 0;
+/*
+ * Button styled as a link — used for member name and auth number cells.
+ * Uses a real <button> for keyboard / screen-reader semantics, but reads
+ * visually as a link.
+ */
+.link-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: #2563eb;
+  cursor: pointer;
+  text-align: left;
+}
+.link-button:hover {
+  text-decoration: underline;
+}
+.link-button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
-tr.example-element-row:not(.example-expanded-row):hover {
+/*
+ * Row action icon buttons (table thumb column + calendar event-actions).
+ * Uses Material's mat-icon-button base; just adds semantic colors.
+ */
+.icon-btn.acknowledge { color: #16a34a; }   /* green: accept */
+.icon-btn.reject      { color: #dc2626; }   /* red: reject */
+.icon-btn.view        { color: #6b7280; }   /* gray: view */
+
+tr.example-element-row:hover {
   background: whitesmoke;
 }
 
-tr.example-element-row:not(.example-expanded-row):active {
+tr.example-element-row:active {
   background: #efefef;
 }
 
 .example-element-row td {
   border-bottom-width: 0;
-}
-
-.example-element-detail {
-  overflow: hidden;
-  display: flex;
 }
 
 .div-secondary {
