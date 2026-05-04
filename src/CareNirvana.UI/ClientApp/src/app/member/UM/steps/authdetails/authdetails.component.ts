@@ -3468,6 +3468,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   // Save (AuthDetails step)
   // ============================================================
   async save(): Promise<void> {
+
     // ── View-Only guard: block saves when authorization is Closed ──
     if (this.isViewOnly) {
       this.shell?.notifySaveInfo('This authorization is in Closed status and cannot be edited.');
@@ -3500,6 +3501,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       // Throw so the shell does NOT show "saved successfully"
       throw { validation: true, message };
     }
+    
 
     // Template validation (rules from getTemplateValidation), displayed per section like AuthorizationComponent
     const { failedErrors, failedWarnings, allMessages } = this.runTemplateValidation();

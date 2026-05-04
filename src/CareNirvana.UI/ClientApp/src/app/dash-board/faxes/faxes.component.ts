@@ -8,6 +8,8 @@ import { finalize, firstValueFrom } from 'rxjs';
 import { DashboardServiceService, FaxFile as ApiFaxFile } from 'src/app/service/dashboard.service.service';
 import { PdfOcrService, OcrResult } from 'src/app/service/pdfocr.service';
 import { extractPriorAuth, extractTexasFromText, extractArizonaFromText, extractNhsFromFields, isNevada } from 'src/app/service/priorauth.extractor';
+import { detectForms, isMultiForm, splitByForms, FormSpan, SplitResult } from 'src/app/service/multi-form-detector';
+import { extractNhsFromText, isNhsText } from 'src/app/service/nhs-text-adapter';
 import { PriorAuth } from 'src/app/service/priorauth.schema';
 import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -206,10 +208,10 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   private _ocrByPage: Array<{ page: number; text: string }> = [];
 
   private readonly HL_COLORS: Record<string, { r: number; g: number; b: number }> = {
-    patient:    { r: 0.15, g: 0.39, b: 0.92 },
-    review:     { r: 0.49, g: 0.23, b: 0.93 },
-    service:    { r: 0.85, g: 0.47, b: 0.02 },
-    provider:   { r: 0.02, g: 0.59, b: 0.41 },
+    patient: { r: 0.15, g: 0.39, b: 0.92 },
+    review: { r: 0.49, g: 0.23, b: 0.93 },
+    service: { r: 0.85, g: 0.47, b: 0.02 },
+    provider: { r: 0.02, g: 0.59, b: 0.41 },
     submission: { r: 0.39, g: 0.40, b: 0.95 },
   };
 
@@ -257,6 +259,21 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   private _activeAutoAuthPipeline: AutoAuthPipeline | null = null;
 
   /**
+   * Resolves once a specific pipeline's hidden auth-save has fired
+   * authSaved or authCancelled. Used by runPipelineForFile() so the
+   * multi-form orchestrator can `await` each pipeline before launching
+   * the next — this is what stops _activeAutoAuthPipeline from being
+   * stomped by a sibling pipeline mid-save (which would otherwise leak
+   * past the multi-form run and break the next manual Save Authorization
+   * click in Fax mode).
+   *
+   * Keyed by pipeline.id; the resolver is removed from the map as soon
+   * as it fires. Always settle (don't reject) so the orchestrator's
+   * for-loop continues on failure.
+   */
+  private _pipelineDoneResolvers = new Map<string, () => void>();
+
+  /**
    * Controls the hidden pipeline <app-authdetails> instance.
    * true  → Angular renders the component in a display:none container so it
    *         can initialise, load the template, prefill fields, and call save()
@@ -299,6 +316,27 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   /** Minimise the popup without dismissing pipelines (user can re-open via notification). */
   minimisePipelinePopup(): void {
     this.showPipelinePopup = false;
+  }
+
+  /**
+   * Backdrop click — never traps the user. If everything finished, behave like
+   * Close (dismiss cards too). Otherwise behave like Minimise (hide the modal,
+   * keep cards in the side notification pill so processing keeps running).
+   */
+  onPipelineBackdropClick(): void {
+    if (this.allPipelinesComplete) this.closePipelinePopup();
+    else this.minimisePipelinePopup();
+  }
+
+  /**
+   * Close-button click — same safety net as the backdrop. We used to disable
+   * this button while pipelines were running, but that meant a stuck pipeline
+   * (e.g. hidden auth-save threw silently) trapped the user behind the modal.
+   * Now the button always works: minimise while running, full close when done.
+   */
+  onPipelineCloseClick(): void {
+    if (this.allPipelinesComplete) this.closePipelinePopup();
+    else this.minimisePipelinePopup();
   }
 
   /** Re-open the popup (e.g. if user minimised while steps were running). */
@@ -420,13 +458,13 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
     this.dataSource.sortingDataAccessor = (item: FaxFile, sortHeaderId: string): string | number => {
       switch (sortHeaderId) {
-        case 'fileName':   return (item.fileName || '').toLowerCase();
+        case 'fileName': return (item.fileName || '').toLowerCase();
         case 'receivedAt': return item.receivedAt ? new Date(item.receivedAt).getTime() : 0;
-        case 'member':     return (item.memberName || '').toLowerCase();
+        case 'member': return (item.memberName || '').toLowerCase();
         case 'workBasket': return (item.workBasket || '').toLowerCase();
-        case 'priority':   return item.priority ?? 2;
-        case 'status':     return (item.status || '').toLowerCase();
-        default:           return '';
+        case 'priority': return item.priority ?? 2;
+        case 'status': return (item.status || '').toLowerCase();
+        default: return '';
       }
     };
 
@@ -524,35 +562,35 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   }
 
   private normalizeFax = (r: any): FaxFile => ({
-    faxId:         r.faxId         ?? r.FaxId,
-    fileName:      r.fileName      ?? r.FileName,
-    receivedAt:    r.receivedAt    ?? r.ReceivedAt,
-    pageCount:     r.pageCount     ?? r.PageCount,
-    memberId:      r.memberId      ?? r.MemberId      ?? null,
-    memberName:    r.memberName    ?? r.MemberName    ?? null,
+    faxId: r.faxId ?? r.FaxId,
+    fileName: r.fileName ?? r.FileName,
+    receivedAt: r.receivedAt ?? r.ReceivedAt,
+    pageCount: r.pageCount ?? r.PageCount,
+    memberId: r.memberId ?? r.MemberId ?? null,
+    memberName: r.memberName ?? r.MemberName ?? null,
     memberDetailsId: r.memberDetailsId ?? r.MemberDetailsId ?? null,
-    workBasket:    r.workBasket    ?? r.WorkBasket    ?? null,
-    priority:      r.priority      ?? r.Priority      ?? 2,
-    status:        r.status        ?? r.Status        ?? 'New',
-    url:           r.url           ?? r.Url           ?? null,
-    originalName:  r.originalName  ?? r.OriginalName  ?? null,
-    contentType:   r.contentType   ?? r.ContentType   ?? null,
-    sizeBytes:     r.sizeBytes     ?? r.SizeBytes     ?? null,
-    sha256Hex:     r.sha256Hex     ?? r.Sha256Hex     ?? null,
-    fileBytes:     r.fileBytes     ?? r.FileBytes     ?? null,
-    uploadedBy:    r.uploadedBy    ?? r.UploadedBy    ?? null,
-    uploadedAt:    r.uploadedAt    ?? r.UploadedAt    ?? null,
+    workBasket: r.workBasket ?? r.WorkBasket ?? null,
+    priority: r.priority ?? r.Priority ?? 2,
+    status: r.status ?? r.Status ?? 'New',
+    url: r.url ?? r.Url ?? null,
+    originalName: r.originalName ?? r.OriginalName ?? null,
+    contentType: r.contentType ?? r.ContentType ?? null,
+    sizeBytes: r.sizeBytes ?? r.SizeBytes ?? null,
+    sha256Hex: r.sha256Hex ?? r.Sha256Hex ?? null,
+    fileBytes: r.fileBytes ?? r.FileBytes ?? null,
+    uploadedBy: r.uploadedBy ?? r.UploadedBy ?? null,
+    uploadedAt: r.uploadedAt ?? r.UploadedAt ?? null,
     processStatus: r.processStatus ?? r.ProcessStatus ?? 'Pending',
-    metaJson:      r.metaJson      ?? r.MetaJson      ?? null,
-    ocrText:       r.ocrText       ?? r.OcrText       ?? null,
-    ocrJsonPath:   r.ocrJsonPath   ?? r.OcrJsonPath   ?? null,
-    createdBy:     r.createdBy     ?? r.CreatedBy     ?? null,
-    createdOn:     r.createdOn     ?? r.CreatedOn     ?? null,
-    updatedOn:     r.updatedOn     ?? r.UpdatedOn     ?? null,
-    updatedBy:     r.updatedBy     ?? r.UpdatedBy     ?? null,
-    parentFaxId:   r.parentFaxId   ?? r.ParentFaxId   ?? null,
-    deletedOn:     r.deletedOn     ?? r.DeletedOn     ?? null,
-    deletedBy:     r.deletedBy     ?? r.DeletedBy     ?? null
+    metaJson: r.metaJson ?? r.MetaJson ?? null,
+    ocrText: r.ocrText ?? r.OcrText ?? null,
+    ocrJsonPath: r.ocrJsonPath ?? r.OcrJsonPath ?? null,
+    createdBy: r.createdBy ?? r.CreatedBy ?? null,
+    createdOn: r.createdOn ?? r.CreatedOn ?? null,
+    updatedOn: r.updatedOn ?? r.UpdatedOn ?? null,
+    updatedBy: r.updatedBy ?? r.UpdatedBy ?? null,
+    parentFaxId: r.parentFaxId ?? r.ParentFaxId ?? null,
+    deletedOn: r.deletedOn ?? r.DeletedOn ?? null,
+    deletedBy: r.deletedBy ?? r.DeletedBy ?? null
   });
 
   private getItems = (res: any) => (res?.items ?? res?.Items ?? []) as any[];
@@ -605,9 +643,9 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
     this._faxFetchSub = this.api.getFaxFileById(row.faxId).subscribe({
       next: (res: any) => {
-        const fileBytes   = res.fileBytes ?? res.FileBytes ?? null;
+        const fileBytes = res.fileBytes ?? res.FileBytes ?? null;
         const contentType = res.contentType ?? res.ContentType ?? 'application/pdf';
-        const fileUrl     = res.url ?? res.Url ?? null;
+        const fileUrl = res.url ?? res.Url ?? null;
 
         const base64 = fileBytes;
         if (base64) {
@@ -654,6 +692,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       this._faxFetchSub = null;
       this._extractionGen++;
 
+      this.uninstallAuthFormErrorTraps();
       this.showAuthForm = false;
       this.currentFaxPrefill = null;
 
@@ -727,6 +766,13 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         if (nhs?.patient?.memberId) return nhs.patient.memberId;
       }
 
+      // ── NHS text path: flattened (printed-to-PDF) NHS forms have no live
+      //    AcroForm. The text adapter parses the rendered value layer.
+      if (isNhsText(res?.text ?? '')) {
+        const nhs = extractNhsFromText(res?.text ?? '');
+        if (nhs?.patient?.memberId) return nhs.patient.memberId;
+      }
+
       const pa = extractPriorAuth(res?.text ?? '', res?.formFields ?? {});
       const direct = pa?.patient?.memberId ?? null;
       if (direct) return direct;
@@ -782,7 +828,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       suppressReload?: boolean;
       successMessage?: string;
     }
-  ): Promise<void> {
+  ): Promise<number | null> {
     let file: File | undefined;
 
     if (fileOverride) {
@@ -793,10 +839,10 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       if (input) input.value = '';
     }
 
-    if (!file) return;
+    if (!file) return null;
 
-    const contentType  = file.type || 'application/pdf';
-    const sizeBytes    = file.size;
+    const contentType = file.type || 'application/pdf';
+    const sizeBytes = file.size;
     const originalName = file.name;
     const [sha256Hex, fileDataBase64, pageCount] = await Promise.all([
       this.computeSha256Hex(file),
@@ -826,8 +872,8 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
     const memberId: number | null =
       detectedMemberIdRaw !== null &&
-      detectedMemberIdRaw !== undefined &&
-      String(detectedMemberIdRaw).trim() !== ''
+        detectedMemberIdRaw !== undefined &&
+        String(detectedMemberIdRaw).trim() !== ''
         ? (Number(detectedMemberIdRaw) as any)
         : null;
 
@@ -835,9 +881,9 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       memberId !== null && Number.isFinite(memberId) ? memberId : null;
 
     const workBasket: string = ('2' ?? '2') as any;
-    const nowIso      = new Date().toISOString();
+    const nowIso = new Date().toISOString();
     const uploadedBy: number | null = this.currentUserId ?? null;
-    const createdBy: number | null  = this.currentUserId ?? null;
+    const createdBy: number | null = this.currentUserId ?? null;
     const parentFaxId: number | null = (opts?.parentFaxId ?? null) as any;
     const metaJson: string = opts?.metaJson ?? JSON.stringify({ source: 'UI:Faxes' });
 
@@ -866,7 +912,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       fileBytes
     };
 
-    this.uploading     = true;
+    this.uploading = true;
     this.uploadPercent = 0;
 
     try {
@@ -898,13 +944,15 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         });
       }
 
+      return newFaxId;
     } catch (err) {
       console.error('insertFaxFile failed', err);
       if (!opts?.suppressToast) {
         this.toast(`Failed to save: ${originalName}`, true);
       }
+      return null;
     } finally {
-      this.uploading     = false;
+      this.uploading = false;
       this.uploadPercent = 0;
     }
   }
@@ -953,12 +1001,12 @@ export class FaxesComponent implements OnInit, AfterViewInit {
           status: 'pending',
         },
       ],
-      outcome:      null,
-      authNumber:   null,
-      authId:       null,
+      outcome: null,
+      authNumber: null,
+      authId: null,
       errorMessage: '',
-      dismissed:    false,
-      startedAt:    new Date(),
+      dismissed: false,
+      startedAt: new Date(),
     };
   }
 
@@ -1006,7 +1054,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
     let pa = extractPriorAuth(allText, res?.formFields ?? {});
 
-    const isTexas   = /TEXAS STANDARD PRIOR AUTHORIZATION|NOFR001/i.test(allText);
+    const isTexas = /TEXAS STANDARD PRIOR AUTHORIZATION|NOFR001/i.test(allText);
     const isArizona = /CSO-1179A|CMDP|COMPREHENSIVE MEDICAL AND DENTAL PROGRAM/i.test(allText);
     const missingCore =
       !(pa.patient?.name) ||
@@ -1021,13 +1069,13 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         const tx = extractTexasFromText(pageText);
         pa = {
           ...pa,
-          source:             { template: 'Texas TDI NOFR001', confidence: 0.95 },
-          submission:         { ...(pa.submission ?? {}),         ...this.stripEmpty(tx.submission) },
-          patient:            { ...(pa.patient ?? {}),            ...this.stripEmpty(tx.patient) },
+          source: { template: 'Texas TDI NOFR001', confidence: 0.95 },
+          submission: { ...(pa.submission ?? {}), ...this.stripEmpty(tx.submission) },
+          patient: { ...(pa.patient ?? {}), ...this.stripEmpty(tx.patient) },
           providerRequesting: { ...(pa.providerRequesting ?? {}), ...this.stripEmpty(tx.providerRequesting) },
-          providerServicing:  { ...(pa.providerServicing ?? {}),  ...this.stripEmpty(tx.providerServicing) },
-          review:             { ...(pa.review ?? {}),             ...this.stripEmpty(tx.review) },
-          services:           tx.services?.length ? tx.services : pa.services,
+          providerServicing: { ...(pa.providerServicing ?? {}), ...this.stripEmpty(tx.providerServicing) },
+          review: { ...(pa.review ?? {}), ...this.stripEmpty(tx.review) },
+          services: tx.services?.length ? tx.services : pa.services,
         };
       }
     }
@@ -1036,28 +1084,28 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       const formPage = this.pickArizonaPage(byPage);
       const pageText = byPage.find(p => p.page === formPage)?.text?.trim() ?? '';
       if (pageText) {
-        const az      = extractArizonaFromText(pageText);
+        const az = extractArizonaFromText(pageText);
         const azClean = {
-          patient:            this.stripEmpty(az?.patient),
+          patient: this.stripEmpty(az?.patient),
           providerRequesting: this.stripEmpty(az?.providerRequesting),
-          providerServicing:  this.stripEmpty(az?.providerServicing),
-          review:             this.stripEmpty(az?.review),
-          services:           az?.services?.filter((s: any) => s?.code || s?.description) ?? [],
-          dx:                 this.stripEmpty(az?.dx),
-          setting:            this.stripEmpty(az?.setting),
-          submission:         this.stripEmpty(az?.submission),
+          providerServicing: this.stripEmpty(az?.providerServicing),
+          review: this.stripEmpty(az?.review),
+          services: az?.services?.filter((s: any) => s?.code || s?.description) ?? [],
+          dx: this.stripEmpty(az?.dx),
+          setting: this.stripEmpty(az?.setting),
+          submission: this.stripEmpty(az?.submission),
         };
         pa = {
           ...pa,
-          source:             { template: 'AZ CMDP CSO-1179A', confidence: 0.95 },
-          patient:            { ...this.stripEmpty(pa.patient),            ...azClean.patient },
+          source: { template: 'AZ CMDP CSO-1179A', confidence: 0.95 },
+          patient: { ...this.stripEmpty(pa.patient), ...azClean.patient },
           providerRequesting: { ...this.stripEmpty(pa.providerRequesting), ...azClean.providerRequesting },
-          providerServicing:  { ...this.stripEmpty(pa.providerServicing),  ...azClean.providerServicing },
-          review:             { ...this.stripEmpty(pa.review),             ...azClean.review },
-          services:           azClean.services.length ? azClean.services : pa.services,
-          dx:                 { ...this.stripEmpty(pa.dx),                 ...azClean.dx },
-          setting:            { ...this.stripEmpty(pa.setting),            ...azClean.setting },
-          submission:         { ...this.stripEmpty(pa.submission),         ...azClean.submission },
+          providerServicing: { ...this.stripEmpty(pa.providerServicing), ...azClean.providerServicing },
+          review: { ...this.stripEmpty(pa.review), ...azClean.review },
+          services: azClean.services.length ? azClean.services : pa.services,
+          dx: { ...this.stripEmpty(pa.dx), ...azClean.dx },
+          setting: { ...this.stripEmpty(pa.setting), ...azClean.setting },
+          submission: { ...this.stripEmpty(pa.submission), ...azClean.submission },
         };
         this.postProcessArizonaCmdp(pa, allText);
       }
@@ -1070,18 +1118,39 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       const nhs = extractNhsFromFields(res.formFields);
       pa = {
         ...pa,
-        source:             { template: 'NHS Nevada Health Solutions', confidence: 0.99 },
-        patient:            { ...this.stripEmpty(pa.patient),            ...this.stripEmpty(nhs.patient) },
-        subscriber:         { ...this.stripEmpty(pa.subscriber),         ...this.stripEmpty(nhs.subscriber) },
+        source: { template: 'NHS Nevada Health Solutions', confidence: 0.99 },
+        patient: { ...this.stripEmpty(pa.patient), ...this.stripEmpty(nhs.patient) },
+        subscriber: { ...this.stripEmpty(pa.subscriber), ...this.stripEmpty(nhs.subscriber) },
         providerRequesting: { ...this.stripEmpty(pa.providerRequesting), ...this.stripEmpty(nhs.providerRequesting) },
-        providerServicing:  { ...this.stripEmpty(pa.providerServicing),  ...this.stripEmpty(nhs.providerServicing) },
-        pcp:                { ...this.stripEmpty(pa.pcp),                ...this.stripEmpty(nhs.pcp) },
-        submission:         { ...this.stripEmpty(pa.submission),         ...this.stripEmpty(nhs.submission) },
-        review:             { ...this.stripEmpty(pa.review),             ...this.stripEmpty(nhs.review) },
-        setting:            { ...this.stripEmpty(pa.setting),            ...this.stripEmpty(nhs.setting) },
-        services:           (nhs.services?.length ? nhs.services : pa.services) ?? [],
-        dx:                 { ...this.stripEmpty(pa.dx),                 ...this.stripEmpty(nhs.dx) },
-        notes:              nhs.notes ?? pa.notes,
+        providerServicing: { ...this.stripEmpty(pa.providerServicing), ...this.stripEmpty(nhs.providerServicing) },
+        pcp: { ...this.stripEmpty(pa.pcp), ...this.stripEmpty(nhs.pcp) },
+        submission: { ...this.stripEmpty(pa.submission), ...this.stripEmpty(nhs.submission) },
+        review: { ...this.stripEmpty(pa.review), ...this.stripEmpty(nhs.review) },
+        setting: { ...this.stripEmpty(pa.setting), ...this.stripEmpty(nhs.setting) },
+        services: (nhs.services?.length ? nhs.services : pa.services) ?? [],
+        dx: { ...this.stripEmpty(pa.dx), ...this.stripEmpty(nhs.dx) },
+        notes: nhs.notes ?? pa.notes,
+      };
+    }
+
+    // ── NHS — TEXT fallback for FLATTENED PDFs (no live AcroForm) ──────────
+    // Some NHS forms arrive as "printed to PDF" — values are baked into the
+    // page content stream and getFieldObjects() returns nothing. The text
+    // adapter parses those values out of the rendered text instead.
+    else if (isNhsText(allText)) {
+      const nhs = extractNhsFromText(allText);
+      pa = {
+        ...pa,
+        source: nhs.source ?? pa.source,
+        patient: { ...this.stripEmpty(pa.patient), ...this.stripEmpty(nhs.patient) },
+        subscriber: { ...this.stripEmpty(pa.subscriber), ...this.stripEmpty(nhs.subscriber) },
+        providerRequesting: { ...this.stripEmpty(pa.providerRequesting), ...this.stripEmpty(nhs.providerRequesting) },
+        providerServicing: { ...this.stripEmpty(pa.providerServicing), ...this.stripEmpty(nhs.providerServicing) },
+        submission: { ...this.stripEmpty(pa.submission), ...this.stripEmpty(nhs.submission) },
+        review: { ...this.stripEmpty(pa.review), ...this.stripEmpty(nhs.review) },
+        setting: { ...this.stripEmpty(pa.setting), ...this.stripEmpty(nhs.setting) },
+        services: (nhs.services?.length ? nhs.services : pa.services) ?? [],
+        dx: { ...this.stripEmpty(pa.dx), ...this.stripEmpty(nhs.dx) },
       };
     }
 
@@ -1089,15 +1158,195 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   }
 
   /**
-   * Main orchestration method — triggers the Intelligent Auto-Authorization Pipeline.
+   * Returns true iff a detected form span belongs to the NHS Nevada Health
+   * Solutions template family. We check both `template` and `label` because
+   * `multi-form-detector` has used short codes ('NHS') and longer descriptive
+   * strings ('NHS Nevada Health Solutions') interchangeably across versions.
+   */
+  private isNhsSpan(span: any): boolean {
+    if (!span) return false;
+    const t = String(span.template ?? '').toLowerCase();
+    const l = String(span.label ?? '').toLowerCase();
+    return /\bnhs\b|nevada\s+health/.test(t) || /\bnhs\b|nevada\s+health/.test(l);
+  }
+
+  /**
+   * Main orchestration entry — detects multi-form PDFs and dispatches one
+   * pipeline per logical form, otherwise runs a single pipeline as before.
+   *
+   * Multi-form behaviour:
+   *   1. Probe the PDF's per-page text via PdfOcrService.
+   *   2. Group pages into FormSpans by template header (NHS / Texas / AZ / GA).
+   *   3. If >1 form found AND every detected span is NHS, physically split
+   *      the PDF using pdf-lib, persist each split as a CHILD fax
+   *      (parentFaxId = faxId), capture the child's newly assigned faxId,
+   *      and run the pipeline against THAT id. Each child's status is
+   *      therefore independently driven by its own pipeline:
+   *      both succeed → both Processed; one fails → only the successful child
+   *      is Processed, the other stays New. The parent record is left
+   *      untouched — it is just the container.
+   *   4. If only one form is found, OR if any detected span is non-NHS
+   *      (Arizona CMDP, Texas TDI, Georgia, etc.), run the existing
+   *      single-form pipeline against the original file unchanged. The
+   *      split path is intentionally NHS-only — non-NHS uploads never
+   *      get sliced into children regardless of how many form headers
+   *      they happen to contain.
+   */
+  private async triggerAutoAuthorizationPipeline(file: File, faxId: number): Promise<void> {
+    // 1. Probe per-page text. Cheap — same call runExtractors() makes anyway.
+    let byPage: Array<{ page: number; text: string }> = [];
+    try {
+      const probe = await this.pdfOcr.extract(file, () => void 0);
+      byPage = (probe.byPage ?? []).map((p: any, i: number) => ({
+        page: Number(p?.page ?? (i + 1)),
+        text: String(p?.text ?? ''),
+      }));
+    } catch (err) {
+      console.warn('[AutoAuth] Pre-extract probe failed; falling back to single-form pipeline', err);
+    }
+
+    // 2. Detect logical forms.
+    const spans = detectForms(byPage);
+
+    // 3. Decide whether to split.
+    //    Splitting is now restricted to NHS PDFs by product requirement —
+    //    other templates (AZ CMDP, Texas TDI, etc.) always run as single-form
+    //    even if detectForms() returns multiple spans.
+    const multiForm = isMultiForm(spans);
+    const allNhs = spans.length > 0 && spans.every(s => this.isNhsSpan(s));
+    const shouldSplit = multiForm && allNhs;
+
+    this.faxAuthLog('Multi-form split decision', {
+      faxId,
+      fileName: file.name,
+      spanCount: spans.length,
+      spans: spans.map(s => ({ label: (s as any).label, template: (s as any).template, pageRange: (s as any).pageRange })),
+      multiForm,
+      allNhs,
+      shouldSplit,
+    });
+
+    // Single-form path (or non-NHS multi-form) — preserves original behaviour
+    // exactly. Pipeline drives the parent fax (faxId) directly.
+    if (!shouldSplit) {
+      return this.runPipelineForFile(file, faxId, spans[0]?.label ?? file.name);
+    }
+
+    // 4. NHS multi-form path — split, persist children, run pipeline per split.
+    let splits: SplitResult[];
+    try {
+      splits = await splitByForms(file, spans);
+    } catch (err) {
+      console.error('[AutoAuth] Split failed; falling back to single-form pipeline', err);
+      return this.runPipelineForFile(file, faxId, file.name);
+    }
+
+    this.toast(
+      `${file.name} contains ${splits.length} forms — splitting and running each through the pipeline separately.`,
+      false,
+    );
+
+    // 4a. Persist each split as a CHILD fax under the original and capture
+    //     the child's newly assigned faxId. parentFaxId on saveFileData()
+    //     suppresses its own auto-pipeline — that's intentional; we drive
+    //     each child's pipeline ourselves below so they each get their own
+    //     row AND their own status update on finalize.
+    type SplitJob = { split: SplitResult; childFaxId: number };
+    const jobs: SplitJob[] = [];
+    for (const split of splits) {
+      try {
+        const childFaxId = await this.saveFileData(null, split.file, {
+          parentFaxId: faxId,
+          inheritFrom: this.selectedFax ?? undefined,
+          metaJson: JSON.stringify({
+            source: 'UI:Faxes',
+            action: 'AutoSplit',
+            parentFaxId: faxId,
+            formLabel: split.span.label,
+            template: split.span.template,
+            pageRange: split.span.pageRange,
+          }),
+          suppressToast: true,
+          suppressReload: true,
+        });
+        if (childFaxId !== null && Number.isFinite(childFaxId)) {
+          jobs.push({ split, childFaxId });
+        } else {
+          console.warn('[AutoAuth] Split persisted but no child faxId returned', split.span.label);
+        }
+      } catch (err) {
+        console.error('[AutoAuth] Failed to persist split child', split.span.label, err);
+      }
+    }
+
+    // 4b. Refresh the listing once now so the user sees the new child rows
+    //     (still in New / Pending status) before the per-child pipelines run.
+    this.reload?.();
+
+    // 4c. Run pipelines sequentially against each CHILD fax id. The parent
+    //     id is intentionally NEVER passed in here, so onAuthSaved() updates
+    //     the child record — never the parent. If a child's pipeline fails
+    //     or terminates early, that child stays in its current state (New)
+    //     while siblings that succeed move to Processed.
+    //
+    //     Display name uses split.file.name (e.g. "NHS_Prior_Authorization_
+    //     Forms_Form1of2.pdf") rather than split.span.label so the pipeline
+    //     popup row matches the file name shown in the fax listing exactly.
+    //     Mixing the two — popup showing "Form 2 of 2 (NHS, p2)" while the
+    //     row shows "..._Form2of2.pdf" — was confusing operators trying to
+    //     correlate the two views during a multi-split run.
+    for (const job of jobs) {
+      try {
+        await this.runPipelineForFile(job.split.file, job.childFaxId, job.split.file.name);
+      } catch (err) {
+        console.error('[AutoAuth] Pipeline failed for split', job.split.file.name, err);
+      }
+    }
+
+    // 4d. Final refresh so the listing reflects the post-pipeline status of
+    //     each child (Processed / New / etc.).
+    this.reload?.();
+  }
+
+  /**
+   * Runs the full Auto-Authorization pipeline against a single File.
    *
    *   Extract → Match Member → Rules Engine → Create Auth (if approved) → Finalize
    *
-   * Runs entirely in the background; all steps are async and update the shared
-   * `autoAuthPipelines` array which drives the progress panel in the template.
+   * `displayName` is what shows up in the pipeline popup row. For multi-form
+   * splits the caller passes the persisted child file name (e.g.
+   * "NHS_Prior_Authorization_Forms_Form1of2.pdf") so the popup label matches
+   * the row in the fax listing exactly — operators can correlate the two
+   * views without mentally translating between a descriptive span label and
+   * the actual file name.
    */
-  private async triggerAutoAuthorizationPipeline(file: File, faxId: number): Promise<void> {
-    const pipeline = this.buildPipeline(faxId, file.name);
+  private async runPipelineForFile(file: File, faxId: number, displayName: string): Promise<void> {
+    // Defensive cleanup: tear down ANY leftover hidden-pipeline state from a
+    // previous run before we start a fresh one. Without this, a previously
+    // wedged pipeline (e.g. authdetails.save() threw silently and never
+    // emitted authSaved/authCancelled) would still own _activeAutoAuthPipeline
+    // and isAutoSavePipelineActive — so the new pipeline would race the dead
+    // one, the modal backdrop would never reach allPipelinesComplete, and
+    // every Save Authorization click would land on the backdrop instead of
+    // the visible auth form's button.
+    if (this._activeAutoAuthPipeline || this.isAutoSavePipelineActive) {
+      const stale = this._activeAutoAuthPipeline;
+      this._activeAutoAuthPipeline = null;
+      this.isAutoSavePipelineActive = false;
+      this.pipelineFaxPrefill = null;
+      if (stale && stale.outcome === null) {
+        // Mark the abandoned pipeline as errored so it counts toward
+        // allPipelinesComplete and the user can dismiss the popup.
+        stale.outcome = 'error';
+        stale.errorMessage = 'Auto-save did not complete — please review manually.';
+        this.skipRemainingSteps(stale, 'auth');
+      }
+      // Resolve any outstanding gate so a stuck await on the old pipeline
+      // unblocks. Idempotent.
+      if (stale) this.resolvePipelineDone(stale.id);
+    }
+
+    const pipeline = this.buildPipeline(faxId, displayName);
     this.autoAuthPipelines = [...this.autoAuthPipelines, pipeline];
     this.showPipelinePopup = true;   // auto-open the popup as soon as processing starts
 
@@ -1115,7 +1364,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     } catch (err: any) {
       this.setStep(pipeline, 'extract', 'error',
         `Extraction failed: ${err?.message ?? 'Unknown error'}`);
-      pipeline.outcome      = 'error';
+      pipeline.outcome = 'error';
       pipeline.errorMessage = 'Document extraction could not be completed. Please review the fax manually.';
       this.skipRemainingSteps(pipeline, 'extract');
       return;
@@ -1151,7 +1400,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       resolvedMemberId = member?.memberDetailsId
         ? Number(member.memberId ?? extractedMemberId)
         : Number(extractedMemberId);
-      memberDetailsId  = member?.memberDetailsId ?? null;
+      memberDetailsId = member?.memberDetailsId ?? null;
 
       if (!resolvedMemberId || !Number.isFinite(resolvedMemberId)) {
         throw new Error('Member could not be uniquely identified.');
@@ -1166,7 +1415,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     } catch (err: any) {
       this.setStep(pipeline, 'member', 'error',
         err?.message ?? 'Member identity could not be verified');
-      pipeline.outcome      = 'no-member-match';
+      pipeline.outcome = 'no-member-match';
       pipeline.errorMessage =
         'The member referenced in this fax could not be matched in the registry. ' +
         'Please assign a member manually and use the Generate Auth workflow.';
@@ -1178,14 +1427,14 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     this.setStep(pipeline, 'rules', 'running',
       'Submitting service codes to the clinical decision engine…');
 
-    let authApprove: string | null  = null;
-    let rulesMatched                = false;
+    let authApprove: string | null = null;
+    let rulesMatched = false;
 
     try {
-      const firstSvc    = (pa as any).services?.[0];
+      const firstSvc = (pa as any).services?.[0];
       const serviceCode = (firstSvc?.code ?? '').trim() || 'A9600';
-      const fromDate    = this.toMdyOrFallback(firstSvc?.startDate, '1/1/2026');
-      const toDate      = this.toMdyOrFallback(firstSvc?.endDate,   '1/1/2027');
+      const fromDate = this.toMdyOrFallback(firstSvc?.startDate, '1/1/2026');
+      const toDate = this.toMdyOrFallback(firstSvc?.endDate, '1/1/2027');
 
       const res: ExecuteTriggerResponse = await firstValueFrom(
         this.rulesengineService.executeTrigger('SMART_AUTH_CHECK.BUTTON_CLICK', {
@@ -1201,12 +1450,12 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
       rulesMatched = !!(res as any)?.matched &&
         String((res as any)?.status ?? '').toUpperCase() !== 'NO_MATCH';
-      authApprove  = rulesMatched ? (authApproveRaw || null) : null;
+      authApprove = rulesMatched ? (authApproveRaw || null) : null;
 
       if (!rulesMatched) {
         this.setStep(pipeline, 'rules', 'skipped',
           'No matching clinical policy found for this service code — manual review required');
-        pipeline.outcome      = 'no-rules-match';
+        pipeline.outcome = 'no-rules-match';
         pipeline.errorMessage =
           'The rules engine did not find a matching policy for the extracted service code. ' +
           'This fax requires manual authorization review.';
@@ -1217,7 +1466,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       if (!this.isYes(authApprove)) {
         this.setStep(pipeline, 'rules', 'success',
           `Decision: Authorization Required — Approve Decision: ${authApprove ?? 'No'}`);
-        pipeline.outcome      = 'requires-review';
+        pipeline.outcome = 'requires-review';
         pipeline.errorMessage =
           'The rules engine indicates this authorization requires clinical review. ' +
           'Please open the fax and use the Generate Auth workflow to proceed.';
@@ -1230,7 +1479,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     } catch (err: any) {
       this.setStep(pipeline, 'rules', 'error',
         `Rules engine error: ${err?.message ?? 'Unknown error'}`);
-      pipeline.outcome      = 'error';
+      pipeline.outcome = 'error';
       pipeline.errorMessage = 'The clinical rules engine returned an unexpected error. Please retry.';
       this.skipRemainingSteps(pipeline, 'rules');
       return;
@@ -1261,10 +1510,70 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       pa, resolvedMemberId, memberDetailsId, faxId, authApprove ?? 'Yes'
     );
 
+    // Set up a completion gate BEFORE we render the hidden form. The hidden
+    // form's authSaved / authCancelled output will resolve this promise via
+    // resolvePipelineDone(), so the multi-form orchestrator can sequence
+    // pipelines safely without _activeAutoAuthPipeline being stomped.
+    //
+    // Belt-and-braces timeout: if the hidden form never emits (which CAN
+    // happen — authdetails.save()'s catch block silently swallows API
+    // errors without emitting authCancelled), we resolve after 30s anyway
+    // so the orchestrator never wedges. Critically we also set the
+    // pipeline's outcome to 'error' here, otherwise allPipelinesComplete
+    // stays false forever and the modal backdrop traps the user.
+    const completion = new Promise<void>((resolve) => {
+      this._pipelineDoneResolvers.set(pipeline.id, resolve);
+      setTimeout(() => {
+        if (this._pipelineDoneResolvers.has(pipeline.id)) {
+          console.warn('[AutoAuth] pipeline timed out waiting for auth-save', pipeline.id);
+          this._pipelineDoneResolvers.delete(pipeline.id);
+          // Critical: clear the active-pipeline pointer so the next manual
+          // "Save Authorization" click is treated as a manual save, not a
+          // pipeline event.
+          if (this._activeAutoAuthPipeline?.id === pipeline.id) {
+            this._activeAutoAuthPipeline = null;
+            this.isAutoSavePipelineActive = false;
+            this.pipelineFaxPrefill = null;
+          }
+          // Mark the pipeline terminal so the popup unblocks and the user
+          // can dismiss it. Without this, allPipelinesComplete stays false
+          // and the backdrop sits over the page indefinitely.
+          if (pipeline.outcome === null) {
+            this.setStep(pipeline, 'auth', 'error',
+              'Auto-save timed out — use Generate Auth on the fax row to complete manually');
+            pipeline.outcome = 'error';
+            pipeline.errorMessage =
+              'The authorization could not be created automatically (auto-save timed out). ' +
+              'This fax remains in the queue — open it and use Generate Auth to proceed.';
+            this.skipRemainingSteps(pipeline, 'auth');
+            this.autoAuthPipelines = [...this.autoAuthPipelines];
+          }
+          resolve();
+        }
+      }, 30000);
+    });
+
     // Render the hidden component — ngOnInit fires → initFromFaxPrefill() → save().
     this.isAutoSavePipelineActive = true;
 
-    // Steps 4 and 5 complete asynchronously in onAuthSaved() / onAutoAuthCancelled().
+    // Wait for the hidden save to complete (or cancel/timeout) before returning.
+    // This is what guarantees the multi-form orchestrator's `await runPipelineForFile`
+    // is truly serial.
+    await completion;
+  }
+
+  /**
+   * Called by onAuthSaved / onAutoAuthCancelled to release the gate set up
+   * in runPipelineForFile(). Idempotent — safe to call multiple times or
+   * for a pipeline that was never gated.
+   */
+  private resolvePipelineDone(pipelineId: string | undefined): void {
+    if (!pipelineId) return;
+    const r = this._pipelineDoneResolvers.get(pipelineId);
+    if (r) {
+      this._pipelineDoneResolvers.delete(pipelineId);
+      r();
+    }
   }
   // ── END triggerAutoAuthorizationPipeline ────────────────────────────────────
 
@@ -1295,7 +1604,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     if (!pipeline.authId || !pipeline.authNumber) return;
 
     const fax = this.faxesRaw.find(f => f.faxId === pipeline.faxId);
-    const memberId        = fax?.memberId;
+    const memberId = fax?.memberId;
     const memberDetailsId = fax?.memberDetailsId;
 
     if (!memberId || !memberDetailsId) {
@@ -1309,9 +1618,9 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       return;
     }
 
-    const memId    = String(memberId);
+    const memId = String(memberId);
     const memDetId = String(memberDetailsId);
-    const authNo   = String(pipeline.authNumber);
+    const authNo = String(pipeline.authNumber);
 
     const urlTree = this.router.createUrlTree([
       '/member-info',
@@ -1357,74 +1666,63 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       authClassName = 'Outpatient';
     }
 
-    const parseAddress = (addr: string | undefined) => {
-      if (!addr) return {};
-      const parts = addr.split(',').map((s: string) => s.trim());
-      return {
-        address: parts[0] || '',
-        city:    parts[1] || '',
-        state:   parts[2] || '',
-        zip:     parts[3] || ''
-      };
-    };
-
-    const reqAddr = parseAddress(pa.providerRequesting?.address);
-    const svcAddr = parseAddress(pa.providerServicing?.address);
+    const reqAddr = this.parseProviderAddress(pa.providerRequesting?.address);
+    const svcAddr = this.parseProviderAddress(pa.providerServicing?.address);
 
     return {
-      mode:            'fax',
-      memberId:        memberId,
+      mode: 'fax',
+      memberId: memberId,
       memberDetailsId: memberDetailsId ?? 0,
-      faxId:           faxId,
+      faxId: faxId,
 
       // autoSave: true causes AuthdetailsComponent to call save() automatically
       // 900 ms after applyFaxPrefillToTemplateFields() completes.
-      autoSave:        true,
+      autoSave: true,
 
       // authApprove: 'Yes' activates the auto-approve path in save(), which sets
       // Auth Status = Closed, Auth Status Reason = Decisioned, and seeds
       // Decision Status: Approved / Decision Status Code: Auto Approved.
-      authApprove:     authApprove,
+      authApprove: authApprove,
 
-      authClassName:   authClassName,
-      authTypeName:    'Observation Stay',
+      authClassName: authClassName,
+      authTypeName: 'Observation Stay',
 
       diagnosisCodes: (pa.dx?.codes?.length ? pa.dx.codes : null)
         ?? (pa.services ?? []).map((s: any) => s.diagnosisCode).filter(Boolean),
 
       services: (pa.services ?? []).map((s: any) => ({
-        code:        s.code,
+        code: s.code,
         description: s.description,
-        startDate:   s.startDate,
-        endDate:     s.endDate,
-        quantity:    s.quantity ?? 1,
+        startDate: s.startDate,
+        endDate: s.endDate,
+        quantity: s.quantity ?? 1,
       })),
 
       requestingProvider: pa.providerRequesting ? {
-        name:      pa.providerRequesting.name,
+        name: pa.providerRequesting.name,
         firstName: pa.providerRequesting.firstName,
-        lastName:  pa.providerRequesting.lastName,
-        npi:       pa.providerRequesting.npi,
-        phone:     pa.providerRequesting.phone,
-        fax:       pa.providerRequesting.fax,
+        lastName: pa.providerRequesting.lastName,
+        npi: pa.providerRequesting.npi,
+        phone: pa.providerRequesting.phone,
+        fax: pa.providerRequesting.fax,
         ...reqAddr,
       } : undefined,
 
       servicingProvider: pa.providerServicing ? {
-        name:      pa.providerServicing.name || pa.providerServicing.facility,
+        name: pa.providerServicing.name || pa.providerServicing.facility,
         firstName: pa.providerServicing.firstName,
-        lastName:  pa.providerServicing.lastName,
-        npi:       pa.providerServicing.npi,
-        phone:     pa.providerServicing.phone,
-        fax:       pa.providerServicing.fax,
+        lastName: pa.providerServicing.lastName,
+        npi: pa.providerServicing.npi,
+        phone: pa.providerServicing.phone,
+        fax: pa.providerServicing.fax,
         ...svcAddr,
       } : undefined,
 
       requestDatetime: new Date().toISOString(),
       actualAdmissionDatetime: new Date().toISOString(),
-      requestType:     'Prospective',
-      notes:           pa.notes,
-      priorAuth:       pa,
+      requestType: 'Prospective',
+      notes: pa.notes,
+      priorAuth: pa,
     };
   }
 
@@ -1439,39 +1737,57 @@ export class FaxesComponent implements OnInit, AfterViewInit {
    *   Closes the form panel with an unsaved-changes guard if needed.
    */
   onAutoAuthCancelled(): void {
+    const wasFromHiddenPipeline = this.isAutoSavePipelineActive;
     const pipeline = this._activeAutoAuthPipeline;
+
+    this.faxAuthLog('⚠️ onAutoAuthCancelled() FIRED', {
+      caseDetected: (pipeline || wasFromHiddenPipeline) ? 'A — pipeline auto-save failure' : 'B — manual cancel',
+      hasActivePipeline: !!pipeline,
+      isAutoSavePipelineActive: wasFromHiddenPipeline,
+      authHasUnsavedChanges: this.authDetailsRef?.authHasUnsavedChanges?.() ?? null,
+      showAuthForm: this.showAuthForm,
+    });
+
     this._activeAutoAuthPipeline = null;
 
-    if (pipeline) {
+    if (pipeline || wasFromHiddenPipeline) {
       // ── Case A: pipeline auto-save failure ────────────────────────────────
       // Tear down the hidden pipeline instance; leave showAuthForm untouched.
       this.isAutoSavePipelineActive = false;
-      this.pipelineFaxPrefill       = null;
+      this.pipelineFaxPrefill = null;
 
-      this.setStep(
-        pipeline, 'auth', 'error',
-        'Auto-save could not be completed — please use the Generate Auth button to proceed manually'
-      );
-      pipeline.outcome      = 'error';
-      pipeline.errorMessage =
-        'The authorization could not be created automatically. ' +
-        'This fax remains in the Open queue — click it and use the Generate Auth button ' +
-        'to complete the authorization with the pre-populated OCR data.';
-      this.skipRemainingSteps(pipeline, 'auth');
-      this.autoAuthPipelines = [...this.autoAuthPipelines];
+      if (pipeline) {
+        this.setStep(
+          pipeline, 'auth', 'error',
+          'Auto-save could not be completed — please use the Generate Auth button to proceed manually'
+        );
+        pipeline.outcome = 'error';
+        pipeline.errorMessage =
+          'The authorization could not be created automatically. ' +
+          'This fax remains in the Open queue — click it and use the Generate Auth button ' +
+          'to complete the authorization with the pre-populated OCR data.';
+        this.skipRemainingSteps(pipeline, 'auth');
+        this.autoAuthPipelines = [...this.autoAuthPipelines];
+
+        // Release the multi-form orchestrator's gate so the next sibling pipeline
+        // can run. Always last — anything before this can throw without leaking.
+        this.resolvePipelineDone(pipeline.id);
+      }
       return;
     }
 
     // ── Case B: manual cancel (no pipeline) ───────────────────────────────
     if (this.authDetailsRef?.authHasUnsavedChanges?.()) {
-      this.discardDialogContext  = 'backToDetails';
+      this.discardDialogContext = 'backToDetails';
       this._pendingDiscardAction = () => {
-        this.showAuthForm      = false;
+        this.uninstallAuthFormErrorTraps();
+        this.showAuthForm = false;
         this.currentFaxPrefill = null;
       };
       this.showDiscardDialog = true;
     } else {
-      this.showAuthForm      = false;
+      this.uninstallAuthFormErrorTraps();
+      this.showAuthForm = false;
       this.currentFaxPrefill = null;
     }
   }
@@ -1495,7 +1811,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   async saveUpdate(): Promise<void> {
     if (!this.selectedFax) return;
 
-    const nowIso    = new Date().toISOString();
+    const nowIso = new Date().toISOString();
     const updatedBy = this.selectedFax.updatedBy ?? this.currentUserId ?? 1;
 
     const detectedMemberIdRaw: any =
@@ -1505,8 +1821,8 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
     const memberIdParsed: number | null =
       detectedMemberIdRaw !== null &&
-      detectedMemberIdRaw !== undefined &&
-      String(detectedMemberIdRaw).trim() !== ''
+        detectedMemberIdRaw !== undefined &&
+        String(detectedMemberIdRaw).trim() !== ''
         ? (Number(detectedMemberIdRaw) as any)
         : null;
 
@@ -1514,15 +1830,15 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       memberIdParsed !== null && Number.isFinite(memberIdParsed) ? memberIdParsed : null;
 
     const toSave: any = {
-      faxId:      this.selectedFax.faxId,
+      faxId: this.selectedFax.faxId,
       workBasket: '2',
-      fileName:   this.selectedFax.fileName,
-      priority:   this.selectedFax.priority,
-      status:     this.selectedFax.status,
-      updatedOn:  nowIso,
+      fileName: this.selectedFax.fileName,
+      priority: this.selectedFax.priority,
+      status: this.selectedFax.status,
+      updatedOn: nowIso,
       updatedBy,
-      deletedOn:  this.selectedFax.deletedOn  ?? null,
-      deletedBy:  this.selectedFax.deletedBy  ?? null
+      deletedOn: this.selectedFax.deletedOn ?? null,
+      deletedBy: this.selectedFax.deletedBy ?? null
     };
 
     this.saving = true;
@@ -1552,13 +1868,13 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
   getStatusChipClass(status: string): string {
     switch ((status || '').toLowerCase()) {
-      case 'new':        return 'chip-status-new';
+      case 'new': return 'chip-status-new';
       case 'processing': return 'chip-status-processing';
-      case 'ready':      return 'chip-status-ready';
-      case 'processed':  return 'chip-status-processed';
-      case 'failed':     return 'chip-status-failed';
-      case 'deleted':    return 'chip-status-deleted';
-      default:           return 'chip-soft';
+      case 'ready': return 'chip-status-ready';
+      case 'processed': return 'chip-status-processed';
+      case 'failed': return 'chip-status-failed';
+      case 'deleted': return 'chip-status-deleted';
+      default: return 'chip-soft';
     }
   }
 
@@ -1580,7 +1896,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       const pure = fileBytesBase64.includes('base64,')
         ? fileBytesBase64.split('base64,')[1]
         : fileBytesBase64;
-      const bin   = atob(pure);
+      const bin = atob(pure);
       const bytes = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
       file = new File([bytes], fileName, { type: 'application/pdf' });
@@ -1608,7 +1924,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
       this._ocrByPage = byPage;
 
-      const isTexas   = /TEXAS STANDARD PRIOR AUTHORIZATION|NOFR001/i.test(allText);
+      const isTexas = /TEXAS STANDARD PRIOR AUTHORIZATION|NOFR001/i.test(allText);
       const isArizona = /CSO-1179A|CMDP|COMPREHENSIVE MEDICAL AND DENTAL PROGRAM/i.test(allText);
       const missingCore =
         !(pa.patient?.name) || !(pa.patient?.memberId) ||
@@ -1624,13 +1940,13 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         const tx = extractTexasFromText(pageText);
         pa = {
           ...pa,
-          source:             { template: 'Texas TDI NOFR001', confidence: 0.95 },
-          submission:         { ...(pa.submission ?? {}),         ...this.stripEmpty(tx.submission) },
-          patient:            { ...(pa.patient ?? {}),            ...this.stripEmpty(tx.patient) },
+          source: { template: 'Texas TDI NOFR001', confidence: 0.95 },
+          submission: { ...(pa.submission ?? {}), ...this.stripEmpty(tx.submission) },
+          patient: { ...(pa.patient ?? {}), ...this.stripEmpty(tx.patient) },
           providerRequesting: { ...(pa.providerRequesting ?? {}), ...this.stripEmpty(tx.providerRequesting) },
-          providerServicing:  { ...(pa.providerServicing ?? {}),  ...this.stripEmpty(tx.providerServicing) },
-          review:             { ...(pa.review ?? {}),             ...this.stripEmpty(tx.review) },
-          services:           (tx.services?.length ? tx.services : pa.services) ?? []
+          providerServicing: { ...(pa.providerServicing ?? {}), ...this.stripEmpty(tx.providerServicing) },
+          review: { ...(pa.review ?? {}), ...this.stripEmpty(tx.review) },
+          services: (tx.services?.length ? tx.services : pa.services) ?? []
         };
       }
 
@@ -1641,28 +1957,28 @@ export class FaxesComponent implements OnInit, AfterViewInit {
           pageText = await this.pdfOcr.ocrPageText(file, 1);
           if (myGen !== this._extractionGen) return;
         }
-        const az      = extractArizonaFromText(pageText);
+        const az = extractArizonaFromText(pageText);
         const azClean = {
-          patient:            this.stripEmpty(az?.patient),
+          patient: this.stripEmpty(az?.patient),
           providerRequesting: this.stripEmpty(az?.providerRequesting),
-          providerServicing:  this.stripEmpty(az?.providerServicing),
-          review:             this.stripEmpty(az?.review),
-          services:           az?.services?.filter((s: any) => s?.code || s?.description) ?? [],
-          dx:                 this.stripEmpty(az?.dx),
-          setting:            this.stripEmpty(az?.setting),
-          submission:         this.stripEmpty(az?.submission)
+          providerServicing: this.stripEmpty(az?.providerServicing),
+          review: this.stripEmpty(az?.review),
+          services: az?.services?.filter((s: any) => s?.code || s?.description) ?? [],
+          dx: this.stripEmpty(az?.dx),
+          setting: this.stripEmpty(az?.setting),
+          submission: this.stripEmpty(az?.submission)
         };
         pa = {
           ...pa,
-          source:             { template: 'AZ CMDP CSO-1179A', confidence: 0.95 },
-          patient:            { ...this.stripEmpty(pa.patient),            ...azClean.patient },
+          source: { template: 'AZ CMDP CSO-1179A', confidence: 0.95 },
+          patient: { ...this.stripEmpty(pa.patient), ...azClean.patient },
           providerRequesting: { ...this.stripEmpty(pa.providerRequesting), ...azClean.providerRequesting },
-          providerServicing:  { ...this.stripEmpty(pa.providerServicing),  ...azClean.providerServicing },
-          review:             { ...this.stripEmpty(pa.review),             ...azClean.review },
-          services:           (azClean.services.length ? azClean.services : pa.services) ?? [],
-          dx:                 { ...this.stripEmpty(pa.dx),                 ...azClean.dx },
-          setting:            { ...this.stripEmpty(pa.setting),            ...azClean.setting },
-          submission:         { ...this.stripEmpty(pa.submission),         ...azClean.submission }
+          providerServicing: { ...this.stripEmpty(pa.providerServicing), ...azClean.providerServicing },
+          review: { ...this.stripEmpty(pa.review), ...azClean.review },
+          services: (azClean.services.length ? azClean.services : pa.services) ?? [],
+          dx: { ...this.stripEmpty(pa.dx), ...azClean.dx },
+          setting: { ...this.stripEmpty(pa.setting), ...azClean.setting },
+          submission: { ...this.stripEmpty(pa.submission), ...azClean.submission }
         };
         this.postProcessArizonaCmdp(pa, allText);
       }
@@ -1674,25 +1990,65 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         const nhs = extractNhsFromFields(res.formFields);
         pa = {
           ...pa,
-          source:             { template: 'NHS Nevada Health Solutions', confidence: 0.99 },
-          patient:            { ...this.stripEmpty(pa.patient),            ...this.stripEmpty(nhs.patient) },
-          subscriber:         { ...this.stripEmpty(pa.subscriber),         ...this.stripEmpty(nhs.subscriber) },
+          source: { template: 'NHS Nevada Health Solutions', confidence: 0.99 },
+          patient: { ...this.stripEmpty(pa.patient), ...this.stripEmpty(nhs.patient) },
+          subscriber: { ...this.stripEmpty(pa.subscriber), ...this.stripEmpty(nhs.subscriber) },
           providerRequesting: { ...this.stripEmpty(pa.providerRequesting), ...this.stripEmpty(nhs.providerRequesting) },
-          providerServicing:  { ...this.stripEmpty(pa.providerServicing),  ...this.stripEmpty(nhs.providerServicing) },
-          pcp:                { ...this.stripEmpty(pa.pcp),                ...this.stripEmpty(nhs.pcp) },
-          submission:         { ...this.stripEmpty(pa.submission),         ...this.stripEmpty(nhs.submission) },
-          review:             { ...this.stripEmpty(pa.review),             ...this.stripEmpty(nhs.review) },
-          setting:            { ...this.stripEmpty(pa.setting),            ...this.stripEmpty(nhs.setting) },
-          services:           (nhs.services?.length ? nhs.services : pa.services) ?? [],
-          dx:                 { ...this.stripEmpty(pa.dx),                 ...this.stripEmpty(nhs.dx) },
-          notes:              nhs.notes ?? pa.notes,
+          providerServicing: { ...this.stripEmpty(pa.providerServicing), ...this.stripEmpty(nhs.providerServicing) },
+          pcp: { ...this.stripEmpty(pa.pcp), ...this.stripEmpty(nhs.pcp) },
+          submission: { ...this.stripEmpty(pa.submission), ...this.stripEmpty(nhs.submission) },
+          review: { ...this.stripEmpty(pa.review), ...this.stripEmpty(nhs.review) },
+          setting: { ...this.stripEmpty(pa.setting), ...this.stripEmpty(nhs.setting) },
+          services: (nhs.services?.length ? nhs.services : pa.services) ?? [],
+          dx: { ...this.stripEmpty(pa.dx), ...this.stripEmpty(nhs.dx) },
+          notes: nhs.notes ?? pa.notes,
+        };
+      }
+      // ── NHS — TEXT fallback for FLATTENED PDFs (no live AcroForm) ────────
+      else if (isNhsText(allText)) {
+        const nhs = extractNhsFromText(allText);
+        pa = {
+          ...pa,
+          source: nhs.source ?? pa.source,
+          patient: { ...this.stripEmpty(pa.patient), ...this.stripEmpty(nhs.patient) },
+          subscriber: { ...this.stripEmpty(pa.subscriber), ...this.stripEmpty(nhs.subscriber) },
+          providerRequesting: { ...this.stripEmpty(pa.providerRequesting), ...this.stripEmpty(nhs.providerRequesting) },
+          providerServicing: { ...this.stripEmpty(pa.providerServicing), ...this.stripEmpty(nhs.providerServicing) },
+          submission: { ...this.stripEmpty(pa.submission), ...this.stripEmpty(nhs.submission) },
+          review: { ...this.stripEmpty(pa.review), ...this.stripEmpty(nhs.review) },
+          setting: { ...this.stripEmpty(pa.setting), ...this.stripEmpty(nhs.setting) },
+          services: (nhs.services?.length ? nhs.services : pa.services) ?? [],
+          dx: { ...this.stripEmpty(pa.dx), ...this.stripEmpty(nhs.dx) },
         };
       }
 
       if (myGen !== this._extractionGen) return;
 
-      this.priorAuth        = pa;
+      this.priorAuth = pa;
       this.isLoadingDetails = false;
+
+      // ── DEBUG: show what extraction produced for this PDF ─────────────────
+      // Run the same upload twice (once with AZ, once with NHS) and diff the
+      // two `[FAX→AUTH] Extraction complete` console entries. Anything that
+      // looks malformed (e.g. provider.name containing the whole address line)
+      // is a candidate for the next bug.
+      this.faxAuthLog('Extraction complete', {
+        sourceTemplate: (pa as any)?.source?.template ?? null,
+        patient: {
+          name: (pa as any)?.patient?.name ?? null,
+          memberId: (pa as any)?.patient?.memberId ?? null,
+          dob: (pa as any)?.patient?.dob ?? null,
+        },
+        providerRequesting: (pa as any)?.providerRequesting ?? null,
+        providerServicing: (pa as any)?.providerServicing ?? null,
+        services: (pa as any)?.services ?? null,
+        dx: (pa as any)?.dx ?? null,
+        review: (pa as any)?.review ?? null,
+        setting: (pa as any)?.setting ?? null,
+        notes: (pa as any)?.notes ?? null,
+        selectedFax_memberId: this.selectedFax?.memberId ?? null,
+        selectedFax_memberDetailsId: this.selectedFax?.memberDetailsId ?? null,
+      });
 
       if (!this.linkedAuthMeta) {
         this.runSmartAuthCheckFromExtracted(pa);
@@ -1702,7 +2058,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
     } catch (e: any) {
       if (myGen !== this._extractionGen) return;
-      this.error    = e?.message || 'Failed to parse PDF';
+      this.error = e?.message || 'Failed to parse PDF';
       this.priorAuth = null;
     } finally {
       if (myGen === this._extractionGen) {
@@ -1712,28 +2068,28 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   }
 
   smartAuthCheckInProgress = false;
-  smartAuthCheckCompleted  = false;
+  smartAuthCheckCompleted = false;
   smartAuthCheckMatched: boolean | null = null;
   smartAuthCheckAuthRequired: boolean | null = null;
-  smartAuthCheckAuthApprove: string | null   = null;
+  smartAuthCheckAuthApprove: string | null = null;
   smartAuthCheckError = '';
 
   private resetSmartAuthCheckState(): void {
-    this.smartAuthCheckInProgress  = false;
-    this.smartAuthCheckCompleted   = false;
-    this.smartAuthCheckMatched     = null;
+    this.smartAuthCheckInProgress = false;
+    this.smartAuthCheckCompleted = false;
+    this.smartAuthCheckMatched = null;
     this.smartAuthCheckAuthRequired = null;
     this.smartAuthCheckAuthApprove = null;
-    this.smartAuthCheckError       = '';
+    this.smartAuthCheckError = '';
   }
 
   private runSmartAuthCheckFromExtracted(pa: PriorAuth): void {
     this.resetSmartAuthCheckState();
 
-    const firstSvc    = pa.services?.[0];
+    const firstSvc = pa.services?.[0];
     const serviceCode = (firstSvc?.code ?? '').trim() || 'A9600';
-    const fromDate    = this.toMdyOrFallback(firstSvc?.startDate, '1/1/2026');
-    const toDate      = this.toMdyOrFallback(firstSvc?.endDate,   '1/1/2027');
+    const fromDate = this.toMdyOrFallback(firstSvc?.startDate, '1/1/2026');
+    const toDate = this.toMdyOrFallback(firstSvc?.endDate, '1/1/2027');
 
     const triggerKeySmart = 'SMART_AUTH_CHECK.BUTTON_CLICK';
     const smartFacts: any = {
@@ -1764,16 +2120,16 @@ export class FaxesComponent implements OnInit, AfterViewInit {
             !!(res as any)?.matched &&
             String((res as any)?.status ?? '').toUpperCase() !== 'NO_MATCH';
 
-          this.smartAuthCheckMatched      = matched;
+          this.smartAuthCheckMatched = matched;
           this.smartAuthCheckAuthRequired = matched ? this.isYes(authRequiredRaw) : null;
-          this.smartAuthCheckAuthApprove  = matched ? (authApproveRaw || null) : null;
-          this.smartAuthCheckCompleted    = true;
+          this.smartAuthCheckAuthApprove = matched ? (authApproveRaw || null) : null;
+          this.smartAuthCheckCompleted = true;
         },
         error: (e: any) => {
           console.error('SMART_AUTH_CHECK trigger failed', e);
-          this.smartAuthCheckError        = 'Smart Auth Check could not be completed.';
-          this.smartAuthCheckCompleted    = false;
-          this.smartAuthCheckMatched      = null;
+          this.smartAuthCheckError = 'Smart Auth Check could not be completed.';
+          this.smartAuthCheckCompleted = false;
+          this.smartAuthCheckMatched = null;
           this.smartAuthCheckAuthRequired = null;
         }
       });
@@ -1818,6 +2174,108 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     return out;
   }
 
+  /**
+   * Parse a free-form provider address string into discrete
+   * { address, city, state, zip } parts for the auth form prefill.
+   *
+   * Handles the variety of shapes producers actually send:
+   *   "Street, City, State, ZIP"             — clean 4-part (e.g. AZ CMDP)
+   *   "Street, City, State, ZIP, USA"        — trailing country token
+   *   "Street, City, State ZIP"              — 3-part with state+ZIP merged
+   *   "Street, City, State ZIP\nUSA"         — NHS Nevada Health Solutions
+   *                                            AcroForm: country wraps to a
+   *                                            new line inside the same field
+   *   "Street"                                — bare street, rest blank
+   *
+   * Why this exists: the previous inline `parseAddress` did a naive
+   * `addr.split(',')` and assigned parts[2] to `state`. For NHS the third
+   * comma chunk is "CO 93564\nUSA", which goes straight into the auth
+   * record's state field and silently fails backend validation
+   * (state column is short and doesn't accept newlines).
+   * AuthdetailsComponent.save()'s catch block swallows the resulting API
+   * error without emitting authCancelled (see comment at the pipeline
+   * timeout handler), so the user sees the Save Authorization click do
+   * absolutely nothing — exactly the bug reported for NHS forms while
+   * AZ CMDP forms continued to work.
+   */
+  /**
+   * Centralised debug logger for the Fax → Auth flow.
+   * Tag every log with [FAX→AUTH] so you can filter by it in DevTools:
+   *   filter:  FAX→AUTH
+   * Each call also prints a small summary object so the structure is
+   * easy to expand without scrolling through giant nested dumps.
+   */
+  private faxAuthLog(label: string, data?: any): void {
+    // eslint-disable-next-line no-console
+    console.log(
+      `%c[FAX→AUTH] %c${label}`,
+      'color:#fff;background:#7c3aed;padding:1px 4px;border-radius:3px;font-weight:bold;',
+      'color:#7c3aed;font-weight:bold;',
+      data ?? ''
+    );
+  }
+
+  private parseProviderAddress(addr: string | undefined | null): { address: string; city: string; state: string; zip: string } {
+    const empty = { address: '', city: '', state: '', zip: '' };
+    if (!addr) return empty;
+
+    // Normalise: collapse newlines/extra whitespace so multi-line AcroForm
+    // values fold into the comma stream, then strip trailing country tokens.
+    // The country may appear with or without a separating comma, e.g.
+    //   "..., CO 93564, USA"   (comma-separated)
+    //   "..., CO 93564 USA"    (space only — NHS prints it this way)
+    // so we run the strip with an optional comma boundary.
+    const normalised = String(addr)
+      .replace(/[\r\n]+/g, ', ')
+      .replace(/\s{2,}/g, ' ')
+      .replace(/[,\s]+(USA|U\.S\.A\.?|US|United\s+States(?:\s+of\s+America)?)\s*$/i, '')
+      .trim();
+
+    const parts = normalised.split(',').map(s => s.trim()).filter(Boolean);
+    if (parts.length === 0) return empty;
+
+    // 4+ parts: street, city, state, zip (extras ignored — usually country)
+    if (parts.length >= 4) {
+      return {
+        address: parts[0],
+        city: parts[1],
+        state: parts[2],
+        zip: parts[3]
+      };
+    }
+
+    // 3 parts: street, city, "<state> <zip>" — split state from ZIP
+    if (parts.length === 3) {
+      const stateZip = parts[2];
+      // Match "<state-name-or-code> <ZIP>" with ZIP = 5 digits (+ optional -4)
+      const m = /^(.+?)\s+(\d{5}(?:-\d{4})?)\s*$/.exec(stateZip);
+      if (m) {
+        return {
+          address: parts[0],
+          city: parts[1],
+          state: m[1].trim(),
+          zip: m[2].trim()
+        };
+      }
+      // No ZIP detected — keep it in `state` only if it's a plausible length,
+      // otherwise drop it so we never push garbage into the state column.
+      return {
+        address: parts[0],
+        city: parts[1],
+        state: stateZip.length <= 30 ? stateZip : '',
+        zip: ''
+      };
+    }
+
+    // 2 parts: street, city
+    if (parts.length === 2) {
+      return { address: parts[0], city: parts[1], state: '', zip: '' };
+    }
+
+    // 1 part: street only
+    return { address: parts[0], city: '', state: '', zip: '' };
+  }
+
   private postProcessArizonaCmdp(pa: PriorAuth, ocrText: string): void {
     const t = ocrText;
 
@@ -1831,8 +2289,8 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     };
 
     if (pa.providerRequesting?.name) pa.providerRequesting.name = cleanName(pa.providerRequesting.name);
-    if (pa.providerServicing?.name)  pa.providerServicing.name  = cleanName(pa.providerServicing.name);
-    if (pa.patient?.name)            pa.patient.name            = cleanName(pa.patient.name);
+    if (pa.providerServicing?.name) pa.providerServicing.name = cleanName(pa.providerServicing.name);
+    if (pa.patient?.name) pa.patient.name = cleanName(pa.patient.name);
 
     const npiHits: string[] = [];
     let m: RegExpExecArray | null;
@@ -1896,24 +2354,24 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
     const hcpcsLineMatch = t.match(/\b([A-Z]\d{4})\s+([A-Z][A-Z\s\-\/]+?)(?:\s+\$[\d,.]+|$)/im);
 
-    const dateLoose  = /(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{2,4})/;
+    const dateLoose = /(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{2,4})/;
     const extractDate = (text: string): string | undefined => {
       const dm = text.match(dateLoose);
       return dm ? `${dm[1]}/${dm[2]}/${dm[3]}` : undefined;
     };
 
     const beginChunk = t.match(/DATE\s+SERVICE\s+TO\s+BEGIN([\s\S]{0,80})/i);
-    const endChunk   = t.match(/\bTO\s+END\b([\s\S]{0,80})/i);
+    const endChunk = t.match(/\bTO\s+END\b([\s\S]{0,80})/i);
 
-    const finalStart  = beginChunk ? extractDate(beginChunk[1]) : undefined;
-    const finalEnd    = endChunk   ? extractDate(endChunk[1])   : undefined;
-    const finalStart2 = !finalStart ? extractDate((t.match(/BEGIN[\s\S]{0,50}/i)    || [''])[0]) : undefined;
-    const finalEnd2   = !finalEnd   ? extractDate((t.match(/TO\s+END[\s\S]{0,100}/i) || [''])[0]) : undefined;
+    const finalStart = beginChunk ? extractDate(beginChunk[1]) : undefined;
+    const finalEnd = endChunk ? extractDate(endChunk[1]) : undefined;
+    const finalStart2 = !finalStart ? extractDate((t.match(/BEGIN[\s\S]{0,50}/i) || [''])[0]) : undefined;
+    const finalEnd2 = !finalEnd ? extractDate((t.match(/TO\s+END[\s\S]{0,100}/i) || [''])[0]) : undefined;
 
     const startDate = finalStart || finalStart2;
-    const endDate   = finalEnd   || finalEnd2;
+    const endDate = finalEnd || finalEnd2;
 
-    const servicingMatch  = t.match(/PROVIDER.?S\s+NAME\s*\([^)]*\)\s*[\n\r]+\s*([A-Z][a-z]+(?:,\s*[A-Z][a-z]+)?)/i);
+    const servicingMatch = t.match(/PROVIDER.?S\s+NAME\s*\([^)]*\)\s*[\n\r]+\s*([A-Z][a-z]+(?:,\s*[A-Z][a-z]+)?)/i);
     const servicingMatch2 = t.match(/AHCCCS\s+REGISTERED[\s\S]*?PROVIDER.?S\s+NAME[^)]*\)\s*[\s\n\r]*([A-Z][a-zA-Z]+,?\s*[A-Z]?[a-zA-Z]*)/i);
     const servicingAddrMatch = t.match(/PROVIDER.?S\s+ADDRESS\s*\([^)]*\)\s*[\n\r]+\s*(.+?)(?:\s*[\n\r]|$)/i);
 
@@ -1922,17 +2380,17 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       if (hcpcsHits.length > 0 && (!svc.code || !/^[A-Z]\d{4}$/.test(svc.code))) svc.code = hcpcsHits[0];
       if (hcpcsLineMatch?.[2] && !svc.description) svc.description = hcpcsLineMatch[2].trim();
       if (startDate) svc.startDate = startDate;
-      if (endDate)   svc.endDate   = endDate;
+      if (endDate) svc.endDate = endDate;
       if (!svc.diagnosisCode && pa.dx?.codes?.[0]) svc.diagnosisCode = pa.dx.codes[0];
     } else if (hcpcsHits.length > 0 || startDate || endDate) {
       if (!pa.services) pa.services = [];
       pa.services.push({
-        code:                 hcpcsHits[0]         ?? '',
-        description:          hcpcsLineMatch?.[2]?.trim() ?? '',
-        startDate:            startDate             ?? '',
-        endDate:              endDate               ?? '',
-        diagnosisCode:        pa.dx?.codes?.[0]    ?? '',
-        diagnosisDescription: pa.dx?.description   ?? ''
+        code: hcpcsHits[0] ?? '',
+        description: hcpcsLineMatch?.[2]?.trim() ?? '',
+        startDate: startDate ?? '',
+        endDate: endDate ?? '',
+        diagnosisCode: pa.dx?.codes?.[0] ?? '',
+        diagnosisDescription: pa.dx?.description ?? ''
       });
     }
 
@@ -1964,20 +2422,20 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
   private async computeSha256Hex(file: File): Promise<string> {
     const buffer = await file.arrayBuffer();
-    const hash   = await crypto.subtle.digest('SHA-256', buffer);
-    const bytes  = Array.from(new Uint8Array(hash));
+    const hash = await crypto.subtle.digest('SHA-256', buffer);
+    const bytes = Array.from(new Uint8Array(hash));
     return bytes.map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
   private readFileAsBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
-      const fr    = new FileReader();
-      fr.onload   = () => {
-        const res    = fr.result as string;
+      const fr = new FileReader();
+      fr.onload = () => {
+        const res = fr.result as string;
         const base64 = res.split(',')[1] || '';
         resolve(base64);
       };
-      fr.onerror  = reject;
+      fr.onerror = reject;
       fr.readAsDataURL(file);
     });
   }
@@ -1989,10 +2447,10 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   }
 
   private base64ToUint8Array(b64: string): Uint8Array {
-    const pure   = b64.includes('base64,') ? b64.split('base64,')[1] : b64;
+    const pure = b64.includes('base64,') ? b64.split('base64,')[1] : b64;
     const binary = atob(pure);
-    const len    = binary.length;
-    const bytes  = new Uint8Array(len);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
     for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
     return bytes;
   }
@@ -2003,7 +2461,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   }
 
   showNext(): void {
-    const data  = this.dataSource?.data || [];
+    const data = this.dataSource?.data || [];
     const total = data.length;
     if (!total) return;
     if (this.currentIndex < 0) this.currentIndex = 0;
@@ -2014,7 +2472,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   }
 
   showPrevious(): void {
-    const data  = this.dataSource?.data || [];
+    const data = this.dataSource?.data || [];
     const total = data.length;
     if (!total) return;
     if (this.currentIndex <= 0) this.currentIndex = 0;
@@ -2033,13 +2491,13 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     const faxId = this.selectedFax?.faxId;
     if (!faxId) throw new Error('No fax selected.');
 
-    const res: any       = await firstValueFrom(this.api.getFaxFileById(faxId));
-    const fileBytes      = res?.fileBytes ?? res?.FileBytes ?? null;
-    const contentType    = res?.contentType ?? res?.ContentType ?? 'application/pdf';
-    const fileUrl        = res?.url ?? res?.Url ?? null;
+    const res: any = await firstValueFrom(this.api.getFaxFileById(faxId));
+    const fileBytes = res?.fileBytes ?? res?.FileBytes ?? null;
+    const contentType = res?.contentType ?? res?.ContentType ?? 'application/pdf';
+    const fileUrl = res?.url ?? res?.Url ?? null;
 
-    this.currentFaxContentType   = contentType;
-    this.currentFaxOriginalName  = this.selectedFax?.fileName ?? 'preview.pdf';
+    this.currentFaxContentType = contentType;
+    this.currentFaxOriginalName = this.selectedFax?.fileName ?? 'preview.pdf';
 
     if (fileBytes) {
       const u8 = this.base64ToUint8Array(fileBytes);
@@ -2077,7 +2535,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     return new Promise((resolve, reject) => {
       const PDFJS_VERSION = '3.11.174';
       const script = document.createElement('script');
-      script.src   = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.min.js`;
+      script.src = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.min.js`;
       script.onload = () => {
         const lib = (window as any).pdfjsLib;
         if (!lib) { reject(new Error('pdfjsLib not found on window after script load')); return; }
@@ -2097,18 +2555,18 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     if (this.hlKey === key) { this.clearHighlight(); return; }
     if (!str || str === '—' || str === '-') { this.clearHighlight(); return; }
 
-    this.hlKey        = key;
-    this.hlLabel      = label;
-    this.hlValue      = str;
-    this.hlCategory   = category;
+    this.hlKey = key;
+    this.hlLabel = label;
+    this.hlValue = str;
+    this.hlCategory = category;
     this.hlIsProcessing = true;
-    this.hlStatus     = 'processing';
+    this.hlStatus = 'processing';
     this.hlMatchCount = 0;
 
     if (!this.currentFaxBytes) {
       console.warn('[FieldHighlight] No currentFaxBytes available');
       this.hlIsProcessing = false;
-      this.hlStatus       = 'not-found';
+      this.hlStatus = 'not-found';
       return;
     }
 
@@ -2123,20 +2581,20 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
       if (matches.length === 0) {
         this.hlIsProcessing = false;
-        this.hlStatus       = 'not-found';
+        this.hlStatus = 'not-found';
         return;
       }
 
-      const color            = this.HL_COLORS[category] || this.HL_COLORS['patient'];
+      const color = this.HL_COLORS[category] || this.HL_COLORS['patient'];
       const highlightedBytes = await this.drawHighlightsOnPdf(this.currentFaxBytes, matches, color);
 
       if (this._highlightedBlobUrl) URL.revokeObjectURL(this._highlightedBlobUrl);
-      const blob                 = new Blob([highlightedBytes], { type: 'application/pdf' });
-      this._highlightedBlobUrl   = URL.createObjectURL(blob);
+      const blob = new Blob([highlightedBytes], { type: 'application/pdf' });
+      this._highlightedBlobUrl = URL.createObjectURL(blob);
       this.swapToUrl(this._highlightedBlobUrl);
 
       this.hlMatchCount = matches.length;
-      this.hlStatus     = 'found';
+      this.hlStatus = 'found';
 
     } catch (err) {
       console.error('[FieldHighlight] Error:', err);
@@ -2147,16 +2605,16 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   }
 
   clearHighlight(): void {
-    this.hlKey        = null;
-    this.hlLabel      = null;
-    this.hlValue      = null;
-    this.hlCategory   = 'patient';
+    this.hlKey = null;
+    this.hlLabel = null;
+    this.hlValue = null;
+    this.hlCategory = 'patient';
     this.hlIsProcessing = false;
     this.hlMatchCount = 0;
-    this.hlStatus     = 'idle';
+    this.hlStatus = 'idle';
 
     if (this._highlightedBlobUrl) {
-      const oldUrl            = this._highlightedBlobUrl;
+      const oldUrl = this._highlightedBlobUrl;
       this._highlightedBlobUrl = null;
       setTimeout(() => URL.revokeObjectURL(oldUrl), 500);
     }
@@ -2175,16 +2633,16 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   }
 
   private swapToUrl(url: string): void {
-    const standby: 'A' | 'B'  = this.pdfActiveFrame === 'A' ? 'B' : 'A';
-    this._pendingFrame         = standby;
-    const iframe               = standby === 'A' ? this.iframeA : this.iframeB;
+    const standby: 'A' | 'B' = this.pdfActiveFrame === 'A' ? 'B' : 'A';
+    this._pendingFrame = standby;
+    const iframe = standby === 'A' ? this.iframeA : this.iframeB;
     if (iframe?.nativeElement) iframe.nativeElement.src = url;
   }
 
   onIframeLoaded(frame: 'A' | 'B'): void {
     if (frame === this._pendingFrame) {
       this.pdfActiveFrame = frame;
-      this._pendingFrame  = null;
+      this._pendingFrame = null;
     }
   }
 
@@ -2192,20 +2650,20 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     this._pdfTextItems = [];
 
     const loadingTask = pdfjsLib.getDocument({ data: pdfBytes.slice() });
-    const pdf         = await loadingTask.promise;
+    const pdf = await loadingTask.promise;
 
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      const page        = await pdf.getPage(pageNum);
-      const viewport    = page.getViewport({ scale: 1.0 });
+      const page = await pdf.getPage(pageNum);
+      const viewport = page.getViewport({ scale: 1.0 });
       const textContent = await page.getTextContent();
 
       for (const item of textContent.items) {
         if (!item.str || !item.str.trim()) continue;
-        const tx       = item.transform;
+        const tx = item.transform;
         const fontSize = Math.abs(tx[3]) || 12;
-        const x        = tx[4];
-        const y        = tx[5];
-        const w        = item.width || (item.str.length * fontSize * 0.6);
+        const x = tx[4];
+        const y = tx[5];
+        const w = item.width || (item.str.length * fontSize * 0.6);
         this._pdfTextItems.push({ str: item.str, pageIndex: pageNum - 1, x, y, w, h: fontSize });
       }
 
@@ -2229,10 +2687,10 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
           const rect: number[] | undefined = a.rect;
           if (!rect || rect.length < 4) continue;
-          const x  = Math.min(rect[0], rect[2]);
+          const x = Math.min(rect[0], rect[2]);
           const y0 = Math.min(rect[1], rect[3]);
-          const w  = Math.abs(rect[2] - rect[0]);
-          const h  = Math.abs(rect[3] - rect[1]);
+          const w = Math.abs(rect[2] - rect[0]);
+          const h = Math.abs(rect[3] - rect[1]);
 
           this._pdfTextItems.push({
             str,
@@ -2272,9 +2730,9 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   }> {
     if (!this._pdfTextItems.length || !searchValue) return [];
 
-    const needle  = searchValue.toLowerCase().trim();
+    const needle = searchValue.toLowerCase().trim();
     const results: Array<{ pageIndex: number; x: number; y: number; w: number; h: number }> = [];
-    const added   = new Set<string>();
+    const added = new Set<string>();
 
     const addItem = (item: typeof this._pdfTextItems[0]) => {
       const k = `${item.pageIndex}:${Math.round(item.x)}:${Math.round(item.y)}`;
@@ -2334,8 +2792,8 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     color: { r: number; g: number; b: number }
   ): Promise<Uint8Array> {
     const pdfDoc = await PDFDocument.load(originalBytes, { ignoreEncryption: true });
-    const pages  = pdfDoc.getPages();
-    const pad    = 2;
+    const pages = pdfDoc.getPages();
+    const pad = 2;
 
     for (const pos of positions) {
       const page = pages[pos.pageIndex];
@@ -2401,14 +2859,14 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     if (!paData || this.aiSummaryLoading) return;
 
     this.aiSummaryLoading = true;
-    this.aiSummaryError   = null;
-    this.aiSummary        = null;
-    this.aiParsedSummary  = null; this.aiParsedFlags = [];
-    this.aiClinicalMatch  = null; this.aiRecommendation = null; this.aiRecommendationType = 'info';
+    this.aiSummaryError = null;
+    this.aiSummary = null;
+    this.aiParsedSummary = null; this.aiParsedFlags = [];
+    this.aiClinicalMatch = null; this.aiRecommendation = null; this.aiRecommendationType = 'info';
 
     try {
       const inputData = this.buildPaDataText(paData);
-      const value     = 'test';
+      const value = 'test';
 
       const summary: string = await firstValueFrom(
         this.authDetailApi.getFaxSummary(inputData, value)
@@ -2434,7 +2892,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     this.aiSummary = text || null;
 
     const section1Regex = /(?:SECTION\s*1|PA Clinical Summary)[^\n]*\n([\s\S]*?)(?=(?:SECTION\s*2|Critical Flags Identified)|$)/i;
-    const s1Match       = section1Regex.exec(text);
+    const s1Match = section1Regex.exec(text);
     if (s1Match) {
       this.aiParsedSummary = s1Match[1]
         .replace(/^[-—=]+$/gm, '').replace(/##\s*/g, '').replace(/\*\*/g, '').trim();
@@ -2445,9 +2903,9 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         : text;
     }
 
-    this.aiClinicalMatch       = null;
-    this.aiRecommendation      = null;
-    this.aiRecommendationType  = 'info';
+    this.aiClinicalMatch = null;
+    this.aiRecommendation = null;
+    this.aiRecommendationType = 'info';
   }
 
   private buildPaDataText(pa: PriorAuth): string {
@@ -2458,12 +2916,12 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     if (pa.patient?.phone) lines.push(`Phone: ${pa.patient.phone}`);
     lines.push(`Authorization Type: ${pa.review?.type || 'Not provided'}`);
     const settings: string[] = [];
-    if (pa.setting?.inpatient)  settings.push('Inpatient');
+    if (pa.setting?.inpatient) settings.push('Inpatient');
     if (pa.setting?.outpatient) settings.push('Outpatient');
     lines.push(`Setting: ${settings.length ? settings.join(', ') : 'Not provided'}`);
     if (pa.services?.length) {
       for (let i = 0; i < pa.services.length; i++) {
-        const s     = pa.services[i];
+        const s = pa.services[i];
         const parts: string[] = [];
         if (s.code) parts.push(s.code);
         if (s.description) parts.push(s.description);
@@ -2484,21 +2942,21 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     }
     if (pa.dx?.codes?.length) dxParts.push(...pa.dx.codes);
     if (dxParts.length) lines.push(`All Diagnosis Codes: ${[...new Set(dxParts)].join(', ')}`);
-    const rp     = pa.providerRequesting;
+    const rp = pa.providerRequesting;
     lines.push(`Referring Physician: ${rp?.name || 'Not provided'}${rp?.npi ? ', NPI: ' + rp.npi : ''}`);
     if (rp?.phone) lines.push(`Referring Phone: ${rp.phone}`);
-    if (rp?.fax)   lines.push(`Referring Fax: ${rp.fax}`);
-    const sp     = pa.providerServicing;
+    if (rp?.fax) lines.push(`Referring Fax: ${rp.fax}`);
+    const sp = pa.providerServicing;
     const svcName = sp?.name || sp?.facility;
     lines.push(`Servicing Provider: ${svcName || 'Not provided'}`);
     lines.push(`Servicing Provider NPI: ${sp?.npi || 'Not provided'}`);
     if (sp?.phone) lines.push(`Servicing Provider Phone: ${sp.phone}`);
-    if (sp?.fax)   lines.push(`Servicing Provider Fax: ${sp.fax}`);
+    if (sp?.fax) lines.push(`Servicing Provider Fax: ${sp.fax}`);
     if (sp?.facility && sp?.name) lines.push(`Facility: ${sp.facility}`);
     if (!sp?.facility && !svcName) lines.push('Facility: Not provided');
     if (pa.submission?.issuerName) lines.push(`Issuer Name: ${pa.submission.issuerName}`);
-    if (pa.submission?.date)       lines.push(`Submission Date: ${pa.submission.date}`);
-    if (pa.notes)                  lines.push(`Supporting Docs: ${pa.notes}`);
+    if (pa.submission?.date) lines.push(`Submission Date: ${pa.submission.date}`);
+    if (pa.notes) lines.push(`Supporting Docs: ${pa.notes}`);
     if (!rp?.npi && !sp?.npi) lines.push('AHCCCS Registration: Not provided for either provider');
     return lines.join('\n');
   }
@@ -2509,9 +2967,9 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       return;
     }
 
-    const total    = this.selectedFax.pageCount;
+    const total = this.selectedFax.pageCount;
     const firstRaw: any = this.splitFirstPageCount;
-    const first    = Number.isFinite(Number(firstRaw)) ? Math.trunc(Number(firstRaw)) : 1;
+    const first = Number.isFinite(Number(firstRaw)) ? Math.trunc(Number(firstRaw)) : 1;
 
     if (first <= 0 || first >= total) {
       this.toast(`First document pages must be between 1 and ${total - 1}.`, true);
@@ -2519,42 +2977,42 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     }
 
     this.isSplitting = true;
-    this.saving      = true;
+    this.saving = true;
 
     try {
       let bytes = this.currentFaxBytes;
       if (!bytes || bytes.length === 0) {
-        const res: any    = await firstValueFrom(this.api.getFaxFileById(this.selectedFax.faxId ?? 0));
-        const fileBytes   = res.fileBytes ?? res.FileBytes ?? null;
+        const res: any = await firstValueFrom(this.api.getFaxFileById(this.selectedFax.faxId ?? 0));
+        const fileBytes = res.fileBytes ?? res.FileBytes ?? null;
         if (!fileBytes) throw new Error('No PDF bytes returned from server.');
-        bytes             = this.base64ToUint8Array(fileBytes);
-        this.currentFaxBytes         = bytes;
-        this.currentFaxContentType   = res.contentType ?? res.ContentType ?? 'application/pdf';
-        this.currentFaxOriginalName  = this.selectedFax.fileName ?? 'document.pdf';
+        bytes = this.base64ToUint8Array(fileBytes);
+        this.currentFaxBytes = bytes;
+        this.currentFaxContentType = res.contentType ?? res.ContentType ?? 'application/pdf';
+        this.currentFaxOriginalName = this.selectedFax.fileName ?? 'document.pdf';
       }
 
-      const originalPdf   = await PDFDocument.load(bytes, { ignoreEncryption: true });
-      const pageCount     = originalPdf.getPageCount();
-      const pdf1          = await PDFDocument.create();
-      const pdf2          = await PDFDocument.create();
-      const part1Indices  = Array.from({ length: first },             (_, i) => i);
-      const part2Indices  = Array.from({ length: pageCount - first }, (_, i) => i + first);
-      const copied1       = await pdf1.copyPages(originalPdf, part1Indices);
+      const originalPdf = await PDFDocument.load(bytes, { ignoreEncryption: true });
+      const pageCount = originalPdf.getPageCount();
+      const pdf1 = await PDFDocument.create();
+      const pdf2 = await PDFDocument.create();
+      const part1Indices = Array.from({ length: first }, (_, i) => i);
+      const part2Indices = Array.from({ length: pageCount - first }, (_, i) => i + first);
+      const copied1 = await pdf1.copyPages(originalPdf, part1Indices);
       copied1.forEach(p => pdf1.addPage(p));
-      const copied2       = await pdf2.copyPages(originalPdf, part2Indices);
+      const copied2 = await pdf2.copyPages(originalPdf, part2Indices);
       copied2.forEach(p => pdf2.addPage(p));
-      const bytes1        = await pdf1.save();
-      const bytes2        = await pdf2.save();
-      const originalName  = this.currentFaxOriginalName || this.selectedFax.fileName || 'document.pdf';
-      const dot           = originalName.lastIndexOf('.');
-      const base          = dot >= 0 ? originalName.substring(0, dot) : originalName;
-      const ext           = dot >= 0 ? originalName.substring(dot) : '.pdf';
-      const file1Name     = `${base}_Split1${ext}`;
-      const file2Name     = `${base}_Split2${ext}`;
-      const file1         = new File([new Blob([bytes1], { type: 'application/pdf' })], file1Name, { type: 'application/pdf' });
-      const file2         = new File([new Blob([bytes2], { type: 'application/pdf' })], file2Name, { type: 'application/pdf' });
-      const parentFaxId   = this.selectedFax.faxId ?? null;
-      const metaJson      = JSON.stringify({ source: 'UI:Faxes', action: 'Split', parentFaxId });
+      const bytes1 = await pdf1.save();
+      const bytes2 = await pdf2.save();
+      const originalName = this.currentFaxOriginalName || this.selectedFax.fileName || 'document.pdf';
+      const dot = originalName.lastIndexOf('.');
+      const base = dot >= 0 ? originalName.substring(0, dot) : originalName;
+      const ext = dot >= 0 ? originalName.substring(dot) : '.pdf';
+      const file1Name = `${base}_Split1${ext}`;
+      const file2Name = `${base}_Split2${ext}`;
+      const file1 = new File([new Blob([bytes1], { type: 'application/pdf' })], file1Name, { type: 'application/pdf' });
+      const file2 = new File([new Blob([bytes2], { type: 'application/pdf' })], file2Name, { type: 'application/pdf' });
+      const parentFaxId = this.selectedFax.faxId ?? null;
+      const metaJson = JSON.stringify({ source: 'UI:Faxes', action: 'Split', parentFaxId });
 
       await this.saveFileData(null, file1, { parentFaxId, inheritFrom: this.selectedFax, metaJson, suppressToast: true, suppressReload: true });
       await this.saveFileData(null, file2, { parentFaxId, inheritFrom: this.selectedFax, metaJson, suppressToast: true, suppressReload: true });
@@ -2567,7 +3025,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       this.toast('Split failed. Please try again.', true);
     } finally {
       this.isSplitting = false;
-      this.saving      = false;
+      this.saving = false;
     }
   }
 
@@ -2586,15 +3044,15 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
   cancelInlineEdit(): void { this.editMode = 'none'; }
 
-  editingFileNameFaxId: number | null  = null;
+  editingFileNameFaxId: number | null = null;
   editingWorkBasketFaxId: number | null = null;
-  tempFileName: string   = '';
+  tempFileName: string = '';
   tempWorkBasket: string | null = null;
 
   renameFaxInline(row: FaxFile): void {
     this.editingWorkBasketFaxId = null;
-    this.editingFileNameFaxId   = row.faxId ?? null;
-    this.tempFileName           = row.fileName;
+    this.editingFileNameFaxId = row.faxId ?? null;
+    this.tempFileName = row.fileName;
   }
 
   saveRename(row: FaxFile): void {
@@ -2607,13 +3065,13 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
   cancelRename(): void {
     this.editingFileNameFaxId = null;
-    this.tempFileName         = '';
+    this.tempFileName = '';
   }
 
   openUpdateWorkBasketInline(row: FaxFile): void {
-    this.editingFileNameFaxId   = null;
+    this.editingFileNameFaxId = null;
     this.editingWorkBasketFaxId = row.faxId ?? null;
-    const current               = row.workBasket;
+    const current = row.workBasket;
     if (current && this.workBasketOptions.some(w => w.value === current)) {
       this.tempWorkBasket = current;
     } else if (this.workBasketOptions.length) {
@@ -2632,7 +3090,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
   cancelWorkBasketEdit(): void {
     this.editingWorkBasketFaxId = null;
-    this.tempWorkBasket         = null;
+    this.tempWorkBasket = null;
   }
 
   updatePriority(row: FaxFile): void {
@@ -2644,9 +3102,9 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   deleteMessage: string = '';
 
   openDeleteInline(row: FaxFile): void {
-    this.editingFileNameFaxId   = null;
+    this.editingFileNameFaxId = null;
     this.editingWorkBasketFaxId = null;
-    this.deletingFaxId          = row.faxId ?? null;
+    this.deletingFaxId = row.faxId ?? null;
     if (row.hasChildren) {
       this.deleteMessage = `This will delete "${row.fileName}" and all its split pages. Continue?`;
     } else if ((row as any).isChild) {
@@ -2658,7 +3116,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
   async confirmDelete(row: FaxFile): Promise<void> {
     if (!row || !row.faxId) return;
-    const nowIso    = new Date().toISOString();
+    const nowIso = new Date().toISOString();
     const deletedBy = this.currentUserId ?? row.deletedBy ?? 1;
     const targets: FaxFile[] = row.hasChildren && row.children?.length
       ? [row, ...(row.children || [])]
@@ -2684,7 +3142,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       console.error('Delete failed', e);
       this.toast(`Delete failed for "${row.fileName}".`, true);
     } finally {
-      this.saving        = false;
+      this.saving = false;
       this.deletingFaxId = null;
       this.deleteMessage = '';
     }
@@ -2697,25 +3155,101 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
   private updateFaxCounts(): void {
     const data = this.allFaxes || [];
-    this.totalFaxCount     = data.length;
-    this.openFaxCount      = data.filter(f => (f.status || '').toLowerCase() !== 'processed' && (f.status || '').toLowerCase() !== 'deleted').length;
-    this.processedFaxCount = data.filter(f => (f.status || '').toLowerCase() === 'processed').length;
+    const roots = data.filter(f => !f.isChild);
+
+    this.totalFaxCount = data.length;
+
+    // Counts are group-aware: a split parent + its children move between
+    // Open and Processed as a single unit. While ANY child is still New,
+    // the entire group counts as Open (and every record in it shows up in
+    // the Open chip count). Once every child is Processed, the whole group
+    // — parent included — counts as Processed.
+    let openCount = 0;
+    let processedCount = 0;
+    for (const root of roots) {
+      const group = this.getGroupEffectiveStatus(root);
+      const groupSize = 1 + (root.children?.length ?? 0);
+      if (group === 'Open') openCount += groupSize;
+      else if (group === 'Processed') processedCount += groupSize;
+      // 'Deleted' contributes to neither chip
+    }
+    this.openFaxCount = openCount;
+    this.processedFaxCount = processedCount;
+
     this.faxWorkBaskets.forEach(wb => {
       wb.count = data.filter(f => (f.workBasket || '') === wb.name).length;
     });
   }
 
+  /**
+   * Compute the effective status for a top-level (non-child) row, treating
+   * NHS split parents and their children as a single logical group:
+   *
+   *   • If the row has children (a split parent):
+   *       'Processed' iff EVERY child is Processed.
+   *       Otherwise 'Open' — the parent's own backend status is ignored,
+   *       so a split parent that never had an auth created against it does
+   *       not get stuck in Open after every child finishes.
+   *   • If the row has no children (a normal upload): use its own status.
+   *
+   * This is what implements the rule: "while one split is still New, keep
+   * its sibling visible in the New filter even if the backend already
+   * marked the sibling Processed". The split status only flips at the
+   * group level once every child is done.
+   */
+  private getGroupEffectiveStatus(row: FaxFile): 'Processed' | 'Open' | 'Deleted' {
+    const isProcessed = (s: string | null | undefined) => (s || '').toLowerCase() === 'processed';
+    const isDeleted = (s: string | null | undefined) => (s || '').toLowerCase() === 'deleted';
+
+    if (row.hasChildren && row.children?.length) {
+      // Ignore deleted children when deciding group completion — a tombstoned
+      // split shouldn't keep the rest of the group stuck in Open forever.
+      const livingChildren = row.children.filter(c => !isDeleted(c.status));
+      if (livingChildren.length === 0) return 'Deleted';
+      if (livingChildren.every(c => isProcessed(c.status))) return 'Processed';
+      return 'Open';
+    }
+
+    if (isDeleted(row.status)) return 'Deleted';
+    if (isProcessed(row.status)) return 'Processed';
+    return 'Open';
+  }
+
   private applyWorkBasketFilter(): void {
-    let source = this.allFaxes || [];
-    if (this.statusChipFilter === 'open') {
-      source = source.filter(f => (f.status || '').toLowerCase() !== 'processed' && (f.status || '').toLowerCase() !== 'deleted');
-    } else if (this.statusChipFilter === 'processed') {
-      source = source.filter(f => (f.status || '').toLowerCase() === 'processed');
+    // Walk top-level rows only (children inherit visibility from their
+    // parent's group decision). For each root we decide whether the WHOLE
+    // group should be visible under the current chip + work-basket filters,
+    // then push the parent followed by all its children when included.
+    const roots = (this.allFaxes || []).filter(f => !f.isChild);
+
+    const passesStatusChip = (group: 'Processed' | 'Open' | 'Deleted'): boolean => {
+      if (this.statusChipFilter === 'open') return group === 'Open';
+      if (this.statusChipFilter === 'processed') return group === 'Processed';
+      return group !== 'Deleted'; // 'all' shows everything except deleted
+    };
+
+    const out: FaxFile[] = [];
+    for (const root of roots) {
+      const group = this.getGroupEffectiveStatus(root);
+
+      let include = passesStatusChip(group);
+
+      // Work-basket filter is evaluated against the parent only. Children
+      // inherit — splitting a multi-form upload doesn't move it across
+      // baskets, so this is safe and keeps each split group atomic.
+      if (include && this.selectedWorkBasket) {
+        include = (root.workBasket || '') === this.selectedWorkBasket;
+      }
+
+      if (include) {
+        out.push(root);
+        if (root.hasChildren && root.children?.length) {
+          root.children.forEach((c: any) => out.push(c));
+        }
+      }
     }
-    if (this.selectedWorkBasket) {
-      source = source.filter(f => (f.workBasket || '') === this.selectedWorkBasket);
-    }
-    this.dataSource.data = source;
+
+    this.dataSource.data = out;
   }
 
   selectWorkBasket(name: string | null): void {
@@ -2747,32 +3281,51 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   // ── Fax → Auth Form ─────────────────────────────────────────────────────
 
   openAuthForm(): void {
-    if (!this.priorAuth || !this.selectedFax) return;
+    if (!this.priorAuth || !this.selectedFax) {
+      this.faxAuthLog('openAuthForm() ABORTED — missing priorAuth or selectedFax', {
+        hasPriorAuth: !!this.priorAuth,
+        hasSelectedFax: !!this.selectedFax,
+      });
+      return;
+    }
 
     const pa = this.priorAuth;
+
+    this.faxAuthLog('openAuthForm() called', {
+      selectedFax: {
+        faxId: this.selectedFax.faxId,
+        memberId: this.selectedFax.memberId,
+        memberDetailsId: this.selectedFax.memberDetailsId,
+        memberName: this.selectedFax.memberName,
+        fileName: this.selectedFax.fileName,
+      },
+      smartAuthCheckAuthApprove: this.smartAuthCheckAuthApprove,
+      sourceTemplate: (pa as any)?.source?.template ?? null,
+    });
 
     let authClassName = 'Inpatient';
     if ((pa as any).setting?.outpatient && !(pa as any).setting?.inpatient) authClassName = 'Outpatient';
 
     const authTypeName = 'Observation Stay';
 
-    const parseAddress = (addr: string | undefined) => {
-      if (!addr) return {};
-      const parts = addr.split(',').map(s => s.trim());
-      return { address: parts[0] || '', city: parts[1] || '', state: parts[2] || '', zip: parts[3] || '' };
-    };
+    const reqAddr = this.parseProviderAddress((pa as any).providerRequesting?.address);
+    const svcAddr = this.parseProviderAddress((pa as any).providerServicing?.address);
 
-    const reqAddr = parseAddress((pa as any).providerRequesting?.address);
-    const svcAddr = parseAddress((pa as any).providerServicing?.address);
+    this.faxAuthLog('Address parsing result', {
+      requestingProvider_addressIn: (pa as any).providerRequesting?.address ?? null,
+      requestingProvider_parsed: reqAddr,
+      servicingProvider_addressIn: (pa as any).providerServicing?.address ?? null,
+      servicingProvider_parsed: svcAddr,
+    });
 
     this.currentFaxPrefill = {
-      mode:           'fax',
-      memberId:       this.selectedFax.memberId ?? 0,
+      mode: 'fax',
+      memberId: this.selectedFax.memberId ?? 0,
       memberDetailsId: this.selectedFax.memberDetailsId ?? 0,
-      faxId:          this.selectedFax.faxId ?? 0,
+      faxId: this.selectedFax.faxId ?? 0,
       authClassName,
       authTypeName,
-      authApprove:    this.smartAuthCheckAuthApprove ?? undefined,
+      authApprove: this.smartAuthCheckAuthApprove ?? undefined,
       diagnosisCodes: ((pa as any).dx?.codes?.length ? (pa as any).dx.codes : null)
         ?? ((pa as any).services || []).map((s: any) => s.diagnosisCode).filter(Boolean),
       services: ((pa as any).services ?? []).map((s: any) => ({
@@ -2792,12 +3345,23 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       } : undefined,
       requestDatetime: new Date().toISOString(),
       actualAdmissionDatetime: new Date().toISOString(),
-      requestType:     'Prospective',
-      notes:       (pa as any).notes,
+      requestType: 'Prospective',
+      notes: (pa as any).notes,
       // Pre-select Owner = Kelly Anderson (ID 5) for all fax-initiated auths
       ownerUserId: 5,
-      priorAuth:   pa
+      priorAuth: pa
     };
+
+    // ── DEBUG: full prefill snapshot crossing into AuthdetailsComponent ────
+    // This is THE key diff between an NHS open and an AZ open. If this log
+    // looks structurally identical for both PDFs but the NHS save still
+    // silently dies, the issue is inside AuthdetailsComponent (validators,
+    // template apply, save() catch). If it differs, the diff IS the bug.
+    this.faxAuthLog('currentFaxPrefill set — handing off to <app-authdetails>',
+      JSON.parse(JSON.stringify(this.currentFaxPrefill)) // deep clone snapshot for the console
+    );
+
+    this.installAuthFormErrorTraps();
 
     this.showAuthForm = true;
     setTimeout(() => {
@@ -2806,52 +3370,123 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     }, 100);
   }
 
+  // ── DEBUG: error traps active only while the auth form is open ─────────────
+  // AuthdetailsComponent.save()'s catch block silently swallows API errors
+  // (the existing pipeline timeout comment already calls this out). These
+  // traps catch anything that escapes the catch — uncaught throws, rejected
+  // promises that nobody awaited, HTTP failures bubbling up — and tag them
+  // so they're visible in the console next to the [FAX→AUTH] trail.
+  private _authFormErrorHandler: ((e: ErrorEvent) => void) | null = null;
+  private _authFormRejectionHandler: ((e: PromiseRejectionEvent) => void) | null = null;
+
+  private installAuthFormErrorTraps(): void {
+    if (this._authFormErrorHandler || this._authFormRejectionHandler) return;
+
+    this._authFormErrorHandler = (e: ErrorEvent) => {
+      this.faxAuthLog('🔥 window error while auth form open', {
+        message: e.message,
+        filename: e.filename,
+        lineno: e.lineno,
+        colno: e.colno,
+        error: e.error,
+      });
+    };
+    this._authFormRejectionHandler = (e: PromiseRejectionEvent) => {
+      this.faxAuthLog('🔥 unhandled promise rejection while auth form open', {
+        reason: e.reason,
+      });
+    };
+
+    window.addEventListener('error', this._authFormErrorHandler);
+    window.addEventListener('unhandledrejection', this._authFormRejectionHandler);
+  }
+
+  private uninstallAuthFormErrorTraps(): void {
+    if (this._authFormErrorHandler) {
+      window.removeEventListener('error', this._authFormErrorHandler);
+      this._authFormErrorHandler = null;
+    }
+    if (this._authFormRejectionHandler) {
+      window.removeEventListener('unhandledrejection', this._authFormRejectionHandler);
+      this._authFormRejectionHandler = null;
+    }
+  }
+
   cancelAuthForm(): void {
+    this.faxAuthLog('cancelAuthForm() called (user clicked Back to Details / × close)', {
+      authHasUnsavedChanges: this.authDetailsRef?.authHasUnsavedChanges?.() ?? null,
+    });
     // Manual cancel of the visible Generate Auth panel.
     // Pipeline cancels are handled separately by onAutoAuthCancelled().
     if (this.authDetailsRef?.authHasUnsavedChanges?.()) {
-      this.discardDialogContext  = 'backToDetails';
+      this.discardDialogContext = 'backToDetails';
       this._pendingDiscardAction = () => {
-        this.showAuthForm      = false;
+        this.uninstallAuthFormErrorTraps();
+        this.showAuthForm = false;
         this.currentFaxPrefill = null;
       };
       this.showDiscardDialog = true;
     } else {
-      this.showAuthForm      = false;
+      this.uninstallAuthFormErrorTraps();
+      this.showAuthForm = false;
       this.currentFaxPrefill = null;
     }
   }
 
   dismissDiscardDialog(): void {
-    this.showDiscardDialog     = false;
+    this.showDiscardDialog = false;
     this._pendingDiscardAction = null;
   }
 
   confirmDiscardChanges(): void {
     this.showDiscardDialog = false;
-    const action           = this._pendingDiscardAction;
+    const action = this._pendingDiscardAction;
     this._pendingDiscardAction = null;
     action?.();
   }
 
   onAuthSaved(event: { authNumber: string; authId: number }): void {
+    this.faxAuthLog('✅ onAuthSaved() FIRED', {
+      event,
+      hasActivePipeline: !!this._activeAutoAuthPipeline,
+      isAutoSavePipelineActive: this.isAutoSavePipelineActive,
+      currentFaxPrefill_memberId: this.currentFaxPrefill?.memberId,
+      currentFaxPrefill_memberDetailsId: this.currentFaxPrefill?.memberDetailsId,
+      selectedFax_faxId: this.selectedFax?.faxId,
+    });
+
     // ── Determine whether this came from the pipeline or the manual form ───────
+    //
+    // A pipeline emit is identified by EITHER:
+    //   • _activeAutoAuthPipeline being set (the normal case), OR
+    //   • isAutoSavePipelineActive being true (the timeout-cleanup case where
+    //     we cleared _activeAutoAuthPipeline early but the hidden form's
+    //     save() eventually completed and emitted anyway).
+    //
+    // Without the second check, a delayed emit from the hidden form would
+    // fall through to the "manual" branch and silently close the user's
+    // visible Generate Auth panel — looking for all the world like the
+    // Save Authorization click did nothing.
+    const wasFromHiddenPipeline = this.isAutoSavePipelineActive;
     const pipeline = this._activeAutoAuthPipeline;
     this._activeAutoAuthPipeline = null;
 
-    if (pipeline) {
+    if (pipeline || wasFromHiddenPipeline) {
       // Pipeline auto-save: tear down the hidden instance only.
       // showAuthForm / currentFaxPrefill are untouched — manual flow is isolated.
       this.isAutoSavePipelineActive = false;
-      this.pipelineFaxPrefill       = null;
+      this.pipelineFaxPrefill = null;
 
-      this.setStep(pipeline, 'auth', 'success',
-        `Authorization ${event.authNumber} created — Status: Closed | Decision: Auto Approved`);
-      this.setStep(pipeline, 'finalize', 'running',
-        'Updating fax status and linking authorization record…');
+      if (pipeline) {
+        this.setStep(pipeline, 'auth', 'success',
+          `Authorization ${event.authNumber} created — Status: Closed | Decision: Auto Approved`);
+        this.setStep(pipeline, 'finalize', 'running',
+          'Updating fax status and linking authorization record…');
+      }
     } else {
       // Manual Generate Auth flow: close the visible form panel as before.
-      this.showAuthForm      = false;
+      this.uninstallAuthFormErrorTraps();
+      this.showAuthForm = false;
       this.currentFaxPrefill = null;
     }
 
@@ -2859,24 +3494,29 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     const nowIso = new Date().toISOString();
     this.linkedAuthMeta = {
       linkedAuthNumber: event.authNumber,
-      linkedAuthId:     event.authId,
-      linkedAt:         nowIso
+      linkedAuthId: event.authId,
+      linkedAt: nowIso
     };
     this.resetSmartAuthCheckState();
 
     // ── Resolve which fax record to update ────────────────────────────────────
-    // CRITICAL: when the pipeline runs on upload the user has not yet clicked the
-    // fax, so selectedFax is null.  Use pipeline.faxId as the authoritative source.
+    // CRITICAL: when a pipeline is driving the save it KNOWS which fax it is
+    // working on — that may be a child split, not whatever the user happens
+    // to have selected in the listing. Always prefer pipeline.faxId for
+    // pipeline-driven saves; only fall back to selectedFax for manual saves
+    // (where pipeline is null).
     const faxIdToUpdate: number | null =
-      this.selectedFax?.faxId ?? pipeline?.faxId ?? null;
+      pipeline?.faxId ?? this.selectedFax?.faxId ?? null;
     const fileNameForUpdate: string =
-      this.selectedFax?.fileName ?? pipeline?.fileName ?? 'unknown';
+      pipeline?.fileName ?? this.selectedFax?.fileName ?? 'unknown';
     const priorityForUpdate: 1 | 2 | 3 =
       (this.selectedFax?.priority ?? 2) as 1 | 2 | 3;
 
-    // Merge existing metaJson so we never lose previous pipeline/processing metadata
+    // Merge existing metaJson so we never lose previous pipeline/processing metadata.
+    // For pipeline-driven updates against a child split, selectedFax may not match
+    // the child being updated — in that case skip the inherited meta.
     let existingMeta: any = {};
-    if (this.selectedFax?.metaJson) {
+    if (this.selectedFax?.metaJson && this.selectedFax.faxId === faxIdToUpdate) {
       try { existingMeta = JSON.parse(this.selectedFax.metaJson); } catch { /* ignore */ }
     }
 
@@ -2884,20 +3524,20 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       const updatedMeta = {
         ...existingMeta,
         linkedAuthNumber: event.authNumber,
-        linkedAuthId:     event.authId,
-        linkedAt:         nowIso,
+        linkedAuthId: event.authId,
+        linkedAt: nowIso,
         ...(pipeline ? { autoApproved: true } : {})
       };
 
       const toSave: any = {
-        faxId:      faxIdToUpdate,
+        faxId: faxIdToUpdate,
         workBasket: '2',
-        fileName:   fileNameForUpdate,
-        priority:   priorityForUpdate,
-        status:     'Processed',
-        metaJson:   JSON.stringify(updatedMeta),
-        updatedOn:  nowIso,
-        updatedBy:  this.currentUserId ?? 1
+        fileName: fileNameForUpdate,
+        priority: priorityForUpdate,
+        status: 'Processed',
+        metaJson: JSON.stringify(updatedMeta),
+        updatedOn: nowIso,
+        updatedBy: this.currentUserId ?? 1
       };
 
       this.api.updateFaxFile(toSave).subscribe({
@@ -2905,10 +3545,13 @@ export class FaxesComponent implements OnInit, AfterViewInit {
           if (pipeline) {
             this.setStep(pipeline, 'finalize', 'success',
               'Fax moved to Processed and authorization record linked');
-            pipeline.outcome    = 'auto-approved';
+            pipeline.outcome = 'auto-approved';
             pipeline.authNumber = event.authNumber;
-            pipeline.authId     = event.authId;
+            pipeline.authId = event.authId;
             this.autoAuthPipelines = [...this.autoAuthPipelines];
+            // Release the orchestrator gate AFTER the fax update so the next
+            // pipeline starts only once this child is fully Processed.
+            this.resolvePipelineDone(pipeline.id);
           }
           this.reload();
         },
@@ -2918,10 +3561,11 @@ export class FaxesComponent implements OnInit, AfterViewInit {
             // Auth was created successfully — surface it even if fax update failed
             this.setStep(pipeline, 'finalize', 'error',
               `Status update failed — authorization ${event.authNumber} was created successfully`);
-            pipeline.outcome    = 'auto-approved';
+            pipeline.outcome = 'auto-approved';
             pipeline.authNumber = event.authNumber;
-            pipeline.authId     = event.authId;
+            pipeline.authId = event.authId;
             this.autoAuthPipelines = [...this.autoAuthPipelines];
+            this.resolvePipelineDone(pipeline.id);
           }
           this.toast(`Authorization ${event.authNumber} created but fax record update failed.`, true);
           this.reload();
@@ -2931,10 +3575,11 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       // No fax context at all — surface the auth number and complete
       if (pipeline) {
         this.setStep(pipeline, 'finalize', 'success', 'Authorization created successfully');
-        pipeline.outcome    = 'auto-approved';
+        pipeline.outcome = 'auto-approved';
         pipeline.authNumber = event.authNumber;
-        pipeline.authId     = event.authId;
+        pipeline.authId = event.authId;
         this.autoAuthPipelines = [...this.autoAuthPipelines];
+        this.resolvePipelineDone(pipeline.id);
       }
       this.toast(`Authorization ${event.authNumber} created successfully.`);
       this.reload();
@@ -2956,9 +3601,9 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       if (meta?.linkedAuthNumber) {
         return {
           linkedAuthNumber: meta.linkedAuthNumber,
-          linkedAuthId:     meta.linkedAuthId   ?? null,
-          linkedAt:         meta.linkedAt        ?? null,
-          parentFaxId:      meta.parentFaxId     ?? null,
+          linkedAuthId: meta.linkedAuthId ?? null,
+          linkedAt: meta.linkedAt ?? null,
+          parentFaxId: meta.parentFaxId ?? null,
           ...meta
         };
       }
@@ -2968,16 +3613,16 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
   onAuthClick(authNumber: string, authId: number): void {
     if (!authId) return;
-    const memberId        = this.selectedFax?.memberId;
+    const memberId = this.selectedFax?.memberId;
     const memberDetailsId = this.selectedFax?.memberDetailsId;
     if (!memberId || !memberDetailsId) {
       this.toast(`Authorization ${authNumber} (ID: ${authId})`, false);
       return;
     }
 
-    const memId    = String(memberId);
+    const memId = String(memberId);
     const memDetId = String(memberDetailsId);
-    const authNo   = String(authNumber);
+    const authNo = String(authNumber);
 
     const urlTree = this.router.createUrlTree([
       '/member-info',

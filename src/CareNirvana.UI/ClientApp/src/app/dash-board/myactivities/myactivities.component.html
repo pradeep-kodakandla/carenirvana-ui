@@ -57,21 +57,21 @@
 
 
           <!-- "All groups" chip -->
-          <button type="button"
+          <!--<button type="button"
                   class="wg-chip"
                   [class.active]="selectedWorkGroupId === null"
                   (click)="onWorkGroupChipClick(null)">
             All groups
-          </button>
+          </button>-->
 
           <!-- one chip per work group -->
-          <button type="button"
+          <!--<button type="button"
                   class="wg-chip"
                   *ngFor="let wg of workGroups"
                   [class.active]="selectedWorkGroupId === wg.workGroupId"
                   (click)="onWorkGroupChipClick(wg.workGroupId)">
             {{ wg.workGroupName }}
-          </button>
+          </button>-->
 
 
           <button type="button" class="pill red"

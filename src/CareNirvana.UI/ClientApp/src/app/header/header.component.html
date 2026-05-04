@@ -18,13 +18,13 @@
 
     <!-- Home / logo buttons -->
     <button mat-icon-button (click)="goToPage('dashboard')">
-      <mat-icon style="color: white; display: flex; align-items: center; justify-content: center; line-height: 1;">home</mat-icon>
+      <mat-icon style="color: white; display: flex; align-items: center; justify-content: center; line-height: 1;">menu</mat-icon>
     </button>
 
-    <button mat-icon-button (click)="goToPage('dashboard')">
+    <button mat-icon-button (click)="goToPage('dashboard')" >
       <img src="assets/icons/CareNirvanaLogo.png" class="home-icon" alt="Evoke UM / AG Logo" style="display: block;" />
     </button>
-    <h5 style="margin: 0; padding-right: 10px; font-size: 16px; font-weight: bold; line-height: 1; color: white;">Evoke UM / AG</h5>
+    <h5 style="margin: 0; padding-right: 10px; font-size: 16px; font-weight: bold; line-height: 1; color: white; letter-spacing: 0.15em; margin-right: 5px;">Evoke UM / AG</h5>
     <!-- Dynamic tabs -->
     <ul class="nav nav-tabs" style="border-bottom:none;">
       <ng-container *ngFor="let tab of headerService.getTabs()">
