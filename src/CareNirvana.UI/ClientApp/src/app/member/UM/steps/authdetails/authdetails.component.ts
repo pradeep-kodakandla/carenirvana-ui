@@ -2452,7 +2452,18 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     }
 
     // 2) datasource options (select + button types)
-    const selects = allFields.filter((f: any) => (f.type === 'select' || this.isButtonType(f.type)) && !!f.datasource);
+    // ── FIX: Exclude Work Group / Work List (Work Basket) fields. Their options come
+    //         exclusively from WorkbasketService via applyWorkGroupAndBasketOptions().
+    //         Without this guard, an async datasource fetch can return AFTER
+    //         applyWorkGroupAndBasketOptions runs (synchronously at line 1076 of
+    //         loadTemplateJson) and overwrite the WB service options with empty / wrong
+    //         data — manifests as empty Work Group / Work List dropdowns in fax mode.
+    const selects = allFields.filter((f: any) =>
+      (f.type === 'select' || this.isButtonType(f.type)) &&
+      !!f.datasource &&
+      !this.isWorkBasketField(f) &&
+      !this.isWorkGroupField(f)
+    );
     const byDatasource = new Map<string, RenderField[]>();
 
     for (const f of selects) {
@@ -8638,26 +8649,95 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         await this.prefillLookupFieldByCode(icdFields[i], diagCodes[i]);
       }
 
-      // Directly populate the diagnosis card display store from the lookup cache.
-      // onLookupSelected stores the full object in lookupSelectedByControl but NOT
-      // in diagnosisDataByInstance — the card view needs the latter.
+      // ── FIX: Mirror the procedure code/description pattern.
+      //   Procedure works because (a) its description is filled explicitly via a
+      //   global rawId filter and (b) when the lookup miss happens for CPT codes,
+      //   the search field still renders. Diagnosis was relying on
+      //   onLookupSelected's fill rules — those silently skip when the ICD
+      //   lookup misses (common: ICD codes contain dots, the API may not match),
+      //   leaving icdCode/icdDescription empty. Then diagnosisEditMode.add()
+      //   pushed the row into edit mode, hiding the code behind the search input.
+      //
+      //   New approach (procedure-style):
+      //     1) Find icdCode and icdDescription form fields by rawId globally
+      //     2) Always write the OCR-extracted code through (and the lookup's
+      //        description, when available)
+      //     3) Do NOT add to diagnosisEditMode — keep the row in selected view
+      //        so the code is visible. User can press Edit if they want to change.
+      const allFieldsForDiag = this.collectAllRenderFields(this.renderSections);
+
+      const icdCodeFields = allFieldsForDiag.filter(f => {
+        const raw = String((f as any)?._rawId ?? '').toLowerCase();
+        // Match icdCode-style fields, but exclude search/type/desc and other
+        // *Code fields belonging to different sections (procedure / cpt / claim).
+        if (raw.includes('search')) return false;
+        if (raw.includes('codetype') || (raw.includes('code') && raw.includes('type'))) return false;
+        if (raw.includes('description') || raw.includes('desc')) return false;
+        return raw === 'icdcode' || raw === 'diagnosiscode'
+          || (raw.includes('icd') && raw.includes('code'))
+          || (raw.includes('diagnosis') && raw.includes('code'));
+      });
+
+      const icdDescFields = allFieldsForDiag.filter(f => {
+        const raw = String((f as any)?._rawId ?? '').toLowerCase();
+        if (raw.includes('search')) return false;
+        return raw === 'icddescription' || raw === 'diagnosisdescription'
+          || (raw.includes('icd') && (raw.includes('description') || raw.includes('desc')))
+          || (raw.includes('diagnosis') && (raw.includes('description') || raw.includes('desc')));
+      });
+
+      // Step 1: Explicitly fill the icdCode and (best-effort) icdDescription form
+      //         controls — same shape as the procedure descriptions block above.
+      for (let i = 0; i < diagCodes.length; i++) {
+        const ocrCode = diagCodes[i];
+        if (icdCodeFields[i]) {
+          this.setControlIfEmpty(icdCodeFields[i].controlName, ocrCode);
+        }
+
+        // Pull description from the lookup cache when the lookup found a match
+        const cnForDesc = icdFields[i]?.controlName;
+        const cachedForDesc = cnForDesc ? this.lookupSelectedByControl?.[cnForDesc] : null;
+        if (cachedForDesc && icdDescFields[i]) {
+          const desc =
+            cachedForDesc.codeDesc ?? cachedForDesc.codedescription ??
+            cachedForDesc.codeDescription ?? cachedForDesc.description ??
+            cachedForDesc.desc ?? '';
+          if (desc) this.setControlIfEmpty(icdDescFields[i].controlName, desc);
+        }
+      }
+
+      // Step 2: Populate the diagnosis card display store. Always end up in
+      //         SELECTED view (no editMode add) so the code is visible.
       for (let i = 0; i < diagCodes.length; i++) {
         if (!icdFields[i]) break;
         const cn = icdFields[i].controlName;
         const cached = this.lookupSelectedByControl?.[cn];
+        const ocrCode = diagCodes[i];
+
         if (cached) {
-          this.diagnosisDataByInstance[cn] = cached;
-          if (!this.primaryDiagnosisKey) this.primaryDiagnosisKey = cn;
+          const normCode =
+            cached.code ?? cached.Code ??
+            cached.icdcode ?? cached.icdCode ??
+            ocrCode;
+          const normDesc =
+            cached.codeDesc ?? cached.codedescription ??
+            cached.codeDescription ?? cached.description ??
+            cached.desc ?? '';
+          this.diagnosisDataByInstance[cn] = { ...cached, code: normCode, codeDesc: normDesc };
         } else {
-          // Lookup miss — build a partial object so the card still shows the code
-          const code = diagCodes[i];
-          const descCtrl = this.form.get(cn.replace(/icdCode/i, 'icdDescription'));
+          // Lookup miss — read the description from the form field we just
+          // filled (or whatever was already there).
+          const descCtrl = icdDescFields[i] ? this.form.get(icdDescFields[i].controlName) : null;
           const desc = descCtrl?.value ?? '';
-          this.diagnosisDataByInstance[cn] = { code, codeDesc: desc };
-          // Put into edit mode so user can correct
-          this.diagnosisEditMode.add(cn);
-          if (!this.primaryDiagnosisKey) this.primaryDiagnosisKey = cn;
+          this.diagnosisDataByInstance[cn] = { code: ocrCode, codeDesc: desc };
+          // Seed lookup cache so the search field's displayWith() can render
+          // the code as a primitive even when valueField is configured.
+          this.lookupSelectedByControl[cn] = { code: ocrCode, codeDesc: desc };
+          // NOTE: deliberately NOT calling diagnosisEditMode.add(cn) — keeping
+          // the card in selected view so the code is visible to the user.
         }
+
+        if (!this.primaryDiagnosisKey) this.primaryDiagnosisKey = cn;
       }
     }
 
@@ -8699,17 +8779,36 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
       // Directly populate the service card display store from the lookup cache.
       // Must run AFTER descriptions are filled so the fallback can read them.
+      // ── FIX: Same normalization as the diagnosis section above — getServiceCode
+      //         only checks code / procedureCode / serviceCode, so if the lookup
+      //         result uses cptcode / cptCode / medicalcode / medicalCode the
+      //         displayed code would be empty. Normalize here.
       for (let i = 0; i < svcCodes.length; i++) {
         if (!svcFields[i]) break;
         const cn = svcFields[i].controlName;
         const cached = this.lookupSelectedByControl?.[cn];
+
+        const ocrCode = svcCodes[i];
+
         if (cached) {
-          this.serviceDataByInstance[cn] = cached;
+          const normCode =
+            cached.code ?? cached.Code ??
+            cached.cptcode ?? cached.cptCode ??
+            cached.medicalcode ?? cached.medicalCode ??
+            cached.procedureCode ?? cached.serviceCode ??
+            ocrCode;
+          const normDesc =
+            cached.codeDesc ?? cached.codedescription ??
+            cached.codeShortDesc ?? cached.description ??
+            cached.desc ?? cached.procedureDescription ?? '';
+
+          this.serviceDataByInstance[cn] = { ...cached, code: normCode, codeDesc: normDesc };
         } else {
-          const code = svcCodes[i];
           const descField = descFields?.[i];
           const desc = descField ? (this.form.get(descField.controlName)?.value ?? '') : '';
-          this.serviceDataByInstance[cn] = { code, codeDesc: desc };
+          this.serviceDataByInstance[cn] = { code: ocrCode, codeDesc: desc };
+          // Seed lookup cache so the search field can render the code value
+          this.lookupSelectedByControl[cn] = { code: ocrCode, codeDesc: desc };
           this.serviceEditMode.add(cn);
         }
       }
@@ -8742,17 +8841,81 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     await this.applyFaxProviderPrefill(pf);
 
     // ── 4. AUTH DETAILS SECTION (dates + request type) ──────────────────
+    // ── FIX: Two real issues being fixed here:
+    //   (a) Template field IDs vary across templates (e.g. 'requestedDateTime',
+    //       'requestDt', 'requestedDate', 'admissionDate', 'actualAdmitDt'…) —
+    //       discover them by displayName/rawId text instead of hard-coding,
+    //       same as the WORKING service From/To filter (isFromDateField uses
+    //       pure text matching with no field-type restriction).
+    //   (b) These date fields commonly carry defaultValue: 'D' in the template,
+    //       which computeDefaultValue() converts to today's ISO at form-build
+    //       time. setControlIfEmpty() would early-return on that non-empty
+    //       value and the picker never receives our prefill — manifests as the
+    //       field appearing blank until the user clicks (the picker's own
+    //       focus default fills it). forceSetCtrl() overrides regardless.
+    const allRenderedFields = this.collectAllRenderFields(this.renderSections);
+
+    const findFieldByText = (predicate: (s: string) => boolean): RenderField | null => {
+      return allRenderedFields.find(f => predicate(this.fieldSearchText(f))) ?? null;
+    };
+
+    const forceSetCtrl = (controlName: string | undefined | null, value: any) => {
+      if (!controlName || value == null || value === '') return;
+      const ctrl = this.form.get(controlName);
+      if (!ctrl) return;
+      // Bypass setControlIfEmpty's "skip if non-empty" guard. The template's
+      // defaultValue: 'D' (today's ISO) would otherwise block our prefill.
+      ctrl.setValue(value, { emitEvent: true });
+      ctrl.markAsDirty();
+      if (this._faxPrefillInProgress) this.faxPrefilledControls.add(controlName);
+    };
+
     if (pf.requestDatetime) {
-      this.setControlIfEmpty('requestDatetime', this.normalizeFaxDate(pf.requestDatetime));
+      const f = findFieldByText(s =>
+        (s.includes('request') || s.includes('requested')) &&
+        (s.includes('date') || s.includes('dt') || s.includes('time')) &&
+        !s.includes('admission') && !s.includes('admit') &&
+        !s.includes('discharge') && !s.includes('priority') && !s.includes('type')
+      );
+      forceSetCtrl(f?.controlName, this.normalizeFaxDate(pf.requestDatetime));
     }
+
     if (pf.expectedAdmissionDatetime) {
-      this.setControlIfEmpty('expectedAdmissionDatetime', this.normalizeFaxDate(pf.expectedAdmissionDatetime));
+      const f = findFieldByText(s =>
+        s.includes('expected') &&
+        (s.includes('admission') || s.includes('admit')) &&
+        (s.includes('date') || s.includes('dt') || s.includes('time'))
+      );
+      forceSetCtrl(f?.controlName, this.normalizeFaxDate(pf.expectedAdmissionDatetime));
     }
+
     if (pf.actualAdmissionDatetime) {
-      this.setControlIfEmpty('actualAdmissionDatetime', this.normalizeFaxDate(pf.actualAdmissionDatetime));
+      const f = findFieldByText(s =>
+        // "actual admission" OR a plain "admission/admit date" without "expected"/"discharge"
+        (
+          (s.includes('actual') && (s.includes('admission') || s.includes('admit'))) ||
+          ((s.includes('admission') || s.includes('admit')) && !s.includes('expected') && !s.includes('discharge'))
+        ) &&
+        (s.includes('date') || s.includes('dt') || s.includes('time'))
+      );
+      forceSetCtrl(f?.controlName, this.normalizeFaxDate(pf.actualAdmissionDatetime));
     }
+
     if (pf.requestType) {
-      this.setControlIfEmpty('requestType', pf.requestType);
+      // Try direct first (some templates do use 'requestType' as id), then fall back
+      // to a select field whose label/id mentions "request type".
+      if (this.form.get('requestType')) {
+        this.setControlIfEmpty('requestType', pf.requestType);
+      } else {
+        const rtField = allRenderedFields.find(f => {
+          if (String((f as any)?.type || '').toLowerCase() !== 'select') return false;
+          const s = this.fieldSearchText(f);
+          return s.includes('request') && s.includes('type');
+        });
+        if (rtField?.controlName) {
+          this.setControlIfEmpty(rtField.controlName, pf.requestType);
+        }
+      }
     }
 
     // ── 5. Auto-expand sections that have data ──────────────────────────
@@ -8768,6 +8931,14 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     this.rehydrateContactTracking();
     this.rehydrateServiceData();
     this.rehydrateMedicationData();
+
+    // ── 6b. Re-apply Work Group / Work List options.
+    //        loadWorkBasket() may have completed AFTER loadTemplateJson() ran its
+    //        own applyWorkGroupAndBasketOptions() at line 1076 (slow WB network /
+    //        fast template load). The WB callback DOES call apply, but that fires
+    //        before applyFaxPrefillToTemplateFields(); a deferred re-call here
+    //        guarantees the dropdowns are populated regardless of order.
+    this.applyWorkGroupAndBasketOptions();
 
     // ── 7. Force all form controls to re-push values to their ControlValueAccessors.
     //       Date controls (ui-datetime-picker) are created when the section expands.
