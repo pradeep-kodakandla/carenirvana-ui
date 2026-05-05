@@ -2260,8 +2260,14 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
 
     const getFullOpts = (): SmartOpt[] => {
       const ds = String((statusCodeField as any).datasource ?? '').trim();
-      if (ds) return (this.dropdownCache.get(ds) ?? []) as SmartOpt[];
-      return (this.optionsByControlName[statusCodeField.controlName] ?? []) as SmartOpt[];
+      // ✅ Apply the field's `selectedOptions` whitelist to the cascade source.
+      //    Without this, datasource-backed Decision Status Code dropdowns would
+      //    show every option in the cache (the prefetch-time filter would be
+      //    bypassed once the user changes Decision Status).
+      const raw = ds
+        ? (this.dropdownCache.get(ds) ?? [])
+        : (this.optionsByControlName[statusCodeField.controlName] ?? []);
+      return this.filterBySelectedOptions(statusCodeField, raw as any) as SmartOpt[];
     };
 
     const applyFilter = () => {
@@ -2384,10 +2390,14 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
 
     // Get the full statusCode option list from the cache (preferred) or optionsByControlName
     const ds   = String((statusCodeField as any).datasource ?? '').trim();
-    const full = (ds
+    const rawFull = (ds
       ? (this.dropdownCache.get(ds) ?? [])
       : (this.optionsByControlName[statusCodeField.controlName] ?? [])
     ) as SmartOpt[];
+    // ✅ Apply the field's `selectedOptions` whitelist before the status cascade.
+    //    Mirrors the filter inside getFullOpts() in wireDecisionStatusToCodeFilter
+    //    so async re-runs after datasource load also honor the template whitelist.
+    const full = this.filterBySelectedOptions(statusCodeField, rawFull as any) as SmartOpt[];
 
     // Nothing to do yet — options still loading
     if (full.length === 0) return;

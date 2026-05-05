@@ -1576,7 +1576,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
       if (f.type === 'select' && !hasDs) {
         const staticOpts = this.mapStaticOptions(f.options);
         if (staticOpts.length) {
-          this.optionsByControlName[f.controlName] = staticOpts;
+          this.optionsByControlName[f.controlName] = this.filterBySelectedOptions(f, staticOpts);
         }
       }
     }
@@ -1637,7 +1637,10 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
               continue;
             }
 
-            this.optionsByControlName[f.controlName] = opts ?? [];
+            // Apply template-driven `selectedOptions` whitelist.
+            // If the field's template defines `selectedOptions: [...]`, only those
+            // option IDs are kept; otherwise the full list is shown.
+            this.optionsByControlName[f.controlName] = this.filterBySelectedOptions(f, opts);
           }
 
           // ✅ Re-apply level auto-select after options load
@@ -2112,6 +2115,42 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
   private hasNonBooleanSelectedOptions(field: any): boolean {
     const so = field?.selectedOptions;
     return Array.isArray(so) && so.length > 2;
+  }
+
+  /**
+   * Filters a dropdown's options by the field's `selectedOptions` whitelist
+   * (template-driven option visibility).
+   *
+   * Behavior:
+   *  - If the field has a non-empty `selectedOptions` array, only options whose
+   *    value matches one of the listed IDs (string-compared) are returned.
+   *  - If `selectedOptions` is missing, null, or an empty array, the full
+   *    options list is returned unchanged (current default behavior).
+   *
+   * Values in `selectedOptions` are typically string IDs (e.g. ["1","2","3"])
+   * while option values may be numeric or string — comparison is done via
+   * String(...) on both sides to stay tolerant.
+   */
+  private filterBySelectedOptions(
+    field: any,
+    opts: UiSmartOption[] | null | undefined
+  ): UiSmartOption[] {
+    const list = Array.isArray(opts) ? opts : [];
+    const selected = field?.selectedOptions;
+
+    if (!Array.isArray(selected) || selected.length === 0) {
+      return list;
+    }
+
+    const allowed = new Set(
+      selected
+        .filter((s: any) => s !== null && s !== undefined && s !== '')
+        .map((s: any) => String(s))
+    );
+
+    if (allowed.size === 0) return list;
+
+    return list.filter(o => allowed.has(String((o as any)?.value ?? '')));
   }
 
   getDropdownOptions(controlName: string): UiSmartOption[] {

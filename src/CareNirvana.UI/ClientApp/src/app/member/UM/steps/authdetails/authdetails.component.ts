@@ -2445,7 +2445,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       if ((f.type === 'select' || this.isButtonType(f.type)) && !hasDs) {
         const staticOpts = this.mapStaticOptions((f as any).options);
         if (staticOpts.length) {
-          this.optionsByControlName[f.controlName] = staticOpts;
+          this.optionsByControlName[f.controlName] = this.filterBySelectedOptions(f, staticOpts);
           this.reconcileSelectControlValue(f.controlName);
         }
       }
@@ -2511,7 +2511,10 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
               this.optionsByControlName[f.controlName] = [];
               continue;
             }
-            this.optionsByControlName[f.controlName] = opts ?? [];
+            // Apply template-driven `selectedOptions` whitelist.
+            // If the field's template defines `selectedOptions: [...]`, only those
+            // option IDs are kept; otherwise the full list is shown.
+            this.optionsByControlName[f.controlName] = this.filterBySelectedOptions(f, opts);
             this.reconcileSelectControlValue(f.controlName);
           }
 
@@ -7167,9 +7170,12 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       }
       // Prefetch dropdown options if needed
       if (fieldDef.type === 'select' && fieldDef.datasource) {
-        this.loadDatasourceOptions(cn, fieldDef.datasource);
+        this.loadDatasourceOptions(cn, fieldDef.datasource, fieldDef);
       } else if (fieldDef.type === 'select' && fieldDef.options?.length) {
-        this.optionsByControlName[cn] = this.mapStaticOptions(fieldDef.options);
+        this.optionsByControlName[cn] = this.filterBySelectedOptions(
+          fieldDef,
+          this.mapStaticOptions(fieldDef.options)
+        );
       }
     }
   }
@@ -7727,11 +7733,11 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
 
     // Try to load from datasource if available
     if (fieldDef.datasource) {
-      this.loadDatasourceOptions(cn, fieldDef.datasource);
+      this.loadDatasourceOptions(cn, fieldDef.datasource, fieldDef);
       return this.optionsByControlName[cn] ?? [];
     }
     // Use static options if available
-    return fieldDef.options ?? [];
+    return this.filterBySelectedOptions(fieldDef, this.mapStaticOptions(fieldDef.options ?? [])) ?? [];
   }
 
   /** Rebuild transport code form controls after a template rebuild */
@@ -7751,7 +7757,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   }
 
   /** Load datasource options for a transport code dropdown control */
-  private loadDatasourceOptions(controlName: string, datasource: string): void {
+  private loadDatasourceOptions(controlName: string, datasource: string, fieldDef?: TplField): void {
     if (this.optionsByControlName[controlName]?.length) return;
 
     this.optionsByControlName[controlName] = [];
@@ -7767,7 +7773,9 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       )
       .pipe(takeUntil(this.destroy$))
       .subscribe((opts: UiSmartOption[] | null) => {
-        this.optionsByControlName[controlName] = opts ?? [];
+        this.optionsByControlName[controlName] = fieldDef
+          ? this.filterBySelectedOptions(fieldDef, opts)
+          : (opts ?? []);
       });
   }
 
@@ -8178,6 +8186,42 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
   private hasNonBooleanSelectedOptions(field: any): boolean {
     const so = field?.selectedOptions;
     return Array.isArray(so) && so.length > 2;
+  }
+
+  /**
+   * Filters a dropdown's options by the field's `selectedOptions` whitelist
+   * (template-driven option visibility).
+   *
+   * Behavior:
+   *  - If the field has a non-empty `selectedOptions` array, only options whose
+   *    value matches one of the listed IDs (string-compared) are returned.
+   *  - If `selectedOptions` is missing, null, or an empty array, the full
+   *    options list is returned unchanged (current default behavior).
+   *
+   * Values in `selectedOptions` are typically string IDs (e.g. ["1","2","3"])
+   * while option values may be numeric or string — comparison is done via
+   * String(...) on both sides to stay tolerant.
+   */
+  private filterBySelectedOptions(
+    field: any,
+    opts: UiSmartOption[] | null | undefined
+  ): UiSmartOption[] {
+    const list = Array.isArray(opts) ? opts : [];
+    const selected = field?.selectedOptions;
+
+    if (!Array.isArray(selected) || selected.length === 0) {
+      return list;
+    }
+
+    const allowed = new Set(
+      selected
+        .filter((s: any) => s !== null && s !== undefined && s !== '')
+        .map((s: any) => String(s))
+    );
+
+    if (allowed.size === 0) return list;
+
+    return list.filter(o => allowed.has(String((o as any)?.value ?? '')));
   }
 
   private normDs(ds: string): string {
