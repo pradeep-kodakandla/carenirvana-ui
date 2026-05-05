@@ -1,24 +1,24 @@
-import { Component, OnDestroy, OnInit, OnChanges, Optional, Input, Output, EventEmitter, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Optional, Output, SimpleChanges } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
+import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { Observable, Subject, firstValueFrom, of } from 'rxjs';
-import { distinctUntilChanged, debounceTime, filter, map, startWith, switchMap, takeUntil, tap, catchError } from 'rxjs/operators';
+import { catchError, debounceTime, distinctUntilChanged, filter, map, startWith, switchMap, takeUntil, tap } from 'rxjs/operators';
+import { FaxAuthPrefill, FaxAuthPrefillService } from 'src/app/dash-board/faxes/fax-auth-prefill.interface';
+import { AuthwizardshellComponent } from 'src/app/member/UM/components/authwizardshell/authwizardshell.component';
+import { AuthunsavedchangesawareService } from 'src/app/member/UM/services/authunsavedchangesaware.service';
+import { AuthDecisionSeedService } from 'src/app/member/UM/steps/authdecision/authdecisionseed.service';
+import { ValidationErrorDialogComponent } from 'src/app/member/validation-error-dialog/validation-error-dialog.component';
 import { AuthNumberService } from 'src/app/service/auth-number-gen.service';
 import { AuthService } from 'src/app/service/auth.service';
-import { CrudService, DatasourceLookupService } from 'src/app/service/crud.service';
-import { MemberenrollmentService } from 'src/app/service/memberenrollment.service';
 import { AuthDetailApiService } from 'src/app/service/authdetailapi.service';
-import { AuthDecisionSeedService } from 'src/app/member/UM/steps/authdecision/authdecisionseed.service';
 import { AuthenticateService } from 'src/app/service/authentication.service';
-import { WorkbasketService } from 'src/app/service/workbasket.service';
+import { CrudService, DatasourceLookupService } from 'src/app/service/crud.service';
 import { HeaderService } from 'src/app/service/header.service';
-import { MatDialog } from '@angular/material/dialog';
-import { RulesengineService, ExecuteTriggerResponse } from 'src/app/service/rulesengine.service';
-import { ValidationErrorDialogComponent } from 'src/app/member/validation-error-dialog/validation-error-dialog.component';
+import { MemberenrollmentService } from 'src/app/service/memberenrollment.service';
+import { ExecuteTriggerResponse, RulesengineService } from 'src/app/service/rulesengine.service';
+import { WorkbasketService } from 'src/app/service/workbasket.service';
 import { UiSmartOption } from 'src/app/shared/ui/uismartdropdown/uismartdropdown.component';
-import { AuthunsavedchangesawareService } from 'src/app/member/UM/services/authunsavedchangesaware.service';
-import { AuthwizardshellComponent } from 'src/app/member/UM/components/authwizardshell/authwizardshell.component';
-import { FaxAuthPrefill, FaxAuthPrefillService } from 'src/app/dash-board/faxes/fax-auth-prefill.interface';
 
 /** ---- Enrollment interfaces ---- */
 interface LevelItem {
@@ -689,7 +689,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         // Re-use the record already fetched by getById() during CREATE to avoid a
         // redundant network round-trip and a second template-rebuild cycle.
         if (this._freshlyCreatedAuth &&
-            String((this._freshlyCreatedAuth as any).authNumber) === String(authNo)) {
+          String((this._freshlyCreatedAuth as any).authNumber) === String(authNo)) {
           const cached = this._freshlyCreatedAuth;
           this._freshlyCreatedAuth = null;
           return of(cached);
@@ -3352,7 +3352,8 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       authType: authTypeLabel || 'Standard',
       anchorSource: 'Requested Datetime',
       requestType: (this.form.get('requestType')?.value ?? 'Prospective'),
-      requestPriority: this.form.get('requestPriority')?.value == 1 ? 'Standard' : 'Expedited'
+      requestPriority: this.form.get('requestPriority')?.value == 1 ? 'Standard' : 'Expedited',
+      extensionAnchorSource: "Due Date"
     };
   }
 
@@ -3515,7 +3516,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
       // Throw so the shell does NOT show "saved successfully"
       throw { validation: true, message };
     }
-    
+
 
     // Template validation (rules from getTemplateValidation), displayed per section like AuthorizationComponent
     const { failedErrors, failedWarnings, allMessages } = this.runTemplateValidation();
@@ -5537,12 +5538,16 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     return d.code ?? d.icdCode ?? d.icdcode ?? d.Code ?? '';
   }
 
+
+
   /** ICD Description display */
   getDiagnosisDescription(inst: RenderRepeatInstance): string {
     const d = this.getDiagnosisData(inst);
     if (!d) return '';
     return d.codeDesc ?? d.description ?? d.codedescription ?? d.desc ?? d.codeDescription ?? '';
   }
+
+
 
   /** Code Type display (from the Code Type dropdown) */
   getDiagnosisCodeType(inst: RenderRepeatInstance): string {
@@ -5725,6 +5730,20 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
               break;
             }
           }
+        }
+
+        // --- Strategy 2b: search control holds a string code (lookup valueField:"code") ---
+        // Mirrors rehydrateServiceData. Without this, Strategy 3 below produces an object
+        // with only codeDesc (because bodyFields excludes the search field), so the ICD
+        // code never reaches diagnosisDataByInstance even though the description does.
+        if (!resolved && typeof searchVal === 'string' && searchVal.trim()) {
+          const code = searchVal.trim();
+          const descField = bodyFields.find((f: any) => {
+            const id = String(f?._rawId ?? f?.id ?? f?.displayName ?? '').toLowerCase();
+            return id.includes('desc') || id.includes('description');
+          });
+          const descVal = descField?.controlName ? this.form.get(descField.controlName)?.value : '';
+          resolved = { code, codeDesc: typeof descVal === 'string' ? descVal : '' };
         }
 
         // --- Strategy 3: extract string code + description from separate fields ---
@@ -8693,21 +8712,6 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         await this.prefillLookupFieldByCode(icdFields[i], diagCodes[i]);
       }
 
-      // ── FIX: Mirror the procedure code/description pattern.
-      //   Procedure works because (a) its description is filled explicitly via a
-      //   global rawId filter and (b) when the lookup miss happens for CPT codes,
-      //   the search field still renders. Diagnosis was relying on
-      //   onLookupSelected's fill rules — those silently skip when the ICD
-      //   lookup misses (common: ICD codes contain dots, the API may not match),
-      //   leaving icdCode/icdDescription empty. Then diagnosisEditMode.add()
-      //   pushed the row into edit mode, hiding the code behind the search input.
-      //
-      //   New approach (procedure-style):
-      //     1) Find icdCode and icdDescription form fields by rawId globally
-      //     2) Always write the OCR-extracted code through (and the lookup's
-      //        description, when available)
-      //     3) Do NOT add to diagnosisEditMode — keep the row in selected view
-      //        so the code is visible. User can press Edit if they want to change.
       const allFieldsForDiag = this.collectAllRenderFields(this.renderSections);
 
       const icdCodeFields = allFieldsForDiag.filter(f => {
@@ -8921,7 +8925,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         !s.includes('admission') && !s.includes('admit') &&
         !s.includes('discharge') && !s.includes('priority') && !s.includes('type')
       );
-      forceSetCtrl(f?.controlName, this.normalizeFaxDate(pf.requestDatetime));
+      forceSetCtrl(f?.controlName, this.normalizeFaxDateTimeLocal(pf.requestDatetime));
     }
 
     if (pf.expectedAdmissionDatetime) {
@@ -8930,7 +8934,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         (s.includes('admission') || s.includes('admit')) &&
         (s.includes('date') || s.includes('dt') || s.includes('time'))
       );
-      forceSetCtrl(f?.controlName, this.normalizeFaxDate(pf.expectedAdmissionDatetime));
+      forceSetCtrl(f?.controlName, this.normalizeFaxDateTimeLocal(pf.expectedAdmissionDatetime));
     }
 
     if (pf.actualAdmissionDatetime) {
@@ -8942,7 +8946,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
         ) &&
         (s.includes('date') || s.includes('dt') || s.includes('time'))
       );
-      forceSetCtrl(f?.controlName, this.normalizeFaxDate(pf.actualAdmissionDatetime));
+      forceSetCtrl(f?.controlName, this.normalizeFaxDateTimeLocal(pf.actualAdmissionDatetime));
     }
 
     if (pf.requestType) {
@@ -9021,16 +9025,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     this.pendingFaxPrefill = null;
 
     // ── AUTO-SAVE (Intelligent Authorization Pipeline) ───────────────────────
-    // When the pipeline sets autoSave: true on the prefill, the component calls
-    // save() automatically after all template fields and dropdowns have settled.
-    //
-    // The 900 ms delay covers:
-    //   • prefetchDropdownOptions() async fetches (~300–500 ms on slow connections)
-    //   • setupVisibilityWatcher() hiding/disabling required-but-hidden fields
-    //   • The two form.patchValue nudges (150 ms + 400 ms) settling
-    //   • _captureCleanSnapshot() 600 ms timer starting
-    //
-    // The pipeline UI shows a spinning Step 4 card during this window.
+
     if ((pf as any).autoSave === true) {
       setTimeout(async () => {
         try {
@@ -9189,6 +9184,17 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     return s;
   }
 
+  private normalizeFaxDateTimeLocal(v: any): string | null {
+    if (!v) return null;
+
+    const d = v instanceof Date ? v : new Date(String(v).trim());
+    if (isNaN(d.getTime())) return null;
+
+    const pad = (n: number) => String(n).padStart(2, '0');
+
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
   private autoExpandFaxSections(): void {
     if (!this.renderSections?.length) return;
     const expandTitles = ['diagnosis', 'service', 'provider', 'auth detail'];
@@ -9200,32 +9206,6 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     }
   }
 
-  // ============================================================
-  // REVERSE SYNC: Decision → Source sections
-  //
-  // Called by the wizard shell when AuthDecision saves an
-  // approved / denied value.  Routes to the correct source
-  // section based on the procedureNo partition:
-  //   1 – 999   → Service   (procedure{n}_serviceAppr / serviceDenied)
-  //   1000–1999 → Medication (medication{n}_approvedQuantity / deniedQuantity)
-  //   2000+     → Transportation (display-only, stored in authData)
-  // ============================================================
-
-  /**
-   * On-load back-fill: reads decisionDetails returned by the API in jsonData
-   * and patches the corresponding source-section form controls so they are
-   * populated even when applyDecisionReverseSync was never called in this
-   * session (i.e. on every page reload of an existing auth).
-   *
-   * Only fills controls that are currently null / empty — it never overwrites
-   * a value that was already written by applyDecisionReverseSync or by the
-   * form patch itself.
-   *
-   * decisionDetails lives in the DB records returned by the API.  We still
-   * strip it from the outgoing save payload (Fix 1) so it is not duplicated
-   * there, but the API response will keep supplying it from the canonical
-   * decision tables on every load.
-   */
   private syncDecisionValuesToServiceControls(): void {
     if (!this.form || !this.pendingAuth) return;
 

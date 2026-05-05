@@ -400,7 +400,7 @@
                         <div class="sub-name">
                           <button type="button"
                                   class="link-button"
-                                  (click)="onMemberClick(row.memberId, (row.firstName || '') + ' ' + (row.lastName || ''))">
+                                  (click)="onMemberClick(row.memberId, (row.firstName || '') + ' ' + (row.lastName || ''), row.memberDetailsId)">
                             {{ (row.firstName || '') + ' ' + (row.lastName || '') }}
                           </button>
                         </div>

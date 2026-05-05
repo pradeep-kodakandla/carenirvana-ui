@@ -101,7 +101,7 @@ export interface AgCaseGridRow {
   memberDetailId: number;
   caseType: string;
   caseTypeText: string;
-
+  caseHeaderId: number;
   memberName: string;
   memberId: string;
 
@@ -229,7 +229,12 @@ export interface CaseActivityRowDto {
   referTo?: number | null;
   comment?: string | null;
 
-  requestStatus: 'OPEN' | 'REQUESTED' | 'ACCEPTED' | 'REJECTED';
+  // Group request related values
+  workGroupWorkBasketIds?: number[];
+  workGroupIds?: number[];
+  workBasketIds?: number[];
+
+  requestStatus: 'OPEN' | 'REQUESTED' | 'ACCEPTED' | 'REJECTED' | 'COMPLETED';
 }
 
 export interface CaseActivityCreateDto {

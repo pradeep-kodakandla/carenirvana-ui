@@ -306,8 +306,6 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
         this.router.navigate([tabRoute]);
       });
     }
-
-
   }
 
   getRiskEmoji(risk: string): string {

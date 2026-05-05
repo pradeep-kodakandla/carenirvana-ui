@@ -8,6 +8,7 @@ import { AgCaseGridRow, CasedetailService } from 'src/app/service/casedetail.ser
 import { HeaderService } from 'src/app/service/header.service';
 import { Observable } from 'rxjs';
 import { MemberService } from 'src/app/service/shared-member.service';
+import { AuthenticateService, RecentlyAccessed } from 'src/app/service/authentication.service';
 
 // ── Level step interface ──
 interface LevelStep {
@@ -63,7 +64,8 @@ export class MembercasedetailsComponent implements OnInit {
     private agCaseService: CasedetailService,
     private headerService: HeaderService,
     private router: Router,
-    private memberService: MemberService
+    private memberService: MemberService,
+    private authService: AuthenticateService
   ) { }
 
   ngOnInit(): void {
@@ -96,6 +98,7 @@ export class MembercasedetailsComponent implements OnInit {
         this.dataSource.data = rows;
         this.pageIndex = 0;
         this.updatePagedCardData();
+        console.log('Case Details:', rows);
       },
       error: (err) => {
         console.error('Error fetching case details:', err);
@@ -144,9 +147,9 @@ export class MembercasedetailsComponent implements OnInit {
   getLevelStepStatusLabel(step: LevelStep): string {
     switch (step.status) {
       case 'completed': return 'Escalated';
-      case 'current':   return 'Current Level';
-      case 'future':    return 'Upcoming';
-      default:          return '—';
+      case 'current': return 'Current Level';
+      case 'future': return 'Upcoming';
+      default: return '—';
     }
   }
 
@@ -260,7 +263,27 @@ export class MembercasedetailsComponent implements OnInit {
     this.openCaseTab('0', true);
   }
 
-  onCaseClick(caseNumber: string): void {
+  onCaseClick(caseNumber: string, caseHeaderId: number): void {
+    // Track recently accessed case for the logged-in user
+    // (mirrors the pattern in mycaseload.onMemberClick)
+    const memberDetailsId = Number(sessionStorage.getItem('selectedMemberDetailsId') || 0);
+
+    const record: RecentlyAccessed = {
+      userId: Number(sessionStorage.getItem('loggedInUserid')),
+      featureId: null,
+      featureGroupId: 2, // adjust if your backend uses a distinct featureGroupId for Cases
+      action: 'VIEW',
+      memberDetailsId: memberDetailsId,
+      complaintDetailId: caseHeaderId ? Number(caseHeaderId) : null
+
+    };
+
+    this.authService.addRecentlyAccessed(record.userId, record)
+      .subscribe({
+        next: id => console.log('Inserted recently-accessed case record ID:', id),
+        error: err => console.error('Insert failed (recently accessed case):', err)
+      });
+
     this.openCaseTab(caseNumber, false);
   }
 

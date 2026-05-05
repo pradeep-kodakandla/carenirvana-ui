@@ -716,7 +716,7 @@ export class RequestsComponent implements OnInit, AfterViewInit {
         this.router.navigate([tabRoute]);
       });
     } else {
-      this.headerService.addTab(tabLabel, tabRoute, memberId);
+      this.headerService.addTab(tabLabel, tabRoute, memberId, memberDetailsId);
       sessionStorage.setItem('selectedMemberDetailsId', memberDetailsId);
       this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
         this.router.navigate([tabRoute]);

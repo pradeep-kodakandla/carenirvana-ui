@@ -944,7 +944,17 @@
   border-color: #C4B5FD;
   color: #6D28D9;
 }
-.mad-ds-status--pending .mad-ds-status-dot { background: #8B5CF6; }
+.mad-ds-status--pended .mad-ds-status-dot { background: #8B5CF6; }
+
+.mad-ds-status--pended {
+  background: #F5F3FF;
+  border-color: #C4B5FD;
+  color: #6D28D9;
+}
+
+  .mad-ds-status--pended .mad-ds-status-dot {
+    background: #8B5CF6;
+  }
 
 /* Default */
 .mad-ds-status--default {

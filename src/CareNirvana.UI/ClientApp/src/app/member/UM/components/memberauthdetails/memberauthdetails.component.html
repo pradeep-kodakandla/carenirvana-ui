@@ -281,10 +281,9 @@
             </div>
             <span class="mad-ds-overall"
                   [ngClass]="'mad-ds-overall--' + getOverallDecisionSlug(row)"
-                  *ngIf="row.overallDecisionStatus"
                   [matTooltip]="row.overallDecisionStatusCode || ''">
               <span class="mad-ds-overall-dot"></span>
-              {{ row.overallDecisionStatus }}
+              {{ getOverallDecisionStatusText(row) }}
             </span>
           </div>
 
@@ -298,10 +297,10 @@
 
               <!-- Decision status pill -->
               <span class="mad-ds-status"
-                    [ngClass]="'mad-ds-status--' + getDecisionStatusSlug(dec.decisionStatus)"
+                    [ngClass]="'mad-ds-status--' + getDecisionStatusSlug(getDecisionStatusText(dec.decisionStatus))"
                     [matTooltip]="dec.decisionStatusCode || ''">
                 <span class="mad-ds-status-dot"></span>
-                {{ dec.decisionStatus }}
+                {{ getDecisionStatusText(dec.decisionStatus) }}
               </span>
 
               <!-- Compact metrics: Req / Appr / Denied -->
@@ -363,9 +362,8 @@
           </span>
 
           <span class="mad-ds-overall mad-ds-overall--compact"
-                [ngClass]="'mad-ds-overall--' + getOverallDecisionSlug(row)"
-                *ngIf="row.overallDecisionStatus">
-            {{ row.overallDecisionStatus }}
+                [ngClass]="'mad-ds-overall--' + getOverallDecisionSlug(row)">
+            {{ getOverallDecisionStatusText(row) }}
           </span>
         </div>
 
@@ -454,7 +452,7 @@
                     [ngClass]="'mad-ds-overall--' + getOverallDecisionSlug(row)"
                     [matTooltip]="row.overallDecisionStatusCode || ''">
                 <span class="mad-ds-overall-dot"></span>
-                {{ row.overallDecisionStatus || '—' }}
+                {{ getOverallDecisionStatusText(row) }}
               </span>
               <span class="mad-table-dec-count"
                     [matTooltip]="'Total decisions'">

@@ -147,6 +147,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* Priority badges */
@@ -188,6 +191,8 @@
 .icon-btn svg { width: 15px; height: 15px; fill: #374151; }
 .icon-btn:hover { background: #f9fafb; border-color: rgba(17,24,39,.18); transform: translateY(-1px); }
 .icon-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.icon-btn.success svg { fill: #15803d; }
+.icon-btn.success:hover:not(:disabled) { background: #f0fdf4; border-color: rgba(34,197,94,.3); }
 .icon-btn.danger:hover { background: #fff5f5; border-color: rgba(239,68,68,.3); }
 .icon-btn.danger svg { fill: #b91c1c; }
 
@@ -214,6 +219,7 @@
   white-space: nowrap;
 }
 .pill-primary { background: #eef6ff; border-color: #cfe6ff; color: #1D4ED8; }
+.pill-success { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
 
 /* Comment snippet */
 .note-snippet {

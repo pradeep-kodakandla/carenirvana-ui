@@ -62,7 +62,7 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
 
   // You can pass these from shell/store like Notes does
   @Input() memberDetailsId?: number = 1;
-  @Input() caseLevelId?: number = 1;
+  @Input() caseLevelId?: number;
 
   @Input() caseHeaderId?: number = 27;
   @Input() caseTemplateId?: number = 2;
@@ -219,10 +219,32 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
     }
     this.editing = undefined;
     this.selectedActivityId = null;
+    this.errorMsg = '';
     this.showEditor = true;
 
-    this.form.reset({}, { emitEvent: false });
+    // Build an explicit "all-null" snapshot so reset() touches every control.
+    // Without this, reset({}) leaves smart-dropdown / datetime-picker components
+    // displaying their previous selections (they react to value changes, not to
+    // a bare reset). We also intentionally drop `{ emitEvent: false }` so the
+    // dropdowns and pickers receive the change and redraw to empty.
+    const blanks: Record<string, any> = {};
+    Object.keys(this.form?.controls ?? {}).forEach(k => { blanks[k] = null; });
+
+    this.form.reset(blanks);
+    this.patchDefaultsForAdd();
     this.form.markAsPristine();
+    this.form.markAsUntouched();
+
+
+    // Restore the full Work Group list (the WB->WG wire only filters on changes;
+    // if the user previously edited an activity, WG options may have been narrowed).
+    if (this.workGroupControlName) {
+      this.setOptions(this.workGroupControlName, this.workGroupOptions);
+    }
+
+    // Add mode → no WG selected, so Assign To becomes required
+    // and is pre-populated with the logged-in user.
+    this.applyAssignToRequirement(null);
 
     // optional defaults:
     // - set dueDate = today?
@@ -247,11 +269,11 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
 
   /** Activity Summary counts (shown in the right-side summary panel) */
   getCompletedCount(): number {
-    return (this.activities || []).filter(a => a.requestStatus === 'ACCEPTED').length;
+    return (this.activities || []).filter(a => this.isCompleted(a)).length;
   }
 
   getPendingCount(): number {
-    return (this.activities || []).filter(a => a.requestStatus !== 'ACCEPTED').length;
+    return (this.activities || []).filter(a => !this.isCompleted(a)).length;
   }
 
   getPriorityCount(label: 'High' | 'Medium' | 'Low'): number {
@@ -281,25 +303,35 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
     this.setValueById('caseActivityComments', a.comment);
 
     // optional: case activity level (if the template includes it)
-    this.setValueById('activityLevel', (a as any)?.caseLevelId ?? null);
+    this.setValueById('activityLevel', (a as any)?.caseLevelId ?? this.caseLevelId ?? this.levelId ?? null);
 
     // Assign To (referTo) - may be null for group requests
     const referTo = (a as any)?.referTo ?? (a as any)?.referto ?? null;
     this.setValueById('caseActivityAssignTo', referTo);
 
-    // Work Group / Work Basket (only if your GET returns them; otherwise these stay empty on edit)
-    const wgValue =
-      (a as any)?.workGroupId ??
-      (a as any)?.workgroupid ??
-      this.mapWorkGroupIdFromWorkGroupWorkBasketId(
-        (a as any)?.workGroupWorkBasketId ?? (a as any)?.workgroupworkbasketid ?? null
-      ) ??
-      null;
+    // Work Group / Work Basket — API returns plural arrays
+    // (workGroupIds: [1], workBasketIds: [1], workGroupWorkBasketIds: [1]).
+    // Fall back to scalar field names + WGWB->WG/WB mapping for older payloads.
+    const wgwbId = this.firstId(
+      (a as any)?.workGroupWorkBasketIds,
+      (a as any)?.workGroupWorkBasketId,
+      (a as any)?.workgroupworkbasketid
+    );
+
+    const wgValue = this.firstId(
+      (a as any)?.workGroupIds,
+      (a as any)?.workGroupId,
+      (a as any)?.workgroupid,
+      this.mapWorkGroupIdFromWorkGroupWorkBasketId(wgwbId)
+    );
     this.setValueById('caseActivityWorkGroup', wgValue);
 
-    const wbValueRaw = (a as any)?.workBasketId ?? (a as any)?.workbasketid ?? null;
-    const wgwIdRaw = (a as any)?.workGroupWorkBasketId ?? (a as any)?.workgroupworkbasketid ?? null;
-    const wbValue = wbValueRaw != null ? wbValueRaw : this.mapWorkBasketIdFromWorkGroupWorkBasketId(wgwIdRaw);
+    const wbValue = this.firstId(
+      (a as any)?.workBasketIds,
+      (a as any)?.workBasketId,
+      (a as any)?.workbasketid,
+      this.mapWorkBasketIdFromWorkGroupWorkBasketId(wgwbId)
+    );
     this.setValueById('caseActivityWorkBasket', wbValue);
 
     // Fallback: also patch via discovered control names (older templates)
@@ -315,6 +347,14 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
 
     // ensure selects reconcile once options exist
     this.reconcileAllSelectControls();
+
+    // Apply Assign To requirement based on the saved WG value:
+    //  - if activity has WG, Assign To becomes optional and is cleared
+    //  - if activity has no WG, Assign To is required and (if empty) defaults to logged-in user
+    const wgCtrlValue = this.workGroupControlName
+      ? this.form.get(this.workGroupControlName)?.value
+      : null;
+    this.applyAssignToRequirement(wgCtrlValue);
 
     this.form.markAsPristine();
   }
@@ -332,6 +372,97 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
         next: () => this.reload(),
         error: (e) => (this.errorMsg = this.normalizeError(e))
       });
+  }
+
+  /**
+   * True when an activity is in a "done" state. We treat both ACCEPTED and
+   * COMPLETED as completed so the UI is consistent regardless of the workflow
+   * value the backend stamps on the row.
+   */
+  isCompleted(a: CaseActivityRowDto): boolean {
+    const s = String(a?.requestStatus ?? '').toUpperCase();
+    return s === 'ACCEPTED' || s === 'COMPLETED' || s === 'DONE' || s === 'CLOSED';
+  }
+
+  /**
+   * Mark an activity as completed. Performs an optimistic local update so the
+   * card flips immediately, then refreshes the filtered list. If your backend
+   * later exposes a "complete" endpoint, plug it into this method and call
+   * reload() on success — the optimistic update will reconcile with the API
+   * response on the next reload.
+   */
+  markComplete(a: CaseActivityRowDto): void {
+    if (this._readOnly || !a) return;
+    if (this.isCompleted(a)) return;
+
+    a.requestStatus = 'COMPLETED';
+    this.refreshList();
+  }
+
+  /**
+   * Format an ISO-ish date string as MM/DD/YYYY HH:MM:SS in America/New_York,
+   * matching the AuthActivity timeline. Returns '' for missing or invalid input.
+   */
+  formatDateEST(date?: string | null): string {
+    if (!date) return '';
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '';
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    }).format(d).replace(',', '');
+  }
+
+  /**
+   * Re-apply the currently-editing activity's Assign-To / Work-Group / Work-Basket
+   * values to the form. Called both from onEdit() AND from the loadAllUsers /
+   * loadWorkBasket completion callbacks — so values resolve correctly even if the
+   * user opens an activity for editing before those async lookups finish.
+   */
+  private applyEditingValuesIfAny(): void {
+    if (!this.editing || !this.showEditor) return;
+    const a: any = this.editing;
+
+    // Assign To
+    const referTo = a?.referTo ?? a?.referto ?? null;
+    this.setValueById('caseActivityAssignTo', referTo);
+    this.patchByCandidates(this.assignToControlName, referTo);
+
+    // Work Group / Work Basket — handle the plural-array shape from the API
+    const wgwbId = this.firstId(
+      a?.workGroupWorkBasketIds,
+      a?.workGroupWorkBasketId,
+      a?.workgroupworkbasketid
+    );
+
+    const wgValue = this.firstId(
+      a?.workGroupIds,
+      a?.workGroupId,
+      a?.workgroupid,
+      this.mapWorkGroupIdFromWorkGroupWorkBasketId(wgwbId)
+    );
+    this.setValueById('caseActivityWorkGroup', wgValue);
+    this.patchByCandidates(this.workGroupControlName, wgValue);
+
+    const wbValue = this.firstId(
+      a?.workBasketIds,
+      a?.workBasketId,
+      a?.workbasketid,
+      this.mapWorkBasketIdFromWorkGroupWorkBasketId(wgwbId)
+    );
+    this.setValueById('caseActivityWorkBasket', wbValue);
+    this.patchByCandidates(this.workBasketControlName, wbValue);
+
+    this.reconcileAllSelectControls();
+
+    // Re-apply the conditional requirement now that WG/AssignTo values are in place
+    this.applyAssignToRequirement(wgValue);
   }
 
   // Accept / Reject buttons shown only if this user has a pending request for that activity
@@ -407,6 +538,10 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
 
     const comment = this.readString(this.commentControlName);
 
+    // Assign To (referTo) — was previously missing from the save DTOs,
+    // which is why the field appeared "blank" on every subsequent edit.
+    const referTo = this.readNumber(this.assignToControlName);
+
     // Optional: group request comes from a template select like "Work Group Work Basket"
     const wgId = this.readNumber(this.workGroupControlName);         // e.g. "caseActivityWorkGroup"
     const wbId = this.readNumber(this.workBasketControlName);        // e.g. "caseActivityWorkBasket"
@@ -421,10 +556,11 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
         dueDate,
         followUpDateTime,
         comment,
+        referTo,
         isGroupRequest,
         workGroupWorkBasketIds: isGroupRequest ? this.resolveWorkGroupWorkBasketIds(wgId, wbId) : null,
         updatedBy: ctx.userId
-      };
+      } as CaseActivityUpdateDto;
 
       this.api.update(dto)
         .pipe(finalize(() => (this.saving = false)))
@@ -449,11 +585,12 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
       dueDate,
       followUpDateTime,
       comment,
+      referTo,
       statusId: null,
       isGroupRequest,
       workGroupWorkBasketIds: isGroupRequest ? this.resolveWorkGroupWorkBasketIds(wgId, wbId) : null,
       createdBy: ctx.userId
-    };
+    } as CaseActivityCreateDto;
     console.log('Creating activity with DTO:', createDto);
     this.api.insert(createDto)
       .pipe(finalize(() => (this.saving = false)))
@@ -471,8 +608,14 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
   // Template-driven rendering
   // --------------------------
   isRequired(ctrl: AbstractControl, f: AnyField): boolean {
-    const req = !!(f.required ?? f.isRequired);
-    return req || (ctrl.validator ? !!ctrl.errors?.['required'] : false);
+    // Probe the live validator with an empty value so the * indicator reflects
+    // dynamic changes (e.g. Assign To becoming optional when a Work Group is set).
+    if (ctrl?.validator) {
+      const result = ctrl.validator({ value: null } as AbstractControl);
+      if (result && (result as any)['required']) return true;
+    }
+    // Fall back to the template-defined flag for fields with no live validator
+    return !!(f.required ?? f.isRequired);
   }
 
   getDropdownOptions(controlName: string): UiSmartOption[] {
@@ -630,6 +773,10 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
           // When WB changes, filter WG dropdown
           this.wireWorkBasketToWorkGroup();
 
+          // Conditional required + auto-populate logic for Assign To
+          // (must run after the form is built and known control names are cached)
+          this.wireWorkGroupToAssignTo();
+
           // pending map (must include caseWorkgroupId on DTO; if your API doesn't return it yet,
           // add it to the pending DTO response on backend)
           for (const p of (pending ?? []) as any[]) {
@@ -659,7 +806,7 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
     const caseTemplateId = Number(this.caseTemplateId ?? 0);
 
     // caseLevelId preference: explicit input -> fallback to levelId
-    const caseLevelId = Number(this.caseLevelId ?? this.levelId ?? 0);
+    const caseLevelId = Number(this.levelId ?? this.caseLevelId ?? 0);
 
     const userId = this.getUserId();
 
@@ -1021,10 +1168,30 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
   }
 
   getAssignedToLabel(a: any): string {
-    // if API later returns name, prefer it:
-    const apiName = a?.referToName ?? a?.assignedToName;
+    if (!a) return '';
+
+    // 1) Prefer name returned directly by the API (if your GET ever returns it)
+    const apiName = a?.referToName ?? a?.assignedToName ?? a?.userName;
     if (apiName) return String(apiName);
-    return this.getLabelFromControlOptions(this.referToControlName, a?.referTo);
+
+    const referTo = a?.referTo ?? a?.referto;
+    if (referTo == null || referTo === '') return '';
+
+    // 2) Look up against the cached user list (most reliable — populated by loadAllUsers)
+    const userMatch = (this.allUserOptions ?? []).find(
+      (o: any) => String(o?.value) === String(referTo)
+    );
+    if (userMatch) return String((userMatch as any).label ?? (userMatch as any).text ?? referTo);
+
+    // 3) Fallback: dropdownOptions keyed by the actual assignTo controlName
+    //    (referToControlName is a legacy alias and is often null for "Assign To" fields)
+    const viaAssignTo = this.getLabelFromControlOptions(this.assignToControlName, referTo);
+    if (viaAssignTo && viaAssignTo !== String(referTo)) return viaAssignTo;
+
+    const viaReferTo = this.getLabelFromControlOptions(this.referToControlName, referTo);
+    if (viaReferTo && viaReferTo !== String(referTo)) return viaReferTo;
+
+    return String(referTo);
   }
 
 
@@ -1039,7 +1206,11 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
   loadAllUsers(): void {
 
     if (this.usersLoaded) {
-      //// this.applyCaseOwnerOptions();
+      // reload() wipes dropdownOptions = {}, so we must re-set the options
+      // from the cached user list — otherwise the Assign To dropdown is empty
+      // after any reload (e.g. after Save) and edit-mode can't coerce the value.
+      this.setOptions(this.assignToControlName, this.allUserOptions);
+      this.applyEditingValuesIfAny();
       return;
     }
 
@@ -1053,7 +1224,10 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
           label: u.userName
         })) as UiSmartOption[];
         this.setOptions(this.assignToControlName, this.allUserOptions);
-        //  this.applyCaseOwnerOptions();
+
+        // If user opened the editor before users finished loading,
+        // re-apply the saved referTo value now that options exist.
+        this.applyEditingValuesIfAny();
       },
       error: (err) => {
         console.error('Failed to load users:', err);
@@ -1117,6 +1291,11 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
 
         this.setOptions(this.workBasketControlName, this.workBasketOptions);
         this.setOptions(this.workGroupControlName, this.workGroupOptions);
+
+        // If the editor is open and the user clicked Edit before WB/WG data
+        // arrived, re-apply the activity's WG/WB now so the dropdowns can
+        // resolve their IDs to the correct option labels.
+        this.applyEditingValuesIfAny();
       },
       error: (err: any) => {
         console.error('Error fetching user workgroups/workbaskets', err);
@@ -1130,6 +1309,29 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
   // --------------------------
   // Workgroup-workbasket helpers
   // --------------------------
+  /**
+   * Picks the first usable numeric id from any number of candidate values.
+   * Each candidate may be a scalar (number/string) or an array — we walk through
+   * the candidates in order and return the first finite, > 0 value we find.
+   * Used to read activity rows where the API returns plural arrays
+   * (e.g. workGroupIds: [1]) rather than scalar fields (workGroupId: 1).
+   */
+  private firstId(...candidates: any[]): number | null {
+    for (const c of candidates) {
+      if (c == null) continue;
+      if (Array.isArray(c)) {
+        for (const v of c) {
+          const n = Number(v);
+          if (Number.isFinite(n) && n > 0) return n;
+        }
+        continue;
+      }
+      const n = Number(c);
+      if (Number.isFinite(n) && n > 0) return n;
+    }
+    return null;
+  }
+
   /** Returns [workGroupWorkBasketId] array if WB+WG combination exists, else null */
   private resolveWorkGroupWorkBasketIds(workGroupId: number | null, workBasketId: number | null): number[] | null {
     const id = this.resolveWorkGroupWorkBasketId(workGroupId, workBasketId);
@@ -1201,6 +1403,63 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
         this.form.get(wgName)?.setValue(null, { emitEvent: false });  // ✅ wgName is string
       }
     });
+  }
+
+  /**
+   * Wire Work Group → Assign To behavior:
+   *  - WG selected:    clear Assign To + make it OPTIONAL (no required validator)
+   *  - WG not set:     populate Assign To with the logged-in user + make it REQUIRED
+   *
+   * Subscribes to WG valueChanges so the rules apply both at form-build time and
+   * whenever the user toggles WG at runtime.
+   */
+  private wireWorkGroupToAssignTo(): void {
+    if (!this.workGroupControlName || !this.assignToControlName) return;
+
+    const wgCtrl = this.form?.get(this.workGroupControlName);
+    if (!wgCtrl) return;
+
+    // initial application based on current WG value
+    this.applyAssignToRequirement(wgCtrl.value);
+
+    wgCtrl.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((wgValue: any) => this.applyAssignToRequirement(wgValue));
+  }
+
+  /**
+   * Apply the conditional-required + auto-populate rules to the Assign To control.
+   * Safe to call multiple times.
+   */
+  private applyAssignToRequirement(wgValue: any): void {
+    if (!this.assignToControlName) return;
+    const atCtrl = this.form?.get(this.assignToControlName);
+    if (!atCtrl) return;
+
+    const hasWg = wgValue != null && wgValue !== '' && Number(wgValue) > 0;
+
+    if (hasWg) {
+      // Work Group is selected → Assign To becomes optional and must be cleared
+      atCtrl.clearValidators();
+      if (atCtrl.value != null && atCtrl.value !== '') {
+        atCtrl.setValue(null, { emitEvent: false });
+      }
+    } else {
+      // No Work Group → Assign To is required and defaults to the logged-in user
+      atCtrl.setValidators([Validators.required]);
+
+      // Only auto-fill if currently empty, so we don't overwrite a saved value
+      // when editing an activity that was assigned to a specific user.
+      if (atCtrl.value == null || atCtrl.value === '') {
+        const loggedInUser = this.getUserId();
+        if (loggedInUser) {
+          const coerced = this.coerceToOptionValue(this.assignToControlName, loggedInUser);
+          atCtrl.setValue(coerced, { emitEvent: false });
+        }
+      }
+    }
+
+    atCtrl.updateValueAndValidity({ emitEvent: false });
   }
 
   getPriorityClassFromLabel(label: string): string {
@@ -1290,6 +1549,31 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
     return Promise.resolve(
       window.confirm('You have unsaved changes. Switching now will discard your modifications.')
     );
+  }
+
+  private patchDefaultsForAdd(): void {
+    const currentLevel = Number(
+      this.resolved?.caseLevelId ??
+      this.levelId ??
+      this.caseLevelId ??
+      1
+    );
+
+    console.log('[CaseActivity] defaulting activity level:', {
+      caseLevelId: this.caseLevelId,
+      levelId: this.levelId,
+      resolvedCaseLevelId: this.resolved?.caseLevelId,
+      currentLevel
+    });
+
+    this.setValueById('activityLevel', currentLevel);
+
+    if (this.caseLevelControlName && this.form.get(this.caseLevelControlName)) {
+      const coerced = this.coerceToOptionValue(this.caseLevelControlName, currentLevel);
+      this.form.get(this.caseLevelControlName)?.setValue(coerced, { emitEvent: false });
+    }
+
+    this.reconcileAllSelectControls();
   }
 
 }

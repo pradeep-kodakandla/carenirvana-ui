@@ -328,7 +328,7 @@ export class AssignedcomplaintsComponent implements OnInit, AfterViewInit {
         this.router.navigate([tabRoute]);
       });
     } else {
-      this.headerService.addTab(tabLabel, tabRoute, String(memberId));
+      this.headerService.addTab(tabLabel, tabRoute, memberId, memberDetailsId);
       if (memberDetailsId != null) sessionStorage.setItem('selectedMemberDetailsId', String(memberDetailsId));
       this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
         this.router.navigate([tabRoute]);

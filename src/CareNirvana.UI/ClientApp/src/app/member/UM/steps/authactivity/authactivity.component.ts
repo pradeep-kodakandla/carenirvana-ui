@@ -50,6 +50,13 @@ export class AuthactivityComponent implements OnChanges, Authunsavedchangesaware
   dueDateText: string = '';
   assignToDisplay: string = '';
 
+  /**
+   * When true, the workGroups → assignTo auto-sync subscription becomes a no-op.
+   * Used by editActivity() so we can patch existing data without the subscription
+   * clobbering the patched assignTo value mid-flight.
+   */
+  private suppressWorkGroupSync = false;
+
   @Input()
   authDetailId: number | null = null;
 
@@ -139,12 +146,13 @@ export class AuthactivityComponent implements OnChanges, Authunsavedchangesaware
       activityType: ['', Validators.required],
       priority: [null, Validators.required],
       assignTo: [sessionStorage.getItem('loggedInUsername') || '', Validators.required],
-      workBasket: [''],
+      // Multi-check dropdowns expect arrays — start them as []
+      workBasket: [[]],
       followUpDateTime: [new Date(), Validators.required],
       dueDate: [new Date(), Validators.required],
       comments: ['', Validators.required],
-      workBasketUser: [''],
-      workGroups: [''],
+      workBasketUser: [[]],
+      workGroups: [[]],
       workGroupUser: [''],
     });
   }
@@ -163,12 +171,28 @@ export class AuthactivityComponent implements OnChanges, Authunsavedchangesaware
 
     this.loadActivityTypes();
     this.loadUsers();
+
+    // Existing rule — when Work Basket is cleared, also clear Work Basket User.
     this.activityForm.get('workBasket')?.valueChanges.subscribe(val => {
-      if (!val) {
-        this.activityForm.get('workBasketUser')?.reset();
+      const isEmpty = val === null || val === undefined || val === '' ||
+                      (Array.isArray(val) && val.length === 0);
+      if (isEmpty) {
+        this.activityForm.get('workBasketUser')?.reset([]);
         this.workBasketUserDisplay = '';
       }
     });
+
+    // ── Conditional rule for Assign To ───────────────────────────────────
+    // • Work Group selected   → Assign To becomes optional + value is cleared
+    // • Work Group not chosen → Assign To becomes required + defaults to
+    //                            the logged-in user
+    // The suppress flag lets editActivity() patch existing rows without
+    // this subscription overwriting the loaded values.
+    this.activityForm.get('workGroups')?.valueChanges.subscribe(val => {
+      if (this.suppressWorkGroupSync) return;
+      this.applyAssignToConditional(val);
+    });
+
     this.loadWorkBaskets();
   }
 
@@ -453,7 +477,12 @@ export class AuthactivityComponent implements OnChanges, Authunsavedchangesaware
       activeFlag: true,
       CreatedBy: Number(loggedInUserId),
       CreatedOn: new Date(),
-      ReferredTo: Number(this.activityForm.value.assignTo) || null
+      ReferredTo: Number(this.activityForm.value.assignTo) || null,
+      // Round-trip the multi-selects so edit can re-populate them next time.
+      // (Adjust property names here if your back-end expects different keys.)
+      workGroupIds:      this.activityForm.value.workGroups   ?? [],
+      workBasketIds:     this.activityForm.value.workBasket   ?? [],
+      workBasketUserIds: this.activityForm.value.workBasketUser ?? []
     };
 
 
@@ -505,7 +534,9 @@ export class AuthactivityComponent implements OnChanges, Authunsavedchangesaware
       activityType: null,
       priority: null,
       assignTo: sessionStorage.getItem('loggedInUsername') || '',
-      workBasket: null,
+      workBasket: [],
+      workGroups: [],
+      workBasketUser: [],
       followUpDateTime: null,
       dueDate: null,
       comments: ''
@@ -527,43 +558,90 @@ export class AuthactivityComponent implements OnChanges, Authunsavedchangesaware
     this.assignToDisplay = sessionStorage.getItem('loggedInUsername') || 'Select';
   }
 
+  // ─────────────────────────────────────────────────────────────────────
+  // editActivity — populates the form for the activity being edited.
+  //
+  // Fixes:
+  //   • workGroups / workBasket / workBasketUser were hard-coded to ''
+  //     so they NEVER populated. Now read from the activity object
+  //     (with multiple fallback property names) and normalized to arrays
+  //     for the multi-check-dropdowns.
+  //   • Assign To: smart-dropdown can fail strict equality if the API
+  //     returns a string ID while options hold numbers. coerceToOptionValue
+  //     resolves the option's strongly-typed value.
+  //   • assignToDisplay lookup compared opt.label to the numeric id —
+  //     fixed to compare opt.value.
+  //
+  // Conditional logic: while patching, the workGroups subscription is
+  // suppressed so it cannot wipe the patched assignTo value. After the
+  // patch, validators are aligned to match the loaded data.
+  // ─────────────────────────────────────────────────────────────────────
   editActivity(index: number) {
-    const activity = this.filteredActivities[index];
+    const activity: any = this.filteredActivities[index];
+
+    // --- Resolve Assign To against the loaded options ---
+    const referToRaw =
+      activity.referredTo ?? activity.referTo ??
+      activity.providerId ?? null;
+    const assignToVal = this.coerceToOptionValue(this.assignToOptions, referToRaw);
+
+    // --- Resolve Work Group / Work Basket / Work Basket User ---
+    // API may return either a single id or an array; normalize to array.
+    const wgRaw =
+      activity.workGroupIds ?? activity.workGroupId ??
+      activity.workgroupids ?? activity.workgroupid ?? null;
+    const wbRaw =
+      activity.workBasketIds ?? activity.workBasketId ??
+      activity.workbasketids ?? activity.workbasketid ?? null;
+    const wbuRaw =
+      activity.workBasketUserIds ?? activity.workBasketUserId ??
+      activity.workbasketuserids ?? activity.workbasketuserid ?? null;
+
+    const wgVal  = this.toIdArray(wgRaw,  this.workGroupOptions);
+    const wbVal  = this.toIdArray(wbRaw,  this.workBasketOptions);
+    const wbuVal = this.toIdArray(wbuRaw, this.workBasketUserOptions);
+
+    // Suppress the auto-sync while we patch so the patched assignTo isn't
+    // wiped by the workGroups change firing partway through.
+    this.suppressWorkGroupSync = true;
 
     this.activityForm.patchValue({
-      activityType: this.toNum(activity.activityTypeId),
-      priority: this.toNum(activity.priorityId),
-      assignTo: this.toNum(activity.referredTo ?? activity.providerId ?? activity.referredTo),
-      followUpDateTime: this.toDate(activity.followUpDateTime ?? activity.followUpDateTime),
-      dueDate: this.toDate(activity.dueDate ?? activity.dueDate),
-      workGroups: '',
-      workBasket: '',
-      workBasketUser: '',
-      comments: activity.comment ?? activity.comment ?? ''
-    }, { emitEvent: false });
+      activityType:     this.toNum(activity.activityTypeId),
+      priority:         this.toNum(activity.priorityId),
+      assignTo:         assignToVal,
+      followUpDateTime: this.toDate(activity.followUpDateTime),
+      dueDate:          this.toDate(activity.dueDate),
+      workGroups:       wgVal,
+      workBasket:       wbVal,
+      workBasketUser:   wbuVal,
+      comments:         activity.comment ?? ''
+    });
 
-    // Set display fields (Dropdown text)
-    const selectedActivityType = this.activityTypes.find(opt => opt.value === activity.activityTypeId?.toString());
+    // Align the assignTo validator with the loaded workGroup state, but
+    // KEEP the loaded assignTo value (don't clear it) so existing rows
+    // render exactly what's in the database.
+    this.alignAssignToValidator(wgVal);
+
+    this.suppressWorkGroupSync = false;
+
+    // --- Display strings (for any read-only views that use them) ---
+    const selectedActivityType = this.activityTypes
+      .find(opt => String(opt.value) === String(activity.activityTypeId));
     this.activityTypeDisplay = selectedActivityType?.label || '';
 
-    const selectedAssignTo = this.assignToOptions.find(opt => opt.label == activity.referredTo?.toString());
+    // ✅ compare VALUE not LABEL
+    const selectedAssignTo = this.assignToOptions
+      .find(opt => String(opt.value) === String(referToRaw));
     this.assignToDisplay = selectedAssignTo?.label || 'Select';
 
-    const selectedPriority = this.filteredPriorities.find(opt => opt.value === activity.priorityId?.toString());
+    const selectedPriority = this.filteredPriorities
+      .find(opt => String(opt.value) === String(activity.priorityId));
     this.priorityDisplay = selectedPriority?.label || '';
 
-    // Set date text for Scheduled and Due
-    if (activity.followUpDateTime) {
-      this.scheduledDateText = this.formatForDisplay(new Date(activity.followUpDateTime));
-    } else {
-      this.scheduledDateText = '';
-    }
-
-    if (activity.dueDate) {
-      this.dueDateText = this.formatForDisplay(new Date(activity.dueDate));
-    } else {
-      this.dueDateText = '';
-    }
+    this.scheduledDateText = activity.followUpDateTime
+      ? this.formatForDisplay(new Date(activity.followUpDateTime)) : '';
+    this.dueDateText = activity.dueDate
+      ? this.formatForDisplay(new Date(activity.dueDate)) : '';
 
     this.editingIndex = index;
     this.formKey++;
@@ -584,6 +662,98 @@ export class AuthactivityComponent implements OnChanges, Authunsavedchangesaware
     }
     return null;
   };
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Helpers used by editActivity to safely match form values against
+  // dropdown option values regardless of string/number type.
+  // ─────────────────────────────────────────────────────────────────────
+
+  /** Find option by loose (string) equality and return its strongly-typed value. */
+  private coerceToOptionValue(options: { value: any; label: string }[], raw: any): any {
+    if (raw === null || raw === undefined || raw === '') return null;
+    if (!options || !options.length) return this.toNum(raw);   // options not loaded yet
+    const match = options.find(o => String(o.value) === String(raw));
+    return match ? match.value : this.toNum(raw);
+  }
+
+  /** Normalize a single id / array of ids into an array of properly-typed option values. */
+  private toIdArray(raw: any, options: { value: any; label: string }[]): any[] {
+    if (raw === null || raw === undefined || raw === '') return [];
+    const arr = Array.isArray(raw) ? raw : [raw];
+    return arr
+      .map(v => this.coerceToOptionValue(options, v))
+      .filter(v => v !== null && v !== undefined);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Conditional Assign To behavior
+  //
+  //   Work Group selected   → Assign To is OPTIONAL  (validator removed)
+  //                           and value is CLEARED.
+  //   Work Group not chosen → Assign To is REQUIRED  (validator added)
+  //                           and value defaults to the logged-in user.
+  // ─────────────────────────────────────────────────────────────────────
+
+  /** True if the workGroups control currently has at least one selection. */
+  hasWorkGroupSelection(val?: any): boolean {
+    const v = arguments.length === 0
+      ? this.activityForm?.get('workGroups')?.value
+      : val;
+    if (v === null || v === undefined || v === '') return false;
+    if (Array.isArray(v)) return v.length > 0;
+    return !!v;
+  }
+
+  /** Template helper — used to hide the "*" on the Assign To label when optional. */
+  isAssignToOptional(): boolean {
+    return this.hasWorkGroupSelection();
+  }
+
+  /**
+   * Triggered by the user changing Work Group. Clears or restores Assign To
+   * value AND toggles the required validator accordingly.
+   */
+  private applyAssignToConditional(workGroupVal: any): void {
+    const ctrl = this.activityForm.get('assignTo');
+    if (!ctrl) return;
+
+    if (this.hasWorkGroupSelection(workGroupVal)) {
+      // Optional: drop the validator and clear the value.
+      ctrl.clearValidators();
+      ctrl.setValue(null);
+      this.assignToDisplay = '';
+    } else {
+      // Required: restore the validator and default to the logged-in user.
+      ctrl.setValidators([Validators.required]);
+      const loggedInUsername = sessionStorage.getItem('loggedInUsername');
+      const loggedInUser = this.assignToOptions.find(u => u.label === loggedInUsername);
+      if (loggedInUser) {
+        ctrl.setValue(loggedInUser.value);
+        this.assignToDisplay = loggedInUsername || 'Select';
+      } else {
+        ctrl.setValue(null);
+        this.assignToDisplay = 'Select';
+      }
+    }
+    ctrl.updateValueAndValidity();
+  }
+
+  /**
+   * Same validator-toggle as applyAssignToConditional, but does NOT touch
+   * the value. Used by editActivity so the loaded assignTo stays visible
+   * even when the saved row also has a workGroup.
+   */
+  private alignAssignToValidator(workGroupVal: any): void {
+    const ctrl = this.activityForm.get('assignTo');
+    if (!ctrl) return;
+
+    if (this.hasWorkGroupSelection(workGroupVal)) {
+      ctrl.clearValidators();
+    } else {
+      ctrl.setValidators([Validators.required]);
+    }
+    ctrl.updateValueAndValidity({ emitEvent: false });
+  }
 
 
   deleteActivity(index: number) {
@@ -636,9 +806,17 @@ export class AuthactivityComponent implements OnChanges, Authunsavedchangesaware
   }
 
 
+  // ─────────────────────────────────────────────────────────────────────
+  // onAddNewActivity — opens a fresh editor.
+  //
+  // Fix: editingIndex is now reset to null. Without this, after editing
+  // a row and then clicking "Add Activity", onSubmit() took the UPDATE
+  // branch and silently overwrote the previously-edited row.
+  // ─────────────────────────────────────────────────────────────────────
   onAddNewActivity() {
     this.selectedIndex = null;
-    this.isEditing = true;
+    this.editingIndex  = null;            // ← critical: forces the INSERT path
+    this.isEditing     = true;
     this.resetFormForNew();
   }
 
@@ -771,6 +949,8 @@ export class AuthactivityComponent implements OnChanges, Authunsavedchangesaware
 
   formKey = 0; // bump to force re-render of child controls
 
+  // Multi-check dropdowns expect arrays — the empty value must be []
+  // (not '') or the dropdown UI silently keeps the previous selection.
   private blankFormValue = {
     activityType: null,
     priority: null,
@@ -778,15 +958,56 @@ export class AuthactivityComponent implements OnChanges, Authunsavedchangesaware
     followUpDateTime: null,
     dueDate: null,
     workGroups: [],
-    workBasket: null,
-    workBasketUser: null,
+    workBasket: [],
+    workBasketUser: [],
     comments: ''
   };
 
+  // ─────────────────────────────────────────────────────────────────────
+  // resetFormForNew — wipes the editor state for a fresh "Add Activity".
+  //
+  // Fixes:
+  //   • Drop emitEvent:false so child custom controls (smart-dropdown,
+  //     multi-check-dropdown, datetime-picker) actually re-render empty.
+  //   • Clear all the lingering display strings that previously stayed
+  //     populated from the prior edit.
+  //   • Default Assign To back to the logged-in user, matching the
+  //     initial form-builder state.
+  //   • Restore the Assign To required validator (it may have been
+  //     dropped while a workGroup was selected on the previous row).
+  // ─────────────────────────────────────────────────────────────────────
   private resetFormForNew(): void {
     console.log('Resetting form for new activity');
-    this.activityForm.reset(this.blankFormValue, { emitEvent: false });
-    // If your custom controls cache state, give them a fresh instance:
+
+    // Reset values (let events fire so child UI components update visually)
+    this.activityForm.reset(this.blankFormValue);
+
+    // Default Assign To = logged-in user (same behavior as first load)
+    const loggedInUsername = sessionStorage.getItem('loggedInUsername');
+    const loggedInUser     = this.assignToOptions.find(u => u.label === loggedInUsername);
+    if (loggedInUser) {
+      this.activityForm.get('assignTo')?.setValue(loggedInUser.value, { emitEvent: false });
+      this.assignToDisplay = loggedInUsername || 'Select';
+    } else {
+      this.assignToDisplay = 'Select';
+    }
+
+    // No workGroup on a fresh row → Assign To must be required.
+    const assignToCtrl = this.activityForm.get('assignTo');
+    if (assignToCtrl) {
+      assignToCtrl.setValidators([Validators.required]);
+      assignToCtrl.updateValueAndValidity({ emitEvent: false });
+    }
+
+    // Clear lingering display strings (they were stale after edit → add)
+    this.activityTypeDisplay   = '';
+    this.priorityDisplay       = '';
+    this.workBasketDisplay     = '';
+    this.workGroupDisplay      = 'Select';
+    this.workBasketUserDisplay = '';
+    this.scheduledDateText     = '';
+    this.dueDateText           = '';
+
     this.activityForm.markAsPristine();
     this.activityForm.markAsUntouched();
     this.formKey++; // <== forces Angular to recreate the subtree

@@ -215,7 +215,7 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
     this.mdrForm = this.fb.group({
       assignmentType: ['Specific Medical Director' as AssignmentType, Validators.required],
       activityType: ['', Validators.required],
-      priority: [2, Validators.required],
+      priority: [null, Validators.required],
       assignTo: [null],
 
       workBasket: [null],

@@ -1,13 +1,21 @@
-<div class="activity-container" [class.activity-container--single-pane]="singlePane" [class.activity--view-only]="isViewOnly">
-  <!-- Left Side - Timeline -->
+<div class="activity-container"
+     [class.activity-container--single-pane]="singlePane"
+     [class.activity--view-only]="isViewOnly">
+
+  <!-- LEFT: Timeline list -->
   <div class="activity-left" *ngIf="!isAddOnly && (!singlePane || !isEditing)">
-    <!-- Top Search + Action Bar -->
+
+    <!-- Top bar: Search + Sort + Add -->
     <div class="left-controls">
-      <input type="text" placeholder="🔍 Search..." [(ngModel)]="searchTerm" (input)="applySearch()" class="search-input" />
+      <input type="text"
+             placeholder="🔍 Search..."
+             [(ngModel)]="searchTerm"
+             (input)="applySearch()"
+             class="search-input" />
 
       <div class="right-actions">
         <div class="sort-wrapper" (mouseenter)="showSort = true" (mouseleave)="showSort = false">
-          <button class="sort-icon">⇅</button>
+          <button class="sort-icon" type="button" aria-label="Sort">⇅</button>
           <div class="sort-menu" *ngIf="showSort">
             <div class="sort-option" (click)="applySort('activityType_asc')">Activity Type (A–Z)</div>
             <div class="sort-option" (click)="applySort('activityType_desc')">Activity Type (Z–A)</div>
@@ -17,190 +25,254 @@
             <div class="sort-option" (click)="applySort('status_desc')">Status (Z–A)</div>
           </div>
         </div>
-        <button class="add-btn" (click)="onAddNewActivity()" [disabled]="!canAdd">➕ Add Activity</button>
+        <button class="add-btn" type="button" (click)="onAddNewActivity()" [disabled]="!canAdd">
+          ➕ Add Activity
+        </button>
       </div>
-
     </div>
 
+    <!-- Activity cards -->
     <div cdkDropList (cdkDropListDropped)="dropActivity($event)" class="timeline-list">
-      <div *ngFor="let activity of filteredActivities; let i = index" class="timeline-item" [ngClass]="{'selected': selectedIndex === i}">
-        <div class="timeline-dot" [ngClass]="{'completed': activity.statusId === 2}"></div>
+
+      <article *ngFor="let activity of filteredActivities; let i = index"
+               class="timeline-item"
+               [ngClass]="{ 'selected': selectedIndex === i }">
+
         <div class="timeline-content" (click)="selectActivity(i)">
+
           <div class="timeline-header">
             <div class="timeline-title">
-              Activity Type: {{ activity.activityTypeLabel || 'Unknown Activity' }}
-
-
-              <span *ngIf="activity.statusId === 2">✅</span>
-              <span *ngIf="activity.statusId !== 2">⏳</span>
+              {{ activity.activityTypeLabel || 'Unknown Activity' }}
+              <span *ngIf="activity.statusId === 2" title="Completed">✅</span>
+              <span *ngIf="activity.statusId !== 2" title="Pending">⏳</span>
             </div>
-            <div class="timeline-priority" [ngClass]="getPriorityClass(activity.priorityId)">
-              Priority: {{ activity.priorityLabel || 'No Priority' }}
-            </div>
-            <!-- Action Icons -->
-            <span class="activity-actions">
+
+            <span class="timeline-priority" [ngClass]="getPriorityClass(activity.priorityId)">
+              {{ activity.priorityLabel || 'No Priority' }}
+            </span>
+
+            <div class="activity-actions" (click)="$event.stopPropagation()">
               <button type="button"
-                      class="icon-btn"
-                      title="Accept"
-                      [disabled]="activity.statusId === 2"
+                      class="icon-btn success"
+                      title="Mark Completed"
+                      [disabled]="activity.statusId === 2 || !canEdit"
                       (click)="markAsCompleted(i)">
-                👍
+                <svg viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clip-rule="evenodd"/>
+                </svg>
               </button>
+              <button type="button"
+                      class="icon-btn danger"
+                      title="Delete"
+                      [disabled]="!canEdit"
+                      (click)="deleteActivity(i)">
+                <svg viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd"
+                        d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                        clip-rule="evenodd"/>
+                </svg>
+              </button>
+            </div>
+          </div>
 
-              <button type="button" class="icon-btn" title="Delete" [disabled]="!canEdit" (click)="deleteActivity(i)">
-                🗑️
-              </button>
+          <div class="timeline-summary">
+            <span class="pill" [ngClass]="activity.statusId === 2 ? 'pill-success' : 'pill-primary'">
+              Status · {{ activity.statusId === 2 ? 'Completed' : 'Pending' }}
+            </span>
+            <span class="pill" *ngIf="activity.followUpDateTime">
+              Scheduled · {{ formatDateEST(activity.followUpDateTime) }}
+            </span>
+            <span class="pill" *ngIf="activity.referredTo">
+              Assigned · {{ getProviderName(activity.referredTo) }}
             </span>
           </div>
-          <div class="timeline-summary">
-            Assign To: {{ getProviderName(activity.referredTo) || 'No Assignee' }} | Scheduled: {{ formatDateEST(activity.followUpDateTime) }}
-          </div>
+
+          <div class="note-snippet" *ngIf="activity.comment">{{ activity.comment }}</div>
         </div>
-      </div>
+      </article>
+
       <div *ngIf="(!filteredActivities || filteredActivities.length === 0)" class="text-muted py-3 px-2">
         No Activities found. Click "Add Activity" to create one.
       </div>
     </div>
-
   </div>
 
-  <!-- Right Side - Form or Summary -->
+
+  <!-- RIGHT: Editor or Summary -->
   <div class="activity-right" *ngIf="isAddOnly || !singlePane || isEditing">
+
     <!-- Embedded header (add-only mode) -->
     <div class="embed-activity-header" *ngIf="isAddOnly">
       <div class="embed-actions">
-        <button type="button"
-                class="btn btn-sm btn-link"
-                (click)="emitViewAll()">
+        <button type="button" class="btn btn-sm btn-link" (click)="emitViewAll()">
           View all activities ({{ activities.length || 0 }})
         </button>
       </div>
     </div>
-    <ng-container *ngIf="isEditing; else aiSummary">
-      <div class="auth-form" [attr.data-form-key]="formKey">
-        <form [formGroup]="activityForm">
-          <div class="form-grid">
 
-            <div class="form-outline dropdown-container">
-              <label class="floating-label">Activity Type <span class="text-danger">*</span></label>
-              <ui-smart-dropdown class="ff-ui"
-                                 label=""
-                                 placeholder="Select activity type"
-                                 [options]="activityTypeOptions"
-                                 formControlName="activityType">
-              </ui-smart-dropdown>
-              <div *ngIf="activityForm.get('activityType')?.touched && activityForm.get('activityType')?.invalid" class="text-danger">
+    <ng-container *ngIf="isEditing; else aiSummary">
+
+      <!-- Editor form -->
+      <div class="section-card auth-form" [attr.data-form-key]="formKey">
+        <form [formGroup]="activityForm">
+          <div class="grid">
+
+            <!-- Activity Type -->
+            <div class="ff-field">
+              <div class="ff-outline"
+                   [class.ff-invalid]="activityForm.get('activityType')?.touched && activityForm.get('activityType')?.invalid">
+                <div class="ff-float-label">Activity Type<span class="req-star">*</span></div>
+                <div class="ff-body">
+                  <ui-smart-dropdown class="ff-ui"
+                                     label=""
+                                     placeholder="Select activity type"
+                                     [options]="activityTypeOptions"
+                                     formControlName="activityType">
+                  </ui-smart-dropdown>
+                </div>
+              </div>
+              <div class="ff-error"
+                   *ngIf="activityForm.get('activityType')?.touched && activityForm.get('activityType')?.invalid">
                 Activity Type is required.
               </div>
             </div>
 
-
-
-            <div class="form-outline dropdown-container">
-              <label class="floating-label">Priority <span class="text-danger">*</span></label>
-              <ui-smart-dropdown class="ff-ui"
-                                 label=""
-                                 placeholder="Select priority"
-                                 [options]="priorityOptions"
-                                 formControlName="priority">
-              </ui-smart-dropdown>
-
-              <div *ngIf="activityForm.get('priority')?.touched && activityForm.get('priority')?.invalid" class="text-danger">
+            <!-- Priority -->
+            <div class="ff-field">
+              <div class="ff-outline"
+                   [class.ff-invalid]="activityForm.get('priority')?.touched && activityForm.get('priority')?.invalid">
+                <div class="ff-float-label">Priority<span class="req-star">*</span></div>
+                <div class="ff-body">
+                  <ui-smart-dropdown class="ff-ui"
+                                     label=""
+                                     placeholder="Select priority"
+                                     [options]="priorityOptions"
+                                     formControlName="priority">
+                  </ui-smart-dropdown>
+                </div>
+              </div>
+              <div class="ff-error"
+                   *ngIf="activityForm.get('priority')?.touched && activityForm.get('priority')?.invalid">
                 Priority is required.
               </div>
             </div>
 
-
-            <div class="form-outline position-relative">
-              <label class="floating-label">Scheduled Date & Time <span class="text-danger">*</span></label>
-              <ui-datetime-picker formControlName="followUpDateTime"
-                                  placeholderDate="Select date"
-                                  placeholderTime="Select time">
-              </ui-datetime-picker>
-              <div *ngIf="activityForm.get('followUpDateTime')?.touched && activityForm.get('followUpDateTime')?.invalid" class="text-danger">
+            <!-- Scheduled Date & Time -->
+            <div class="ff-field">
+              <div class="ff-outline"
+                   [class.ff-invalid]="activityForm.get('followUpDateTime')?.touched && activityForm.get('followUpDateTime')?.invalid">
+                <div class="ff-float-label">Scheduled Date &amp; Time<span class="req-star">*</span></div>
+                <div class="ff-body">
+                  <ui-datetime-picker class="ff-ui"
+                                      formControlName="followUpDateTime"
+                                      placeholderDate="Select date"
+                                      placeholderTime="Select time">
+                  </ui-datetime-picker>
+                </div>
+              </div>
+              <div class="ff-error"
+                   *ngIf="activityForm.get('followUpDateTime')?.touched && activityForm.get('followUpDateTime')?.invalid">
                 Scheduled date is required.
               </div>
             </div>
 
             <!-- Due Date & Time -->
-            <div class="form-outline position-relative">
-              <label class="floating-label">Due Date & Time <span class="text-danger">*</span></label>
-              <ui-datetime-picker formControlName="dueDate"
-                                  placeholderDate="Select date"
-                                  placeholderTime="Select time">
-              </ui-datetime-picker>
-              <div *ngIf="activityForm.get('dueDate')?.touched && activityForm.get('dueDate')?.invalid" class="text-danger">
+            <div class="ff-field">
+              <div class="ff-outline"
+                   [class.ff-invalid]="activityForm.get('dueDate')?.touched && activityForm.get('dueDate')?.invalid">
+                <div class="ff-float-label">Due Date &amp; Time<span class="req-star">*</span></div>
+                <div class="ff-body">
+                  <ui-datetime-picker class="ff-ui"
+                                      formControlName="dueDate"
+                                      placeholderDate="Select date"
+                                      placeholderTime="Select time">
+                  </ui-datetime-picker>
+                </div>
+              </div>
+              <div class="ff-error"
+                   *ngIf="activityForm.get('dueDate')?.touched && activityForm.get('dueDate')?.invalid">
                 Due date is required.
               </div>
             </div>
 
-            <!-- Assign To (single, autocomplete) -->
-            <div class="form-outline dropdown-container">
-              <label class="floating-label">Assign To <span class="text-danger">*</span></label>
-              <ui-smart-dropdown class="ff-ui"
-                                 label=""
-                                 placeholder="Select user"
-                                 [options]="assignToOptions"
-                                 formControlName="assignTo">
-              </ui-smart-dropdown>
-
-
-              <div *ngIf="activityForm.get('assignTo')?.touched && activityForm.get('assignTo')?.invalid" class="text-danger">
+            <!-- Assign To  (required only when no Work Group selected) -->
+            <div class="ff-field">
+              <div class="ff-outline"
+                   [class.ff-invalid]="activityForm.get('assignTo')?.touched && activityForm.get('assignTo')?.invalid">
+                <div class="ff-float-label">
+                  Assign To<span class="req-star" *ngIf="!isAssignToOptional()">*</span>
+                </div>
+                <div class="ff-body">
+                  <ui-smart-dropdown class="ff-ui"
+                                     label=""
+                                     placeholder="Select user"
+                                     [options]="assignToOptions"
+                                     formControlName="assignTo">
+                  </ui-smart-dropdown>
+                </div>
+              </div>
+              <div class="ff-error"
+                   *ngIf="activityForm.get('assignTo')?.touched && activityForm.get('assignTo')?.invalid">
                 Assign To is required.
               </div>
             </div>
 
-            <div class="form-outline dropdown-container">
-              <label class="floating-label">Work Group</label>
-              <ui-multi-check-dropdown formControlName="workGroups"
-                                       [options]="workGroupOptions"
-                                       [defaultSelect]="false"
-                                       [showChips]="false"
-                                       placeholder="Select work groups">
-              </ui-multi-check-dropdown>
+            <!-- Work Group -->
+            <div class="ff-field">
+              <div class="ff-outline">
+                <div class="ff-float-label">Work Group</div>
+                <div class="ff-body">
+                  <ui-multi-check-dropdown class="ff-ui"
+                                           formControlName="workGroups"
+                                           [options]="workGroupOptions"
+                                           [defaultSelect]="false"
+                                           [showChips]="false"
+                                           placeholder="Select work groups">
+                  </ui-multi-check-dropdown>
+                </div>
+              </div>
             </div>
 
-            <div class="form-outline dropdown-container">
-              <label class="floating-label">Work Basket</label>
-              <ui-multi-check-dropdown formControlName="workBasket"
-                                       [options]="workBasketOptions"
-                                       [defaultSelect]="false"
-                                       [showChips]="false"
-                                       placeholder="Select work basket">
-              </ui-multi-check-dropdown>
+            <!-- Work Basket -->
+            <div class="ff-field">
+              <div class="ff-outline">
+                <div class="ff-float-label">Work Basket</div>
+                <div class="ff-body">
+                  <ui-multi-check-dropdown class="ff-ui"
+                                           formControlName="workBasket"
+                                           [options]="workBasketOptions"
+                                           [defaultSelect]="false"
+                                           [showChips]="false"
+                                           placeholder="Select work basket">
+                  </ui-multi-check-dropdown>
+                </div>
+              </div>
             </div>
 
-
-            <!-- Work Basket Users (single, autocomplete; enabled based on basket) -->
-            <!--<div class="form-outline dropdown-container">
-              <label class="floating-label">Work Basket Users</label>
-              <ui-multi-check-dropdown formControlName="workBasketUser"
-                                       [options]="workBasketUserOptions"
-                                       [defaultSelect]="true"
-                                       [showChips]="false"
-                                       placeholder="Select work basket user">
-              </ui-multi-check-dropdown>
-            </div>-->
-
-            <div class="form-outline full-width">
-              <label class="floating-label">Comments <span class="text-danger">*</span></label>
-              <textarea class="form-control"
-                        formControlName="comments"
-                        rows="3"
-                        [ngClass]="{'is-invalid': activityForm.get('comments')?.touched && activityForm.get('comments')?.invalid}">
-              </textarea>
-              <div *ngIf="activityForm.get('comments')?.touched && activityForm.get('comments')?.invalid" class="invalid-feedback">
+            <!-- Comments (full width) -->
+            <div class="ff-field ff-span-all">
+              <div class="ff-outline"
+                   [class.ff-invalid]="activityForm.get('comments')?.touched && activityForm.get('comments')?.invalid">
+                <div class="ff-float-label">Comments<span class="req-star">*</span></div>
+                <div class="ff-body">
+                  <textarea class="ff-input ff-textarea"
+                            rows="4"
+                            formControlName="comments"></textarea>
+                </div>
+              </div>
+              <div class="ff-error"
+                   *ngIf="activityForm.get('comments')?.touched && activityForm.get('comments')?.invalid">
                 Comments are required.
               </div>
             </div>
 
-
-
           </div>
 
-          <div class="button-group">
-            <button type="button" (click)="onSubmit()" [disabled]="!canAdd">Save</button>
-            <button type="button" (click)="onCancel()">Cancel</button>
+          <div class="case-savebar">
+            <button type="button" class="btn btn-outline-secondary" (click)="onCancel()">Cancel</button>
+            <button type="button" class="btn btn-primary" [disabled]="!canAdd" (click)="onSubmit()">Save</button>
           </div>
         </form>
       </div>
@@ -209,13 +281,19 @@
     <ng-template #aiSummary>
       <div class="ai-summary">
         <h3>📊 Activities Summary</h3>
-        <p><strong>Total Activities:</strong> {{ activities.length }}</p>
-        <p><strong>Completed:</strong> {{ getCompletedCount() }}</p>
-        <p><strong>Pending:</strong> {{ getPendingCount() }}</p>
-        <p><strong>High Priority:</strong> {{ getPriorityCount('High') }}</p>
-        <p><strong>Medium Priority:</strong> {{ getPriorityCount('Medium') }}</p>
-        <p><strong>Low Priority:</strong> {{ getPriorityCount('Low') }}</p>
+        <div class="summary-grid">
+          <p><strong>Total:</strong> {{ activities.length || 0 }}</p>
+          <p><strong>Completed:</strong> {{ getCompletedCount() }}</p>
+          <p><strong>Pending:</strong> {{ getPendingCount() }}</p>
+          <p><strong>High Priority:</strong> {{ getPriorityCount('High') }}</p>
+          <p><strong>Medium Priority:</strong> {{ getPriorityCount('Medium') }}</p>
+          <p><strong>Low Priority:</strong> {{ getPriorityCount('Low') }}</p>
+        </div>
+        <p class="text-muted mb-0" *ngIf="!isAddOnly">
+          Select an activity on the left to edit, or click "Add Activity".
+        </p>
       </div>
     </ng-template>
+
   </div>
 </div>

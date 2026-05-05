@@ -28,6 +28,7 @@ export interface RecentlyAccessedView {
   complaintDetailId?: number | null;
   memberId?: string | null;
   authNumber?: string | null;
+  caseNumber?: string | null;
   memberName?: string | null;
 }
 
@@ -42,7 +43,7 @@ export interface Last24hCounts {
 })
 export class AuthenticateService {
   private apiUrl = 'https://carenirvana-microservices-dfgda7g4fzhqckhj.eastus2-01.azurewebsites.net/api/user';
- // private apiUrl = 'https://localhost:7201/api/user';
+  //private apiUrl = 'https://localhost:7201/api/user';
 
   constructor(private http: HttpClient) { }
 

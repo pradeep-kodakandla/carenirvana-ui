@@ -127,9 +127,38 @@
             User accessed <span class="subtle">from last 24 hours</span>
           </div>
           <div class="chip-row">
-            <span class="count-chip members">Members: {{ accessCounts.members }}</span>
-            <span class="count-chip auths">Auths: {{ accessCounts.auths }}</span>
-            <span class="count-chip complaints">Complaints: {{ accessCounts.complaints }}</span>
+            <span class="count-chip all"
+                  role="button"
+                  tabindex="0"
+                  [class.active]="activeAccessFilter === 'all'"
+                  [ngStyle]="chipStyle('all')"
+                  (click)="setAccessFilter('all'); $event.stopPropagation()">
+              All: {{ totalAccessCount }}
+            </span>
+            <span class="count-chip members"
+                  role="button"
+                  tabindex="0"
+                  [class.active]="activeAccessFilter === 'members'"
+                  [ngStyle]="chipStyle('members')"
+                  (click)="setAccessFilter('members'); $event.stopPropagation()">
+              Members: {{ accessCounts.members }}
+            </span>
+            <span class="count-chip auths"
+                  role="button"
+                  tabindex="0"
+                  [class.active]="activeAccessFilter === 'auths'"
+                  [ngStyle]="chipStyle('auths')"
+                  (click)="setAccessFilter('auths'); $event.stopPropagation()">
+              Auths: {{ accessCounts.auths }}
+            </span>
+            <span class="count-chip complaints"
+                  role="button"
+                  tabindex="0"
+                  [class.active]="activeAccessFilter === 'complaints'"
+                  [ngStyle]="chipStyle('complaints')"
+                  (click)="setAccessFilter('complaints'); $event.stopPropagation()">
+              Complaints: {{ accessCounts.complaints }}
+            </span>
           </div>
         </div>
 
@@ -143,14 +172,14 @@
                 <th>Member Id</th>
                 <th>Member Name</th>
                 <th>Feature Group Name</th>
-                <th>Feature Name</th>
                 <th>Auth Number</th>
+                <th>Case Number</th>
                 <th>Action</th>
                 <th>Accessed Date Time</th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let it of items">
+              <tr *ngFor="let it of filteredItems">
                 <td>
                   <a href="#"
                      class="link-member"
@@ -160,7 +189,6 @@
                 </td>
                 <td>{{ it.memberName || 'N/A' }}</td>
                 <td>{{ it.featureGroupName || 'N/A' }}</td>
-                <td>{{ it.featureName || 'N/A' }}</td>
                 <td>
                   <a *ngIf="it.authNumber"
                      href="#"
@@ -170,8 +198,22 @@
                   </a>
                   <span *ngIf="!it.authNumber">N/A</span>
                 </td>
+                <td>
+                  <a *ngIf="it.caseNumber"
+                     href="#"
+                     class="link-case"
+                     (click)="openCaseTab(it.caseNumber, it.memberID, it.memberDetailsId); $event.preventDefault()">
+                    {{ it.caseNumber }}
+                  </a>
+                  <span *ngIf="!it.caseNumber">N/A</span>
+                </td>
                 <td>{{ it.action || 'N/A' }}</td>
                 <td>{{ it.accessedDateTime | date:'MM/dd/yyyy, hh:mm a' }}</td>
+              </tr>
+              <tr *ngIf="!filteredItems.length">
+                <td colspan="7" style="text-align:center; padding:12px; color:#888;">
+                  No records to show{{ activeAccessFilter !== 'all' ? ' for this filter' : '' }}.
+                </td>
               </tr>
             </tbody>
           </table>

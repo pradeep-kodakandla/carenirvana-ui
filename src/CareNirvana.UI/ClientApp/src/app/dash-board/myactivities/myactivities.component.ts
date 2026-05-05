@@ -491,7 +491,7 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.computeDaysLeftLabel(dateVal);
   }
 
-  onMemberClick(memberId: number | string, memberName: string): void {
+  onMemberClick(memberId: number | string, memberName: string, memberDetailsId: string): void {
     const tabLabel = `Member: ${memberName}`;
     const tabRoute = `/member-info/${memberId}`;
 
@@ -499,7 +499,7 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit, OnDestroy {
     if (existingTab) {
       this.headerService.selectTab(tabRoute);
     } else {
-      this.headerService.addTab(tabLabel, tabRoute, String(memberId));
+      this.headerService.addTab(tabLabel, tabRoute, String(memberId), memberDetailsId);
     }
 
     this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {

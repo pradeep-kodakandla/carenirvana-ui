@@ -153,14 +153,17 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
 
     if (existingTab) {
       this.headerService.selectTab(tabRoute);
+
       const mdId = existingTab.memberDetailsId ?? null;
       if (mdId) sessionStorage.setItem('selectedMemberDetailsId', mdId);
+
       this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
         this.router.navigate([tabRoute]);
       });
     } else {
-      this.headerService.addTab(tabLabel, tabRoute, memberId);
+      this.headerService.addTab(tabLabel, tabRoute, memberId, memberDetailsId);
       sessionStorage.setItem('selectedMemberDetailsId', memberDetailsId);
+
       this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
         this.router.navigate([tabRoute]);
       });

@@ -38,6 +38,7 @@
       <button *ngIf="clearable && selectedLabel && !disabled"
               class="ui-smart-dropdown__clear"
               type="button"
+              tabindex="-1"
               aria-label="Clear selection"
               (click)="clear($event)">
         ✕

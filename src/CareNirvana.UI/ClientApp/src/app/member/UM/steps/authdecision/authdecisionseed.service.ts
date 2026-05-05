@@ -465,7 +465,8 @@ export class AuthDecisionSeedService {
     const requestedUnits =
       get('serviceReq') ?? get('recommendedUnits') ?? get('requested') ??
       get('hours') ?? get('days') ?? get('weeks');
-
+    const decisionRequestDatetime = this.resolveDecisionRequestDatetime(authData);
+    const requestReceivedVia = this.resolveRequestReceivedVia(authData);
     return this.cleanPayload({
       procedureNo:    procNo,
       decisionNumber: String(procNo),
@@ -495,12 +496,18 @@ export class AuthDecisionSeedService {
       alternateServiceId: get('alternateServiceId'),
 
       treatmentType:     authData?.treatementType ?? authData?.treatmentType ?? get('treatmentType'),
-      requestType:       authData?.requestSent ?? authData?.requestType ?? authData?.requestReceivedVia,
-      requestReceivedVia: authData?.requestReceivedVia ?? authData?.requestSent,
+      //requestType:       authData?.requestSent ?? authData?.requestType ?? authData?.requestReceivedVia,
+      //requestReceivedVia: authData?.requestReceivedVia ?? authData?.requestSent,
       requestPriority:   authData?.requestPriority ?? get('requestPriority'),
 
       decisionUpdatedBy:      isAutoApproved ? 'RulesEngine' : null,
       decisionUpdatedDatetime: nowIso,
+      decisionRequestDatetime: decisionRequestDatetime,
+
+      requestReceivedVia: requestReceivedVia,
+
+      // optional alias if any old UI/backend reads requestType
+      requestType: requestReceivedVia,
     });
   }
 
@@ -528,6 +535,8 @@ export class AuthDecisionSeedService {
     const get = (suffix: string) => authData?.[`medication${medNo}_${suffix}`];
 
     const requestedQty = get('quantity');
+    const decisionRequestDatetime = this.resolveDecisionRequestDatetime(authData);
+    const requestReceivedVia = this.resolveRequestReceivedVia(authData);
 
     return this.cleanPayload({
       procedureNo:    virtualProcNo,
@@ -561,12 +570,15 @@ export class AuthDecisionSeedService {
 
       // Auth-level context
       treatmentType:     authData?.treatementType ?? authData?.treatmentType,
-      requestType:       authData?.requestSent ?? authData?.requestType,
-      requestReceivedVia: authData?.requestReceivedVia ?? authData?.requestSent,
+      //requestType:       authData?.requestSent ?? authData?.requestType,
+      //requestReceivedVia: authData?.requestReceivedVia ?? authData?.requestSent,
       requestPriority:   authData?.requestPriority,
 
       decisionUpdatedBy:       isAutoApproved ? 'RulesEngine' : null,
       decisionUpdatedDatetime: nowIso,
+      decisionRequestDatetime: decisionRequestDatetime,
+      requestReceivedVia: requestReceivedVia,
+      requestType: requestReceivedVia,
     });
   }
 
@@ -952,5 +964,32 @@ export class AuthDecisionSeedService {
   private isYesValue(v: any): boolean {
     const s = String(v ?? '').trim().toLowerCase();
     return s === 'y' || s === 'yes' || s === 'true' || s === '1';
+  }
+
+
+  private resolveDecisionRequestDatetime(authData: any): any {
+    if (!authData) return null;
+
+    return (
+      authData?.decisionRequestDatetime ??
+      authData?.requestDatetime ??
+      authData?.requestDateTime ??
+      authData?.requestedDateTime ??
+      authData?.requestedDatetime ??
+      null
+    );
+  }
+
+  private resolveRequestReceivedVia(authData: any): any {
+    if (!authData) return null;
+
+    return (
+      authData?.requestReceivedVia ??
+      authData?.requestType ??
+      authData?.requestSent ??
+      // Current template Request Type field id
+      authData?.newSelect_copy_t1hmnc0kp ??
+      null
+    );
   }
 }

@@ -93,7 +93,7 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
   steps: CaseStep[] = [
     { id: 'details',     label: 'Case Details',         route: 'details',     icon: 'assignment' },
     { id: 'disposition', label: 'Disposition Details',   route: 'disposition', icon: 'task_alt' },
-    { id: 'mdReview',   label: 'MD Review',             route: 'mdReview',    icon: 'medical_services' },
+    //{ id: 'mdReview',   label: 'MD Review',             route: 'mdReview',    icon: 'medical_services' },
     { id: 'activities',  label: 'Activities',            route: 'activities',  icon: 'timeline' },
     { id: 'notes',       label: 'Notes',                 route: 'notes',       icon: 'note_alt' },
     { id: 'documents',   label: 'Documents',             route: 'documents',   icon: 'folder' },
@@ -1227,12 +1227,12 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
   /** After save completes, check if there are error steps to navigate to */
   private afterSaveValidation(): void {
     // Check if current step still has errors (e.g. save succeeded but another step has errors)
-    const nextErrorStep = this.findNextStepWithError(this.activeStepId);
-    if (nextErrorStep) {
-      // Navigate to the next step that has validation errors
-      this.onStepSelected(nextErrorStep);
-      setTimeout(() => this.scrollToFirstValidationError(), 300);
-    }
+    //const nextErrorStep = this.findNextStepWithError(this.activeStepId);
+    //if (nextErrorStep) {
+    //  // Navigate to the next step that has validation errors
+    //  this.onStepSelected(nextErrorStep);
+    //  setTimeout(() => this.scrollToFirstValidationError(), 300);
+    //}
   }
 
   /** Validate the current step — returns true if there are errors */

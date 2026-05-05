@@ -7,6 +7,7 @@ import { MatMenuTrigger } from '@angular/material/menu';
 import { HeaderService } from 'src/app/service/header.service';
 import { MemberService } from 'src/app/service/shared-member.service';
 import { AuthDetailApiService } from 'src/app/service/authdetailapi.service';
+import { AuthenticateService, RecentlyAccessed } from 'src/app/service/authentication.service';
 
 /** Shape of each decision inside decisionStatusesJson */
 export interface ParsedDecision {
@@ -182,7 +183,8 @@ export class MemberauthdetailsComponent implements OnInit {
     private authDetailService: AuthDetailApiService,
     private headerService: HeaderService,
     private router: Router,
-    private memberService: MemberService
+    private memberService: MemberService,
+    private authService: AuthenticateService
   ) { }
 
   ngOnInit(): void {
@@ -758,6 +760,37 @@ export class MemberauthdetailsComponent implements OnInit {
   onAuthClick(authNumber: string) {
     const isNew = !authNumber || authNumber === '0';
     console.log('Auth clicked:', authNumber, 'isNew:', isNew);
+
+    // Track recently accessed auth — only for existing auths, not new DRAFT
+    // (mirrors the pattern in mycaseload.onMemberClick)
+    if (!isNew) {
+      const memberDetailsId = Number(sessionStorage.getItem('selectedMemberDetailsId') || 0);
+
+      // Look up the row to grab the authDetailId so the tracking record is
+      // tied to the specific auth, not just the member.
+      const row = this.dataSource.data.find(r =>
+        String(r.authNumber) === String(authNumber) ||
+        String(r['AuthNumber']) === String(authNumber)
+      );
+      const authDetailId =
+        Number(row?.['authDetailId'] ?? row?.['AuthDetailId'] ?? 0) || null;
+
+      const record: RecentlyAccessed = {
+        userId: Number(sessionStorage.getItem('loggedInUserid')),
+        featureId: null,
+        featureGroupId: 2, // adjust if your backend uses a distinct featureGroupId for Auths
+        action: 'VIEW',
+        memberDetailsId: memberDetailsId,
+        authDetailId: authDetailId
+      };
+
+      this.authService.addRecentlyAccessed(record.userId, record)
+        .subscribe({
+          next: id => console.log('Inserted recently-accessed auth record ID:', id),
+          error: err => console.error('Insert failed (recently accessed auth):', err)
+        });
+    }
+
     this.openAuthTab(authNumber, isNew);
   }
 
@@ -794,6 +827,16 @@ export class MemberauthdetailsComponent implements OnInit {
     }
 
     this.router.navigateByUrl(tabRoute);
+  }
+
+  getDecisionStatusText(status?: string | null): string {
+    const s = String(status ?? '').trim();
+    return s || 'Pended';
+  }
+
+  getOverallDecisionStatusText(row: MemberAuthGridRow): string {
+    const s = String(row?.overallDecisionStatus ?? '').trim();
+    return s || 'Pended';
   }
 
 }

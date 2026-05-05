@@ -32,6 +32,12 @@ export class HeaderComponent implements OnInit, OnDestroy {
     complaints: 0
   };
 
+  /** Active filter for the recently-accessed table. 'all' = show everything. */
+  activeAccessFilter: 'all' | 'members' | 'auths' | 'complaints' = 'all';
+
+  /** Items currently shown in the table after applying activeAccessFilter. */
+  filteredItems: any[] = [];
+
   selectedMemberDetailsId: number | null = null;
   careStaffOptions: { value: number; label: string }[] = [];
 
@@ -85,6 +91,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (res) => {
           this.items = Array.isArray(res) && res.length > 0 ? res : [];
+          this.applyAccessFilter();
           if (!this.items.length) {
             console.warn('No recently accessed records found for userId:', userId);
           }
@@ -92,6 +99,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
         error: (err) => {
           console.error('Error loading recently accessed:', err);
           this.items = [];
+          this.applyAccessFilter();
         }
       });
   }
@@ -108,6 +116,67 @@ export class HeaderComponent implements OnInit, OnDestroy {
       error: (err) => {
         console.error('Error fetching access counts:', err);
         this.accessCounts = { members: 0, auths: 0, complaints: 0 };
+      }
+    });
+  }
+
+  // ─── Recently-accessed filter ───────────────────────────────────────────────
+
+  /** Total accessed in last 24h — used as the count for the 'All' chip. */
+  get totalAccessCount(): number {
+    return (this.accessCounts?.members || 0)
+         + (this.accessCounts?.auths || 0)
+         + (this.accessCounts?.complaints || 0);
+  }
+
+  /**
+   * Selects a chip filter on the recently-accessed table.
+   * 'all' shows everything; the other values filter to that category.
+   */
+  setAccessFilter(type: 'all' | 'members' | 'auths' | 'complaints'): void {
+    this.activeAccessFilter = type;
+    this.applyAccessFilter();
+  }
+
+  /**
+   * Inline style for a chip — visibly highlights the selected one and
+   * dims the rest. Works without depending on external CSS.
+   */
+  chipStyle(type: 'all' | 'members' | 'auths' | 'complaints'): { [k: string]: any } {
+    const isActive = this.activeAccessFilter === type;
+    return {
+      cursor: 'pointer',
+      outline: isActive ? '2px solid #1976d2' : '2px solid transparent',
+      'outline-offset': '2px',
+      opacity: isActive ? 1 : 0.55,
+      'font-weight': isActive ? 600 : 'normal',
+      'box-shadow': isActive ? '0 1px 4px rgba(25, 118, 210, 0.35)' : 'none',
+      transition: 'outline 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease'
+    };
+  }
+
+  /**
+   * Recomputes filteredItems based on activeAccessFilter.
+   * Classification uses the id fields on each access record:
+   *   - auth access     → has authDetailId
+   *   - complaint/case  → has complaintDetailId
+   *   - member access   → has neither
+   */
+  private applyAccessFilter(): void {
+    if (this.activeAccessFilter === 'all') {
+      this.filteredItems = [...this.items];
+      return;
+    }
+
+    this.filteredItems = this.items.filter(it => {
+      const hasAuth = it?.authDetailId != null && Number(it.authDetailId) !== 0;
+      const hasComplaint = it?.complaintDetailId != null && Number(it.complaintDetailId) !== 0;
+
+      switch (this.activeAccessFilter) {
+        case 'auths':      return hasAuth;
+        case 'complaints': return hasComplaint;
+        case 'members':    return !hasAuth && !hasComplaint;
+        default:           return true;
       }
     });
   }
@@ -291,6 +360,31 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
     const tabRoute = `/member-info/${memberId}/auth/${authNumber}/details`;
     const tabLabel = `Auth # ${authNumber}`;
+
+    const existingTab = this.headerService.getTabs().find(t => t.route === tabRoute);
+    if (!existingTab) {
+      this.headerService.addTab(tabLabel, tabRoute, String(memberId), memberDetailsId ? String(memberDetailsId) : null);
+    } else {
+      this.headerService.updateTab(tabRoute, { label: tabLabel, route: tabRoute });
+    }
+
+    if (memberDetailsId != null) {
+      sessionStorage.setItem('selectedMemberDetailsId', String(memberDetailsId));
+    }
+
+    this.onTabClick(tabRoute);
+  }
+
+  /**
+   * Opens (or focuses) a Case tab from the recently-accessed history.
+   * Mirrors the route format used by membercasedetails.openCaseTab:
+   *   /member-info/{memberId}/case/{caseNumber}/details
+   */
+  openCaseTab(caseNumber: string, memberId: string, memberDetailsId?: number): void {
+    if (!caseNumber) caseNumber = 'DRAFT';
+
+    const tabRoute = `/member-info/${memberId}/case/${caseNumber}/details`;
+    const tabLabel = `Case # ${caseNumber}`;
 
     const existingTab = this.headerService.getTabs().find(t => t.route === tabRoute);
     if (!existingTab) {

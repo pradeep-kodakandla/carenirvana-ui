@@ -345,6 +345,9 @@ export class CasedocumentsComponent implements OnInit, OnDestroy, OnChanges {
 
     // ✅ load dropdowns exactly like CaseDetails
     this.prefetchDropdownOptions(this.fields);
+    if (this.showEditor && !this.editing) {
+      this.patchDefaultsForAdd();
+    }
   }
 
   private isInputField(f: AnyField): boolean {
@@ -522,7 +525,7 @@ export class CasedocumentsComponent implements OnInit, OnDestroy, OnChanges {
     this.selectedFileNames = [];
     this.errorMsg = '';
     this.form?.reset();
-
+    this.patchDefaultsForAdd();
     // keep selection consistent
     this.selectedDocId = null;
   }
@@ -791,6 +794,18 @@ export class CasedocumentsComponent implements OnInit, OnDestroy, OnChanges {
   get documentsWithFilesCount(): number {
     const docs = this.documents ?? [];
     return docs.filter(d => (this.getFiles(d)?.length ?? 0) > 0).length;
+  }
+
+  private patchDefaultsForAdd(): void {
+    const currentLevel = Number(this.levelId ?? 1);
+
+    const levelCn = this.getControlNameByFieldId('documentLevel');
+    if (!levelCn) return;
+
+    const optionValue = this.findOption(levelCn, currentLevel)?.value ?? currentLevel;
+
+    this.setValueByFieldId('documentLevel', optionValue);
+    this.reconcileControlValue(levelCn);
   }
 
 }

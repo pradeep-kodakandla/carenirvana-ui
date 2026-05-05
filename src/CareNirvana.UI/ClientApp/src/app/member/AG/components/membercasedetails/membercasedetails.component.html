@@ -118,7 +118,7 @@
     <div class="mcd-card-header">
       <div class="mcd-card-identity">
         <a class="mcd-case-link"
-           (click)="onCaseClick(row.caseNumber)"
+           (click)="onCaseClick(row.caseNumber, row.caseHeaderId)"
            matTooltip="Click to access case details">
           {{ row.caseNumber }}
         </a>
@@ -263,7 +263,7 @@
       <th mat-header-cell *matHeaderCellDef mat-sort-header class="mcd-th">Case #</th>
       <td mat-cell *matCellDef="let row" class="mcd-td">
         <a class="mcd-case-link"
-           (click)="onCaseClick(row.caseNumber)"
+           (click)="onCaseClick(row.caseNumber,row.caseHeaderId)"
            [matTooltip]="'Open case ' + row.caseNumber">
           {{ row.caseNumber }}
         </a>
