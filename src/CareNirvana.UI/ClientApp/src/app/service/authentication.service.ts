@@ -47,11 +47,25 @@ export class AuthenticateService {
 
   constructor(private http: HttpClient) { }
 
-  login(username: string, password: string): Observable<any> {
+  login(
+    username: string,
+    password: string,
+    context: { ip: string | null; latitude: number | null; longitude: number | null; accuracy: number | null }
+  ): Observable<any> {
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-    return this.http.post(`${this.apiUrl}/authenticate`, { UserName: username, Password: password }, { headers, responseType: 'json' })
+
+    const payload = {
+      UserName: username,
+      Password: password,
+      IpAddress: context.ip,
+      Latitude: context.latitude,
+      Longitude: context.longitude,
+      LocationAccuracy: context.accuracy
+    };
+
+    return this.http.post(`${this.apiUrl}/authenticate`, payload, { headers, responseType: 'json' })
       .pipe(
-        //tap(response => console.log('API Response:', response)), // Debug the response
+        //tap(response => console.log('API Response:', response)),
         catchError(error => {
           console.error('Error from API:', error);
           return throwError(() => new Error('Login failed'));

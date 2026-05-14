@@ -98,7 +98,6 @@ export class MembercasedetailsComponent implements OnInit {
         this.dataSource.data = rows;
         this.pageIndex = 0;
         this.updatePagedCardData();
-        console.log('Case Details:', rows);
       },
       error: (err) => {
         console.error('Error fetching case details:', err);

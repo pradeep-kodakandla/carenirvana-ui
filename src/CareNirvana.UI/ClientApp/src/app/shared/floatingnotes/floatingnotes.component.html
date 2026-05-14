@@ -1,0 +1,26 @@
+<button #fab
+        class="floating-notes-btn"
+        [class.peek-right]="corner === 'bottom-right' || corner === 'top-right'"
+        [class.peek-left]="corner === 'bottom-left' || corner === 'top-left'"
+        [style.top.px]="position.top"
+        [style.left.px]="position.left"
+        (pointerdown)="onPointerDown($event)"
+        (click)="onClick($event)"
+        aria-label="Add Notes"
+        title="Add Notes">
+
+  <span class="fab-content">
+    <!-- Inline SVG: note with a + sign -->
+    <svg class="fab-icon" viewBox="0 0 24 24" fill="none"
+         xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"
+            stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M8 13h6M8 17h4M8 9h3"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      <path d="M18 3v6M15 6h6"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+    </svg>
+    <span class="fab-label">Notes</span>
+  </span>
+</button>

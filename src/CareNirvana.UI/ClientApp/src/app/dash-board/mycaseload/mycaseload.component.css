@@ -901,3 +901,142 @@ mat-chip.norisk {
   .row-menu-trigger-icon mat-icon {
     color: gray; /* dark dot color */
   }
+
+
+/* =========================================================
+   Column resize (drag-from-header)
+   ========================================================= */
+
+/* Headers need to be positioned so the resizer can absolutely-position
+   itself on the right edge. Both class names are used in the template
+   (.mng-table and .pro-table) so we cover both. */
+.mng-table th.mat-header-cell,
+.pro-table th.mat-header-cell {
+  position: relative;
+}
+
+/* Sit on the right edge of the header cell. The outer span is a wider
+   transparent hit zone (8px) so it's easy to grab; the visible divider
+   line is drawn via ::after so users can SEE the column boundary at all
+   times.
+   z-index high enough to stay above the mat-sort-header click target so
+   the drag isn't swallowed. */
+.col-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 10px;          /* generous hit area for easier grabbing */
+  height: 100%;
+  cursor: col-resize;
+  user-select: none;
+  background: transparent;
+  z-index: 5;
+}
+
+/* Always-visible thin divider line — signals "this is a resizable column edge" */
+.col-resizer::after {
+  content: '';
+  position: absolute;
+  top: 18%;
+  bottom: 18%;
+  right: 4px;           /* sits ~center of the 10px hit area */
+  width: 2px;
+  background: #94a3b8;  /* slate-400 — visible against white header */
+  border-radius: 2px;
+  transition: background-color 140ms ease,
+              top 140ms ease,
+              bottom 140ms ease,
+              width 140ms ease;
+}
+
+/* Hover: line gets taller, thicker, and blue — clearly a grabbable handle */
+.col-resizer:hover::after {
+  background: #2563eb;  /* blue-600 */
+  width: 3px;
+  top: 6%;
+  bottom: 6%;
+}
+
+/* Active drag: even more prominent */
+.col-resizer:active::after {
+  background: #1d4ed8;  /* blue-700 */
+  width: 3px;
+  top: 0;
+  bottom: 0;
+}
+
+/* While a drag is in progress, force the col-resize cursor everywhere
+   and kill text selection so the page doesn't highlight text by accident. */
+body.mc-resizing,
+body.mc-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+/* When a header has a fixed width, prevent the cell from overflowing
+   into the neighbour column. Apply softly so narrow widths still look ok. */
+.mng-table th.resizable-col,
+.mng-table td.resizable-col {
+  overflow: hidden;
+}
+
+/* Keep wrapped content tidy inside resized cells */
+.mng-table td {
+  word-break: break-word;
+}
+
+/* =========================================================
+   Horizontal scroll when columns exceed container width
+   ========================================================= */
+
+/* The wrapper around the mat-table scrolls horizontally when the total
+   column width exceeds its own width (i.e. after the user widens a
+   column past the table's visible area). */
+.table-wrapper {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Let the table be exactly the sum of its column widths — no more, no less.
+   - When the sum exceeds the wrapper width, the wrapper's overflow-x: auto
+     produces a horizontal scrollbar.
+   - When the sum is less than the wrapper width, the table sits at its
+     natural width and the empty space to its right is wrapper background
+     (NOT table interior), so no row dividers draw across an empty stripe.
+   `!important` beats any global `.full-width-table { width: 100% !important }`
+   utility that would otherwise stretch the table back to fill the wrapper. */
+.table-wrapper > table.mng-table,
+.table-wrapper > table.pro-table {
+  width: max-content !important;
+  border-bottom: 0 !important;
+  border-collapse: collapse;
+}
+
+/* Slim, unobtrusive horizontal scrollbar (WebKit / Blink). */
+.table-wrapper::-webkit-scrollbar {
+  height: 10px;
+}
+
+.table-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1; /* slate-300 */
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+  .table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8; /* slate-400 on hover */
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+/* Firefox */
+.table-wrapper {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}

@@ -135,7 +135,7 @@ export class DashBoardComponent implements AfterViewInit {
 
     const loggedInUserId = Number(sessionStorage.getItem('loggedInUserid'));
     const roleId = Number(this.getRoleIdByUserId(loggedInUserId));
-    console.log('Logged in user ID:', loggedInUserId, 'mapped role ID:', roleId);
+    
     this.showInsightsTile = [1, 2, 4].includes(roleId);
     
     if (roleId !== null) {
@@ -166,8 +166,7 @@ export class DashBoardComponent implements AfterViewInit {
         next: (res: DashboardCounts) => { this.dashboardCounts = res; },
         error: (err) => { console.error('Failed to load dashboard counts', err); }
       });
-    console.log('Loading counts...');
-    console.log('Counts', this.dashboardCounts);
+
   }
 
   getCountForWidget(key: string): number {
@@ -186,7 +185,6 @@ export class DashBoardComponent implements AfterViewInit {
 
       this.roleConfig = parsed;
 
-      console.log('Parsed Role Config:', this.roleConfig);
 
       if (parsed.dashboardWidgets?.widgets?.length) {
         this.dashboardWidgets = parsed.dashboardWidgets.widgets.filter((w: any) => w.enabled);

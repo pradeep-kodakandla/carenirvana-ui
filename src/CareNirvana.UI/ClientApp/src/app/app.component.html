@@ -9,6 +9,8 @@
     <main class="app-main">
       <router-outlet></router-outlet>
     </main>
+    <!-- Floating Add Notes button - visible across the whole app -->
+    <app-floatingnotes *ngIf="shouldDisplayHeaderAndFooter()"></app-floatingnotes>
 
     <!-- Footer (optional sticky at bottom) -->
     <!--<footer class="app-footer" *ngIf="!shouldDisplayHeaderAndFooter()">

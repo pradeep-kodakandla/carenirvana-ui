@@ -143,6 +143,24 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     'alert', 'name', 'enrollment', 'program', 'dob', 'risk', 'lastContact', 'nextContact', 'actions'
   ];
 
+  // === Column resize (drag-from-header) ===
+  // Default widths in px. Adjust to taste; user drags override these at runtime.
+  columnWidths: Record<string, number> = {
+    alert: 56,
+    name: 200,
+    enrollment: 140,
+    program: 180,
+    dob: 140,
+    risk: 130,
+    lastContact: 130,
+    nextContact: 130,
+    actions: 90
+  };
+  private readonly minColumnWidth = 60;
+  private resizing: { col: string; startX: number; startWidth: number } | null = null;
+  private resizeMoveHandler?: (e: MouseEvent) => void;
+  private resizeUpHandler?: (e: MouseEvent) => void;
+
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
   @ViewChild(MatTable) table!: MatTable<any>;
@@ -192,6 +210,34 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
   ngAfterViewInit(): void {
     this.dataSource.paginator = this.paginator;
     this.dataSource.sort = this.sort;
+
+    // Map column names -> the real value to sort by.
+    // Without this, MatTableDataSource looks up row[columnName] which doesn't
+    // exist for 'name', 'enrollment', 'program', 'risk', so those headers were no-ops.
+    this.dataSource.sortingDataAccessor = (item: any, property: string): string | number => {
+      switch (property) {
+        case 'name':
+          return ((item.lastName || '') + ' ' + (item.firstName || '')).trim().toLowerCase();
+        case 'enrollment':
+          return (this.getProduct(item.levelMap) || '').toLowerCase();
+        case 'program':
+          return (item.programs || '').toString().toLowerCase();
+        case 'dob':
+          return item.dob ? new Date(item.dob).getTime() : 0;
+        case 'risk': {
+          // High -> Medium -> Low -> (blank) when sorted ascending
+          const order: Record<string, number> = { high: 1, medium: 2, low: 3 };
+          const code = (item.riskLevelCode || '').toLowerCase();
+          return order[code] ?? 99;
+        }
+        case 'lastContact':
+          return item.lastContact ? new Date(item.lastContact).getTime() : 0;
+        case 'nextContact':
+          return item.nextContact ? new Date(item.nextContact).getTime() : 0;
+        default:
+          return (item as any)[property];
+      }
+    };
 
     this.dataSource.filterPredicate = (data, filter) => {
       const haystack = [
@@ -271,7 +317,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
   }
 
   onMemberClick(memberId: string, memberName: string, memberDetailsId: string): void {
-    console.log('Member clicked:', memberId, memberName, memberDetailsId);
+
     const tabLabel = `Member: ${memberName}`;
     const tabRoute = `/member-info/${memberId}`;
 
@@ -287,7 +333,7 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
 
     this.authService.addRecentlyAccessed(record.userId, record)
       .subscribe({
-        next: id => console.log('Inserted record ID:', id),
+        next: id => console.log(''),
         error: err => console.error('Insert failed:', err)
       });
 
@@ -702,6 +748,40 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     event.stopPropagation();
     const id = member?.memberDetailsId ?? member?.id;
     this.openMenuForMemberId = this.openMenuForMemberId === id ? null : id;
+  }
+
+  // === Column resize handlers ===
+  // Called from each header cell's drag-handle (mousedown).
+  onResizeStart(event: MouseEvent, column: string): void {
+    event.preventDefault();
+    event.stopPropagation(); // don't trigger sort
+    this.resizing = {
+      col: column,
+      startX: event.clientX,
+      startWidth: this.columnWidths[column] ?? 120
+    };
+    document.body.classList.add('mc-resizing');
+
+    this.resizeMoveHandler = (e: MouseEvent) => this.onResizeMove(e);
+    this.resizeUpHandler = (e: MouseEvent) => this.onResizeEnd(e);
+    document.addEventListener('mousemove', this.resizeMoveHandler);
+    document.addEventListener('mouseup', this.resizeUpHandler);
+  }
+
+  private onResizeMove(event: MouseEvent): void {
+    if (!this.resizing) return;
+    const delta = event.clientX - this.resizing.startX;
+    const next = Math.max(this.minColumnWidth, this.resizing.startWidth + delta);
+    this.columnWidths[this.resizing.col] = next;
+  }
+
+  private onResizeEnd(_event: MouseEvent): void {
+    this.resizing = null;
+    document.body.classList.remove('mc-resizing');
+    if (this.resizeMoveHandler) document.removeEventListener('mousemove', this.resizeMoveHandler);
+    if (this.resizeUpHandler) document.removeEventListener('mouseup', this.resizeUpHandler);
+    this.resizeMoveHandler = undefined;
+    this.resizeUpHandler = undefined;
   }
 
   closeRowMenu(): void {

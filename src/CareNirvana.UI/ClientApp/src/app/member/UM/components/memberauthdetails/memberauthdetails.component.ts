@@ -236,7 +236,7 @@ export class MemberauthdetailsComponent implements OnInit {
     this.authDetailService.getByMember(memberId).subscribe({
       next: (data: MemberAuthGridRow[]) => {
         this.isLoading = false;
-        console.log('Fetched auth details:', data);
+
         const rows = data ?? [];
         this.isEmpty = rows.length === 0;
 

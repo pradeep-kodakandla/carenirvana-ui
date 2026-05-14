@@ -272,17 +272,23 @@
         <!--Debug: Expanded Row ID = {{ expandedRow ? expandedRow.memberId : 'null' }}-->
         <table mat-table [dataSource]="dataSource"
                matSort
-               multiTemplateDataRows
                [trackBy]="trackById"
                class="mat-elevation-z1 full-width-table pro-table mng-table">
 
 
           <!-- Alerts Column (new) -->
           <ng-container matColumnDef="alert">
-            <th mat-header-cell *matHeaderCellDef class="is-center alert-col-header" matTooltip="Alerts">
+            <th mat-header-cell *matHeaderCellDef class="is-center alert-col-header resizable-col"
+                [style.width.px]="columnWidths['alert']"
+                [style.minWidth.px]="columnWidths['alert']"
+                matTooltip="Alerts">
               <!-- Header -->
+              <span class="col-resizer" (mousedown)="onResizeStart($event, 'alert')"
+                    (click)="$event.stopPropagation()" aria-hidden="true" style="display:none;"></span>
             </th>
-            <td mat-cell *matCellDef="let m" class="is-center alert-col-cell">
+            <td mat-cell *matCellDef="let m" class="is-center alert-col-cell"
+                [style.width.px]="columnWidths['alert']"
+                [style.minWidth.px]="columnWidths['alert']">
               <button mat-icon-button
                       *ngIf="m.alertCount > 0"
                       [matMenuTriggerFor]="alertsMenu"
@@ -298,8 +304,16 @@
 
 
           <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Member</th>
-            <td mat-cell *matCellDef="let m">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+                [style.width.px]="columnWidths['name']"
+                [style.minWidth.px]="columnWidths['name']">
+              Member
+              <span class="col-resizer" (mousedown)="onResizeStart($event, 'name')"
+                    (click)="$event.stopPropagation()" aria-hidden="true"></span>
+            </th>
+            <td mat-cell *matCellDef="let m"
+                [style.width.px]="columnWidths['name']"
+                [style.minWidth.px]="columnWidths['name']">
               <div class="name-cell">
                 <div class="sub-name">
                   <a href="#" (click)="onMemberClick(m.memberId, m.firstName + ' ' + m.lastName,m.memberDetailsId); $event.preventDefault()">{{ m.firstName }} {{ m.lastName }}</a>
@@ -311,15 +325,31 @@
 
           <!-- Enrollment Column -->
           <ng-container matColumnDef="enrollment">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Enrollment</th>
-            <td mat-cell *matCellDef="let m">{{ getProduct(m.levelMap) || 'N/A' }}</td>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+                [style.width.px]="columnWidths['enrollment']"
+                [style.minWidth.px]="columnWidths['enrollment']">
+              Enrollment
+              <span class="col-resizer" (mousedown)="onResizeStart($event, 'enrollment')"
+                    (click)="$event.stopPropagation()" aria-hidden="true"></span>
+            </th>
+            <td mat-cell *matCellDef="let m"
+                [style.width.px]="columnWidths['enrollment']"
+                [style.minWidth.px]="columnWidths['enrollment']">{{ getProduct(m.levelMap) || 'N/A' }}</td>
 
           </ng-container>
 
           <!-- Program Column -->
           <ng-container matColumnDef="program">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Program</th>
-            <td mat-cell *matCellDef="let m">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+                [style.width.px]="columnWidths['program']"
+                [style.minWidth.px]="columnWidths['program']">
+              Program
+              <span class="col-resizer" (mousedown)="onResizeStart($event, 'program')"
+                    (click)="$event.stopPropagation()" aria-hidden="true"></span>
+            </th>
+            <td mat-cell *matCellDef="let m"
+                [style.width.px]="columnWidths['program']"
+                [style.minWidth.px]="columnWidths['program']">
               <ng-container *ngIf="m.programs; else noProgram">
                 <div *ngFor="let p of m.programs.split(',')">{{ p.trim() }}</div>
               </ng-container>
@@ -337,8 +367,16 @@
           <ng-container matColumnDef="dob">
 
 
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>DOB</th>
-            <td mat-cell *matCellDef="let m">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+                [style.width.px]="columnWidths['dob']"
+                [style.minWidth.px]="columnWidths['dob']">
+              DOB
+              <span class="col-resizer" (mousedown)="onResizeStart($event, 'dob')"
+                    (click)="$event.stopPropagation()" aria-hidden="true"></span>
+            </th>
+            <td mat-cell *matCellDef="let m"
+                [style.width.px]="columnWidths['dob']"
+                [style.minWidth.px]="columnWidths['dob']">
               <div>
                 {{ m.dob | date: 'MM/dd/yyyy' }}
                 <div class="dob-age" *ngIf="getAgeText(m.dob)">
@@ -350,30 +388,59 @@
 
           <!-- Risk Column -->
           <ng-container matColumnDef="risk">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header> Risk Level </th>
-            <td mat-cell *matCellDef="let m">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+                [style.width.px]="columnWidths['risk']"
+                [style.minWidth.px]="columnWidths['risk']">
+              Risk Level
+              <span class="col-resizer" (mousedown)="onResizeStart($event, 'risk')"
+                    (click)="$event.stopPropagation()" aria-hidden="true"></span>
+            </th>
+            <td mat-cell *matCellDef="let m"
+                [style.width.px]="columnWidths['risk']"
+                [style.minWidth.px]="columnWidths['risk']">
               <span class="risk-chip compact" [ngClass]="(m.riskLevelCode || '').toLowerCase()">{{ m.riskLevelCode || 'No Risk' }}</span>
             </td>
           </ng-container>
 
           <!-- Last Contact Column -->
           <ng-container matColumnDef="lastContact">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Last Contact</th>
-            <td mat-cell *matCellDef="let m">{{ m.lastContact || 'N/A' }}</td>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+                [style.width.px]="columnWidths['lastContact']"
+                [style.minWidth.px]="columnWidths['lastContact']">
+              Last Contact
+              <span class="col-resizer" (mousedown)="onResizeStart($event, 'lastContact')"
+                    (click)="$event.stopPropagation()" aria-hidden="true"></span>
+            </th>
+            <td mat-cell *matCellDef="let m"
+                [style.width.px]="columnWidths['lastContact']"
+                [style.minWidth.px]="columnWidths['lastContact']">{{ m.lastContact || 'N/A' }}</td>
           </ng-container>
 
           <!-- Next Contact Column -->
           <ng-container matColumnDef="nextContact">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Next Contact</th>
-            <td mat-cell *matCellDef="let m">{{ m.nextContact || 'N/A' }}</td>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+                [style.width.px]="columnWidths['nextContact']"
+                [style.minWidth.px]="columnWidths['nextContact']">
+              Next Contact
+              <span class="col-resizer" (mousedown)="onResizeStart($event, 'nextContact')"
+                    (click)="$event.stopPropagation()" aria-hidden="true"></span>
+            </th>
+            <td mat-cell *matCellDef="let m"
+                [style.width.px]="columnWidths['nextContact']"
+                [style.minWidth.px]="columnWidths['nextContact']">{{ m.nextContact || 'N/A' }}</td>
           </ng-container>
 
           <!-- Action Column -->
           <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef class="is-center alert-col-header" matTooltip="Actions">
+            <th mat-header-cell *matHeaderCellDef class="is-center alert-col-header resizable-col"
+                [style.width.px]="columnWidths['actions']"
+                [style.minWidth.px]="columnWidths['actions']"
+                matTooltip="Actions">
               Actions
             </th>
-            <td mat-cell *matCellDef="let m" class="is-center alert-col-cell">
+            <td mat-cell *matCellDef="let m" class="is-center alert-col-cell"
+                [style.width.px]="columnWidths['actions']"
+                [style.minWidth.px]="columnWidths['actions']">
 
               <button mat-icon-button [matMenuTriggerFor]="rowMenu" class="row-menu-trigger-icon" [matMenuTriggerData]="{ member: m }" matTooltip="View action list">
                 <mat-icon>more_vert</mat-icon>
@@ -401,7 +468,11 @@
               class="member-row" [class.expanded-row]="expandedRow === row" [class.row-target]="(row.memberDetailsId ?? row.memberId) === selectedMemberId"></tr>
 
           <!-- Detail Row *matRowDef="let row; columns: ['expandedDetail']; when: isDetailRow"-->
-          <tr mat-row class="detail-row"></tr>
+          <!-- Removed empty `<tr mat-row class="detail-row"></tr>` — it had no *matRowDef
+               and was rendering as an empty row whose bottom border stretched the full
+               width of the table whenever a column was widened. Re-add a proper detail
+               row template (with *matRowDef and matching matColumnDef) when wiring up
+               the expand-row feature. -->
           <tr class="mat-row" *matNoDataRow>
             <td class="mat-cell" [attr.colspan]="displayedColumns.length">No data</td>
           </tr>

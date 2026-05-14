@@ -14,6 +14,9 @@ import { MessagesComponent } from './messages/messages.component';
 import { HeaderComponent } from './header/header.component';
 import { FooterComponent } from './footer/footer.component';
 import { CounterComponent } from './counter/counter.component';
+
+import { FloatingnotesComponent } from './shared/floatingnotes/floatingnotes.component'; 
+
 import { FetchDataComponent } from './fetch-data/fetch-data.component';
 import { MemberDetailsComponent } from './member/member-details/member-details.component';
 import { SidenavService } from 'src/app/service/sidenav.service.service'
@@ -173,7 +176,7 @@ const routes: Routes = [
     FetchDataComponent,
     DashBoardComponent,
     MessagesComponent, HeaderComponent,
-    FooterComponent,
+    FooterComponent, FloatingnotesComponent,
     MemberDetailsComponent,
     MemberComponent,
     MycaseloadComponent,
@@ -210,17 +213,7 @@ const routes: Routes = [
     AgcomplaintsubcategoryComponent, AgcoordinatortypeComponent, AgparticipantroleComponent, AgparticipanttypeComponent,
     AgqocinvestigationoutcomeComponent, AgqocinvestigationreasonComponent, AgqocscoreComponent, AgresolutioncategoryComponent,
     AgresolutionsubcategoryComponent, MembercasedetailsComponent, MemberauthdetailsComponent,
-
-    UiDropdownComponent,
-    UiTextboxComponent,
-    UiTextareaComponent,
-    UiDatepickerComponent,
-    UiDatetimeComponent,
-    UiCheckboxComponent,
-    UiRadioGroupComponent,
-    UiButtonComponent,
-    UiDropdownCheckboxComponent,
-    UiListboxComponent,
+    UiDropdownComponent, UiTextboxComponent, UiTextareaComponent, UiDatepickerComponent, UiDatetimeComponent, UiCheckboxComponent, UiRadioGroupComponent, UiButtonComponent, UiDropdownCheckboxComponent, UiListboxComponent,
     UiMultiColumnDropdownComponent,
   ],
   imports: [
@@ -256,6 +249,7 @@ const routes: Routes = [
           },
         ]
       },
+      { path: 'floating-notes', component: FloatingnotesComponent }, 
       { path: 'dash-mycase', component: MycaseloadComponent },
       { path: 'dash-assignauth', component: AssignedauthsComponent },
       { path: 'dash-requests', component: RequestsComponent },

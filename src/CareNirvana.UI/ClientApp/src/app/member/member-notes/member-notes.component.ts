@@ -134,7 +134,7 @@ export class MemberNotesComponent implements OnInit {
     this.reload();
     this.loadNoteTypes();
 
-    console.log("Form Only Mode:", this.formOnly);
+
     if (this.formOnly) {
       this.paneMode = 'form';
       this.isFormVisible = true;
