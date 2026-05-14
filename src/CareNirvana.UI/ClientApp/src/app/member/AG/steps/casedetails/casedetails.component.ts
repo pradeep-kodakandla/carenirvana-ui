@@ -888,8 +888,8 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     } catch (e) { /* best-effort cleanup */ }
 
     const jsonData = JSON.stringify(merged);
-    console.log('[save] selectedLookupMap keys:', Object.keys(this.selectedLookupMap));
-    console.log('[save] __selectedLookupMap in payload:', !!merged['__selectedLookupMap']);
+    //console.log('[save] selectedLookupMap keys:', Object.keys(this.selectedLookupMap));
+    //console.log('[save] __selectedLookupMap in payload:', !!merged['__selectedLookupMap']);
     // Workgroup / Workbasket selection (optional)
     const wgwbIds: number[] = this.getSelectedWorkgroupWorkbasketIds?.() ?? [];
 
@@ -899,7 +899,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
       let successMsg = 'Saved successfully.';
       let action: 'update' | 'addLevel' | 'create' = 'update';
 
-      console.log('Saving case detail...', { caseHeaderId, levelId, existingDetail, jsonData });
+      /*console.log('Saving case detail...', { caseHeaderId, levelId, existingDetail, jsonData });*/
       if (existingDetail) {
         action = 'update';
         successMsg = 'Case updated successfully.';
@@ -1142,10 +1142,8 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
           this.selectedLookupMap[key] = [...arr];
         }
       }
-      console.log('[lookup-restore] Restored from __selectedLookupMap:', Object.keys(this.selectedLookupMap));
     } else {
       this.selectedLookupMap = {};
-      console.log('[lookup-restore] No __selectedLookupMap found, checking for legacy data...');
     }
   }
 
@@ -1190,7 +1188,6 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
         );
         if (!exists) {
           this.selectedLookupMap[controlName].push(savedVal);
-          console.log('[lookup-migrate] Legacy migration:', controlName, '→', entity, savedVal);
         }
 
         // Clear the form control value (multi-select cards don't need it in the control)
@@ -1201,7 +1198,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
       }
     }
 
-    console.log('[lookup-migrate] Final selectedLookupMap:', { ...this.selectedLookupMap });
+
   }
 
   // ---------------- Helpers to get field values ----------------
@@ -1253,7 +1250,6 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     if (ctrl.value !== matchValue && String(ctrl.value) !== String(matchValue)) {
       ctrl.setValue(matchValue, { emitEvent: false });
       ctrl.markAsPristine();
-      console.log('[level-auto] Set level dropdown to', matchValue, '(currentLevelId:', levelId, ')');
     }
   }
 
@@ -2248,11 +2244,11 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
     const entity = this.getLookupEntity(f);
     const svc: any = this.authService as any;
 
-    console.log('[lookup] build fn', { key, entity, field: f });
+    /*console.log('[lookup] build fn', { key, entity, field: f });*/
 
     const fn = (q: string, limit: number): Observable<any[]> => {
       if (!entity) {
-        console.log('[lookup] no entity', { key, q, limit });
+        /*console.log('[lookup] no entity', { key, q, limit });*/
         return of([]);
       }
 
@@ -2293,19 +2289,19 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
           const dayOffset      = this.getAuthSearchDayOffset();
 
           // ── DIAGNOSTIC: log every input and whether the method exists ──
-          console.group('[AUTH-SEARCH] Authorization lookup triggered');
-          console.log('  q              :', q);
-          console.log('  limit          :', limit);
-          console.log('  memberDetailId :', memberDetailId,
-            memberDetailId === 0 ? '⚠️ ZERO — sessionStorage key may be missing' : '✅');
-          console.log('  dateOfIncident :', dateOfIncident ?? 'undefined (no date in form)');
-          console.log('  dayOffset      :', dayOffset);
-          console.log('  svc            :', svc);
-          console.log('  svc.searchAuthorizations exists?',
-            typeof svc.searchAuthorizations === 'function' ? '✅ YES' : '❌ NO — method missing on authService');
-          console.log('  sessionStorage selectedMemberDetailsId raw:',
-            sessionStorage.getItem('selectedMemberDetailsId'));
-          console.groupEnd();
+          //console.group('[AUTH-SEARCH] Authorization lookup triggered');
+          //console.log('  q              :', q);
+          //console.log('  limit          :', limit);
+          //console.log('  memberDetailId :', memberDetailId,
+          //  memberDetailId === 0 ? '⚠️ ZERO — sessionStorage key may be missing' : '✅');
+          //console.log('  dateOfIncident :', dateOfIncident ?? 'undefined (no date in form)');
+          //console.log('  dayOffset      :', dayOffset);
+          //console.log('  svc            :', svc);
+          //console.log('  svc.searchAuthorizations exists?',
+          //  typeof svc.searchAuthorizations === 'function' ? '✅ YES' : '❌ NO — method missing on authService');
+          //console.log('  sessionStorage selectedMemberDetailsId raw:',
+          //  sessionStorage.getItem('selectedMemberDetailsId'));
+          //console.groupEnd();
 
           if (typeof svc.searchAuthorizations !== 'function') {
             console.error('[AUTH-SEARCH] ❌ svc.searchAuthorizations is not a function.',
@@ -2316,13 +2312,13 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
 
           obs = svc.searchAuthorizations(q, memberDetailId, limit, dateOfIncident, dayOffset).pipe(
             tap((rows: any[]) => {
-              console.group('[AUTH-SEARCH] Response received');
-              console.log('  row count :', rows?.length ?? 0);
-              console.log('  rows      :', rows);
-              if (!rows || rows.length === 0) {
-                console.warn('  ⚠️ Empty result — check: memberDetailId, date window, or q value');
-              }
-              console.groupEnd();
+              //console.group('[AUTH-SEARCH] Response received');
+              //console.log('  row count :', rows?.length ?? 0);
+              //console.log('  rows      :', rows);
+              //if (!rows || rows.length === 0) {
+              //  console.warn('  ⚠️ Empty result — check: memberDetailId, date window, or q value');
+              //}
+              //console.groupEnd();
             }),
             catchError((err) => {
               console.group('[AUTH-SEARCH] ❌ HTTP error');
@@ -2341,7 +2337,7 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
           const method = methodFromCfg;
           const callable = method && typeof (svc as any)[method] === 'function' ? (svc as any)[method] : null;
 
-          console.log('[lookup] default entity', { key, entity, method, callable: !!callable, q, limit });
+          /*console.log('[lookup] default entity', { key, entity, method, callable: !!callable, q, limit });*/
 
           obs = callable ? callable.call(svc, q, limit) : of([]);
           break;
@@ -2351,9 +2347,9 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
       // Log what comes out of the Observable
       return obs.pipe(
         tap({
-          next: (res) => console.log('[lookup] result', { key, entity, q, limit, count: res?.length ?? 0, res }),
+          next: (res) => console.log(),
           error: (err) => console.error('[lookup] error', { key, entity, q, limit, err }),
-          complete: () => console.log('[lookup] complete', { key, entity, q, limit })
+          complete: () => console.log()
         }),
         catchError((err) => {
           // keep UI safe if API fails
@@ -3550,17 +3546,17 @@ export class CasedetailsComponent implements CaseUnsavedChangesAwareService, OnI
       dateToStr = to.toISOString().split('T')[0];          // '2026-02-22'
     }
 
-    console.group('[INCIDENT-PANEL] "View related Authorizations & Claims" clicked');
-    console.log('  rawDate from form  :', rawDate ?? 'not found');
-    console.log('  incidentDateStr    :', incidentDateStr, '← date sent to API');
-    console.log('  absOffset          :', absOffset);
-    console.log('  dateFrom (-offset) :', dateFromStr, '← for display only');
-    console.log('  dateTo   (+offset) :', dateToStr, '← for display only');
-    console.log('  memberDetailId     :', memberDetailId,
-      memberDetailId === 0 ? '⚠️ ZERO' : '✅');
-    console.log('  _shellTriggerIncidentLookup exists?',
-      typeof callback === 'function' ? '✅ YES' : '❌ NO');
-    console.groupEnd();
+    //console.group('[INCIDENT-PANEL] "View related Authorizations & Claims" clicked');
+    //console.log('  rawDate from form  :', rawDate ?? 'not found');
+    //console.log('  incidentDateStr    :', incidentDateStr, '← date sent to API');
+    //console.log('  absOffset          :', absOffset);
+    //console.log('  dateFrom (-offset) :', dateFromStr, '← for display only');
+    //console.log('  dateTo   (+offset) :', dateToStr, '← for display only');
+    //console.log('  memberDetailId     :', memberDetailId,
+    //  memberDetailId === 0 ? '⚠️ ZERO' : '✅');
+    //console.log('  _shellTriggerIncidentLookup exists?',
+    //  typeof callback === 'function' ? '✅ YES' : '❌ NO');
+    //console.groupEnd();
 
     if (typeof callback === 'function') {
       callback({ incidentDateStr, memberDetailId, dayOffset: absOffset });

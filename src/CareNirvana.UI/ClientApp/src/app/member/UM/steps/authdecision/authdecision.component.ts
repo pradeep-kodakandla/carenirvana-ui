@@ -699,7 +699,7 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
     const nextTemplateId = Number(ctx?.authTemplateId ?? 0) || null;
 
     const changed = nextDetailId !== this.authDetailId || nextTemplateId !== this.authTemplateId;
-    console.log('AuthDecisionComponent.setContext', { nextDetailId, nextTemplateId, changed });
+    
 
     this.authDetailId = nextDetailId;
     this.authTemplateId = nextTemplateId;
@@ -707,7 +707,6 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
     // Skip reload if we're in the middle of adding a new line —
     // refreshAndSelectProcedure is already handling the refresh and tab selection.
     if (this.refreshingForNewLine) {
-      console.log('[AuthDecision] setContext skipped — refreshingForNewLine in progress');
       return;
     }
 
@@ -717,7 +716,6 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
       const prevSnapshot = JSON.stringify(this.authData ?? {});
       const newSnapshot = JSON.stringify(incomingAuthData ?? {});
       if (prevSnapshot !== newSnapshot) {
-        console.log('[AuthDecision] authData changed — syncing service→decision');
         this.authData = typeof incomingAuthData === 'string'
           ? (this.safeParseJson(incomingAuthData) ?? {})
           : incomingAuthData;
@@ -770,7 +768,6 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
 
           const rawSections = res?.tmpl?.sections ?? res?.tmpl?.Sections ?? [];
           this.templateSections = Array.isArray(rawSections) ? rawSections : [];
-          console.log('AuthDecisionComponent.reload: templateSections fragments=', this.templateSections?.length);
           // Build reactive form controls
           //this.buildFormForSections(this.templateSections, procedureNo);
 
@@ -787,7 +784,6 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
               this.errorMsg = 'No decision rows found. Please save Auth Details to initialize Decision tabs.';
               return;
             }
-            console.log('AuthDecisionComponent.reload: tabs=', this.tabs);
 
             // If a new line was just added, select that tab instead of tabs[0]
             if (this.pendingSelectProcedureNo !== null) {
@@ -2165,9 +2161,9 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
           // Debug: log loaded options for status datasources
           const dsNorm = this.normDs(ds);
           if (dsNorm.includes('decisionstatus')) {
-            console.log(`[AuthDecision] Loaded datasource "${ds}": ${safe.length} options.`,
-              safe.slice(0, 3).map((o: any) => ({ value: o?.value, label: o?.label, rawKeys: o?.raw ? Object.keys(o.raw) : 'primitive' }))
-            );
+            //console.log(`[AuthDecision] Loaded datasource "${ds}": ${safe.length} options.`,
+            //  safe.slice(0, 3).map((o: any) => ({ value: o?.value, label: o?.label, rawKeys: o?.raw ? Object.keys(o.raw) : 'primitive' }))
+            //);
           }
 
           this.dropdownCache.set(ds, safe);
@@ -2786,7 +2782,7 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
         .pipe(takeUntil(this.destroy$))
         .subscribe({
           next: () => {
-            console.log(`[AuthDecision] Synced ${calls.length} decision item(s) from service data.`);
+            /*console.log(`[AuthDecision] Synced ${calls.length} decision item(s) from service data.`);*/
             this.refreshItemsOnly();
           }
         });
@@ -2806,7 +2802,7 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
     // Notify shell that authData changed from Decision side
     if (typeof this._shellSyncAuthData === 'function') {
       this._shellSyncAuthData(this.authData);
-      console.log('[AuthDecision] Decision→Service sync: notified shell to persist authData.');
+      /*console.log('[AuthDecision] Decision→Service sync: notified shell to persist authData.');*/
     } else {
       console.warn('[AuthDecision] No _shellSyncAuthData callback available — authData changes are in-memory only.');
     }
@@ -4310,7 +4306,7 @@ export class AuthdecisionComponent implements OnDestroy, AfterViewChecked, Authu
         requested,
         savedPayload
       );
-      console.log(`[AuthDecision] Reverse sync fired → procedureNo=${procedureNo} type=${sourceType} approved=${approved} denied=${denied}`);
+      /*console.log(`[AuthDecision] Reverse sync fired → procedureNo=${procedureNo} type=${sourceType} approved=${approved} denied=${denied}`);*/
     } else {
       console.warn(
         '[AuthDecision] _shellSyncDecisionToSources not wired. ' +

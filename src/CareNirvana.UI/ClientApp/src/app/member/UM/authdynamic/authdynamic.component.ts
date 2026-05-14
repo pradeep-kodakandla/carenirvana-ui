@@ -74,7 +74,6 @@ export class AuthdynamicComponent implements OnInit {
 
   // ✅ Save Form Data (Mock Save Example)
   saveData() {
-    console.log("Form Data to Save:", JSON.stringify(this.formData, null, 2));
     alert("Form data saved successfully!");
   }
 }

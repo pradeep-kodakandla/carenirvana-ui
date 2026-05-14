@@ -292,7 +292,7 @@ export class MemberInfoComponent implements OnInit {
   }
 
   onEdit(section: string) {
-    console.log(`Edit button clicked for ${section}`);
+
   }
 
   // -------------------------

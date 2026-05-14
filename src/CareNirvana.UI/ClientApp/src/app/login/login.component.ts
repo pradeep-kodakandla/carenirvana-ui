@@ -100,7 +100,7 @@ export class LoginComponent implements OnInit {
 
       // Gather IP + location before sending
       const context = await this.gatherContext();
-      console.log('Login context:', context);
+
       this.authService.login(username, encryptedPassword, context).subscribe({
         next: (response) => {
           sessionStorage.setItem('loggedInUsername', response.userName);

@@ -759,7 +759,7 @@ export class MemberauthdetailsComponent implements OnInit {
 
   onAuthClick(authNumber: string) {
     const isNew = !authNumber || authNumber === '0';
-    console.log('Auth clicked:', authNumber, 'isNew:', isNew);
+    /*console.log('Auth clicked:', authNumber, 'isNew:', isNew);*/
 
     // Track recently accessed auth — only for existing auths, not new DRAFT
     // (mirrors the pattern in mycaseload.onMemberClick)
@@ -786,7 +786,7 @@ export class MemberauthdetailsComponent implements OnInit {
 
       this.authService.addRecentlyAccessed(record.userId, record)
         .subscribe({
-          next: id => console.log('Inserted recently-accessed auth record ID:', id),
+          next: id => console.log(''),
           error: err => console.error('Insert failed (recently accessed auth):', err)
         });
     }

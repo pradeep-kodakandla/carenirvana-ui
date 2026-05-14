@@ -550,7 +550,7 @@
                        style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer;">
                   <input #selectAllReview
                          type="checkbox"
-                         [disabled]="!selectedActivity?.lines?.length"
+                         [disabled]="!selectedActivity.lines.length"
                          (change)="toggleSelectAllReviewLines(selectAllReview.checked)" />
                   Select all
                 </label>

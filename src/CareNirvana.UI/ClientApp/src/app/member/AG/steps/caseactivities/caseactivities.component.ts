@@ -591,7 +591,7 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
       workGroupWorkBasketIds: isGroupRequest ? this.resolveWorkGroupWorkBasketIds(wgId, wbId) : null,
       createdBy: ctx.userId
     } as CaseActivityCreateDto;
-    console.log('Creating activity with DTO:', createDto);
+
     this.api.insert(createDto)
       .pipe(finalize(() => (this.saving = false)))
       .subscribe({
@@ -1559,12 +1559,6 @@ export class CaseactivitiesComponent implements OnInit, OnChanges, OnDestroy, Ca
       1
     );
 
-    console.log('[CaseActivity] defaulting activity level:', {
-      caseLevelId: this.caseLevelId,
-      levelId: this.levelId,
-      resolvedCaseLevelId: this.resolved?.caseLevelId,
-      currentLevel
-    });
 
     this.setValueById('activityLevel', currentLevel);
 

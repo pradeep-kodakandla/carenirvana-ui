@@ -452,7 +452,6 @@ export class AuthorizationDetailsComponent implements OnInit, OnChanges {
       next: (masterData: any) => {
         if (masterData && typeof masterData === 'object' && !Array.isArray(masterData)) {
           this.umMaster = masterData;
-          console.log('[AuthDetails] UM master data keys:', Object.keys(masterData));
         } else {
           console.warn('[AuthDetails] UM master data returned unexpected format:', masterData);
           this.umMaster = {};
@@ -522,13 +521,10 @@ export class AuthorizationDetailsComponent implements OnInit, OnChanges {
         try {
           let data = response;
           if (typeof data === 'string') {
-            console.log('Auth response is a string — parsing JSON');
             data = JSON.parse(data);
           }
 
-          console.log('Auth parsed data keys:', Object.keys(data || {}));
           this.detail = this.mapApiResponseToDetail(data);
-          console.log('Mapped authorization detail:', this.detail);
           this.loading = false;
         } catch (e) {
           console.error('Error mapping auth details:', e);

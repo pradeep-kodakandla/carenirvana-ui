@@ -531,7 +531,7 @@ export class MemberActivityComponent implements OnInit, OnChanges {
       createdBy: this.currentUserId!  // non-null assertion fixes the TS error
     };
 
-    console.log('Submitting member activity', payload);
+
     this.isSaving = true;
 
     this.memberActivityService.createActivity(payload).subscribe({

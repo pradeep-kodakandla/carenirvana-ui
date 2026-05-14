@@ -194,13 +194,13 @@ export class AuthsmartcheckComponent implements OnInit {
 
   // --- Enrollment ---
   loadMemberEnrollment(): void {
-    console.log('Loading member enrollments for memberDetailsId:', this.memberDetailsId);
+
     if (!this.memberDetailsId) return;
 
     this.memberEnrollmentService.getMemberEnrollment(this.memberDetailsId).subscribe({
       next: (data: MemberEnrollment[]) => {
         this.memberEnrollments = data || [];
-        console.log('Loaded member enrollments:', this.memberEnrollments);
+
         if (this.memberEnrollments.length > 0) {
           this.selectEnrollment(0);
         }
@@ -283,7 +283,6 @@ export class AuthsmartcheckComponent implements OnInit {
     this.crudService.getData('um', 'authclass').subscribe({
       next: (data: any[]) => {
         this.authClass = data || [];
-        console.log('Loaded auth classes:', this.authClass);
         this.buildAuthClassOptions();
       },
       error: (err: any) => console.error('Error loading auth class:', err),
@@ -294,7 +293,6 @@ export class AuthsmartcheckComponent implements OnInit {
     this.authService.getTemplates('UM', authClassId).subscribe({
       next: (data: any[]) => {
         this.authTemplates = [{ Id: 0, TemplateName: 'Select Auth Type' }, ...(data || [])];
-        console.log('Loaded auth templates:', this.authTemplates);
         this.buildAuthTypeOptions();
       },
       error: (err: any) => console.error('Error loading auth templates:', err),
@@ -1087,7 +1085,6 @@ Would you like to continue to Authorization Details?`,
 
     // Update the textbox display (YYYY-MM-DD) for the native date input
     this.dueDateText = this.formatDateOnly(computed);
-    console.log('Auto-filled dueDateTime with computed due date:', this.dueDateText);
     try {
       sessionStorage.setItem('AUTH_DUE_DATE_COMPUTED_ISO', computed.toISOString());
     } catch { /* ignore */ }

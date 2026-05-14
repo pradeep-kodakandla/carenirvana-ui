@@ -168,7 +168,6 @@ export class AuthDecisionSeedService {
 
     if (createCalls.length) {
       await Promise.all(createCalls);
-      console.log(`[DecisionSeed] Created ${createCalls.length} decision item(s).`);
     }
   }
 
@@ -208,7 +207,7 @@ export class AuthDecisionSeedService {
       updated[`transport${seqIndex}_decisionApproved`] = approvedValue;
       updated[`transport${seqIndex}_decisionDenied`]   = deniedValue;
       updated[`transport${seqIndex}_decisionUpdated`]  = nowIso;
-      console.log(`[DecisionSync] Reverse → Transportation seqIndex=${seqIndex}: approved=${approvedValue}`);
+
 
     } else if (procedureNo >= PROC_OFFSET_MED) {
       // ── Medication ───────────────────────────────────────────────────────
@@ -222,7 +221,6 @@ export class AuthDecisionSeedService {
       // Also write standard serviceAppr-style keys so any generic lookups work
       updated[`${prefix}serviceAppr`]   = approvedValue;
       updated[`${prefix}serviceDenied`] = deniedValue;
-      console.log(`[DecisionSync] Reverse → Medication ${medNo}: approved=${approvedValue}`);
 
     } else {
       // ── Service/Procedure ────────────────────────────────────────────────
@@ -240,7 +238,6 @@ export class AuthDecisionSeedService {
       if (decisionPayload?.reviewType != null) {
         updated[`${prefix}reviewType`] = decisionPayload.reviewType;
       }
-      console.log(`[DecisionSync] Reverse → Service ${procedureNo}: approved=${approvedValue}`);
     }
 
     return updated;
@@ -293,7 +290,6 @@ export class AuthDecisionSeedService {
 
     if (updateCalls.length) {
       await Promise.all(updateCalls);
-      console.log(`[DecisionSync] Service → Decision: updated ${updateCalls.length} item(s).`);
     }
   }
 
@@ -348,7 +344,6 @@ export class AuthDecisionSeedService {
 
     if (updateCalls.length) {
       await Promise.all(updateCalls);
-      console.log(`[DecisionSync] Medication → Decision: updated ${updateCalls.length} item(s).`);
     }
   }
 
@@ -440,7 +435,6 @@ export class AuthDecisionSeedService {
 
     if (updateCalls.length) {
       await Promise.all(updateCalls);
-      console.log(`[DecisionSync] Transportation → Decision: updated ${updateCalls.length} item(s).`);
     }
   }
 
@@ -780,7 +774,6 @@ export class AuthDecisionSeedService {
       console.warn('[DecisionSeed] resolveApprovedDecisionValues: datasource lookup failed, using fallback IDs', e);
     }
 
-    console.log(`[DecisionSeed] resolveApprovedDecisionValues → decisionStatus=${approvedValue}, decisionStatusCode=${autoApprovedValue}`);
     return { approvedValue, autoApprovedValue };
   }
 

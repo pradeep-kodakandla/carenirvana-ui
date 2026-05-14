@@ -707,7 +707,6 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
       updatedBy: selectedCareStaffId ?? null
     }).subscribe({
       next: affected => {
-        console.log(`Unassigned member and carestaff ${selectedMemberDetailsId}, ${selectedCareStaffId}`);
         // e.g., show toast
         this.dashboard.getmembersummary(sessionStorage.getItem('loggedInUserid')).subscribe((data) => {
           if (data && Array.isArray(data)) {

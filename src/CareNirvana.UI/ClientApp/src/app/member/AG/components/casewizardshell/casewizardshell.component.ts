@@ -577,13 +577,13 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     const mergedData = { ...(currentJsonObj ?? {}), ...(liveFormValues ?? {}) };
     const jsonData = JSON.stringify(mergedData);
 
-    console.log('Escalating with copied data:', {
-      currentLevel,
-      nextLevel,
-      keysFromPersisted: Object.keys(currentJsonObj).length,
-      keysFromForm: Object.keys(liveFormValues).length,
-      totalMergedKeys: Object.keys(mergedData).length
-    });
+    //console.log('Escalating with copied data:', {
+    //  currentLevel,
+    //  nextLevel,
+    //  keysFromPersisted: Object.keys(currentJsonObj).length,
+    //  keysFromForm: Object.keys(liveFormValues).length,
+    //  totalMergedKeys: Object.keys(mergedData).length
+    //});
 
     // ═══════════════════════════════════════════════════════════════
 
@@ -825,11 +825,11 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     const svc: any = this.authService as any;
     const placeholder = '--';
 
-    console.group('[SHELL] triggerIncidentLookup');
-    console.log('  memberDetailId  :', memberDetailId);
-    console.log('  incidentDateStr :', incidentDateStr, '← YYYY-MM-DD sent to API');
-    console.log('  dayOffset       :', dayOffset);
-    console.groupEnd();
+    //console.group('[SHELL] triggerIncidentLookup');
+    //console.log('  memberDetailId  :', memberDetailId);
+    //console.log('  incidentDateStr :', incidentDateStr, '← YYYY-MM-DD sent to API');
+    //console.log('  dayOffset       :', dayOffset);
+    //console.groupEnd();
 
     // ✅ Pass the date string directly — Angular service sets it as-is in HttpParams
     const incidentDate = new Date(incidentDateStr + 'T00:00:00');
@@ -1096,7 +1096,7 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
 
   onQuickAction(action: QuickAction): void {
     // TODO: Implement quick action routing
-    console.log('Quick action:', action.actionId);
+    /*console.log('Quick action:', action.actionId);*/
 
     switch (action.actionId) {
       case 'requestRecords':
@@ -1117,7 +1117,7 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
 
   onAiAction(suggestion: AiSuggestion): void {
     // TODO: Implement AI action routing
-    console.log('AI action:', suggestion.actionId);
+    /*console.log('AI action:', suggestion.actionId);*/
   }
 
   askAi(): void {
@@ -1131,7 +1131,7 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
     //   this.aiSuggestions.unshift({ type: 'insight', ... });
     // });
 
-    console.log('AI query:', query);
+    /*console.log('AI query:', query);*/
   }
 
   // ═══════════════════════════════════
@@ -1570,20 +1570,20 @@ export class CasewizardshellComponent implements OnInit, AfterViewInit, OnDestro
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (opts: any) => {
-          console.log('[casestatus] opts:', opts);
-          console.log('[casestatus] count:', (opts ?? []).length);
-          console.log('[casestatus] first:', (opts ?? [])[0]);
+          //console.log('[casestatus] opts:', opts);
+          //console.log('[casestatus] count:', (opts ?? []).length);
+          //console.log('[casestatus] first:', (opts ?? [])[0]);
 
           this.statusLookup.clear();
           for (const o of (opts ?? [])) {
             this.statusLookup.set(String(o.value), o.label ?? o.text ?? String(o.value));
           }
 
-          console.log('[casestatus] map size:', this.statusLookup.size);
-          console.log('[casestatus] map entries sample:', Array.from(this.statusLookup.entries()).slice(0, 5));
+          //console.log('[casestatus] map size:', this.statusLookup.size);
+          //console.log('[casestatus] map entries sample:', Array.from(this.statusLookup.entries()).slice(0, 5));
         },
         error: (err) => console.error('[casestatus] error:', err),
-        complete: () => console.log('[casestatus] complete')
+        complete: () => console.log()
       });
 
     // Priority lookup (datasource: 'casepriority')

@@ -297,7 +297,6 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (rows: any[]) => {
-          console.log('Raw MD Review activities from API:', rows);
 
           const normalized = (rows ?? []).map((wrap: any) => {
             const act = wrap?.activity ?? wrap?.Activity ?? wrap; // ✅ unwrap
@@ -325,7 +324,6 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
           });
 
           this.activities = normalized;
-          console.log('Loaded MD Review activities:', this.activities);
 
           this.prefetchMdStatusByServiceCode();
           this.applyActivityFilter();
@@ -613,8 +611,6 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
       // Repository inserts payload_snapshot_json jsonb 
       payloadSnapshotJson: null
     };
-
-    console.log('Creating MD Review activity with payload:', wrapperPayload);
 
     const svc: any = this.activityService as any;
     if (typeof svc.createMdReviewActivity !== 'function') {
@@ -1162,7 +1158,6 @@ export class AuthmdreviewComponent implements OnDestroy, Authunsavedchangesaware
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (res: any) => {
-          console.log('Raw decision status/code data:', res);
 
           const unwrapArray = (r: any, preferredKey: string): any[] => {
             if (!r) return [];

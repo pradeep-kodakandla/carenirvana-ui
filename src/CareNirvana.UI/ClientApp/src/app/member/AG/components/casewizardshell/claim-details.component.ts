@@ -331,7 +331,6 @@ export class ClaimDetailsComponent implements OnInit, OnChanges {
           // ★ FIX: API may return JSON string instead of parsed object
           let data = response;
           if (typeof data === 'string') {
-            console.log('Claim response is a string — parsing JSON');
             data = JSON.parse(data);
           }
           this.detail = this.mapApiResponseToDetail(data);
@@ -355,7 +354,6 @@ export class ClaimDetailsComponent implements OnInit, OnChanges {
        - { claimnumber: '...', lines: [...], ... }  (flat)
      ────────────────────────────────────────────── */
   private mapApiResponseToDetail(data: any): ClaimDetail {
-    console.log('Raw Claim API response:', data);
 
     // Auto-detect response structure:
     // If data.header exists, use it; otherwise treat data itself as the header

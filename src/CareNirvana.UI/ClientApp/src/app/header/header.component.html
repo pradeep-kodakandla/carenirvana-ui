@@ -230,7 +230,7 @@
               #msgTrigger="matMenuTrigger"
               [matMenuTriggerFor]="messagesMenu"
               (click)="openMessagesMenu(msgTrigger)">
-        <mat-icon style="color:white;" matBadge="15">message</mat-icon>
+        <mat-icon aria-hidden="false" style="color:white;" matBadge="15">message</mat-icon>
       </button>
 
       <mat-menu #messagesMenu="matMenu"

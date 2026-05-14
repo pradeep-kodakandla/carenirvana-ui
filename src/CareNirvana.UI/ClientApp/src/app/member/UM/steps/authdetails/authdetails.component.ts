@@ -3655,7 +3655,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     // authAssignedTo mirrors the Auth Owner field (authActualOwner) in the Status Details section.
     // pick() checks merged (current form) then pendingAuth, so this works for both INSERT and UPDATE.
     const authAssignedTo = pick<number>('authActualOwner', 'authactualowner', 'authAssignedTo', 'authassignedto');
-    console.log('Resolved authAssignedTo (Auth Owner) for payload:', authAssignedTo);
+    /*console.log('Resolved authAssignedTo (Auth Owner) for payload:', authAssignedTo);*/
     const authStatus = pick<any>('authStatus', 'authstatus') ?? (isAutoApprove ? 'Closed' : 'Draft');
     const wgwbIds = this.getSelectedWorkgroupWorkbasketIds();
 
@@ -4903,7 +4903,7 @@ export class AuthdetailsComponent implements OnInit, OnDestroy, OnChanges, Authu
     if (!d) return '';
     if (d.networkStatus) return d.networkStatus;
     if (d.inNetwork === false) return 'Out-of-Network';
-    console.warn('No explicit network status for provider instance', inst, d);
+    /*console.warn('No explicit network status for provider instance', inst, d);*/
     // Default to In-Network when provider selected
     return (d.npi == '1000000013' ? 'Out-of-Network' : 'In-Network');
   }

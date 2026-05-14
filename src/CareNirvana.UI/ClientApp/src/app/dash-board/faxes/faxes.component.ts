@@ -2207,12 +2207,12 @@ export class FaxesComponent implements OnInit, AfterViewInit {
    */
   private faxAuthLog(label: string, data?: any): void {
     // eslint-disable-next-line no-console
-    console.log(
-      `%c[FAX→AUTH] %c${label}`,
-      'color:#fff;background:#7c3aed;padding:1px 4px;border-radius:3px;font-weight:bold;',
-      'color:#7c3aed;font-weight:bold;',
-      data ?? ''
-    );
+    //console.log(
+    //  `%c[FAX→AUTH] %c${label}`,
+    //  'color:#fff;background:#7c3aed;padding:1px 4px;border-radius:3px;font-weight:bold;',
+    //  'color:#7c3aed;font-weight:bold;',
+    //  data ?? ''
+    //);
   }
 
   private parseProviderAddress(addr: string | undefined | null): { address: string; city: string; state: string; zip: string } {

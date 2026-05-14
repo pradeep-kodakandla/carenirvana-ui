@@ -393,7 +393,6 @@ export class MemberDocumentsComponent implements OnInit, OnChanges {
             createdBy: userId ?? null,
             createdOn: nowIso,        // <-- include timestamp here
           };
-          console.log('Creating document', payload);
           return firstValueFrom(this.api.createDocument(payload as any)); // 
         });
 

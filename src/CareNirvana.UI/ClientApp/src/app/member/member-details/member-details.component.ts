@@ -248,7 +248,7 @@ export class MemberDetailsComponent implements OnInit, OnDestroy {
     this.authService.addRecentlyAccessed(record.userId, record)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: id => console.log('Inserted record ID:', id),
+        next: id => console.log(),
         error: err => console.error('Insert failed:', err)
       });
 

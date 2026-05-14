@@ -362,7 +362,6 @@ export class MdreviewdashboardComponent {
         // Store ALL rows — filtering is done dynamically in recomputeAll()
         this.allActivities = Array.isArray(rows) ? rows : [];
         this.rawData = this.allActivities;
-        console.log('Loaded activities', this.allActivities);
         this.recomputeAll();
       },
       error: () => {

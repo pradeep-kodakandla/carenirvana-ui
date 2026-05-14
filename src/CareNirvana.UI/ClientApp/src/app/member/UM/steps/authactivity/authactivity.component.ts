@@ -269,7 +269,7 @@ export class AuthactivityComponent implements OnChanges, Authunsavedchangesaware
       { value: '3', label: 'Low' }
     ];
     this.priorityOptions = this.filteredPriorities.map(p => ({ value: Number(p.value), label: p.label }));
-    console.log('Priority options loaded:', this.priorityOptions);
+    /*console.log('Priority options loaded:', this.priorityOptions);*/
 
     const uid = Number(sessionStorage.getItem('loggedInUserid') || 0) || 0;
 
@@ -281,7 +281,7 @@ export class AuthactivityComponent implements OnChanges, Authunsavedchangesaware
           this.workGroups = [];
           return;
         }
-        console.log('Workbaskets response:', res);
+        /*console.log('Workbaskets response:', res);*/
         // Get only distinct workbasket IDs
         const distinctWB = res.filter(
           (item: any, index: number, self: any[]) =>
@@ -977,7 +977,7 @@ export class AuthactivityComponent implements OnChanges, Authunsavedchangesaware
   //     dropped while a workGroup was selected on the previous row).
   // ─────────────────────────────────────────────────────────────────────
   private resetFormForNew(): void {
-    console.log('Resetting form for new activity');
+    /*console.log('Resetting form for new activity');*/
 
     // Reset values (let events fire so child UI components update visually)
     this.activityForm.reset(this.blankFormValue);
