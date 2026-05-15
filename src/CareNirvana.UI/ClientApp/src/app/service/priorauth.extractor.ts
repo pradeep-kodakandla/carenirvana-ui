@@ -243,6 +243,19 @@ const isGeorgia = (t: string) => /Georgia Medical Prior Authorization Request Fo
 export const isNevada = (t: string) =>
   /NEVADA HEALTH SOLUTIONS/i.test(t) || /NHS Fax \(702\) 691-?5614/i.test(t);
 
+// Banner Plans & Networks — BPN_PA046 family.
+// Multiple markers because pdf.js text extraction order varies:
+//   - "Banner Plans & Networks" comes from the logo block at top of page
+//   - "BPN_PA046" is the form code in the footer
+//   - The "Banner – University…" and "Banner Medicare Advantage Dual HMO D-SNP"
+//     strings live in the Health Plan checkbox row near the top.
+// Any one match is enough — these phrases don't appear in TX/AZ/GA/NHS forms.
+export const isBanner = (t: string) =>
+  /Banner\s+Plans\s*&\s*Networks/i.test(t) ||
+  /BPN_PA046/i.test(t) ||
+  /Banner\s+Medicare\s+Advantage\s+Dual\s+HMO\s+D-?SNP/i.test(t) ||
+  /Banner\s*[\u2013\-]\s*University\s+Family\s+Care/i.test(t);
+
 // === Replace your current texasAdapter with this version ===
 const texasAdapter: Extractor = (raw) => {
   const text = raw;
@@ -630,6 +643,9 @@ export function extractPriorAuth(text: string, formFields: Record<string, string
   if (isGeorgia(text)) out = { ...out, ...georgiaAdapter(text) };
   if (isNevada(text) && formFields && Object.keys(formFields).length) {
     out = { ...out, ...extractNhsFromFields(formFields) };
+  }
+  if (isBanner(text) && formFields && Object.keys(formFields).length) {
+    out = { ...out, ...extractBannerFromFields(formFields) };
   }
   if (out.dx?.codes) out.dx.codes = Array.from(new Set(out.dx.codes.map(x => x.replace(/[^A-Za-z0-9.\-]/g, ''))));
   return out as PriorAuth;
@@ -1272,6 +1288,265 @@ export function extractNhsFromFields(fields: NhsFields): Partial<PriorAuth> {
   // Stash treatment count in notes since the schema doesn't model it directly
   if (treatments && treatments !== '1') {
     out.notes = `No. of Treatments Requested: ${treatments}`;
+  }
+
+  return out;
+}
+
+
+// ============================================================================
+// Banner Plans & Networks (BPN_PA046_CY26) — AcroForm fillable PDF adapter
+// ----------------------------------------------------------------------------
+// Banner Health Medical Prior Authorization Forms are fillable PDFs whose
+// values live in PDF form fields (same pattern as NHS Nevada Health Solutions).
+// PdfOcrService.extractFormFields() pulls these values via pdf.js
+// getFieldObjects() and hands them to this adapter.
+//
+// Field names captured directly from the BPN_PA046_CY26 template. The PDF
+// strips punctuation ("/", "-", "–") and apostrophes from labels when
+// generating field names, which produces the double spaces and merged tokens
+// you see below (e.g. "Banner  University Family CareACC" was originally
+// "Banner – University Family Care/ACC"). Names are case- AND space-sensitive
+// because they're the literal /T entries in the PDF's AcroForm dictionary.
+//
+//   Submission / Health plan:
+//     'Todays Date'                                   text
+//     'AHCCCS' / 'Medicare'                           checkbox
+//     'Banner  University Family CareACC'             checkbox
+//     'Banner  University Family CareALTCS'           checkbox
+//     'Banner  University Care Advantage HMO DSNP'    checkbox
+//
+//   Member:
+//     'Member Name Last', 'First', 'MI'
+//     'Date of Birth', 'Member ID'
+//
+//   Setting:
+//     'Inpatient' / 'Outpatient' / 'Home' / 'Office'  checkbox
+//
+//   Requesting provider (Provider making this request):
+//     'Provider making this request Name  Provider Type'
+//     'Address', 'City', 'State', 'Zip'
+//     'NPI', 'TID', 'Phone'
+//     'InNetwork' / 'OutofNetwork'                    checkbox
+//     'NameDirect Contact Requesting Provider office'
+//     'Backline', 'Ext', 'Fax', 'Office Email'
+//
+//   Servicing provider (Provider to perform the request):
+//     'Provider to perform the request if applicable'
+//     'Specialty Type'
+//     'Address_2', 'City_2', 'State_2', 'Zip_2'
+//     'NPI_2', 'TID_2'
+//     'Continuity of Care'                            checkbox
+//
+//   Facility (Outpatient/Inpatient Only):
+//     'Name'
+//     'Address_3', 'City_3', 'State_3', 'Zip_3'
+//     'Phone_2', 'NPI_3', 'TID_3'
+//
+//   Procedure / dx:
+//     'Procedure Requested', 'Description'
+//     'Date of Procedure if sched'
+//     'HCPCCPT Code', 'HCPCCPT Code_2'
+//     'ICD10 Code', 'ICD10 Code_2'
+// ============================================================================
+
+type BannerFields = Record<string, string>;
+
+const bannerField = (fields: BannerFields, key: string): string | undefined => {
+  const v = fields[key];
+  if (v == null) return undefined;
+  const t = String(v).trim();
+  return t.length ? t : undefined;
+};
+
+const bannerChecked = (fields: BannerFields, key: string): boolean => {
+  const v = (fields[key] || '').toLowerCase();
+  return v === 'yes' || v === 'on' || v === 'true' || v === '1';
+};
+
+/**
+ * Join the four discrete Banner address fields (street/city/state/zip) into a
+ * single comma-separated line — that's the shape the downstream
+ * AuthdetailsComponent.parseProviderAddress() expects, and matches how the
+ * other adapters (AZ/TX) deliver provider addresses.
+ *
+ * Returns undefined if every part is blank, so the prefill object cleanly
+ * "wins nothing" when the user didn't fill the address out (e.g. when the
+ * "Provider to perform" half of the form is left empty, as it is on most
+ * single-provider Banner submissions).
+ */
+const bannerJoinAddress = (
+  street?: string,
+  city?: string,
+  state?: string,
+  zip?: string
+): string | undefined => {
+  const stateZip = [state, zip].filter(Boolean).join(' ').trim();
+  const parts = [street, city, stateZip]
+    .filter((s): s is string => !!s && s.trim().length > 0)
+    .map(s => s.trim());
+  return parts.length ? parts.join(', ') : undefined;
+};
+
+/**
+ * Build "First MI Last" from the three name fields. Banner splits the patient
+ * name across three boxes; downstream code expects a single string. We pick
+ * "First [MI] Last" rather than "Last, First" because that's the convention
+ * the existing prefill mapper uses for non-NHS sources.
+ */
+const bannerJoinName = (last?: string, first?: string, mi?: string): string | undefined => {
+  const f = (first || '').trim();
+  const m = (mi || '').trim();
+  const l = (last || '').trim();
+  if (!f && !l && !m) return undefined;
+  return [f, m, l].filter(Boolean).join(' ').replace(/\s{2,}/g, ' ').trim() || undefined;
+};
+
+/**
+ * Resolves which Banner health-plan checkbox the requester ticked and returns
+ * a human-readable label suitable for the submission.issuerName field. Falls
+ * through to undefined if none of the three plan boxes are checked.
+ */
+const bannerIssuerName = (fields: BannerFields): string | undefined => {
+  if (bannerChecked(fields, 'Banner  University Care Advantage HMO DSNP'))
+    return 'Banner Medicare Advantage Dual HMO D-SNP';
+  if (bannerChecked(fields, 'Banner  University Family CareACC'))
+    return 'Banner \u2013 University Family Care/ACC';
+  if (bannerChecked(fields, 'Banner  University Family CareALTCS'))
+    return 'Banner \u2013 University Family Care/ALTCS';
+  return undefined;
+};
+
+/**
+ * Maps a Banner BPN_PA046 AcroForm field map → PriorAuth schema. Safe to call
+ * with an empty/partial field map; missing fields produce `undefined` values
+ * rather than throwing.
+ */
+export function extractBannerFromFields(fields: BannerFields): Partial<PriorAuth> {
+  const out: Partial<PriorAuth> = {
+    source: { template: 'Banner Health BPN_PA046', confidence: 0.99 },
+    patient: {},
+    providerRequesting: {},
+    providerServicing: {},
+    submission: {},
+    review: {},
+    setting: {},
+  };
+
+  // ── Submission / issuer ───────────────────────────────────────────────
+  out.submission = {
+    date:       bannerField(fields, 'Todays Date'),
+    issuerName: bannerIssuerName(fields),
+  };
+
+  // Banner doesn't have an explicit Urgent/Routine flag on this template; the
+  // Expedite section is free-text only. Default to Non-Urgent unless the
+  // caller overrides downstream. (Same convention as the NHS adapter.)
+  out.review = { type: 'Non-Urgent' };
+
+  // ── Patient ───────────────────────────────────────────────────────────
+  out.patient = {
+    name: bannerJoinName(
+      bannerField(fields, 'Member Name Last'),
+      bannerField(fields, 'First'),
+      bannerField(fields, 'MI'),
+    ),
+    dob:      bannerField(fields, 'Date of Birth'),
+    memberId: bannerField(fields, 'Member ID'),
+  };
+
+  // ── Setting (Inpatient / Outpatient / Home / Office) ──────────────────
+  // Only emit `true` for ticked boxes; leave the others undefined so the
+  // existing merge logic in faxes.component doesn't clobber values from
+  // earlier adapters with explicit `false`.
+  out.setting = {
+    inpatient:  bannerChecked(fields, 'Inpatient')  || undefined,
+    outpatient: bannerChecked(fields, 'Outpatient') || undefined,
+    home:       bannerChecked(fields, 'Home')       || undefined,
+    office:     bannerChecked(fields, 'Office')     || undefined,
+  };
+
+  // ── Requesting provider ───────────────────────────────────────────────
+  out.providerRequesting = {
+    name:    bannerField(fields, 'Provider making this request Name  Provider Type'),
+    address: bannerJoinAddress(
+      bannerField(fields, 'Address'),
+      bannerField(fields, 'City'),
+      bannerField(fields, 'State'),
+      bannerField(fields, 'Zip'),
+    ),
+    npi:          bannerField(fields, 'NPI'),
+    phone:        bannerField(fields, 'Phone'),
+    fax:          bannerField(fields, 'Fax'),
+    contactName:  bannerField(fields, 'NameDirect Contact Requesting Provider office'),
+    contactPhone: bannerField(fields, 'Backline'),
+  };
+
+  // ── Servicing provider ────────────────────────────────────────────────
+  out.providerServicing = {
+    name:      bannerField(fields, 'Provider to perform the request if applicable'),
+    specialty: bannerField(fields, 'Specialty Type'),
+    address:   bannerJoinAddress(
+      bannerField(fields, 'Address_2'),
+      bannerField(fields, 'City_2'),
+      bannerField(fields, 'State_2'),
+      bannerField(fields, 'Zip_2'),
+    ),
+    npi:      bannerField(fields, 'NPI_2'),
+    facility: bannerField(fields, 'Name'), // Facility Information → Name
+  };
+
+  // ── Diagnosis (ICD-10) ────────────────────────────────────────────────
+  // Banner provides up to two ICD-10 fields. Each box may contain one or
+  // more codes separated by whitespace/comma; pull every match.
+  const dxRaw = [
+    bannerField(fields, 'ICD10 Code'),
+    bannerField(fields, 'ICD10 Code_2'),
+  ]
+    .filter((v): v is string => !!v)
+    .flatMap(v => Array.from(
+      v.matchAll(/\b([A-TV-Z][0-9][0-9A-Z](?:\.[0-9A-Z]{1,4})?)\b/g),
+      m => m[1]
+    ));
+  const dxCodes = Array.from(new Set(dxRaw));
+  if (dxCodes.length) out.dx = { codes: dxCodes };
+
+  // ── Service / Procedure (CPT/HCPCS) ───────────────────────────────────
+  const cptCodes = [
+    bannerField(fields, 'HCPCCPT Code'),
+    bannerField(fields, 'HCPCCPT Code_2'),
+  ]
+    .filter((v): v is string => !!v)
+    .flatMap(v => Array.from(
+      v.matchAll(/\b(?:\d{5}|[A-Z]\d{4})\b/g),
+      m => m[0]
+    ));
+
+  const procDate = bannerField(fields, 'Date of Procedure if sched');
+  // Description box is usually blank on Banner — fall back to "Procedure
+  // Requested" so the auth doesn't end up with an empty service description.
+  const procDesc =
+    bannerField(fields, 'Description') ||
+    bannerField(fields, 'Procedure Requested');
+
+  // Single-token setting hint for downstream — pick the first ticked box in
+  // the standard Inpatient → Outpatient → Home → Office order.
+  const placeOfService =
+    bannerChecked(fields, 'Inpatient')  ? 'Inpatient'  :
+    bannerChecked(fields, 'Outpatient') ? 'Outpatient' :
+    bannerChecked(fields, 'Home')       ? 'Home'       :
+    bannerChecked(fields, 'Office')     ? 'Office'     :
+    undefined;
+
+  if (cptCodes.length || procDate || procDesc) {
+    out.services = [{
+      code:           cptCodes[0],
+      description:    procDesc,
+      startDate:      procDate,
+      endDate:        procDate, // single procedure date — same start/end
+      diagnosisCode:  dxCodes[0],
+      placeOfService,
+    }];
   }
 
   return out;

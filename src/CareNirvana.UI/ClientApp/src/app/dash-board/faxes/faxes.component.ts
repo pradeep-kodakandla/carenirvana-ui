@@ -7,7 +7,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { finalize, firstValueFrom } from 'rxjs';
 import { DashboardServiceService, FaxFile as ApiFaxFile } from 'src/app/service/dashboard.service.service';
 import { PdfOcrService, OcrResult } from 'src/app/service/pdfocr.service';
-import { extractPriorAuth, extractTexasFromText, extractArizonaFromText, extractNhsFromFields, isNevada } from 'src/app/service/priorauth.extractor';
+import { extractPriorAuth, extractTexasFromText, extractArizonaFromText, extractNhsFromFields, isNevada, extractBannerFromFields, isBanner } from 'src/app/service/priorauth.extractor';
 import { detectForms, isMultiForm, splitByForms, FormSpan, SplitResult } from 'src/app/service/multi-form-detector';
 import { extractNhsFromText, isNhsText } from 'src/app/service/nhs-text-adapter';
 import { PriorAuth } from 'src/app/service/priorauth.schema';
@@ -766,6 +766,14 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         if (nhs?.patient?.memberId) return nhs.patient.memberId;
       }
 
+      // ── Banner fast path: BPN_PA046 forms are also AcroForm fillable PDFs.
+      //    Same reliability profile as NHS — values come straight from PDF
+      //    field dictionary, never through OCR.
+      if (isBanner(res?.text ?? '') && res?.formFields && Object.keys(res.formFields).length) {
+        const banner = extractBannerFromFields(res.formFields);
+        if (banner?.patient?.memberId) return banner.patient.memberId;
+      }
+
       // ── NHS text path: flattened (printed-to-PDF) NHS forms have no live
       //    AcroForm. The text adapter parses the rendered value layer.
       if (isNhsText(res?.text ?? '')) {
@@ -1154,6 +1162,30 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       };
     }
 
+    // ── Banner Plans & Networks (BPN_PA046) — AcroForm fillable PDF ────────
+    // Same AcroForm pattern as NHS — form values are read directly from the
+    // PDF field dictionary via pdf.js getFieldObjects() and are 100% reliable
+    // when present. Independent of the NHS branches above: the two templates
+    // can't both match `isBanner`/`isNevada` at once, so order doesn't matter
+    // for correctness, but keeping Banner as its own standalone `if` block
+    // (rather than chaining into NHS's if/else-if) preserves the NHS
+    // AcroForm→text-fallback semantics untouched.
+    if (isBanner(allText) && res?.formFields && Object.keys(res.formFields).length) {
+      const banner = extractBannerFromFields(res.formFields);
+      pa = {
+        ...pa,
+        source: { template: 'Banner Health BPN_PA046', confidence: 0.99 },
+        patient: { ...this.stripEmpty(pa.patient), ...this.stripEmpty(banner.patient) },
+        providerRequesting: { ...this.stripEmpty(pa.providerRequesting), ...this.stripEmpty(banner.providerRequesting) },
+        providerServicing: { ...this.stripEmpty(pa.providerServicing), ...this.stripEmpty(banner.providerServicing) },
+        submission: { ...this.stripEmpty(pa.submission), ...this.stripEmpty(banner.submission) },
+        review: { ...this.stripEmpty(pa.review), ...this.stripEmpty(banner.review) },
+        setting: { ...this.stripEmpty(pa.setting), ...this.stripEmpty(banner.setting) },
+        services: (banner.services?.length ? banner.services : pa.services) ?? [],
+        dx: { ...this.stripEmpty(pa.dx), ...this.stripEmpty(banner.dx) },
+      };
+    }
+
     return pa;
   }
 
@@ -1228,8 +1260,22 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
     // Single-form path (or non-NHS multi-form) — preserves original behaviour
     // exactly. Pipeline drives the parent fax (faxId) directly.
+    //
+    // displayName is the actual upload's file.name, NEVER the multi-form
+    // detector's span label. Two reasons:
+    //   1. onAuthSaved() writes `pipeline.fileName` back to the fax row when
+    //      it transitions the record to Processed. Using a descriptive label
+    //      here would overwrite the originally-uploaded filename in the DB,
+    //      so the list view would then show "Document (Generic)" /
+    //      "Document (NHS)" instead of the file the user actually uploaded.
+    //   2. The comment on runPipelineForFile() documents that the popup
+    //      label should match the row in the fax listing exactly. The
+    //      listing shows file.name (see saveFileData → fileName: originalName),
+    //      so the popup must use the same source.
+    // If the detector did identify a template, that information lives in
+    // priorAuth.source.template — it's not needed in the filename slot.
     if (!shouldSplit) {
-      return this.runPipelineForFile(file, faxId, spans[0]?.label ?? file.name);
+      return this.runPipelineForFile(file, faxId, file.name);
     }
 
     // 4. NHS multi-form path — split, persist children, run pipeline per split.
@@ -2019,6 +2065,27 @@ export class FaxesComponent implements OnInit, AfterViewInit {
           setting: { ...this.stripEmpty(pa.setting), ...this.stripEmpty(nhs.setting) },
           services: (nhs.services?.length ? nhs.services : pa.services) ?? [],
           dx: { ...this.stripEmpty(pa.dx), ...this.stripEmpty(nhs.dx) },
+        };
+      }
+
+      // ── Banner Plans & Networks (BPN_PA046) — AcroForm fillable PDF ──────
+      // Same AcroForm pattern as NHS. Standalone `if` (not chained into the
+      // NHS if/else-if above) so it never interferes with the NHS
+      // AcroForm → text-fallback semantics. The two templates never both
+      // match isBanner/isNevada at once, so processing order is safe.
+      if (isBanner(allText) && res?.formFields && Object.keys(res.formFields).length) {
+        const banner = extractBannerFromFields(res.formFields);
+        pa = {
+          ...pa,
+          source: { template: 'Banner Health BPN_PA046', confidence: 0.99 },
+          patient: { ...this.stripEmpty(pa.patient), ...this.stripEmpty(banner.patient) },
+          providerRequesting: { ...this.stripEmpty(pa.providerRequesting), ...this.stripEmpty(banner.providerRequesting) },
+          providerServicing: { ...this.stripEmpty(pa.providerServicing), ...this.stripEmpty(banner.providerServicing) },
+          submission: { ...this.stripEmpty(pa.submission), ...this.stripEmpty(banner.submission) },
+          review: { ...this.stripEmpty(pa.review), ...this.stripEmpty(banner.review) },
+          setting: { ...this.stripEmpty(pa.setting), ...this.stripEmpty(banner.setting) },
+          services: (banner.services?.length ? banner.services : pa.services) ?? [],
+          dx: { ...this.stripEmpty(pa.dx), ...this.stripEmpty(banner.dx) },
         };
       }
 
