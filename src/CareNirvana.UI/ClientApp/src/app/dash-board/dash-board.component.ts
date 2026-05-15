@@ -134,6 +134,7 @@ export class DashBoardComponent implements AfterViewInit {
     this.loadCounts();
 
     const loggedInUserId = Number(sessionStorage.getItem('loggedInUserid'));
+
     const roleId = Number(this.getRoleIdByUserId(loggedInUserId));
     
     this.showInsightsTile = [1, 2, 4].includes(roleId);
@@ -152,7 +153,8 @@ export class DashBoardComponent implements AfterViewInit {
       1: 4,
       5: 7,
       6: 6,
-      7: 5
+      7: 5,
+      8: 4,
     };
 
     return userRoleMap[userId] ?? null;
