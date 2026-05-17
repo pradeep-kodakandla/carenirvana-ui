@@ -252,37 +252,10 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   // ── Auto-Authorization Pipeline ─────────────────────────────────────
   autoAuthPipelines: AutoAuthPipeline[] = [];
 
-  /**
-   * Holds the pipeline currently driving a silent auto-save.
-   * Cleared in onAuthSaved() / onAutoAuthCancelled() after Steps 4 and 5.
-   */
   private _activeAutoAuthPipeline: AutoAuthPipeline | null = null;
 
-  /**
-   * Resolves once a specific pipeline's hidden auth-save has fired
-   * authSaved or authCancelled. Used by runPipelineForFile() so the
-   * multi-form orchestrator can `await` each pipeline before launching
-   * the next — this is what stops _activeAutoAuthPipeline from being
-   * stomped by a sibling pipeline mid-save (which would otherwise leak
-   * past the multi-form run and break the next manual Save Authorization
-   * click in Fax mode).
-   *
-   * Keyed by pipeline.id; the resolver is removed from the map as soon
-   * as it fires. Always settle (don't reject) so the orchestrator's
-   * for-loop continues on failure.
-   */
   private _pipelineDoneResolvers = new Map<string, () => void>();
 
-  /**
-   * Controls the hidden pipeline <app-authdetails> instance.
-   * true  → Angular renders the component in a display:none container so it
-   *         can initialise, load the template, prefill fields, and call save()
-   *         entirely without any visible UI change for the user.
-   * false → component is destroyed (not in DOM).
-   *
-   * Deliberately separate from showAuthForm so the manual Generate Auth panel
-   * is completely unaffected by the pipeline.
-   */
   isAutoSavePipelineActive = false;
 
   /**
@@ -294,11 +267,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   /** ViewChild for the hidden pipeline auth instance. */
   @ViewChild('pipelineAuthRef') pipelineAuthRef?: AuthdetailsComponent;
 
-  /**
-   * Controls the pipeline progress popup dialog.
-   * Set to true when the first pipeline is created; user closes it explicitly
-   * via closePipelinePopup() once all pipelines have a non-null outcome.
-   */
   showPipelinePopup = false;
 
   /** True when all visible pipelines have reached a terminal outcome. */
@@ -318,22 +286,11 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     this.showPipelinePopup = false;
   }
 
-  /**
-   * Backdrop click — never traps the user. If everything finished, behave like
-   * Close (dismiss cards too). Otherwise behave like Minimise (hide the modal,
-   * keep cards in the side notification pill so processing keeps running).
-   */
   onPipelineBackdropClick(): void {
     if (this.allPipelinesComplete) this.closePipelinePopup();
     else this.minimisePipelinePopup();
   }
 
-  /**
-   * Close-button click — same safety net as the backdrop. We used to disable
-   * this button while pipelines were running, but that meant a stuck pipeline
-   * (e.g. hidden auth-save threw silently) trapped the user behind the modal.
-   * Now the button always works: minimise while running, full close when done.
-   */
   onPipelineCloseClick(): void {
     if (this.allPipelinesComplete) this.closePipelinePopup();
     else this.minimisePipelinePopup();
@@ -355,7 +312,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   trackByPipelineId(_: number, p: AutoAuthPipeline): string {
     return p.id;
   }
-
   constructor(private pdfOcr: PdfOcrService, private destroyRef: DestroyRef,
     private api: DashboardServiceService, private sanitizer: DomSanitizer,
     private rulesengineService: RulesengineService,
@@ -766,16 +722,11 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         if (nhs?.patient?.memberId) return nhs.patient.memberId;
       }
 
-      // ── Banner fast path: BPN_PA046 forms are also AcroForm fillable PDFs.
-      //    Same reliability profile as NHS — values come straight from PDF
-      //    field dictionary, never through OCR.
       if (isBanner(res?.text ?? '') && res?.formFields && Object.keys(res.formFields).length) {
         const banner = extractBannerFromFields(res.formFields);
         if (banner?.patient?.memberId) return banner.patient.memberId;
       }
 
-      // ── NHS text path: flattened (printed-to-PDF) NHS forms have no live
-      //    AcroForm. The text adapter parses the rendered value layer.
       if (isNhsText(res?.text ?? '')) {
         const nhs = extractNhsFromText(res?.text ?? '');
         if (nhs?.patient?.memberId) return nhs.patient.memberId;
@@ -1162,14 +1113,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       };
     }
 
-    // ── Banner Plans & Networks (BPN_PA046) — AcroForm fillable PDF ────────
-    // Same AcroForm pattern as NHS — form values are read directly from the
-    // PDF field dictionary via pdf.js getFieldObjects() and are 100% reliable
-    // when present. Independent of the NHS branches above: the two templates
-    // can't both match `isBanner`/`isNevada` at once, so order doesn't matter
-    // for correctness, but keeping Banner as its own standalone `if` block
-    // (rather than chaining into NHS's if/else-if) preserves the NHS
-    // AcroForm→text-fallback semantics untouched.
     if (isBanner(allText) && res?.formFields && Object.keys(res.formFields).length) {
       const banner = extractBannerFromFields(res.formFields);
       pa = {
@@ -1258,22 +1201,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       shouldSplit,
     });
 
-    // Single-form path (or non-NHS multi-form) — preserves original behaviour
-    // exactly. Pipeline drives the parent fax (faxId) directly.
-    //
-    // displayName is the actual upload's file.name, NEVER the multi-form
-    // detector's span label. Two reasons:
-    //   1. onAuthSaved() writes `pipeline.fileName` back to the fax row when
-    //      it transitions the record to Processed. Using a descriptive label
-    //      here would overwrite the originally-uploaded filename in the DB,
-    //      so the list view would then show "Document (Generic)" /
-    //      "Document (NHS)" instead of the file the user actually uploaded.
-    //   2. The comment on runPipelineForFile() documents that the popup
-    //      label should match the row in the fax listing exactly. The
-    //      listing shows file.name (see saveFileData → fileName: originalName),
-    //      so the popup must use the same source.
-    // If the detector did identify a template, that information lives in
-    // priorAuth.source.template — it's not needed in the filename slot.
+
     if (!shouldSplit) {
       return this.runPipelineForFile(file, faxId, file.name);
     }
@@ -1292,11 +1220,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       false,
     );
 
-    // 4a. Persist each split as a CHILD fax under the original and capture
-    //     the child's newly assigned faxId. parentFaxId on saveFileData()
-    //     suppresses its own auto-pipeline — that's intentional; we drive
-    //     each child's pipeline ourselves below so they each get their own
-    //     row AND their own status update on finalize.
     type SplitJob = { split: SplitResult; childFaxId: number };
     const jobs: SplitJob[] = [];
     for (const split of splits) {
@@ -1325,22 +1248,8 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       }
     }
 
-    // 4b. Refresh the listing once now so the user sees the new child rows
-    //     (still in New / Pending status) before the per-child pipelines run.
     this.reload?.();
 
-    // 4c. Run pipelines sequentially against each CHILD fax id. The parent
-    //     id is intentionally NEVER passed in here, so onAuthSaved() updates
-    //     the child record — never the parent. If a child's pipeline fails
-    //     or terminates early, that child stays in its current state (New)
-    //     while siblings that succeed move to Processed.
-    //
-    //     Display name uses split.file.name (e.g. "NHS_Prior_Authorization_
-    //     Forms_Form1of2.pdf") rather than split.span.label so the pipeline
-    //     popup row matches the file name shown in the fax listing exactly.
-    //     Mixing the two — popup showing "Form 2 of 2 (NHS, p2)" while the
-    //     row shows "..._Form2of2.pdf" — was confusing operators trying to
-    //     correlate the two views during a multi-split run.
     for (const job of jobs) {
       try {
         await this.runPipelineForFile(job.split.file, job.childFaxId, job.split.file.name);
@@ -1349,32 +1258,11 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       }
     }
 
-    // 4d. Final refresh so the listing reflects the post-pipeline status of
-    //     each child (Processed / New / etc.).
     this.reload?.();
   }
 
-  /**
-   * Runs the full Auto-Authorization pipeline against a single File.
-   *
-   *   Extract → Match Member → Rules Engine → Create Auth (if approved) → Finalize
-   *
-   * `displayName` is what shows up in the pipeline popup row. For multi-form
-   * splits the caller passes the persisted child file name (e.g.
-   * "NHS_Prior_Authorization_Forms_Form1of2.pdf") so the popup label matches
-   * the row in the fax listing exactly — operators can correlate the two
-   * views without mentally translating between a descriptive span label and
-   * the actual file name.
-   */
   private async runPipelineForFile(file: File, faxId: number, displayName: string): Promise<void> {
-    // Defensive cleanup: tear down ANY leftover hidden-pipeline state from a
-    // previous run before we start a fresh one. Without this, a previously
-    // wedged pipeline (e.g. authdetails.save() threw silently and never
-    // emitted authSaved/authCancelled) would still own _activeAutoAuthPipeline
-    // and isAutoSavePipelineActive — so the new pipeline would race the dead
-    // one, the modal backdrop would never reach allPipelinesComplete, and
-    // every Save Authorization click would land on the backdrop instead of
-    // the visible auth form's button.
+
     if (this._activeAutoAuthPipeline || this.isAutoSavePipelineActive) {
       const stale = this._activeAutoAuthPipeline;
       this._activeAutoAuthPipeline = null;
@@ -1531,20 +1419,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       return;
     }
 
-    // ─── STEP 4: Trigger silent auto-save via hidden AuthdetailsComponent ─────
-    //
-    // The auth form panel (showAuthForm) is NOT shown to the user here.
-    // Instead, a separate <app-authdetails #pipelineAuthRef> instance lives in
-    // a display:none container in the template, controlled by isAutoSavePipelineActive.
-    //
-    // Setting isAutoSavePipelineActive = true causes Angular to instantiate that
-    // hidden component with [faxPrefill]="pipelineFaxPrefill".  The component runs
-    // its full lifecycle: loads enrollment, auth class, template JSON, prefills all
-    // OCR fields — then after 900 ms calls save() automatically (autoSave: true).
-    //
-    // This means the user sees ONLY the pipeline progress panel, nothing else.
-    // If they click the fax filename during this time, the normal preview opens
-    // independently — the hidden component is completely separate.
     this.setStep(pipeline, 'auth', 'running',
       'Preparing authorization data — initiating auto-save…');
 
@@ -1556,17 +1430,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       pa, resolvedMemberId, memberDetailsId, faxId, authApprove ?? 'Yes'
     );
 
-    // Set up a completion gate BEFORE we render the hidden form. The hidden
-    // form's authSaved / authCancelled output will resolve this promise via
-    // resolvePipelineDone(), so the multi-form orchestrator can sequence
-    // pipelines safely without _activeAutoAuthPipeline being stomped.
-    //
-    // Belt-and-braces timeout: if the hidden form never emits (which CAN
-    // happen — authdetails.save()'s catch block silently swallows API
-    // errors without emitting authCancelled), we resolve after 30s anyway
-    // so the orchestrator never wedges. Critically we also set the
-    // pipeline's outcome to 'error' here, otherwise allPipelinesComplete
-    // stays false forever and the modal backdrop traps the user.
     const completion = new Promise<void>((resolve) => {
       this._pipelineDoneResolvers.set(pipeline.id, resolve);
       setTimeout(() => {
@@ -1581,9 +1444,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
             this.isAutoSavePipelineActive = false;
             this.pipelineFaxPrefill = null;
           }
-          // Mark the pipeline terminal so the popup unblocks and the user
-          // can dismiss it. Without this, allPipelinesComplete stays false
-          // and the backdrop sits over the page indefinitely.
+
           if (pipeline.outcome === null) {
             this.setStep(pipeline, 'auth', 'error',
               'Auto-save timed out — use Generate Auth on the fax row to complete manually');
@@ -1608,11 +1469,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     await completion;
   }
 
-  /**
-   * Called by onAuthSaved / onAutoAuthCancelled to release the gate set up
-   * in runPipelineForFile(). Idempotent — safe to call multiple times or
-   * for a pipeline that was never gated.
-   */
   private resolvePipelineDone(pipelineId: string | undefined): void {
     if (!pipelineId) return;
     const r = this._pipelineDoneResolvers.get(pipelineId);
@@ -1642,10 +1498,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     this.autoAuthPipelines = [...this.autoAuthPipelines];
   }
 
-  /**
-   * Navigate to the auto-created authorization record —
-   * mirrors the existing onAuthClick() pattern using headerService tabs.
-   */
   viewAutoAuth(pipeline: AutoAuthPipeline): void {
     if (!pipeline.authId || !pipeline.authNumber) return;
 
@@ -1687,19 +1539,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     this.router.navigateByUrl(tabRoute);
   }
 
-  /**
-   * Builds a FaxAuthPrefill from OCR-extracted PriorAuth data for the pipeline.
-   * Mirrors openAuthForm() and adds autoSave: true so AuthdetailsComponent
-   * calls its own save() automatically once the template is prefilled.
-   *
-   * Setting authApprove: 'Yes' triggers the existing auto-approve path inside
-   * save(), which:
-   *   • resolves Auth Status "Close" + Auth Status Reason "Decisioned" from
-   *     the live template dropdown datasources
-   *   • seeds Decision Status: Approved / Decision Status Code: Auto Approved
-   *     via seedDecisionAfterSave()
-   *   • stamps authClosedDatetime
-   */
   private buildAutoAuthPrefill(
     pa: any,
     memberId: number,
@@ -1721,13 +1560,8 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       memberDetailsId: memberDetailsId ?? 0,
       faxId: faxId,
 
-      // autoSave: true causes AuthdetailsComponent to call save() automatically
-      // 900 ms after applyFaxPrefillToTemplateFields() completes.
       autoSave: true,
 
-      // authApprove: 'Yes' activates the auto-approve path in save(), which sets
-      // Auth Status = Closed, Auth Status Reason = Decisioned, and seeds
-      // Decision Status: Approved / Decision Status Code: Auto Approved.
       authApprove: authApprove,
 
       authClassName: authClassName,
@@ -1772,16 +1606,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     };
   }
 
-  /**
-   * Called when AuthdetailsComponent emits authCancelled.
-   *
-   * Case A — pipeline auto-save failed (_activeAutoAuthPipeline is set):
-   *   Tears down the hidden component, updates Step 4 to 'error', leaves the
-   *   fax in the Open queue so the user can complete it manually via Generate Auth.
-   *
-   * Case B — user manually cancelled the visible auth form (no pipeline):
-   *   Closes the form panel with an unsaved-changes guard if needed.
-   */
   onAutoAuthCancelled(): void {
     const wasFromHiddenPipeline = this.isAutoSavePipelineActive;
     const pipeline = this._activeAutoAuthPipeline;
@@ -1797,8 +1621,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     this._activeAutoAuthPipeline = null;
 
     if (pipeline || wasFromHiddenPipeline) {
-      // ── Case A: pipeline auto-save failure ────────────────────────────────
-      // Tear down the hidden pipeline instance; leave showAuthForm untouched.
+
       this.isAutoSavePipelineActive = false;
       this.pipelineFaxPrefill = null;
 
@@ -1815,8 +1638,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         this.skipRemainingSteps(pipeline, 'auth');
         this.autoAuthPipelines = [...this.autoAuthPipelines];
 
-        // Release the multi-form orchestrator's gate so the next sibling pipeline
-        // can run. Always last — anything before this can throw without leaking.
         this.resolvePipelineDone(pipeline.id);
       }
       return;
@@ -2029,9 +1850,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         this.postProcessArizonaCmdp(pa, allText);
       }
 
-      // ── NHS (Nevada Health Solutions) — AcroForm fillable PDF ───────────
-      // Data lives in PDF form fields, not OCR text. Field values come from
-      // pdf.js getFieldObjects() and are 100% reliable when present.
       if (isNevada(allText) && res?.formFields && Object.keys(res.formFields).length) {
         const nhs = extractNhsFromFields(res.formFields);
         pa = {
@@ -2068,11 +1886,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         };
       }
 
-      // ── Banner Plans & Networks (BPN_PA046) — AcroForm fillable PDF ──────
-      // Same AcroForm pattern as NHS. Standalone `if` (not chained into the
-      // NHS if/else-if above) so it never interferes with the NHS
-      // AcroForm → text-fallback semantics. The two templates never both
-      // match isBanner/isNevada at once, so processing order is safe.
       if (isBanner(allText) && res?.formFields && Object.keys(res.formFields).length) {
         const banner = extractBannerFromFields(res.formFields);
         pa = {
@@ -2094,11 +1907,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       this.priorAuth = pa;
       this.isLoadingDetails = false;
 
-      // ── DEBUG: show what extraction produced for this PDF ─────────────────
-      // Run the same upload twice (once with AZ, once with NHS) and diff the
-      // two `[FAX→AUTH] Extraction complete` console entries. Anything that
-      // looks malformed (e.g. provider.name containing the whole address line)
-      // is a candidate for the next bug.
       this.faxAuthLog('Extraction complete', {
         sourceTemplate: (pa as any)?.source?.template ?? null,
         patient: {
@@ -2241,57 +2049,14 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     return out;
   }
 
-  /**
-   * Parse a free-form provider address string into discrete
-   * { address, city, state, zip } parts for the auth form prefill.
-   *
-   * Handles the variety of shapes producers actually send:
-   *   "Street, City, State, ZIP"             — clean 4-part (e.g. AZ CMDP)
-   *   "Street, City, State, ZIP, USA"        — trailing country token
-   *   "Street, City, State ZIP"              — 3-part with state+ZIP merged
-   *   "Street, City, State ZIP\nUSA"         — NHS Nevada Health Solutions
-   *                                            AcroForm: country wraps to a
-   *                                            new line inside the same field
-   *   "Street"                                — bare street, rest blank
-   *
-   * Why this exists: the previous inline `parseAddress` did a naive
-   * `addr.split(',')` and assigned parts[2] to `state`. For NHS the third
-   * comma chunk is "CO 93564\nUSA", which goes straight into the auth
-   * record's state field and silently fails backend validation
-   * (state column is short and doesn't accept newlines).
-   * AuthdetailsComponent.save()'s catch block swallows the resulting API
-   * error without emitting authCancelled (see comment at the pipeline
-   * timeout handler), so the user sees the Save Authorization click do
-   * absolutely nothing — exactly the bug reported for NHS forms while
-   * AZ CMDP forms continued to work.
-   */
-  /**
-   * Centralised debug logger for the Fax → Auth flow.
-   * Tag every log with [FAX→AUTH] so you can filter by it in DevTools:
-   *   filter:  FAX→AUTH
-   * Each call also prints a small summary object so the structure is
-   * easy to expand without scrolling through giant nested dumps.
-   */
   private faxAuthLog(label: string, data?: any): void {
-    // eslint-disable-next-line no-console
-    //console.log(
-    //  `%c[FAX→AUTH] %c${label}`,
-    //  'color:#fff;background:#7c3aed;padding:1px 4px;border-radius:3px;font-weight:bold;',
-    //  'color:#7c3aed;font-weight:bold;',
-    //  data ?? ''
-    //);
+
   }
 
   private parseProviderAddress(addr: string | undefined | null): { address: string; city: string; state: string; zip: string } {
     const empty = { address: '', city: '', state: '', zip: '' };
     if (!addr) return empty;
 
-    // Normalise: collapse newlines/extra whitespace so multi-line AcroForm
-    // values fold into the comma stream, then strip trailing country tokens.
-    // The country may appear with or without a separating comma, e.g.
-    //   "..., CO 93564, USA"   (comma-separated)
-    //   "..., CO 93564 USA"    (space only — NHS prints it this way)
-    // so we run the strip with an optional comma boundary.
     const normalised = String(addr)
       .replace(/[\r\n]+/g, ', ')
       .replace(/\s{2,}/g, ' ')
@@ -2734,11 +2499,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         this._pdfTextItems.push({ str: item.str, pageIndex: pageNum - 1, x, y, w, h: fontSize });
       }
 
-      // ── AcroForm Widget annotations ──────────────────────────────────────
-      // For fillable PDFs (e.g. NHS forms) the user-typed values do NOT appear
-      // in getTextContent(). They live in form-field widget annotations, each
-      // with its own rect [x1, y1, x2, y2] in PDF user-space (origin bottom-
-      // left — same coords already used by drawHighlightsOnPdf via pdf-lib).
+
       try {
         const annots = await page.getAnnotations();
         for (const a of (annots || [])) {
@@ -2765,11 +2526,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
             x, y: y0, w, h,
           });
 
-          // For composite fields like "Amelia Cook / 10083" or
-          // "5256 Medical Plaza, San Antonio, TX 72165 USA" the user may click
-          // a partial value on the left (just "Amelia Cook" or just the city).
-          // Index each space- or "/"-separated token under the same rect so
-          // partial-string clicks still resolve to this rectangle.
+
           const parts = str.split(/\s*\/\s*|\s{2,}|,\s+/).map(s => s.trim()).filter(s => s.length >= 2);
           for (const part of parts) {
             if (part === str) continue;
@@ -3248,22 +3005,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     });
   }
 
-  /**
-   * Compute the effective status for a top-level (non-child) row, treating
-   * NHS split parents and their children as a single logical group:
-   *
-   *   • If the row has children (a split parent):
-   *       'Processed' iff EVERY child is Processed.
-   *       Otherwise 'Open' — the parent's own backend status is ignored,
-   *       so a split parent that never had an auth created against it does
-   *       not get stuck in Open after every child finishes.
-   *   • If the row has no children (a normal upload): use its own status.
-   *
-   * This is what implements the rule: "while one split is still New, keep
-   * its sibling visible in the New filter even if the backend already
-   * marked the sibling Processed". The split status only flips at the
-   * group level once every child is done.
-   */
   private getGroupEffectiveStatus(row: FaxFile): 'Processed' | 'Open' | 'Deleted' {
     const isProcessed = (s: string | null | undefined) => (s || '').toLowerCase() === 'processed';
     const isDeleted = (s: string | null | undefined) => (s || '').toLowerCase() === 'deleted';
@@ -3283,10 +3024,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   }
 
   private applyWorkBasketFilter(): void {
-    // Walk top-level rows only (children inherit visibility from their
-    // parent's group decision). For each root we decide whether the WHOLE
-    // group should be visible under the current chip + work-basket filters,
-    // then push the parent followed by all its children when included.
+
     const roots = (this.allFaxes || []).filter(f => !f.isChild);
 
     const passesStatusChip = (group: 'Processed' | 'Open' | 'Deleted'): boolean => {
@@ -3301,9 +3039,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
       let include = passesStatusChip(group);
 
-      // Work-basket filter is evaluated against the parent only. Children
-      // inherit — splitting a multi-form upload doesn't move it across
-      // baskets, so this is safe and keeps each split group atomic.
       if (include && this.selectedWorkBasket) {
         include = (root.workBasket || '') === this.selectedWorkBasket;
       }
@@ -3419,11 +3154,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       priorAuth: pa
     };
 
-    // ── DEBUG: full prefill snapshot crossing into AuthdetailsComponent ────
-    // This is THE key diff between an NHS open and an AZ open. If this log
-    // looks structurally identical for both PDFs but the NHS save still
-    // silently dies, the issue is inside AuthdetailsComponent (validators,
-    // template apply, save() catch). If it differs, the diff IS the bug.
     this.faxAuthLog('currentFaxPrefill set — handing off to <app-authdetails>',
       JSON.parse(JSON.stringify(this.currentFaxPrefill)) // deep clone snapshot for the console
     );
@@ -3437,12 +3167,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     }, 100);
   }
 
-  // ── DEBUG: error traps active only while the auth form is open ─────────────
-  // AuthdetailsComponent.save()'s catch block silently swallows API errors
-  // (the existing pipeline timeout comment already calls this out). These
-  // traps catch anything that escapes the catch — uncaught throws, rejected
-  // promises that nobody awaited, HTTP failures bubbling up — and tag them
-  // so they're visible in the console next to the [FAX→AUTH] trail.
   private _authFormErrorHandler: ((e: ErrorEvent) => void) | null = null;
   private _authFormRejectionHandler: ((e: PromiseRejectionEvent) => void) | null = null;
 
@@ -3522,18 +3246,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       selectedFax_faxId: this.selectedFax?.faxId,
     });
 
-    // ── Determine whether this came from the pipeline or the manual form ───────
-    //
-    // A pipeline emit is identified by EITHER:
-    //   • _activeAutoAuthPipeline being set (the normal case), OR
-    //   • isAutoSavePipelineActive being true (the timeout-cleanup case where
-    //     we cleared _activeAutoAuthPipeline early but the hidden form's
-    //     save() eventually completed and emitted anyway).
-    //
-    // Without the second check, a delayed emit from the hidden form would
-    // fall through to the "manual" branch and silently close the user's
-    // visible Generate Auth panel — looking for all the world like the
-    // Save Authorization click did nothing.
     const wasFromHiddenPipeline = this.isAutoSavePipelineActive;
     const pipeline = this._activeAutoAuthPipeline;
     this._activeAutoAuthPipeline = null;
@@ -3566,12 +3278,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     };
     this.resetSmartAuthCheckState();
 
-    // ── Resolve which fax record to update ────────────────────────────────────
-    // CRITICAL: when a pipeline is driving the save it KNOWS which fax it is
-    // working on — that may be a child split, not whatever the user happens
-    // to have selected in the listing. Always prefer pipeline.faxId for
-    // pipeline-driven saves; only fall back to selectedFax for manual saves
-    // (where pipeline is null).
     const faxIdToUpdate: number | null =
       pipeline?.faxId ?? this.selectedFax?.faxId ?? null;
     const fileNameForUpdate: string =
@@ -3579,9 +3285,6 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     const priorityForUpdate: 1 | 2 | 3 =
       (this.selectedFax?.priority ?? 2) as 1 | 2 | 3;
 
-    // Merge existing metaJson so we never lose previous pipeline/processing metadata.
-    // For pipeline-driven updates against a child split, selectedFax may not match
-    // the child being updated — in that case skip the inherited meta.
     let existingMeta: any = {};
     if (this.selectedFax?.metaJson && this.selectedFax.faxId === faxIdToUpdate) {
       try { existingMeta = JSON.parse(this.selectedFax.metaJson); } catch { /* ignore */ }
@@ -3616,8 +3319,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
             pipeline.authNumber = event.authNumber;
             pipeline.authId = event.authId;
             this.autoAuthPipelines = [...this.autoAuthPipelines];
-            // Release the orchestrator gate AFTER the fax update so the next
-            // pipeline starts only once this child is fully Processed.
+
             this.resolvePipelineDone(pipeline.id);
           }
           this.reload();

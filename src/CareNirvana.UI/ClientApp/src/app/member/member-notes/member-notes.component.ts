@@ -1,5 +1,6 @@
 // src/app/member/member-notes/member-notes.component.ts
-import { Component, Input, OnInit, OnChanges, OnDestroy, ViewChildren, QueryList, ElementRef, SimpleChanges, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, Input, OnInit, OnChanges, OnDestroy, ViewChild, ViewChildren, QueryList, ElementRef, SimpleChanges, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { NgForm } from '@angular/forms';
 import { MatTableDataSource } from '@angular/material/table';
 import { MembersummaryService, MemberNoteDto } from 'src/app/service/membersummary.service';
 import { finalize } from 'rxjs/operators';
@@ -83,6 +84,8 @@ export class MemberNotesComponent implements OnInit {
 
   noteTypes: NoteType[] = [];
   selectedNoteTypeId: number | null = null;
+
+  @ViewChild('noteForm') noteForm?: NgForm;
 
   // calendar hidden pickers
   @ViewChildren('calendarPickers') calendarPickers!: QueryList<ElementRef<HTMLInputElement>>;
@@ -356,6 +359,7 @@ export class MemberNotesComponent implements OnInit {
     this.isFormVisible = false;
     this.editingId = null;
     this.showValidationErrors = false;
+    this.noteForm?.form.markAsPristine();
   }
 
   deleteNote(note: any) {
@@ -413,6 +417,7 @@ export class MemberNotesComponent implements OnInit {
         if (this.formOnly) { this.openForm("add"); }
         this.editingId = null;
         this.reload();
+        this.noteForm?.form.markAsPristine();
         clearTimeout(this.successTimer);
         this.successTimer = setTimeout(() => (this.saveStatus = 'idle'), 3000);
       },
@@ -715,6 +720,10 @@ export class MemberNotesComponent implements OnInit {
   onAddNoteFromList(): void {
     if (this.formOnly) this.switchToFormView();
     this.openForm('add');
+  }
+
+  hasUnsavedChanges(): boolean {
+    return this.isFormVisible && !!this.noteForm?.dirty;
   }
 
 }

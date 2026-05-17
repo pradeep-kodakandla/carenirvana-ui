@@ -1,3 +1,7 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   FLOATING ACTION BUTTON (collapsed state)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .floating-notes-btn {
   position: fixed;
   width: 64px;
@@ -52,16 +56,271 @@
   text-transform: uppercase;
 }
 
-/*
-  When the button is peeking off the right edge (30% hidden on the right),
-  shift content LEFT so it sits inside the visible 70%.
-  Visible area is the left 70% of the button -> center of visible area
-  is at 35% of width. We translate the content from 50% to 35% -> shift by -15%.
-*/
+/* Shift content into the visible 70% when the button peeks off an edge */
 .peek-right .fab-content {
   transform: translateX(-15%);
 }
 
 .peek-left .fab-content {
   transform: translateX(15%);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   NOTES PANEL (expanded state)
+   Non-blocking floating card — docked bottom-right, occupies the lower 50%
+   of the viewport. NO backdrop, so the rest of the screen stays clickable.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.notes-panel {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: clamp(360px, 36vw, 560px);
+  height: 65vh;                       /* 50% from the bottom */
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #e6e8ec;
+  border-radius: 14px;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.26);
+  overflow: hidden;
+  z-index: 1100;
+  animation: notes-slide-up 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes notes-slide-up {
+  from { transform: translateY(18px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@keyframes notes-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Panel header ────────────────────────────────────────────────────────── */
+
+.notes-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e6e8ec;
+  background: #f8f9fb;
+  flex-shrink: 0;
+}
+
+.notes-panel__titles {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.notes-panel__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+  white-space: nowrap;
+}
+
+  .notes-panel__title svg {
+    width: 19px;
+    height: 19px;
+    color: #1976d2;
+  }
+
+.notes-panel__subtitle {
+  font-size: 12.5px;
+  color: #6b7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notes-context-badge {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #e3f2fd;
+  color: #1976d2;
+  flex-shrink: 0;
+}
+
+  .notes-context-badge--auth { background: #fff3e0; color: #e65100; }
+  .notes-context-badge--case { background: #ede7f6; color: #5e35b1; }
+
+.notes-panel__close {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+  .notes-panel__close:hover {
+    background: #eceef1;
+    color: #111827;
+  }
+
+/* ── Panel body ──────────────────────────────────────────────────────────── */
+
+.notes-panel__body {
+  flex: 1;
+  overflow: auto;            /* member-notes scrolls inside the panel */
+  padding: 0;
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────────── */
+
+.notes-empty {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 28px;
+  color: #6b7280;
+}
+
+  .notes-empty svg {
+    width: 44px;
+    height: 44px;
+    margin-bottom: 12px;
+    color: #c2c7d0;
+  }
+
+.notes-empty__title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.notes-empty__text {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UNSAVED-CHANGES CONFIRMATION — overlays ONLY the panel, not the screen
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.confirm-backdrop {
+  position: absolute;        /* relative to .notes-panel */
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  padding: 16px;
+  animation: notes-fade-in 0.15s ease;
+}
+
+.confirm-card {
+  width: 100%;
+  max-width: 360px;
+  background: #fff;
+  border-radius: 14px;
+  padding: 22px;
+  text-align: center;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+  animation: confirm-pop 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes confirm-pop {
+  from { transform: scale(0.94); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+.confirm-card__icon {
+  width: 50px;
+  height: 50px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  background: #fff4e5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+  .confirm-card__icon svg {
+    width: 27px;
+    height: 27px;
+    color: #f59e0b;
+  }
+
+.confirm-card__title {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.confirm-card__text {
+  margin: 0 0 18px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #6b7280;
+}
+
+.confirm-card__actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.btn {
+  flex: 1;
+  padding: 9px 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  border-radius: 9px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.btn--ghost {
+  background: #fff;
+  border-color: #d1d5db;
+  color: #374151;
+}
+
+  .btn--ghost:hover { background: #f3f4f6; }
+
+.btn--danger {
+  background: #dc2626;
+  color: #fff;
+}
+
+  .btn--danger:hover { background: #b91c1c; }
+
+/* ── Responsive: nearly full-width panel on small screens ────────────────── */
+
+@media (max-width: 640px) {
+  .notes-panel {
+    right: 12px;
+    left: 12px;
+    bottom: 12px;
+    width: auto;
+    height: 60vh;
+  }
 }

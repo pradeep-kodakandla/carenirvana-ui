@@ -777,14 +777,10 @@
             </div>
           </ng-template>
 
-          <!-- ══════════════════════════════════════════════════════════════
-               AI Analysis (Clinical Summary)
-               ══════════════════════════════════════════════════════════════ -->
           <div class="ai-summary-card">
             <div class="ai-summary-header">
               <div class="ai-summary-title">
                 <div class="ai-icon-wrapper">
-                  <!--<img src="assets/images/ai-icon.png" alt="AI" class="ai-header-icon" />-->
                   <button type="button"
                           class="aw-btn-ai-toggle"
                           title="AI Assistant">
@@ -833,26 +829,6 @@
                   </div>
                   <p class="ai-section-text">{{ aiParsedSummary || aiSummary }}</p>
                 </div>
-
-                <!-- Section 2: Critical Flags -->
-                <!--<div class="ai-section-card ai-section-flags" *ngIf="aiParsedFlags.length > 0">
-                  <div class="ai-section-icon-row">
-                    <div class="ai-section-icon flag-icon">
-                      <mat-icon>warning_amber</mat-icon>
-                    </div>
-                    <div class="ai-section-label">⚠️ Critical Flags Identified</div>
-                  </div>
-                  <div class="ai-flags-list">
-                    <div class="ai-flag-item" *ngFor="let flag of aiParsedFlags; let i = index">
-                      <div class="ai-flag-title">
-                        <span class="ai-flag-number">{{ i + 1 }}</span>
-                        {{ flag.title }}
-                      </div>
-                      <p class="ai-flag-body">{{ flag.body }}</p>
-                    </div>
-                  </div>
-                </div>-->
-
                 <!-- Disclaimer -->
                 <div class="ai-summary-footer">
                   <mat-icon>info_outline</mat-icon>
@@ -898,13 +874,6 @@
                    (click)="$event.preventDefault()">
                   <mat-icon>link</mat-icon> Change Member
                 </a>
-                <!--<a [class.disabled-link]="!pa.patient?.memberId"
-                   href="#"
-                   matTooltip="Add authorization for this member"
-                   [attr.tabindex]="pa.patient?.memberId ? 0 : -1"
-                   (click)="$event.preventDefault()">
-                  <mat-icon>post_add</mat-icon> Add Auth
-                </a>-->
               </div>
             </div>
             <div class="detail-grid">
@@ -1234,10 +1203,6 @@
     </ng-template>
   </div>
 
-
-  <!-- ════════════════════════════════════════════════════════════════
-       RIGHT PANE: PDF Preview
-       ════════════════════════════════════════════════════════════════ -->
   <div class="pane pane-right">
 
     <div class="pane-header">
@@ -1292,30 +1257,6 @@
 
     <!-- PDF iframe (double-buffered to prevent blink on highlight) -->
     <div class="preview-frame" *ngIf="previewUrl; else noPreview">
-
-      <!-- ── Field Locator Overlay ────────────────────────── -->
-      <!--<div class="hl-locator" *ngIf="hlValue"
-           [ngClass]="'hl-locator-' + hlCategory"
-           @hlLocatorAnim>
-        <div class="hl-locator-beacon" *ngIf="!hlIsProcessing">
-          <span class="hl-locator-beacon-ring"></span>
-          <span class="hl-locator-beacon-dot"></span>
-        </div>
-        <mat-icon class="hl-locator-spinner" *ngIf="hlIsProcessing">sync</mat-icon>
-        <div class="hl-locator-body">
-          <span class="hl-locator-label">{{ hlLabel }}</span>
-          <span class="hl-locator-value">{{ hlValue }}</span>
-        </div>
-        <div class="hl-locator-actions">
-          <button class="hl-locator-copy" (click)="copyHighlightValue()" matTooltip="Copy value">
-            <mat-icon>content_copy</mat-icon>
-          </button>
-          <button class="hl-locator-dismiss" (click)="clearHighlight()" matTooltip="Dismiss">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-      </div>-->
-
       <!-- ── Highlight status bar ─────────────────────────── -->
       <div class="hl-search-hint hl-hint-searching" *ngIf="hlStatus === 'processing'">
         <mat-icon class="hl-locator-spinner">sync</mat-icon>
@@ -1362,19 +1303,6 @@
 </div>
 
 
-<!-- ═══════════════════════════════════════════════════════════════════
-     PIPELINE AUTO-SAVE — Hidden AuthDetails instance
-     ───────────────────────────────────────────────────────────────────
-     Rendered off-screen when the pipeline is running Step 4.
-     The component is FULLY instantiated (ngOnInit, ngOnChanges, template
-     load, OCR prefill, autoSave save()) but the user never sees it.
-     Only the pipeline progress panel above is visible.
-
-     Isolation from the manual Generate Auth flow is complete:
-       • isAutoSavePipelineActive / pipelineFaxPrefill  → this hidden instance
-       • showAuthForm / currentFaxPrefill               → the visible middle pane
-     The two instances never conflict.
-     ═══════════════════════════════════════════════════════════════════ -->
 <div style="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;"
      aria-hidden="true"
      *ngIf="isAutoSavePipelineActive && pipelineFaxPrefill">
@@ -1386,12 +1314,6 @@
   </app-authdetails>
 </div>
 
-
-<!-- ═══════════════════════════════════════════════════════════════════
-     DISCARD CHANGES DIALOG  (auth form unsaved-changes guard)
-     Shown when user clicks "Back to Details" or "Close Preview (×)" while
-     the Create Authorization form has unsaved modifications.
-     ═══════════════════════════════════════════════════════════════════ -->
 <div class="tb-overlay" *ngIf="showDiscardDialog" (click)="dismissDiscardDialog()">
   <div class="tb-dialog" (click)="$event.stopPropagation()">
 

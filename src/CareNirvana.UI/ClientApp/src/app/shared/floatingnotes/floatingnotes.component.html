@@ -1,4 +1,6 @@
+<!-- ════════ Collapsed: floating action button ════════ -->
 <button #fab
+        *ngIf="!expanded"
         class="floating-notes-btn"
         [class.peek-right]="corner === 'bottom-right' || corner === 'top-right'"
         [class.peek-left]="corner === 'bottom-left' || corner === 'top-left'"
@@ -24,3 +26,108 @@
     <span class="fab-label">Notes</span>
   </span>
 </button>
+
+<!-- ════════ Expanded: floating notes panel ════════ -->
+<!--
+  No backdrop / overlay: the panel floats over the bottom-right corner and the
+  rest of the screen stays fully clickable. The panel closes only via the ×
+  button (or "Discard & close" when there are unsaved changes).
+-->
+<aside class="notes-panel" *ngIf="expanded" aria-label="Member notes">
+
+  <!-- Header -->
+  <header class="notes-panel__header">
+    <div class="notes-panel__titles">
+      <h2 class="notes-panel__title">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+             aria-hidden="true">
+          <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"
+                stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M8 13h6M8 17h4M8 9h3"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          <path d="M18 3v6M15 6h6"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        </svg>
+        Add Note
+      </h2>
+
+      <span class="notes-context-badge notes-context-badge--{{ contextType }}">
+        {{ contextType | titlecase }}
+      </span>
+
+      <span class="notes-panel__subtitle" *ngIf="activeTabLabel" [title]="activeTabLabel">
+        {{ activeTabLabel }}
+      </span>
+    </div>
+
+    <button type="button" class="notes-panel__close"
+            (click)="requestClose()" aria-label="Close notes" title="Close">
+      &#10005;
+    </button>
+  </header>
+
+  <!-- Body -->
+  <div class="notes-panel__body">
+    <ng-container *ngIf="hasMemberContext; else noMember">
+      <!--
+        The notes component is created dynamically here (see mountNotes() in
+        the .ts). Member Notes is mounted today; the Auth/Case note components
+        can be swapped in later by switching on `contextType` inside
+        mountNotes() — no template change needed.
+      -->
+      <ng-container #notesHost></ng-container>
+    </ng-container>
+
+    <!-- Empty state: no member tab open -->
+    <ng-template #noMember>
+      <div class="notes-empty">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+             aria-hidden="true">
+          <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"
+                stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M16 3v6M13 6h6" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" />
+        </svg>
+        <p class="notes-empty__title">No member selected</p>
+        <p class="notes-empty__text">
+          Open a member, authorization, or case tab to add notes.
+        </p>
+      </div>
+    </ng-template>
+  </div>
+
+  <!-- ════════ Unsaved-changes confirmation (covers only this panel) ════════ -->
+  <div class="confirm-backdrop" *ngIf="showConfirmClose">
+    <div class="confirm-card" role="alertdialog"
+         aria-labelledby="confirmTitle" aria-describedby="confirmDesc">
+
+      <div class="confirm-card__icon">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+             aria-hidden="true">
+          <path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
+                stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </div>
+
+      <h3 class="confirm-card__title" id="confirmTitle">
+        Discard unsaved changes?
+      </h3>
+      <p class="confirm-card__text" id="confirmDesc">
+        You have notes that haven&rsquo;t been saved yet. If you close now,
+        these changes will be lost and can&rsquo;t be recovered.
+      </p>
+
+      <div class="confirm-card__actions">
+        <button type="button" class="btn btn--ghost" (click)="cancelClose()">
+          Keep editing
+        </button>
+        <button type="button" class="btn btn--danger" (click)="confirmClose()">
+          Discard &amp; close
+        </button>
+      </div>
+    </div>
+  </div>
+</aside>
