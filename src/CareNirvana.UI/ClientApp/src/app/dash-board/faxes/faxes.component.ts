@@ -1,6 +1,6 @@
 import { Component, OnInit, ViewChild, ElementRef, DestroyRef, AfterViewInit } from '@angular/core';
 import { trigger, transition, style, animate } from '@angular/animations';
-import { MatTableDataSource } from '@angular/material/table';
+import { MatTableDataSource, MatTable } from '@angular/material/table';
 import { MatSort } from '@angular/material/sort';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -111,6 +111,18 @@ export interface AutoAuthPipeline {
   startedAt: Date;
 }
 
+/**
+ * One configurable table column.
+ * `key` MUST match both the matColumnDef name in the template and (where
+ * possible) the data field name, so MatTableDataSource sorting works.
+ */
+interface ColumnDef {
+  key: string;
+  label: string;     // human-readable header, also shown in the column chooser
+  locked?: boolean;  // locked columns are always visible and cannot be toggled
+  visible: boolean;  // current on/off state (restored from storage)
+}
+
 @Component({
   selector: 'app-faxes',
   templateUrl: './faxes.component.html',
@@ -130,8 +142,66 @@ export interface AutoAuthPipeline {
 
 export class FaxesComponent implements OnInit, AfterViewInit {
 
-  // Table
-  columns = ['fileName', 'receivedAt', 'member', 'workBasket', 'priority', 'status', 'actions'];
+  // ============================================================
+  // Column configuration (settings gear / column chooser)
+  // ============================================================
+  // Master catalog of every column the table CAN show, in display order.
+  //   - locked  -> always visible, user cannot hide it
+  //   - visible -> current on/off state (also restored from storage)
+  // `columns` (bound to <table mat-table>) is DERIVED from this list, so the
+  // column order stays consistent no matter how the user toggles things.
+  allColumns: ColumnDef[] = [
+    { key: 'fileName',      label: 'Fax File Name', locked: true, visible: true  },
+    { key: 'receivedAt',    label: 'Received',                    visible: true  },
+    { key: 'member',        label: 'Member',                      visible: true  },
+    { key: 'workBasket',    label: 'Work Basket',                 visible: true  },
+    { key: 'pageCount',     label: 'Pages',                       visible: false },
+    { key: 'priority',      label: 'Priority',                    visible: true  },
+    { key: 'status',        label: 'Status',                      visible: true  },
+    { key: 'processStatus', label: 'Process Status',              visible: false },
+    { key: 'linkedAuth',    label: 'Linked Auth',                 visible: false },
+    { key: 'fileSize',      label: 'File Size',                   visible: false },
+    { key: 'uploadedAt',    label: 'Uploaded At',                 visible: false },
+    { key: 'createdOn',     label: 'Created On',                  visible: false },
+    { key: 'updatedOn',     label: 'Updated On',                  visible: false },
+    { key: 'actions',       label: 'Actions',       locked: true, visible: true  },
+  ];
+
+  // Derived list bound to <table mat-table>. Rebuilt on every change.
+  columns: string[] = [];
+
+  // Snapshot of out-of-the-box visibility, used by "Reset to default".
+  private columnDefaults: Record<string, boolean> = {};
+
+  // Column chooser popover open/closed.
+  showColumnSettings = false;
+
+  // localStorage key for persisting the user's column layout.
+  private readonly COL_PREF_KEY = 'faxes.columnPrefs.v1';
+
+  // === Column resize (drag-from-header) ===
+  // Default widths in px. Adjust to taste; user drags override these at runtime.
+  columnWidths: Record<string, number> = {
+    fileName: 260,
+    receivedAt: 170,
+    member: 190,
+    workBasket: 150,
+    pageCount: 90,
+    priority: 120,
+    status: 170,
+    processStatus: 140,
+    linkedAuth: 150,
+    fileSize: 120,
+    uploadedAt: 170,
+    createdOn: 170,
+    updatedOn: 170,
+    actions: 90,
+  };
+  private readonly minColumnWidth = 60;
+  private resizing: { col: string; startX: number; startWidth: number } | null = null;
+  private resizeMoveHandler?: (e: MouseEvent) => void;
+  private resizeUpHandler?: (e: MouseEvent) => void;
+
   dataSource = new MatTableDataSource<FaxFile>([]);
   total = 0;
   page = 1;
@@ -156,6 +226,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   @ViewChild('fileInput') fileInput?: ElementRef<HTMLInputElement>;
   @ViewChild(MatSort) sort!: MatSort;
   @ViewChild(MatPaginator) paginator!: MatPaginator;
+  @ViewChild(MatTable) table!: MatTable<any>;
   result: OcrResult | null = null;
   student?: { name?: string; studentNumber?: string; address?: string };
   isProcessing = false;
@@ -382,6 +453,9 @@ export class FaxesComponent implements OnInit, AfterViewInit {
   }
 
   ngOnInit(): void {
+    // Build the column set: snapshot defaults, restore any saved layout.
+    this.initColumns();
+
     this.reload();
 
     this.currentUserId = Number(sessionStorage.getItem('loggedInUserid')) || 1;
@@ -418,8 +492,15 @@ export class FaxesComponent implements OnInit, AfterViewInit {
         case 'receivedAt': return item.receivedAt ? new Date(item.receivedAt).getTime() : 0;
         case 'member': return (item.memberName || '').toLowerCase();
         case 'workBasket': return (item.workBasket || '').toLowerCase();
+        case 'pageCount': return item.pageCount ?? 0;
         case 'priority': return item.priority ?? 2;
         case 'status': return (item.status || '').toLowerCase();
+        case 'processStatus': return (item.processStatus || '').toLowerCase();
+        case 'linkedAuth': return (this.getLinkedAuth(item) || '').toLowerCase();
+        case 'fileSize': return item.sizeBytes ?? 0;
+        case 'uploadedAt': return item.uploadedAt ? new Date(item.uploadedAt).getTime() : 0;
+        case 'createdOn': return item.createdOn ? new Date(item.createdOn).getTime() : 0;
+        case 'updatedOn': return item.updatedOn ? new Date(item.updatedOn).getTime() : 0;
         default: return '';
       }
     };
@@ -3410,6 +3491,141 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       this.headerService.addTab(tabLabel, tabRoute, memId, memDetId);
     }
     this.router.navigateByUrl(tabRoute);
+  }
+
+  // ============================================================
+  // Column chooser logic (settings gear)
+  // ============================================================
+
+  /** Called once on init: snapshot defaults, restore saved prefs, build list. */
+  private initColumns(): void {
+    this.allColumns.forEach(c => (this.columnDefaults[c.key] = c.visible));
+    this.loadColumnPrefs();
+    this.rebuildColumns();
+  }
+
+  /** Recompute `columns` from the catalog (preserves master order). */
+  private rebuildColumns(): void {
+    this.columns = this.allColumns
+      .filter(c => c.visible)
+      .map(c => c.key);
+  }
+
+  /** Open / close the column settings popover. */
+  toggleColumnSettings(): void {
+    this.showColumnSettings = !this.showColumnSettings;
+  }
+
+  closeColumnSettings(): void {
+    this.showColumnSettings = false;
+  }
+
+  /** Toggle a single column on/off (no-op for locked columns). */
+  toggleColumn(col: ColumnDef): void {
+    if (col.locked) return;
+    col.visible = !col.visible;
+    this.rebuildColumns();
+    this.persistColumnPrefs();
+    // Let MatTable re-render the header + cells with the new column set.
+    setTimeout(() => this.table?.renderRows(), 0);
+  }
+
+  /** Count of optional columns currently hidden (shown as a badge on the gear). */
+  get hiddenColumnCount(): number {
+    return this.allColumns.filter(c => !c.locked && !c.visible).length;
+  }
+
+  /** Turn every column on. */
+  showAllColumns(): void {
+    this.allColumns.forEach(c => (c.visible = true));
+    this.rebuildColumns();
+    this.persistColumnPrefs();
+    setTimeout(() => this.table?.renderRows(), 0);
+  }
+
+  /** Restore the original out-of-the-box column layout. */
+  resetColumns(): void {
+    this.allColumns.forEach(c => (c.visible = this.columnDefaults[c.key]));
+    this.rebuildColumns();
+    this.persistColumnPrefs();
+    setTimeout(() => this.table?.renderRows(), 0);
+  }
+
+  /** Persist the current layout so it survives page reloads. */
+  private persistColumnPrefs(): void {
+    try {
+      const data = this.allColumns
+        .filter(c => !c.locked)
+        .map(c => ({ key: c.key, visible: c.visible }));
+      localStorage.setItem(this.COL_PREF_KEY, JSON.stringify(data));
+    } catch {
+      /* storage unavailable / quota exceeded — prefs just won't persist */
+    }
+  }
+
+  /** Restore a previously saved layout, if any. */
+  private loadColumnPrefs(): void {
+    try {
+      const raw = localStorage.getItem(this.COL_PREF_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as Array<{ key: string; visible: boolean }>;
+      const savedMap = new Map(saved.map(s => [s.key, !!s.visible]));
+      this.allColumns.forEach(c => {
+        if (!c.locked && savedMap.has(c.key)) {
+          c.visible = savedMap.get(c.key)!;
+        }
+      });
+    } catch {
+      /* corrupt prefs — ignore and fall back to defaults */
+    }
+  }
+
+  /** Human-readable file size for the optional "File Size" column. */
+  formatFileSize(bytes?: number | null): string {
+    if (bytes == null || isNaN(Number(bytes))) return '—';
+    const b = Number(bytes);
+    if (b < 1024) return `${b} B`;
+    const kb = b / 1024;
+    if (kb < 1024) return `${kb.toFixed(1)} KB`;
+    const mb = kb / 1024;
+    if (mb < 1024) return `${mb.toFixed(1)} MB`;
+    return `${(mb / 1024).toFixed(1)} GB`;
+  }
+
+  // ============================================================
+  // Column resize handlers (drag from header edge)
+  // ============================================================
+  // Called from each header cell's drag-handle (mousedown).
+  onResizeStart(event: MouseEvent, column: string): void {
+    event.preventDefault();
+    event.stopPropagation(); // don't trigger sort
+    this.resizing = {
+      col: column,
+      startX: event.clientX,
+      startWidth: this.columnWidths[column] ?? 120
+    };
+    document.body.classList.add('fx-resizing');
+
+    this.resizeMoveHandler = (e: MouseEvent) => this.onResizeMove(e);
+    this.resizeUpHandler = (e: MouseEvent) => this.onResizeEnd(e);
+    document.addEventListener('mousemove', this.resizeMoveHandler);
+    document.addEventListener('mouseup', this.resizeUpHandler);
+  }
+
+  private onResizeMove(event: MouseEvent): void {
+    if (!this.resizing) return;
+    const delta = event.clientX - this.resizing.startX;
+    const next = Math.max(this.minColumnWidth, this.resizing.startWidth + delta);
+    this.columnWidths[this.resizing.col] = next;
+  }
+
+  private onResizeEnd(_event: MouseEvent): void {
+    this.resizing = null;
+    document.body.classList.remove('fx-resizing');
+    if (this.resizeMoveHandler) document.removeEventListener('mousemove', this.resizeMoveHandler);
+    if (this.resizeUpHandler) document.removeEventListener('mouseup', this.resizeUpHandler);
+    this.resizeMoveHandler = undefined;
+    this.resizeUpHandler = undefined;
   }
 
 }

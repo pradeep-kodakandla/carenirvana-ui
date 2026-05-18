@@ -64,8 +64,6 @@ export interface EndMemberCareStaffResponse {
   affectedRows: number;
 }
 
-
-
 export interface MemberSearchCriteria {
   quickText?: string | null;
 
@@ -153,6 +151,25 @@ export interface MemberDetailsResponseDto {
   [key: string]: any;
 }
 
+export interface SearchNavigationResult {
+  type?: 'CM' | 'UM' | 'AG' | string | null;
+
+  memberDetailsId?: number | null;
+  memberId?: number | null;
+
+  authDetailId?: number | null;
+  authNumber?: string | null;
+  authTemplateId?: number | null;
+
+  caseHeaderId?: number | null;
+  caseNumber?: string | null;
+  caseTypeId?: number | null;
+  caseLevelId?: number | null;
+
+  found: boolean;
+  message?: string | null;
+
+}
 
 @Injectable({
   providedIn: 'root'
@@ -263,6 +280,18 @@ export class DashboardServiceService {
   getMemberDetails(memberDetailsId: number): Observable<MemberDetailsResponseDto> {
     return this.http.get<MemberDetailsResponseDto>(
       `${this.apiUrl}/memberdetails/${memberDetailsId}`
+    );
+  }
+
+  searchNavigation(
+    module: 'CM' | 'UM' | 'AG',
+    input: string | number
+  ): Observable<SearchNavigationResult> {
+    const safeModule = encodeURIComponent(module);
+    const safeInput = encodeURIComponent(String(input).trim());
+
+    return this.http.get<SearchNavigationResult>(
+      `${this.apiUrl}/search-navigation/${safeModule}/${safeInput}`
     );
   }
 }

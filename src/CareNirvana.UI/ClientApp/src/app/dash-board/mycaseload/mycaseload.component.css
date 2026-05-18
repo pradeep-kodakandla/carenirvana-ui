@@ -1040,3 +1040,309 @@ body.mc-resizing * {
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 transparent;
 }
+
+/* =========================================================
+   Column chooser (settings gear + popover)
+   ========================================================= */
+
+/* Column-settings wrapper — sits inline beside the risk chips in the
+   top bar (no separate row). `position: relative` anchors the popover. */
+.tt-actions {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  align-self: center;   /* vertically center against the chips */
+  gap: 8px;
+  margin-left: 8px;
+  flex: 0 0 auto;        /* never grow/shrink inside the flex top-bar */
+}
+
+/* The gear button */
+.col-settings-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #475467;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+
+  .col-settings-btn:hover {
+    background: #f9fafb;
+    border-color: #c7ccd4;
+    color: #1f2937;
+  }
+
+  .col-settings-btn.active {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    color: #2563eb;
+  }
+
+  .col-settings-btn mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+
+/* Small badge showing how many columns are hidden */
+.col-settings-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+/* Full-screen invisible layer — click anywhere outside to close */
+.col-settings-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: transparent;
+}
+
+/* The popover panel.
+   Uses `position: fixed` (NOT absolute) on purpose: an absolutely-positioned
+   popover is clipped by any ancestor with `overflow: hidden`/`auto`. This
+   component is rendered inside such a wrapper, so when the table only had a
+   couple of rows the wrapper was short and cut the panel off at the table's
+   bottom edge. `fixed` is positioned against the viewport and escapes every
+   `overflow` clipping ancestor, so the panel always shows in full.
+   --csp-top / --csp-right let you nudge the anchor point if the app chrome
+   above the dashboard has a different height. */
+.col-settings-panel {
+  position: fixed;
+  top: var(--csp-top, 190px);
+  right: var(--csp-right, 16px);
+  z-index: 1001;
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  /* Never taller than the viewport — grid scrolls internally instead. */
+  max-height: calc(100dvh - var(--csp-top, 240px) - 16px);
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(16, 24, 40, .16);
+  overflow: hidden;
+}
+
+/* Header & footer keep their natural height; only the grid scrolls. */
+.col-settings-panel .csp-header,
+.col-settings-panel .csp-sub,
+.col-settings-panel .csp-footer {
+  flex: 0 0 auto;
+}
+
+.csp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid #eef0f3;
+}
+
+.csp-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+  .csp-title mat-icon {
+    color: #2563eb;
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+
+.csp-close {
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  line-height: 1;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+  .csp-close:hover {
+    color: #111827;
+  }
+
+.csp-sub {
+  padding: 10px 14px 4px;
+  font-size: 12.5px;
+  color: #6b7280;
+}
+
+  .csp-sub strong {
+    color: #2563eb;
+  }
+
+/* Grid of column cards */
+.csp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 10px 14px 14px;
+  /* Flexes to fill the space left between header and footer, and scrolls
+     internally when the column list is long or the viewport is short. */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Each column rendered as a selectable card */
+.col-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
+}
+
+  .col-card:hover {
+    border-color: #c7d2fe;
+    background: #f8faff;
+  }
+
+  /* visible / selected column */
+  .col-card.is-on {
+    border-color: #93c5fd;
+    background: #eff6ff;
+    box-shadow: inset 0 0 0 1px #bfdbfe;
+  }
+
+  /* locked column — can't be toggled */
+  .col-card.is-locked {
+    cursor: not-allowed;
+    background: #f9fafb;
+  }
+
+  .col-card input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #2563eb;
+    cursor: pointer;
+    flex: 0 0 auto;
+  }
+
+  .col-card.is-locked input[type="checkbox"] {
+    cursor: not-allowed;
+  }
+
+.col-card-body {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  min-width: 0;
+}
+
+.col-card-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.col-card.is-locked .col-card-label {
+  color: #9ca3af;
+}
+
+.col-card-state {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.col-card.is-on .col-card-state {
+  color: #2563eb;
+}
+
+.col-card-lock {
+  margin-left: auto;
+  font-size: 15px;
+  width: 15px;
+  height: 15px;
+  color: #9ca3af;
+}
+
+/* Footer actions */
+.csp-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid #eef0f3;
+  background: #fbfcfe;
+}
+
+.csp-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+  .csp-btn.ghost {
+    border: 1px solid #d1d5db;
+    background: #fff;
+    color: #374151;
+  }
+
+    .csp-btn.ghost:hover {
+      background: #f3f4f6;
+    }
+
+  .csp-btn.primary {
+    margin-left: auto;
+    border: 1px solid #2563eb;
+    background: #2563eb;
+    color: #fff;
+  }
+
+    .csp-btn.primary:hover {
+      background: #1d4ed8;
+    }
+
+/* Center-aligned numeric count cells */
+.mng-table th.is-center,
+.mng-table td.is-center,
+.pro-table th.is-center,
+.pro-table td.is-center {
+  text-align: center;
+}
+
+@media (max-width: 560px) {
+  .col-settings-panel {
+    width: 300px;
+  }
+
+  .csp-grid {
+    grid-template-columns: 1fr;
+  }
+}

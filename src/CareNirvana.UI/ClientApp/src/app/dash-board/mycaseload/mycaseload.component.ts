@@ -27,6 +27,18 @@ type SelectedFilter =
   | { group: 'Diagnosis'; label: string; key: string }
   | { group: 'Quality'; label: string; key: string };
 
+/**
+ * One configurable table column.
+ * `key` MUST match both the matColumnDef name in the template and (where
+ * possible) the data field name, so MatTableDataSource sorting works.
+ */
+interface ColumnDef {
+  key: string;
+  label: string;     // human-readable header, also shown in the column chooser
+  locked?: boolean;  // locked columns are always visible and cannot be toggled
+  visible: boolean;  // current on/off state (restored from storage)
+}
+
 
 function nowInEasternISO(): string {
   const now = new Date();
@@ -138,10 +150,51 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     { label: 'Low Risk', value: 40, icon: 'check_circle' }
   ];
 
-  // Table columns
-  displayedColumns: string[] = [
-    'alert', 'name', 'enrollment', 'program', 'dob', 'risk', 'lastContact', 'nextContact', 'actions'
+  // ============================================================
+  // Column configuration (settings gear / column chooser)
+  // ============================================================
+  // Master catalog of every column the table CAN show, in display order.
+  //   - locked  -> always visible, user cannot hide it
+  //   - visible -> current on/off state (also restored from storage)
+  // `displayedColumns` is DERIVED from this list, so column order stays
+  // consistent no matter what order the user toggles things on/off.
+  allColumns: ColumnDef[] = [
+    { key: 'alert',             label: 'Alerts',           locked: true, visible: true  },
+    { key: 'name',              label: 'Member',           locked: true, visible: true  },
+    { key: 'enrollment',        label: 'Enrollment (LOB)',               visible: true  },
+    { key: 'program',           label: 'Program',                        visible: true  },
+    { key: 'dob',               label: 'DOB / Age',                      visible: true  },
+    { key: 'risk',              label: 'Risk Level',                     visible: true  },
+    { key: 'lastContact',       label: 'Last Contact',                   visible: true  },
+    { key: 'nextContact',       label: 'Next Contact',                   visible: true  },
+    { key: 'gender',            label: 'Gender',                         visible: false },
+    { key: 'city',              label: 'City',                           visible: false },
+    { key: 'phone',             label: 'Phone',                          visible: false },
+    { key: 'riskScore',         label: 'Risk Score',                     visible: false },
+    { key: 'account',           label: 'Account',                        visible: false },
+    { key: 'product',           label: 'Product',                        visible: false },
+    { key: 'plan',              label: 'Benefit Plan',                   visible: false },
+    { key: 'authCount',         label: 'Authorizations',                 visible: false },
+    { key: 'activityCount',     label: 'Activities',                     visible: false },
+    { key: 'carePlanCount',     label: 'Care Plans',                      visible: false },
+    { key: 'complaintCount',    label: 'Complaints',                     visible: false },
+    { key: 'startDate',         label: 'Start Date',                     visible: false },
+    { key: 'endDate',           label: 'End Date',                       visible: false },
+    { key: 'enrollmentEndDate', label: 'Enrollment End',                 visible: false },
+    { key: 'actions',           label: 'Actions',          locked: true, visible: true  },
   ];
+
+  // Derived list bound to <table mat-table>. Rebuilt on every change.
+  displayedColumns: string[] = [];
+
+  // Snapshot of out-of-the-box visibility, used by "Reset to default".
+  private columnDefaults: Record<string, boolean> = {};
+
+  // Column chooser popover open/closed.
+  showColumnSettings = false;
+
+  // localStorage key for persisting the user's column layout.
+  private readonly COL_PREF_KEY = 'mycaseload.columnPrefs.v1';
 
   // === Column resize (drag-from-header) ===
   // Default widths in px. Adjust to taste; user drags override these at runtime.
@@ -154,7 +207,22 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
     risk: 130,
     lastContact: 130,
     nextContact: 130,
-    actions: 90
+    actions: 90,
+    // --- optional columns (added via the column chooser) ---
+    gender: 110,
+    city: 140,
+    phone: 150,
+    riskScore: 110,
+    account: 140,
+    product: 150,
+    plan: 150,
+    authCount: 120,
+    activityCount: 110,
+    carePlanCount: 110,
+    complaintCount: 120,
+    startDate: 130,
+    endDate: 130,
+    enrollmentEndDate: 150
   };
   private readonly minColumnWidth = 60;
   private resizing: { col: string; startX: number; startWidth: number } | null = null;
@@ -186,6 +254,9 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
   };
 
   ngOnInit(): void {
+
+    // Build the column set: snapshot defaults, restore any saved layout.
+    this.initColumns();
 
     //  this.loadMembers(testMembers);
     this.diagnosisOptions.forEach(d => this.diagnosisSelection[d] = false);
@@ -234,7 +305,26 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
           return item.lastContact ? new Date(item.lastContact).getTime() : 0;
         case 'nextContact':
           return item.nextContact ? new Date(item.nextContact).getTime() : 0;
+        // --- optional columns ---
+        case 'phone':
+          return (item.memberPhoneNumberId || '').toString();
+        case 'account':
+          return (this.getLevel(item.levelMap, 'ACCOUNT') || '').toLowerCase();
+        case 'product':
+          return (this.getLevel(item.levelMap, 'PRODUCT') || '').toLowerCase();
+        case 'plan':
+          return (this.getLevel(item.levelMap, 'BENEFITPLAN') || '').toLowerCase();
+        case 'startDate':
+          return item.startDate ? new Date(item.startDate).getTime() : 0;
+        case 'endDate':
+          return item.endDate ? new Date(item.endDate).getTime() : 0;
+        case 'enrollmentEndDate':
+          return item.enrollmentEndDate ? new Date(item.enrollmentEndDate).getTime() : 0;
+        case 'riskScore':
+          return item.riskScore != null ? Number(item.riskScore) : -1;
         default:
+          // gender, city, authCount, activityCount, carePlanCount,
+          // complaintCount all have keys matching their data field.
           return (item as any)[property];
       }
     };
@@ -785,6 +875,113 @@ export class MycaseloadComponent implements OnInit, AfterViewInit {
 
   closeRowMenu(): void {
     this.openMenuForMemberId = null;
+  }
+
+  // ============================================================
+  // Column chooser logic (settings gear)
+  // ============================================================
+
+  /** Called once on init: snapshot defaults, restore saved prefs, build list. */
+  private initColumns(): void {
+    this.allColumns.forEach(c => (this.columnDefaults[c.key] = c.visible));
+    this.loadColumnPrefs();
+    this.rebuildDisplayedColumns();
+  }
+
+  /** Recompute displayedColumns from the catalog (preserves master order). */
+  private rebuildDisplayedColumns(): void {
+    this.displayedColumns = this.allColumns
+      .filter(c => c.visible)
+      .map(c => c.key);
+  }
+
+  /** Open / close the column settings popover. */
+  toggleColumnSettings(): void {
+    this.showColumnSettings = !this.showColumnSettings;
+  }
+
+  closeColumnSettings(): void {
+    this.showColumnSettings = false;
+  }
+
+  /** Toggle a single column on/off (no-op for locked columns). */
+  toggleColumn(col: ColumnDef): void {
+    if (col.locked) return;
+    col.visible = !col.visible;
+    this.rebuildDisplayedColumns();
+    this.persistColumnPrefs();
+    // Let MatTable re-render the header + cells with the new column set.
+    setTimeout(() => this.table?.renderRows(), 0);
+  }
+
+  /** Count of optional columns currently hidden (shown as a badge on the gear). */
+  get hiddenColumnCount(): number {
+    return this.allColumns.filter(c => !c.locked && !c.visible).length;
+  }
+
+  /** Turn every column on. */
+  showAllColumns(): void {
+    this.allColumns.forEach(c => (c.visible = true));
+    this.rebuildDisplayedColumns();
+    this.persistColumnPrefs();
+    setTimeout(() => this.table?.renderRows(), 0);
+  }
+
+  /** Restore the original out-of-the-box column layout. */
+  resetColumns(): void {
+    this.allColumns.forEach(c => (c.visible = this.columnDefaults[c.key]));
+    this.rebuildDisplayedColumns();
+    this.persistColumnPrefs();
+    setTimeout(() => this.table?.renderRows(), 0);
+  }
+
+  /** Persist the current layout so it survives page reloads. */
+  private persistColumnPrefs(): void {
+    try {
+      const data = this.allColumns
+        .filter(c => !c.locked)
+        .map(c => ({ key: c.key, visible: c.visible }));
+      localStorage.setItem(this.COL_PREF_KEY, JSON.stringify(data));
+    } catch {
+      /* storage unavailable / quota exceeded — prefs just won't persist */
+    }
+  }
+
+  /** Restore a previously saved layout, if any. */
+  private loadColumnPrefs(): void {
+    try {
+      const raw = localStorage.getItem(this.COL_PREF_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as Array<{ key: string; visible: boolean }>;
+      const savedMap = new Map(saved.map(s => [s.key, !!s.visible]));
+      this.allColumns.forEach(c => {
+        if (!c.locked && savedMap.has(c.key)) {
+          c.visible = savedMap.get(c.key)!;
+        }
+      });
+    } catch {
+      /* corrupt prefs — ignore and fall back to defaults */
+    }
+  }
+
+  /** Generic accessor for a value inside the JSON `levelMap` string. */
+  getLevel(levelMap: unknown, key: string): string {
+    if (!levelMap) return '';
+    try {
+      const obj = typeof levelMap === 'string' ? JSON.parse(levelMap) : (levelMap as any);
+      return obj?.[key] ?? '';
+    } catch {
+      return '';
+    }
+  }
+
+  /** Format a raw phone number as (xxx) xxx-xxxx when possible. */
+  formatPhone(value: any): string {
+    const digits = (value ?? '').toString().replace(/\D/g, '');
+    if (digits.length === 10) {
+      return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+    }
+    return value ? value.toString() : 'N/A';
   }
 
 }

@@ -9,6 +9,77 @@
            (input)="onQuickSearch($event)"
            class="search-input"
            aria-label="Search faxes" />
+
+    <!-- Column settings: configure which table columns are visible -->
+    <div class="tt-actions">
+      <button type="button"
+              class="col-settings-btn"
+              (click)="toggleColumnSettings()"
+              [class.active]="showColumnSettings"
+              matTooltip="Configure columns"
+              aria-label="Configure columns">
+        <mat-icon>settings</mat-icon>
+        <span class="col-settings-badge" *ngIf="hiddenColumnCount > 0">
+          {{ hiddenColumnCount }}
+        </span>
+      </button>
+
+      <!-- click-outside layer -->
+      <div class="col-settings-backdrop"
+           *ngIf="showColumnSettings"
+           (click)="closeColumnSettings()"></div>
+
+      <!-- Column chooser popover -->
+      <div class="col-settings-panel" *ngIf="showColumnSettings">
+        <div class="csp-header">
+          <span class="csp-title">
+            <mat-icon>view_column</mat-icon>
+            <span>Configure Columns</span>
+          </span>
+          <button type="button" class="csp-close"
+                  (click)="closeColumnSettings()" aria-label="Close">×</button>
+        </div>
+
+        <div class="csp-sub">
+          Select the columns to display in the table.
+          <ng-container *ngIf="hiddenColumnCount > 0">
+            <strong>{{ hiddenColumnCount }}</strong> hidden.
+          </ng-container>
+        </div>
+
+        <!-- Each column rendered as a selectable card -->
+        <div class="csp-grid">
+          <label class="col-card"
+                 *ngFor="let col of allColumns"
+                 [class.is-on]="col.visible"
+                 [class.is-locked]="col.locked">
+            <input type="checkbox"
+                   [checked]="col.visible"
+                   [disabled]="col.locked"
+                   (change)="toggleColumn(col)" />
+            <span class="col-card-body">
+              <span class="col-card-label">{{ col.label }}</span>
+              <span class="col-card-state">
+                {{ col.locked ? 'Always shown' : (col.visible ? 'Shown' : 'Hidden') }}
+              </span>
+            </span>
+            <mat-icon class="col-card-lock" *ngIf="col.locked">lock</mat-icon>
+          </label>
+        </div>
+
+        <div class="csp-footer">
+          <button type="button" class="csp-btn ghost" (click)="resetColumns()">
+            Reset to default
+          </button>
+          <button type="button" class="csp-btn ghost" (click)="showAllColumns()">
+            Show all
+          </button>
+          <button type="button" class="csp-btn primary" (click)="closeColumnSettings()">
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Work-basket filter chips + Add button + Nav -->
@@ -342,6 +413,9 @@
      TABLE VIEW (when preview is closed)
      ═══════════════════════════════════════════════════════════════════ -->
 <div class="table-wrapper" *ngIf="!showPreview">
+  <!-- Inner scroller: shows a horizontal scrollbar when the total column
+       width (after a column is widened) exceeds the visible area. -->
+  <div class="table-scroll">
   <table mat-table
          [dataSource]="dataSource"
          matSort
@@ -349,8 +423,16 @@
 
     <!-- ── Fax File Name ─────────────────────────────────────────── -->
     <ng-container matColumnDef="fileName">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Fax File Name</th>
-      <td mat-cell *matCellDef="let r">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+          [style.width.px]="columnWidths['fileName']"
+          [style.minWidth.px]="columnWidths['fileName']">
+        Fax File Name
+        <span class="col-resizer" (mousedown)="onResizeStart($event, 'fileName')"
+              (click)="$event.stopPropagation()" aria-hidden="true"></span>
+      </th>
+      <td mat-cell *matCellDef="let r"
+          [style.width.px]="columnWidths['fileName']"
+          [style.minWidth.px]="columnWidths['fileName']">
 
         <!-- Normal view -->
         <div class="fax-name"
@@ -408,16 +490,32 @@
 
     <!-- ── Received Datetime ─────────────────────────────────────── -->
     <ng-container matColumnDef="receivedAt">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Received</th>
-      <td mat-cell *matCellDef="let r">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+          [style.width.px]="columnWidths['receivedAt']"
+          [style.minWidth.px]="columnWidths['receivedAt']">
+        Received
+        <span class="col-resizer" (mousedown)="onResizeStart($event, 'receivedAt')"
+              (click)="$event.stopPropagation()" aria-hidden="true"></span>
+      </th>
+      <td mat-cell *matCellDef="let r"
+          [style.width.px]="columnWidths['receivedAt']"
+          [style.minWidth.px]="columnWidths['receivedAt']">
         {{ r.receivedAt | date:'MM/dd/yyyy hh:mm a' }}
       </td>
     </ng-container>
 
     <!-- ── Member ────────────────────────────────────────────────── -->
     <ng-container matColumnDef="member">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Member</th>
-      <td mat-cell *matCellDef="let r">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+          [style.width.px]="columnWidths['member']"
+          [style.minWidth.px]="columnWidths['member']">
+        Member
+        <span class="col-resizer" (mousedown)="onResizeStart($event, 'member')"
+              (click)="$event.stopPropagation()" aria-hidden="true"></span>
+      </th>
+      <td mat-cell *matCellDef="let r"
+          [style.width.px]="columnWidths['member']"
+          [style.minWidth.px]="columnWidths['member']">
         <ng-container *ngIf="r.memberId !== null && r.memberId !== undefined; else noMemberIdentified">
           <div class="name-cell">
             <div class="sub-name">
@@ -439,8 +537,16 @@
 
     <!-- ── Work Basket ───────────────────────────────────────────── -->
     <ng-container matColumnDef="workBasket">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Work Basket</th>
-      <td mat-cell *matCellDef="let r">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+          [style.width.px]="columnWidths['workBasket']"
+          [style.minWidth.px]="columnWidths['workBasket']">
+        Work Basket
+        <span class="col-resizer" (mousedown)="onResizeStart($event, 'workBasket')"
+              (click)="$event.stopPropagation()" aria-hidden="true"></span>
+      </th>
+      <td mat-cell *matCellDef="let r"
+          [style.width.px]="columnWidths['workBasket']"
+          [style.minWidth.px]="columnWidths['workBasket']">
 
         <!-- Normal view -->
         <ng-container *ngIf="editingWorkBasketFaxId !== r.faxId; else wbEdit">
@@ -479,8 +585,16 @@
 
     <!-- ── Priority ──────────────────────────────────────────────── -->
     <ng-container matColumnDef="priority">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Priority</th>
-      <td mat-cell *matCellDef="let r">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+          [style.width.px]="columnWidths['priority']"
+          [style.minWidth.px]="columnWidths['priority']">
+        Priority
+        <span class="col-resizer" (mousedown)="onResizeStart($event, 'priority')"
+              (click)="$event.stopPropagation()" aria-hidden="true"></span>
+      </th>
+      <td mat-cell *matCellDef="let r"
+          [style.width.px]="columnWidths['priority']"
+          [style.minWidth.px]="columnWidths['priority']">
         <span class="chip"
               [ngClass]="priorityClass(r.priority)"
               [matTooltip]="'Priority: ' + priorityLabel(r.priority)">
@@ -491,8 +605,16 @@
 
     <!-- ── Status ────────────────────────────────────────────────── -->
     <ng-container matColumnDef="status">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
-      <td mat-cell *matCellDef="let r">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+          [style.width.px]="columnWidths['status']"
+          [style.minWidth.px]="columnWidths['status']">
+        Status
+        <span class="col-resizer" (mousedown)="onResizeStart($event, 'status')"
+              (click)="$event.stopPropagation()" aria-hidden="true"></span>
+      </th>
+      <td mat-cell *matCellDef="let r"
+          [style.width.px]="columnWidths['status']"
+          [style.minWidth.px]="columnWidths['status']">
         <span class="chip" [ngClass]="getStatusChipClass(r.status)">{{ r.status }}</span>
         <span *ngIf="getLinkedAuth(r)"
               class="chip chip-linked-auth"
@@ -504,8 +626,12 @@
 
     <!-- ── Actions ───────────────────────────────────────────────── -->
     <ng-container matColumnDef="actions">
-      <th mat-header-cell *matHeaderCellDef class="is-center">Actions</th>
-      <td mat-cell *matCellDef="let r" class="is-center">
+      <th mat-header-cell *matHeaderCellDef class="is-center resizable-col"
+          [style.width.px]="columnWidths['actions']"
+          [style.minWidth.px]="columnWidths['actions']">Actions</th>
+      <td mat-cell *matCellDef="let r" class="is-center"
+          [style.width.px]="columnWidths['actions']"
+          [style.minWidth.px]="columnWidths['actions']">
 
         <!-- Action menu trigger -->
         <button mat-icon-button
@@ -578,9 +704,127 @@
       </td>
     </ng-container>
 
+    <!-- ── Pages (optional) ──────────────────────────────────────── -->
+    <ng-container matColumnDef="pageCount">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col is-center"
+          [style.width.px]="columnWidths['pageCount']"
+          [style.minWidth.px]="columnWidths['pageCount']">
+        Pages
+        <span class="col-resizer" (mousedown)="onResizeStart($event, 'pageCount')"
+              (click)="$event.stopPropagation()" aria-hidden="true"></span>
+      </th>
+      <td mat-cell *matCellDef="let r" class="is-center"
+          [style.width.px]="columnWidths['pageCount']"
+          [style.minWidth.px]="columnWidths['pageCount']">
+        {{ r.pageCount != null ? r.pageCount : '—' }}
+      </td>
+    </ng-container>
+
+    <!-- ── Process Status (optional) ─────────────────────────────── -->
+    <ng-container matColumnDef="processStatus">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+          [style.width.px]="columnWidths['processStatus']"
+          [style.minWidth.px]="columnWidths['processStatus']">
+        Process Status
+        <span class="col-resizer" (mousedown)="onResizeStart($event, 'processStatus')"
+              (click)="$event.stopPropagation()" aria-hidden="true"></span>
+      </th>
+      <td mat-cell *matCellDef="let r"
+          [style.width.px]="columnWidths['processStatus']"
+          [style.minWidth.px]="columnWidths['processStatus']">
+        {{ r.processStatus || '—' }}
+      </td>
+    </ng-container>
+
+    <!-- ── Linked Auth (optional) ────────────────────────────────── -->
+    <ng-container matColumnDef="linkedAuth">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+          [style.width.px]="columnWidths['linkedAuth']"
+          [style.minWidth.px]="columnWidths['linkedAuth']">
+        Linked Auth
+        <span class="col-resizer" (mousedown)="onResizeStart($event, 'linkedAuth')"
+              (click)="$event.stopPropagation()" aria-hidden="true"></span>
+      </th>
+      <td mat-cell *matCellDef="let r"
+          [style.width.px]="columnWidths['linkedAuth']"
+          [style.minWidth.px]="columnWidths['linkedAuth']">
+        <span *ngIf="getLinkedAuth(r)"
+              class="chip chip-linked-auth"
+              matTooltip="Linked authorization number">
+          {{ getLinkedAuth(r) }}
+        </span>
+        <span *ngIf="!getLinkedAuth(r)">—</span>
+      </td>
+    </ng-container>
+
+    <!-- ── File Size (optional) ──────────────────────────────────── -->
+    <ng-container matColumnDef="fileSize">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+          [style.width.px]="columnWidths['fileSize']"
+          [style.minWidth.px]="columnWidths['fileSize']">
+        File Size
+        <span class="col-resizer" (mousedown)="onResizeStart($event, 'fileSize')"
+              (click)="$event.stopPropagation()" aria-hidden="true"></span>
+      </th>
+      <td mat-cell *matCellDef="let r"
+          [style.width.px]="columnWidths['fileSize']"
+          [style.minWidth.px]="columnWidths['fileSize']">
+        {{ formatFileSize(r.sizeBytes) }}
+      </td>
+    </ng-container>
+
+    <!-- ── Uploaded At (optional) ────────────────────────────────── -->
+    <ng-container matColumnDef="uploadedAt">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+          [style.width.px]="columnWidths['uploadedAt']"
+          [style.minWidth.px]="columnWidths['uploadedAt']">
+        Uploaded At
+        <span class="col-resizer" (mousedown)="onResizeStart($event, 'uploadedAt')"
+              (click)="$event.stopPropagation()" aria-hidden="true"></span>
+      </th>
+      <td mat-cell *matCellDef="let r"
+          [style.width.px]="columnWidths['uploadedAt']"
+          [style.minWidth.px]="columnWidths['uploadedAt']">
+        {{ r.uploadedAt ? (r.uploadedAt | date:'MM/dd/yyyy hh:mm a') : '—' }}
+      </td>
+    </ng-container>
+
+    <!-- ── Created On (optional) ─────────────────────────────────── -->
+    <ng-container matColumnDef="createdOn">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+          [style.width.px]="columnWidths['createdOn']"
+          [style.minWidth.px]="columnWidths['createdOn']">
+        Created On
+        <span class="col-resizer" (mousedown)="onResizeStart($event, 'createdOn')"
+              (click)="$event.stopPropagation()" aria-hidden="true"></span>
+      </th>
+      <td mat-cell *matCellDef="let r"
+          [style.width.px]="columnWidths['createdOn']"
+          [style.minWidth.px]="columnWidths['createdOn']">
+        {{ r.createdOn ? (r.createdOn | date:'MM/dd/yyyy hh:mm a') : '—' }}
+      </td>
+    </ng-container>
+
+    <!-- ── Updated On (optional) ─────────────────────────────────── -->
+    <ng-container matColumnDef="updatedOn">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+          [style.width.px]="columnWidths['updatedOn']"
+          [style.minWidth.px]="columnWidths['updatedOn']">
+        Updated On
+        <span class="col-resizer" (mousedown)="onResizeStart($event, 'updatedOn')"
+              (click)="$event.stopPropagation()" aria-hidden="true"></span>
+      </th>
+      <td mat-cell *matCellDef="let r"
+          [style.width.px]="columnWidths['updatedOn']"
+          [style.minWidth.px]="columnWidths['updatedOn']">
+        {{ r.updatedOn ? (r.updatedOn | date:'MM/dd/yyyy hh:mm a') : '—' }}
+      </td>
+    </ng-container>
+
     <tr mat-header-row *matHeaderRowDef="columns"></tr>
     <tr mat-row class="data-row" *matRowDef="let row; columns: columns;"></tr>
   </table>
+  </div>
 
   <mat-paginator
     [pageSizeOptions]="[5, 10, 25, 50]"

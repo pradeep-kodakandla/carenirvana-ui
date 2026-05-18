@@ -1,6 +1,6 @@
-import { Component, EventEmitter, Output, ViewChild } from '@angular/core';
+import { Component, EventEmitter, Output, ViewChild, ChangeDetectorRef } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
-import { MatTableDataSource } from '@angular/material/table';
+import { MatTableDataSource, MatTable } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { DashboardServiceService, UpdateActivityLinesRequest } from 'src/app/service/dashboard.service.service';
@@ -13,6 +13,18 @@ import { CrudService } from 'src/app/service/crud.service';
 
 type Row = any;
 type UiSmartOption = { value: string; label: string };
+
+/**
+ * One configurable table column.
+ * `key` MUST match both the matColumnDef name in the template and the
+ * `sortingDataAccessor` switch, so MatTableDataSource sorting works.
+ */
+interface ColumnDef {
+  key: string;
+  label: string;     // human-readable header, also shown in the column chooser
+  locked?: boolean;  // locked columns are always visible and cannot be toggled
+  visible: boolean;  // current on/off state (restored from storage)
+}
 
 @Component({
   selector: 'app-mdreviewdashboard',
@@ -67,10 +79,62 @@ export class MdreviewdashboardComponent {
   showUnsavedDialog = false;
 
   // ── Table / filter state ─────────────────────────────────────────
-  displayedColumns: string[] = [
-    'module', 'member', 'authNumber', 'createdOn',
-    'referredTo', 'activityType', 'followUpDate', 'dueDate', 'status', 'review'
+  // ============================================================
+  // Column configuration (settings gear / column chooser)
+  // ============================================================
+  // Master catalog of every column the table CAN show, in display order.
+  //   - locked  -> always visible, user cannot hide it
+  //   - visible -> current on/off state (also restored from storage)
+  // `displayedColumns` is DERIVED from this list, so column order stays
+  // consistent no matter what order the user toggles things on/off.
+  allColumns: ColumnDef[] = [
+    { key: 'module',       label: 'Module',                       visible: true  },
+    { key: 'member',       label: 'Member',         locked: true, visible: true  },
+    { key: 'authNumber',   label: 'Auth #',                       visible: true  },
+    { key: 'createdOn',    label: 'Created',                      visible: true  },
+    { key: 'referredTo',   label: 'Assigned To',                  visible: true  },
+    { key: 'activityType', label: 'Activity Type',                visible: true  },
+    { key: 'followUpDate', label: 'Follow Up',                    visible: true  },
+    { key: 'dueDate',      label: 'Due Date',                     visible: true  },
+    { key: 'status',       label: 'Status',                       visible: true  },
+    { key: 'comments',     label: 'Comments',                     visible: false },
+    { key: 'review',       label: 'Action',         locked: true, visible: true  },
   ];
+
+  // Derived list bound to <table mat-table>. Rebuilt on every change.
+  displayedColumns: string[] = [];
+
+  // Snapshot of out-of-the-box visibility, used by "Reset to default".
+  private columnDefaults: Record<string, boolean> = {};
+
+  // Column chooser popover open/closed.
+  showColumnSettings = false;
+
+  // localStorage key for persisting the user's column layout.
+  private readonly COL_PREF_KEY = 'mdreviewdashboard.columnPrefs.v1';
+
+  // ============================================================
+  // Column resize (drag-from-header)
+  // ============================================================
+  // Default widths in px. Adjust to taste; user drags override these at runtime.
+  columnWidths: Record<string, number> = {
+    module:       100,
+    member:       200,
+    authNumber:   130,
+    createdOn:    120,
+    referredTo:   170,
+    activityType: 200,
+    followUpDate: 120,
+    dueDate:      190,
+    status:       120,
+    review:       120,
+    // --- optional columns (added via the column chooser) ---
+    comments:     220,
+  };
+  private readonly minColumnWidth = 60;
+  private resizing: { col: string; startX: number; startWidth: number } | null = null;
+  private resizeMoveHandler?: (e: MouseEvent) => void;
+  private resizeUpHandler?: (e: MouseEvent) => void;
 
   dataSource    = new MatTableDataSource<any>([]);
   rawData:      any[] = [];
@@ -97,6 +161,7 @@ export class MdreviewdashboardComponent {
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort)      sort!:      MatSort;
+  @ViewChild(MatTable)     table!:     MatTable<any>;
   @Output() addClicked = new EventEmitter<string>();
 
   constructor(
@@ -107,6 +172,7 @@ export class MdreviewdashboardComponent {
     private authService:    AuthService,
     private memberService:  MemberService,
     private route:          ActivatedRoute,
+    private cdr:            ChangeDetectorRef,
     private crudService:    CrudService
   ) {}
 
@@ -116,6 +182,10 @@ export class MdreviewdashboardComponent {
 
   ngOnInit(): void {
     this.filtersForm = this.fb.group({});
+
+    // Build the column set: snapshot defaults, restore any saved layout.
+    this.initColumns();
+
     this.loadData();
     this.loadDecisionDropdowns();
   }
@@ -123,6 +193,37 @@ export class MdreviewdashboardComponent {
   ngAfterViewInit(): void {
     this.dataSource.paginator = this.paginator;
     this.dataSource.sort      = this.sort;
+
+    // Map column names -> the real value to sort by. Without this,
+    // MatTableDataSource looks up row[columnName] which doesn't exist for
+    // 'member', 'referredTo', 'followUpDate' (data fields differ).
+    this.dataSource.sortingDataAccessor = (item: any, property: string): string | number => {
+      switch (property) {
+        case 'module':
+          return (item.module ?? item.Module ?? '').toString().toLowerCase();
+        case 'member':
+          return ((item.lastName ?? item.LastName ?? '') + ' ' +
+                  (item.firstName ?? item.FirstName ?? '')).trim().toLowerCase();
+        case 'authNumber':
+          return (item.authNumber ?? item.AuthNumber ?? '').toString().toLowerCase();
+        case 'createdOn':
+          return item.createdOn ? new Date(item.createdOn).getTime() : 0;
+        case 'referredTo':
+          return (item.userName ?? item.UserName ?? '').toString().toLowerCase();
+        case 'activityType':
+          return (item.activityType ?? item.ActivityType ?? '').toString().toLowerCase();
+        case 'followUpDate':
+          return item.followUpDateTime ? new Date(item.followUpDateTime).getTime() : 0;
+        case 'dueDate':
+          return item.dueDate ? new Date(item.dueDate).getTime() : 0;
+        case 'status':
+          return (item.status ?? item.Status ?? '').toString().toLowerCase();
+        case 'comments':
+          return (item.comments ?? item.Comments ?? '').toString().toLowerCase();
+        default:
+          return (item as any)[property];
+      }
+    };
 
     this.dataSource.filterPredicate = (row: any, filter: string) => {
       const q = (filter || '').trim().toLowerCase();
@@ -334,7 +435,6 @@ export class MdreviewdashboardComponent {
 
         this.selectedAuth.lines       = normalized;
         this.selectedAuth.serviceLines = normalized;
-        console.log(`Loaded ${normalized.length} service lines for activity ${activityId}`, normalized);
         this.firstServiceLineComment = normalized.find(l => !!l.comment)?.comment ?? null;
         this.computeOverallInitialRecommendation(normalized);
         this.serviceLinesLoading = false;
@@ -1019,5 +1119,129 @@ export class MdreviewdashboardComponent {
 
   fullName(row: any): string {
     return `${row?.FirstName ?? row?.firstName ?? ''} ${row?.LastName ?? row?.lastName ?? ''}`.trim();
+  }
+
+  // ================================================================
+  // COLUMN CHOOSER (settings gear)
+  // ================================================================
+
+  /** Called once on init: snapshot defaults, restore saved prefs, build list. */
+  private initColumns(): void {
+    this.allColumns.forEach(c => (this.columnDefaults[c.key] = c.visible));
+    this.loadColumnPrefs();
+    this.rebuildDisplayedColumns();
+  }
+
+  /** Recompute displayedColumns from the catalog (preserves master order). */
+  private rebuildDisplayedColumns(): void {
+    this.displayedColumns = this.allColumns
+      .filter(c => c.visible)
+      .map(c => c.key);
+  }
+
+  /** Open / close the column settings popover. */
+  toggleColumnSettings(): void {
+    this.showColumnSettings = !this.showColumnSettings;
+  }
+
+  closeColumnSettings(): void {
+    this.showColumnSettings = false;
+  }
+
+  /** Toggle a single column on/off (no-op for locked columns). */
+  toggleColumn(col: ColumnDef): void {
+    if (col.locked) return;
+    col.visible = !col.visible;
+    this.rebuildDisplayedColumns();
+    this.persistColumnPrefs();
+    // Let MatTable re-render the header + cells with the new column set.
+    setTimeout(() => this.table?.renderRows(), 0);
+  }
+
+  /** Count of optional columns currently hidden (shown as a badge on the gear). */
+  get hiddenColumnCount(): number {
+    return this.allColumns.filter(c => !c.locked && !c.visible).length;
+  }
+
+  /** Turn every column on. */
+  showAllColumns(): void {
+    this.allColumns.forEach(c => (c.visible = true));
+    this.rebuildDisplayedColumns();
+    this.persistColumnPrefs();
+    setTimeout(() => this.table?.renderRows(), 0);
+  }
+
+  /** Restore the original out-of-the-box column layout. */
+  resetColumns(): void {
+    this.allColumns.forEach(c => (c.visible = this.columnDefaults[c.key]));
+    this.rebuildDisplayedColumns();
+    this.persistColumnPrefs();
+    setTimeout(() => this.table?.renderRows(), 0);
+  }
+
+  /** Persist the current layout so it survives page reloads. */
+  private persistColumnPrefs(): void {
+    try {
+      const data = this.allColumns
+        .filter(c => !c.locked)
+        .map(c => ({ key: c.key, visible: c.visible }));
+      localStorage.setItem(this.COL_PREF_KEY, JSON.stringify(data));
+    } catch {
+      /* storage unavailable / quota exceeded — prefs just won't persist */
+    }
+  }
+
+  /** Restore a previously saved layout, if any. */
+  private loadColumnPrefs(): void {
+    try {
+      const raw = localStorage.getItem(this.COL_PREF_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as Array<{ key: string; visible: boolean }>;
+      const savedMap = new Map(saved.map(s => [s.key, !!s.visible]));
+      this.allColumns.forEach(c => {
+        if (!c.locked && savedMap.has(c.key)) {
+          c.visible = savedMap.get(c.key)!;
+        }
+      });
+    } catch {
+      /* corrupt prefs — ignore and fall back to defaults */
+    }
+  }
+
+  // ================================================================
+  // COLUMN RESIZE HANDLERS
+  // ================================================================
+  // Called from each header cell's drag-handle (mousedown).
+  onResizeStart(event: MouseEvent, column: string): void {
+    event.preventDefault();
+    event.stopPropagation(); // don't trigger sort
+    this.resizing = {
+      col: column,
+      startX: event.clientX,
+      startWidth: this.columnWidths[column] ?? 120
+    };
+    document.body.classList.add('mdr-resizing');
+
+    this.resizeMoveHandler = (e: MouseEvent) => this.onResizeMove(e);
+    this.resizeUpHandler = (e: MouseEvent) => this.onResizeEnd(e);
+    document.addEventListener('mousemove', this.resizeMoveHandler);
+    document.addEventListener('mouseup', this.resizeUpHandler);
+  }
+
+  private onResizeMove(event: MouseEvent): void {
+    if (!this.resizing) return;
+    const delta = event.clientX - this.resizing.startX;
+    const next = Math.max(this.minColumnWidth, this.resizing.startWidth + delta);
+    this.columnWidths[this.resizing.col] = next;
+  }
+
+  private onResizeEnd(_event: MouseEvent): void {
+    this.resizing = null;
+    document.body.classList.remove('mdr-resizing');
+    if (this.resizeMoveHandler) document.removeEventListener('mousemove', this.resizeMoveHandler);
+    if (this.resizeUpHandler) document.removeEventListener('mouseup', this.resizeUpHandler);
+    this.resizeMoveHandler = undefined;
+    this.resizeUpHandler = undefined;
+    this.cdr.detectChanges();
   }
 }

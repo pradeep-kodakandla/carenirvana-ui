@@ -67,35 +67,105 @@
     </button>
   </header>
 
+  <!-- ════════ Search bar — always visible. ════════
+       Pick a module (Member / Auth / Case), enter a value, and search. A
+       successful lookup mounts the matching notes component, overriding the
+       active tab. -->
+  <div class="notes-search">
+    <select class="notes-search__module"
+            [value]="searchModule"
+            (change)="searchModule = $any($event.target).value"
+            [disabled]="loading"
+            aria-label="Search type">
+      <option value="CM">Member</option>
+      <option value="UM">Auth</option>
+      <option value="AG">Case</option>
+    </select>
+
+    <input class="notes-search__input"
+           type="text"
+           [placeholder]="searchPlaceholder"
+           [value]="searchQuery"
+           (input)="searchQuery = $any($event.target).value"
+           (keyup.enter)="runSearch()"
+           [disabled]="loading"
+           aria-label="Search value" />
+
+    <button type="button"
+            class="notes-search__btn"
+            (click)="runSearch()"
+            [disabled]="loading || !searchQuery.trim()"
+            aria-label="Search"
+            title="Search">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+           aria-hidden="true">
+        <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" />
+        <path d="m20 20-3.6-3.6" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" />
+      </svg>
+    </button>
+  </div>
+
   <!-- Body -->
   <div class="notes-panel__body">
-    <ng-container *ngIf="hasMemberContext; else noMember">
-      <!--
-        The notes component is created dynamically here (see mountNotes() in
-        the .ts). Member Notes is mounted today; the Auth/Case note components
-        can be swapped in later by switching on `contextType` inside
-        mountNotes() — no template change needed.
-      -->
-      <ng-container #notesHost></ng-container>
-    </ng-container>
 
-    <!-- Empty state: no member tab open -->
-    <ng-template #noMember>
-      <div class="notes-empty">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
-             aria-hidden="true">
-          <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"
-                stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M16 3v6M13 6h6" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" />
-        </svg>
-        <p class="notes-empty__title">No member selected</p>
-        <p class="notes-empty__text">
-          Open a member, authorization, or case tab to add notes.
-        </p>
-      </div>
-    </ng-template>
+    <!-- Resolving member / auth / case context via searchNavigation -->
+    <div class="notes-empty" *ngIf="loading">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+           aria-hidden="true">
+        <circle cx="12" cy="12" r="9" stroke="#e6e8ec" stroke-width="3" fill="none" />
+        <path d="M12 3a9 9 0 0 1 9 9" stroke="#1976d2" stroke-width="3"
+              fill="none" stroke-linecap="round">
+          <animateTransform attributeName="transform" type="rotate"
+                            from="0 12 12" to="360 12 12"
+                            dur="0.8s" repeatCount="indefinite" />
+        </path>
+      </svg>
+      <p class="notes-empty__title">Loading notes…</p>
+      <p class="notes-empty__text">Resolving the requested record.</p>
+    </div>
+
+    <!-- Context could not be resolved -->
+    <div class="notes-empty" *ngIf="!loading && loadError">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+           aria-hidden="true">
+        <path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
+              stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      <p class="notes-empty__title">Couldn&rsquo;t load notes</p>
+      <p class="notes-empty__text">{{ loadError }}</p>
+    </div>
+
+    <ng-container *ngIf="!loading && !loadError">
+      <ng-container *ngIf="hasNotesContext; else noMember">
+        <!--
+          The notes component is created dynamically here (see mountNotes() in
+          the .ts). Member / Auth / Case notes are each mounted based on the
+          active tab's context or a search — no template change needed.
+        -->
+        <ng-container #notesHost></ng-container>
+      </ng-container>
+
+      <!-- Empty state: no member / auth / case context yet -->
+      <ng-template #noMember>
+        <div class="notes-empty">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+               aria-hidden="true">
+            <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"
+                  stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M16 3v6M13 6h6" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" />
+          </svg>
+          <p class="notes-empty__title">Nothing to show yet</p>
+          <p class="notes-empty__text">
+            Use the search above, or open a member, authorization, or case tab
+            to add notes.
+          </p>
+        </div>
+      </ng-template>
+    </ng-container>
   </div>
 
   <!-- ════════ Unsaved-changes confirmation (covers only this panel) ════════ -->

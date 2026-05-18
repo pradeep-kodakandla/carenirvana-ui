@@ -4,7 +4,7 @@ import {
   EventEmitter, Output, ChangeDetectorRef
 } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
-import { MatTableDataSource } from '@angular/material/table';
+import { MatTableDataSource, MatTable } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { Observable, Subject } from 'rxjs';
@@ -85,6 +85,18 @@ export interface SimpleWorkGroup {
 
 type CalendarViewRange = 'day' | 'workweek' | 'week' | 'month';
 
+/**
+ * One configurable table column.
+ * `key` MUST match both the matColumnDef name in the template and the
+ * `sortingDataAccessor` switch, so MatTableDataSource sorting works.
+ */
+interface ColumnDef {
+  key: string;
+  label: string;     // human-readable header, also shown in the column chooser
+  locked?: boolean;  // locked columns are always visible and cannot be toggled
+  visible: boolean;  // current on/off state (restored from storage)
+}
+
 @Component({
   selector: 'app-myactivities',
   templateUrl: './myactivities.component.html',
@@ -124,18 +136,62 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit, OnDestroy {
   // ===== Activities / table =====
   activities: ActivityItem[] = [];
 
-  displayedColumns: string[] = [
-    'module',
-    'member',
-    'authnumber',
-    'createdOn',
-    'referredTo',
-    'activityType',
-    'followUpDate',
-    'dueDate',
-    'status',
-    'thumb'
+  // ============================================================
+  // Column configuration (settings gear / column chooser)
+  // ============================================================
+  // Master catalog of every column the table CAN show, in display order.
+  //   - locked  -> always visible, user cannot hide it
+  //   - visible -> current on/off state (also restored from storage)
+  // `displayedColumns` is DERIVED from this list, so column order stays
+  // consistent no matter what order the user toggles things on/off.
+  allColumns: ColumnDef[] = [
+    { key: 'module',       label: 'Module',                       visible: true  },
+    { key: 'member',       label: 'Member',         locked: true, visible: true  },
+    { key: 'authnumber',   label: 'Auth #',                       visible: true  },
+    { key: 'createdOn',    label: 'Created On',                   visible: true  },
+    { key: 'referredTo',   label: 'Refer To',                     visible: true  },
+    { key: 'activityType', label: 'Activity Type',                visible: true  },
+    { key: 'followUpDate', label: 'Follow Up Date',               visible: true  },
+    { key: 'dueDate',      label: 'Due Date',                     visible: true  },
+    { key: 'status',       label: 'Status',                       visible: true  },
+    { key: 'comments',     label: 'Comments',                     visible: false },
+    { key: 'thumb',        label: 'Actions',        locked: true, visible: true  },
   ];
+
+  // Derived list bound to <table mat-table>. Rebuilt on every change.
+  displayedColumns: string[] = [];
+
+  // Snapshot of out-of-the-box visibility, used by "Reset to default".
+  private columnDefaults: Record<string, boolean> = {};
+
+  // Column chooser popover open/closed.
+  showColumnSettings = false;
+
+  // localStorage key for persisting the user's column layout.
+  private readonly COL_PREF_KEY = 'myactivities.columnPrefs.v1';
+
+  // ============================================================
+  // Column resize (drag-from-header)
+  // ============================================================
+  // Default widths in px. Adjust to taste; user drags override these at runtime.
+  columnWidths: Record<string, number> = {
+    module:       100,
+    member:       200,
+    authnumber:   130,
+    createdOn:    140,
+    referredTo:   180,
+    activityType: 200,
+    followUpDate: 150,
+    dueDate:      170,
+    status:       120,
+    thumb:        140,
+    // --- optional columns (added via the column chooser) ---
+    comments:     220,
+  };
+  private readonly minColumnWidth = 60;
+  private resizing: { col: string; startX: number; startWidth: number } | null = null;
+  private resizeMoveHandler?: (e: MouseEvent) => void;
+  private resizeUpHandler?: (e: MouseEvent) => void;
 
   dataSource = new MatTableDataSource<ActivityItem>([]);
   rawData: ActivityItem[] = [];
@@ -209,6 +265,19 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit, OnDestroy {
     return this._sort!;
   }
 
+  // The <table mat-table> also lives inside *ngIf="viewMode === 'table'",
+  // so its ViewChild reference is captured via a setter that re-fires
+  // when the table section is created. Used to call renderRows() after
+  // the column set changes.
+  private _table?: MatTable<any>;
+  @ViewChild(MatTable)
+  set matTable(t: MatTable<any>) {
+    this._table = t;
+  }
+  get matTable(): MatTable<any> | undefined {
+    return this._table;
+  }
+
   constructor(
     private fb: FormBuilder,
     private cdr: ChangeDetectorRef,
@@ -226,6 +295,10 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     this.filtersForm = this.fb.group({}); // empty grid per request
+
+    // Build the column set: snapshot defaults, restore any saved layout.
+    this.initColumns();
+
     this.buildMonthGrid();
     this.buildActiveRangeDays();
     this.loadData();
@@ -308,6 +381,36 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit, OnDestroy {
       ];
 
       return fields.some(v => (v ?? '').toString().toLowerCase().includes(q));
+    };
+
+    // Map column names -> the real value to sort by. Without this,
+    // MatTableDataSource looks up row[columnName] which doesn't exist for
+    // 'member', 'authnumber', 'referredTo', 'followUpDate' (field names differ).
+    this.dataSource.sortingDataAccessor = (item: any, property: string): string | number => {
+      switch (property) {
+        case 'module':
+          return (item.module ?? '').toString().toLowerCase();
+        case 'member':
+          return ((item.lastName ?? '') + ' ' + (item.firstName ?? '')).trim().toLowerCase();
+        case 'authnumber':
+          return (item.authNumber ?? '').toString().toLowerCase();
+        case 'createdOn':
+          return item.createdOn ? new Date(item.createdOn).getTime() : 0;
+        case 'referredTo':
+          return (item.userName ?? '').toString().toLowerCase();
+        case 'activityType':
+          return (item.activityType ?? '').toString().toLowerCase();
+        case 'followUpDate':
+          return item.followUpDateTime ? new Date(item.followUpDateTime).getTime() : 0;
+        case 'dueDate':
+          return item.dueDate ? new Date(item.dueDate).getTime() : 0;
+        case 'status':
+          return (item.status ?? '').toString().toLowerCase();
+        case 'comments':
+          return (item.comments ?? '').toString().toLowerCase();
+        default:
+          return (item as any)[property];
+      }
     };
 
     setTimeout(() => this.scrollToWorkingHours());
@@ -1030,6 +1133,130 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // rowEl.offsetTop is relative to .time-grid container
     containerEl.scrollTop = rowEl.offsetTop;
+  }
+
+  // ================================================================
+  // COLUMN CHOOSER (settings gear)
+  // ================================================================
+
+  /** Called once on init: snapshot defaults, restore saved prefs, build list. */
+  private initColumns(): void {
+    this.allColumns.forEach(c => (this.columnDefaults[c.key] = c.visible));
+    this.loadColumnPrefs();
+    this.rebuildDisplayedColumns();
+  }
+
+  /** Recompute displayedColumns from the catalog (preserves master order). */
+  private rebuildDisplayedColumns(): void {
+    this.displayedColumns = this.allColumns
+      .filter(c => c.visible)
+      .map(c => c.key);
+  }
+
+  /** Open / close the column settings popover. */
+  toggleColumnSettings(): void {
+    this.showColumnSettings = !this.showColumnSettings;
+  }
+
+  closeColumnSettings(): void {
+    this.showColumnSettings = false;
+  }
+
+  /** Toggle a single column on/off (no-op for locked columns). */
+  toggleColumn(col: ColumnDef): void {
+    if (col.locked) return;
+    col.visible = !col.visible;
+    this.rebuildDisplayedColumns();
+    this.persistColumnPrefs();
+    // Let MatTable re-render the header + cells with the new column set.
+    setTimeout(() => this._table?.renderRows(), 0);
+  }
+
+  /** Count of optional columns currently hidden (shown as a badge on the gear). */
+  get hiddenColumnCount(): number {
+    return this.allColumns.filter(c => !c.locked && !c.visible).length;
+  }
+
+  /** Turn every column on. */
+  showAllColumns(): void {
+    this.allColumns.forEach(c => (c.visible = true));
+    this.rebuildDisplayedColumns();
+    this.persistColumnPrefs();
+    setTimeout(() => this._table?.renderRows(), 0);
+  }
+
+  /** Restore the original out-of-the-box column layout. */
+  resetColumns(): void {
+    this.allColumns.forEach(c => (c.visible = this.columnDefaults[c.key]));
+    this.rebuildDisplayedColumns();
+    this.persistColumnPrefs();
+    setTimeout(() => this._table?.renderRows(), 0);
+  }
+
+  /** Persist the current layout so it survives page reloads. */
+  private persistColumnPrefs(): void {
+    try {
+      const data = this.allColumns
+        .filter(c => !c.locked)
+        .map(c => ({ key: c.key, visible: c.visible }));
+      localStorage.setItem(this.COL_PREF_KEY, JSON.stringify(data));
+    } catch {
+      /* storage unavailable / quota exceeded — prefs just won't persist */
+    }
+  }
+
+  /** Restore a previously saved layout, if any. */
+  private loadColumnPrefs(): void {
+    try {
+      const raw = localStorage.getItem(this.COL_PREF_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as Array<{ key: string; visible: boolean }>;
+      const savedMap = new Map(saved.map(s => [s.key, !!s.visible]));
+      this.allColumns.forEach(c => {
+        if (!c.locked && savedMap.has(c.key)) {
+          c.visible = savedMap.get(c.key)!;
+        }
+      });
+    } catch {
+      /* corrupt prefs — ignore and fall back to defaults */
+    }
+  }
+
+  // ================================================================
+  // COLUMN RESIZE HANDLERS
+  // ================================================================
+  // Called from each header cell's drag-handle (mousedown).
+  onResizeStart(event: MouseEvent, column: string): void {
+    event.preventDefault();
+    event.stopPropagation(); // don't trigger sort
+    this.resizing = {
+      col: column,
+      startX: event.clientX,
+      startWidth: this.columnWidths[column] ?? 120
+    };
+    document.body.classList.add('mact-resizing');
+
+    this.resizeMoveHandler = (e: MouseEvent) => this.onResizeMove(e);
+    this.resizeUpHandler = (e: MouseEvent) => this.onResizeEnd(e);
+    document.addEventListener('mousemove', this.resizeMoveHandler);
+    document.addEventListener('mouseup', this.resizeUpHandler);
+  }
+
+  private onResizeMove(event: MouseEvent): void {
+    if (!this.resizing) return;
+    const delta = event.clientX - this.resizing.startX;
+    const next = Math.max(this.minColumnWidth, this.resizing.startWidth + delta);
+    this.columnWidths[this.resizing.col] = next;
+  }
+
+  private onResizeEnd(_event: MouseEvent): void {
+    this.resizing = null;
+    document.body.classList.remove('mact-resizing');
+    if (this.resizeMoveHandler) document.removeEventListener('mousemove', this.resizeMoveHandler);
+    if (this.resizeUpHandler) document.removeEventListener('mouseup', this.resizeUpHandler);
+    this.resizeMoveHandler = undefined;
+    this.resizeUpHandler = undefined;
+    this.cdr.detectChanges();
   }
 
 }

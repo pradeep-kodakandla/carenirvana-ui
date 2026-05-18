@@ -99,6 +99,77 @@
         </div>
       </div>
     </div>
+
+    <!-- Column settings: sits beside the chips so it doesn't take its own row -->
+    <div class="tt-actions">
+      <button type="button"
+              class="col-settings-btn"
+              (click)="toggleColumnSettings()"
+              [class.active]="showColumnSettings"
+              matTooltip="Configure columns"
+              aria-label="Configure columns">
+        <mat-icon>settings</mat-icon>
+        <span class="col-settings-badge" *ngIf="hiddenColumnCount > 0">
+          {{ hiddenColumnCount }}
+        </span>
+      </button>
+
+      <!-- click-outside layer -->
+      <div class="col-settings-backdrop"
+           *ngIf="showColumnSettings"
+           (click)="closeColumnSettings()"></div>
+
+      <!-- Column chooser popover -->
+      <div class="col-settings-panel" *ngIf="showColumnSettings">
+        <div class="csp-header">
+          <span class="csp-title">
+            <mat-icon>view_column</mat-icon>
+            <span>Configure Columns</span>
+          </span>
+          <button type="button" class="csp-close"
+                  (click)="closeColumnSettings()" aria-label="Close">×</button>
+        </div>
+
+        <div class="csp-sub">
+          Select the columns to display in the table.
+          <ng-container *ngIf="hiddenColumnCount > 0">
+            <strong>{{ hiddenColumnCount }}</strong> hidden.
+          </ng-container>
+        </div>
+
+        <!-- Each column rendered as a selectable card -->
+        <div class="csp-grid">
+          <label class="col-card"
+                 *ngFor="let col of allColumns"
+                 [class.is-on]="col.visible"
+                 [class.is-locked]="col.locked">
+            <input type="checkbox"
+                   [checked]="col.visible"
+                   [disabled]="col.locked"
+                   (change)="toggleColumn(col)" />
+            <span class="col-card-body">
+              <span class="col-card-label">{{ col.label }}</span>
+              <span class="col-card-state">
+                {{ col.locked ? 'Always shown' : (col.visible ? 'Shown' : 'Hidden') }}
+              </span>
+            </span>
+            <mat-icon class="col-card-lock" *ngIf="col.locked">lock</mat-icon>
+          </label>
+        </div>
+
+        <div class="csp-footer">
+          <button type="button" class="csp-btn ghost" (click)="resetColumns()">
+            Reset to default
+          </button>
+          <button type="button" class="csp-btn ghost" (click)="showAllColumns()">
+            Show all
+          </button>
+          <button type="button" class="csp-btn primary" (click)="closeColumnSettings()">
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Inline Filters Drawer -->
@@ -167,6 +238,8 @@
 
   <div class="workspace" [class.has-notes]="showNotesPanel">
     <div class="left-pane">
+      <!-- table-wrapper scrolls horizontally when total column width
+           (after a column is widened) exceeds the visible area. -->
       <div class="table-wrapper">
         <table mat-table [dataSource]="dataSource" matSort
                multiTemplateDataRows
@@ -174,8 +247,16 @@
 
           <!-- Member -->
           <ng-container matColumnDef="memberId">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Member</th>
-            <td mat-cell *matCellDef="let row">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+                [style.width.px]="columnWidths['memberId']"
+                [style.minWidth.px]="columnWidths['memberId']">
+              Member
+              <span class="col-resizer" (mousedown)="onResizeStart($event, 'memberId')"
+                    (click)="$event.stopPropagation()" aria-hidden="true"></span>
+            </th>
+            <td mat-cell *matCellDef="let row"
+                [style.width.px]="columnWidths['memberId']"
+                [style.minWidth.px]="columnWidths['memberId']">
               <div class="name-cell">
                 <div class="sub-name">
                   <a href="#"
@@ -190,8 +271,16 @@
 
           <!-- Case Number -->
           <ng-container matColumnDef="caseNumber">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Case #</th>
-            <td mat-cell *matCellDef="let row">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+                [style.width.px]="columnWidths['caseNumber']"
+                [style.minWidth.px]="columnWidths['caseNumber']">
+              Case #
+              <span class="col-resizer" (mousedown)="onResizeStart($event, 'caseNumber')"
+                    (click)="$event.stopPropagation()" aria-hidden="true"></span>
+            </th>
+            <td mat-cell *matCellDef="let row"
+                [style.width.px]="columnWidths['caseNumber']"
+                [style.minWidth.px]="columnWidths['caseNumber']">
               <div class="name-cell">
                 <div class="sub-name">
                   <a href="#"
@@ -201,34 +290,85 @@
                 </div>
                 <div class="sub-id">Level: {{ row.caseLevelId || '-' }}</div>
               </div>
-
-
             </td>
           </ng-container>
 
           <!-- Case Type -->
           <ng-container matColumnDef="caseType">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Case Type</th>
-            <td mat-cell *matCellDef="let row">{{ row.caseTypeText || row.caseType || '-' }}</td>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+                [style.width.px]="columnWidths['caseType']"
+                [style.minWidth.px]="columnWidths['caseType']">
+              Case Type
+              <span class="col-resizer" (mousedown)="onResizeStart($event, 'caseType')"
+                    (click)="$event.stopPropagation()" aria-hidden="true"></span>
+            </th>
+            <td mat-cell *matCellDef="let row"
+                [style.width.px]="columnWidths['caseType']"
+                [style.minWidth.px]="columnWidths['caseType']">
+              {{ row.caseTypeText || row.caseType || '-' }}
+            </td>
           </ng-container>
+
           <!-- Case Category -->
           <ng-container matColumnDef="caseCategory">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Case Category</th>
-            <td mat-cell *matCellDef="let row">{{ row.caseCategoryText || row.caseCategory || '-' }}</td>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+                [style.width.px]="columnWidths['caseCategory']"
+                [style.minWidth.px]="columnWidths['caseCategory']">
+              Case Category
+              <span class="col-resizer" (mousedown)="onResizeStart($event, 'caseCategory')"
+                    (click)="$event.stopPropagation()" aria-hidden="true"></span>
+            </th>
+            <td mat-cell *matCellDef="let row"
+                [style.width.px]="columnWidths['caseCategory']"
+                [style.minWidth.px]="columnWidths['caseCategory']">
+              {{ row.caseCategoryText || row.caseCategory || '-' }}
+            </td>
+          </ng-container>
+
+          <!-- Case Template (optional) -->
+          <ng-container matColumnDef="caseTemplate">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+                [style.width.px]="columnWidths['caseTemplate']"
+                [style.minWidth.px]="columnWidths['caseTemplate']">
+              Case Template
+              <span class="col-resizer" (mousedown)="onResizeStart($event, 'caseTemplate')"
+                    (click)="$event.stopPropagation()" aria-hidden="true"></span>
+            </th>
+            <td mat-cell *matCellDef="let row"
+                [style.width.px]="columnWidths['caseTemplate']"
+                [style.minWidth.px]="columnWidths['caseTemplate']">
+              {{ row.caseTemplateName || row.caseTemplateId || '-' }}
+            </td>
           </ng-container>
 
           <!-- Received Date -->
           <ng-container matColumnDef="receivedDateTime">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Received</th>
-            <td mat-cell *matCellDef="let row">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+                [style.width.px]="columnWidths['receivedDateTime']"
+                [style.minWidth.px]="columnWidths['receivedDateTime']">
+              Received
+              <span class="col-resizer" (mousedown)="onResizeStart($event, 'receivedDateTime')"
+                    (click)="$event.stopPropagation()" aria-hidden="true"></span>
+            </th>
+            <td mat-cell *matCellDef="let row"
+                [style.width.px]="columnWidths['receivedDateTime']"
+                [style.minWidth.px]="columnWidths['receivedDateTime']">
               {{ row.receivedDateTime ? (row.receivedDateTime | date) : '-' }}
             </td>
           </ng-container>
 
           <!-- Priority -->
           <ng-container matColumnDef="priority">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Priority</th>
-            <td mat-cell *matCellDef="let row">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+                [style.width.px]="columnWidths['priority']"
+                [style.minWidth.px]="columnWidths['priority']">
+              Priority
+              <span class="col-resizer" (mousedown)="onResizeStart($event, 'priority')"
+                    (click)="$event.stopPropagation()" aria-hidden="true"></span>
+            </th>
+            <td mat-cell *matCellDef="let row"
+                [style.width.px]="columnWidths['priority']"
+                [style.minWidth.px]="columnWidths['priority']">
               <span class="priority-cell" [class.expedited-text]="isExpedited(row)">
                 <mat-icon *ngIf="isExpedited(row)" class="expedited-icon" matTooltip="Expedited" aria-hidden="true">error</mat-icon>
                 <span class="priority-text">{{ row.casePriorityText || row.casePriority || '-' }}</span>
@@ -238,27 +378,94 @@
 
           <!-- Status -->
           <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
-            <td mat-cell *matCellDef="let row">{{ row.caseStatusText || row.caseStatusId || '-' }}</td>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+                [style.width.px]="columnWidths['status']"
+                [style.minWidth.px]="columnWidths['status']">
+              Status
+              <span class="col-resizer" (mousedown)="onResizeStart($event, 'status')"
+                    (click)="$event.stopPropagation()" aria-hidden="true"></span>
+            </th>
+            <td mat-cell *matCellDef="let row"
+                [style.width.px]="columnWidths['status']"
+                [style.minWidth.px]="columnWidths['status']">
+              {{ row.caseStatusText || row.caseStatusId || '-' }}
+            </td>
           </ng-container>
 
-          <!-- Created By -->
-          <!--<ng-container matColumnDef="createdBy">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Created By</th>
-            <td mat-cell *matCellDef="let row">{{ row.createdByUserName || row.createdBy || '-' }}</td>
-          </ng-container>-->
+          <!-- Case Level (optional) -->
+          <ng-container matColumnDef="caseLevel">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col is-center"
+                [style.width.px]="columnWidths['caseLevel']"
+                [style.minWidth.px]="columnWidths['caseLevel']">
+              Case Level
+              <span class="col-resizer" (mousedown)="onResizeStart($event, 'caseLevel')"
+                    (click)="$event.stopPropagation()" aria-hidden="true"></span>
+            </th>
+            <td mat-cell *matCellDef="let row" class="is-center"
+                [style.width.px]="columnWidths['caseLevel']"
+                [style.minWidth.px]="columnWidths['caseLevel']">
+              {{ row.caseLevelId != null ? row.caseLevelId : '-' }}
+            </td>
+          </ng-container>
+
+          <!-- Created By (optional) -->
+          <ng-container matColumnDef="createdBy">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+                [style.width.px]="columnWidths['createdBy']"
+                [style.minWidth.px]="columnWidths['createdBy']">
+              Created By
+              <span class="col-resizer" (mousedown)="onResizeStart($event, 'createdBy')"
+                    (click)="$event.stopPropagation()" aria-hidden="true"></span>
+            </th>
+            <td mat-cell *matCellDef="let row"
+                [style.width.px]="columnWidths['createdBy']"
+                [style.minWidth.px]="columnWidths['createdBy']">
+              {{ row.createdByUserName || row.createdBy || '-' }}
+            </td>
+          </ng-container>
+
           <!-- Created On -->
           <ng-container matColumnDef="createdOn">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Created</th>
-            <td mat-cell *matCellDef="let row">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+                [style.width.px]="columnWidths['createdOn']"
+                [style.minWidth.px]="columnWidths['createdOn']">
+              Created
+              <span class="col-resizer" (mousedown)="onResizeStart($event, 'createdOn')"
+                    (click)="$event.stopPropagation()" aria-hidden="true"></span>
+            </th>
+            <td mat-cell *matCellDef="let row"
+                [style.width.px]="columnWidths['createdOn']"
+                [style.minWidth.px]="columnWidths['createdOn']">
               {{ row.createdOn ? (row.createdOn | date) : '-' }}
+            </td>
+          </ng-container>
+
+          <!-- Last Activity (optional) -->
+          <ng-container matColumnDef="lastDetailOn">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="resizable-col"
+                [style.width.px]="columnWidths['lastDetailOn']"
+                [style.minWidth.px]="columnWidths['lastDetailOn']">
+              Last Activity
+              <span class="col-resizer" (mousedown)="onResizeStart($event, 'lastDetailOn')"
+                    (click)="$event.stopPropagation()" aria-hidden="true"></span>
+            </th>
+            <td mat-cell *matCellDef="let row"
+                [style.width.px]="columnWidths['lastDetailOn']"
+                [style.minWidth.px]="columnWidths['lastDetailOn']">
+              {{ row.lastDetailOn ? (row.lastDetailOn | date) : '-' }}
             </td>
           </ng-container>
 
           <!-- Actions (RIGHT SIDE) -->
           <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef class="is-center">Actions</th>
-            <td mat-cell *matCellDef="let row" class="is-center">
+            <th mat-header-cell *matHeaderCellDef class="is-center resizable-col"
+                [style.width.px]="columnWidths['actions']"
+                [style.minWidth.px]="columnWidths['actions']">
+              Actions
+            </th>
+            <td mat-cell *matCellDef="let row" class="is-center"
+                [style.width.px]="columnWidths['actions']"
+                [style.minWidth.px]="columnWidths['actions']">
               <button mat-icon-button
                       class="row-menu-trigger-icon"
                       [matMenuTriggerFor]="rowMenu"
@@ -290,9 +497,9 @@
             <td class="mat-cell" [attr.colspan]="displayedColumns.length">No data</td>
           </tr>
         </table>
-
-        <mat-paginator [pageSizeOptions]="[10, 25, 100]" aria-label="Select page"></mat-paginator>
       </div>
+
+      <mat-paginator [pageSizeOptions]="[10, 25, 100]" aria-label="Select page"></mat-paginator>
     </div>
 
     <aside class="right-pane" [attr.aria-hidden]="!showNotesPanel">
