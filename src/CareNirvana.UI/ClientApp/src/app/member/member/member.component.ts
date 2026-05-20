@@ -64,6 +64,8 @@ export class MemberComponent {
       5: 6,
       6: 5,
       8: 4,
+      9: 4,
+      10: 4,
     };
 
     return userRoleMap[userId] ?? null;

@@ -155,6 +155,8 @@ export class DashBoardComponent implements AfterViewInit {
       6: 6,
       7: 5,
       8: 4,
+      9: 4,
+      10: 4,
     };
 
     return userRoleMap[userId] ?? null;
