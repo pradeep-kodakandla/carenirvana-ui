@@ -3252,7 +3252,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       requestType: 'Prospective',
       notes: (pa as any).notes,
       // Pre-select Owner = Kelly Anderson (ID 5) for all fax-initiated auths
-      ownerUserId: 5,
+      ownerUserId: Number(sessionStorage.getItem('loggedInUserid')) || 1,
       priorAuth: pa
     };
 
