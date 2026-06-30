@@ -125,21 +125,21 @@ export class RequestsComponent implements OnInit, AfterViewInit {
   // `displayedColumns` is DERIVED from this list, so column order stays
   // consistent no matter what order the user toggles things on/off.
   allColumns: ColumnDef[] = [
-    { key: 'module',        label: 'Module',                       visible: true  },
-    { key: 'member',        label: 'Member',         locked: true, visible: true  },
-    { key: 'authnumber',    label: 'Auth / Case #',                visible: true  },
-    { key: 'subType',       label: 'Type',                         visible: true  },
-    { key: 'activityType',  label: 'Activity',                     visible: true  },
-    { key: 'workBasket',    label: 'Work Basket',                  visible: true  },
-    { key: 'referredTo',    label: 'Referred To',                  visible: true  },
-    { key: 'dueDate',       label: 'Due Date',                     visible: true  },
-    { key: 'status',        label: 'Status',                       visible: true  },
-    { key: 'workGroup',     label: 'Work Group',                   visible: false },
-    { key: 'createdOn',     label: 'Created On',                   visible: false },
-    { key: 'followUpDate',  label: 'Follow-up Date',               visible: false },
-    { key: 'comments',      label: 'Comments',                     visible: false },
-    { key: 'rejectedCount', label: 'Rejected Count',               visible: false },
-    { key: 'actions',       label: 'Actions',        locked: true, visible: true  },
+    { key: 'module', label: 'Module', visible: true },
+    { key: 'member', label: 'Member', locked: true, visible: true },
+    { key: 'authnumber', label: 'Auth / Case #', visible: true },
+    { key: 'subType', label: 'Type', visible: true },
+    { key: 'activityType', label: 'Activity', visible: true },
+    { key: 'workBasket', label: 'Work Basket', visible: true },
+    { key: 'referredTo', label: 'Referred To', visible: true },
+    { key: 'dueDate', label: 'Due Date', visible: true },
+    { key: 'status', label: 'Status', visible: true },
+    { key: 'workGroup', label: 'Work Group', visible: false },
+    { key: 'createdOn', label: 'Created On', visible: false },
+    { key: 'followUpDate', label: 'Follow-up Date', visible: false },
+    { key: 'comments', label: 'Comments', visible: false },
+    { key: 'rejectedCount', label: 'Rejected Count', visible: false },
+    { key: 'actions', label: 'Actions', locked: true, visible: true },
   ];
 
   // Derived list bound to <table mat-table>. Rebuilt on every change.
@@ -159,21 +159,21 @@ export class RequestsComponent implements OnInit, AfterViewInit {
   // ============================================================
   // Default widths in px. Adjust to taste; user drags override these at runtime.
   columnWidths: Record<string, number> = {
-    module:        110,
-    member:        210,
-    authnumber:    130,
-    subType:       110,
-    activityType:  150,
-    workBasket:    150,
-    referredTo:    150,
-    dueDate:       180,
-    status:        120,
-    actions:       140,
+    module: 110,
+    member: 210,
+    authnumber: 130,
+    subType: 110,
+    activityType: 150,
+    workBasket: 150,
+    referredTo: 150,
+    dueDate: 180,
+    status: 120,
+    actions: 140,
     // --- optional columns (added via the column chooser) ---
-    workGroup:     150,
-    createdOn:     170,
-    followUpDate:  170,
-    comments:      220,
+    workGroup: 150,
+    createdOn: 170,
+    followUpDate: 170,
+    comments: 220,
     rejectedCount: 130,
   };
   private readonly minColumnWidth = 60;
@@ -777,13 +777,13 @@ export class RequestsComponent implements OnInit, AfterViewInit {
 
   getStatusClass(status: string): string {
     const s = (status ?? '').toString().trim().toLowerCase();
-    if (s === 'open')                               return 'status-open';
-    if (s === 'pending')                            return 'status-pending';
-    if (s === 'in progress' || s === 'inprogress')  return 'status-in-progress';
-    if (s === 'new')                                return 'status-new';
-    if (s === 'escalated')                          return 'status-escalated';
-    if (s === 'completed' || s === 'done')          return 'status-completed';
-    if (s === 'closed')                             return 'status-closed';
+    if (s === 'open') return 'status-open';
+    if (s === 'pending') return 'status-pending';
+    if (s === 'in progress' || s === 'inprogress') return 'status-in-progress';
+    if (s === 'new') return 'status-new';
+    if (s === 'escalated') return 'status-escalated';
+    if (s === 'completed' || s === 'done') return 'status-completed';
+    if (s === 'closed') return 'status-closed';
     return 'status-default';
   }
 
@@ -834,30 +834,98 @@ export class RequestsComponent implements OnInit, AfterViewInit {
 
   @Output() addClicked = new EventEmitter<string>();
 
-  onAuthClick(authNumber: string = '', memId: string = '', memberDetailsId: string) {
+  //onAuthClick(authNumber: string = '', memId: string = '', memberDetailsId: string) {
+  //  this.addClicked.emit(authNumber);
+  //  this.memberService.setIsCollapse(true);
+
+  //  if (!authNumber) authNumber = 'DRAFT';
+
+  //  const memberId = memId ?? Number(this.route.parent?.snapshot.paramMap.get('id'));
+
+  //  const tabRoute = `/member-info/${memberId}/member-auth/${authNumber}`;
+  //  const tabLabel = `Auth No ${authNumber}`;
+
+  //  const existingTab = this.headerService.getTabs().find(t => t.route === tabRoute);
+
+  //  if (existingTab) {
+  //    this.headerService.selectTab(tabRoute);
+  //    const mdId = existingTab.memberDetailsId ?? null;
+  //    if (mdId) sessionStorage.setItem('selectedMemberDetailsId', mdId);
+  //  } else {
+  //    this.headerService.addTab(tabLabel, tabRoute, String(memberId));
+  //    sessionStorage.setItem('selectedMemberDetailsId', memberDetailsId);
+  //  }
+  //  this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+  //    this.router.navigate([tabRoute]);
+  //  });
+  //}
+
+  onAuthClick(authNumber: string = '', memId: string = '', memberDetailsId: string, module: string) {
+    module == "UM" ? this.openAuthTab(authNumber, memId, memberDetailsId, false) : this.onCaseClick(authNumber, memId, memberDetailsId);
+  }
+
+  private openAuthTab(authNumber: string, memId: string = '', memDetailsId: string, isNew: boolean): void {
+    // this.memberService.setIsCollapse(true);
     this.addClicked.emit(authNumber);
-    this.memberService.setIsCollapse(true);
+    const memberId = memId;
+    const memberDetailsId = memDetailsId;
 
-    if (!authNumber) authNumber = 'DRAFT';
+    if (!memberId || Number.isNaN(memberId)) {
+      console.error('Invalid memberId for auth tab route');
+      return;
+    }
 
-    const memberId = memId ?? Number(this.route.parent?.snapshot.paramMap.get('id'));
+    // normalize for new
+    const authNo = isNew ? '0' : String(authNumber);
 
-    const tabRoute = `/member-info/${memberId}/member-auth/${authNumber}`;
-    const tabLabel = `Auth No ${authNumber}`;
+    // choose correct step
+    const stepRoute = isNew ? 'smartcheck' : 'details';
+
+    const urlTree = this.router.createUrlTree([
+      '/member-info',
+      memberId,
+      'auth',
+      authNo,
+      stepRoute
+    ]);
+
+    const tabRoute = this.router.serializeUrl(urlTree);
+    const tabLabel = isNew ? `Auth # DRAFT` : `Auth # ${authNo}`;
+
+    const existingTab = this.headerService.getTabs().find(t => t.route === tabRoute);
+    if (existingTab) {
+      this.headerService.selectTab(tabRoute);
+    } else {
+      this.headerService.addTab(tabLabel, tabRoute, String(memberId), memberDetailsId);
+    }
+
+    this.router.navigateByUrl(tabRoute);
+  }
+
+
+
+  onCaseClick(caseNumber: string = '', memId: string = '', memDetailsId: any = null) {
+
+    const memberId = Number(memId) || 0;
+    const memberDetailsId = memDetailsId
+
+    const urlTree = this.router.createUrlTree(
+      ['/member-info', memberId, 'case', caseNumber, 'details']
+      //  { queryparams: isnew ? { mode: 'new' } : {} }
+    );
+
+    const tabRoute = this.router.serializeUrl(urlTree); // ✅ includes query params safely
+    const tabLabel = `Case # ${caseNumber}`;
 
     const existingTab = this.headerService.getTabs().find(t => t.route === tabRoute);
 
     if (existingTab) {
       this.headerService.selectTab(tabRoute);
-      const mdId = existingTab.memberDetailsId ?? null;
-      if (mdId) sessionStorage.setItem('selectedMemberDetailsId', mdId);
     } else {
-      this.headerService.addTab(tabLabel, tabRoute, String(memberId));
-      sessionStorage.setItem('selectedMemberDetailsId', memberDetailsId);
+      this.headerService.addTab(tabLabel, tabRoute, String(memberId), memberDetailsId);
     }
-    this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
-      this.router.navigate([tabRoute]);
-    });
+    // ✅ no skipLocationChange hack (this often causes weird “stuck” behavior)
+    this.router.navigateByUrl(tabRoute);
   }
 
   toggleThumb(row: any, event: MouseEvent): void {

@@ -292,7 +292,7 @@
           <td mat-cell *matCellDef="let row"
               [style.width.px]="columnWidths['authnumber']"
               [style.minWidth.px]="columnWidths['authnumber']">
-            <a *ngIf="row.authNumber" href="#" (click)="onAuthClick(row.authNumber, row.memberId, row.memberDetailsId); $event.preventDefault()">
+            <a *ngIf="row.authNumber" href="#" (click)="onAuthClick(row.authNumber, row.memberId, row.memberDetailsId, row.module); $event.preventDefault()">
               {{ row.authNumber }}
             </a>
             <span *ngIf="!row.authNumber" class="text-muted">—</span>
