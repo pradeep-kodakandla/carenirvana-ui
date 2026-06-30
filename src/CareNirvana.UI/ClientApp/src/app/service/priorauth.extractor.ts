@@ -256,6 +256,15 @@ export const isBanner = (t: string) =>
   /Banner\s+Medicare\s+Advantage\s+Dual\s+HMO\s+D-?SNP/i.test(t) ||
   /Banner\s*[\u2013\-]\s*University\s+Family\s+Care/i.test(t);
 
+// UMR Prior Authorization Fax Sheet.
+// Markers (any one is enough — these don't appear on TX/AZ/GA/NHS/Banner forms):
+//   - The "PLEASE COMPLETE FORM AND ATTACH WITH CLINICAL RECORDS" header
+//   - The distinctive UMR confidentiality footer ("UMR's confidential and/or
+//     proprietary business information")
+export const isUMR = (t: string) =>
+  /UMR(?:[\u2019']s)?\s+confidential\s+and\/or\s+proprietary/i.test(t) ||
+  /PLEASE\s+COMPLETE\s+FORM\s+AND\s+ATTACH\s+WITH\s+CLINICAL\s+RECORDS/i.test(t);
+
 // === Replace your current texasAdapter with this version ===
 const texasAdapter: Extractor = (raw) => {
   const text = raw;
@@ -646,6 +655,9 @@ export function extractPriorAuth(text: string, formFields: Record<string, string
   }
   if (isBanner(text) && formFields && Object.keys(formFields).length) {
     out = { ...out, ...extractBannerFromFields(formFields) };
+  }
+  if (isUMR(text) && formFields && Object.keys(formFields).length) {
+    out = { ...out, ...extractUmrFromFields(formFields) };
   }
   if (out.dx?.codes) out.dx.codes = Array.from(new Set(out.dx.codes.map(x => x.replace(/[^A-Za-z0-9.\-]/g, ''))));
   return out as PriorAuth;
@@ -1548,6 +1560,142 @@ export function extractBannerFromFields(fields: BannerFields): Partial<PriorAuth
       placeOfService,
     }];
   }
+
+  return out;
+}
+
+// ============================================================================
+// UMR Prior Authorization Fax Sheet — AcroForm adapter.
+//
+// Field names captured directly from the UMR template:
+//   From                  ("Mathew Jones")            — fax sender / requestor
+//   Patient name          ("Alexander King")
+//   Patients DOB          ("09-14-2007")
+//   ID                    ("10037")                   — member ID
+//   Group                 ("...")                      — group # (often blank)
+//   Ordering Physician    ("Matthew Jones - 1000000002")  name + NPI
+//   Credentials           ("MD")
+//   Address / City / State / Zip                       requesting provider addr
+//   Phone / Fax                                         requesting provider
+//   Facility              ("Family Health Group ...")  servicing facility name
+//   Facility address      ("8653 Healthcare Drive, Austin, TX, 53932")
+//   Facility phone        ("7035551088")
+//   DATE OF SERVICE       ("07/08/2026")
+//   ICD10                 ("M17.11")
+//   CPT                   ("27447")                    — CPT row 1 code
+//   1                     ("1")                        — sessions row 1
+//   CPT_start_1 / CPT-end_1                             service date range row 1
+// ============================================================================
+
+type UmrFields = Record<string, string>;
+
+const umrField = (fields: UmrFields, key: string): string | undefined => {
+  const v = fields[key];
+  if (v == null) return undefined;
+  const t = String(v).trim();
+  return t.length ? t : undefined;
+};
+
+/**
+ * "Matthew Jones - 1000000002" → { name: "Matthew Jones", npi: "1000000002" }.
+ * Tolerates the name-only case (no NPI) and a stray trailing NPI with no dash.
+ */
+const umrSplitOrderingPhysician = (s?: string): { name?: string; npi?: string } => {
+  if (!s) return {};
+  const m = s.match(/^(.*?)[\s\-\u2013]+(\d{6,})\s*$/);
+  if (m) return { name: m[1].trim() || undefined, npi: m[2] };
+  return { name: s.trim() || undefined };
+};
+
+/** Joins line + city/state/zip into the "addr, city, state, zip" shape the
+ *  component's parseProviderAddress() expects. */
+const umrJoinAddress = (
+  line?: string, city?: string, state?: string, zip?: string
+): string | undefined => {
+  const parts = [line, city, state, zip]
+    .map(p => p?.replace(/[,\s]+$/, '').trim())
+    .filter((p): p is string => !!p && p.length > 0);
+  return parts.length ? parts.join(', ') : undefined;
+};
+
+/**
+ * Maps a UMR AcroForm field map → PriorAuth schema. Safe to call with an
+ * empty/partial field map; missing fields produce `undefined` values rather
+ * than throwing.
+ */
+export function extractUmrFromFields(fields: UmrFields): Partial<PriorAuth> {
+  const out: Partial<PriorAuth> = {
+    source: { template: 'UMR Prior Authorization', confidence: 0.99 },
+    patient: {},
+    providerRequesting: {},
+    providerServicing: {},
+    submission: {},
+    review: {},
+    setting: {},
+  };
+
+  // ── Patient ──────────────────────────────────────────────────────────────
+  out.patient = {
+    name:        umrField(fields, 'Patient name'),
+    dob:         onlyDate(umrField(fields, 'Patients DOB')) || umrField(fields, 'Patients DOB'),
+    memberId:    umrField(fields, 'ID'),
+    groupNumber: umrField(fields, 'Group'),
+  };
+
+  // ── Requesting (ordering) provider ─────────────────────────────────────────
+  const ordering = umrSplitOrderingPhysician(umrField(fields, 'Ordering Physician'));
+  out.providerRequesting = {
+    name:     ordering.name || umrField(fields, 'From'),
+    npi:      ordering.npi,
+    specialty: umrField(fields, 'Credentials'),
+    phone:    umrField(fields, 'Phone'),
+    fax:      umrField(fields, 'Fax'),
+    address:  umrJoinAddress(
+      umrField(fields, 'Address'),
+      umrField(fields, 'City'),
+      umrField(fields, 'State'),
+      umrField(fields, 'Zip'),
+    ),
+  };
+
+  // ── Servicing provider / facility ──────────────────────────────────────────
+  const facility = umrField(fields, 'Facility');
+  out.providerServicing = {
+    name:     facility,
+    facility: facility,
+    address:  umrField(fields, 'Facility address'),
+    phone:    umrField(fields, 'Facility phone'),
+  };
+
+  // ── Submission meta ────────────────────────────────────────────────────────
+  out.submission = {
+    issuerName: 'UMR',
+    date:       onlyDate(umrField(fields, 'DATE OF SERVICE')),
+  };
+
+  // ── Diagnosis ──────────────────────────────────────────────────────────────
+  const icd = umrField(fields, 'ICD10');
+  if (icd) out.dx = { codes: [icd] };
+
+  // ── Services (CPT row 1) ───────────────────────────────────────────────────
+  const cpt    = umrField(fields, 'CPT');
+  const start  = onlyDate(umrField(fields, 'CPT_start_1') || umrField(fields, 'DATE OF SERVICE'));
+  const end    = onlyDate(umrField(fields, 'CPT-end_1')   || umrField(fields, 'DATE OF SERVICE'));
+  const qty    = umrField(fields, '1'); // "sessions" for CPT row 1
+  if (cpt || start || end) {
+    out.services = [{
+      code:          cpt,
+      description:   'Service',
+      startDate:     start,
+      endDate:       end,
+      diagnosisCode: icd,
+    }];
+    if (qty) (out.services[0] as any).quantity = qty;
+  }
+
+  // UMR sheet has no Urgent/Routine flag — leave review.type undefined so the
+  // downstream default applies (same behaviour as the other text adapters).
+  out.review = {};
 
   return out;
 }

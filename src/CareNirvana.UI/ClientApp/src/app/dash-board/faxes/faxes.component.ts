@@ -1627,10 +1627,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
     faxId: number,
     authApprove: string
   ): FaxAuthPrefill {
-    let authClassName = 'Inpatient';
-    if (pa.setting?.outpatient && !pa.setting?.inpatient) {
-      authClassName = 'Outpatient';
-    }
+    let authClassName = this.resolveAuthClassName(pa);
 
     const reqAddr = this.parseProviderAddress(pa.providerRequesting?.address);
     const svcAddr = this.parseProviderAddress(pa.providerServicing?.address);
@@ -1646,7 +1643,7 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       authApprove: authApprove,
 
       authClassName: authClassName,
-      authTypeName: 'Observation Stay',
+      authTypeName: this.resolveAuthTypeName(pa),
 
       diagnosisCodes: (pa.dx?.codes?.length ? pa.dx.codes : null)
         ?? (pa.services ?? []).map((s: any) => s.diagnosisCode).filter(Boolean),
@@ -2132,6 +2129,31 @@ export class FaxesComponent implements OnInit, AfterViewInit {
 
   private faxAuthLog(label: string, data?: any): void {
 
+  }
+
+  /**
+   * Resolves the UM template Auth Type name for a fax-initiated auth.
+   * Default is 'Observation Stay'. UMR prior-authorization faxes use the
+   * 'Medical/Surgical' template instead — keyed off the extractor's
+   * source.template tag ('UMR Prior Authorization').
+   */
+  private resolveAuthTypeName(pa: any): string {
+    const template = (pa?.source?.template ?? '').toString();
+    if (/^UMR\b/i.test(template)) return 'Medical/Surgical';
+    return 'Observation Stay';
+  }
+
+  /**
+   * Resolves the Auth Class name for a fax-initiated auth.
+   * Default is 'Inpatient', switching to 'Outpatient' when the OCR setting
+   * flags indicate outpatient. UMR prior-authorization faxes are always
+   * 'Outpatient' — keyed off the extractor's source.template tag.
+   */
+  private resolveAuthClassName(pa: any): string {
+    const template = (pa?.source?.template ?? '').toString();
+    if (/^UMR\b/i.test(template)) return 'Outpatient';
+    if (pa?.setting?.outpatient && !pa?.setting?.inpatient) return 'Outpatient';
+    return 'Inpatient';
   }
 
   private parseProviderAddress(addr: string | undefined | null): { address: string; city: string; state: string; zip: string } {
@@ -3186,10 +3208,9 @@ export class FaxesComponent implements OnInit, AfterViewInit {
       sourceTemplate: (pa as any)?.source?.template ?? null,
     });
 
-    let authClassName = 'Inpatient';
-    if ((pa as any).setting?.outpatient && !(pa as any).setting?.inpatient) authClassName = 'Outpatient';
+    let authClassName = this.resolveAuthClassName(pa);
 
-    const authTypeName = 'Observation Stay';
+    const authTypeName = this.resolveAuthTypeName(pa);
 
     const reqAddr = this.parseProviderAddress((pa as any).providerRequesting?.address);
     const svcAddr = this.parseProviderAddress((pa as any).providerServicing?.address);
