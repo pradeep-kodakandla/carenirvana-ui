@@ -65,53 +65,63 @@ export class MemberDetailsComponent implements OnInit, OnDestroy {
           this.memberId = parseInt(id, 10);
         }
 
-        // Reset memoized map when member changes
+        // Reset stale sidebar values immediately when switching members.
+        this.member = null;
+        this.memberDetails = null;
+        this.primaryPhoneNumber = null;
+        this.primaryEmail = null;
+        this.primaryAddress = null;
+        this.primaryAddressLines = [];
         this._parsedLevelMap = null;
 
-        const memberDetailsId = Number(sessionStorage.getItem('selectedMemberDetailsId'));
+        const memberDetailsId = this.resolveMemberDetailsId();
 
-        this.dashboard.getpatientsummary(String(memberDetailsId || ''))
+        if (!memberDetailsId) {
+          console.warn('MemberDetailsComponent: unable to resolve memberDetailsId for route', this.router.url);
+          return;
+        }
+
+        sessionStorage.setItem('selectedMemberDetailsId', String(memberDetailsId));
+
+        this.dashboard.getpatientsummary(String(memberDetailsId))
           .pipe(takeUntil(this.destroy$))
           .subscribe({
             next: (data) => {
               if (data && Array.isArray(data)) {
                 this.member = data[0];
-                // Re-parse level map after member is loaded
                 this._parsedLevelMap = null;
               }
             },
             error: (err) => console.error('Error fetching member summary', err)
           });
 
-        if (Number.isFinite(memberDetailsId) && memberDetailsId > 0) {
-          this.dashboard.getMemberDetails(memberDetailsId)
-            .pipe(takeUntil(this.destroy$))
-            .subscribe({
-              next: (res) => {
-                this.memberDetails = res;
+        this.dashboard.getMemberDetails(memberDetailsId)
+          .pipe(takeUntil(this.destroy$))
+          .subscribe({
+            next: (res) => {
+              this.memberDetails = res;
 
-                this.primaryPhoneNumber = this.pickBestRecord(
-                  this.memberDetails.memberPhoneNumbers,
-                  (p: any) => p?.phonenumber ?? p?.phoneNumber
-                );
+              this.primaryPhoneNumber = this.pickBestRecord(
+                this.memberDetails?.memberPhoneNumbers,
+                (p: any) => p?.phonenumber ?? p?.phoneNumber
+              );
 
-                this.primaryEmail = this.pickBestRecord(
-                  this.memberDetails.memberEmails,
-                  (e: any) => e?.emailaddress ?? e?.emailAddress
-                );
+              this.primaryEmail = this.pickBestRecord(
+                this.memberDetails?.memberEmails,
+                (e: any) => e?.emailaddress ?? e?.emailAddress
+              );
 
-                this.primaryAddress = this.pickBestRecord(
-                  this.memberDetails.memberAddresses,
-                  (a: any) => (this.getAddressLines(a) || []).join(' ')
-                );
+              this.primaryAddress = this.pickBestRecord(
+                this.memberDetails?.memberAddresses,
+                (a: any) => (this.getAddressLines(a) || []).join(' ')
+              );
 
-                this.primaryAddressLines = this.primaryAddress
-                  ? this.getAddressLines(this.primaryAddress)
-                  : [];
-              },
-              error: (err) => console.error('Error fetching member details', err)
-            });
-        }
+              this.primaryAddressLines = this.primaryAddress
+                ? this.getAddressLines(this.primaryAddress)
+                : [];
+            },
+            error: (err) => console.error('Error fetching member details', err)
+          });
       });
 
     // Respond to collapse signal from member component tab selection
@@ -130,6 +140,27 @@ export class MemberDetailsComponent implements OnInit, OnDestroy {
       clearTimeout(this.collapseTimer);
       this.collapseTimer = null;
     }
+  }
+
+  /**
+   * Resolve memberDetailsId from the most reliable source first.
+   * This prevents stale sidebar data when auth tabs are opened directly from dashboards.
+   */
+  private resolveMemberDetailsId(): number {
+    const fromQuery = Number(this.route.snapshot.queryParamMap.get('memberDetailsId') || 0);
+    if (Number.isFinite(fromQuery) && fromQuery > 0) return fromQuery;
+
+    const fullUrl = this.router.url.split('?')[0];
+    const fromHeaderTab = Number(this.headerService.getMemberDetailsId(fullUrl) || 0);
+    if (Number.isFinite(fromHeaderTab) && fromHeaderTab > 0) return fromHeaderTab;
+
+    const fromSelectedRoute = Number(this.headerService.getMemberDetailsId(this.headerService.getSelectedTab() || '') || 0);
+    if (Number.isFinite(fromSelectedRoute) && fromSelectedRoute > 0) return fromSelectedRoute;
+
+    const fromSession = Number(sessionStorage.getItem('selectedMemberDetailsId') || 0);
+    if (Number.isFinite(fromSession) && fromSession > 0) return fromSession;
+
+    return 0;
   }
 
   // ─── Sidebar collapse ───────────────────────────────────────────────────────

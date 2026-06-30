@@ -145,17 +145,17 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit, OnDestroy {
   // `displayedColumns` is DERIVED from this list, so column order stays
   // consistent no matter what order the user toggles things on/off.
   allColumns: ColumnDef[] = [
-    { key: 'module',       label: 'Module',                       visible: true  },
-    { key: 'member',       label: 'Member',         locked: true, visible: true  },
-    { key: 'authnumber',   label: 'Auth #',                       visible: true  },
-    { key: 'createdOn',    label: 'Created On',                   visible: true  },
-    { key: 'referredTo',   label: 'Refer To',                     visible: true  },
-    { key: 'activityType', label: 'Activity Type',                visible: true  },
-    { key: 'followUpDate', label: 'Follow Up Date',               visible: true  },
-    { key: 'dueDate',      label: 'Due Date',                     visible: true  },
-    { key: 'status',       label: 'Status',                       visible: true  },
-    { key: 'comments',     label: 'Comments',                     visible: false },
-    { key: 'thumb',        label: 'Actions',        locked: true, visible: true  },
+    { key: 'module', label: 'Module', visible: true },
+    { key: 'member', label: 'Member', locked: true, visible: true },
+    { key: 'authnumber', label: 'Auth #', visible: true },
+    { key: 'createdOn', label: 'Created On', visible: true },
+    { key: 'referredTo', label: 'Refer To', visible: true },
+    { key: 'activityType', label: 'Activity Type', visible: true },
+    { key: 'followUpDate', label: 'Follow Up Date', visible: true },
+    { key: 'dueDate', label: 'Due Date', visible: true },
+    { key: 'status', label: 'Status', visible: true },
+    { key: 'comments', label: 'Comments', visible: false },
+    { key: 'thumb', label: 'Actions', locked: true, visible: true },
   ];
 
   // Derived list bound to <table mat-table>. Rebuilt on every change.
@@ -175,18 +175,18 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit, OnDestroy {
   // ============================================================
   // Default widths in px. Adjust to taste; user drags override these at runtime.
   columnWidths: Record<string, number> = {
-    module:       100,
-    member:       200,
-    authnumber:   130,
-    createdOn:    140,
-    referredTo:   180,
+    module: 100,
+    member: 200,
+    authnumber: 130,
+    createdOn: 140,
+    referredTo: 180,
     activityType: 200,
     followUpDate: 150,
-    dueDate:      170,
-    status:       120,
-    thumb:        140,
+    dueDate: 170,
+    status: 120,
+    thumb: 140,
     // --- optional columns (added via the column chooser) ---
-    comments:     220,
+    comments: 220,
   };
   private readonly minColumnWidth = 60;
   private resizing: { col: string; startX: number; startWidth: number } | null = null;
@@ -610,35 +610,100 @@ export class MyactivitiesComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  onAuthClick(authNumber: string = '', memId: string | number = '', memberDetailsId: string): void {
+  onAuthClick(authNumber: string = '', memId: string = '', memberDetailsId: string) {
+    this.openAuthTab(authNumber, memId, memberDetailsId, false);
+  }
+
+  private openAuthTab(authNumber: string, memId: string = '', memDetailsId: string, isNew: boolean): void {
     this.addClicked.emit(authNumber);
-    this.memberService.setIsCollapse(true);
 
-    if (!authNumber) authNumber = 'DRAFT';
+    const memberId = String(memId ?? '').trim();
+    const memberDetailsId = String(memDetailsId ?? '').trim();
 
-    // Prefer the explicit member id; fall back to the route param.
-    // NOTE: `??` only fires on null/undefined — empty string sails through,
-    // so `||` is the correct operator here.
-    const memberId = memId || Number(this.route.parent?.snapshot.paramMap.get('id'));
+    if (!memberId || !Number.isFinite(Number(memberId))) {
+      console.error('Invalid memberId for auth tab route', memId);
+      return;
+    }
 
-    // Point tab to the CHILD route under the shell
-    const tabRoute = `/member-info/${memberId}/member-auth/${authNumber}`;
-    const tabLabel = `Auth No ${authNumber}`;
+    if (!memberDetailsId || !Number.isFinite(Number(memberDetailsId))) {
+      console.error('Invalid memberDetailsId for auth tab route', memDetailsId);
+      return;
+    }
+
+    const authNo = isNew ? '0' : String(authNumber || '').trim();
+    const stepRoute = isNew ? 'smartcheck' : 'details';
+
+    const urlTree = this.router.createUrlTree([
+      '/member-info',
+      memberId,
+      'auth',
+      authNo,
+      stepRoute
+    ]);
+
+    const tabRoute = this.router.serializeUrl(urlTree);
+    const tabLabel = isNew ? `Auth # DRAFT` : `Auth # ${authNo}`;
 
     const existingTab = this.headerService.getTabs().find(t => t.route === tabRoute);
 
     if (existingTab) {
-      this.headerService.selectTab(tabRoute);
-      const mdId = existingTab.memberDetailsId ?? null;
-      if (mdId) sessionStorage.setItem('selectedMemberDetailsId', mdId);
+      this.headerService.updateTab(tabRoute, {
+        label: tabLabel,
+        route: tabRoute,
+        memberId: String(memberId),
+        memberDetailsId: String(memberDetailsId)
+      });
     } else {
-      this.headerService.addTab(tabLabel, tabRoute, String(memberId));
-      sessionStorage.setItem('selectedMemberDetailsId', memberDetailsId);
+      this.headerService.addTab(tabLabel, tabRoute, String(memberId), String(memberDetailsId));
     }
+
+    // Critical: hydrate selected member context BEFORE the member-details shell loads.
+    // Header tab click was doing this later, which is why clicking the header fixed the sidebar.
+    this.headerService.selectTab(tabRoute);
+    sessionStorage.setItem('selectedMemberDetailsId', String(memberDetailsId));
+
+    // Match HeaderComponent.onTabClick behavior: force a clean route activation and
+    // pass member metadata in query params as an additional fallback.
     this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
-      this.router.navigate([tabRoute]);
+      const tree = this.router.parseUrl(tabRoute);
+      tree.queryParams = {
+        ...(tree.queryParams ?? {}),
+        memberId: String(memberId),
+        memberDetailsId: String(memberDetailsId)
+      };
+      this.router.navigateByUrl(tree);
     });
   }
+
+  //onAuthClick(authNumber: string = '', memId: string | number = '', memberDetailsId: string): void {
+  //  this.addClicked.emit(authNumber);
+  //  this.memberService.setIsCollapse(true);
+
+  //  if (!authNumber) authNumber = 'DRAFT';
+
+  //  // Prefer the explicit member id; fall back to the route param.
+  //  // NOTE: `??` only fires on null/undefined — empty string sails through,
+  //  // so `||` is the correct operator here.
+  //  const memberId = memId || Number(this.route.parent?.snapshot.paramMap.get('id'));
+
+  //  // Point tab to the CHILD route under the shell
+  //  const tabRoute = `/member-info/${memberId}/member-auth/${authNumber}`;
+  //  const tabLabel = `Auth No ${authNumber}`;
+
+  //  const existingTab = this.headerService.getTabs().find(t => t.route === tabRoute);
+
+  //  if (existingTab) {
+  //    this.headerService.selectTab(tabRoute);
+  //    const mdId = existingTab.memberDetailsId ?? null;
+  //    if (mdId) sessionStorage.setItem('selectedMemberDetailsId', mdId);
+  //  } else {
+  //    this.headerService.addTab(tabLabel, tabRoute, String(memberId));
+  //    sessionStorage.setItem('selectedMemberDetailsId', memberDetailsId);
+  //  }
+  //  this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+  //    this.router.navigate([tabRoute]);
+  //  });
+  //}
 
   // Calendar view methods (kept for parity; not used currently)
   setViewMode(mode: 'calendar' | 'table'): void {

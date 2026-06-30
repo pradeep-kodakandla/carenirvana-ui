@@ -621,20 +621,22 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
   }
 
   private openAuthTab(authNumber: string, memId: string = '', memDetailsId: string, isNew: boolean): void {
-    // this.memberService.setIsCollapse(true);
     this.addClicked.emit(authNumber);
-    const memberId = memId;
-    const memberDetailsId = memDetailsId;
 
-    if (!memberId || Number.isNaN(memberId)) {
-      console.error('Invalid memberId for auth tab route');
+    const memberId = String(memId ?? '').trim();
+    const memberDetailsId = String(memDetailsId ?? '').trim();
+
+    if (!memberId || !Number.isFinite(Number(memberId))) {
+      console.error('Invalid memberId for auth tab route', memId);
       return;
     }
 
-    // normalize for new
-    const authNo = isNew ? '0' : String(authNumber);
+    if (!memberDetailsId || !Number.isFinite(Number(memberDetailsId))) {
+      console.error('Invalid memberDetailsId for auth tab route', memDetailsId);
+      return;
+    }
 
-    // choose correct step
+    const authNo = isNew ? '0' : String(authNumber || '').trim();
     const stepRoute = isNew ? 'smartcheck' : 'details';
 
     const urlTree = this.router.createUrlTree([
@@ -649,13 +651,34 @@ export class AssignedauthsComponent implements OnInit, AfterViewInit {
     const tabLabel = isNew ? `Auth # DRAFT` : `Auth # ${authNo}`;
 
     const existingTab = this.headerService.getTabs().find(t => t.route === tabRoute);
+
     if (existingTab) {
-      this.headerService.selectTab(tabRoute);
+      this.headerService.updateTab(tabRoute, {
+        label: tabLabel,
+        route: tabRoute,
+        memberId: String(memberId),
+        memberDetailsId: String(memberDetailsId)
+      });
     } else {
-      this.headerService.addTab(tabLabel, tabRoute, String(memberId), memberDetailsId);
+      this.headerService.addTab(tabLabel, tabRoute, String(memberId), String(memberDetailsId));
     }
 
-    this.router.navigateByUrl(tabRoute);
+    // Critical: hydrate selected member context BEFORE the member-details shell loads.
+    // Header tab click was doing this later, which is why clicking the header fixed the sidebar.
+    this.headerService.selectTab(tabRoute);
+    sessionStorage.setItem('selectedMemberDetailsId', String(memberDetailsId));
+
+    // Match HeaderComponent.onTabClick behavior: force a clean route activation and
+    // pass member metadata in query params as an additional fallback.
+    this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+      const tree = this.router.parseUrl(tabRoute);
+      tree.queryParams = {
+        ...(tree.queryParams ?? {}),
+        memberId: String(memberId),
+        memberDetailsId: String(memberDetailsId)
+      };
+      this.router.navigateByUrl(tree);
+    });
   }
 
   onActivityRequestViewAll(): void {
