@@ -2009,3 +2009,82 @@ border-radius:999px;font-weight:600;font-size:13px;padding:8px 22px;
   outline: none;
   border-color: #007bff !important;
 }
+
+/* =====================================================================
+   FINAL FIX: dropdown list longer than container cannot be clicked
+   ---------------------------------------------------------------------
+   Root cause:
+     The dropdown panel is rendered inside the current Auth Details form/card.
+     When the option list is taller than the visible card/container area, the
+     part extending outside that container can be seen but mouse hit-testing is
+     clipped by the container. Keyboard still works because focus remains on
+     the dropdown input.
+
+   Fix:
+     Do not let the dropdown panel extend outside the field/container. Instead,
+     cap the dropdown list height and make the list itself scrollable.
+     This keeps every option inside the clickable area.
+   ===================================================================== */
+
+:host ::ng-deep ui-smart-dropdown {
+  position: relative !important;
+  display: block !important;
+  width: 100% !important;
+}
+
+/* These generic selectors intentionally cover the custom dropdown panel even
+   if its internal class name changes. */
+:host ::ng-deep ui-smart-dropdown .dropdown-panel,
+:host ::ng-deep ui-smart-dropdown .dropdown-menu,
+:host ::ng-deep ui-smart-dropdown .dropdown-list,
+:host ::ng-deep ui-smart-dropdown .options-panel,
+:host ::ng-deep ui-smart-dropdown .option-panel,
+:host ::ng-deep ui-smart-dropdown .sd-panel,
+:host ::ng-deep ui-smart-dropdown .p-dropdown-panel,
+:host ::ng-deep ui-smart-dropdown .ng-dropdown-panel,
+:host ::ng-deep ui-smart-dropdown [class*="panel"],
+:host ::ng-deep ui-smart-dropdown [class*="menu"],
+:host ::ng-deep ui-smart-dropdown [class*="list"],
+:host ::ng-deep ui-smart-dropdown ul {
+  max-height: 220px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+  pointer-events: auto !important;
+  z-index: 12000 !important;
+}
+
+/* Options should remain clickable after the list starts scrolling. */
+:host ::ng-deep ui-smart-dropdown .dropdown-option,
+:host ::ng-deep ui-smart-dropdown .option,
+:host ::ng-deep ui-smart-dropdown .sd-option,
+:host ::ng-deep ui-smart-dropdown .ng-option,
+:host ::ng-deep ui-smart-dropdown li,
+:host ::ng-deep ui-smart-dropdown [role="option"] {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+/* Keep the active dropdown field above neighboring fields/cards. */
+.ff-field:focus-within,
+.sc-field:focus-within,
+.tr-code-field:focus-within,
+.pc-role-wrap:focus-within,
+.dc-codetype-wrap:focus-within,
+.mp-cell-select:focus-within {
+  position: relative !important;
+  z-index: 12000 !important;
+}
+
+.section-card:focus-within,
+.sub-card:focus-within,
+.pc-card:focus-within,
+.dc-card:focus-within,
+.sc-card:focus-within,
+.mc-card:focus-within,
+.tr-ride-group:focus-within,
+.tr-code-row:focus-within,
+.tl-leg-card:focus-within {
+  position: relative !important;
+  z-index: 11000 !important;
+}

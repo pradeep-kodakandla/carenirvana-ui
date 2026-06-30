@@ -89,7 +89,8 @@
              [class.ui-smart-dropdown__option--selected]="isSelected(opt)"
              [class.ui-smart-dropdown__option--highlighted]="i === highlightedIndex"
              [class.ui-smart-dropdown__option--disabled]="opt.disabled"
-             (click)="optionClick(opt)"
+             (mousedown)="optionMouseDown($event, opt)"
+             (click)="$event.preventDefault(); $event.stopPropagation()"
              [attr.title]="opt.label">
           <span class="option-label" [attr.title]="opt.label">
             {{ opt.label }}

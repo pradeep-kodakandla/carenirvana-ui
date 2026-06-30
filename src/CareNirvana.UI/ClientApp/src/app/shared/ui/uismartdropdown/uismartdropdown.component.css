@@ -199,3 +199,46 @@
   outline: 0 !important;
   background: transparent !important;
 }
+
+/* ============================================================
+   FIX: Dropdown mouse selection when options exceed container height
+
+   Why:
+   The panel is absolutely positioned inside this component. In screens
+   with card/grid containers, the lower part of a long panel can extend
+   outside the surrounding container. Keeping the options list internally
+   scrollable prevents lower items from relying on clicks outside that
+   container area.
+
+   Keep this fix in uismartdropdown.component.css so every usage benefits.
+   ============================================================ */
+
+.ui-smart-dropdown,
+.ui-smart-dropdown__wrapper {
+  overflow: visible;
+}
+
+.ui-smart-dropdown__panel {
+  z-index: 12000;
+  max-height: min(240px, calc(100vh - 120px));
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.ui-smart-dropdown__options {
+  max-height: 200px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  pointer-events: auto;
+}
+
+.ui-smart-dropdown__option {
+  pointer-events: auto;
+  user-select: none;
+}
+
+/* When dropping up, keep the same internal scrolling behavior. */
+.ui-smart-dropdown__panel--drop-up .ui-smart-dropdown__options {
+  max-height: 200px;
+}

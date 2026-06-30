@@ -466,4 +466,15 @@ export class UiSmartDropdownComponent implements ControlValueAccessor, OnChanges
       this.focusTimerId = null;
     }
   }
+
+  optionMouseDown(event: MouseEvent, opt: UiSmartOption): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!opt || opt.disabled) {
+      return;
+    }
+
+    this.optionClick(opt);
+  }
 }
