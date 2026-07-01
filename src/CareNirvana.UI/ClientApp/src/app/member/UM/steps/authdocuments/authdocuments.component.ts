@@ -492,7 +492,7 @@ ngOnChanges(changes: SimpleChanges): void {
             String(value ?? '');
           return { value, label } as UiSmartOption;
         },
-        ['AG']
+        ['UM']
       )
         .pipe(takeUntil(this.destroy$))
         .subscribe((opts: UiSmartOption[] | null) => {

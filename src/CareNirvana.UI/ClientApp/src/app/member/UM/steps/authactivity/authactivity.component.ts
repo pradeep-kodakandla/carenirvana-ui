@@ -473,7 +473,9 @@ export class AuthactivityComponent implements OnChanges, Authunsavedchangesaware
       followUpDateTime: this.activityForm.value.followUpDateTime || null,
       dueDate: this.activityForm.value.dueDate || null,
       comment: this.activityForm.value.comments || null,
-      statusId: 1,
+      statusId: this.editingIndex !== null
+        ? (this.activities[this.editingIndex]?.statusId ?? 1)
+        : 1,
       activeFlag: true,
       CreatedBy: Number(loggedInUserId),
       CreatedOn: new Date(),
@@ -861,18 +863,56 @@ export class AuthactivityComponent implements OnChanges, Authunsavedchangesaware
     return !t ? [...list] : list.filter(o => (o.label ?? '').toLowerCase().includes(t));
   }
 
-  markAsCompleted(index: number) {
-    const activity = this.activities[index];
-    if (activity.statusId !== 2) {  // 2 = Completed
-      activity.statusId = 2;
-      // Optional if you want to store completedDate manually:
-      // activity.completedDate = new Date().toISOString();
-      this.applySearch();
-      this.sortActivities();
+  //markAsCompleted(index: number) {
+  //  const activity = this.activities[index];
+  //  if (activity.statusId !== 2) {  // 2 = Completed
+  //    activity.statusId = 2;
+  //    // Optional if you want to store completedDate manually:
+  //    // activity.completedDate = new Date().toISOString();
+  //    this.applySearch();
+  //    this.sortActivities();
+  //  }
+  //}
+
+  markAsCompleted(activity: AuthActivity): void {
+    if (!activity?.authActivityId || activity.statusId === 2) {
+      return;
     }
+
+    const userId = Number(sessionStorage.getItem('loggedInUserid') || 0);
+
+    const payload: any = {
+      ...activity,
+      authDetailId: this.authDetailId,
+      authActivityId: activity.authActivityId,
+      statusId: 2, // Completed
+      updatedBy: userId,
+      updatedOn: new Date()
+    };
+
+    // Optimistic UI update
+    const previousStatus = activity.statusId;
+    activity.statusId = 2;
+    this.applySearch();
+    this.sortActivities();
+
+    this.activityService.updateActivity(activity.authActivityId, payload).subscribe({
+      next: () => {
+        this.toastSvc.success('Activity marked as completed.');
+        this.loadActivitiesForAuth(this.authDetailId!);
+      },
+      error: (err) => {
+        console.error('Mark completed failed', err);
+
+        // Rollback UI if API fails
+        activity.statusId = previousStatus;
+        this.applySearch();
+        this.sortActivities();
+
+        this.toastSvc.error('Unable to mark activity as completed.');
+      }
+    });
   }
-
-
 
 
   /******Select field******/
